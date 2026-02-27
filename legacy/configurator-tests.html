@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chromatic Configurator — Test Runner</title>
+    <style>
+        :root {
+            --pass: #2e7d32;
+            --fail: #c62828;
+            --warn: #ef6c00;
+            --bg: #fafafa;
+            --card: #fff;
+        }
+        body {
+            font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+            margin: 0; padding: 20px;
+            background: var(--bg); color: #333;
+            font-size: 13px;
+        }
+        h1 { font-size: 18px; margin-bottom: 5px; }
+        #summary {
+            padding: 12px 16px; border-radius: 6px; margin: 15px 0;
+            font-weight: bold; font-size: 14px;
+        }
+        #summary.all-pass { background: #e8f5e9; color: var(--pass); border: 1px solid #a5d6a7; }
+        #summary.has-fail { background: #ffebee; color: var(--fail); border: 1px solid #ef9a9a; }
+
+        .suite {
+            background: var(--card); border: 1px solid #e0e0e0;
+            border-radius: 6px; margin-bottom: 12px; overflow: hidden;
+        }
+        .suite-header {
+            padding: 10px 14px; background: #f5f5f5;
+            font-weight: bold; font-size: 13px;
+            display: flex; justify-content: space-between;
+            cursor: pointer; user-select: none;
+        }
+        .suite-header:hover { background: #eee; }
+        .suite-body { padding: 0 14px 10px; }
+        .suite-body.collapsed { display: none; }
+
+        .test-row {
+            display: flex; align-items: baseline;
+            padding: 3px 0; border-bottom: 1px solid #f5f5f5;
+        }
+        .test-row:last-child { border-bottom: none; }
+        .badge {
+            display: inline-block; width: 42px; text-align: center;
+            padding: 1px 4px; border-radius: 3px;
+            font-size: 10px; font-weight: bold; margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .badge.pass { background: #e8f5e9; color: var(--pass); }
+        .badge.fail { background: #ffebee; color: var(--fail); }
+        .test-name { flex-grow: 1; }
+        .test-detail { color: #999; font-size: 11px; margin-left: 8px; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fail-detail { color: var(--fail); font-size: 11px; padding: 4px 0 4px 52px; }
+    </style>
+</head>
+<body>
+
+<h1>Chromatic Configurator — Test Runner</h1>
+<div id="summary">Running...</div>
+<div id="results"></div>
+
+<script src="music-color-palettes.js"></script>
+<script src="configurator-core.js"></script>
+<script>
+
+// ═══════════════════════════════════════════════════════════════
+//  MINIMAL TEST FRAMEWORK
+// ═══════════════════════════════════════════════════════════════
+
+const T = {
+    suites: [],
+    currentSuite: null,
+
+    suite(name, fn) {
+        const s = { name, tests: [], pass: 0, fail: 0 };
+        T.suites.push(s);
+        T.currentSuite = s;
+        fn();
+        T.currentSuite = null;
+    },
+
+    test(name, fn) {
+        const t = { name, passed: false, error: null };
+        try {
+            fn();
+            t.passed = true;
+            T.currentSuite.pass++;
+        } catch (e) {
+            t.error = e.message || String(e);
+            T.currentSuite.fail++;
+        }
+        T.currentSuite.tests.push(t);
+    },
+
+    // Assertions
+    eq(actual, expected, msg) {
+        if (actual !== expected) {
+            throw new Error(`${msg || "eq"}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+        }
+    },
+    deepEq(actual, expected, msg) {
+        const a = JSON.stringify(actual);
+        const b = JSON.stringify(expected);
+        if (a !== b) {
+            throw new Error(`${msg || "deepEq"}: expected ${b}, got ${a}`);
+        }
+    },
+    ok(val, msg) {
+        if (!val) throw new Error(`${msg || "ok"}: expected truthy, got ${JSON.stringify(val)}`);
+    },
+    throws(fn, msg) {
+        try { fn(); throw new Error(`${msg || "throws"}: expected exception, none thrown`); }
+        catch (e) { if (e.message && e.message.includes("expected exception")) throw e; }
+    },
+    approx(actual, expected, epsilon, msg) {
+        if (epsilon === undefined) epsilon = 0.001;
+        if (Math.abs(actual - expected) > epsilon) {
+            throw new Error(`${msg || "approx"}: expected ~${expected}, got ${actual} (epsilon=${epsilon})`);
+        }
+    },
+    contains(str, sub, msg) {
+        if (typeof str !== "string" || !str.includes(sub)) {
+            throw new Error(`${msg || "contains"}: '${sub}' not found in output`);
+        }
+    },
+    notContains(str, sub, msg) {
+        if (typeof str === "string" && str.includes(sub)) {
+            throw new Error(`${msg || "notContains"}: '${sub}' unexpectedly found in output`);
+        }
+    },
+
+    // Render results
+    render() {
+        const totalPass = T.suites.reduce((a, s) => a + s.pass, 0);
+        const totalFail = T.suites.reduce((a, s) => a + s.fail, 0);
+        const total = totalPass + totalFail;
+
+        const sumEl = document.getElementById("summary");
+        sumEl.textContent = `${totalPass}/${total} passed` + (totalFail > 0 ? ` — ${totalFail} FAILED` : " ✓");
+        sumEl.className = totalFail > 0 ? "has-fail" : "all-pass";
+
+        const results = document.getElementById("results");
+        results.innerHTML = "";
+
+        for (const s of T.suites) {
+            const div = document.createElement("div");
+            div.className = "suite";
+
+            const header = document.createElement("div");
+            header.className = "suite-header";
+            header.innerHTML = `<span>${s.name}</span><span>${s.pass}/${s.pass + s.fail}</span>`;
+
+            const body = document.createElement("div");
+            body.className = "suite-body" + (s.fail === 0 ? " collapsed" : "");
+
+            header.onclick = () => body.classList.toggle("collapsed");
+
+            for (const t of s.tests) {
+                const row = document.createElement("div");
+                row.className = "test-row";
+                row.innerHTML = `<span class="badge ${t.passed ? "pass" : "fail"}">${t.passed ? "PASS" : "FAIL"}</span>` +
+                                `<span class="test-name">${t.name}</span>`;
+                body.appendChild(row);
+
+                if (!t.passed && t.error) {
+                    const detail = document.createElement("div");
+                    detail.className = "fail-detail";
+                    detail.textContent = t.error;
+                    body.appendChild(detail);
+                }
+            }
+
+            div.appendChild(header);
+            div.appendChild(body);
+            results.appendChild(div);
+        }
+    }
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+//  TEST SUITES
+// ═══════════════════════════════════════════════════════════════
+
+// --- Utilities ---
+T.suite("Utilities", () => {
+    T.test("roundTo: basic rounding", () => {
+        T.eq(Core.roundTo(1.23456, 2), 1.23);
+        T.eq(Core.roundTo(1.23456, 4), 1.2346);
+        T.eq(Core.roundTo(1.5, 0), 2);
+    });
+
+    T.test("gcd: array of values", () => {
+        T.eq(Core.gcd([6, 4]), 2);
+        T.eq(Core.gcd([3, 3, 3, 3]), 3);
+        T.eq(Core.gcd([12, 8, 4]), 4);
+        T.eq(Core.gcd([5, 3]), 1);
+    });
+
+    T.test("posMod: handles negatives", () => {
+        T.eq(Core.posMod(5, 12), 5);
+        T.eq(Core.posMod(-1, 12), 11);
+        T.eq(Core.posMod(-13, 12), 11);
+        T.eq(Core.posMod(12, 12), 0);
+    });
+
+    T.test("fmtNum: integer and decimal", () => {
+        T.eq(Core.fmtNum(3), "3");
+        T.eq(Core.fmtNum(3.0), "3");
+        T.eq(Core.fmtNum(0.5), "0.5");
+        T.eq(Core.fmtNum(-0.5), "-0.5");
+    });
+
+    T.test("fmtRational: common ratios", () => {
+        T.eq(Core.fmtRational(1.75), "7/4");
+        T.eq(Core.fmtRational(1.5), "3/2");
+        T.eq(Core.fmtRational(2), "2");
+        T.eq(Core.fmtRational(1.234), "1.234");
+    });
+
+    T.test("fmtPair: coordinate pair", () => {
+        T.eq(Core.fmtPair({x: 0, y: 0.9}), "0 . 0.9");
+        T.eq(Core.fmtPair({x: -0.365, y: 0.9}), "-0.365 . 0.9");
+    });
+
+    T.test("escSchemeString: special characters", () => {
+        T.eq(Core.escSchemeString('hello "world"'), 'hello \\"world\\"');
+        T.eq(Core.escSchemeString("back\\slash"), "back\\\\slash");
+        T.eq(Core.escSchemeString("plain"), "plain");
+    });
+
+    T.test("toSchemeSymbol: name conversion", () => {
+        T.eq(Core.toSchemeSymbol("Kite Up"), "kite-up");
+        T.eq(Core.toSchemeSymbol("my-shape_v2"), "my-shape-v2");
+        T.eq(Core.toSchemeSymbol("  Hello World  "), "hello-world");
+        T.eq(Core.toSchemeSymbol("UPPER"), "upper");
+    });
+
+    T.test("hollowNameFor / attachmentNameFor", () => {
+        T.eq(Core.hollowNameFor("kite-up"), "kite-up-cutout");
+        T.eq(Core.attachmentNameFor("kite-up"), "kite-up-attach");
+    });
+});
+
+
+// --- SVG Path Parsing ---
+T.suite("SVG Path Parsing", () => {
+    T.test("parseSvgPath: simple M L Z", () => {
+        const cmds = Core.parseSvgPath("M 0 0.6667 L 0.6667 0.3333 Z");
+        T.eq(cmds.length, 3);
+        T.eq(cmds[0].cmd, "M");
+        T.deepEq(cmds[0].args, [0, 0.6667]);
+        T.eq(cmds[1].cmd, "L");
+        T.deepEq(cmds[1].args, [0.6667, 0.3333]);
+        T.eq(cmds[2].cmd, "Z");
+    });
+
+    T.test("parseSvgPath: curve command", () => {
+        const cmds = Core.parseSvgPath("M 0 0 C 1 2 3 4 5 6 Z");
+        T.eq(cmds.length, 3);
+        T.eq(cmds[1].cmd, "C");
+        T.deepEq(cmds[1].args, [1, 2, 3, 4, 5, 6]);
+    });
+
+    T.test("parseSvgPath: H and V commands", () => {
+        const cmds = Core.parseSvgPath("M 0 0 H 5 V 3");
+        T.eq(cmds.length, 3);
+        T.eq(cmds[1].cmd, "H");
+        T.deepEq(cmds[1].args, [5]);
+        T.eq(cmds[2].cmd, "V");
+        T.deepEq(cmds[2].args, [3]);
+    });
+
+    T.test("parseSvgPath: comma-separated args", () => {
+        const cmds = Core.parseSvgPath("M0,0.6667 L0.6667,0.3333 Z");
+        T.eq(cmds.length, 3);
+        T.deepEq(cmds[0].args, [0, 0.6667]);
+    });
+
+    T.test("parseSvgPath: empty/null input", () => {
+        T.deepEq(Core.parseSvgPath(""), []);
+        T.deepEq(Core.parseSvgPath(null), []);
+    });
+});
+
+
+// --- SVG to LilyPond Conversion ---
+T.suite("SVG to LilyPond Path Conversion", () => {
+    T.test("svgPathToLilypond: simple diamond", () => {
+        const d = "M 0 0.6667 L 0.6667 0.3333 L 0 -0.6667 L -0.6667 0.3333 Z";
+        const ly = Core.svgPathToLilypond(d);
+        T.contains(ly, "(moveto 0 0.6667)");
+        T.contains(ly, "(lineto 0.6667 0.3333)");
+        T.contains(ly, "(lineto 0 -0.6667)");
+        T.contains(ly, "(closepath)");
+    });
+
+    T.test("svgPathToLilypond: H and V converted", () => {
+        const d = "M 0 0 H 5 V 3 Z";
+        const ly = Core.svgPathToLilypond(d);
+        T.contains(ly, "(moveto 0 0)");
+        T.contains(ly, "(lineto 5 0)");    // H 5 → lineto 5 <curY=0>
+        T.contains(ly, "(lineto 5 3)");    // V 3 → lineto <curX=5> 3
+    });
+
+    T.test("svgPathToLilypond: curve command", () => {
+        const d = "M 0 0 C 0.1 0.2 0.3 0.4 0.5 0.6 Z";
+        const ly = Core.svgPathToLilypond(d);
+        T.contains(ly, "(curveto 0.1 0.2 0.3 0.4 0.5 0.6)");
+    });
+
+    T.test("svgPathToLilypond: precision control", () => {
+        const d = "M 0.123456789 0.987654321 Z";
+        const ly2 = Core.svgPathToLilypond(d, 2);
+        T.contains(ly2, "(moveto 0.12 0.99)");
+        const ly4 = Core.svgPathToLilypond(d, 4);
+        T.contains(ly4, "(moveto 0.1235 0.9877)");
+    });
+
+    T.test("svgPathToLilypond: negative zero handled", () => {
+        const d = "M -0.00001 0 Z";
+        const ly = Core.svgPathToLilypond(d, 3);
+        T.contains(ly, "(moveto 0 0)");  // Should not produce "-0"
+    });
+
+    T.test("svgPathToCommands: returns array", () => {
+        const cmds = Core.svgPathToCommands("M 0 1 L 2 3 Z");
+        T.deepEq(cmds, [["moveto", 0, 1], ["lineto", 2, 3], ["closepath"]]);
+    });
+});
+
+
+// --- Anchor Math ---
+T.suite("Anchor / Stem Attachment Math", () => {
+    T.test("deriveMinimAnchors: 0% overlap (no overlap)", () => {
+        const result = Core.deriveMinimAnchors(
+            { x: 0, y: 0.9 },
+            { x: 0, y: -0.9 },
+            0,      // 0% overlap
+            1.333   // notehead width
+        );
+        // offset = 1.333 * (1 - 0) = 1.333; halfOffset = 0.6665
+        T.approx(result.minimUp.x, -0.6665, 0.001);
+        T.eq(result.minimUp.y, 0.9);
+        T.approx(result.minimDown.x, 0.6665, 0.001);
+        T.eq(result.minimDown.y, -0.9);
+    });
+
+    T.test("deriveMinimAnchors: 100% overlap (fully stacked)", () => {
+        const result = Core.deriveMinimAnchors(
+            { x: 0, y: 0.9 },
+            { x: 0, y: -0.9 },
+            100,
+            1.333
+        );
+        // offset = 1.333 * (1 - 1) = 0; positions unchanged
+        T.approx(result.minimUp.x, 0, 0.001);
+        T.approx(result.minimDown.x, 0, 0.001);
+    });
+
+    T.test("deriveMinimAnchors: 50% overlap", () => {
+        const result = Core.deriveMinimAnchors(
+            { x: 0, y: 0.9 },
+            { x: 0, y: -0.9 },
+            50,
+            1.333
+        );
+        // offset = 1.333 * 0.5 = 0.6665; halfOffset = 0.333
+        T.approx(result.minimUp.x, -0.3333, 0.01);
+        T.approx(result.minimDown.x, 0.3333, 0.01);
+    });
+
+    T.test("buildAttachmentPoints: uses shape override", () => {
+        const def = {
+            anchors: { stemUp: { x: 0, y: 0.9 }, stemDown: { x: 0, y: -0.9 } },
+            naturalHeight: 1.333,
+            overlapPercent: 75
+        };
+        const pts = Core.buildAttachmentPoints(def, 50); // global=50 but shape=75
+        // With 75%: offset = 1.333 * 0.25 = 0.333; halfOffset = 0.167
+        T.approx(pts.minimUp.x, -0.1666, 0.01);
+    });
+
+    T.test("buildAttachmentPoints: falls back to global", () => {
+        const def = {
+            anchors: { stemUp: { x: 0, y: 0.9 }, stemDown: { x: 0, y: -0.9 } },
+            naturalHeight: 1.333,
+            overlapPercent: null
+        };
+        const pts50 = Core.buildAttachmentPoints(def, 50);
+        const pts75 = Core.buildAttachmentPoints(def, 75);
+        // Should differ because global overlap differs
+        T.ok(pts50.minimUp.x !== pts75.minimUp.x, "different globals should produce different results");
+    });
+});
+
+
+// --- Staff Derivation ---
+T.suite("Staff Derivation", () => {
+    T.test("getStaffPitchClasses: extracts staff PCs from rules", () => {
+        const rules = [
+            { type: "staff", pitchClasses: [0, 3, 6, 9] },
+            { type: "ledger", pitchClasses: [1] }
+        ];
+        T.deepEq(Core.getStaffPitchClasses(rules, "staff"), [0, 3, 6, 9]);
+        T.deepEq(Core.getStaffPitchClasses(rules, "ledger"), [1]);
+    });
+
+    T.test("getStaffPitchClasses: handles 'all'", () => {
+        const rules = [{ type: "staff", pitchClasses: 'all' }];
+        T.eq(Core.getStaffPitchClasses(rules, "staff").length, 12);
+    });
+
+    T.test("getStaffPitchClasses: merges across multiple rules", () => {
+        const rules = [
+            { type: "staff", pitchClasses: [0, 3] },
+            { type: "staff", pitchClasses: [6, 9] }
+        ];
+        T.deepEq(Core.getStaffPitchClasses(rules, "staff"), [0, 3, 6, 9]);
+    });
+
+    T.test("deriveSemitonesPerStaffSpace: Kite 4-369 (offsets 0,3,6,9)", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 3, 6, 9] }];
+        T.eq(Core.deriveSemitonesPerStaffSpace(rules), 3);
+    });
+
+    T.test("deriveSemitonesPerStaffSpace: standard 5-line (offsets 0,2,4,7,9,11)", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 2, 4, 7, 9, 11] }];
+        // Diffs: 2, 2, 3, 2, 2, and wrap: 12-11+0=1 → GCD(2,2,3,2,2,1) = 1
+        T.eq(Core.deriveSemitonesPerStaffSpace(rules), 1);
+    });
+
+    T.test("deriveSemitonesPerStaffSpace: 2 semi/space (offsets 0,2,4,6,8,10)", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 2, 4, 6, 8, 10] }];
+        T.eq(Core.deriveSemitonesPerStaffSpace(rules), 2);
+    });
+
+    T.test("deriveSemitonesPerStaffSpace: < 2 staff lines returns 1", () => {
+        const rules = [{ type: "staff", pitchClasses: [0] }];
+        T.eq(Core.deriveSemitonesPerStaffSpace(rules), 1);
+    });
+
+    T.test("deriveStaffLinePositions: Kite 4-369 produces correct positions", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 3, 6, 9] }];
+        const positions = Core.deriveStaffLinePositions(rules, 3);
+        T.deepEq(positions, [-6, -4, -2, 2, 4, 6]);
+    });
+
+    T.test("deriveStaffLinePositions: returns sorted integers", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 3, 6, 9] }];
+        const positions = Core.deriveStaffLinePositions(rules, 3);
+        for (let i = 1; i < positions.length; i++) {
+            T.ok(positions[i] > positions[i-1], `positions should be sorted: ${positions}`);
+        }
+        T.ok(positions.some(p => p < 0), "should have negative positions");
+        T.ok(positions.some(p => p > 0), "should have positive positions");
+    });
+
+    T.test("deriveStaffLinePositions: custom linesPerSide", () => {
+        const rules = [{ type: "staff", pitchClasses: [0, 3, 6, 9] }];
+        const positions = Core.deriveStaffLinePositions(rules, 3, 4);
+        T.deepEq(positions, [-8, -6, -4, -2, 2, 4, 6, 8]);
+    });
+
+    T.test("deriveLedgerPositions: returns empty for V1 auto-mode", () => {
+        const rules = [];
+        T.deepEq(Core.deriveLedgerPositions(rules, 3), []);
+    });
+});
+
+
+// --- Validation ---
+T.suite("Validation", () => {
+    T.test("validateForExport: valid Kite config", () => {
+        const app = makeKiteApp();
+        const v = Core.validateForExport(app);
+        T.ok(v.valid, "should be valid: " + v.errors.join("; "));
+        T.eq(v.errors.length, 0);
+    });
+
+    T.test("validateForExport: no shapes → error", () => {
+        const app = Core.createDefaultApp();
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("No shapes") || e.includes("No notehead rules")));
+    });
+
+    T.test("validateForExport: uncovered pitch class → error", () => {
+        const app = makeKiteApp();
+        // Replace rules to only cover 0–10, missing 11
+        app.noteheadRules = [
+            { shape: "kite-up", color: "color-primary", hollow: false,
+              pitchClasses: [0,1,2,3,4,5,6,7,8,9,10], durations: 'all', keys: 'all' }
+        ];
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("Pitch class 11")));
+    });
+
+    T.test("validateForExport: rule with missing shape → error", () => {
+        const app = makeKiteApp();
+        app.noteheadRules[0].shape = null;
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("no shape")));
+    });
+
+    T.test("validateForExport: rule referencing unknown shape → error", () => {
+        const app = makeKiteApp();
+        app.noteheadRules[0].shape = "nonexistent";
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("unknown shape")));
+    });
+
+    T.test("validateForExport: bad suffix → error", () => {
+        const app = makeKiteApp();
+        app.meta.suffix = "NoHyphen";
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("hyphen")));
+    });
+
+    T.test("validateForExport: empty suffix → no error", () => {
+        const app = makeKiteApp();
+        app.meta.suffix = "";
+        const v = Core.validateForExport(app);
+        T.ok(v.valid, v.errors.join("; "));
+    });
+
+    T.test("validateForExport: bad color hex → error", () => {
+        const app = makeKiteApp();
+        app.colors["bad-color"] = "not-a-hex";
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("bad-color")));
+    });
+
+    T.test("validateForExport: unknown color reference → error", () => {
+        const app = makeKiteApp();
+        app.noteheadRules[0].color = "nonexistent";
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("unknown color")));
+    });
+
+    T.test("validateForExport: < 2 staff lines → error", () => {
+        const app = makeKiteApp();
+        app.staffRules = [{ type: "staff", style: "staff", override: null, pitchClasses: [0], keys: 'all' }];
+        const v = Core.validateForExport(app);
+        T.ok(!v.valid);
+        T.ok(v.errors.some(e => e.includes("2 staff lines")));
+    });
+
+    T.test("validateForExport: hollow without hollowPath → warning", () => {
+        const app = makeKiteApp();
+        delete app.defs["kite-down"].hollowPath;
+        // Rule 1 uses kite-down with hollow=true but kite-down now has no hollowPath
+        const v = Core.validateForExport(app);
+        T.ok(v.warnings.some(w => w.includes("hollow")));
+    });
+
+    T.test("validateForExport: shape without lilypondPath → warning", () => {
+        const app = makeKiteApp();
+        // lilypondPath is null by default in makeKiteApp
+        const v = Core.validateForExport(app);
+        T.ok(v.warnings.some(w => w.includes("pre-baked")));
+    });
+
+    T.test("validateForExport: 'all' pitchClasses covers all 12", () => {
+        const app = makeKiteApp();
+        app.noteheadRules = [
+            { shape: "kite-up", color: "color-primary", hollow: false,
+              pitchClasses: 'all', durations: 'all', keys: 'all' }
+        ];
+        const v = Core.validateForExport(app);
+        T.ok(v.valid, "should be valid: " + v.errors.join("; "));
+    });
+});
+
+
+// --- Data Model ---
+T.suite("Data Model", () => {
+    T.test("createDefaultApp: has correct version", () => {
+        const app = Core.createDefaultApp();
+        T.eq(app.meta.version, Core.VERSION);
+    });
+
+    T.test("createDefaultApp: has noteheadRules and staffRules", () => {
+        const app = Core.createDefaultApp();
+        T.ok(Array.isArray(app.noteheadRules), "should have noteheadRules array");
+        T.ok(Array.isArray(app.staffRules), "should have staffRules array");
+    });
+
+    T.test("createDefaultApp: no mapChrom or mapStaff", () => {
+        const app = Core.createDefaultApp();
+        T.ok(!('mapChrom' in app), "should not have mapChrom");
+        T.ok(!('mapStaff' in app), "should not have mapStaff");
+    });
+
+    T.test("createDefaultApp: engine defaults match", () => {
+        const app = Core.createDefaultApp();
+        T.eq(app.engine.falseHollow, false);
+        T.eq(app.engine.multinotePadding, -0.5);
+        T.eq(app.engine.defaultMagnify, 1.75);
+    });
+
+    T.test("migrateApp: v1.0 → v3.0 adds engine and rules", () => {
+        const old = { meta: { version: "1.0", name: "Test" }, mapChrom: [], mapStaff: [], defs: {} };
+        const migrated = Core.migrateApp(old);
+        T.eq(migrated.meta.version, Core.VERSION);
+        T.ok(migrated.engine);
+        T.eq(migrated.engine.defaultMagnify, 1.75);
+        T.ok(Array.isArray(migrated.noteheadRules), "should have noteheadRules");
+        T.ok(Array.isArray(migrated.staffRules), "should have staffRules");
+        T.ok(!('mapChrom' in migrated), "should remove mapChrom");
+        T.ok(!('mapStaff' in migrated), "should remove mapStaff");
+    });
+
+    T.test("migrateApp: v1.0 extracts colors from hex values", () => {
+        const old = {
+            meta: { version: "1.0", name: "T" },
+            mapChrom: [
+                { shape: "s", color: "#ff0000", hollow: false },
+                { shape: "s", color: "#00ff00", hollow: false },
+                { shape: "s", color: "#ff0000", hollow: false }
+            ],
+            mapStaff: [],
+            defs: { "s": {} }
+        };
+        const migrated = Core.migrateApp(old);
+        // Should have 2 named colors (deduped)
+        const colorKeys = Object.keys(migrated.colors);
+        T.eq(colorKeys.length, 2);
+    });
+
+    T.test("migrateApp: v2.0 → v3.0 converts mapChrom to noteheadRules", () => {
+        const v2 = {
+            meta: { version: "2.0", name: "T" },
+            engine: { falseHollow: false },
+            mapChrom: [
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true },
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true },
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true },
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true },
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true },
+                { shape: "oval", color: "color-primary", hollow: false },
+                { shape: "oval", color: "color-primary", hollow: true }
+            ],
+            mapStaff: Array.from({length: 12}, (_, i) => ({
+                type: [0,3,6,9].includes(i) ? "staff" : "none",
+                style: "staff", override: null
+            })),
+            defs: { "oval": { path: "M 0 0", anchors: {}, overlapPercent: 25 } },
+            colors: { "color-primary": "#000000" }
+        };
+        const migrated = Core.migrateApp(v2);
+        T.eq(migrated.meta.version, Core.VERSION);
+        T.ok(Array.isArray(migrated.noteheadRules));
+        T.ok(migrated.noteheadRules.length >= 1, "should have at least 1 rule");
+        T.ok(migrated.noteheadRules.length <= 12, "should consolidate into fewer rules");
+        // Solid and hollow should be separate rules
+        T.eq(migrated.noteheadRules.length, 2, "should group into 2 rules (solid/hollow)");
+        T.ok(!('mapChrom' in migrated), "should remove mapChrom");
+        T.ok(!('mapStaff' in migrated), "should remove mapStaff");
+
+        // Staff rules
+        T.ok(Array.isArray(migrated.staffRules));
+        T.eq(migrated.staffRules.length, 1);
+        T.deepEq(migrated.staffRules[0].pitchClasses, [0, 3, 6, 9]);
+    });
+
+    T.test("migrateApp: v2→v3 adds shape model fields", () => {
+        const v2 = {
+            meta: { version: "2.0", name: "T" },
+            engine: {},
+            mapChrom: [],
+            mapStaff: [],
+            defs: { "s": { path: "M 0 0", naturalHeight: 1.5, anchors: {}, overlapPercent: 25 } },
+            colors: {}
+        };
+        const migrated = Core.migrateApp(v2);
+        const def = migrated.defs["s"];
+        T.eq(def.lilypondPath, null);
+        T.eq(def.lilypondHollow, null);
+        T.eq(def.semitoneHeight, 1.5);
+        T.eq(def.naturalWidth, 1.5);   // defaults to naturalHeight
+    });
+
+    T.test("migrateApp: adds overlapPercent to shape defs", () => {
+        const old = {
+            meta: { version: "1.0", name: "T" },
+            mapChrom: [],
+            mapStaff: [],
+            defs: { "shape-1": { path: "M 0 0", anchors: {} } }
+        };
+        const migrated = Core.migrateApp(old);
+        T.eq(migrated.defs["shape-1"].overlapPercent, 25); // defaults via post-migration
+    });
+});
+
+
+// --- JSON Round-Trip ---
+T.suite("JSON Serialization", () => {
+    T.test("serializeApp: produces valid JSON", () => {
+        const app = makeKiteApp();
+        const json = Core.serializeApp(app);
+        const parsed = JSON.parse(json);
+        T.eq(parsed.meta.version, Core.VERSION);
+    });
+
+    T.test("deserializeApp: round-trip preserves data", () => {
+        const app = makeKiteApp();
+        const json = Core.serializeApp(app);
+        const restored = Core.deserializeApp(json);
+        T.eq(restored.meta.label, app.meta.label);
+        T.eq(restored.engine.falseHollow, app.engine.falseHollow);
+        T.ok(Array.isArray(restored.noteheadRules), "should have noteheadRules");
+        T.eq(restored.noteheadRules.length, app.noteheadRules.length);
+        T.eq(restored.noteheadRules[0].shape, "kite-up");
+        T.ok(Array.isArray(restored.staffRules), "should have staffRules");
+    });
+
+    T.test("deserializeApp: v3.0 round-trip preserves rule details", () => {
+        const app = makeKiteApp();
+        const json = Core.serializeApp(app);
+        const restored = Core.deserializeApp(json);
+        T.deepEq(restored.noteheadRules[0].pitchClasses, [0, 6]);
+        T.eq(restored.noteheadRules[0].durations, 'all');
+        T.eq(restored.noteheadRules[0].keys, 'all');
+        T.deepEq(restored.staffRules[0].pitchClasses, [0, 3, 6, 9]);
+    });
+
+    T.test("deserializeApp: migrates v2.0 format", () => {
+        const v2Json = JSON.stringify({
+            meta: { version: "2.0", name: "Old" },
+            engine: {},
+            mapChrom: Array.from({length: 12}, () => ({ shape: "s", color: "c", hollow: false })),
+            mapStaff: Array.from({length: 12}, (_, i) => ({
+                type: i === 0 || i === 6 ? "staff" : "none",
+                style: "staff", override: null
+            })),
+            defs: { s: { path: "M 0 0", anchors: {}, overlapPercent: 25 } },
+            colors: { c: "#ff0000" }
+        });
+        const app = Core.deserializeApp(v2Json);
+        T.eq(app.meta.version, Core.VERSION);
+        T.ok(Array.isArray(app.noteheadRules));
+        T.ok(Array.isArray(app.staffRules));
+        T.ok(!('mapChrom' in app));
+    });
+
+    T.test("deserializeApp: migrates v1.0 format", () => {
+        const oldJson = JSON.stringify({
+            meta: { version: "1.0", name: "Old" },
+            mapChrom: [{ shape: "s", color: "#ff0000", hollow: false }],
+            mapStaff: [],
+            defs: { s: {} }
+        });
+        const app = Core.deserializeApp(oldJson);
+        T.eq(app.meta.version, Core.VERSION);
+        T.ok(app.engine);
+        T.ok(Array.isArray(app.noteheadRules));
+    });
+
+    T.test("deserializeApp: invalid JSON throws", () => {
+        T.throws(() => Core.deserializeApp("not json"));
+    });
+});
+
+
+// --- .ly Export Section A ---
+T.suite(".ly Export — Section A", () => {
+    T.test("generateSectionA: contains path definitions", () => {
+        const app = makeKiteApp();
+        const a = Core.generateSectionA(app);
+        T.contains(a, "cnb:register-path!");
+        T.contains(a, "'kite-up");
+        T.contains(a, "moveto");
+    });
+
+    T.test("generateSectionA: contains hollow registrations", () => {
+        const app = makeKiteApp();
+        const a = Core.generateSectionA(app);
+        T.contains(a, "cnb:register-hollow!");
+        T.contains(a, "cutout");
+    });
+
+    T.test("generateSectionA: contains attachment registrations", () => {
+        const app = makeKiteApp();
+        const a = Core.generateSectionA(app);
+        T.contains(a, "cnb:register-attachment!");
+        T.contains(a, "crotchet-up");
+        T.contains(a, "minim-up");
+    });
+
+    T.test("generateSectionA: contains color registrations", () => {
+        const app = makeKiteApp();
+        const a = Core.generateSectionA(app);
+        T.contains(a, "cnb:register-color!");
+        T.contains(a, "#7d3fff");
+    });
+
+    T.test("generateSectionA: skips hollows when none used", () => {
+        const app = makeKiteApp();
+        // Remove all hollow paths
+        Object.values(app.defs).forEach(d => d.hollowPath = null);
+        const a = Core.generateSectionA(app);
+        T.notContains(a, "cnb:register-hollow!");
+    });
+});
+
+
+// --- .ly Export Section B ---
+T.suite(".ly Export — Section B", () => {
+    T.test("generateSectionB: does NOT emit procedure model flag", () => {
+        const app = makeKiteApp();
+        const b = Core.generateSectionB(app);
+        T.notContains(b, "cnb:use-procedure-model", "procedure model flag should not be emitted");
+    });
+
+    T.test("generateSectionB: always has staff geometry", () => {
+        const app = makeKiteApp();
+        const b = Core.generateSectionB(app);
+        T.contains(b, "cnb:semitones-per-staff-space");
+        T.contains(b, "cnb:staff-line-positions");
+    });
+
+    T.test("generateSectionB: Kite staff positions are correct", () => {
+        const app = makeKiteApp();
+        const b = Core.generateSectionB(app);
+        T.contains(b, "'(-6 -4 -2 2 4 6)");
+    });
+
+    T.test("generateSectionB: emits false-hollow when changed", () => {
+        const app = makeKiteApp();
+        app.engine.falseHollow = true;
+        const b = Core.generateSectionB(app);
+        T.contains(b, "cnb:false-hollow #t");
+    });
+
+    T.test("generateSectionB: omits false-hollow when default", () => {
+        const app = makeKiteApp();
+        app.engine.falseHollow = false;
+        const b = Core.generateSectionB(app);
+        T.notContains(b, "cnb:false-hollow");
+    });
+
+    T.test("generateSectionB: emits magnify as rational", () => {
+        const app = makeKiteApp();
+        app.engine.defaultMagnify = 2.0;
+        const b = Core.generateSectionB(app);
+        T.contains(b, "cnb:default-magnify 2");
+    });
+
+    T.test("generateSectionB: always has metadata", () => {
+        const app = makeKiteApp();
+        const b = Core.generateSectionB(app);
+        T.contains(b, "cnb:file-suffix");
+        T.contains(b, "cnb:notation-label");
+    });
+});
+
+
+// --- .ly Export Section C ---
+T.suite(".ly Export — Section C", () => {
+    T.test("generateSectionC: has procedure wrapper", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "cnb:get-notehead-config");
+        T.contains(c, "lambda (semitone duration key)");
+        T.contains(c, "cond");
+    });
+
+    T.test("generateSectionC: has rules for all pitch classes", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        // Should have memv clauses covering all 12
+        T.contains(c, "memv semitone");
+    });
+
+    T.test("generateSectionC: has all 5 alist fields per clause", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "shape");
+        T.contains(c, "color");
+        T.contains(c, "hollow");
+        T.contains(c, "attachment");
+        T.contains(c, "off-key-mark");
+    });
+
+    T.test("generateSectionC: has fallback else clause", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "(else");
+    });
+
+    T.test("generateSectionC: uses scheme symbols for shapes", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "kite-up");
+        T.contains(c, "kite-down");
+    });
+
+    T.test("generateSectionC: single-PC rule uses (= semitone N)", () => {
+        const app = makeKiteApp();
+        app.noteheadRules = [
+            { shape: "kite-up", color: "color-primary", hollow: false,
+              pitchClasses: [0], durations: 'all', keys: 'all' },
+            { shape: "kite-up", color: "color-primary", hollow: false,
+              pitchClasses: 'all', durations: 'all', keys: 'all' }
+        ];
+        const c = Core.generateSectionC(app);
+        T.contains(c, "(= semitone 0)");
+    });
+
+    T.test("generateSectionC: multi-PC rule uses memv", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "(memv semitone '(");
+    });
+
+    T.test("generateSectionC: 'all' pitchClasses uses #t", () => {
+        const app = makeKiteApp();
+        app.noteheadRules = [
+            { shape: "kite-up", color: "color-primary", hollow: false,
+              pitchClasses: 'all', durations: 'all', keys: 'all' }
+        ];
+        const c = Core.generateSectionC(app);
+        T.contains(c, "(#t");
+    });
+
+    T.test("generateSectionC: has duration/key documentation comments", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "Duration categories");
+        T.contains(c, "Key-aware");
+    });
+
+    T.test("generateSectionC: hollow values reference cutout when hollowPath exists", () => {
+        const app = makeKiteApp();
+        const c = Core.generateSectionC(app);
+        T.contains(c, "kite-down-cutout");
+    });
+
+    T.test("generateSectionC: hollow is #f when no hollowPath", () => {
+        const app = makeKiteApp();
+        // Rule 0 uses kite-up with hollow=false → should be #f
+        const c = Core.generateSectionC(app);
+        T.contains(c, "(hollow     . #f)");
+    });
+});
+
+
+// --- Section C Helpers ---
+T.suite("Section C — Rule Helpers", () => {
+    T.test("buildPitchClassCondition: 'all' → #t", () => {
+        T.eq(Core.buildPitchClassCondition('all'), "#t");
+    });
+
+    T.test("buildPitchClassCondition: single PC → (= semitone N)", () => {
+        T.eq(Core.buildPitchClassCondition([7]), "(= semitone 7)");
+    });
+
+    T.test("buildPitchClassCondition: multiple PCs → memv", () => {
+        T.eq(Core.buildPitchClassCondition([0, 4, 8]), "(memv semitone '(0 4 8))");
+    });
+
+    T.test("buildPitchClassCondition: empty → #f", () => {
+        T.eq(Core.buildPitchClassCondition([]), "#f");
+    });
+
+    T.test("buildRuleComment: 'all' → All pitch classes", () => {
+        const comment = Core.buildRuleComment({ pitchClasses: 'all' });
+        T.eq(comment, "All pitch classes");
+    });
+
+    T.test("buildRuleComment: specific PCs → names", () => {
+        const comment = Core.buildRuleComment({ pitchClasses: [0, 4, 7] });
+        T.contains(comment, "C");
+        T.contains(comment, "E");
+        T.contains(comment, "G");
+    });
+});
+
+
+// --- Full .ly Export ---
+T.suite(".ly Export — Full File", () => {
+    T.test("generateLy: has header with version", () => {
+        const app = makeKiteApp();
+        const ly = Core.generateLy(app);
+        T.contains(ly, '\\version "2.24.2"');
+        T.contains(ly, '\\include "ChromaticNotationBase.ly"');
+    });
+
+    T.test("generateLy: has all three sections", () => {
+        const app = makeKiteApp();
+        const ly = Core.generateLy(app);
+        T.contains(ly, "SECTION A");
+        T.contains(ly, "SECTION B");
+        T.contains(ly, "SECTION C");
+    });
+
+    T.test("generateLy: has generated-by comment", () => {
+        const app = makeKiteApp();
+        const ly = Core.generateLy(app);
+        T.contains(ly, "Generated by Chromatic Configurator");
+    });
+
+    T.test("generateLy: ordering is correct (A before B before C)", () => {
+        const app = makeKiteApp();
+        const ly = Core.generateLy(app);
+        const posA = ly.indexOf("SECTION A");
+        const posB = ly.indexOf("SECTION B");
+        const posC = ly.indexOf("SECTION C");
+        T.ok(posA < posB, "Section A must come before B");
+        T.ok(posB < posC, "Section B must come before C");
+    });
+});
+
+
+// --- Color Presets ---
+T.suite("Color Presets", () => {
+    T.test("Rich Tricolor has 3 colors", () => {
+        const p = Core.COLOR_PRESETS["Rich Tricolor"];
+        T.eq(Object.keys(p).length, 3);
+    });
+
+    T.test("All presets have valid hex values", () => {
+        for (const [name, colors] of Object.entries(Core.COLOR_PRESETS)) {
+            for (const [key, hex] of Object.entries(colors)) {
+                T.ok(/^#[0-9a-fA-F]{6}$/.test(hex), `${name}.${key} = ${hex}`);
+            }
+        }
+    });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPER: Make a Kite-like test App
+// ═══════════════════════════════════════════════════════════════
+
+function makeKiteApp() {
+    const app = Core.createDefaultApp();
+    app.meta.name = "kite-test";
+    app.meta.label = "Kite 4-369 (Test)";
+    app.meta.suffix = "-Kite-Test";
+    app.meta.footnote = "Test config for Kite notation";
+
+    app.engine.falseHollow = true;
+
+    // Shapes
+    app.defs["kite-up"] = {
+        type: "notehead",
+        path: "M 0 0.6667 L 0.6667 0.3333 L 0 -0.6667 L -0.6667 0.3333 Z",
+        hollowPath: "M 0.3333 0.3333 L 0 -0.3333 L -0.3333 0.3333 Z",
+        lilypondPath: null,
+        lilypondHollow: null,
+        naturalHeight: 1.333,
+        naturalWidth: 1.333,
+        semitoneHeight: 1.333,
+        anchors: { stemUp: { x: 0, y: 0.66 }, stemDown: { x: 0, y: -0.66 } },
+        overlapPercent: null,
+        isFalseHollow: false
+    };
+    app.defs["kite-down"] = {
+        type: "notehead",
+        path: "M 0 -0.6667 L 0.6667 -0.3333 L 0 0.6667 L -0.6667 -0.3333 Z",
+        hollowPath: "M -0.3333 -0.3333 L 0.3333 -0.3333 L 0 0.3333 Z",
+        lilypondPath: null,
+        lilypondHollow: null,
+        naturalHeight: 1.333,
+        naturalWidth: 1.333,
+        semitoneHeight: 1.333,
+        anchors: { stemUp: { x: 0, y: -0.66 }, stemDown: { x: 0, y: 0.66 } },
+        overlapPercent: null,
+        isFalseHollow: false
+    };
+
+    // Colors
+    app.colors["color-primary"]   = "#7d3fff";
+    app.colors["color-secondary"] = "#dc4538";
+    app.colors["color-tertiary"]  = "#0f9e59";
+
+    // Notehead rules: alternating kite-up/down, cycling 3 colors, odd=hollow
+    app.noteheadRules = [
+        { shape: "kite-up", color: "color-primary", hollow: false,
+          pitchClasses: [0, 6], durations: 'all', keys: 'all' },
+        { shape: "kite-down", color: "color-secondary", hollow: true,
+          pitchClasses: [1, 7], durations: 'all', keys: 'all' },
+        { shape: "kite-up", color: "color-tertiary", hollow: false,
+          pitchClasses: [2, 8], durations: 'all', keys: 'all' },
+        { shape: "kite-down", color: "color-primary", hollow: true,
+          pitchClasses: [3, 9], durations: 'all', keys: 'all' },
+        { shape: "kite-up", color: "color-secondary", hollow: false,
+          pitchClasses: [4, 10], durations: 'all', keys: 'all' },
+        { shape: "kite-down", color: "color-tertiary", hollow: true,
+          pitchClasses: [5, 11], durations: 'all', keys: 'all' }
+    ];
+
+    // Staff rules: Kite 4-369 pattern
+    app.staffRules = [
+        { type: "staff", style: "staff", override: null,
+          pitchClasses: [0, 3, 6, 9], keys: 'all' }
+    ];
+
+    return app;
+}
+
+
+// --- .ly Export Section A — lilypondPath preference ---
+T.suite(".ly Export — Section A (Pre-baked Paths)", () => {
+    T.test("generateSectionA: uses lilypondPath when available", () => {
+        const app = makeKiteApp();
+        app.defs["kite-up"].lilypondPath = "'((moveto 0.8 0) (lineto 0 0.6667) (closepath))";
+        const a = Core.generateSectionA(app);
+        T.contains(a, "(moveto 0.8 0)");
+        T.contains(a, "(lineto 0 0.6667)");
+    });
+
+    T.test("generateSectionA: falls back to svgPathToLilypond when lilypondPath is null", () => {
+        const app = makeKiteApp();
+        // lilypondPath is null by default in makeKiteApp
+        const a = Core.generateSectionA(app);
+        T.contains(a, "moveto");
+        T.contains(a, "cnb:register-path!");
+    });
+
+    T.test("generateSectionA: uses lilypondHollow when available", () => {
+        const app = makeKiteApp();
+        app.defs["kite-down"].lilypondHollow = "'((moveto 0.5 0) (lineto 0 0.3) (closepath))";
+        const a = Core.generateSectionA(app);
+        T.contains(a, "(moveto 0.5 0)");
+    });
+
+    T.test("generateSectionA: mixed — some shapes pre-baked, some not", () => {
+        const app = makeKiteApp();
+        app.defs["kite-up"].lilypondPath = "'((moveto 0.8 0) (closepath))";
+        // kite-down has no lilypondPath → falls back
+        const a = Core.generateSectionA(app);
+        T.contains(a, "cnb:kite-up-path");
+        T.contains(a, "cnb:kite-down-path");
+    });
+});
+
+
+// --- getUsedShapes ---
+T.suite("getUsedShapes", () => {
+    T.test("getUsedShapes: returns shapes from noteheadRules", () => {
+        const app = makeKiteApp();
+        const used = Core.getUsedShapes(app);
+        T.ok(used.includes("kite-up"));
+        T.ok(used.includes("kite-down"));
+    });
+
+    T.test("getUsedShapes: deduplicates", () => {
+        const app = makeKiteApp();
+        const used = Core.getUsedShapes(app);
+        T.eq(used.length, 2);  // only kite-up and kite-down
+    });
+
+    T.test("getUsedShapes: returns sorted", () => {
+        const app = makeKiteApp();
+        const used = Core.getUsedShapes(app);
+        T.eq(used[0], "kite-down");
+        T.eq(used[1], "kite-up");
+    });
+
+    T.test("getUsedShapes: empty rules → empty", () => {
+        const app = Core.createDefaultApp();
+        T.eq(Core.getUsedShapes(app).length, 0);
+    });
+});
+
+
+// --- Migration Helpers ---
+T.suite("Migration Helpers", () => {
+    T.test("migrateMapChromToRules: groups identical configs", () => {
+        const mapChrom = Array.from({length: 12}, (_, i) => ({
+            shape: i % 2 === 0 ? "oval" : "diamond",
+            color: "color-primary",
+            hollow: i % 2 === 1
+        }));
+        const rules = Core.migrateMapChromToRules(mapChrom);
+        T.eq(rules.length, 2);
+        T.eq(rules[0].pitchClasses.length, 6);
+        T.eq(rules[1].pitchClasses.length, 6);
+        T.eq(rules[0].durations, 'all');
+        T.eq(rules[0].keys, 'all');
+    });
+
+    T.test("migrateMapChromToRules: all same → 'all' pitchClasses", () => {
+        const mapChrom = Array.from({length: 12}, () => ({
+            shape: "oval", color: "color-primary", hollow: false
+        }));
+        const rules = Core.migrateMapChromToRules(mapChrom);
+        T.eq(rules.length, 1);
+        T.eq(rules[0].pitchClasses, 'all');
+    });
+
+    T.test("migrateMapChromToRules: skips null shapes", () => {
+        const mapChrom = Array.from({length: 12}, (_, i) => ({
+            shape: i < 6 ? "oval" : null,
+            color: "color-primary", hollow: false
+        }));
+        const rules = Core.migrateMapChromToRules(mapChrom);
+        T.eq(rules.length, 1);
+        T.deepEq(rules[0].pitchClasses, [0,1,2,3,4,5]);
+    });
+
+    T.test("migrateMapStaffToRules: groups by type/style", () => {
+        const mapStaff = Array.from({length: 12}, (_, i) => ({
+            type: [0,3,6,9].includes(i) ? "staff" : "none",
+            style: "staff", override: null
+        }));
+        const rules = Core.migrateMapStaffToRules(mapStaff);
+        T.eq(rules.length, 1);
+        T.deepEq(rules[0].pitchClasses, [0,3,6,9]);
+        T.eq(rules[0].type, "staff");
+    });
+
+    T.test("migrateMapStaffToRules: skips type='none'", () => {
+        const mapStaff = Array.from({length: 12}, () => ({ type: "none", style: "staff", override: null }));
+        const rules = Core.migrateMapStaffToRules(mapStaff);
+        T.eq(rules.length, 0);
+    });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  SVG IMPORT HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+T.suite("computeStemAnchorsFromRects", () => {
+    T.test("kite-up stem rects (raw SVG coords)", () => {
+        const stemUp = { x: -22.22222137451172, y: -516.6693115234375, width: 44.44444274902344, height: 350 };
+        const stemDown = { x: -22.22222137451172, y: 188.8862152099609, width: 44.44444274902344, height: 350 };
+        const result = Core.computeStemAnchorsFromRects(stemUp, stemDown);
+        T.approx(result.stemUp.x, 0.0, 0.001, "stemUp.x");
+        T.approx(result.stemUp.y, -166.6693, 0.01, "stemUp.y");
+        T.approx(result.stemDown.x, 0.0, 0.001, "stemDown.x");
+        T.approx(result.stemDown.y, 188.8862, 0.01, "stemDown.y");
+    });
+
+    T.test("diamond-up stem rects (off-center stems)", () => {
+        const stemUp = { x: 116.66689166666663, y: -349.9995875, width: 33.333333333333336, height: 350.0 };
+        const stemDown = { x: -150.000225, y: 0.00018749999999867484, width: 33.333333333333336, height: 350.0 };
+        const result = Core.computeStemAnchorsFromRects(stemUp, stemDown);
+        T.approx(result.stemUp.x, 133.334, 0.01, "stemUp.x");
+        T.approx(result.stemUp.y, 0.0, 0.01, "stemUp.y");
+        T.approx(result.stemDown.x, -133.334, 0.01, "stemDown.x");
+        T.approx(result.stemDown.y, 0.0, 0.01, "stemDown.y");
+    });
+
+    T.test("standard-notehead stem rects (tilted ellipse)", () => {
+        const stemUp = { x: 104.37632498419464, y: -381.5697002608674, width: 22.22222222222222, height: 350.0 };
+        const stemDown = { x: -126.59725174896637, y: 31.57288710135107, width: 22.22222222222222, height: 350.0 };
+        const result = Core.computeStemAnchorsFromRects(stemUp, stemDown);
+        T.approx(result.stemUp.x, 115.487, 0.01, "stemUp.x");
+        T.approx(result.stemUp.y, -31.570, 0.01, "stemUp.y");
+        T.approx(result.stemDown.x, -115.486, 0.01, "stemDown.x");
+        T.approx(result.stemDown.y, 31.573, 0.01, "stemDown.y");
+    });
+
+    T.test("null stem rects default to (0,0)", () => {
+        const result = Core.computeStemAnchorsFromRects(null, null);
+        T.eq(result.stemUp.x, 0);
+        T.eq(result.stemUp.y, 0);
+        T.eq(result.stemDown.x, 0);
+        T.eq(result.stemDown.y, 0);
+    });
+});
+
+T.suite("buildShapeDef", () => {
+    T.test("kite-up full shape def", () => {
+        const def = Core.buildShapeDef({
+            name: "kite-up",
+            noteheadPath: "M 0.0 199.999 L 200.0 99.984 L 0.0 -200.001 L -200.0 99.984 Z",
+            hollowPath: "M 99.985 99.984 L 0.0 -99.986 L -99.985 99.984 Z",
+            lilypondNotehead: "'(\n    (moveto 0.0 -2.0)\n    (lineto 2.0 -0.9998)\n    (closepath))",
+            lilypondHollow: "'(\n    (moveto 0.9999 -0.9998)\n    (closepath))",
+            semitoneHeight: 4.0,
+            stemUpRect: { x: -22.222, y: -516.669, width: 44.444, height: 350 },
+            stemDownRect: { x: -22.222, y: 188.886, width: 44.444, height: 350 },
+            viewBoxWidth: 400,
+            viewBoxHeight: 400,
+            isFalseHollow: false
+        });
+        T.eq(def.type, "notehead");
+        T.eq(def.semitoneHeight, 4.0);
+        T.eq(def.naturalHeight, 400);
+        T.eq(def.naturalWidth, 400);
+        T.ok(def.lilypondPath.includes("moveto"));
+        T.approx(def.anchors.stemUp.y, -166.669, 0.01);
+    });
+
+    T.test("shape with no hollow or stems", () => {
+        const def = Core.buildShapeDef({
+            name: "test",
+            noteheadPath: "M 0 0 L 1 0 Z",
+            hollowPath: null,
+            lilypondNotehead: null,
+            lilypondHollow: null,
+            semitoneHeight: 3.0,
+            stemUpRect: null,
+            stemDownRect: null,
+            viewBoxWidth: 300,
+            viewBoxHeight: 300,
+            isFalseHollow: false
+        });
+        T.eq(def.hollowPath, null);
+        T.eq(def.naturalHeight, 300);
+        T.eq(def.naturalWidth, 300);
+        T.eq(def.anchors.stemUp.x, 0);
+    });
+
+    T.test("false-hollow flag preserved", () => {
+        const def = Core.buildShapeDef({
+            name: "test", noteheadPath: "M 0 0 Z", hollowPath: "M 0 0 Z",
+            lilypondNotehead: null, lilypondHollow: null, semitoneHeight: 2.0,
+            stemUpRect: null, stemDownRect: null, viewBoxWidth: 200, viewBoxHeight: 200,
+            isFalseHollow: true
+        });
+        T.eq(def.isFalseHollow, true);
+    });
+});
+
+T.suite("parseRectAttrs", () => {
+    T.test("parses string attributes", () => {
+        const r = Core.parseRectAttrs({ x: "-22.222", y: "188.886", width: "44.444", height: "350" });
+        T.approx(r.x, -22.222, 0.001);
+        T.approx(r.y, 188.886, 0.001);
+    });
+
+    T.test("handles missing/null values as 0", () => {
+        const r = Core.parseRectAttrs({ x: null, y: undefined, width: "", height: "abc" });
+        T.eq(r.x, 0);
+        T.eq(r.y, 0);
+    });
+});
+
+T.suite("shapeNameFromFilename", () => {
+    T.test("strips .svg extension", () => {
+        T.eq(Core.shapeNameFromFilename("kite-up.svg"), "kite-up");
+    });
+    T.test("strips path and extension", () => {
+        T.eq(Core.shapeNameFromFilename("/home/user/diamond-down.svg"), "diamond-down");
+    });
+    T.test("handles empty/null", () => {
+        T.eq(Core.shapeNameFromFilename(""), "shape");
+        T.eq(Core.shapeNameFromFilename(null), "shape");
+    });
+});
+
+T.suite("Migration: type field backfill", () => {
+    T.test("v2 shapes get type=notehead after migration", () => {
+        const app = {
+            meta: { version: "2.0", name: "test", label: "Test", suffix: "", footnote: "" },
+            layout: { pxPerSemi: 20 },
+            notehead: { heightInSemitones: 4, verticalOffset: 0 },
+            engine: { ...Core.ENGINE_DEFAULTS },
+            defs: {
+                "kite-up": { path: "M 0 0 Z", hollowPath: null, naturalHeight: 1.333, anchors: { stemUp: {x:0,y:0}, stemDown: {x:0,y:0} }, overlapPercent: 25 }
+            },
+            colors: {},
+            styles: { staff: { color:"#000",thickness:1,dash:null } },
+            mapChrom: Array(12).fill({ shape:"kite-up", color:"color-primary", hollow:false }),
+            mapStaff: Array(12).fill({ type:"none", style:"staff", override:null })
+        };
+        const migrated = Core.migrateApp(app);
+        T.eq(migrated.defs["kite-up"].type, "notehead");
+        T.eq(migrated.defs["kite-up"].isFalseHollow, false);
+    });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  RUN ALL TESTS
+// ═══════════════════════════════════════════════════════════════
+
+T.render();
+
+</script>
+</body>
+</html>
