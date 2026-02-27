@@ -102,3 +102,29 @@ This code is reference only. New modules are in `cnb/src/`. Do not modify legacy
 ## Current Phase
 
 See the baton document for the current session's goals and deliverables.
+
+
+## Session Completion Checklist
+After building all modules for a session
+
+1. Generate a human verification 
+checklist at docs/checklists/session-N-checklist.xlsx. Structure:
+- Column A: Functional Area Id
+- Column B: Functional Area  
+- Column C: Subarea
+- Column D: Passes (leave blank — human fills this)
+- Column E: Expectation (specific, verifiable statement)
+- Column F: Feedback (leave blank — human fills this)
+
+Cover: visual rendering, file operations, export correctness, 
+edge cases that automated tests don't cover.
+
+2. Generate the baton for the next session at docs/batons/baton-sessions-{N}-to-{N+1}.md
+
+The baton must include:
+- What was built this session (modules, files, test counts)
+- Any design decisions made during implementation
+- Any issues, deviations, or amendments to the architecture plan
+- What to build next (from CNB-ARCHITECTURE-PLAN-v2.md build order)
+- Which files the next session should read
+- Specific test cases for the next modules
