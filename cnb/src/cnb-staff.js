@@ -1,0 +1,81 @@
+/**
+ * cnb-staff.js — Module 3: Staff
+ *
+ * Uses staff pattern from configuration to compute absolute semitone positions
+ * and render all staff lines across the SVG width.
+ *
+ * Dependencies: Module A (config) and Module 2 (staff line)
+ */
+
+import { CNBConfig } from "./cnb-config.js";
+import { CNBStaffLine } from "./cnb-staff-line.js";
+
+export const CNBStaff = {
+  /**
+   * Expand semitonePattern across octaves covering the given range.
+   * @param {object} config
+   * @param {{minSemi:number,maxSemi:number}} opts
+   * @returns {number[]} sorted absolute semitone positions
+   */
+  getPositions(config, { minSemi, maxSemi }) {
+    const pattern = (config.staff && config.staff.semitonePattern) || [];
+    const result = [];
+    const minOct = Math.floor(minSemi / 12) - 1;
+    const maxOct = Math.floor(maxSemi / 12) + 1;
+    for (let oct = minOct; oct <= maxOct; oct++) {
+      for (const s of pattern) {
+        const abs = s + oct * 12;
+        if (abs >= minSemi && abs <= maxSemi) {
+          result.push(abs);
+        }
+      }
+    }
+    return result.sort((a, b) => a - b);
+  },
+
+  /**
+   * Return the staff midpoint value from config.
+   */
+  getMidpoint(config) {
+    return config.staff && config.staff.midpoint;
+  },
+
+  /**
+   * Render all staff lines into a group appended to svgParent.
+   * @param {SVGElement} svgParent
+   * @param {object} gridContext
+   * @param {object} config
+   * @param {number} totalWidth
+   * @returns {SVGGElement}
+   */
+  render(svgParent, gridContext, config, totalWidth) {
+    const positions = CNBStaff.getPositions(config, {
+      minSemi: gridContext.minSemi,
+      maxSemi: gridContext.maxSemi,
+    });
+    const overrides = (config.staff && config.staff.lineOverrides) || {};
+    const defaults = (config.staff && config.staff.lineDefaults) || {};
+
+    const NS = "http://www.w3.org/2000/svg";
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "cnb-staff");
+
+    for (const abs of positions) {
+      const pc = abs % 12;
+      const props = Object.assign({}, defaults, overrides[String(pc)] || {});
+      const thicknessPx = CNBConfig.pctToPx(props.thicknessPct, gridContext.pxPerSemi);
+      const y = gridContext.semiToY(abs);
+      CNBStaffLine.render(g, {
+        y,
+        x1: 0,
+        x2: totalWidth,
+        thickness: thicknessPx,
+        color: props.color,
+        style: props.style,
+      });
+    }
+
+    svgParent.appendChild(g);
+    return g;
+  },
+};

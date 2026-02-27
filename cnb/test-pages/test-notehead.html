@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Notehead Test — Module 6</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Module 6: Notehead — Scaling and hollow rendering</h1>
+<p>
+  Render the default crotchet‑minim shape at pxPerSemi=16. Left shows solid notehead,
+  right shows hollow overlay. Height should equal 2.724 × 16 ≈ 43.6px.
+</p>
+
+<div class="card">
+  <svg id="nh-svg" width="200" height="100"></svg>
+</div>
+
+<script type="module">
+  import { CNBConfig } from "../src/cnb-config.js";
+  import { CNBNotehead } from "../src/cnb-notehead.js";
+  import { CNBGrid } from "../src/cnb-grid.js";
+
+  const config = CNBConfig.createDefault();
+  const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+  const svg = document.getElementById("nh-svg");
+
+  const shape = config.shapes["crotchet-minim"];
+  const measure = CNBNotehead.measure(shape, grid.pxPerSemi);
+  console.log("measure", measure);
+
+  // render solid and hollow side by side
+  CNBNotehead.render(svg, { shape, x: 50, y: 50, scaleFactor: measure.scaleFactor, hollow: false, color: "#000" });
+  CNBNotehead.render(svg, { shape, x: 150, y: 50, scaleFactor: measure.scaleFactor, hollow: true, color: "#000" });
+</script>
+
+</body>
+</html>
