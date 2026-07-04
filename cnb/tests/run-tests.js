@@ -27,6 +27,8 @@ const TEST_FILES = [
   "./cnb-staff-tests.js",
   "./cnb-notehead-tests.js",
   "./cnb-stem-tests.js",
+  "./cnb-ledger-set-tests.js",
+  "./cnb-double-notehead-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────
