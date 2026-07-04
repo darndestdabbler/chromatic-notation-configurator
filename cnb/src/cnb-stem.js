@@ -47,7 +47,6 @@ export const CNBStem = {
     if (!anchor) return null;
 
     const anchorXpx = anchor.x * scaleFactor;
-    // anchorY is unused for line geometry, but could be used later
     const anchorYpx = anchor.y * scaleFactor;
 
     const stemX = centerX + anchorXpx;
@@ -61,12 +60,12 @@ export const CNBStem = {
 
     let y1, y2;
     if (direction === "up") {
-      // attach to lowest (max y), extend above highest (min y)
-      y1 = low;
+      // attach at the lowest notehead's anchor point, extend above highest
+      y1 = low + anchorYpx;
       y2 = high - extensionPx;
     } else {
-      // down: attach to highest (min y), extend below lowest (max y)
-      y1 = high;
+      // down: attach at the highest notehead's anchor point, extend below lowest
+      y1 = high + anchorYpx;
       y2 = low + extensionPx;
     }
 

@@ -1,7 +1,7 @@
 {
   "sessionSetName": "001-adopt-session-sets-and-rendering-primitives",
   "createdDate": "2026-07-04T19:38:28.738273+00:00",
-  "totalSessions": 0,
+  "totalSessions": 2,
   "entries": [
     {
       "sessionNumber": 1,
@@ -51,6 +51,22 @@
       "stepKey": "session-001/verification",
       "dateTime": "2026-07-04T15:50:05.187714-04:00",
       "description": "Routed gate REQUIRED (blast-radius, multi-module, breadth over 37-file diff). Cross-provider verification round 1 via route() -> gpt-5-4 (openai), $0.1283: ISSUES_FOUND (missing thickness-from-pct staff test; license bundling noted as disclosed Minor). Remediation commit bf50ccd added two pct-to-px conversion tests (125/125). Round 2 via gpt-5-4, $0.0295: VERIFIED, 0 issues. Raw reviews in s1-verification.md.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/notehead-module",
+      "dateTime": "2026-07-04T15:57:28.802241-04:00",
+      "description": "Audited Session-9 cnb-notehead.js against arch plan Module 6: API conforms (measure/render). Expanded cnb-notehead-tests.js from 2 to 6 tests (aspect ratio, linear scaling, synthetic shape). Reworked test-notehead.html to render solid/hollow noteheads at semitone positions against the debug grid overlay (previously fixed-pixel placement, no grid).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/stem-module",
+      "dateTime": "2026-07-04T15:57:28.802784-04:00",
+      "description": "Audited Session-9 cnb-stem.js against arch plan Module 8: fixed defect where geometry() computed but ignored anchor.y, attaching stems at notehead center instead of the 4-point anchor (visible on hollow minims). Expanded cnb-stem-tests.js from 7 to 13 tests (crotchet-vs-minim anchor selection up/down, extension direction/magnitude, anchor-y attachment, missing anchor key). Created missing test-stem.html with anchor-point cross markers over the debug grid. All 134 cnb tests + 240 legacy tests pass; 32-check DOM-stub render smoke confirms stem ends sit exactly on selected anchors.",
       "status": "complete"
     }
   ]

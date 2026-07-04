@@ -18,37 +18,68 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.1);
       padding: 20px;
       display: inline-block;
+      margin-right: 20px;
+      vertical-align: top;
     }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
   </style>
 </head>
 <body>
 
-<h1>Module 6: Notehead — Scaling and hollow rendering</h1>
+<h1>Module 6: Notehead — Scaling and hollow rendering against the debug grid</h1>
 <p>
-  Render the default crotchet‑minim shape at pxPerSemi=16. Left shows solid notehead,
-  right shows hollow overlay. Height should equal 2.724 × 16 ≈ 43.6px.
+  Default crotchet‑minim shape on the default 4‑8 config's debug grid (pxPerSemi=16).
+  Each notehead is centered on its semitone line: solid at 0, 4, 8; hollow at 12, 16, 20;
+  colored solid at 24. Height should span 2.724 semitones ≈ 43.6px — just over ±1 grid
+  line above and below the center line.
 </p>
 
 <div class="card">
-  <svg id="nh-svg" width="200" height="100"></svg>
+  <h2>Noteheads at semitones 0–24, 4‑8 staff positions highlighted</h2>
+  <svg id="nh-svg" width="560" style="display:block;"></svg>
 </div>
 
 <script type="module">
-  import { CNBConfig } from "../src/cnb-config.js";
+  import { CNBConfig }   from "../src/cnb-config.js";
+  import { CNBGrid }     from "../src/cnb-grid.js";
+  import { CNBStaff }    from "../src/cnb-staff.js";
   import { CNBNotehead } from "../src/cnb-notehead.js";
-  import { CNBGrid } from "../src/cnb-grid.js";
+
+  const MIN_SEMI = -4;
+  const MAX_SEMI = 28;
 
   const config = CNBConfig.createDefault();
-  const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+  const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
   const svg = document.getElementById("nh-svg");
+  svg.setAttribute("height", String(grid.svgHeight));
+
+  const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
 
   const shape = config.shapes["crotchet-minim"];
   const measure = CNBNotehead.measure(shape, grid.pxPerSemi);
   console.log("measure", measure);
 
-  // render solid and hollow side by side
-  CNBNotehead.render(svg, { shape, x: 50, y: 50, scaleFactor: measure.scaleFactor, hollow: false, color: "#000" });
-  CNBNotehead.render(svg, { shape, x: 150, y: 50, scaleFactor: measure.scaleFactor, hollow: true, color: "#000" });
+  const cases = [
+    { semi: 0,  hollow: false, color: "#000" },
+    { semi: 4,  hollow: false, color: "#000" },
+    { semi: 8,  hollow: false, color: "#000" },
+    { semi: 12, hollow: true,  color: "#000" },
+    { semi: 16, hollow: true,  color: "#000" },
+    { semi: 20, hollow: true,  color: "#000" },
+    { semi: 24, hollow: false, color: "#1b9e77" },
+  ];
+
+  cases.forEach((c, i) => {
+    CNBNotehead.render(svg, {
+      shape,
+      x: 70 + i * 70,
+      y: grid.semiToY(c.semi),
+      scaleFactor: measure.scaleFactor,
+      hollow: c.hollow,
+      color: c.color,
+    });
+  });
 </script>
 
 </body>
