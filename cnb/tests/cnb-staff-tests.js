@@ -55,6 +55,19 @@ export const tests = [
       eq(CNBStaff.getMidpoint(cfg), 42);
     }},
 
+  { name: "default line thickness 20% of 16px semitone converts to 3.2px", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const px = CNBConfig.pctToPx(cfg.staff.lineDefaults.thicknessPct, cfg.display.pxPerSemi);
+      eq(px, 3.2);
+    }},
+
+  { name: "override thickness 50% of 16px semitone converts to 8px", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.staff.lineOverrides = { "4": { thicknessPct: 50 } };
+      const props = Object.assign({}, cfg.staff.lineDefaults, cfg.staff.lineOverrides["4"]);
+      eq(CNBConfig.pctToPx(props.thicknessPct, cfg.display.pxPerSemi), 8);
+    }},
+
   { name: "line override merges thickness only", fn: () => {
       const cfg = CNBConfig.createDefault();
       cfg.staff.lineOverrides = { "4": { thicknessPct: 50 } };

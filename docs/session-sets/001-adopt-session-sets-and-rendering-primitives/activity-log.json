@@ -12,6 +12,38 @@
       "status": "complete",
       "kind": "verification_mode",
       "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/workflow-cutover",
+      "dateTime": "2026-07-04T15:44:37.673485-04:00",
+      "description": "Retired baton/checklist instructions in CLAUDE.md in favor of the Dabbler session-set workflow (docs/dabbler/start-here.md); README notes docs/batons and docs/checklists as pre-Dabbler historical record; Dabbler scaffold committed; .gitignore added (.venv, Office lock files).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/staff-line-module",
+      "dateTime": "2026-07-04T15:44:37.673485-04:00",
+      "description": "Module 2 (cnb-staff-line.js) verified against architecture plan (shipped in pre-Dabbler Session 9 commit c9ea41e); no changes needed. Repaired corrupted cnb/test-pages/test-staff.html script block and added 3-6-9 + line-override visual case.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 4,
+      "stepKey": "session-001/staff-module",
+      "dateTime": "2026-07-04T15:44:37.673485-04:00",
+      "description": "Module 3 (cnb-staff.js) verified against architecture plan (shipped in Session 9): getPositions/render/getMidpoint present; cnb-staff-tests.js covers 4-8 -> [4,8,16,20], 3-6-9 -> [3,6,9,15,18,21], overrides, pct thickness. Full suite 123/123, legacy 240/240.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 5,
+      "stepKey": "session-001/ledger-line-module",
+      "dateTime": "2026-07-04T15:44:37.673485-04:00",
+      "description": "Module 4 (cnb-ledger-line.js): fixed rounded-rect variant (was drawing hollow outline with stroke as thick as the rect, doubling visual thickness; now fills the rect body). Created cnb/test-pages/test-ledger.html visual test page with rounded/plain/dashed/dotted variants over the debug grid.",
+      "status": "complete"
     }
   ]
 }
