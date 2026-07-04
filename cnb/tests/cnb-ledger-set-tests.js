@@ -7,7 +7,9 @@
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
+import { withSvgStub } from "./svg-stub.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -215,6 +217,84 @@ export const tests = [
 
   { name: "resolve with empty notes returns empty", fn: () => {
       eqArr(CNBLedgerSet.resolve([], defs48(), STAFF_48), []);
+    }},
+
+  // ── render (via DOM stub) ──────────────────────────────────────────────────
+
+  { name: "render: appends a group with one rect per resolved ledger", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [2], { centerX: 50 });
+        assert(svg.children[0] === g, "group appended to parent");
+        assert(g.getAttribute("class") === "cnb-ledger-set", "group class");
+        assert(g.children.length === 2, "D shows ledgers at 0 and 2");
+        for (const child of g.children) {
+          assert(child.tag === "rect", "roundedEnds default renders rects");
+        }
+      });
+    }},
+
+  { name: "render: rects centered on semiToY with pct-derived thickness and centerX", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [0], { centerX: 50, width: 40 });
+        assert(g.children.length === 1, "C shows one ledger");
+        const rect = g.children[0];
+        const thickness = CNBConfig.pctToPx(cfg.ledgers.lineDefaults.thicknessPct, grid.pxPerSemi);
+        assert(parseFloat(rect.getAttribute("height")) === thickness, "thickness from pct");
+        assert(parseFloat(rect.getAttribute("y")) === grid.semiToY(0) - thickness / 2, "vertically centered on semi 0");
+        assert(parseFloat(rect.getAttribute("x")) === 50 - 40 / 2, "horizontally centered on centerX");
+        assert(parseFloat(rect.getAttribute("width")) === 40, "explicit width honored");
+      });
+    }},
+
+  { name: "render: lineOverrides restyle every octave instance of a template", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        cfg.ledgers.lineOverrides = { "0": { color: "#ff0000" } };
+        const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [0, 12], { centerX: 50 });
+        assert(g.children.length === 2, "ledgers at 0 and 12");
+        for (const rect of g.children) {
+          assert(rect.getAttribute("fill") === "#ff0000", "override color applied");
+        }
+      });
+    }},
+
+  { name: "render: note on a staff line renders an empty group", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [4], { centerX: 50 });
+        assert(g.children.length === 0, "E on staff line: no ledgers");
+      });
+    }},
+
+  { name: "render: default opts produce a positive width and column-padding centerX", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [0]);
+        const rect = g.children[0];
+        const width = parseFloat(rect.getAttribute("width"));
+        assert(width > 0, "default width computed from first shape");
+        const paddingH = cfg.display.column.paddingH;
+        const centerX = parseFloat(rect.getAttribute("x")) + width / 2;
+        assert(centerX === paddingH + width / 2, "default centerX = paddingH + width/2");
+      });
+    }},
+
+  { name: "render: grid range cropping does not change decisions (D near range floor)", fn: () => {
+      withSvgStub(svg => {
+        const cfg = config48();
+        // Range starts at 0, so no staff line below semi 0 is visible — the
+        // periodic staff expansion inside render() must still show D's C-ledger.
+        const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+        const g = CNBLedgerSet.render(svg, grid, cfg, [2], { centerX: 50 });
+        assert(g.children.length === 2, "ledgers at 0 and 2 despite cropped viewport");
+      });
     }},
 
 ];

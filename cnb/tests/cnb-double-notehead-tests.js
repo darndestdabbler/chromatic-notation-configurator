@@ -1,7 +1,8 @@
 /**
  * cnb-double-notehead-tests.js — Unit tests for Module 7 (Double Notehead)
  *
- * Tests the pure layout() computation; render() is verified visually
+ * Tests the pure layout() computation plus the render() DOM output via a
+ * stub document; visual correctness is verified on the test pages
  * (test-ledger.html octave-chord column and, next session, test-card.html).
  */
 
@@ -9,6 +10,7 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBDoubleNotehead } from "../src/cnb-double-notehead.js";
+import { withSvgStub } from "./svg-stub.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -109,6 +111,70 @@ export const tests = [
       });
       eq(l.lowerY, grid.semiToY(3), "lowerY at semi 3");
       eq(l.upperY, grid.semiToY(7), "upperY at semi 7");
+    }},
+
+  // ── render (via DOM stub) ──────────────────────────────────────────────────
+
+  { name: "render: appends two groups and returns {lowerG, upperG, lowerY, upperY}", fn: () => {
+      const { grid, shape } = fixture();
+      withSvgStub(svg => {
+        const r = CNBDoubleNotehead.render(svg, grid, {
+          lowerSemi: 0, upperSemi: 12,
+          lowerNote: { shape, hollow: false, color: "#123456" },
+          upperNote: { shape, hollow: false, color: "#654321" },
+          centerX: 100,
+        });
+        eq(svg.children.length, 2, "two notehead groups appended");
+        assert(svg.children[0] === r.lowerG, "lower drawn first (under)");
+        assert(svg.children[1] === r.upperG, "upper drawn second (on top)");
+        eq(r.lowerY, grid.semiToY(0), "lowerY");
+        eq(r.upperY, grid.semiToY(12), "upperY");
+      });
+    }},
+
+  { name: "render: groups positioned by layout() and paths carry note colors", fn: () => {
+      const { grid, shape } = fixture();
+      withSvgStub(svg => {
+        const opts = {
+          lowerSemi: 0, upperSemi: 12,
+          lowerNote: { shape, hollow: false, color: "#123456" },
+          upperNote: { shape, hollow: false, color: "#654321" },
+          centerX: 100, offsetPercent: 20,
+        };
+        const l = CNBDoubleNotehead.layout(grid, opts);
+        const r = CNBDoubleNotehead.render(svg, grid, opts);
+        eq(r.lowerG.getAttribute("transform"), `translate(${l.lowerX},${l.lowerY})`, "lower group transform");
+        eq(r.upperG.getAttribute("transform"), `translate(${l.upperX},${l.upperY})`, "upper group transform");
+        eq(r.lowerG.children[0].getAttribute("fill"), "#123456", "lower fill");
+        eq(r.upperG.children[0].getAttribute("fill"), "#654321", "upper fill");
+      });
+    }},
+
+  { name: "render: hollow note gets a white overlay path, solid note does not", fn: () => {
+      const { grid, shape } = fixture();
+      withSvgStub(svg => {
+        const r = CNBDoubleNotehead.render(svg, grid, {
+          lowerSemi: 1, upperSemi: 13,
+          lowerNote: { shape, hollow: false, color: "#000000" },
+          upperNote: { shape, hollow: true, color: "#000000" },
+          centerX: 100,
+        });
+        eq(r.lowerG.children.length, 1, "solid: single path");
+        eq(r.upperG.children.length, 2, "hollow: main path + overlay");
+        eq(r.upperG.children[1].getAttribute("fill"), "white", "overlay is white");
+      });
+    }},
+
+  { name: "render: default color is black when note.color is absent", fn: () => {
+      const { grid, shape } = fixture();
+      withSvgStub(svg => {
+        const r = CNBDoubleNotehead.render(svg, grid, {
+          lowerSemi: 0, upperSemi: 12,
+          lowerNote: { shape }, upperNote: { shape },
+          centerX: 100,
+        });
+        eq(r.lowerG.children[0].getAttribute("fill"), "#000000", "default fill");
+      });
     }},
 
 ];
