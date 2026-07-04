@@ -95,6 +95,13 @@ export const tests = [
       eq(down.y1, 100 + (40 * 0.5), "down: y1 = noteY + anchor.y × scaleFactor");
     }},
 
+  { name: "geometry returns null for a stemless shape with no anchors property", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { semitoneHeight: 2 };
+      const geom = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"up", duration:"crotchet" });
+      assert(geom === null, "should be null when anchors is undefined");
+    }},
+
   { name: "geometry returns null for missing anchor key", fn: () => {
       const cfg = CNBConfig.createDefault();
       const s = { anchors: { crotchetUp:{x:10,y:0} }, semitoneHeight:2 };
