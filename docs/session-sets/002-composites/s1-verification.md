@@ -20,3 +20,40 @@
   **Fix** → None. This is consistent with the task’s stated spec tension: the algorithm and default template set do imply a ledger at `12`, so the implementer’s choice here is valid.
 
 Core `buildDefs` / `resolve` / `isBetweenNoteAndStaff` logic otherwise appears aligned with the stated spec from the provided snippets.
+
+---
+
+# Round 2 (post-remediation, commit de8b533)
+
+**VERIFIED**
+
+## Correctness
+
+- **Finding 1 resolved:** both public `render()` APIs are now directly unit-tested.
+  - `CNBLedgerSet.render(...)` is exercised by the new **6 render tests** in `cnb-ledger-set-tests.js`.
+  - `CNBDoubleNotehead.render(...)` is exercised by the new **4 render tests** in `cnb-double-notehead-tests.js`.
+
+- **Finding 3 resolved:** the double-notehead suite now tests the actual required render contract, not just `layout()`.
+  - It calls `CNBDoubleNotehead.render(svg, grid, opts)`.
+  - It asserts the returned object fields `{ lowerG, upperG, lowerY, upperY }`.
+  - It also checks append order, transforms, fill colors, hollow overlay behavior, and default color handling.
+
+## Completeness
+
+- **Finding 2 resolved:** the DOM-stub render checks are now part of the real registered suites, not just described in prose.
+  - The new render tests are included directly in the exported `tests` arrays of the existing suite files.
+  - That means they are part of the runner path already used by `node cnb/tests/run-tests.js`; no separate unregistered ad hoc checks are being claimed here.
+
+- The added `svg-stub.js` is sufficient for the stated purpose of exercising Node-side SVG render paths:
+  - `createElementNS`
+  - `setAttribute`
+  - `getAttribute`
+  - `appendChild`
+
+- The remediation stays within scope:
+  - It fixes only the three prior coverage/reporting issues.
+  - It does **not** reopen the previously dismissed `buildDefs/resolve/isBetweenNoteAndStaff` or `C'(12)` design-decision topics.
+
+## False Positives
+
+- None. The remediation claims align with the shown changes.
