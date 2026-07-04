@@ -6,14 +6,14 @@
     {
       "number": 1,
       "title": "Session 1",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-07-04T15:38:28.735175-04:00",
-      "completedAt": null,
+      "completedAt": "2026-07-04T15:50:14.104041-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic"
       },
-      "verificationVerdict": null
+      "verificationVerdict": "VERIFIED"
     },
     {
       "number": 2,
