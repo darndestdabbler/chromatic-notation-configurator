@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Ledger Line Test — Module 4</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Module 4: Ledger Line — Unconditional render</h1>
+<p>
+  Default 4‑8 configuration, range -4 to 28, staff lines shown for context.
+  Ledger lines (rounded ends, 40% thickness, 2× notehead width) render at
+  semitones 0, 2, 12, 24 in three columns. The rightmost column shows the
+  non-rounded, dashed, and dotted variants for comparison. No display-rule
+  logic here — every requested ledger is drawn unconditionally.
+</p>
+
+<div class="card">
+  <svg id="ledger-svg" width="500" style="display:block;"></svg>
+</div>
+
+<script type="module">
+  import { CNBConfig }     from "../src/cnb-config.js";
+  import { CNBGrid }       from "../src/cnb-grid.js";
+  import { CNBStaff }      from "../src/cnb-staff.js";
+  import { CNBLedgerLine } from "../src/cnb-ledger-line.js";
+
+  const config = CNBConfig.createDefault();
+  const MIN_SEMI = -4;
+  const MAX_SEMI = 28;
+  const WIDTH = 500;
+
+  const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  const svg = document.getElementById("ledger-svg");
+  svg.setAttribute("height", String(grid.svgHeight));
+
+  const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+  CNBStaff.render(svg, grid, config, WIDTH);
+
+  const defaults = config.ledgers.lineDefaults;
+  const thicknessPx = CNBConfig.pctToPx(defaults.thicknessPct, grid.pxPerSemi);
+
+  // Approximate notehead width for the default crotchet-minim shape:
+  // pixelWidth = naturalWidth × (semitoneHeight × pxPerSemi / naturalHeight)
+  const shape = config.shapes["crotchet-minim"];
+  const noteheadWidth = shape.naturalWidth * (shape.semitoneHeight * grid.pxPerSemi / shape.naturalHeight);
+  const ledgerWidth = noteheadWidth * defaults.widthMultiplier;
+
+  // Columns 1–2: default rounded ledgers at typical ledger semitones
+  for (const [col, centerX] of [[0, 120], [1, 250]]) {
+    for (const semi of [0, 2, 12, 24]) {
+      CNBLedgerLine.render(svg, {
+        y: grid.semiToY(semi),
+        centerX,
+        width: ledgerWidth,
+        thickness: thicknessPx,
+        color: defaults.color,
+        style: defaults.style,
+        roundedEnds: defaults.roundedEnds,
+      });
+    }
+  }
+
+  // Column 3: style variants (non-rounded solid, dashed, dotted)
+  const variants = [
+    { semi: 0,  style: "solid",  roundedEnds: false },
+    { semi: 2,  style: "dashed", roundedEnds: false },
+    { semi: 12, style: "dotted", roundedEnds: false },
+    { semi: 24, style: "solid",  roundedEnds: true },
+  ];
+  for (const v of variants) {
+    CNBLedgerLine.render(svg, {
+      y: grid.semiToY(v.semi),
+      centerX: 400,
+      width: ledgerWidth,
+      thickness: thicknessPx,
+      color: "#cc4444",
+      style: v.style,
+      roundedEnds: v.roundedEnds,
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -145,8 +145,14 @@ The same JSON config drives both the live preview and the LilyPond export.
 
 ## Current Status
 
-The Configurator is being rebuilt with a modular architecture. The legacy monolithic version (`legacy/chromatic-configurator.html`) is functional with 240 core logic tests and 53/54 manual UI tests passing. The new modular build is in progress — see the architecture plan for the build order and session plan.
+The Configurator is being rebuilt with a modular architecture. The legacy monolithic version (`legacy/chromatic-configurator.html`) is functional with 240 core logic tests and 53/54 manual UI tests passing. The new modular build is in progress — see the architecture plan for the build order.
+
+Development sessions are managed with Dabbler session sets (`docs/session-sets/`) — see `docs/dabbler/start-here.md` for the session workflow. The `docs/batons/` and `docs/checklists/` directories are historical records of the pre-Dabbler session workflow (sessions 1–9), kept for reference; they are not part of the active workflow.
 
 ## License
 
-[TBD]
+This work is dedicated to the public domain under the
+[CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+license — see the [`LICENSE`](LICENSE) file for the full legal text. To the
+extent possible under law, the author has waived all copyright and related
+or neighboring rights to this work.

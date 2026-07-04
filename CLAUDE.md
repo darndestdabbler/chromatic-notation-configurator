@@ -99,32 +99,16 @@ The `legacy/` directory contains the monolithic predecessor:
 
 This code is reference only. New modules are in `cnb/src/`. Do not modify legacy code.
 
-## Current Phase
+## Session Workflow
 
-See the baton document for the current session's goals and deliverables.
+Work is organized into Dabbler **session sets** under `docs/session-sets/`.
+To run a session (start, work, close), follow the procedure in
+`docs/dabbler/start-here.md` — it resolves the active set, registers the
+session start via the AI router, and closes through the shared gate.
 
+The current session's goals and deliverables are defined in the active
+session set's `spec.md`.
 
-## Session Completion Checklist
-After building all modules for a session
-
-1. Generate a human verification 
-checklist at docs/checklists/session-N-checklist.xlsx. Structure:
-- Column A: Functional Area Id
-- Column B: Functional Area  
-- Column C: Subarea
-- Column D: Passes (leave blank — human fills this)
-- Column E: Expectation (specific, verifiable statement)
-- Column F: Feedback (leave blank — human fills this)
-
-Cover: visual rendering, file operations, export correctness, 
-edge cases that automated tests don't cover.
-
-2. Generate the baton for the next session at docs/batons/baton-sessions-{N}-to-{N+1}.md
-
-The baton must include:
-- What was built this session (modules, files, test counts)
-- Any design decisions made during implementation
-- Any issues, deviations, or amendments to the architecture plan
-- What to build next (from CNB-ARCHITECTURE-PLAN-v2.md build order)
-- Which files the next session should read
-- Specific test cases for the next modules
+**Historical note:** `docs/batons/` and `docs/checklists/` are records of
+pre-Dabbler sessions (sessions 1–9). They are kept as historical record —
+do not delete them, and do not generate new batons or checklists.

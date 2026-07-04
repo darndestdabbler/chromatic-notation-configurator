@@ -1,0 +1,10 @@
+# Project verification budget — written by the Dabbler Getting Started form.
+# Used by the workflow for spend reporting and threshold monitoring.
+threshold_usd: 50
+scope: per-project
+mode: "middle-tier"
+verification_method: "api"
+verification_nte_usd: 50
+set_at: "2026-07-04T15:18:38-04:00"
+set_by: "getting-started-form"
+warn_at_percent: 80

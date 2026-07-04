@@ -18,46 +18,61 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.1);
       padding: 20px;
       display: inline-block;
+      margin-right: 20px;
+      vertical-align: top;
     }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
   </style>
 </head>
 <body>
 
 <h1>Module 2/3: Staff Line &amp; Staff — Render staff pattern</h1>
 <p>
-  Default 4‑8 configuration with range -4 to 28. Staff lines should coincide with the
-  blue marks on the debug grid (semitones 4, 8, 16, 20). Change the pattern manually to
-  3‑6‑9 and verify the positions update accordingly.
+  Left: default 4‑8 configuration with range -4 to 28 — staff lines should coincide with the
+  blue marks on the debug grid (semitones 4, 8, 16, 20). Right: 3‑6‑9 pattern — lines at
+  semitones 3, 6, 9, 15, 18, 21, with a dashed override on the line at semitone-within-octave 6.
 </p>
 
 <div class="card">
-  <svg id="staff-svg" width="500" height="auto" style="display:block;"></svg>
+  <h2>4‑8 pattern (default)</h2>
+  <svg id="staff-48" width="500" style="display:block;"></svg>
+</div>
+
+<div class="card">
+  <h2>3‑6‑9 pattern + override on 6</h2>
+  <svg id="staff-369" width="500" style="display:block;"></svg>
 </div>
 
 <script type="module">
   import { CNBConfig } from "../src/cnb-config.js";
   import { CNBGrid }   from "../src/cnb-grid.js";
   import { CNBStaff }  from "../src/cnb-staff.js";
-  import { CNBGrid as Grid } from "../src/cnb-grid.js";
-  import { CNBStaffLine } from "../src/cnb-staff-line.js";
 
-  const config = CNBConfig.createDefault();
   const MIN_SEMI = -4;
   const MAX_SEMI = 28;
-  const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  const WIDTH = 500;
 
-  const svg = document.getElementById("staff-svg");
-  svg.setAttribute("height", String(grid.svgHeight));
+  function renderStaffCase(svgId, config) {
+    const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    const svg = document.getElementById(svgId);
+    svg.setAttribute("height", String(grid.svgHeight));
 
-  // draw debug overlay with staff positions computed here for clarity
+    const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+    CNBStaff.render(svg, grid, config, WIDTH);
+    console.log(`${svgId} staffPositions:`, staffPositions);
+  }
 
+  // Case 1: default 4-8 system
+  renderStaffCase("staff-48", CNBConfig.createDefault());
 
+  // Case 2: 3-6-9 system with a line override
+  const cfg369 = CNBConfig.createDefault();
+  cfg369.staff.semitonePattern = [3, 6, 9];
+  cfg369.staff.midpoint = 12;
+  cfg369.staff.lineOverrides = { "6": { style: "dashed", color: "#cc4444" } };
+  renderStaffCase("staff-369", cfg369);
+</script>
 
-
-
-
-
-
-
-
-</html></body></script>  console.log("staffPositions:", staffPositions);  CNBStaff.render(svg, grid, config, 500);  CNBGrid.renderDebugOverlay(svg, grid, staffPositions);  const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });  
+</body>
+</html>

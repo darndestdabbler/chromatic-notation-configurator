@@ -18,7 +18,9 @@ export const CNBLedgerLine = {
     let elem;
 
     if (roundedEnds) {
-      // create a rect centered on centerX
+      // Rect centered on (centerX, y); the rect body IS the line, so it is
+      // filled with the line color and has no stroke (a stroke would add to
+      // the visual thickness).
       elem = document.createElementNS(NS, "rect");
       const x = centerX - width / 2;
       const ytop = y - thickness / 2;
@@ -28,23 +30,21 @@ export const CNBLedgerLine = {
       elem.setAttribute("height", String(thickness));
       elem.setAttribute("rx", String(thickness / 2));
       elem.setAttribute("ry", String(thickness / 2));
+      elem.setAttribute("fill", color);
     } else {
       elem = document.createElementNS(NS, "line");
       elem.setAttribute("x1", String(centerX - width / 2));
       elem.setAttribute("x2", String(centerX + width / 2));
       elem.setAttribute("y1", String(y));
       elem.setAttribute("y2", String(y));
+      elem.setAttribute("stroke", color);
+      elem.setAttribute("stroke-width", String(thickness));
+      if (style === "dashed") {
+        elem.setAttribute("stroke-dasharray", "8,4");
+      } else if (style === "dotted") {
+        elem.setAttribute("stroke-dasharray", "2,4");
+      }
     }
-
-    elem.setAttribute("stroke", color);
-    elem.setAttribute("stroke-width", String(thickness));
-    if (style === "dashed") {
-      elem.setAttribute("stroke-dasharray", "8,4");
-    } else if (style === "dotted") {
-      elem.setAttribute("stroke-dasharray", "2,4");
-    }
-    // fill none for line/rect to avoid fill
-    elem.setAttribute("fill", "none");
 
     svgParent.appendChild(elem);
     return elem;
