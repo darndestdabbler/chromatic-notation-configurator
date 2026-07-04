@@ -1,7 +1,7 @@
 {
   "sessionSetName": "002-composites",
   "createdDate": "2026-07-04T20:13:33.894861+00:00",
-  "totalSessions": 0,
+  "totalSessions": 2,
   "entries": [
     {
       "sessionNumber": 1,
@@ -27,6 +27,22 @@
       "stepKey": "session-001/double-notehead-module",
       "dateTime": "2026-07-04T16:23:28.106902-04:00",
       "description": "Built cnb-double-notehead.js (pure layout() plus render()) with 6 unit tests: semiToY positioning, symmetric offsetPercent collision offset scaled by max notehead width, per-shape scale factors",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/card-module",
+      "dateTime": "2026-07-04T16:43:20.018556-04:00",
+      "description": "Built cnb-card.js (Module 9: octave chord card composing grid, ledger set, double notehead, stem, labels) with 18 unit tests incl. render() DOM-stub coverage; test-card.html visual page",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/collection-module",
+      "dateTime": "2026-07-04T16:43:20.018556-04:00",
+      "description": "Built cnb-collection.js (Module 10: card collection with continuous background staff SVG, duration rows) with 9 unit tests; test-collection.html full chromatic row page; all 208 CNB + 240 legacy tests pass",
       "status": "complete"
     }
   ]
