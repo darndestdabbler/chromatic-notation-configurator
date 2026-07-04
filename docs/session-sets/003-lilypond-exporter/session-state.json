@@ -1,15 +1,18 @@
 {
   "schemaVersion": 4,
   "sessionSetName": "003-lilypond-exporter",
-  "status": "not-started",
+  "status": "in-progress",
   "sessions": [
     {
       "number": 1,
       "title": "Session 1",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "in-progress",
+      "startedAt": "2026-07-04T17:43:26.351265-04:00",
       "completedAt": null,
-      "orchestrator": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
       "verificationVerdict": null
     },
     {

@@ -31,6 +31,7 @@ const TEST_FILES = [
   "./cnb-double-notehead-tests.js",
   "./cnb-card-tests.js",
   "./cnb-collection-tests.js",
+  "./cnb-lilypond-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────

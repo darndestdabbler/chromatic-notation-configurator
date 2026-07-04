@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "003-lilypond-exporter",
+  "createdDate": "2026-07-04T21:38:58.885987+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-04T21:38:58.897361+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/lilypond-section-a",
+      "dateTime": "2026-07-04T17:46:36.838242-04:00",
+      "description": "Ported header + Section A (path defs with lilypondPath-preferred/svgPathToLilypond fallback, path/hollow/attachment registrations with 4-point anchor conversion, CB-safe color conditional per LY spec 4.5) into cnb/src/cnb-lilypond.js",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 4,
+      "stepKey": "session-001/lilypond-section-b",
+      "dateTime": "2026-07-04T17:46:36.839267-04:00",
+      "description": "Ported Section B (staff geometry always-emitted with staff-line-positions conversion, emit-if-changed engine settings, thickness pct-to-staff-space conversion per LY spec 5.3, metadata) plus 34 unit tests in cnb/tests/cnb-lilypond-tests.js; cnb suite 242 pass, legacy 240 pass",
+      "status": "complete"
+    }
+  ]
+}
