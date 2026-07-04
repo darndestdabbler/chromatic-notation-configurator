@@ -13,3 +13,18 @@
 - **Issue** → The visual-test summary overclaims what `test-stem.html` does. The response says red crosses mark “each selected anchor point” / “each notehead’s selected anchor point,” but the page marks only the single attachment anchor per chord.
   **Location** → Response item 4; `cnb/test-pages/test-stem.html` (`attachY` + single `markAnchor(...)` call)
   **Fix** → Reword the summary to say it marks the attachment anchor only, or update the page to mark all intended anchors if that was the goal.
+
+---
+
+# Session 2 verification — round 2 (remediation review)
+
+**VERIFIED**
+
+- **Correctness** → The response resolves all three Round 1 findings.
+  - **Issue 1** → The original concern was about missing evidence, not a broken implementation. Showing the unchanged `cnb-notehead.js` source correctly establishes that the module API takes a resolved `shape` object and does not perform `config.shapes[name]` lookup internally. That directly answers the prior gap.
+  - **Issue 2** → The cited existing test with `anchors: null` does cover a genuinely stemless shape, and the added `anchors === undefined` test hardens that case further. This fixes the prior narrow coverage.
+  - **Issue 3** → The revised `test-stem.html` text no longer claims every notehead anchor is marked; it now accurately describes only the attachment notehead per stem.
+
+- **Completeness** → All three Round 1 issues are explicitly addressed, with source or diff shown where needed, plus test results.
+
+- **False Positives** → None. The response does not invent new problems or misclassify the original ones.
