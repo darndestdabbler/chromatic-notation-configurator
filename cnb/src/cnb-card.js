@@ -67,7 +67,9 @@ function buildLabel(config, heightPx, { text, sharp }, position) {
     s.textContent = "♯";
     s.style.fontSize = (sharpStyle.fontSize ?? 0.75) + "em";
     s.style.position = "relative";
-    // raise is an upward offset in em; CSS `top` moves down, hence negation
+    // "raise" is upward-positive em, CSS `top` is downward-positive, hence
+    // the negation. The fallback mirrors the schema default of -0.15
+    // (architecture plan §4.7: the shrunken ♯ sits slightly lowered).
     s.style.top = -(sharpStyle.raise ?? -0.15) + "em";
     span.appendChild(s);
   }
