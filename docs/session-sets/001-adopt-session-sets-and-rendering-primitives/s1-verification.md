@@ -20,3 +20,16 @@
   - **Fix →** None. The reported ledger-line defect and corrupted `test-staff.html` are supported by the diff.
 
 Everything else in the report appears consistent with Session 1’s required scope: workflow cutover, historical-note update, missing `test-ledger.html` creation, `test-staff.html` repair, and both test suites passing.
+
+---
+
+# Verification Round 2 (post-remediation)
+
+**VERIFIED**
+
+- The round-1 actionable issue was the lack of an explicit **thickness-from-pct conversion** test in `cnb/tests/cnb-staff-tests.js`.
+- The remediation adds two explicit cases in that file:
+  - default thickness conversion: `20%` of `16px` → `3.2px`
+  - override thickness conversion: `50%` of `16px` → `8px`
+- The provided `node cnb/tests/run-tests.js` output shows both new staff tests executing and passing.
+- Based on the diff and test output provided, this resolves the specific round-1 finding.

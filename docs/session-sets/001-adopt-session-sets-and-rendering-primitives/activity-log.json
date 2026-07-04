@@ -44,6 +44,14 @@
       "dateTime": "2026-07-04T15:44:37.673485-04:00",
       "description": "Module 4 (cnb-ledger-line.js): fixed rounded-rect variant (was drawing hollow outline with stroke as thick as the rect, doubling visual thickness; now fills the rect body). Created cnb/test-pages/test-ledger.html visual test page with rounded/plain/dashed/dotted variants over the debug grid.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 6,
+      "stepKey": "session-001/verification",
+      "dateTime": "2026-07-04T15:50:05.187714-04:00",
+      "description": "Routed gate REQUIRED (blast-radius, multi-module, breadth over 37-file diff). Cross-provider verification round 1 via route() -> gpt-5-4 (openai), $0.1283: ISSUES_FOUND (missing thickness-from-pct staff test; license bundling noted as disclosed Minor). Remediation commit bf50ccd added two pct-to-px conversion tests (125/125). Round 2 via gpt-5-4, $0.0295: VERIFIED, 0 issues. Raw reviews in s1-verification.md.",
+      "status": "complete"
     }
   ]
 }
