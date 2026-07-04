@@ -1,20 +1,22 @@
 {
   "status": "completed",
-  "summary": "Session 1 of 002-composites complete: built Module 5 (cnb-ledger-set.js — octave-aware proximity/override ledger display-rule engine with buildDefs/resolve/isBetweenNoteAndStaff/render, no outside-staff gate, staff expanded one octave beyond the grid range) and Module 7 (cnb-double-notehead.js — octave-pair renderer with pure layout() and symmetric offsetPercent collision offset). 34 new unit tests (28 ledger-set covering the architecture plan's exhaustive cases incl. 4-8 vs 3-6-9 gap handling and octave awareness; 6 double-notehead); 169/169 total pass. test-ledger.html rewritten as a display-rule-driven page with 4-8, 3-6-9, and proximity-mode cards. Documented resolution of the plan's C'(12)-in-4-8 prose/algorithm discrepancy: followed the algorithm (ledger shown via the octave-instantiated C template), matching legacy behavior, with the no-template case tested separately.",
+  "summary": "Built Module 9 (cnb-card.js: octave chord card composing ledger set, 4-point-anchor stem, and octave-pair noteheads into the pc-col/label-top/note-slice/label-bottom structure with material-card Oswald labels) and Module 10 (cnb-collection.js: duration rows of cards over a single continuous background staff SVG offset by topLabelHeight, debug-grid support). Added 29 unit tests (20 card + 9 collection) with direct render() DOM-stub coverage via the extended withDomStub helper, plus test-card.html and test-collection.html visual pages including the full-chromatic-row Phase 3 deliverable. 208/208 CNB and 240/240 legacy tests pass. Cross-provider verification: round 1 ISSUES_FOUND (container-API purity adjudicated not-a-defect per the architecture plan Module 9/10 contracts; sharp-offset comment fixed; test-count prose corrected), round 2 VERIFIED. Set 002 complete; set 003 (LilyPond exporter) unblocked.",
   "files_changed": [
-    "cnb/src/cnb-ledger-set.js",
-    "cnb/src/cnb-double-notehead.js",
-    "cnb/tests/cnb-ledger-set-tests.js",
-    "cnb/tests/cnb-double-notehead-tests.js",
+    "cnb/src/cnb-card.js",
+    "cnb/src/cnb-collection.js",
+    "cnb/tests/cnb-card-tests.js",
+    "cnb/tests/cnb-collection-tests.js",
     "cnb/tests/run-tests.js",
     "cnb/tests/svg-stub.js",
-    "cnb/test-pages/test-ledger.html",
+    "cnb/test-pages/test-card.html",
+    "cnb/test-pages/test-collection.html",
     "docs/session-sets/002-composites/activity-log.json",
+    "docs/session-sets/002-composites/s2-verification.md",
+    "docs/session-sets/002-composites/s2-issues.json",
+    "docs/session-sets/002-composites/change-log.md",
+    "docs/session-sets/002-composites/disposition.json",
     "docs/session-sets/002-composites/session-events.jsonl",
-    "docs/session-sets/002-composites/session-state.json",
-    "docs/session-sets/002-composites/s1-verification.md",
-    "docs/session-sets/002-composites/s1-issues.json",
-    "docs/session-sets/002-composites/disposition.json"
+    "docs/session-sets/002-composites/session-state.json"
   ],
   "verification_method": "api",
   "verification_message_ids": [],
@@ -25,7 +27,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 2 (Octave Chord Card + Card Collection) composes the modules built this session; same orchestrator keeps the composite-layer context (ledger render opts contract, double-notehead layout API) without ramp-up."
+      "specifics": "Set 002 closed VERIFIED with all suites green; the same engine/model should open set 003 (LilyPond exporter), which builds directly on the config/rule-resolution semantics established in these sessions."
     }
   },
   "blockers": [],
