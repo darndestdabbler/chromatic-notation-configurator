@@ -61,7 +61,9 @@ drivers (`cnb/uat/`) capturing real browser downloads.
   options with a visible note that Module 10 defers key rows (plan §5);
   drives Module 10's `CNBCollection.render()` live through a `getConfig`
   accessor (Modules 17/18 contract) with a documented injection seam for
-  the collection renderer.
+  the collection renderer. The key section stays visible when keys are
+  enabled but no definitions exist yet (disabled select + explicit note;
+  added in verification round 1 remediation).
 - `cnb/index.html`: the application entry point assembling Modules 12–19
   around one shared config object — editors write slices via `onChange`,
   the preview/IO/export panels read via accessors and are redrawn after
@@ -77,8 +79,9 @@ drivers (`cnb/uat/`) capturing real browser downloads.
 
 ## End-of-set state
 
-- `node cnb/tests/run-tests.js`: **553/553** passing (29 added this set's
-  session 3; 524 at session 2 close).
+- `node cnb/tests/run-tests.js`: **555/555** passing (31 added this set's
+  session 3, including 2 in verification round 1 remediation; 524 at
+  session 2 close).
 - `node legacy/run-tests.js`: **240/240** passing (untouched).
 - Golden-path UAT: **30/30** checks (driver exit 0).
 - The `cnb/` application is fully assembled: SVG import, palette editor,

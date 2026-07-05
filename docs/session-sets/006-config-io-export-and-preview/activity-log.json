@@ -68,6 +68,14 @@
       "dateTime": "2026-07-05T07:42:33.780537-04:00",
       "description": "Assembled cnb/index.html: Modules 12-19 wired to one shared config object owned by the page (editors write slices via onChange; preview/IO/export read via accessors and redraw on every change; JSON load and SVG import re-seed the editors). Golden-path UAT (cnb/uat/uat-golden-path.mjs, checklist in s3-uat.md): import SVG -> palette -> staff+notehead rules -> common properties -> preview controls -> save -> load back -> export, 30/30 checks passed with Node-side staff-geometry parity and byte-identical .ly export parity. Suites: cnb 553/553, legacy 240/240. change-log.md written for the set.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 3,
+      "stepNumber": 3,
+      "stepKey": "session-003/preview-display-module",
+      "dateTime": "2026-07-05T07:50:38.411530-04:00",
+      "description": "Verification round 1 remediation (supersedes the step-1 test counts): (a) the Module 19 key section now renders whenever config.keys.enabled is true - with empty config.keys.definitions it stays visible with a disabled (none) select and an explicit nothing-to-select-yet note instead of disappearing; (b) the redraw-follows-config-changes unit coverage was split and extended - a dedicated test now mutates the staff pattern and asserts the preview background staff line count matches a direct CNBStaff.getPositions() call before and after. Final counts: cnb-preview-display-tests 31 tests; cnb suite 555/555; legacy 240/240; golden-path UAT re-run 30/30.",
+      "status": "complete"
     }
   ]
 }
