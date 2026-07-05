@@ -13,3 +13,10 @@
 - **Issue** → Reporting is internally inconsistent about test counts.
   - **Location** → Response summary says **33** new tests / **497** total, while `docs/session-sets/006-config-io-export-and-preview/activity-log.json` says **31** new tests / **496** total.
   - **Fix** → Correct the recorded counts to match the actual added test file and runner output.
+
+
+---
+
+# Session 1 verification — round 2 (remediation)
+
+VERIFIED

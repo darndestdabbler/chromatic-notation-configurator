@@ -1,0 +1,32 @@
+{
+  "status": "completed",
+  "summary": "Session 1 of 3 (Config Save/Load, Module 17) complete. Built cnb/ui/config-io.js: JSON save with configName-derived filename (slug + .cnb.json, throws on underivable names) and plan 4.11 timestamp stamping (created on first save only, modified every save, host adopts the stamped config via onSave); load via parseConfigFile -> CNBConfig.merge over createDefault -> validate, with open-keyed map sections (shapes, lineOverrides, schemeSymbols, repeatCounts, keys.offKeyMark) replaced when provided as plain objects so save->load round-trips deep-equal. Loading never blocks on validation (export blocking is Module 18); malformed files are surfaced and leave app state untouched. 34 unit tests (498 total CNB, 240 legacy, all passing); test page hosts Module 15 + Module 17 on one shared config object; checked-in Playwright UAT driver 19/19 checks (edit -> save with real download capture -> reload -> load -> editor reflects reloaded state; second-save created preservation; malformed load). Verification: round 1 ISSUES_FOUND (scope adjudication, stale filename preview after load — fixed with callback-before-redraw + regression test, activity log count correction); round 2 VERIFIED.",
+  "files_changed": [
+    "cnb/ui/config-io.js",
+    "cnb/tests/cnb-config-io-tests.js",
+    "cnb/tests/run-tests.js",
+    "cnb/test-pages/test-config-io.html",
+    "cnb/uat/uat-config-io.mjs",
+    "docs/session-sets/006-config-io-export-and-preview/session-state.json",
+    "docs/session-sets/006-config-io-export-and-preview/session-events.jsonl",
+    "docs/session-sets/006-config-io-export-and-preview/activity-log.json",
+    "docs/session-sets/006-config-io-export-and-preview/s1-uat.md",
+    "docs/session-sets/006-config-io-export-and-preview/s1-verification.md",
+    "docs/session-sets/006-config-io-export-and-preview/s1-issues.json",
+    "docs/session-sets/006-config-io-export-and-preview/disposition.json"
+  ],
+  "verification_method": "api",
+  "verification_message_ids": [],
+  "next_orchestrator": {
+    "engine": "claude-code",
+    "provider": "anthropic",
+    "model": "claude-fable-5",
+    "effort": "medium",
+    "reason": {
+      "code": "continue-current-trajectory",
+      "specifics": "Session 1 closed VERIFIED in two rounds; session 2 (Config Export/Module 18, wrapping the set-003 CNBLilypond exporter behind a validate-then-export UI button) continues the same UI-shell integration pattern established here."
+    }
+  },
+  "blockers": [],
+  "verification_verdict": "VERIFIED"
+}
