@@ -192,6 +192,13 @@ check("RESOLVED STRIP has 12 cells, duration select at crotchet",
     document.querySelector(".cnb-nre-resolved-duration").value === "crotchet"));
 check("RESOLVED STRIP C solid, C♯ hollow (cumulative sharps rule)",
   (await stripFill(0)) === "solid" && (await stripFill(1)) === "hollow");
+check('RESOLVED STRIP explicit no-mark state is visibly rendered ("no mark")',
+  await page.evaluate(() => {
+    const m = document.querySelector('.cnb-nre-resolved-cell[data-pc="0"] .cnb-nre-resolved-mark');
+    const style = getComputedStyle(m);
+    return m.textContent === "no mark" && style.visibility !== "hidden" &&
+      style.display !== "none" && m.offsetHeight > 0;
+  }));
 check("PREVIEW ROW has 12 notehead cells (Module 6 rendering)",
   await page.evaluate(() =>
     document.querySelectorAll("#preview-host .cnb-nre-preview-cell svg").length === 12));

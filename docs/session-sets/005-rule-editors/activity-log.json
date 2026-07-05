@@ -68,6 +68,14 @@
       "dateTime": "2026-07-05T05:15:43.318303-04:00",
       "description": "Verification round 1 (gpt-5-4): ISSUES_FOUND. Remediated: editable match.keys pills (config.keys.definitions, union with loaded selections), apply.offKeyMark UI (explicit-false / mark-identifier modes) with resolved-strip key selector, per-cell mark display and preview badges; buildRules now enforces #RRGGBB for apply.color and false|non-empty-string for offKeyMark. Issue 3 (docs/session-sets writes) adjudicated as orchestration-mandated lifecycle records. Tests 421/421; UAT re-executed 33/33.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 7,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:19:23.322574-04:00",
+      "description": "Verification round 2 (gpt-5-4): ISSUES_FOUND on two documentary points. Remediated: removed the test-page CSS rule hiding the explicit no-mark state (now visibly rendered, new UAT check; 34/34) and corrected the remediation files-changed record (session-events.jsonl was not part of commit 50846b4). Tests 421/421.",
+      "status": "complete"
     }
   ]
 }

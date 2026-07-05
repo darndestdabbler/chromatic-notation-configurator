@@ -15,3 +15,16 @@
 - **Issue:** The change set is not confined to `cnb/`, which conflicts with the original task scope.
   **Location:** `docs/session-sets/005-rule-editors/activity-log.json`, `docs/session-sets/005-rule-editors/session-events.jsonl`, `docs/session-sets/005-rule-editors/session-state.json`, `docs/session-sets/005-rule-editors/s2-uat.md`.
   **Fix:** Remove non-`cnb/` changes from this deliverable or get an explicit scope exception before counting the task as complete.
+
+## Round 2 (2026-07-05) — remediation review
+
+**ISSUES FOUND**
+
+- **Issue** → Claimed “full remediation diff” is not actually complete.  
+  **Location** → The response’s “Files changed in this remediation” list includes `docs/session-sets/005-rule-editors/session-events.jsonl`, but that file is absent from the supplied `git diff b465341..50846b4`.  
+  **Fix** → Include the missing diff hunk, or correct the changed-files list / “full remediation diff” claim.
+
+- **Issue** → Issue 1 is only partially resolved in the visible UI: the explicit `offKeyMark: false` state is hidden, despite the write-up claiming the resolved strip shows `"no mark"` or `"mark: <identifier>"`.  
+  **Location** → `cnb/test-pages/test-notehead-rule-editor.html`:  
+  `.cnb-nre-resolved-mark[data-mark="false"] { visibility: hidden; }`  
+  **Fix** → Remove that hiding rule if the intent is to visibly surface the effective false state, or revise the claim/UAT to state that only non-false marks are visibly shown.

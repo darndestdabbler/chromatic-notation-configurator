@@ -23,6 +23,7 @@ EXPECT RULE LIST with 2 cards numbered in application order                 → 
 EXPECT RULE NAMES "Default" and "Sharps are hollow"                         → PASS
 EXPECT RESOLVED STRIP with 12 cells, duration select at "crotchet"          → PASS
 EXPECT RESOLVED STRIP C solid, C♯ hollow (cumulative sharps rule)           → PASS
+EXPECT RESOLVED STRIP explicit no-mark state visibly rendered ("no mark")   → PASS
 EXPECT PREVIEW ROW with 12 notehead cells (Module 6 rendering)              → PASS
 EXPECT PREVIEW C with 1 path (solid), C♯ with 2 paths (hollow cutout)       → PASS
 EXPECT PREVIEW palette colors C #1b9e77, D #7570b3 (color null → palette)   → PASS
@@ -75,12 +76,14 @@ EXPECT VALIDATION still "Config valid ✓"                                    �
 EXPECT NO console or page errors across the whole flow                      → PASS
 ```
 
-**Result: 33/33 checks passed.**
+**Result: 34/34 checks passed.**
 
-(The checklist was first executed as 27 checks; the six key-match and
+(The checklist was first executed as 27 checks; six key-match and
 off-key-mark checks were added during verification round-1 remediation,
-which made `match.keys` and `apply.offKeyMark` editable, and the full
-33-check list was re-executed end to end.)
+which made `match.keys` and `apply.offKeyMark` editable, and one
+no-mark-visibility check was added during round-2 remediation, which
+removed a host CSS rule that hid the explicit no-mark state. The full
+34-check list was re-executed end to end after each change.)
 
 ## Visual review
 
