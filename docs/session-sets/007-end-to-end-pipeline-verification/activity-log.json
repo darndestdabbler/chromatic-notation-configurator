@@ -36,6 +36,22 @@
       "dateTime": "2026-07-05T11:04:58.424545-04:00",
       "description": "SUPERSEDING ENTRY (round-1 verification remediation; replaces the step-2 entry counts/scope). Final session-1 state: UAT driver extended to two phases - Phase A authors the Kite system through the set-004/005 editors (SVG import of cnb/fixtures/kite-up.svg + kite-down.svg, 3-6-9 pattern click, repeat-mode click, custom CB-safe 3-color palette, three rules via PC pills/apply controls) and compares the authored export to the fixture export; Phase B loads the fixture and proves byte-parity - 26/26 checks. Diff evidence extended: exhaustive all-element harvest diff (patched: 21 differing of 191 elements, all D3 path-hash-only noteheads, every other type 0/N; as-generated: 191/191) and pixel-level Chromium visual diff at 4x (patched vs golden: 0 differing pixels of 14,266,592; as-generated: 7.68 pct). Catalog now includes authoring-phase discoveries D5 (anchor unit conversion emits semitone units - importer toLilypondAnchors + exporter attachmentPoints fallback, this repo, latent) and D6 (import pipeline cannot author distinct minim anchors - toolkit coordination). activity-log totalSessions corrected to 2 (spec totalSessions). Suites re-run clean: cnb 555 passed 0 failed, legacy 240/240.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/discrepancy-fixes",
+      "dateTime": "2026-07-05T12:19:01.287105-04:00",
+      "description": "Fixed all three exporter-owned discrepancies from the s1 catalog with zero hand patches remaining: D1 sectionB() now always emits #(set! cnb:use-procedure-model #t); D2 computeStaffLinePositions() emits half-staff-space units (2 x (S - midpoint) / sps) with the staff-rule editor's derivedGeometry() kept in parity; D5 lilypondAnchors are canonically semitone units, converted / sps at export time (exporter attachmentPoints + importer contract + kite fixture rescaled). Test suites: cnb 556/556 (incl. new D1 test and updated D2/D5 expectations, legacy-parity divergences pinned), legacy 240/240. Round-trip UAT re-run per s2-uat.md: engine golden assertion suite 74/74 on both golden and round-trip renders; exhaustive structural diff 21/191 elements differing, all D3 path_hash-only (cosmetic, cataloged non-defect); visual pixel diff 0 differing pixels at 4x and 16x raster; UI download byte-identical to the rendered headless export; all 7 browser UAT drivers pass (184 checks).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 4,
+      "stepKey": "session-002/workflow-documentation",
+      "dateTime": "2026-07-05T12:19:01.287923-04:00",
+      "description": "README.md gained the end-to-end walkthrough (install Inkscape extension -> author shape -> import -> assign rules -> export .ly -> render with engine), fixed placeholder repo links, corrected the entry point (cnb/index.html over HTTP), and updated Current Status for the closed release gate. docs/CNB-LY-EXPORT-SPEC-v1_2.md amended to 1.2.1 (use-procedure-model always emitted; half-staff-space unit conversion documented); docs/CNB-ARCHITECTURE-PLAN-v2.md section 4.3 formula/example corrected (x2 factor) and section 4.2 anchor units/timing corrected. Cross-repo items handed off in s2-cross-repo-coordination.md: engine README render-side half, E1 stale test score, D3 -0 hash normalization, spec 1.2.1 sync; toolkit minim-anchor authoring (D6).",
+      "status": "complete"
     }
   ]
 }
