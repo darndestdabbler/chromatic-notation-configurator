@@ -16,10 +16,12 @@
  *   - playwright-core resolvable from this file, or set CNB_UAT_PLAYWRIGHT
  *     to a directory whose node_modules contains it
  *     (e.g. a scratch dir where you ran `npm install playwright-core`).
- *   - A Chromium executable: CNB_UAT_CHROMIUM if set, otherwise the newest
- *     chromium-* browser discovered in the platform's ms-playwright cache
- *     directory (LOCALAPPDATA/ms-playwright on Windows, ~/Library/Caches or
- *     ~/.cache on macOS/Linux).
+ *   - A Chromium executable: CNB_UAT_CHROMIUM if set (a set-but-invalid
+ *     path is an error, not a fallback — cache discovery is NOT attempted);
+ *     otherwise the newest chromium-* browser discovered in the platform's
+ *     ms-playwright cache directory (%LOCALAPPDATA%/ms-playwright on
+ *     Windows, ~/Library/Caches/ms-playwright on macOS,
+ *     ~/.cache/ms-playwright on Linux).
  *
  * Optional: CNB_UAT_PORT (default 8143), CNB_UAT_SHOTS (screenshot dir,
  * default <os tmpdir>/cnb-uat).
@@ -90,12 +92,23 @@ function findCachedChromium() {
   return null;
 }
 
-const EXE = process.env.CNB_UAT_CHROMIUM || findCachedChromium();
-if (!EXE || !existsSync(EXE)) {
-  console.error(
-    "No Chromium executable found. Set CNB_UAT_CHROMIUM to a Chromium/Chrome " +
-    "binary, or install one into the ms-playwright cache (npx playwright install chromium).");
-  process.exit(2);
+let EXE;
+if (process.env.CNB_UAT_CHROMIUM) {
+  EXE = process.env.CNB_UAT_CHROMIUM;
+  if (!existsSync(EXE)) {
+    // An explicitly configured path that is wrong is an error to surface,
+    // not something to silently paper over with cache discovery.
+    console.error(`CNB_UAT_CHROMIUM is set but does not exist: ${EXE}`);
+    process.exit(2);
+  }
+} else {
+  EXE = findCachedChromium();
+  if (!EXE) {
+    console.error(
+      "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
+      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+    process.exit(2);
+  }
 }
 await mkdir(SHOT_DIR, { recursive: true });
 

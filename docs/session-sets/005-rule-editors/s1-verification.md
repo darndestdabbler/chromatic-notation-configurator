@@ -57,3 +57,28 @@ The original task explicitly said: **“Touches: none outside cnb/”**.
 - **Issue** → Issue 2 appears properly resolved.  
   **Location** → `cnb/ui/staff-rule-editor.js`, `cnb/tests/cnb-staff-rule-editor-tests.js`  
   **Fix** → None.
+
+
+---
+
+# Session 1 verification — round 3 (round-2 residuals)
+
+**ISSUES FOUND**
+
+- **Issue** → The **VERIFIED** verdict overstates Residual 1: the implementation and the explanation do not fully match.  
+  **Location** → `cnb/uat/uat-staff-rule-editor.mjs` header comment; `const EXE = process.env.CNB_UAT_CHROMIUM || findCachedChromium();`; Residual 1 narrative in the response.  
+  **Fix** → Either:
+  - update the claim/comment to the exact implemented behavior, or
+  - change the code to match the claim.
+  
+  Specific mismatches:
+  - The header says `~/Library/Caches or ~/.cache on macOS/Linux`, but the code actually uses `~/Library/Caches/ms-playwright` and `~/.cache/ms-playwright`. That is not “exactly this behavior.”
+  - The response says the driver exits 2 “when neither yields an existing binary,” but the code does **not** check both when `CNB_UAT_CHROMIUM` is set. An invalid `CNB_UAT_CHROMIUM` causes immediate failure without attempting cache discovery.
+
+- **Issue** → The rerun/test-pass claims are unsupported by the material shown, so they should not be used to justify a session-level **VERIFIED** verdict on their own.  
+  **Location** → Residual 1 narrative: “all 29/29 checks passed; full unit suite still 377 passed, 0 failed.”  
+  **Fix** → Provide command/output evidence, or present those as unverified claims rather than proof.
+
+- **Issue** → Residual 2 appears adequately addressed; no error found there.  
+  **Location** → `docs/session-sets/005-rule-editors/s1-issues.json`  
+  **Fix** → None.
