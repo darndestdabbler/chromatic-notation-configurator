@@ -201,6 +201,38 @@ export const tests = [
     },
   },
   {
+    name: "key-scoped rules: validateForExport and generate() agree (both resolve with key=null)",
+    fn: () => {
+      // A key-scoped rule referencing a PATHLESS shape: with key=null the
+      // rule matches in neither Module 18's usedShapeNames() nor Module 11's
+      // usedShapes() (cnb-lilypond.js resolveAll passes key=null), so the
+      // shape is outside both used-shape sets — validateForExport stays
+      // valid AND generate() does not throw. This pins that no config can
+      // pass validateForExport and then hit generate()'s path-data throw.
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes["ghost"] = { displayName: "Ghost", svgPath: null, lilypondPath: null };
+      cfg.noteheadRules.push({
+        name: "G-major only",
+        priority: 2,
+        match: { pitchClasses: "all", durations: "all", keys: ["G"] },
+        apply: { shape: "ghost" },
+      });
+      const v = EX.validateForExport(cfg);
+      assert(v.valid === true, "key-scoped pathless shape does not block (unused at key=null)");
+      let generated = null;
+      try { generated = CNBLilypond.generate(cfg); } catch (err) {
+        throw new Error("generate() threw where validateForExport passed: " + err.message);
+      }
+      assert(typeof generated === "string" && generated.length > 0, "generate() succeeded");
+      // Flip the same rule to all keys: now BOTH sides flag the same defect.
+      cfg.noteheadRules[cfg.noteheadRules.length - 1].match.keys = "all";
+      const v2 = EX.validateForExport(cfg);
+      assert(v2.valid === false && v2.errors.some(e => e.includes('"ghost"') && e.includes("no path data")),
+        "all-keys pathless shape blocks in validateForExport");
+      assertThrows(() => CNBLilypond.generate(cfg), "no path data", "and generate() throws on the same config");
+    },
+  },
+  {
     name: "validateForExport: an underivable filename is a blocking error",
     fn: () => {
       const cfg = CNBConfig.createDefault();

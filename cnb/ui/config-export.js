@@ -84,7 +84,13 @@ function durationNames(config) {
 /**
  * Shape names the resolved notehead rules actually reference, restricted to
  * shapes that exist in config.shapes — the same set Module 11's Section A
- * emits and its generate() precondition checks. Resolution failures are
+ * emits and its generate() precondition checks. The resolution context is
+ * (pc, duration, key=null), matching Module 11's resolveAll()/usedShapes()
+ * exactly: key-scoped rules (match.keys other than "all") do not match a
+ * null key in EITHER module, so a shape reachable only under a specific key
+ * is outside both used-shape sets — generate() cannot throw for a shape
+ * this function did not consider. Pinned by the unit test "key-scoped
+ * rules: validateForExport and generate() agree". Resolution failures are
  * skipped (CNBConfig.validate() already reports rule-coverage errors).
  */
 function usedShapeNames(config) {
