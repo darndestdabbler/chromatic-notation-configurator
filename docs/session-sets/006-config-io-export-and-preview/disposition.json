@@ -1,18 +1,18 @@
 {
   "status": "completed",
-  "summary": "Session 2 of 3 complete: built Module 18 (cnb/ui/config-export.js) — the LilyPond export button wrapping the set-003 exporter behind a validate-first flow. deriveFilename uses meta.fileSuffix precedence with meta.configName fallback (throws when neither derives); validateForExport combines CNBConfig.validate errors/warnings, the exporter-side path-data check mirrored from CNBLilypond.generate (key=null parity pinned by test), and filename derivability; buildExport returns a blocked result on errors and verbatim generate() output on success; render() surfaces errors/warnings with a blocked-status modifier class. 26 unit tests (suite 524/524, legacy 240/240); visual test page hosts Modules 12+13+15+18 on one shared config; Playwright UAT 22/22 incl. Node-side byte-parity of the downloaded .ly with a direct generate() call and an editor-driven blocked/fixed flow. Cross-provider verification: VERIFIED in round 5 (round 1 code issue resolved by a parity-pinning test; rounds 2-5 documentary — the spec now carries an explicit Touches exemption for lifecycle records, and the review scope was proven as fixed range e1f25bf..f2f9ef6 with per-commit path evidence).",
+  "summary": "Session 3 of 3: built Module 19 (cnb/ui/preview-display.js) - pitch-class range from/to controls with an endpoint-drag validity rule, duration toggle pills pruned to the config vocabulary at build time with an explicit empty state, and a key selector shown whenever keys.enabled (disabled-with-note when definitions are empty; deferral note for Module 10 key rows) - driving CNBCollection.render() live via a getConfig accessor. Assembled cnb/index.html wiring Modules 12-19 to one page-owned shared config (editors write slices via onChange; preview/save-load/export read via accessors; load and SVG import re-seed editors). 31 unit tests (cnb suite 555/555, legacy 240/240). Golden-path UAT (cnb/uat/uat-golden-path.mjs, s3-uat.md): import SVG -> palette -> staff+notehead rules -> common properties -> preview controls -> save -> load back -> export, 30/30 checks with Node-side staff-geometry parity and byte-identical .ly export parity. change-log.md written for the set. Cross-provider verification: round 1 ISSUES_FOUND (2 issues: hidden enabled-but-empty key state; a test name overclaiming staff coverage), remediated in ef36cdf, round 2 VERIFIED.",
   "files_changed": [
-    "cnb/ui/config-export.js",
-    "cnb/tests/cnb-config-export-tests.js",
+    "cnb/ui/preview-display.js",
+    "cnb/tests/cnb-preview-display-tests.js",
     "cnb/tests/run-tests.js",
-    "cnb/test-pages/test-config-export.html",
-    "cnb/uat/uat-config-export.mjs",
-    "docs/session-sets/006-config-io-export-and-preview/spec.md",
+    "cnb/index.html",
+    "cnb/uat/uat-golden-path.mjs",
     "docs/session-sets/006-config-io-export-and-preview/session-state.json",
     "docs/session-sets/006-config-io-export-and-preview/session-events.jsonl",
     "docs/session-sets/006-config-io-export-and-preview/activity-log.json",
-    "docs/session-sets/006-config-io-export-and-preview/s2-uat.md",
-    "docs/session-sets/006-config-io-export-and-preview/s2-verification.md",
+    "docs/session-sets/006-config-io-export-and-preview/s3-uat.md",
+    "docs/session-sets/006-config-io-export-and-preview/change-log.md",
+    "docs/session-sets/006-config-io-export-and-preview/s3-verification.md",
     "docs/session-sets/006-config-io-export-and-preview/disposition.json"
   ],
   "verification_method": "api",
@@ -24,7 +24,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 3 (Preview Display, Module 19 + app shell assembly + golden-path UAT + change-log.md) continues the same integration layer; sessions 1-2 established the shared-config UI-shell pattern, the checked-in UAT driver conventions, and now a spec-level Touches exemption for lifecycle records."
+      "specifics": "Set 006 is complete and VERIFIED (all 3 sessions). The same claude-code/anthropic orchestrator closed sessions 1-3 with 1-2 remediation rounds each and holds the working context for set 007 (end-to-end pipeline verification through the real chromatic-notation-base engine), whose hard prerequisite (set 003) and practical prerequisite (this set) are both complete."
     }
   },
   "blockers": [],
