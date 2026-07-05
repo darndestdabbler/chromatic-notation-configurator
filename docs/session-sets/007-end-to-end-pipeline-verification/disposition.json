@@ -1,0 +1,31 @@
+{
+  "status": "completed",
+  "summary": "Session 1 (diagnostic) of the shared release gate: reproduced the Kite 4-369 golden-baseline notation as cnb/fixtures/kite-4-369-config.json, exported .ly via BOTH the full UI golden path (cnb/uat/uat-kite-pipeline.mjs, 11/11 checks, download byte-identical to headless CNBLilypond.generate()) and the headless driver, rendered through the lilypond-chromatic-notation-base engine, and diffed against the golden joy-to-the-world baseline using the engine's own harvest + 101-assertion tooling. Catalog (s1-discrepancy-catalog.md): D1 BLOCKER missing use-procedure-model emission; D2 MAJOR staff-line-positions half-staff-space factor-2 unit error; D3 cosmetic -0.0000 path text; E1 engine-repo stale tests score. Isolation proof: with only the two one-line D1/D2 patches applied to a scratchpad copy, the round-trip render scores 74 passed / 0 failed on the engine's golden assertion spec (identical to the golden reference) with all 57 noteheads matching in color/bbox/position. Fixes land in Session 2 per spec ('this session is diagnostic'). Suites clean: cnb 555/555, legacy 240/240.",
+  "files_changed": [
+    "cnb/fixtures/kite-4-369-config.json",
+    "cnb/fixtures/export-kite-4-369.mjs",
+    "cnb/fixtures/joy-to-the-world-configurator.ly",
+    "cnb/uat/uat-kite-pipeline.mjs",
+    "docs/session-sets/007-end-to-end-pipeline-verification/spec.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/session-state.json",
+    "docs/session-sets/007-end-to-end-pipeline-verification/session-events.jsonl",
+    "docs/session-sets/007-end-to-end-pipeline-verification/activity-log.json",
+    "docs/session-sets/007-end-to-end-pipeline-verification/s1-discrepancy-catalog.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/s1-verification.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/disposition.json"
+  ],
+  "verification_method": "api",
+  "verification_message_ids": [],
+  "next_orchestrator": {
+    "engine": "claude-code",
+    "provider": "anthropic",
+    "model": "claude-fable-5",
+    "effort": "medium",
+    "reason": {
+      "code": "continue-current-trajectory",
+      "specifics": "Session 2 fixes the two cataloged exporter bugs (D1 use-procedure-model emission, D2 staff-position x2) in cnb-lilypond.js, re-runs the round-trip to 74/74 with zero hand patches as the set's UAT pass, and writes the README walkthrough + change-log.md; same orchestrator retains the full round-trip context and engine-repo coordination notes."
+    }
+  },
+  "blockers": [],
+  "verification_verdict": "VERIFIED"
+}
