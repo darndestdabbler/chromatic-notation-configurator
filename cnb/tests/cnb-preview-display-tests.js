@@ -8,12 +8,16 @@
  * DOM: control structure, the live Module 10 preview (real CNBCollection
  * under the stub), duration pill toggling down to the explicit empty
  * state, the range endpoint-drag rule, key selection with the deferral
- * note, setState validation, redraw() following host config changes, and
- * the collection injection seam.
+ * note (including the enabled-but-no-definitions visible empty state),
+ * setState validation, redraw() following host config changes (duration
+ * vocabulary and background staff geometry, the latter cross-checked
+ * against CNBStaff.getPositions), and the collection injection seam.
  */
 
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBStaff } from "../src/cnb-staff.js";
+import { CNBCollection } from "../src/cnb-collection.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -87,6 +91,27 @@ function findOne(el, token, label) {
     throw new Error(`${label || token}: expected exactly 1 .${token}, found ${all.length}`);
   }
   return all[0];
+}
+
+/** All descendants (depth-first) whose class ATTRIBUTE equals the value
+ *  (SVG elements set class via setAttribute, not the className property). */
+function findAllByClassAttr(el, cls) {
+  const out = [];
+  for (const child of el.children || []) {
+    if (typeof child.getAttribute === "function" && child.getAttribute("class") === cls) out.push(child);
+    out.push(...findAllByClassAttr(child, cls));
+  }
+  return out;
+}
+
+/** Count all descendants (depth-first) with the given stub tag name. */
+function countTag(el, tag) {
+  let n = 0;
+  for (const child of el.children || []) {
+    if (child.tag === tag) n++;
+    n += countTag(child, tag);
+  }
+  return n;
 }
 
 const PVD = CNBPreviewDisplay;
@@ -409,6 +434,23 @@ export const tests = [
     },
   },
   {
+    name: "render: keys enabled with EMPTY definitions — section stays visible with a disabled (none) select and an explicit empty-definitions note; options.keys null",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.definitions = [];
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        const keyWrap = findOne(api.root, "cnb-pvd-key");
+        const select = findOne(keyWrap, "cnb-pvd-key-select");
+        assertEqual(select.children.map(o => o.textContent), ["(none)"], "only the (none) option");
+        assert(select.disabled === true, "select disabled");
+        const note = findOne(keyWrap, "cnb-pvd-key-note");
+        assert(note.textContent.includes("nothing to select yet"), "empty-definitions note visible");
+        assertEqual(api.getOptions().keys, null);
+      });
+    },
+  },
+  {
     name: "render: a selected key survives the config disabling keys (section hidden, keys null) and returns when re-enabled",
     fn: () => {
       const cfg = keyedConfig();
@@ -458,7 +500,7 @@ export const tests = [
     },
   },
   {
-    name: "render: redraw() follows host config changes — a new duration definition appears as a pill, staff pattern changes re-render the preview",
+    name: "render: redraw() follows host config changes — a new duration definition appears as a pill",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       withDomStub(container => {
@@ -472,6 +514,30 @@ export const tests = [
         assertEqual(pills.map(p => p.getAttribute("data-duration")),
           ["crotchet", "minim", "semibreve", "breve", "longa"]);
         assertEqual(api.getState().durations, ["crotchet"], "selection unchanged");
+      });
+    },
+  },
+  {
+    name: "render: redraw() follows host config changes — a staff pattern change re-renders the preview's background staff (line count matches CNBStaff.getPositions on the same config)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        const bgLineCount = () => {
+          const bg = findAllByClassAttr(api.root, "staff-lines-bg");
+          assertEqual(bg.length, 1, "one background staff SVG for the single row");
+          return countTag(bg[0], "line");
+        };
+        const expectedFor = () => CNBStaff.getPositions(cfg, CNBCollection.gridRange(
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])).length;
+        const before = expectedFor();
+        assertEqual(bgLineCount(), before, "default 4-8 staff line count");
+        cfg.staff.semitonePattern = [3, 6, 9];
+        cfg.staff.semitonesPerStaffSpace = 3;
+        api.redraw();
+        const after = expectedFor();
+        assert(after !== before, `precondition: pattern change alters the line count (${before} vs ${after})`);
+        assertEqual(bgLineCount(), after, "3-6-9 staff line count after redraw");
       });
     },
   },

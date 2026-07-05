@@ -26,13 +26,16 @@
  *     duration restores the selection. Deselecting every pill is allowed:
  *     the preview area then shows an explicit .cnb-pvd-empty message
  *     instead of a collection — an honest empty state, not a guessed row.
- *   - Key selection renders only when config.keys.enabled is true and key
- *     definitions exist (spec step 1: "(if keys.enabled) key selection").
- *     The chosen key is passed to CNBCollection.render() as options.keys =
- *     [name]; Module 10 accepts the option but renders key rows with
- *     key = null (deferred per architecture plan §5 Module 10 "Key rows
- *     (future)"), and the visible .cnb-pvd-key-note states exactly that so
- *     the control never overclaims what the preview shows. A selected key
+ *   - Key selection renders whenever config.keys.enabled is true (spec
+ *     step 1: "(if keys.enabled) key selection"). With key definitions
+ *     present, the chosen key is passed to CNBCollection.render() as
+ *     options.keys = [name]; Module 10 accepts the option but renders key
+ *     rows with key = null (deferred per architecture plan §5 Module 10
+ *     "Key rows (future)"), and the visible .cnb-pvd-key-note states
+ *     exactly that so the control never overclaims what the preview
+ *     shows. When keys are enabled but config.keys.definitions is empty,
+ *     the section stays visible with a disabled "(none)" select and an
+ *     explicit note that there is nothing to select yet. A selected key
  *     that the current config no longer defines is retained in state and
  *     pruned at build time, like durations.
  *   - Module 19 does not own config state — the host does ("the UI shell
@@ -54,8 +57,9 @@
  *   ├── div.cnb-pvd-controls
  *   │   ├── div.cnb-pvd-range      (from/to selects over PCs 0–12)
  *   │   ├── div.cnb-pvd-durations  (one toggle pill per duration name)
- *   │   └── div.cnb-pvd-key        (only when keys.enabled with definitions:
- *   │                               select + deferral note)
+ *   │   └── div.cnb-pvd-key        (only when keys.enabled: select +
+ *   │                               deferral note, or a disabled select +
+ *   │                               empty-definitions note)
  *   ├── div.cnb-pvd-empty          (message when no duration is selected;
  *   │                               absent otherwise)
  *   └── div.cnb-pvd-preview        (Module 10 output; absent when empty)
@@ -296,10 +300,11 @@ export const CNBPreviewDisplay = {
       return wrap;
     }
 
-    // ── Key selection (only when the config enables keys) ─────────────────
+    // ── Key selection (whenever the config enables keys) ──────────────────
     function drawKey() {
-      const names = CNBPreviewDisplay.keyNames(getConfig());
-      if (names.length === 0) return null;
+      const config = getConfig();
+      if (!(((config || {}).keys || {}).enabled)) return null;
+      const names = CNBPreviewDisplay.keyNames(config);
       const wrap = el("div", "cnb-pvd-key");
       wrap.appendChild(el("span", "cnb-pvd-key-label", "Key"));
       const select = el("select", "cnb-pvd-key-select");
@@ -313,6 +318,16 @@ export const CNBPreviewDisplay = {
         select.appendChild(option);
       }
       select.value = names.includes(state.key) ? state.key : "";
+      if (names.length === 0) {
+        // Keys enabled but nothing defined: keep the section visible and
+        // explain the empty state instead of hiding the control.
+        select.disabled = true;
+        wrap.appendChild(select);
+        wrap.appendChild(el("span", "cnb-pvd-key-note",
+          "Keys are enabled but config.keys.definitions is empty — " +
+          "nothing to select yet."));
+        return wrap;
+      }
       select.onchange = (e) => {
         const v = valueFrom(e, select);
         state.key = v === "" ? null : v;
