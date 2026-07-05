@@ -36,6 +36,7 @@ const TEST_FILES = [
   "./cnb-palette-editor-tests.js",
   "./cnb-staff-rule-editor-tests.js",
   "./cnb-notehead-rule-editor-tests.js",
+  "./cnb-common-props-editor-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────
