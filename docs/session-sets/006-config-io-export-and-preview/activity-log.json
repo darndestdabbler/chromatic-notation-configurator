@@ -20,6 +20,14 @@
       "dateTime": "2026-07-05T06:14:48.337910-04:00",
       "description": "Built Module 17 (cnb/ui/config-io.js): JSON save with configName-derived filename and plan 4.11 created/modified stamping, load via CNBConfig.merge over defaults (open-keyed map sections replace) + validate; 31 unit tests (round-trip fidelity incl. custom-shapes config, malformed-file handling, render() UI on stub DOM) all passing (496 total); test page hosting Module 15 + Module 17 on shared config state; Playwright UAT driver cnb/uat/uat-config-io.mjs 19/19 checks passed (edit-save-reload-load round trip incl. real download capture, second-save timestamp behavior, malformed load).",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/config-save-load-module",
+      "dateTime": "2026-07-05T06:21:50.821136-04:00",
+      "description": "Round-1 verification remediation. Final counts supersede the step-1 entry (which was logged before two later commits added tests): cnb-config-io-tests.js has 34 unit tests and the full suite is 498 passed / 0 failed (464 pre-existing + 34 new); legacy suite 240/240. Fixes: (a) map-section replacement guarded to plain objects (null/wrong-typed values keep merge defaults) + test; (b) render() save/load paths now invoke the host callback BEFORE redraw so the filename preview reflects the adopted (loaded) config + regression test; UAT re-run 19/19.",
+      "status": "complete"
     }
   ]
 }
