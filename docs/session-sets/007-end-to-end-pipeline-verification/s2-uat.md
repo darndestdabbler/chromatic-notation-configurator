@@ -1505,3 +1505,280 @@ console.log(`differing pixels: ${result.differing} of ${result.total} (${(100 * 
 console.log(`max RGB channel delta: ${result.maxDelta}`);
 console.log("RESULT: " + (result.differing === 0 ? "PIXEL-IDENTICAL" : "DIFFERS (red overlay written)"));
 ```
+
+---
+
+# Addendum A (round-2 remediation): per-fix isolation reruns
+
+The spec's step-1 wording is "re-running the round-trip from Session 1
+after each fix to confirm it's resolved without introducing a new one."
+During the session the three fixes were implemented together and the
+round-trip was re-run once on the combined result (transcripts 1–16
+above) — the accurate statement of what happened. To supply the per-fix
+evidence the step asks for, the runs below isolate each fix's effect on
+the rendered output using the same text-level isolation technique as
+session 1's accepted hand-patch run (two hand-edited lines proved D1+D2
+were the only functional discrepancies), applied in the forward
+direction to the final export:
+
+- **Variant A — "after the D1 fix only":** the final export with the D2
+  and D5 emissions reverted to their pre-fix values (staff positions
+  `'(-3 -2 -1 1 2 3)`, anchors in semitone units `2.7`/`±1.095`).
+- **Variant B — "after D1+D2":** the final export with only the D5
+  emission reverted.
+- **Final (D1+D2+D5):** transcripts 6–13 above (74/74, exhaustive diff
+  D3-only, 0 differing pixels).
+
+Together with session 1's as-generated baseline (191/191 elements
+differing, 7.68 % of pixels differing, config silently ignored), the
+progression confirms each fix resolves its own symptom without
+introducing a new discrepancy:
+
+
+## A1. Variant A: build (revert D2+D5 emissions in the final export)
+
+Working directory: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip`
+
+```
+$ bash -c diff kite-4-369-from-configurator.ly iso-d1/kite-4-369-from-configurator.ly; echo "diff exit: $?"
+65,68c65,68
+<      (cons 'crotchet-up   '(0 . 0.9))
+<      (cons 'crotchet-down '(0 . -0.9))
+<      (cons 'minim-up      '(-0.365 . 0.9))
+<      (cons 'minim-down    '(0.365 . -0.9))))
+---
+>      (cons 'crotchet-up   '(0 . 2.7))
+>      (cons 'crotchet-down '(0 . -2.7))
+>      (cons 'minim-up      '(-1.095 . 2.7))
+>      (cons 'minim-down    '(1.095 . -2.7))))
+72,75c72,75
+<      (cons 'crotchet-up   '(0 . 0.9))
+<      (cons 'crotchet-down '(0 . -0.9))
+<      (cons 'minim-up      '(-0.365 . 0.9))
+<      (cons 'minim-down    '(0.365 . -0.9))))
+---
+>      (cons 'crotchet-up   '(0 . 2.7))
+>      (cons 'crotchet-down '(0 . -2.7))
+>      (cons 'minim-up      '(-1.095 . 2.7))
+>      (cons 'minim-down    '(1.095 . -2.7))))
+107c107
+< #(set! cnb:staff-line-positions '(-6 -4 -2 2 4 6))
+---
+> #(set! cnb:staff-line-positions '(-3 -2 -1 1 2 3))
+diff exit: 1
+exit: 0
+```
+
+## A2. Variant A: render
+
+Working directory: `/d/Projects/lilypond-chromatic-notation-base`
+
+```
+$ lilypond -dbackend=svg -I C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1 -o C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/out C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/joy-to-the-world-configurator.ly
+GNU LilyPond 2.24.2 (running Guile 2.2)
+Changing working directory to: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1'
+Processing `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/joy-to-the-world-configurator.ly'
+Parsing...
+Interpreting music...[8][16]
+Preprocessing graphical objects...
+Finding the ideal number of pages...
+Fitting music on 1 page...
+Drawing systems...
+warning: ignoring unsupported formats (pdf)
+Success: compilation successfully completed
+exit: 0
+```
+
+## A3. Variant A: harvest + exhaustive diff vs golden
+
+Working directory: `/d/Projects/lilypond-chromatic-notation-base`
+
+```
+$ bash -c python tools/harvest_svg.py 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/out.svg' -o 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/harvest.json' --pretty && cd 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip' && python exhaustive_diff.py golden-harvest.json iso-d1/harvest.json | head -30
+Wrote 197 elements to C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1/harvest.json
+golden elements: 191   roundtrip elements: 191
+only in golden: 0 []
+only in roundtrip: 0 []
+
+per-type diff totals (differing / total):
+  barline          19/19
+  beam             17/17
+  clef             4/4
+  dots             11/11
+  flag             7/7
+  key-signature    4/4
+  ledger-line      1/1
+  notehead         57/57
+  slur             12/12
+  staff-symbol     1/1
+  stem             57/57
+  time-signature   1/1
+
+differing elements: 191 of 191 common
+  bl-10 [barline] visual.bbox.x: golden=74.085 ours=74.361
+  bl-10 [barline] visual.bbox.y: golden=31.973 ours=35.064
+  bl-10 [barline] visual.bbox.h: golden=10.5 ours=5.25
+  bl-11 [barline] visual.bbox.x: golden=95.645 ours=95.692
+  bl-11 [barline] visual.bbox.y: golden=31.973 ours=35.064
+  bl-11 [barline] visual.bbox.h: golden=10.5 ours=5.25
+  bl-12 [barline] visual.bbox.y: golden=31.973 ours=35.064
+  bl-12 [barline] visual.bbox.h: golden=10.5 ours=5.25
+  bl-13 [barline] visual.bbox.x: golden=53.366 ours=53.727
+  bl-13 [barline] visual.bbox.y: golden=49.156 ours=52.714
+  bl-13 [barline] visual.bbox.h: golden=10.5 ours=5.25
+exit: 0
+```
+
+## A4. Variant A: visual pixel diff vs golden (4x)
+
+Working directory: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip`
+
+```
+$ node visual_diff.mjs golden.svg iso-d1/out.svg iso-d1/visual-diff.png
+raster: 478x676 = 323128 pixels at 4x on white
+differing pixels: 47594 of 323128 (14.7291 %)
+max RGB channel delta: 255
+RESULT: DIFFERS (red overlay written)
+exit: 0
+```
+
+## B1. Variant B: build (revert D5 emission only)
+
+Working directory: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip`
+
+```
+$ bash -c diff kite-4-369-from-configurator.ly iso-d1d2/kite-4-369-from-configurator.ly; echo "diff exit: $?"
+65,68c65,68
+<      (cons 'crotchet-up   '(0 . 0.9))
+<      (cons 'crotchet-down '(0 . -0.9))
+<      (cons 'minim-up      '(-0.365 . 0.9))
+<      (cons 'minim-down    '(0.365 . -0.9))))
+---
+>      (cons 'crotchet-up   '(0 . 2.7))
+>      (cons 'crotchet-down '(0 . -2.7))
+>      (cons 'minim-up      '(-1.095 . 2.7))
+>      (cons 'minim-down    '(1.095 . -2.7))))
+72,75c72,75
+<      (cons 'crotchet-up   '(0 . 0.9))
+<      (cons 'crotchet-down '(0 . -0.9))
+<      (cons 'minim-up      '(-0.365 . 0.9))
+<      (cons 'minim-down    '(0.365 . -0.9))))
+---
+>      (cons 'crotchet-up   '(0 . 2.7))
+>      (cons 'crotchet-down '(0 . -2.7))
+>      (cons 'minim-up      '(-1.095 . 2.7))
+>      (cons 'minim-down    '(1.095 . -2.7))))
+diff exit: 1
+exit: 0
+```
+
+## B2. Variant B: render
+
+Working directory: `/d/Projects/lilypond-chromatic-notation-base`
+
+```
+$ lilypond -dbackend=svg -I C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2 -o C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/out C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/joy-to-the-world-configurator.ly
+GNU LilyPond 2.24.2 (running Guile 2.2)
+Changing working directory to: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2'
+Processing `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/joy-to-the-world-configurator.ly'
+Parsing...
+Interpreting music...[8][16]
+Preprocessing graphical objects...
+Finding the ideal number of pages...
+Fitting music on 1 page...
+Drawing systems...
+warning: ignoring unsupported formats (pdf)
+Success: compilation successfully completed
+exit: 0
+```
+
+## B3. Variant B: harvest + exhaustive diff vs golden
+
+Working directory: `/d/Projects/lilypond-chromatic-notation-base`
+
+```
+$ bash -c python tools/harvest_svg.py 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/out.svg' -o 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/harvest.json' --pretty && cd 'C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip' && python exhaustive_diff.py golden-harvest.json iso-d1d2/harvest.json | head -30
+Wrote 195 elements to C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip/iso-d1d2/harvest.json
+golden elements: 191   roundtrip elements: 191
+only in golden: 0 []
+only in roundtrip: 0 []
+
+per-type diff totals (differing / total):
+  barline          15/19
+  beam             15/17
+  clef             0/4
+  dots             9/11
+  flag             7/7
+  key-signature    0/4
+  ledger-line      0/1
+  notehead         53/57
+  slur             12/12
+  staff-symbol     0/1
+  stem             57/57
+  time-signature   0/1
+
+differing elements: 168 of 191 common
+  bl-10 [barline] visual.bbox.x: golden=74.085 ours=74.122
+  bl-11 [barline] visual.bbox.x: golden=95.645 ours=95.628
+  bl-13 [barline] visual.bbox.x: golden=53.366 ours=53.372
+  bl-14 [barline] visual.bbox.x: golden=79.164 ours=79.153
+  bl-16 [barline] visual.bbox.x: golden=35.458 ours=35.436
+  bl-17 [barline] visual.bbox.x: golden=57.036 ours=57.093
+  bl-18 [barline] visual.bbox.x: golden=81.345 ours=81.402
+  bl-19 [barline] visual.bbox.x: golden=99.643 ours=99.682
+  bl-2 [barline] visual.bbox.x: golden=38.918 ours=39.013
+  bl-3 [barline] visual.bbox.x: golden=53.984 ours=54.087
+  bl-4 [barline] visual.bbox.x: golden=70.074 ours=70.1
+exit: 0
+```
+
+## B4. Variant B: visual pixel diff vs golden (4x)
+
+Working directory: `C:/Users/denmi/AppData/Local/Temp/claude/d--Projects-chromatic-notation-configurator/66bf030f-2796-49c6-b9c5-3e89aec12a31/scratchpad/roundtrip`
+
+```
+$ node visual_diff.mjs golden.svg iso-d1d2/out.svg iso-d1d2/visual-diff.png
+raster: 478x676 = 323128 pixels at 4x on white
+differing pixels: 7561 of 323128 (2.3399 %)
+max RGB channel delta: 230
+RESULT: DIFFERS (red overlay written)
+exit: 0
+```
+
+### Addendum A summary — per-fix progression against the golden baseline
+
+| State | Exhaustive element diff | Visual pixel diff (4×) | Symptom visible |
+|---|---|---|---|
+| Session 1 as-generated (no fixes) | 191/191 differ | 7.68 % (s1 record) | notation config silently ignored (vector model): default black noteheads, staff half-height |
+| Variant A — after D1 only (A1–A4) | 191/191 differ | 14.7291 % | config now applied (kite shapes/colors render) but staff at half height (D2) and stems misattached (D5) shift every element |
+| Variant B — after D1+D2 (B1–B4) | 168/191 differ — 57/57 stems, 53/57 noteheads, 58 spacing-shifted others | 2.3399 % | staff geometry correct; stems attach 3× too far out (D5, semitone-unit anchors), disturbing note spacing |
+| Final — after D1+D2+D5 (transcripts 6–13) | 21/191 — all D3 path-text-only | **0.0000 % (0 pixels, both 4× and 16×)** | none |
+
+Each fix resolves its own cataloged symptom, and the final combined state
+introduces no new discrepancy — the confirmation the spec's step 1 asks
+for, supplied per-fix.
+
+---
+
+# Addendum B (round-2 remediation): human visual UAT sign-off
+
+Per the Session Set Configuration (`requiresUAT: true` — "a human must
+visually diff rendered output against the golden baseline",
+`uatScope: per-set`, `uatStyle: ad-hoc`), the operator performed the
+visual diff on 2026-07-05:
+
+- **Review package** (regenerable from the checked-in fixtures via the
+  transcripts above + `raster.mjs`, 4× Chromium raster on white):
+  `C:\temp\cnb-007-uat\golden-baseline.png`,
+  `C:\temp\cnb-007-uat\configurator-roundtrip.png`, plus both source
+  SVGs. The two PNG rasters are **byte-identical** (`cmp` exit 0) —
+  consistent with the automated 0-differing-pixels result.
+- **Operator attestation (verbatim selection):** "Attest: matches golden"
+  — the operator visually compared the renders and confirmed the
+  Configurator round-trip output matches the golden baseline (Kite 4-369
+  "Joy to the World": kite noteheads, skyblue/rose/black palette, 6-line
+  3-6-9 staves), recorded at the operator's direction in this record.
+
+This completes the per-set UAT pass: automated structural + visual
+equivalence (transcripts 1–16), per-fix isolation evidence (Addendum A),
+and the human visual sign-off (this addendum).
