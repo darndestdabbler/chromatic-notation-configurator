@@ -1,15 +1,18 @@
 {
   "schemaVersion": 4,
   "sessionSetName": "006-config-io-export-and-preview",
-  "status": "not-started",
+  "status": "in-progress",
   "sessions": [
     {
       "number": 1,
       "title": "Session 1",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "in-progress",
+      "startedAt": "2026-07-05T06:04:30.450599-04:00",
       "completedAt": null,
-      "orchestrator": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
       "verificationVerdict": null
     },
     {

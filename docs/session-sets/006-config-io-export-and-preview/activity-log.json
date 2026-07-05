@@ -1,0 +1,25 @@
+{
+  "sessionSetName": "006-config-io-export-and-preview",
+  "createdDate": "2026-07-05T10:04:30.454364+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-05T10:04:30.455356+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/config-save-load-module",
+      "dateTime": "2026-07-05T06:14:48.337910-04:00",
+      "description": "Built Module 17 (cnb/ui/config-io.js): JSON save with configName-derived filename and plan 4.11 created/modified stamping, load via CNBConfig.merge over defaults (open-keyed map sections replace) + validate; 31 unit tests (round-trip fidelity incl. custom-shapes config, malformed-file handling, render() UI on stub DOM) all passing (496 total); test page hosting Module 15 + Module 17 on shared config state; Playwright UAT driver cnb/uat/uat-config-io.mjs 19/19 checks passed (edit-save-reload-load round trip incl. real download capture, second-save timestamp behavior, malformed load).",
+      "status": "complete"
+    }
+  ]
+}
