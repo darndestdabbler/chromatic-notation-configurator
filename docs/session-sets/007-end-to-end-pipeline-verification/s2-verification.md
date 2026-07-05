@@ -17,3 +17,18 @@
 - **Not an issue** → Leaving **D3** unfixed and handing off **D6/E1** is consistent with the prompt’s ownership/disposition summary.  
   **Location** → Reviewed response’s D3/D6/E1 handling.  
   **Fix** → None.
+
+
+---
+
+# Session 2 verification — round 2 (2026-07-05, remediation)
+
+**VERIFIED**
+
+- **Issue 1** → Resolved. `s2-uat.md` Addendum B now documents the required human visual UAT, identifies the reviewed artifacts, and records explicit operator sign-off (`"Attest: matches golden"`). That closes the exact evidence gap from round 1.
+
+- **Issue 2** → Resolved. The remediation corrects the prior overstatement by explicitly saying the session itself had one final combined rerun, then adds per-fix isolation reruns (Variant A / Variant B) to supply the missing intermediate evidence. That addresses both parts of the round-1 issue: inaccurate wording and lack of per-fix confirmation.
+
+- **Issue 3** → Resolved. The response now includes the previously missing catalog authority, quoting the session-1 discrepancy catalog verbatim and showing that it explicitly called for the two product-doc updates. That removes the earlier “scope drift unless authorized” problem and supports the use of the session spec’s “or wherever discrepancies were rooted” language.
+
+The claimed session-level verdict **VERIFIED** is supported for the limited question asked here: whether the three round-1 issues were resolved.
