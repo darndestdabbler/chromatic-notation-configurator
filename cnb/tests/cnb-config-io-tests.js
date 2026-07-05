@@ -507,6 +507,22 @@ export const tests = [
     }),
   },
   {
+    name: "render load: filename preview reflects the LOADED config once the host adopts it",
+    fn: () => withDomStub((container) => {
+      // Host wiring like the test page: onLoad replaces the shared config.
+      let hostConfig = CNBConfig.createDefault();
+      const api = IO.render(container, {
+        getConfig: () => hostConfig,
+        onLoad: (config) => { hostConfig = config; },
+      });
+      assertEqual(findAll(api.root, "cnb-cio-filename")[0].textContent,
+        "default-4-8-system.cnb.json", "preview before load");
+      api.loadText(IO.buildSaveFile(customConfig(), { now: NOW_1 }).json);
+      assertEqual(findAll(api.root, "cnb-cio-filename")[0].textContent,
+        "kite-3-6-9.cnb.json", "preview shows the loaded config's derived name");
+    }),
+  },
+  {
     name: "render: a failed load keeps the previous successful load's validation display",
     fn: () => withDomStub((container) => {
       const api = IO.render(container, { getConfig: () => CNBConfig.createDefault() });

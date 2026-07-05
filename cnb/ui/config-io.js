@@ -345,8 +345,10 @@ export const CNBConfigIO = {
         return null;
       }
       statusText = "Saved as " + built.filename;
-      redraw();
+      // Callback first, redraw second: the redraw reads getConfig(), which
+      // only reflects this action once the host has adopted the new state.
       onSave(built.config, { filename: built.filename, json: built.json });
+      redraw();
       return built;
     }
 
@@ -364,8 +366,11 @@ export const CNBConfigIO = {
       lastValidation = { validation: result.validation, notes: result.notes };
       statusText = "Loaded" + (sourceName ? " " + sourceName : "") +
         " — " + (((result.config.meta || {}).configName) || "(unnamed config)");
-      redraw();
+      // Callback first, redraw second: the filename preview reads
+      // getConfig(), so it shows the LOADED config's name only after the
+      // host has adopted it.
       onLoad(result.config, { validation: result.validation, notes: result.notes });
+      redraw();
       return result;
     }
 
