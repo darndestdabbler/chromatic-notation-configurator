@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "007-end-to-end-pipeline-verification",
+  "createdDate": "2026-07-05T14:32:19.899762+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-05T14:32:19.899762+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/pipeline-round-trip",
+      "dateTime": "2026-07-05T10:49:29.240263-04:00",
+      "description": "Full pipeline round-trip executed: Kite 4-369 golden-baseline notation reproduced as cnb/fixtures/kite-4-369-config.json; .ly exported via BOTH the full UI golden path (cnb/uat/uat-kite-pipeline.mjs: Module 17 load -> editors/preview adoption -> Module 18 export button, 11/11 checks, download byte-identical to headless CNBLilypond.generate()) and the headless driver (cnb/fixtures/export-kite-4-369.mjs); rendered through the lilypond-chromatic-notation-base engine (LilyPond 2.24.2, -dbackend=svg) with the same Joy to the World music as the golden score (cnb/fixtures/joy-to-the-world-configurator.ly). Repo test suites re-run clean: cnb 555 passed 0 failed; legacy 240/240.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/baseline-diff-catalog",
+      "dateTime": "2026-07-05T10:49:29.240263-04:00",
+      "description": "Rendered output diffed against the golden baseline via the engine repo harvest_svg.py per-element diff and its 101-assertion golden spec: as-generated export compiles but is silently ignored (D1) and staff renders at half height (D2); with the two one-line patches applied diagnostically, 74 passed / 0 failed - identical to the golden reference - leaving only cosmetic path-text D3. Catalog with root-cause attribution written to s1-discrepancy-catalog.md: D1 missing use-procedure-model emission (BLOCKER, this repo, sectionB), D2 staff-line-positions half-staff-space factor-2 unit error (MAJOR, this repo, computeStaffLinePositions; architecture plan 4.3 is the erroneous doc), D3 -0.0000 vs 0 path text (cosmetic, no fix), E1 stale tests/joy-to-the-world.ly color names (engine repo coordination item). Fixes deferred to session 2 per spec.",
+      "status": "complete"
+    }
+  ]
+}
