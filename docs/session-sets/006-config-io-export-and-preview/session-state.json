@@ -30,10 +30,13 @@
     {
       "number": 3,
       "title": "Session 3",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "in-progress",
+      "startedAt": "2026-07-05T07:25:56.044592-04:00",
       "completedAt": null,
-      "orchestrator": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
       "verificationVerdict": null
     }
   ]
