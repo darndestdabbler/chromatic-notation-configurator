@@ -3,7 +3,27 @@
  * end-to-end pipeline round-trip.
  *
  * Drives the assembled application (cnb/index.html) through the golden
- * path for the Kite 4-369 baseline-reproduction fixture:
+ * path for the Kite 4-369 baseline-reproduction fixture, in two phases.
+ *
+ * PHASE A — author the system through the set-004/005 editors, from the
+ * default config (proving the spec's "design a notation system ... using
+ * the assembled UI" step, not just config loading):
+ *   A1. Import kite-down.svg and kite-up.svg (toolkit format, pre-baked
+ *       data-lilypond-* and stem placemarker rects) via Module 16.
+ *   A2. Select the 3-6-9 staff pattern via Module 13.
+ *   A3. Select repeat representation mode via Module 15.
+ *   A4. Author the custom CB-safe 3-color palette (skyblue/rose/black,
+ *       per-PC cycling pool) via Module 12.
+ *   A5. Author the three Kite rules via Module 14 (default → kite-down;
+ *       hollow on odd PCs; kite-up on PCs 1,2,5,6,9,10).
+ *   A6. Export via Module 18 and compare against the fixture-driven
+ *       export: identical staff geometry, whitespace-normalized-identical
+ *       path definitions, identical Section C (shape, hollow, attachment,
+ *       color hex) mapping for all 12 PCs — with the known, documented
+ *       import-pipeline divergences pinned literally (anchor unit bug D5,
+ *       one-pair minim anchors D6, no engine-settings/meta editors).
+ *
+ * PHASE B — load the complete fixture (the release-gate artifact path):
  *   1. Load cnb/fixtures/kite-4-369-config.json via the Module 17 config
  *      loader (real file input).
  *   2. Confirm the shared config adopted the fixture and every editor
@@ -15,8 +35,10 @@
  *      UI golden path and the headless export produce the same artifact
  *      that is then rendered through the engine repo.
  *
- * The captured download is written to <shots>/kite-4-369-ui-export.ly so
- * the render/diff step can consume the UI-exported artifact directly.
+ * The captured Phase B download is written to
+ * <shots>/kite-4-369-ui-export.ly so the render/diff step can consume the
+ * UI-exported artifact directly; the Phase A authored export is written to
+ * <shots>/kite-4-369-ui-authored.ly.
  *
  * Dependency resolution, env vars, and exit codes are identical to
  * uat-golden-path.mjs (playwright-core + ms-playwright cache Chromium;
@@ -156,6 +178,205 @@ await page.waitForSelector(".cnb-preview-display");
 
 const fullConfig = async () => JSON.parse(await page.textContent("#state-json"));
 const cardCount = async () => page.$$eval(".cnb-pvd-preview .pc-col", els => els.length);
+const fixtureJson = JSON.parse(await readFile(FIXTURE, "utf8"));
+const fixtureExport = CNBLilypond.generate(fixtureJson);
+const norm = (s) => s.replace(/\s+/g, " ").trim();
+
+// Section C extraction: pc → { shape, hollow, attach, colorHex-or-symbol }.
+// Color symbols carry the hex as a suffix (toSchemeSymbol), so mapping
+// equality is judged on the hex suffix (naming prefix differs between the
+// fixture's stored schemeSymbols and nearestColorName on a custom palette).
+function sectionCMap(ly) {
+  const map = {};
+  const clauseRe = /\(\(?= pc (\d+)\)[\s\S]*?\(shape\s+\.\s+([\w-]+)\)[\s\S]*?\(color\s+\.\s+([\w-]+)\)[\s\S]*?\(hollow\s+\.\s+([\w#f-]+)\)[\s\S]*?\(attachment\s+\.\s+([\w#f-]+)\)/g;
+  let m;
+  while ((m = clauseRe.exec(ly)) !== null) {
+    const colorSym = m[3];
+    const hexMatch = colorSym.match(/([0-9a-f]{6})$/);
+    map[Number(m[1])] = {
+      shape: m[2],
+      colorHex: hexMatch ? hexMatch[1] : colorSym,
+      hollow: m[4],
+      attach: m[5],
+    };
+  }
+  return map;
+}
+
+// ═════════════════════ PHASE A — author the system in the UI ═══════════════
+
+// ── A1: import the two kite shapes (Module 16, toolkit SVG contract) ────────
+for (const name of ["kite-down", "kite-up"]) {
+  await page.setInputFiles('#svg-importer-host input[type="file"]', {
+    name: `${name}.svg`, mimeType: "image/svg+xml",
+    buffer: await readFile(path.join(ROOT, "cnb", "fixtures", `${name}.svg`)),
+  });
+  await page.waitForFunction((n) =>
+    document.getElementById("import-status").textContent.includes(`"${n}"`), name);
+}
+let cfg = await fullConfig();
+check("AUTHOR/import: both kite shapes reach the shared config with pre-baked LilyPond paths (whitespace-normalized-identical to the fixture's) and semitoneHeight 4",
+  !!cfg.shapes["kite-up"] && !!cfg.shapes["kite-down"] &&
+  cfg.shapes["kite-up"].semitoneHeight === 4 &&
+  norm(cfg.shapes["kite-up"].lilypondPath) === norm(fixtureJson.shapes["kite-up"].lilypondPath) &&
+  norm(cfg.shapes["kite-down"].lilypondPath) === norm(fixtureJson.shapes["kite-down"].lilypondPath) &&
+  norm(cfg.shapes["kite-up"].lilypondHollowPath) === norm(fixtureJson.shapes["kite-up"].lilypondHollowPath) &&
+  norm(cfg.shapes["kite-down"].lilypondHollowPath) === norm(fixtureJson.shapes["kite-down"].lilypondHollowPath),
+  JSON.stringify(Object.keys(cfg.shapes)));
+check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0, -270)/(0, 270) — bottom-center of stem-up, top-center of stem-down",
+  cfg.shapes["kite-up"].anchors.crotchetUp.x === 0 &&
+  cfg.shapes["kite-up"].anchors.crotchetUp.y === -270 &&
+  cfg.shapes["kite-up"].anchors.crotchetDown.y === 270,
+  JSON.stringify(cfg.shapes["kite-up"].anchors));
+// D6 pin (documented importer contract, module header: "One up/down pair,
+// so crotchet and minim anchors are identical at import time"): the fixture
+// carries the engine reference's distinct minim offsets; import cannot.
+check("AUTHOR/import PIN(D6): imported minim anchors equal crotchet anchors (one-pair toolkit contract), while the fixture carries the reference's distinct minim x-offsets -0.365/0.365",
+  cfg.shapes["kite-up"].anchors.minimUp.x === cfg.shapes["kite-up"].anchors.crotchetUp.x &&
+  fixtureJson.shapes["kite-up"].lilypondAnchors.minimUp.x === -0.365 &&
+  fixtureJson.shapes["kite-up"].lilypondAnchors.minimDown.x === 0.365);
+// D5 pin (unit bug, this repo): toLilypondAnchors divides by SVG-units-per-
+// SEMITONE only, so 270 native → 2.7 "LilyPond" units; the engine expects
+// staff-space units (0.9 at 3 semitones per staff space).
+check("AUTHOR/import PIN(D5): imported lilypondAnchors are in SEMITONE units — crotchetUp y = 2.7, not the staff-space 0.9 the engine reference uses (unit bug, cataloged for session 2)",
+  cfg.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 2.7 &&
+  fixtureJson.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 0.9,
+  JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
+
+// ── A2: staff pattern 3-6-9 (Module 13) ─────────────────────────────────────
+await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');
+// ── A3: repeat representation mode (Module 15) ──────────────────────────────
+await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
+cfg = await fullConfig();
+check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat mode reach the shared config",
+  JSON.stringify(cfg.staff.semitonePattern) === "[3,6,9]" &&
+  cfg.staff.semitonesPerStaffSpace === 3 &&
+  cfg.staff.midpoint === 12 &&
+  cfg.durations.representationMode === "repeat");
+
+// ── A4: custom CB-safe palette, 3-color cycling pool (Module 12) ────────────
+await page.click(".cnb-pal-tab:has-text('Colorblind-safe')");
+await page.click(".cnb-pal-custom-select");
+// Normalize the custom pool to exactly 3 cells, then set the Kite colors.
+await page.evaluate(() => {
+  const cells = () => document.querySelectorAll(".cnb-pal-custom-cell").length;
+  while (cells() > 3) document.querySelector(".cnb-pal-custom-remove").click();
+  while (cells() < 3) document.querySelector(".cnb-pal-custom-add").click();
+});
+const KITE_POOL = ["#50b4e9", "#cc79a7", "#000000"];
+for (let i = 0; i < 3; i++) {
+  await page.evaluate(([idx, hex]) => {
+    const input = document.querySelectorAll(".cnb-pal-custom-input")[idx];
+    input.value = hex;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, [i, KITE_POOL[i]]);
+}
+cfg = await fullConfig();
+check("AUTHOR/palette: custom CB-safe pool cycles per-PC exactly like the fixture — all 12 primary hexes match, and cbSafeColors is the identity mapping",
+  cfg.palette.colors.length === 12 &&
+  cfg.palette.colors.every((c, pc) =>
+    c.hex.toLowerCase() === fixtureJson.palette.colors[pc].hex.toLowerCase()) &&
+  cfg.palette.cbSafeColors.every((c, pc) => c.hex === cfg.palette.colors[pc].hex),
+  JSON.stringify((cfg.palette.colors || []).slice(0, 4)));
+
+// ── A5: the three Kite rules (Module 14) ────────────────────────────────────
+// Rule 0 (Default): point its shape at kite-down.
+await page.selectOption('.cnb-nre-rule-card[data-rule-index="0"] .cnb-nre-shape-select', "kite-down");
+// Rule 1 ("Sharps are hollow", [1,3,6,8,10]) → odd semitones [1,3,5,7,9,11]:
+for (const pc of [6, 8, 10, 5, 7, 9, 11]) {
+  await page.click(`.cnb-nre-rule-card[data-rule-index="1"] .cnb-nre-pc-pill[data-value="${pc}"]`);
+}
+// Rule 2 (new): kite-up on PCs 1,2,5,6,9,10 (mod-4 = 1|2 cycle).
+await page.click(".cnb-nre-rule-add");
+await page.check('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-shape input');
+await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-shape-select', "kite-up");
+for (const pc of [0, 3, 4, 7, 8, 11]) {
+  await page.click(`.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-pc-pill[data-value="${pc}"]`);
+}
+cfg = await fullConfig();
+check("AUTHOR/rules: 3 rules in the shared config with the Kite match sets (hollow [1,3,5,7,9,11]; kite-up [1,2,5,6,9,10])",
+  cfg.noteheadRules.length === 3 &&
+  JSON.stringify(cfg.noteheadRules[1].match.pitchClasses) === "[1,3,5,7,9,11]" &&
+  JSON.stringify(cfg.noteheadRules[2].match.pitchClasses) === "[1,2,5,6,9,10]" &&
+  cfg.noteheadRules[2].apply.shape === "kite-up",
+  JSON.stringify(cfg.noteheadRules.map(r => ({ m: r.match.pitchClasses, a: r.apply }))));
+// Strongest equivalence check: resolve all 12 PCs through Module A on BOTH
+// configs in this Node process — shape and hollow must match the fixture's.
+{
+  const { CNBConfig } = await import("../src/cnb-config.js");
+  let allMatch = true;
+  const detail = [];
+  for (let pc = 0; pc < 12; pc++) {
+    const a = CNBConfig.resolveNotehead(cfg, pc, "crotchet", null);
+    const f = CNBConfig.resolveNotehead(fixtureJson, pc, "crotchet", null);
+    if (a.shape !== f.shape || a.hollow !== f.hollow) {
+      allMatch = false;
+      detail.push(`pc${pc}: ${a.shape}/${a.hollow} vs ${f.shape}/${f.hollow}`);
+    }
+  }
+  check("AUTHOR/rules: CNBConfig.resolveNotehead on the authored config matches the fixture for all 12 PCs (shape + hollow)",
+    allMatch, detail.join("; "));
+}
+check("AUTHOR: engine.falseHollow remains at its default (false) — no engine-settings editor exists in the as-built UI (set-005 verified CPE scope: durations + representation mode); the fixture supplies it for the release-gate artifact",
+  cfg.engine.falseHollow === false && fixtureJson.engine.falseHollow === true);
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-007-s1-authored.png"), fullPage: true });
+
+// ── A6: export the AUTHORED system and compare with the fixture export ──────
+const [authoredDownload] = await Promise.all([
+  page.waitForEvent("download"),
+  page.click(".cnb-cex-export"),
+]);
+const authoredPath = path.join(SHOT_DIR, "kite-4-369-ui-authored.ly");
+await authoredDownload.saveAs(authoredPath);
+const authored = await readFile(authoredPath, "utf8");
+
+check("AUTHOR/export: staff geometry lines identical to the fixture export (same sps 3 and — equally affected by cataloged bug D2 — the same emitted positions)",
+  authored.includes("#(set! cnb:semitones-per-staff-space 3)") &&
+  authored.includes("#(set! cnb:staff-line-positions '(-3 -2 -1 1 2 3))") &&
+  fixtureExport.includes("#(set! cnb:staff-line-positions '(-3 -2 -1 1 2 3))"));
+{
+  const pathDef = (ly, sym) => {
+    const m = ly.match(new RegExp(`#\\(define cnb:${sym} '\\([\\s\\S]*?\\)\\)\\)`));
+    return m ? norm(m[0]) : `MISSING ${sym}`;
+  };
+  const symsEqual = ["kite-up-path", "kite-up-cutout-path", "kite-down-path", "kite-down-cutout-path"]
+    .every(sym => pathDef(authored, sym) === pathDef(fixtureExport, sym));
+  check("AUTHOR/export: all four Section A path definitions are whitespace-normalized-identical to the fixture export's",
+    symsEqual);
+}
+{
+  const am = sectionCMap(authored);
+  const fm = sectionCMap(fixtureExport);
+  let same = Object.keys(fm).length === 12 && Object.keys(am).length === 12;
+  const detail = [];
+  for (let pc = 0; pc < 12 && same !== false; pc++) {
+    const a = am[pc], f = fm[pc];
+    if (!a || !f || a.shape !== f.shape || a.hollow !== f.hollow ||
+        a.attach !== f.attach || a.colorHex !== f.colorHex) {
+      same = false;
+      detail.push(`pc${pc}: ${JSON.stringify(a)} vs ${JSON.stringify(f)}`);
+    }
+  }
+  check("AUTHOR/export: Section C mapping (shape, hollow, attachment, color hex) identical to the fixture export for all 12 PCs",
+    same, detail.join("; "));
+}
+check("AUTHOR/export: authored colors registered with the exact Kite hexes (symbol prefix from nearestColorName may differ from the fixture's stored names; the hex suffix and registered value are what the engine consumes)",
+  /\(cnb:register-color! '[\w-]*50b4e9 "#50b4e9"\)/.test(authored) &&
+  /\(cnb:register-color! '[\w-]*cc79a7 "#cc79a7"\)/.test(authored) &&
+  authored.includes(`#(cnb:register-color! 'black-000000 "#000000")`));
+check("AUTHOR/export PIN(D5+D6): authored attachments carry the import pipeline's semitone-unit, one-pair anchors ('(0 . 2.7) for every point ±) while the fixture export carries the reference values ('(0 . 0.9), minim ±0.365)",
+  authored.includes("(cons 'crotchet-up   '(0 . 2.7))") &&
+  authored.includes("(cons 'minim-up      '(0 . 2.7))") &&
+  fixtureExport.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
+  fixtureExport.includes("(cons 'minim-up      '(-0.365 . 0.9))"));
+check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:false-hollow (engine default #f) and keeps the default config's meta (no meta editor exists to change it); the fixture export sets the Kite values for all three",
+  !authored.includes("cnb:false-hollow") &&
+  authored.includes('#(set! cnb:file-suffix "-Default48")') &&
+  authored.includes('#(set! cnb:notation-label "Default 4-8 System")') &&
+  fixtureExport.includes("#(set! cnb:false-hollow #t)") &&
+  fixtureExport.includes('#(set! cnb:file-suffix "-Kite-4-369-Procedure")'));
+
+// ═════════════════ PHASE B — the release-gate fixture path ═════════════════
 
 // ── STEP 1: load the Kite 4-369 fixture through the Module 17 loader ────────
 await page.setInputFiles(".cnb-cio-file", FIXTURE);
@@ -164,7 +385,7 @@ await page.waitForFunction(() =>
 check("LOAD: config-io reports the fixture loaded and valid",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
 
-let cfg = await fullConfig();
+cfg = await fullConfig();
 check("LOAD: shared config adopted the Kite 4-369 system (pattern [3,6,9], sps 3, midpoint 12, repeat mode, falseHollow, both kite shapes, 3 rules)",
   JSON.stringify(cfg.staff.semitonePattern) === "[3,6,9]" &&
   cfg.staff.semitonesPerStaffSpace === 3 &&
@@ -222,7 +443,6 @@ check("PARITY: downloaded .ly is byte-identical to CNBLilypond.generate() on the
   direct !== null && direct === exported,
   directErr || `lengths ${exported.length} vs ${direct ? direct.length : "n/a"}`);
 
-const fixtureJson = JSON.parse(await readFile(FIXTURE, "utf8"));
 let fromFixture = null, fixtureErr = null;
 try { fromFixture = CNBLilypond.generate(fixtureJson); } catch (err) { fixtureErr = err.message; }
 check("PARITY: downloaded .ly is byte-identical to generate() on the fixture file itself (same artifact the headless driver renders through the engine)",
