@@ -32,25 +32,128 @@ PDF / SVG / PNG output
 ```
 
 **Related repositories:**
-- [chromatic-notation-base](https://github.com/YOUR_USERNAME/chromatic-notation-base) — LilyPond engine that renders music from exported config files
-- [music-glyph-toolkit](https://github.com/YOUR_USERNAME/music-glyph-toolkit) — Inkscape extension for authoring notehead shapes
+- [lilypond-chromatic-notation-base](https://github.com/darndestdabbler/lilypond-chromatic-notation-base) — LilyPond engine that renders music from exported config files
+- [inkscape-music-glyph-toolkit](https://github.com/darndestdabbler/inkscape-music-glyph-toolkit) — Inkscape extension for authoring notehead shapes
 
 ## Getting Started
 
 ### Prerequisites
 
 - A modern web browser (Chrome, Firefox, Safari, Edge)
-- [Node.js](https://nodejs.org/) 18+ (for running tests only)
+- [Node.js](https://nodejs.org/) 18+ (for running tests and serving the app locally)
 
 ### Usage
 
-Open `index.html` in a browser. No build step required.
+The application is `cnb/index.html`. It uses ES modules, so serve the
+repository over HTTP rather than opening the file directly:
+
+```bash
+# from the repository root — either of:
+npx serve .
+python -m http.server 8000
+```
+
+then open `http://localhost:8000/cnb/index.html` (port per your server).
+No build step required.
 
 ### Running Tests
 
 ```bash
 node cnb/tests/run-tests.js
 ```
+
+## End-to-End Walkthrough: From Shape to Rendered Score
+
+This is the full three-tool pipeline in practice — the same path used to
+verify the ecosystem's shared release gate (a Configurator-designed system
+rendered through the engine, pixel-identical to the engine repo's golden
+baseline). This section covers the design half; the render half lives in
+the [engine repository's README](https://github.com/darndestdabbler/lilypond-chromatic-notation-base)
+— link, don't duplicate.
+
+### 1. Install the Inkscape extension and author a shape
+
+1. Install the [Music Glyph Toolkit](https://github.com/darndestdabbler/inkscape-music-glyph-toolkit):
+   copy `music_glyph_toolkit.inx` and `music_glyph_toolkit.py` into your
+   Inkscape user extensions folder (Windows:
+   `%APPDATA%\inkscape\extensions\`; Mac/Linux:
+   `~/.config/inkscape/extensions/`) and restart Inkscape. The tool
+   appears under **Extensions → Music Typography → Music Glyph Toolkit…**
+2. Draw your notehead (and an optional hollow cutout), convert everything
+   to paths (`Ctrl+Shift+C`), and run the toolkit in Notehead mode. It
+   normalizes the SVG onto the 100-units-per-semitone grid and bakes in
+   the metadata the Configurator reads: `data-semitone-height`, stem
+   placemarker rects (attachment anchors), and pre-baked
+   `data-lilypond-notehead` / `data-lilypond-hollow` path strings.
+
+### 2. Import the shape into the Configurator
+
+Open the app (see Usage above) and load your SVG in the **Shape
+Importer** panel. The importer extracts the SVG paths, the LilyPond
+paths, and the stem anchors (stored in semitone units; the exporter
+converts them to staff-space units at export time). Warnings are shown
+for shapes missing `data-lilypond-*` attributes — those fall back to
+automatic path conversion at export.
+
+### 3. Design the notation system
+
+- **Staff/Ledger Rule Editor** — pick a staff pattern (which semitones
+  within the octave carry lines, e.g. 4-8 or 3-6-9) and ledger templates.
+  The derived panel shows the exact LilyPond geometry the export will
+  emit.
+- **Common Properties** — durations and representation mode (distinct
+  shapes per duration, or repeat-count noteheads).
+- **Palette Editor** — pick or author a palette; every palette carries a
+  colorblind-safe alternative that the exported file can switch to at
+  render time.
+- **Notehead Rule Editor** — cumulative, priority-ordered rules assigning
+  shape / hollow / color per pitch class.
+
+The preview re-renders live from the same JSON config the export reads.
+
+### 4. Save and export
+
+- **Save JSON** to keep an editable design (load it back any time).
+- **Export .ly** produces the LilyPond configuration file (validated
+  first; blocking errors are listed in the panel). The export follows
+  [CNB-LY-EXPORT-SPEC](docs/CNB-LY-EXPORT-SPEC-v1_2.md).
+
+### 5. Render it with the engine
+
+In a clone of
+[lilypond-chromatic-notation-base](https://github.com/darndestdabbler/lilypond-chromatic-notation-base),
+place the exported file next to a score that includes the engine and your
+config:
+
+```lilypond
+\version "2.24.2"
+\include "my-exported-config.ly"   % includes ChromaticNotationBase.ly itself
+
+\score { ... your music ... }
+```
+
+then run `lilypond -dbackend=svg my-score.ly` (LilyPond 2.24+). See the
+engine README for engine installation, options (e.g.
+`cnb:use-accessible-colors`), and its test tooling.
+
+### A worked example, checked in
+
+The Kite 4-369 system reproduction used for release-gate verification is
+in this repo:
+
+- `cnb/fixtures/kite-4-369-config.json` — the complete design as a
+  loadable config
+- `cnb/fixtures/export-kite-4-369.mjs` — headless export driver
+  (`node cnb/fixtures/export-kite-4-369.mjs out.ly`)
+- `cnb/fixtures/joy-to-the-world-configurator.ly` — a score rendering the
+  engine repo's golden music through the exported config
+- `cnb/uat/uat-kite-pipeline.mjs` — browser driver that authors the same
+  system through the editors and proves the UI download is byte-identical
+  to the headless export
+
+Rendered through the engine, this export passes the engine's golden
+assertion suite (74/74) and is pixel-identical to the engine repo's
+`joy-to-the-world` golden baseline.
 
 ## Architecture
 
@@ -106,8 +209,8 @@ The same JSON config drives both the live preview and the LilyPond export.
 ## Project Structure
 
 ```
-├── index.html                       Application entry point
 ├── cnb/
+│   ├── index.html                   Application entry point
 │   ├── src/                         Module source files
 │   │   ├── cnb-config.js            Config schema + validation
 │   │   ├── cnb-music.js             Music theory utilities
@@ -122,30 +225,33 @@ The same JSON config drives both the live preview and the LilyPond export.
 │   │   ├── cnb-card.js              Octave chord card
 │   │   ├── cnb-collection.js        Card collection layout
 │   │   └── cnb-lilypond.js          LilyPond exporter
+│   ├── ui/                          UI components (editors, importer, config IO)
 │   ├── tests/
 │   │   ├── run-tests.js             Test runner
 │   │   └── cnb-*-tests.js           Per-module test files
-│   └── test-pages/
-│       └── test-*.html              Visual test pages per module
-├── ui/                              UI components (Phase 5)
-├── assets/
-│   ├── shapes/                      Built-in SVG shape files
-│   └── palettes/                    Palette definitions
+│   ├── test-pages/
+│   │   └── test-*.html              Visual test pages per module
+│   ├── fixtures/                    Kite 4-369 release-gate fixtures
+│   └── uat/                         Browser UAT drivers (Playwright)
 ├── legacy/                          Monolithic predecessor (reference)
 │   ├── chromatic-configurator.html
 │   ├── configurator-core.js
 │   ├── music-color-palettes.js
 │   └── run-tests.js
-├── docs/
-│   ├── CNB-ARCHITECTURE-PLAN-v2.md
-│   └── CNB-LY-EXPORT-SPEC-v1_2.md
-└── reference/
-    └── Kite-4-369-Notation-Procedure.ly
+└── docs/
+    ├── CNB-ARCHITECTURE-PLAN-v2.md
+    ├── CNB-LY-EXPORT-SPEC-v1_2.md
+    └── session-sets/                Dabbler session records
 ```
 
 ## Current Status
 
-The Configurator is being rebuilt with a modular architecture. The legacy monolithic version (`legacy/chromatic-configurator.html`) is functional with 240 core logic tests and 53/54 manual UI tests passing. The new modular build is in progress — see the architecture plan for the build order.
+The modular rebuild is complete through the ecosystem's shared release
+gate: all rendering, export, and UI modules are built (556 unit tests
+passing), and a Configurator-designed system (Kite 4-369) exported through
+the UI renders through the engine pixel-identical to the engine repo's
+golden baseline. The legacy monolithic version (`legacy/`) is kept as
+reference with its 240 core logic tests still passing.
 
 Development sessions are managed with Dabbler session sets (`docs/session-sets/`) — see `docs/dabbler/start-here.md` for the session workflow. The `docs/batons/` and `docs/checklists/` directories are historical records of the pre-Dabbler session workflow (sessions 1–9), kept for reference; they are not part of the active workflow.
 

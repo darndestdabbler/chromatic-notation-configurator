@@ -175,8 +175,12 @@ shapes: {
     lilypondPath: null,
     lilypondHollowPath: null,
 
-    // LilyPond stem attachment (in LilyPond staff-space units)
-    // Converted from SVG units at import time.
+    // LilyPond stem attachment, in SEMITONE units (canonical).
+    // Converted from SVG units at import time (÷ SVG-units-per-semitone,
+    // Y-inverted). The exporter converts on to staff-space units at
+    // EXPORT time (÷ staff.semitonesPerStaffSpace) — the target unit
+    // depends on the staff config, which can change after import
+    // (007-s1 discrepancy D5; corrected 007-s2).
     lilypondAnchors: {
       crotchetUp:   { x: 0.6889, y: 0 },
       crotchetDown: { x: -0.6889, y: 0 },
@@ -260,14 +264,22 @@ staff: {
 | `staff.lineDefaults.color` | B2 | `#(set! cnb:default-staff-line-color "...")` |
 
 **LilyPond staff-line-positions conversion:**
-The LY engine uses positions relative to center, in units of staff-spaces. The exporter converts:
+The LY engine uses positions relative to center, in HALF-staff-space units
+(LilyPond staff positions; engine `cnb/config.ly`, LY spec §5.1). The
+exporter converts:
 ```
 For each absolute semitone S in the expanded staff pattern:
-  lyPosition = (S - midpoint) / semitonesPerStaffSpace
+  lyPosition = 2 × (S - midpoint) / semitonesPerStaffSpace
 ```
 Example: 4-8 system, midpoint=12, sps=4. Staff at semi [4,8,16,20]:
-  → `[(4-12)/4, (8-12)/4, (16-12)/4, (20-12)/4]` = `[-2, -1, 1, 2]`
-  → `cnb:staff-line-positions '(-2 -1 1 2)`
+  → `[2×(4-12)/4, 2×(8-12)/4, 2×(16-12)/4, 2×(20-12)/4]` = `[-4, -2, 2, 4]`
+  → `cnb:staff-line-positions '(-4 -2 2 4)`
+
+> **Correction (007-s2):** this section originally omitted the ×2 factor
+> (emitting whole staff-spaces), which rendered the staff at half height —
+> cataloged as discrepancy D2 in session-set 007 session 1. The LY spec
+> §5.1 example (3-6-9 → `'(-6 -4 -2 2 4 6)`) was always consistent with
+> the engine and is the authoritative reference.
 
 ### 4.4 Ledger Lines
 
@@ -1309,6 +1321,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 
 | LY Variable | Default | Config Source | Emit Rule |
 |---|---|---|---|
+| `cnb:use-procedure-model` | `#f` | — (always `#t`: Configurator exports are procedure-model by construction; 007-s1 D1) | Always |
 | `cnb:semitones-per-staff-space` | 2 | `staff.semitonesPerStaffSpace` | Always |
 | `cnb:staff-line-positions` | `'(-4 -2 0 2 4)` | Computed from `staff.semitonePattern` + `staff.midpoint` | Always |
 | `cnb:false-hollow` | `#f` | `engine.falseHollow` | If changed |

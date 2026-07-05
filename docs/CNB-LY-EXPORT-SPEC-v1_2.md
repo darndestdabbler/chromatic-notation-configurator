@@ -1,8 +1,8 @@
 # CNB LilyPond Export Format Specification
 
-**Version:** 1.2 (Cumulative Rules & Accessible Color Switching)
-**Date:** February 24, 2026
-**Status:** Updated for cumulative notehead rules, palette-based color system, accessible color switching, and inline staff/ledger styling. Procedure model is the only model.
+**Version:** 1.2.1 (Cumulative Rules & Accessible Color Switching; 007 round-trip corrections)
+**Date:** July 5, 2026 (1.2: February 24, 2026)
+**Status:** Updated for cumulative notehead rules, palette-based color system, accessible color switching, and inline staff/ledger styling. Procedure model is the only model the Configurator exports — and, per 1.2.1 (D1), the export must say so explicitly: the ENGINE still defaults to its vector model, so `#(set! cnb:use-procedure-model #t)` is always emitted (§5.1).
 **Companion document:** CNB-PROJECT-PLAN-20260224.md
 **Reference implementation:** `Kite-4-369-Notation-Procedure.ly`
 
@@ -192,6 +192,9 @@ Only needed for custom off-key marks. Built-in marks do not need registration.
 ### 5.1 Always Emitted
 
 ```lilypond
+%% Model selection — Configurator exports drive the procedure model
+#(set! cnb:use-procedure-model #t)
+
 %% Staff geometry
 #(set! cnb:semitones-per-staff-space 3)
 #(set! cnb:staff-line-positions '(-6 -4 -2 2 4 6))
@@ -200,6 +203,19 @@ Only needed for custom off-key marks. Built-in marks do not need registration.
 #(set! cnb:file-suffix "-MyNotation")
 #(set! cnb:notation-label "My Notation System")
 ```
+
+**`cnb:use-procedure-model` (added 1.2.1; 007-s1 discrepancy D1):** the
+engine defaults this flag to `#f` (vector model) and silently ignores
+Sections A and C without it. Every Configurator export is procedure-model
+by construction, so the flag is emitted unconditionally, before the staff
+geometry block.
+
+**`cnb:staff-line-positions` units (clarified 1.2.1; 007-s1 discrepancy
+D2):** LilyPond staff positions are HALF-staff-spaces from the center.
+The Configurator converts each expanded absolute staff semitone S as
+`2 × (S − midpoint) / semitonesPerStaffSpace`. The example above (3-6-9
+at sps 3 → `'(-6 -4 -2 2 4 6)`) has always matched the engine; the
+architecture plan §4.3 originally omitted the ×2 and has been corrected.
 
 ### 5.2 Emit-If-Changed Settings
 
@@ -365,6 +381,7 @@ Warnings (non-blocking):
 
 | Variable | Type | Default | Required |
 |----------|------|---------|----------|
+| `cnb:use-procedure-model` | Boolean | `#f` | Always (`#t`) — **new 1.2.1** |
 | `cnb:semitones-per-staff-space` | Integer | `2` | Always |
 | `cnb:staff-line-positions` | List | `'(-4 -2 0 2 4)` | Always |
 | `cnb:false-hollow` | Boolean | `#f` | If changed |
@@ -396,6 +413,7 @@ Warnings (non-blocking):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **1.2.1** | **Jul 5, 2026** | **Session-set 007 corrections: `cnb:use-procedure-model #t` added to §5.1 Always Emitted and Appendix A (D1 — the engine defaults to the vector model and silently ignores Sections A/C without the flag); §5.1 documents the half-staff-space unit conversion `2 × (S − midpoint) / sps` for `cnb:staff-line-positions` (D2). Emitted attachment values in §4.4 remain staff-space units; the Configurator stores shape `lilypondAnchors` canonically in semitone units and converts ÷ sps at export time (D5).** |
 | 1.0 | Feb 21, 2026 | Initial specification |
 | 1.1 | Feb 23, 2026 | Inkscape extension integration. Vector model removed. Pre-baked LilyPond path support. |
 | **1.2** | **Feb 24, 2026** | **Cumulative notehead rules. Palette-based color naming (`nearestColorName`). Accessible color switching (`cnb:use-accessible-colors` conditional block in Section A). Section C uses `memv`/`let` grouping. Inline staff/ledger thickness as % of semitone height. Display-only settings (stem preview) clarified as non-exported.** |
