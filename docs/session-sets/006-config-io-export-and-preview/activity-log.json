@@ -1,7 +1,7 @@
 {
   "sessionSetName": "006-config-io-export-and-preview",
   "createdDate": "2026-07-05T10:04:30.454364+00:00",
-  "totalSessions": 0,
+  "totalSessions": 3,
   "entries": [
     {
       "sessionNumber": 1,
@@ -27,6 +27,14 @@
       "stepKey": "session-001/config-save-load-module",
       "dateTime": "2026-07-05T06:21:50.821136-04:00",
       "description": "Round-1 verification remediation. Final counts supersede the step-1 entry (which was logged before two later commits added tests): cnb-config-io-tests.js has 34 unit tests and the full suite is 498 passed / 0 failed (464 pre-existing + 34 new); legacy suite 240/240. Fixes: (a) map-section replacement guarded to plain objects (null/wrong-typed values keep merge defaults) + test; (b) render() save/load paths now invoke the host callback BEFORE redraw so the filename preview reflects the adopted (loaded) config + regression test; UAT re-run 19/19.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:39:07.167725-04:00",
+      "description": "Built cnb/ui/config-export.js (Module 18): validate-then-export flow (CNBConfig.validate + exporter-side path-data check + filename derivability; blocked on errors, proceeds with warnings), .ly download named per meta.fileSuffix/meta.configName precedence, verbatim CNBLilypond.generate output. 25 unit tests in cnb/tests/cnb-config-export-tests.js (registered in run-tests.js; suite 523/523, legacy 240/240). Visual test page cnb/test-pages/test-config-export.html hosting Modules 13+15+18 on shared config. Playwright UAT cnb/uat/uat-config-export.mjs executing docs/session-sets/006-config-io-export-and-preview/s2-uat.md: 20/20 checks incl. Node-side byte-parity with direct generate() and editor-driven blocked/fixed flow.",
       "status": "complete"
     }
   ]
