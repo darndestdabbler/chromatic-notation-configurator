@@ -13,3 +13,10 @@
   **Fix** → Remove that justification and either comply with the path constraint or document an explicit exception from the task owner.
 
 Read-only duration definitions and the repeat-mode preview using **base row + textual legend** are acceptable and should **not** be flagged as defects; both are consistent with the original task/spec wording.
+
+## Round 2 (2026-07-05) — remediation review
+
+- Issue → out-of-`cnb/` writes in `3c8f15f` → Fix acceptable. The submitted spec and procedure quotes provide explicit repository-governing authority for each non-`cnb/` artifact (`change-log.md`, `session-state.json`, `session-events.jsonl`, `activity-log.json`, `s3-uat.md`), resolving the prior scope objection.
+- Issue → pre-argued “should not be flagged” framing in the write-up → Fix acceptable. That framing is explicitly withdrawn and replaced with authority-based justification recorded in `s3-issues.json`.
+
+VERIFIED

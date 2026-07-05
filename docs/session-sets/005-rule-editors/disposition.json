@@ -1,16 +1,17 @@
 {
   "status": "completed",
-  "summary": "Session 2 of 005-rule-editors complete: built Module 14 (cnb/ui/notehead-rule-editor.js), the cumulative priority-ordered notehead rule editor. Create/edit/reorder rules with match (PC/duration/key pills) and sparse apply blocks (shape/hollow/color/off-key-mark enable toggles) per plan §4.5 partial-apply semantics; list order = application order with priority renumbered at emit. CNBConfig.resolveNotehead is surfaced live per pitch class in a resolved strip (duration + key context selectors, effective color and mark) and as actual noteheads via Module 6 in renderResolvedPreview. 44 unit tests in the Module 14 suite (421/421 total, legacy 240/240 untouched); DSL-style UAT checklist executed via checked-in Playwright driver, 34/34 checks passed. Cross-provider verification: round 1 ISSUES_FOUND (keys/offKeyMark editing gap, hex validation, scope adjudication), round 2 ISSUES_FOUND (two documentary points), round 3 VERIFIED.",
+  "summary": "Session 3/3: built Module 15 (cnb/ui/common-props-editor.js) — read-only duration definitions list, representationMode toggle with LY spec 6.1 inline help, repeatCounts editing (retain-in-state/prune-at-emit), full plan 4.10 engine block with emit-if-changed badges, and renderPreview() driving the Module 10 Card Collection mode-dependently (captioned per-duration rows vs. base row + repeat legend). 43 new unit tests (suite 464 passed, 0 failed); 24/24 Playwright UAT checks; change-log.md written for the set close-out. Verification: round 1 ISSUES_FOUND (scope adjudication only, no code defects), round 2 VERIFIED after documenting the task-owner exception for the mandated session-lifecycle records.",
   "files_changed": [
-    "cnb/ui/notehead-rule-editor.js",
-    "cnb/test-pages/test-notehead-rule-editor.html",
-    "cnb/tests/cnb-notehead-rule-editor-tests.js",
+    "cnb/ui/common-props-editor.js",
+    "cnb/tests/cnb-common-props-editor-tests.js",
     "cnb/tests/run-tests.js",
-    "cnb/uat/uat-notehead-rule-editor.mjs",
-    "docs/session-sets/005-rule-editors/s2-uat.md",
-    "docs/session-sets/005-rule-editors/s2-verification.md",
-    "docs/session-sets/005-rule-editors/s2-issues.json",
+    "cnb/test-pages/test-common-props-editor.html",
+    "cnb/uat/uat-common-props-editor.mjs",
     "docs/session-sets/005-rule-editors/activity-log.json",
+    "docs/session-sets/005-rule-editors/change-log.md",
+    "docs/session-sets/005-rule-editors/s3-uat.md",
+    "docs/session-sets/005-rule-editors/s3-issues.json",
+    "docs/session-sets/005-rule-editors/s3-verification.md",
     "docs/session-sets/005-rule-editors/session-events.jsonl",
     "docs/session-sets/005-rule-editors/session-state.json",
     "docs/session-sets/005-rule-editors/disposition.json"
@@ -24,7 +25,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 3 (Common Properties Editor, Module 15) is the final session of this set and follows the same editor conventions established in sessions 1-2; same engine/provider keeps the established render/onChange/UAT-driver patterns and verification-prompt lessons in play."
+      "specifics": "Set 005 is complete (all three rule editors VERIFIED). The next set, 006-config-io-export-and-preview, is unblocked and continues the same Phase 5 UI work on the same module conventions; no cost or blocker signals suggest switching engine or provider."
     }
   },
   "blockers": [],
