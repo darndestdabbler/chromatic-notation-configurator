@@ -1,18 +1,18 @@
 {
   "status": "completed",
-  "summary": "Session 1 of 3 (Config Save/Load, Module 17) complete. Built cnb/ui/config-io.js: JSON save with configName-derived filename (slug + .cnb.json, throws on underivable names) and plan 4.11 timestamp stamping (created on first save only, modified every save, host adopts the stamped config via onSave); load via parseConfigFile -> CNBConfig.merge over createDefault -> validate, with open-keyed map sections (shapes, lineOverrides, schemeSymbols, repeatCounts, keys.offKeyMark) replaced when provided as plain objects so save->load round-trips deep-equal. Loading never blocks on validation (export blocking is Module 18); malformed files are surfaced and leave app state untouched. 34 unit tests (498 total CNB, 240 legacy, all passing); test page hosts Module 15 + Module 17 on one shared config object; checked-in Playwright UAT driver 19/19 checks (edit -> save with real download capture -> reload -> load -> editor reflects reloaded state; second-save created preservation; malformed load). Verification: round 1 ISSUES_FOUND (scope adjudication, stale filename preview after load — fixed with callback-before-redraw + regression test, activity log count correction); round 2 VERIFIED.",
+  "summary": "Session 2 of 3 complete: built Module 18 (cnb/ui/config-export.js) — the LilyPond export button wrapping the set-003 exporter behind a validate-first flow. deriveFilename uses meta.fileSuffix precedence with meta.configName fallback (throws when neither derives); validateForExport combines CNBConfig.validate errors/warnings, the exporter-side path-data check mirrored from CNBLilypond.generate (key=null parity pinned by test), and filename derivability; buildExport returns a blocked result on errors and verbatim generate() output on success; render() surfaces errors/warnings with a blocked-status modifier class. 26 unit tests (suite 524/524, legacy 240/240); visual test page hosts Modules 12+13+15+18 on one shared config; Playwright UAT 22/22 incl. Node-side byte-parity of the downloaded .ly with a direct generate() call and an editor-driven blocked/fixed flow. Cross-provider verification: VERIFIED in round 5 (round 1 code issue resolved by a parity-pinning test; rounds 2-5 documentary — the spec now carries an explicit Touches exemption for lifecycle records, and the review scope was proven as fixed range e1f25bf..f2f9ef6 with per-commit path evidence).",
   "files_changed": [
-    "cnb/ui/config-io.js",
-    "cnb/tests/cnb-config-io-tests.js",
+    "cnb/ui/config-export.js",
+    "cnb/tests/cnb-config-export-tests.js",
     "cnb/tests/run-tests.js",
-    "cnb/test-pages/test-config-io.html",
-    "cnb/uat/uat-config-io.mjs",
+    "cnb/test-pages/test-config-export.html",
+    "cnb/uat/uat-config-export.mjs",
+    "docs/session-sets/006-config-io-export-and-preview/spec.md",
     "docs/session-sets/006-config-io-export-and-preview/session-state.json",
     "docs/session-sets/006-config-io-export-and-preview/session-events.jsonl",
     "docs/session-sets/006-config-io-export-and-preview/activity-log.json",
-    "docs/session-sets/006-config-io-export-and-preview/s1-uat.md",
-    "docs/session-sets/006-config-io-export-and-preview/s1-verification.md",
-    "docs/session-sets/006-config-io-export-and-preview/s1-issues.json",
+    "docs/session-sets/006-config-io-export-and-preview/s2-uat.md",
+    "docs/session-sets/006-config-io-export-and-preview/s2-verification.md",
     "docs/session-sets/006-config-io-export-and-preview/disposition.json"
   ],
   "verification_method": "api",
@@ -24,7 +24,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 1 closed VERIFIED in two rounds; session 2 (Config Export/Module 18, wrapping the set-003 CNBLilypond exporter behind a validate-then-export UI button) continues the same UI-shell integration pattern established here."
+      "specifics": "Session 3 (Preview Display, Module 19 + app shell assembly + golden-path UAT + change-log.md) continues the same integration layer; sessions 1-2 established the shared-config UI-shell pattern, the checked-in UAT driver conventions, and now a spec-level Touches exemption for lifecycle records."
     }
   },
   "blockers": [],
