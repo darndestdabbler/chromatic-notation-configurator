@@ -34,10 +34,21 @@
  *     validation ("PC n is not covered by any notehead rule") which the
  *     validation strip surfaces live — consistent with the modular design
  *     where the schema, not the UI, owns invariants.
- *   - `match.keys` is fixed at "all" (legacy: "Keys (V2 — all keys for
- *     now)") and `apply.offKeyMark` has no editing UI yet (plan §4.9 is
- *     future work); both are preserved verbatim through state → config
- *     round-trips when present in a loaded config.
+ *   - `match.keys` is editable against the key names defined in
+ *     `config.keys.definitions` (plan §4.9). The legacy UI pinned this at
+ *     "Keys (V2 — all keys for now)"; here the pills appear as soon as the
+ *     host config defines keys — with no definitions there is nothing to
+ *     narrow to, and the row says so. Key names present in a loaded rule
+ *     but absent from the definitions still get pills (union), so they
+ *     stay editable rather than being stranded.
+ *   - `apply.offKeyMark` is editable per §4.5's "false | mark identifier":
+ *     an enable toggle plus a mode select — "No mark" emits the explicit
+ *     `false`, "Mark identifier" emits a non-empty string edited in a text
+ *     input (seeded with the placeholder identifier "cross", the same
+ *     seed-then-edit pattern as the custom-color control's #000000). The
+ *     mark's *visual treatment* remains deferred (plan §11.4), so the
+ *     resolved strip and preview show the effective mark identifier as
+ *     text.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -47,11 +58,12 @@
  *         match: { pitchClasses: "all"|number[], durations: "all"|string[],
  *                  keys: "all"|string[] },
  *         apply: { shape?: string, hollow?: boolean,
- *                  color?: string|null, offKeyMark?: boolean|string }
+ *                  color?: string|null, offKeyMark?: false|string }
  *       }, ...
  *     ],
- *     previewDuration: string        // display-only: duration the resolved
- *   }                                // strip resolves for (not config data)
+ *     previewDuration: string,       // display-only: duration the resolved
+ *     previewKey: string|null        // strip resolves for, and the key
+ *   }                                // context (null = none) — not config data
  *
  * Selection-representation note: an explicit pitch-class list that happens
  * to contain all 12 PCs is NOT auto-collapsed to "all" (nor the reverse) —
@@ -118,6 +130,16 @@ function durationNames(config) {
   return (((config || {}).durations || {}).definitions || []).map(d => d.name);
 }
 
+/** Key names defined by a config (plan §4.9 keys.definitions). */
+function keyNames(config) {
+  return (((config || {}).keys || {}).definitions || []).map(d => d.name);
+}
+
+/** Same #RRGGBB rule Module A's validate() applies (LY spec §8 check 7). */
+function isValidHex(str) {
+  return typeof str === "string" && /^#[0-9A-Fa-f]{6}$/.test(str);
+}
+
 export const CNBNoteheadRuleEditor = {
 
   PC_LABELS,
@@ -159,12 +181,20 @@ export const CNBNoteheadRuleEditor = {
       }
       if (apply.hollow !== undefined) out.apply.hollow = !!apply.hollow;
       if (apply.color !== undefined) {
-        if (apply.color !== null && typeof apply.color !== "string") {
-          throw new Error(`Rule ${i + 1} has invalid apply.color ${JSON.stringify(apply.color)}`);
+        if (apply.color !== null && !isValidHex(apply.color)) {
+          throw new Error(
+            `Rule ${i + 1} has invalid apply.color ${JSON.stringify(apply.color)} — must be null (palette) or #RRGGBB`);
         }
         out.apply.color = apply.color;
       }
-      if (apply.offKeyMark !== undefined) out.apply.offKeyMark = deepClone(apply.offKeyMark);
+      if (apply.offKeyMark !== undefined) {
+        const mark = apply.offKeyMark;
+        if (mark !== false && !(typeof mark === "string" && mark.length > 0)) {
+          throw new Error(
+            `Rule ${i + 1} has invalid apply.offKeyMark ${JSON.stringify(mark)} — must be false or a mark identifier`);
+        }
+        out.apply.offKeyMark = mark;
+      }
       return out;
     });
   },
@@ -216,7 +246,7 @@ export const CNBNoteheadRuleEditor = {
     });
 
     const firstDuration = durationNames(config)[0];
-    return { rules, previewDuration: firstDuration || "crotchet" };
+    return { rules, previewDuration: firstDuration || "crotchet", previewKey: null };
   },
 
   /**
@@ -252,8 +282,8 @@ export const CNBNoteheadRuleEditor = {
    *   ├── div.cnb-nre-rules          (one card per rule, application order)
    *   │   └── div.cnb-nre-rule-card[data-rule-index]
    *   │       ├── div.cnb-nre-rule-head   (order no., name, move/remove)
-   *   │       ├── div.cnb-nre-match       (PC pills, duration pills, keys)
-   *   │       └── div.cnb-nre-apply       (shape / hollow / color toggles)
+   *   │       ├── div.cnb-nre-match       (PC / duration / key pills)
+   *   │       └── div.cnb-nre-apply       (shape / hollow / color / off-key mark)
    *   ├── button.cnb-nre-rule-add
    *   ├── div.cnb-nre-resolved       (live resolveNotehead strip, per PC)
    *   └── div.cnb-nre-validation     (CNBConfig.validate pass-through)
@@ -278,6 +308,13 @@ export const CNBNoteheadRuleEditor = {
 
     const shapeNames = Object.keys(baseConfig.shapes || {});
     const durNames = durationNames(baseConfig);
+    const keyVocab = keyNames(baseConfig);
+
+    // Pill vocabulary for a name-list dimension: the config's definitions
+    // plus any names already selected on the rule (union), so names loaded
+    // from a config that lacks their definition stay editable.
+    const nameVocab = (vocab, current) =>
+      [...new Set([...vocab, ...(current === "all" ? [] : current)])];
 
     const root = doc.createElement("div");
     root.className = "cnb-notehead-rule-editor";
@@ -418,10 +455,11 @@ export const CNBNoteheadRuleEditor = {
 
       const durRow = el("div", "cnb-nre-match-row cnb-nre-match-durs-row");
       durRow.appendChild(el("span", "cnb-nre-match-label", "Durations"));
+      const durValues = nameVocab(durNames, rule.match.durations);
       durRow.appendChild(matchPills(
         "cnb-nre-dur-pill",
-        durNames,
-        durNames,
+        durValues,
+        durValues,
         () => rule.match.durations,
         (v) => { rule.match.durations = v; },
       ));
@@ -429,8 +467,18 @@ export const CNBNoteheadRuleEditor = {
 
       const keyRow = el("div", "cnb-nre-match-row cnb-nre-match-keys-row");
       keyRow.appendChild(el("span", "cnb-nre-match-label", "Keys"));
-      keyRow.appendChild(el("span", "cnb-nre-keys-note",
-        rule.match.keys === "all" ? "All keys (key rules are future work)" : JSON.stringify(rule.match.keys)));
+      const keyValues = nameVocab(keyVocab, rule.match.keys);
+      keyRow.appendChild(matchPills(
+        "cnb-nre-key-pill",
+        keyValues,
+        keyValues,
+        () => rule.match.keys,
+        (v) => { rule.match.keys = v; },
+      ));
+      if (keyValues.length === 0) {
+        keyRow.appendChild(el("span", "cnb-nre-keys-note",
+          "No keys defined in config.keys.definitions — nothing to narrow to yet"));
+      }
       match.appendChild(keyRow);
       card.appendChild(match);
 
@@ -508,6 +556,54 @@ export const CNBNoteheadRuleEditor = {
           return wrap;
         }));
 
+      apply.appendChild(applyRow("cnb-nre-apply-mark", "Off-key mark",
+        rule.apply.offKeyMark !== undefined,
+        (on) => {
+          if (on) rule.apply.offKeyMark = false;   // explicit "no mark"
+          else delete rule.apply.offKeyMark;
+        },
+        () => {
+          const wrap = el("span", "cnb-nre-mark-control");
+          const mode = el("select", "cnb-nre-mark-mode");
+          for (const [value, text] of [["none", "No mark"], ["mark", "Mark identifier"]]) {
+            const o = el("option", null, text);
+            o.value = value;
+            if ((value === "mark") === (rule.apply.offKeyMark !== false)) o.selected = true;
+            mode.appendChild(o);
+          }
+          mode.value = rule.apply.offKeyMark === false ? "none" : "mark";
+          mode.onchange = (e) => {
+            // "cross" is a placeholder identifier the user edits — the same
+            // seed-then-edit pattern as the custom-color control's #000000.
+            rule.apply.offKeyMark = valueFrom(e, mode) === "none" ? false : "cross";
+            changed();
+          };
+          wrap.appendChild(mode);
+          if (rule.apply.offKeyMark !== false) {
+            const input = el("input", "cnb-nre-mark-input");
+            input.type = "text";
+            input.value = rule.apply.offKeyMark;
+            input.title = "Off-key mark identifier";
+            input.oninput = (e) => {
+              // Like name edits: update state and notify without a redraw so
+              // typing keeps focus. While the identifier is transiently
+              // invalid (empty), buildRules throws — hold the notification
+              // rather than emitting or silently repairing; the strips
+              // surface the error on the next redraw.
+              rule.apply.offKeyMark = valueFrom(e, input);
+              let slice;
+              try {
+                slice = CNBNoteheadRuleEditor.buildRules(state);
+              } catch (_) {
+                return;
+              }
+              onChange({ noteheadRules: slice }, deepClone(state));
+            };
+            wrap.appendChild(input);
+          }
+          return wrap;
+        }));
+
       card.appendChild(apply);
       return card;
     }
@@ -553,13 +649,33 @@ export const CNBNoteheadRuleEditor = {
       durSel.title = "Duration to resolve for";
       durSel.onchange = (e) => { state.previewDuration = valueFrom(e, durSel); changed(); };
       head.appendChild(durSel);
+
+      const keySel = el("select", "cnb-nre-resolved-key");
+      const noKey = el("option", null, "(no key)");
+      noKey.value = "";
+      if (state.previewKey === null) noKey.selected = true;
+      keySel.appendChild(noKey);
+      for (const k of keyVocab) {
+        const o = el("option", null, k);
+        o.value = k;
+        if (k === state.previewKey) o.selected = true;
+        keySel.appendChild(o);
+      }
+      keySel.value = state.previewKey === null ? "" : state.previewKey;
+      keySel.title = "Key context to resolve for";
+      keySel.onchange = (e) => {
+        const v = valueFrom(e, keySel);
+        state.previewKey = v === "" ? null : v;
+        changed();
+      };
+      head.appendChild(keySel);
       wrap.appendChild(head);
 
       let resolved;
       try {
         resolved = CNBNoteheadRuleEditor.resolveAll(
           CNBNoteheadRuleEditor.applyToConfig(baseConfig, state),
-          state.previewDuration, null);
+          state.previewDuration, state.previewKey);
       } catch (err) {
         wrap.appendChild(el("div", "cnb-nre-error", "Editor state error: " + err.message));
         return wrap;
@@ -574,6 +690,10 @@ export const CNBNoteheadRuleEditor = {
         cell.appendChild(el("div", "cnb-nre-resolved-shape",
           shape ? (shape.displayName || r.shape) : (r.shape ? r.shape + " (missing)" : "—")));
         cell.appendChild(el("div", "cnb-nre-resolved-fill", r.hollow ? "hollow" : "solid"));
+        const mark = el("div", "cnb-nre-resolved-mark",
+          r.offKeyMark === false ? "no mark" : "mark: " + r.offKeyMark);
+        mark.setAttribute("data-mark", String(r.offKeyMark));
+        cell.appendChild(mark);
         const swatch = el("div", "cnb-nre-resolved-swatch");
         swatch.setAttribute("data-color", r.effectiveColor);
         swatch.title = r.color === null
@@ -691,6 +811,15 @@ export const CNBNoteheadRuleEditor = {
       label.className = "cnb-nre-preview-label";
       label.textContent = r.label;
       cell.appendChild(label);
+
+      // Effective off-key mark, as text — the mark's visual treatment is
+      // deferred (plan §11.4), so the preview shows the resolved identifier.
+      if (r.offKeyMark !== false) {
+        const mark = doc.createElement("div");
+        mark.className = "cnb-nre-preview-mark";
+        mark.textContent = "mark: " + r.offKeyMark;
+        cell.appendChild(mark);
+      }
 
       row.appendChild(cell);
       return { pc: r.pc, resolved: r, svg };

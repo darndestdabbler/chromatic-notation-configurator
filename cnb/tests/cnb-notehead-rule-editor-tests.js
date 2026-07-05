@@ -118,6 +118,10 @@ function richConfig() {
     useCBSafe: false,
     schemeSymbols: {},
   };
+  config.keys.definitions = [
+    { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+    { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] },
+  ];
   return config;
 }
 
@@ -174,6 +178,33 @@ export const tests = [
       assertThrows(() => E.buildRules({ rules: [{ ...base, match: { ...base.match, pitchClasses: "some" }, apply: {} }] }), "non-array PCs");
       assertThrows(() => E.buildRules({ rules: [{ ...base, apply: { shape: "" } }] }), "empty shape");
       assertThrows(() => E.buildRules({ rules: [{ ...base, apply: { color: 42 } }] }), "numeric color");
+    },
+  },
+  {
+    name: "buildRules: color must be null or #RRGGBB — Module A's hex rule, enforced at build",
+    fn: () => {
+      const rule = (color) => ({ rules: [{
+        name: "R", match: { pitchClasses: "all", durations: "all", keys: "all" }, apply: { color },
+      }] });
+      assertThrows(() => E.buildRules(rule("red")), "named color string");
+      assertThrows(() => E.buildRules(rule("#12345")), "short hex");
+      assertThrows(() => E.buildRules(rule("#GGGGGG")), "non-hex digits");
+      assertThrows(() => E.buildRules(rule("cc0000")), "missing #");
+      assert(E.buildRules(rule("#AbCdEf"))[0].apply.color === "#AbCdEf", "mixed-case hex accepted");
+      assert(E.buildRules(rule(null))[0].apply.color === null, "null (palette) accepted");
+    },
+  },
+  {
+    name: "buildRules: offKeyMark must be false or a non-empty identifier",
+    fn: () => {
+      const rule = (offKeyMark) => ({ rules: [{
+        name: "R", match: { pitchClasses: "all", durations: "all", keys: "all" }, apply: { offKeyMark },
+      }] });
+      assertThrows(() => E.buildRules(rule(true)), "true is not in the schema (false | identifier)");
+      assertThrows(() => E.buildRules(rule("")), "empty identifier");
+      assertThrows(() => E.buildRules(rule(5)), "numeric mark");
+      assert(E.buildRules(rule(false))[0].apply.offKeyMark === false, "explicit no-mark accepted");
+      assert(E.buildRules(rule("cross"))[0].apply.offKeyMark === "cross", "identifier accepted");
     },
   },
 
@@ -557,6 +588,113 @@ export const tests = [
     }),
   },
   {
+    name: "render: keys row — pills from config.keys.definitions, narrowing and All restore",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { config: richConfig(), onChange: (slices) => { lastSlices = slices; } });
+      const card0 = findByAttr(handle.root, "data-rule-index", "0")[0];
+      const keyPills = findAll(card0, "cnb-nre-key-pill");
+      assert(keyPills.length === 2, "C and G pills from the definitions");
+      keyPills[0].onclick();   // click C while "all" → all-except-C = [G]
+      assertEqualJson(lastSlices.noteheadRules[0].match.keys, ["G"], "narrowed to G");
+      const card0b = findByAttr(handle.root, "data-rule-index", "0")[0];
+      const allPill = findAll(findAll(card0b, "cnb-nre-match-keys-row")[0], "cnb-nre-all-pill")[0];
+      allPill.onclick();
+      assert(lastSlices.noteheadRules[0].match.keys === "all", "All pill restores");
+    }),
+  },
+  {
+    name: "render: keys row without definitions shows the nothing-to-narrow note, no pills",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container, {});   // default config: keys.definitions []
+      const card0 = findByAttr(handle.root, "data-rule-index", "0")[0];
+      assert(findAll(card0, "cnb-nre-key-pill").length === 0, "no key pills");
+      assert(findAll(card0, "cnb-nre-keys-note").length === 1, "note shown");
+    }),
+  },
+  {
+    name: "render: key names on a loaded rule stay editable even without definitions (union)",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const config = CNBConfig.createDefault();   // no key definitions
+      config.noteheadRules[1].match.keys = ["D"];
+      const handle = E.render(container, { config, onChange: (slices) => { lastSlices = slices; } });
+      const card1 = findByAttr(handle.root, "data-rule-index", "1")[0];
+      const pills = findAll(card1, "cnb-nre-key-pill");
+      assert(pills.length === 1 && pills[0].textContent === "D", "stranded key gets a pill");
+      pills[0].onclick();   // remove it
+      assertEqualJson(lastSlices.noteheadRules[1].match.keys, [], "removable");
+    }),
+  },
+  {
+    name: "render: resolved strip key selector changes which key-matched rules apply",
+    fn: () => withDomStub((container) => {
+      const config = richConfig();
+      config.noteheadRules.push({
+        name: "G-key red", priority: 2,
+        match: { pitchClasses: "all", durations: "all", keys: ["G"] }, apply: { color: "#cc0000" },
+      });
+      const handle = E.render(container, { config });
+      const swatchOf = () => findAll(findAll(handle.root, "cnb-nre-resolved-cell")[2],
+        "cnb-nre-resolved-swatch")[0].getAttribute("data-color");
+      assert(swatchOf() === "#000000", "(no key) → key rule not matched, D stays black");
+      findAll(handle.root, "cnb-nre-resolved-key")[0].onchange({ target: { value: "G" } });
+      assert(handle.getState().previewKey === "G", "previewKey switched");
+      assert(swatchOf() === "#cc0000", "key G → rule applies");
+      findAll(handle.root, "cnb-nre-resolved-key")[0].onchange({ target: { value: "" } });
+      assert(handle.getState().previewKey === null, "back to no key");
+      assert(swatchOf() === "#000000", "rule no longer matched");
+    }),
+  },
+  {
+    name: "render: off-key mark toggle — enable emits false, mark mode edits an identifier",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      const card1 = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1, "cnb-nre-apply-mark-check")[0].onchange({ target: { checked: true } });
+      assert(lastSlices.noteheadRules[1].apply.offKeyMark === false, "enable emits explicit no-mark");
+      let cell = findAll(handle.root, "cnb-nre-resolved-cell")[1];
+      assert(findAll(cell, "cnb-nre-resolved-mark")[0].textContent === "no mark", "strip shows no mark");
+
+      const card1b = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1b, "cnb-nre-mark-mode")[0].onchange({ target: { value: "mark" } });
+      assert(lastSlices.noteheadRules[1].apply.offKeyMark === "cross", "mark mode seeds the placeholder");
+      const card1c = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1c, "cnb-nre-mark-input")[0].oninput({ target: { value: "flat-mark" } });
+      assert(lastSlices.noteheadRules[1].apply.offKeyMark === "flat-mark", "identifier edited");
+      assert(findByAttr(handle.root, "data-rule-index", "1")[0] === card1c,
+        "identifier typing does not rebuild the card");
+      handle.redraw();
+      cell = findAll(handle.root, "cnb-nre-resolved-cell")[1];
+      assert(findAll(cell, "cnb-nre-resolved-mark")[0].textContent === "mark: flat-mark",
+        "strip shows the effective mark for matched PCs");
+
+      const card1d = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1d, "cnb-nre-apply-mark-check")[0].onchange({ target: { checked: false } });
+      assert(!("offKeyMark" in lastSlices.noteheadRules[1].apply), "disable removes → inherits");
+    }),
+  },
+  {
+    name: "render: emptying the mark identifier holds the onChange (invalid transient state)",
+    fn: () => withDomStub((container) => {
+      let calls = 0;
+      const handle = E.render(container, { onChange: () => { calls++; } });
+      const card1 = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1, "cnb-nre-apply-mark-check")[0].onchange({ target: { checked: true } });
+      const card1b = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1b, "cnb-nre-mark-mode")[0].onchange({ target: { value: "mark" } });
+      const before = calls;
+      const card1c = findByAttr(handle.root, "data-rule-index", "1")[0];
+      findAll(card1c, "cnb-nre-mark-input")[0].oninput({ target: { value: "" } });
+      assert(calls === before, "no onChange with an empty identifier");
+      assert(handle.getState().rules[1].apply.offKeyMark === "", "state holds the transient value");
+      handle.redraw();
+      const errors = findAll(handle.root, "cnb-nre-error");
+      assert(errors.some(e => e.textContent.includes("offKeyMark")), "strips surface the error");
+    }),
+  },
+  {
     name: "render: rule name edits reach the slice without a redraw (focus preserved)",
     fn: () => withDomStub((container) => {
       let lastSlices = null;
@@ -625,6 +763,22 @@ export const tests = [
       const missing = findAll(out.row, "cnb-nre-preview-missing");
       assert(missing.length === 1 && missing[0].textContent.includes("ghost"), "placeholder names the shape");
       assert(out.cells[1].svg !== null, "other PCs unaffected");
+    }),
+  },
+  {
+    name: "renderResolvedPreview: key option and off-key mark badge follow the resolution",
+    fn: () => withDomStub((container) => {
+      const config = richConfig();
+      config.noteheadRules.push({
+        name: "Off-key in G", priority: 2,
+        match: { pitchClasses: [1], durations: "all", keys: ["G"] }, apply: { offKeyMark: "cross" },
+      });
+      const noKey = E.renderResolvedPreview(container, config, { duration: "crotchet" });
+      assert(findAll(noKey.row, "cnb-nre-preview-mark").length === 0, "no badge without the key");
+      const inG = E.renderResolvedPreview(container, config, { duration: "crotchet", key: "G" });
+      const badges = findAll(inG.row, "cnb-nre-preview-mark");
+      assert(badges.length === 1 && badges[0].textContent === "mark: cross", "badge for C♯ in G");
+      assert(inG.cells[1].resolved.offKeyMark === "cross", "resolved data carries the mark");
     }),
   },
   {

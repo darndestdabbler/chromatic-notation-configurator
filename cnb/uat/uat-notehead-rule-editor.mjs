@@ -164,6 +164,8 @@ const stripShape = async (pc) => page.evaluate((pc) => document
   .querySelector(`.cnb-nre-resolved-cell[data-pc="${pc}"] .cnb-nre-resolved-shape`).textContent, pc);
 const stripSwatch = async (pc) => page.evaluate((pc) => document
   .querySelector(`.cnb-nre-resolved-cell[data-pc="${pc}"] .cnb-nre-resolved-swatch`).dataset.color, pc);
+const stripMark = async (pc) => page.evaluate((pc) => document
+  .querySelector(`.cnb-nre-resolved-cell[data-pc="${pc}"] .cnb-nre-resolved-mark`).dataset.mark, pc);
 // Preview row (Module 6): the notehead <g> holds 1 path (solid) or 2 (hollow).
 const previewPathCount = async (pc) => page.evaluate((pc) => document
   .querySelector(`#preview-host .cnb-nre-preview-cell[data-pc="${pc}"] svg g`).children.length, pc);
@@ -269,6 +271,42 @@ check("SWITCH STRIP TO MINIM: diamond + #cc0000 apply again (rule matches minim)
   (await stripShape(0)) === "Diamond" && (await stripSwatch(0)) === "#cc0000" &&
   (await previewFill(0)) === "#cc0000");
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s2-durations.png"), fullPage: true });
+
+// ── Off-key mark on the new rule ────────────────────────────────────────────
+await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-mark-check');
+j = await readJson();
+check("ENABLE OFF-KEY MARK: emits the explicit false (no mark); strip cell agrees",
+  j[2].apply.offKeyMark === false && (await stripMark(0)) === "false");
+await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-mark-mode', "mark");
+j = await readJson();
+check('MARK MODE: seeds identifier "cross"; strip shows "mark: cross"; preview badges on all 12 PCs',
+  j[2].apply.offKeyMark === "cross" && (await stripMark(0)) === "cross" &&
+  await page.evaluate(() =>
+    document.querySelectorAll("#preview-host .cnb-nre-preview-mark").length === 12 &&
+    document.querySelector("#preview-host .cnb-nre-preview-mark").textContent === "mark: cross"));
+await page.evaluate(() => {
+  const inp = document.querySelector('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-mark-input');
+  inp.value = "flat-9";
+  inp.dispatchEvent(new Event("input", { bubbles: true }));
+});
+j = await readJson();
+check('EDIT MARK IDENTIFIER to "flat-9": JSON apply.offKeyMark follows', j[2].apply.offKeyMark === "flat-9");
+
+// ── Narrow the new rule to key G; flip the resolved key context ────────────
+await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-key-pill[data-value="C"]');
+j = await readJson();
+check('NARROW KEYS: clicking "C" while "All" leaves ["G"]',
+  JSON.stringify(j[2].match.keys) === '["G"]');
+check("NARROW KEYS: with (no key) context the rule stops matching — minim strip reverts",
+  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#1b9e77" &&
+  (await stripMark(0)) === "false" &&
+  await page.evaluate(() =>
+    document.querySelectorAll("#preview-host .cnb-nre-preview-mark").length === 0));
+await page.selectOption(".cnb-nre-resolved-key", "G");
+check("SWITCH STRIP KEY TO G: diamond + #cc0000 + mark flat-9 apply again",
+  (await stripShape(0)) === "Diamond" && (await stripSwatch(0)) === "#cc0000" &&
+  (await stripMark(0)) === "flat-9" && (await previewFill(0)) === "#cc0000");
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-s2-keys-mark.png"), fullPage: true });
 
 // ── Remove the added rule ───────────────────────────────────────────────────
 await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-rule-remove');

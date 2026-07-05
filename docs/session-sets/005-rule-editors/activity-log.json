@@ -60,6 +60,14 @@
       "dateTime": "2026-07-05T05:03:47.687639-04:00",
       "description": "node cnb/tests/run-tests.js: 412 passed, 0 failed (377 pre-existing + 35 new)",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 6,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:15:43.318303-04:00",
+      "description": "Verification round 1 (gpt-5-4): ISSUES_FOUND. Remediated: editable match.keys pills (config.keys.definitions, union with loaded selections), apply.offKeyMark UI (explicit-false / mark-identifier modes) with resolved-strip key selector, per-cell mark display and preview badges; buildRules now enforces #RRGGBB for apply.color and false|non-empty-string for offKeyMark. Issue 3 (docs/session-sets writes) adjudicated as orchestration-mandated lifecycle records. Tests 421/421; UAT re-executed 33/33.",
+      "status": "complete"
     }
   ]
 }

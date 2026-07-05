@@ -55,6 +55,19 @@ EXPECT crotchet strip reverts to Crotchet–Minim + palette color             �
 SELECT RESOLVED DURATION "minim"
 EXPECT Diamond + #cc0000 apply again (rule matches minim)                   → PASS
 
+CHECK APPLY "Off-key mark" on rule 3
+EXPECT apply.offKeyMark false (explicit no-mark); strip cell agrees         → PASS
+SELECT MARK MODE "Mark identifier"
+EXPECT identifier seeded "cross"; strip "mark: cross"; 12 preview badges    → PASS
+SET MARK INPUT to "flat-9"
+EXPECT JSON apply.offKeyMark "flat-9"                                       → PASS
+
+CLICK KEY PILL "C" on rule 3 (while "All")
+EXPECT match.keys narrows to ["G"]                                          → PASS
+EXPECT with "(no key)" context the rule stops matching — strip reverts      → PASS
+SELECT RESOLVED KEY "G"
+EXPECT Diamond + #cc0000 + mark flat-9 apply again                          → PASS
+
 CLICK REMOVE on rule 3
 EXPECT 2 rules; minim resolution reverts to the defaults                    → PASS
 EXPECT VALIDATION still "Config valid ✓"                                    → PASS
@@ -62,7 +75,12 @@ EXPECT VALIDATION still "Config valid ✓"                                    �
 EXPECT NO console or page errors across the whole flow                      → PASS
 ```
 
-**Result: 27/27 checks passed.**
+**Result: 33/33 checks passed.**
+
+(The checklist was first executed as 27 checks; the six key-match and
+off-key-mark checks were added during verification round-1 remediation,
+which made `match.keys` and `apply.offKeyMark` editable, and the full
+33-check list was re-executed end to end.)
 
 ## Visual review
 
@@ -86,6 +104,12 @@ diamond/red rule, the duration-narrowed state) reviewed:
   crotchet reverts the crotchet-resolved strip to the base
   shape/palette-color, and switching the strip's duration selector to minim
   brings the diamond/red resolution back.
+- Key matching and off-key marks are live end-to-end: narrowing rule 3 to
+  key G stops it matching under the "(no key)" context and re-applies it
+  (diamond, #cc0000, mark "flat-9") when the strip's key selector is
+  switched to G; the mark identifier shows as text in the strip cells and
+  as badges under the preview noteheads (the mark's visual treatment is
+  deferred per the architecture plan §11.4).
 - Validation pass-through stays green throughout, with the expected
   non-blocking warnings (no pre-baked LilyPond paths on the demo shapes,
   CB-safe palette smaller than primary).

@@ -61,12 +61,12 @@
     .cnb-nre-match-label { font-size: 11px; color: #888; width: 78px; flex: none; }
     .cnb-nre-keys-note { font-size: 11px; color: #aaa; }
     .cnb-nre-pills { display: inline-flex; flex-wrap: wrap; gap: 3px; }
-    .cnb-nre-pc-pill, .cnb-nre-dur-pill, .cnb-nre-all-pill {
+    .cnb-nre-pc-pill, .cnb-nre-dur-pill, .cnb-nre-key-pill, .cnb-nre-all-pill {
       font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
       border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
       color: #888; cursor: pointer;
     }
-    .cnb-nre-pc-pill.on, .cnb-nre-dur-pill.on {
+    .cnb-nre-pc-pill.on, .cnb-nre-dur-pill.on, .cnb-nre-key-pill.on {
       background: #2b6cb0; border-color: #2b6cb0; color: white;
     }
     .cnb-nre-all-pill.on { background: #444; border-color: #444; color: white; }
@@ -75,11 +75,15 @@
     .cnb-nre-apply-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
     .cnb-nre-apply-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; min-height: 26px; }
     .cnb-nre-apply-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; width: 90px; flex: none; }
-    .cnb-nre-shape-select, .cnb-nre-hollow-select, .cnb-nre-color-mode {
+    .cnb-nre-shape-select, .cnb-nre-hollow-select, .cnb-nre-color-mode, .cnb-nre-mark-mode {
       font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
     }
-    .cnb-nre-color-control { display: inline-flex; align-items: center; gap: 6px; }
+    .cnb-nre-color-control, .cnb-nre-mark-control { display: inline-flex; align-items: center; gap: 6px; }
     .cnb-nre-color-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-nre-mark-input {
+      font: inherit; font-size: 12px; padding: 3px 6px; width: 90px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
 
     .cnb-nre-rule-add {
       font: inherit; font-size: 12px; padding: 6px 12px; margin-bottom: 16px;
@@ -88,7 +92,7 @@
 
     .cnb-nre-resolved { margin-top: 4px; }
     .cnb-nre-resolved-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-    .cnb-nre-resolved-duration { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-nre-resolved-duration, .cnb-nre-resolved-key { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
     .cnb-nre-resolved-row { display: flex; gap: 4px; flex-wrap: wrap; }
     .cnb-nre-resolved-cell {
       border: 1px solid #eee; border-radius: 6px; padding: 5px 6px;
@@ -96,6 +100,8 @@
     }
     .cnb-nre-resolved-pc { font-weight: 600; color: #333; font-size: 12px; }
     .cnb-nre-resolved-shape { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cnb-nre-resolved-mark { color: #999; }
+    .cnb-nre-resolved-mark[data-mark="false"] { visibility: hidden; }
     .cnb-nre-resolved-swatch {
       width: 100%; height: 10px; border-radius: 3px; border: 1px solid #0002; margin-top: 3px;
     }
@@ -110,6 +116,7 @@
     .cnb-nre-preview-cell { text-align: center; }
     .cnb-nre-preview-label { font-size: 12px; color: #555; }
     .cnb-nre-preview-missing { font-size: 10px; color: #c62828; max-width: 64px; }
+    .cnb-nre-preview-mark { font-size: 10px; color: #b45309; }
   </style>
 </head>
 <body>
@@ -120,8 +127,9 @@
     (<code>CNBConfig.resolveNotehead</code>). The resolved strip inside the
     editor, the notehead preview row below (drawn through Module 6), and the
     live <code>config.noteheadRules</code> JSON all update on every change.
-    The host config carries a second shape ("Diamond") and a small palette so
-    shape and palette-color rules have something to select.
+    The host config carries a second shape ("Diamond"), a small palette, and
+    two key definitions (C, G) so shape, palette-color and key-match rules
+    all have something to select.
   </p>
 
   <div class="card">
@@ -157,6 +165,13 @@
       lilypondAnchors: null,
     };
 
+    // Key definitions (plan §4.9) so key-match pills and the resolved
+    // strip's key selector have something to work with.
+    config.keys.definitions = [
+      { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+      { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] },
+    ];
+
     // A small palette so "From palette" color rules are visible.
     config.palette = {
       name: "Demo",
@@ -180,6 +195,7 @@
       host.textContent = "";
       CNBNoteheadRuleEditor.renderResolvedPreview(host, config, {
         duration: handle ? handle.getState().previewDuration : "crotchet",
+        key: handle ? handle.getState().previewKey : null,
         pxPerSemi: 14,
       });
     }
