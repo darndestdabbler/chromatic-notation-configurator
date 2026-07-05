@@ -44,6 +44,14 @@
       "dateTime": "2026-07-05T06:42:57.773645-04:00",
       "description": "Supersedes step 1 counts after extending the UAT surface: added the set-004 Palette Editor (Module 12) to cnb/test-pages/test-config-export.html and the UAT flow (Dark2 3-color preset -> cnb:register-color! shamrock-1b9e77 in Section A), and a .cnb-cex-status-blocked modifier class on the blocked status line. Final counts: 25 unit tests in cnb-config-export-tests.js, suite 523/523, legacy 240/240, UAT 22/22 (docs/session-sets/006-config-io-export-and-preview/s2-uat.md).",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:50:24.758270-04:00",
+      "description": "Supersedes step 2 counts after verification round 1 remediation: added the key=null used-shape parity pinning test (key-scoped rule referencing a pathless shape passes both validateForExport and CNBLilypond.generate; widened to keys=all both flag it). Final counts: 26 unit tests in cnb-config-export-tests.js, suite 524/524, legacy 240/240, UAT 22/22.",
+      "status": "complete"
     }
   ]
 }
