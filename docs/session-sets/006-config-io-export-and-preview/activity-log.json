@@ -36,6 +36,14 @@
       "dateTime": "2026-07-05T06:39:07.167725-04:00",
       "description": "Built cnb/ui/config-export.js (Module 18): validate-then-export flow (CNBConfig.validate + exporter-side path-data check + filename derivability; blocked on errors, proceeds with warnings), .ly download named per meta.fileSuffix/meta.configName precedence, verbatim CNBLilypond.generate output. 25 unit tests in cnb/tests/cnb-config-export-tests.js (registered in run-tests.js; suite 523/523, legacy 240/240). Visual test page cnb/test-pages/test-config-export.html hosting Modules 13+15+18 on shared config. Playwright UAT cnb/uat/uat-config-export.mjs executing docs/session-sets/006-config-io-export-and-preview/s2-uat.md: 20/20 checks incl. Node-side byte-parity with direct generate() and editor-driven blocked/fixed flow.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:42:57.773645-04:00",
+      "description": "Supersedes step 1 counts after extending the UAT surface: added the set-004 Palette Editor (Module 12) to cnb/test-pages/test-config-export.html and the UAT flow (Dark2 3-color preset -> cnb:register-color! shamrock-1b9e77 in Section A), and a .cnb-cex-status-blocked modifier class on the blocked status line. Final counts: 25 unit tests in cnb-config-export-tests.js, suite 523/523, legacy 240/240, UAT 22/22 (docs/session-sets/006-config-io-export-and-preview/s2-uat.md).",
+      "status": "complete"
     }
   ]
 }
