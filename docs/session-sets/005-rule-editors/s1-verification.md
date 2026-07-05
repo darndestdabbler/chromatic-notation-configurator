@@ -38,3 +38,22 @@ The original task explicitly said: **“Touches: none outside cnb/”**.
 - Using Module 3/5 in the preview is consistent with step 3.
 - Using the architecture-plan LY position formula instead of the legacy fixed symmetric list is a reasonable implementation choice.
 - Property-based event wiring for Node-stub testability is not a defect.
+
+
+---
+
+# Session 1 verification — round 2 (remediation)
+
+**ISSUES FOUND**
+
+- **Issue** → The session-level **VERIFIED** verdict is too strong because Issue 1’s resolution overstates what the new UAT driver actually guarantees.  
+  **Location** → `cnb/uat/uat-staff-rule-editor.mjs`  
+  **Fix** → Wrap the `CNB_UAT_PLAYWRIGHT` fallback load in its own `try/catch` and exit `2` with an explicit message if resolution fails there too. Also, the claimed “ms-playwright cache default” is actually a hardcoded user-specific Windows path (`C:/Users/denmi/...`), not a generic cache lookup. Either implement portable discovery or require `CNB_UAT_CHROMIUM` and update the claim accordingly.
+
+- **Issue** → Issue 3’s not-a-defect adjudication is incomplete as written. The explanation covers four `docs/session-sets/005-rule-editors/` files, but this remediation diff also adds another outside-`cnb/` file.  
+  **Location** → `docs/session-sets/005-rule-editors/s1-issues.json` and the Issue 3 explanation  
+  **Fix** → Explicitly justify `s1-issues.json` under the same orchestration-artifact exception, or narrow the adjudication so it does not imply only the four listed files are exempt.
+
+- **Issue** → Issue 2 appears properly resolved.  
+  **Location** → `cnb/ui/staff-rule-editor.js`, `cnb/tests/cnb-staff-rule-editor-tests.js`  
+  **Fix** → None.

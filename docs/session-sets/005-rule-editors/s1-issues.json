@@ -20,7 +20,7 @@
       "id": 3,
       "title": "Task scope violation: files outside cnb/ were modified",
       "location": "docs/session-sets/005-rule-editors/*",
-      "resolution": "Adjudicated not-a-defect: session-state.json, activity-log.json, session-events.jsonl and s1-uat.md are orchestration-mandated artifacts of the tier:full session lifecycle (registered start, activity-log close gate, per-session UAT record required by the spec's own uatScope/uatStyle configuration). The spec's 'Touches' line scopes the product deliverable, not the lifecycle records; the identical adjudication was accepted in set 004 session 2 verification.",
+      "resolution": "Adjudicated not-a-defect: ALL files under docs/session-sets/005-rule-editors/ are orchestration-mandated lifecycle records of the tier:full session workflow, not product deliverables — session-state.json and session-events.jsonl (written by start_session/close_session), activity-log.json (close-gate requirement), s1-uat.md (spec's own uatScope: per-session / uatStyle: dsl), and the verification records this process itself produces (s1-verification.md, this s1-issues.json, and at close time disposition.json). The spec's 'Touches: none outside cnb/' line scopes the product deliverable; the identical adjudication for this directory was accepted in set 004 session 2 verification.",
       "status": "adjudicated"
     }
   ]

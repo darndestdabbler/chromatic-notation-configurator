@@ -16,8 +16,10 @@
  *   - playwright-core resolvable from this file, or set CNB_UAT_PLAYWRIGHT
  *     to a directory whose node_modules contains it
  *     (e.g. a scratch dir where you ran `npm install playwright-core`).
- *   - A Chromium executable at CNB_UAT_CHROMIUM, or the default
- *     ms-playwright cache path below.
+ *   - A Chromium executable: CNB_UAT_CHROMIUM if set, otherwise the newest
+ *     chromium-* browser discovered in the platform's ms-playwright cache
+ *     directory (LOCALAPPDATA/ms-playwright on Windows, ~/Library/Caches or
+ *     ~/.cache on macOS/Linux).
  *
  * Optional: CNB_UAT_PORT (default 8143), CNB_UAT_SHOTS (screenshot dir,
  * default <os tmpdir>/cnb-uat).
@@ -27,7 +29,7 @@
 import http from "http";
 import os from "os";
 import { readFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
@@ -35,8 +37,6 @@ import { createRequire } from "module";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const PORT = Number(process.env.CNB_UAT_PORT || 8143);
-const EXE = process.env.CNB_UAT_CHROMIUM ||
-  "C:/Users/denmi/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe";
 const SHOT_DIR = process.env.CNB_UAT_SHOTS || path.join(os.tmpdir(), "cnb-uat");
 
 // ── Dependency resolution (explicit errors, no silent fallbacks) ────────────
@@ -52,12 +52,49 @@ try {
       "node_modules contains it.");
     process.exit(2);
   }
-  ({ chromium } = createRequire(path.join(alt, "resolve-anchor.js"))("playwright-core"));
+  try {
+    ({ chromium } = createRequire(path.join(alt, "resolve-anchor.js"))("playwright-core"));
+  } catch (err) {
+    console.error(
+      `playwright-core could not be resolved from CNB_UAT_PLAYWRIGHT=${alt} ` +
+      `(${err.message}). Point it at a directory whose node_modules contains playwright-core.`);
+    process.exit(2);
+  }
 }
-if (!existsSync(EXE)) {
+
+/**
+ * Newest chromium-* executable in the platform's ms-playwright browser
+ * cache, or null. (Same locations Playwright itself installs into.)
+ */
+function findCachedChromium() {
+  const cacheRoot = process.platform === "win32"
+    ? path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "ms-playwright")
+    : process.platform === "darwin"
+      ? path.join(os.homedir(), "Library", "Caches", "ms-playwright")
+      : path.join(os.homedir(), ".cache", "ms-playwright");
+  if (!existsSync(cacheRoot)) return null;
+  const revisions = readdirSync(cacheRoot)
+    .filter(d => /^chromium-\d+$/.test(d))
+    .sort((a, b) => Number(b.split("-")[1]) - Number(a.split("-")[1]));
+  const exeSubpaths = process.platform === "win32"
+    ? ["chrome-win64/chrome.exe", "chrome-win/chrome.exe"]
+    : process.platform === "darwin"
+      ? ["chrome-mac/Chromium.app/Contents/MacOS/Chromium"]
+      : ["chrome-linux/chrome"];
+  for (const rev of revisions) {
+    for (const sub of exeSubpaths) {
+      const exe = path.join(cacheRoot, rev, sub);
+      if (existsSync(exe)) return exe;
+    }
+  }
+  return null;
+}
+
+const EXE = process.env.CNB_UAT_CHROMIUM || findCachedChromium();
+if (!EXE || !existsSync(EXE)) {
   console.error(
-    `Chromium executable not found at ${EXE}. Set CNB_UAT_CHROMIUM to a ` +
-    "Chromium/Chrome binary (e.g. from the ms-playwright cache).");
+    "No Chromium executable found. Set CNB_UAT_CHROMIUM to a Chromium/Chrome " +
+    "binary, or install one into the ms-playwright cache (npx playwright install chromium).");
   process.exit(2);
 }
 await mkdir(SHOT_DIR, { recursive: true });
