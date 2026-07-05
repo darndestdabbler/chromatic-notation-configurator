@@ -192,15 +192,39 @@ function usedColors(config) {
 }
 
 /**
- * Convert a shape's stem anchors to LilyPond attachment points.
- * Prefers shape.lilypondAnchors (already in LilyPond units, converted at
- * import time). Falls back to converting shape.anchors from native SVG
- * units: ÷ coordScale (SVG units per semitone), Y-inverted (SVG Y-down →
- * LilyPond Y-up) — same conversion as legacy buildAttachmentPoints().
+ * Convert a shape's stem anchors to LilyPond attachment points, in
+ * staff-space units (what cnb:register-attachment! consumes).
+ *
+ * shape.lilypondAnchors is canonically in SEMITONE units (the importer's
+ * toLilypondAnchors output — SVG units ÷ units-per-semitone, Y-inverted).
+ * The staff-space conversion (÷ semitonesPerStaffSpace) happens HERE, at
+ * export time, because the target unit depends on the staff config, which
+ * can change after a shape is imported (007-s1 discrepancy D5).
+ *
+ * Fallback for shapes without lilypondAnchors: shape.anchors in native SVG
+ * units → ÷ coordScale (SVG units per semitone), Y-inverted → ÷ sps.
+ * Both paths therefore emit identical values for the same shape.
  * Returns null for stemless shapes (both anchor sets null).
+ *
+ * @param {object} shape  config.shapes entry
+ * @param {number} sps    staff.semitonesPerStaffSpace
  */
-function attachmentPoints(shape) {
-  if (shape.lilypondAnchors) return shape.lilypondAnchors;
+function attachmentPoints(shape, sps) {
+  const spsDiv = sps || 1;
+  const round4 = (v) => Math.round(v * 10000) / 10000;
+
+  if (shape.lilypondAnchors) {
+    const semiToStaffSpace = (pt) => ({
+      x: round4((pt.x || 0) / spsDiv),
+      y: round4((pt.y || 0) / spsDiv),
+    });
+    return {
+      crotchetUp:   semiToStaffSpace(shape.lilypondAnchors.crotchetUp   || { x: 0, y: 0 }),
+      crotchetDown: semiToStaffSpace(shape.lilypondAnchors.crotchetDown || { x: 0, y: 0 }),
+      minimUp:      semiToStaffSpace(shape.lilypondAnchors.minimUp      || { x: 0, y: 0 }),
+      minimDown:    semiToStaffSpace(shape.lilypondAnchors.minimDown    || { x: 0, y: 0 }),
+    };
+  }
   if (!shape.anchors) return null;
 
   const natH = shape.naturalHeight || 1;
@@ -208,8 +232,8 @@ function attachmentPoints(shape) {
   const coordScale = natH / semiH;
 
   const toLy = (pt) => ({
-    x: Math.round((pt.x / coordScale) * 10000) / 10000,
-    y: Math.round((-pt.y / coordScale) * 10000) / 10000,
+    x: round4(pt.x / coordScale / spsDiv),
+    y: round4(-pt.y / coordScale / spsDiv),
   });
 
   return {
@@ -360,10 +384,12 @@ export const CNBLilypond = {
   },
 
   /**
-   * Compute cnb:staff-line-positions values from the staff config
-   * (Architecture Plan §4.3): expand semitonePattern across the two-octave
-   * card range (octaves 0 and 1), then (S - midpoint) / semitonesPerStaffSpace.
-   * 4-8 system, midpoint 12, sps 4 → [-2, -1, 1, 2].
+   * Compute cnb:staff-line-positions values from the staff config: expand
+   * semitonePattern across the two-octave card range (octaves 0 and 1),
+   * then 2 × (S - midpoint) / semitonesPerStaffSpace — LilyPond staff
+   * positions are HALF-staff-spaces from center (LY spec §5.1; engine
+   * cnb/config.ly). 4-8 system, midpoint 12, sps 4 → [-4, -2, 2, 4];
+   * 3-6-9, midpoint 12, sps 3 → [-6, -4, -2, 2, 4, 6] (007-s1 D2).
    * Non-integer results are kept as decimals (plan open question 7).
    *
    * @param {object} config
@@ -378,7 +404,7 @@ export const CNBLilypond = {
     const positions = [];
     for (const oct of [0, 1]) {
       for (const s of pattern) {
-        positions.push((s + oct * 12 - midpoint) / sps);
+        positions.push(2 * (s + oct * 12 - midpoint) / sps);
       }
     }
     return positions.sort((a, b) => a - b);
@@ -476,11 +502,13 @@ export const CNBLilypond = {
       lines.push("");
     }
 
-    // A4. Stem attachment registrations (4-point model)
+    // A4. Stem attachment registrations (4-point model), converted to
+    // staff-space units against the current staff config (D5).
+    const attachSps = (config.staff || {}).semitonesPerStaffSpace || 1;
     lines.push("%% --- Register stem attachments ---");
     for (const name of shapeNames) {
       const sym = slug(name);
-      const pts = attachmentPoints(shapes[name]);
+      const pts = attachmentPoints(shapes[name], attachSps);
       if (!pts) {
         lines.push(`%% ${sym}: stemless — no attachment registered`);
         lines.push("");
@@ -549,6 +577,14 @@ export const CNBLilypond = {
     lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     lines.push("%%     SECTION B — ENGINE SETTINGS");
     lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    lines.push("");
+
+    // Model selection — always emitted. The engine defaults
+    // cnb:use-procedure-model to #f (vector model) and silently ignores
+    // Sections A/C without it; every Configurator export is procedure-model
+    // by construction (007-s1 D1).
+    lines.push("%% Model selection — Configurator exports drive the procedure model");
+    lines.push("#(set! cnb:use-procedure-model #t)");
     lines.push("");
 
     // B1. Staff geometry — always emitted

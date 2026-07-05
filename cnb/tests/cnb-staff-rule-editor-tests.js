@@ -103,20 +103,22 @@ export const tests = [
 
   // ── derivedGeometry ──
   {
-    name: "derivedGeometry: 4-8 → sps 4, midpoint 12, LY positions (-2 -1 1 2)",
+    // LY positions are half-staff-spaces from center (LY spec §5.1) — the
+    // ×2 factor is the 007-s1 D2 fix, kept in parity with Module 11.
+    name: "derivedGeometry: 4-8 → sps 4, midpoint 12, LY positions (-4 -2 2 4)",
     fn: () => {
       const g = E.derivedGeometry([4, 8]);
       assert(g.semitonesPerStaffSpace === 4, "sps");
       assert(g.midpoint === 12, "midpoint");
-      assertEqualArrays(g.lyPositions, [-2, -1, 1, 2], "lyPositions");
+      assertEqualArrays(g.lyPositions, [-4, -2, 2, 4], "lyPositions");
     },
   },
   {
-    name: "derivedGeometry: 3-6-9 → sps 3, LY positions (-3 -2 -1 1 2 3)",
+    name: "derivedGeometry: 3-6-9 → sps 3, LY positions (-6 -4 -2 2 4 6)",
     fn: () => {
       const g = E.derivedGeometry([3, 6, 9]);
       assert(g.semitonesPerStaffSpace === 3, "sps");
-      assertEqualArrays(g.lyPositions, [-3, -2, -1, 1, 2, 3], "lyPositions");
+      assertEqualArrays(g.lyPositions, [-6, -4, -2, 2, 4, 6], "lyPositions");
     },
   },
   {
@@ -396,7 +398,7 @@ export const tests = [
       assert(findAll(handle.root, "cnb-sre-pattern-option").length === 3, "2 presets + custom");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
       assert(derived.some(d => d.textContent.includes("Semitones per staff space: 4")), "sps shown");
-      assert(derived.some(d => d.textContent.includes("(-2 -1 1 2)")), "LY positions shown");
+      assert(derived.some(d => d.textContent.includes("(-4 -2 2 4)")), "LY positions shown");
       assert(findAll(handle.root, "cnb-sre-override-row").length === 2, "one row per pattern line");
       assert(findAll(handle.root, "cnb-sre-template-row").length === 3, "default templates");
       assert(findAll(handle.root, "cnb-sre-valid").length === 1, "validation OK banner");
@@ -412,7 +414,7 @@ export const tests = [
       assertEqualArrays(lastSlices.staff.semitonePattern, [3, 6, 9], "onChange staff slice");
       assert(lastSlices.staff.semitonesPerStaffSpace === 3, "derived sps in slice");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
-      assert(derived.some(d => d.textContent.includes("(-3 -2 -1 1 2 3)")), "derived redrawn");
+      assert(derived.some(d => d.textContent.includes("(-6 -4 -2 2 4 6)")), "derived redrawn");
       assert(findAll(handle.root, "cnb-sre-override-row").length === 3, "override rows follow pattern");
     }),
   },

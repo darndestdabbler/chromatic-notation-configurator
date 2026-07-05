@@ -8,7 +8,10 @@
     "PC table (from the engine reference file, all cycles octave-invariant):",
     "  shape:  semitone mod 4 = 0|3 -> kite-down, 1|2 -> kite-up",
     "  hollow: odd semitones hollow",
-    "  color:  semitone mod 3 = 0 skyblue, 1 rose, 2 black"
+    "  color:  semitone mod 3 = 0 skyblue, 1 rose, 2 black",
+    "lilypondAnchors are in SEMITONE units (canonical, per 007-s2 D5 fix);",
+    "the exporter divides by semitonesPerStaffSpace (3) at export time,",
+    "emitting the engine reference's staff-space values 0.9 / 0.365."
   ],
   "version": "1.0",
 
@@ -29,10 +32,10 @@
       "lilypondPath": "'(\n    (moveto 0 0.6667)\n    (lineto 0.6667 0.3333)\n    (lineto 0 -0.6667)\n    (lineto -0.6667 0.3333)\n    (lineto 0 0.6667)\n    (closepath))",
       "lilypondHollowPath": "'(\n    (moveto 0.3333 0.3333)\n    (lineto 0 -0.3333)\n    (lineto -0.3333 0.3333)\n    (lineto 0.3333 0.3333)\n    (closepath))",
       "lilypondAnchors": {
-        "crotchetUp":   { "x": 0, "y": 0.9 },
-        "crotchetDown": { "x": 0, "y": -0.9 },
-        "minimUp":      { "x": -0.365, "y": 0.9 },
-        "minimDown":    { "x": 0.365, "y": -0.9 }
+        "crotchetUp":   { "x": 0, "y": 2.7 },
+        "crotchetDown": { "x": 0, "y": -2.7 },
+        "minimUp":      { "x": -1.095, "y": 2.7 },
+        "minimDown":    { "x": 1.095, "y": -2.7 }
       }
     },
     "kite-down": {
@@ -51,10 +54,10 @@
       "lilypondPath": "'(\n    (moveto 0 -0.6667)\n    (lineto -0.6667 -0.3333)\n    (lineto 0 0.6667)\n    (lineto 0.6667 -0.3333)\n    (lineto 0 -0.6667)\n    (closepath))",
       "lilypondHollowPath": "'(\n    (moveto -0.3333 -0.3333)\n    (lineto 0 0.3333)\n    (lineto 0.3333 -0.3333)\n    (lineto -0.3333 -0.3333)\n    (closepath))",
       "lilypondAnchors": {
-        "crotchetUp":   { "x": 0, "y": 0.9 },
-        "crotchetDown": { "x": 0, "y": -0.9 },
-        "minimUp":      { "x": -0.365, "y": 0.9 },
-        "minimDown":    { "x": 0.365, "y": -0.9 }
+        "crotchetUp":   { "x": 0, "y": 2.7 },
+        "crotchetDown": { "x": 0, "y": -2.7 },
+        "minimUp":      { "x": -1.095, "y": 2.7 },
+        "minimDown":    { "x": 1.095, "y": -2.7 }
       }
     }
   },

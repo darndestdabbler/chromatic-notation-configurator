@@ -22,10 +22,12 @@
  *     that algorithm is ported verbatim in derivedGeometry(). Legacy
  *     deriveStaffLinePositions() however emitted a FIXED symmetric ±2/±4/±6
  *     list that ignored the actual offsets — that drifted from the plan.
- *     Here the derived panel uses the plan §4.3 formula
- *     (S - midpoint) / semitonesPerStaffSpace over octaves 0–1, which is
- *     exactly Module 11's computeStaffLinePositions(), so the panel always
- *     agrees with the exporter (parity is unit-tested).
+ *     Here the derived panel uses the formula
+ *     2 × (S - midpoint) / semitonesPerStaffSpace over octaves 0–1
+ *     (half-staff-space units, LY spec §5.1 — the ×2 is the 007-s2 D2 fix;
+ *     plan §4.3 originally omitted it), which is exactly Module 11's
+ *     computeStaffLinePositions(), so the panel always agrees with the
+ *     exporter (parity is unit-tested).
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
  *     range (semis 0–24), i.e. 12, for every pattern — both plan examples
  *     (4-8 and 3-6-9) use it and the card/stem modules assume it.
@@ -147,7 +149,8 @@ export const CNBStaffRuleEditor = {
    * octave wrap-around (legacy Core.deriveSemitonesPerStaffSpace, ported
    * verbatim; 1 for degenerate patterns of fewer than 2 lines).
    * midpoint: 12 — center of the two-octave card range (see module header).
-   * lyPositions: the plan §4.3 / Module 11 formula over octaves 0–1.
+   * lyPositions: the Module 11 formula 2 × (S − midpoint) / sps over
+   * octaves 0–1 — half-staff-space units per LY spec §5.1 (007-s2 D2).
    *
    * @param {number[]} pattern  semitone-within-octave positions (0–11)
    * @returns {{semitonePattern:number[], midpoint:number,
@@ -167,7 +170,7 @@ export const CNBStaffRuleEditor = {
 
     const lyPositions = [];
     for (const oct of [0, 1]) {
-      for (const s of cleaned) lyPositions.push((s + oct * 12 - midpoint) / sps);
+      for (const s of cleaned) lyPositions.push(2 * (s + oct * 12 - midpoint) / sps);
     }
     lyPositions.sort((a, b) => a - b);
 

@@ -167,10 +167,14 @@ export const CNBSvgImporter = {
   },
 
   /**
-   * Convert native-SVG-unit anchors to LilyPond units at import time
-   * (architecture plan §4.2): ÷ coordScale (SVG units per semitone),
-   * Y inverted (SVG Y-down → LilyPond Y-up). Matches the exporter's
-   * fallback conversion in cnb-lilypond.js attachmentPoints().
+   * Convert native-SVG-unit anchors to SEMITONE units at import time:
+   * ÷ coordScale (SVG units per semitone), Y inverted (SVG Y-down →
+   * LilyPond Y-up). Semitone units are the canonical lilypondAnchors
+   * representation (007-s2 D5): the staff-space conversion (÷
+   * semitonesPerStaffSpace) happens in the exporter at export time,
+   * because the target unit depends on the staff config, which can change
+   * after import. Matches the exporter's fallback conversion in
+   * cnb-lilypond.js attachmentPoints().
    *
    * @param {object|null} anchors        4-point anchors in SVG units
    * @param {number} naturalHeight

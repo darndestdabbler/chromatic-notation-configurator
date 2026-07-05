@@ -19,9 +19,12 @@
  *   A6. Export via Module 18 and compare against the fixture-driven
  *       export: identical staff geometry, whitespace-normalized-identical
  *       path definitions, identical Section C (shape, hollow, attachment,
- *       color hex) mapping for all 12 PCs — with the known, documented
- *       import-pipeline divergences pinned literally (anchor unit bug D5,
- *       one-pair minim anchors D6, no engine-settings/meta editors).
+ *       color hex) mapping for all 12 PCs — with the remaining known,
+ *       documented import-pipeline divergences pinned literally (one-pair
+ *       minim anchors D6, no engine-settings/meta editors). The session-1
+ *       anchor unit bug D5 is FIXED in session 2: lilypondAnchors are
+ *       canonically semitone units and the exporter converts to
+ *       staff-space units (÷ sps) at export time.
  *
  * PHASE B — load the complete fixture (the release-gate artifact path):
  *   1. Load cnb/fixtures/kite-4-369-config.json via the Module 17 config
@@ -231,16 +234,20 @@ check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0,
 // D6 pin (documented importer contract, module header: "One up/down pair,
 // so crotchet and minim anchors are identical at import time"): the fixture
 // carries the engine reference's distinct minim offsets; import cannot.
-check("AUTHOR/import PIN(D6): imported minim anchors equal crotchet anchors (one-pair toolkit contract), while the fixture carries the reference's distinct minim x-offsets -0.365/0.365",
+// (Fixture values are semitone units per the D5 fix: ∓1.095 semitones =
+// the reference's ∓0.365 staff-spaces at sps 3.)
+check("AUTHOR/import PIN(D6): imported minim anchors equal crotchet anchors (one-pair toolkit contract), while the fixture carries the reference's distinct minim x-offsets -1.095/1.095 semitones",
   cfg.shapes["kite-up"].anchors.minimUp.x === cfg.shapes["kite-up"].anchors.crotchetUp.x &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.minimUp.x === -0.365 &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.minimDown.x === 0.365);
-// D5 pin (unit bug, this repo): toLilypondAnchors divides by SVG-units-per-
-// SEMITONE only, so 270 native → 2.7 "LilyPond" units; the engine expects
-// staff-space units (0.9 at 3 semitones per staff space).
-check("AUTHOR/import PIN(D5): imported lilypondAnchors are in SEMITONE units — crotchetUp y = 2.7, not the staff-space 0.9 the engine reference uses (unit bug, cataloged for session 2)",
+  fixtureJson.shapes["kite-up"].lilypondAnchors.minimUp.x === -1.095 &&
+  fixtureJson.shapes["kite-up"].lilypondAnchors.minimDown.x === 1.095);
+// D5 FIXED (session 2): lilypondAnchors are canonically SEMITONE units —
+// 270 native SVG units ÷ 100 units-per-semitone = 2.7 — and the imported
+// shape now agrees with the fixture exactly. The staff-space conversion
+// (÷ sps → 0.9) happens in the exporter at export time (asserted on the
+// authored export below).
+check("AUTHOR/import (D5 fixed): imported lilypondAnchors agree with the fixture — crotchetUp y = 2.7 semitone units on both",
   cfg.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 2.7 &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 0.9,
+  fixtureJson.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 2.7,
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
 
 // ── A2: staff pattern 3-6-9 (Module 13) ─────────────────────────────────────
@@ -330,10 +337,12 @@ const authoredPath = path.join(SHOT_DIR, "kite-4-369-ui-authored.ly");
 await authoredDownload.saveAs(authoredPath);
 const authored = await readFile(authoredPath, "utf8");
 
-check("AUTHOR/export: staff geometry lines identical to the fixture export (same sps 3 and — equally affected by cataloged bug D2 — the same emitted positions)",
+check("AUTHOR/export: staff geometry identical to the fixture export — sps 3 and the engine-reference half-staff-space positions '(-6 -4 -2 2 4 6) (D2 fixed), plus cnb:use-procedure-model #t (D1 fixed) in both",
   authored.includes("#(set! cnb:semitones-per-staff-space 3)") &&
-  authored.includes("#(set! cnb:staff-line-positions '(-3 -2 -1 1 2 3))") &&
-  fixtureExport.includes("#(set! cnb:staff-line-positions '(-3 -2 -1 1 2 3))"));
+  authored.includes("#(set! cnb:staff-line-positions '(-6 -4 -2 2 4 6))") &&
+  fixtureExport.includes("#(set! cnb:staff-line-positions '(-6 -4 -2 2 4 6))") &&
+  authored.includes("#(set! cnb:use-procedure-model #t)") &&
+  fixtureExport.includes("#(set! cnb:use-procedure-model #t)"));
 {
   const pathDef = (ly, sym) => {
     const m = ly.match(new RegExp(`#\\(define cnb:${sym} '\\([\\s\\S]*?\\)\\)\\)`));
@@ -364,9 +373,9 @@ check("AUTHOR/export: authored colors registered with the exact Kite hexes (symb
   /\(cnb:register-color! '[\w-]*50b4e9 "#50b4e9"\)/.test(authored) &&
   /\(cnb:register-color! '[\w-]*cc79a7 "#cc79a7"\)/.test(authored) &&
   authored.includes(`#(cnb:register-color! 'black-000000 "#000000")`));
-check("AUTHOR/export PIN(D5+D6): authored attachments carry the import pipeline's semitone-unit, one-pair anchors ('(0 . 2.7) for every point ±) while the fixture export carries the reference values ('(0 . 0.9), minim ±0.365)",
-  authored.includes("(cons 'crotchet-up   '(0 . 2.7))") &&
-  authored.includes("(cons 'minim-up      '(0 . 2.7))") &&
+check("AUTHOR/export PIN(D6, D5 fixed): authored attachments now emit the engine-reference staff-space units ('(0 . 0.9) at sps 3) but remain one-pair (minim x = 0, D6), while the fixture export carries the reference's distinct minim x-offsets ('(-0.365 . 0.9))",
+  authored.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
+  authored.includes("(cons 'minim-up      '(0 . 0.9))") &&
   fixtureExport.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
   fixtureExport.includes("(cons 'minim-up      '(-0.365 . 0.9))"));
 check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:false-hollow (engine default #f) and keeps the default config's meta (no meta editor exists to change it); the fixture export sets the Kite values for all three",
@@ -449,7 +458,8 @@ check("PARITY: downloaded .ly is byte-identical to generate() on the fixture fil
   fromFixture !== null && fromFixture === exported,
   fixtureErr || `lengths ${exported.length} vs ${fromFixture ? fromFixture.length : "n/a"}`);
 
-check("EXPORT CONTENT: Kite system reached the .ly — both kite paths, 3-6-9 geometry, false-hollow, repeat #t clauses, baked skyblue/rose colors",
+check("EXPORT CONTENT: Kite system reached the .ly — procedure model on (D1), both kite paths, 3-6-9 geometry, false-hollow, repeat #t clauses, baked skyblue/rose colors",
+  exported.includes("#(set! cnb:use-procedure-model #t)") &&
   exported.includes("cnb:register-path! 'kite-up") &&
   exported.includes("cnb:register-path! 'kite-down") &&
   exported.includes("cnb:semitones-per-staff-space 3") &&

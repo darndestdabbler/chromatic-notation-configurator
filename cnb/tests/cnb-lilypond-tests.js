@@ -208,18 +208,20 @@ export const tests = [
 
   // ── computeStaffLinePositions ──────────────────────────────────────────────
 
-  { name: "staff-line-positions: 4-8 system, midpoint 12, sps 4 → (-2 -1 1 2)", fn: () => {
+  // LilyPond staff positions are half-staff-spaces from center (LY spec
+  // §5.1; engine cnb/config.ly) — the ×2 factor is the 007-s1 D2 fix.
+  { name: "staff-line-positions: 4-8 system, midpoint 12, sps 4 → (-4 -2 2 4) half-staff-spaces", fn: () => {
       const cfg = CNBConfig.createDefault();
       const pos = CNBLilypond.computeStaffLinePositions(cfg);
-      eq(JSON.stringify(pos), JSON.stringify([-2, -1, 1, 2]));
+      eq(JSON.stringify(pos), JSON.stringify([-4, -2, 2, 4]));
     }},
 
-  { name: "staff-line-positions: 3-6-9 system, midpoint 12, sps 3 → (-3 -2 -1 1 2 3)", fn: () => {
+  { name: "staff-line-positions: 3-6-9 system, midpoint 12, sps 3 → (-6 -4 -2 2 4 6) half-staff-spaces (engine reference)", fn: () => {
       const cfg = CNBConfig.createDefault();
       cfg.staff.semitonePattern = [3, 6, 9];
       cfg.staff.semitonesPerStaffSpace = 3;
       const pos = CNBLilypond.computeStaffLinePositions(cfg);
-      eq(JSON.stringify(pos), JSON.stringify([-3, -2, -1, 1, 2, 3]));
+      eq(JSON.stringify(pos), JSON.stringify([-6, -4, -2, 2, 4, 6]));
     }},
 
   // ── header ─────────────────────────────────────────────────────────────────
@@ -278,27 +280,35 @@ export const tests = [
 
   // ── Section A: attachments ─────────────────────────────────────────────────
 
-  { name: "sectionA converts SVG anchors to LilyPond units (÷ scale, Y-invert)", fn: () => {
-      // naturalHeight 272.4 / semitoneHeight 2.724 → 100 SVG units per semitone
+  { name: "sectionA converts SVG anchors to staff-space units (÷ scale, Y-invert, ÷ sps)", fn: () => {
+      // naturalHeight 272.4 / semitoneHeight 2.724 → 100 SVG units per
+      // semitone; default staff has sps 4, so 157.2926 SVG units →
+      // 1.5729 semitones → 0.3932 staff-spaces (007-s1 D5 fix).
       const out = CNBLilypond.sectionA(CNBConfig.createDefault());
       contains(out, "#(cnb:register-attachment! 'crotchet-minim-attach");
-      contains(out, "(cons 'crotchet-up   '(1.5729 . 0.43))");
-      contains(out, "(cons 'crotchet-down '(-1.5729 . -0.43))");
-      contains(out, "(cons 'minim-up      '(1.5729 . 0.43))");
-      contains(out, "(cons 'minim-down    '(-1.5729 . -0.43))");
+      contains(out, "(cons 'crotchet-up   '(0.3932 . 0.1075))");
+      contains(out, "(cons 'crotchet-down '(-0.3932 . -0.1075))");
+      contains(out, "(cons 'minim-up      '(0.3932 . 0.1075))");
+      contains(out, "(cons 'minim-down    '(-0.3932 . -0.1075))");
     }},
 
-  { name: "sectionA prefers lilypondAnchors when provided", fn: () => {
+  { name: "sectionA prefers lilypondAnchors (semitone units), converting ÷ sps at export", fn: () => {
+      // Kite reference values: 2.7 semitones at sps 3 → the engine's 0.9
+      // staff-space attachment; minim x ∓1.095 → ∓0.365 (007-s1 D5).
       const cfg = CNBConfig.createDefault();
+      cfg.staff.semitonePattern = [3, 6, 9];
+      cfg.staff.semitonesPerStaffSpace = 3;
       cfg.shapes["crotchet-minim"].lilypondAnchors = {
-        crotchetUp:   { x: 0.6889,  y: 0 },
-        crotchetDown: { x: -0.6889, y: 0 },
-        minimUp:      { x: 1.0222,  y: 0 },
-        minimDown:    { x: -0.6889, y: 0 },
+        crotchetUp:   { x: 0,      y: 2.7 },
+        crotchetDown: { x: 0,      y: -2.7 },
+        minimUp:      { x: -1.095, y: 2.7 },
+        minimDown:    { x: 1.095,  y: -2.7 },
       };
       const out = CNBLilypond.sectionA(cfg);
-      contains(out, "(cons 'crotchet-up   '(0.6889 . 0))");
-      contains(out, "(cons 'minim-up      '(1.0222 . 0))");
+      contains(out, "(cons 'crotchet-up   '(0 . 0.9))");
+      contains(out, "(cons 'crotchet-down '(0 . -0.9))");
+      contains(out, "(cons 'minim-up      '(-0.365 . 0.9))");
+      contains(out, "(cons 'minim-down    '(0.365 . -0.9))");
     }},
 
   { name: "sectionA marks stemless shapes and skips attachment registration", fn: () => {
@@ -356,10 +366,15 @@ export const tests = [
 
   // ── Section B ──────────────────────────────────────────────────────────────
 
-  { name: "sectionB always emits staff geometry", fn: () => {
+  { name: "sectionB always emits staff geometry (positions in half-staff-spaces, D2)", fn: () => {
       const out = CNBLilypond.sectionB(CNBConfig.createDefault());
       contains(out, "#(set! cnb:semitones-per-staff-space 4)");
-      contains(out, "#(set! cnb:staff-line-positions '(-2 -1 1 2))");
+      contains(out, "#(set! cnb:staff-line-positions '(-4 -2 2 4))");
+    }},
+
+  { name: "sectionB always emits cnb:use-procedure-model #t (D1 — engine defaults to the vector model)", fn: () => {
+      const out = CNBLilypond.sectionB(CNBConfig.createDefault());
+      contains(out, "#(set! cnb:use-procedure-model #t)");
     }},
 
   { name: "sectionB omits all engine settings at their defaults", fn: () => {
@@ -674,24 +689,42 @@ export const tests = [
       }
 
       // Section A: semantically identical line for line (comments/whitespace
-      // aside) — same path definitions, registrations, cutouts, attachments
-      // (legacy 100% overlap ≡ new 4-point anchors), and color registrations.
-      eq(JSON.stringify(semanticLines(n.a)), JSON.stringify(semanticLines(l.a)),
-        "Section A semantic lines");
+      // aside) — same path definitions, registrations, cutouts, and color
+      // registrations — EXCEPT the attachment point values: legacy converts
+      // SVG anchors to semitone units only (frozen pre-catalog behavior),
+      // while the new exporter converts on to staff-space units at export
+      // time (007-s1 D5 fix: ÷ semitonesPerStaffSpace — 1.5729 semitones →
+      // 0.3932 staff-spaces at the default sps 4). Both pinned below.
+      const isAttachValue = (line) => line.startsWith("(cons '");
+      eq(JSON.stringify(semanticLines(n.a).filter(x => !isAttachValue(x))),
+         JSON.stringify(semanticLines(l.a).filter(x => !isAttachValue(x))),
+        "Section A semantic lines (attachment values pinned separately)");
+      contains(n.a, "(cons 'crotchet-up   '(0.3932 . 0.1075))", "new: staff-space units (D5 fix)");
+      contains(n.a, "(cons 'minim-down    '(-0.3932 . -0.1075))", "new: staff-space units (D5 fix)");
+      contains(l.a, "(cons 'crotchet-up   '(1.5729 . 0.43))", "legacy: semitone units (frozen)");
+      contains(l.a, "(cons 'minim-down    '(-1.5729 . -0.43))", "legacy: semitone units (frozen)");
 
-      // Section B: same settings, except staff-line-positions — legacy's
-      // deriveStaffLinePositions is a V1 fixed symmetric placement (always
-      // ±2 ±4 ±6 half-spaces), superseded by the architecture plan §4.3
-      // midpoint formula the new exporter implements (worked example:
-      // 4-8 system, midpoint 12, sps 4 → (-2 -1 1 2)). Both pinned here.
+      // Section B: same settings, with two documented divergences pinned:
+      //  - staff-line-positions: legacy's deriveStaffLinePositions is a V1
+      //    fixed symmetric placement (always ±2 ±4 ±6 half-spaces) that
+      //    ignores the actual pattern; the new exporter implements the
+      //    midpoint formula in half-staff-space units, 2 × (S − midpoint) /
+      //    sps (LY spec §5.1; the ×2 is the 007-s1 D2 fix). Worked example:
+      //    4-8 system, midpoint 12, sps 4 → (-4 -2 2 4).
+      //  - use-procedure-model: the new exporter always emits it (007-s1 D1
+      //    fix — the engine defaults to the vector model and silently
+      //    ignores Sections A/C without it); legacy, frozen pre-catalog,
+      //    never emitted it.
       const nSet = parseSettings(n.b);
       const lSet = parseSettings(l.b);
       eq(nSet["cnb:semitones-per-staff-space"], lSet["cnb:semitones-per-staff-space"], "sps parity");
       eq(nSet["cnb:file-suffix"], lSet["cnb:file-suffix"], "file-suffix parity");
       eq(nSet["cnb:notation-label"], lSet["cnb:notation-label"], "notation-label parity");
-      eq(Object.keys(nSet).length, 4, "new Section B emits only the always-emitted settings");
-      eq(Object.keys(lSet).length, 4, "legacy Section B emits only the always-emitted settings");
-      eq(nSet["cnb:staff-line-positions"], "'(-2 -1 1 2)", "new: plan §4.3 conversion");
+      eq(Object.keys(nSet).length, 5, "new Section B emits the always-emitted settings incl. use-procedure-model");
+      eq(Object.keys(lSet).length, 4, "legacy Section B emits only its four always-emitted settings");
+      eq(nSet["cnb:use-procedure-model"], "#t", "new: D1 fix — procedure model always on");
+      eq(lSet["cnb:use-procedure-model"], undefined, "legacy: predates the D1 catalog entry");
+      eq(nSet["cnb:staff-line-positions"], "'(-4 -2 2 4)", "new: half-staff-space conversion (D2)");
       eq(lSet["cnb:staff-line-positions"], "'(-6 -4 -2 2 4 6)", "legacy: V1 symmetric placeholder");
 
       // Section C: full semantic equivalence, from the end-to-end outputs
