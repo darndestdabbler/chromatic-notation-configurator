@@ -38,6 +38,20 @@ prerequisites:
 > Rationale: same as prior sets — this set ships the actual `.ly` export
 > button and the assembled preview app, both release-relevant surfaces, so
 > cross-provider verification stays on.
+>
+> **Scope note — lifecycle records (explicit exemption; added during
+> session 2 verification at the verifier's request):** each session's
+> **Touches** line scopes the session's *product* changes only. The Dabbler
+> session lifecycle additionally writes this set's own runtime records under
+> `docs/session-sets/006-config-io-export-and-preview/` —
+> `session-state.json`, `session-events.jsonl`, `activity-log.json`, the
+> per-session `sN-uat.md` and `sN-verification.md`, `disposition.json`, and
+> `change-log.md` on the final session — as the workflow SSoT describes
+> ("Runtime artifacts such as `session-state.json`, … appear as the first
+> session runs") and as the shared close gate enforces
+> (`check_activity_log_entry`, `working_tree_clean`, `pushed_to_remote`).
+> These records are **exempt from the Touches restriction** and are
+> committed as docs-only commits, separate from product code.
 
 ---
 
