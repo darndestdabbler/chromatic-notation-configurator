@@ -16,8 +16,10 @@
  *   - playwright-core resolvable from this file, or set CNB_UAT_PLAYWRIGHT
  *     to a directory whose node_modules contains it
  *     (e.g. a scratch dir where you ran `npm install playwright-core`).
- *   - A Chromium executable: CNB_UAT_CHROMIUM if set (a set-but-invalid
- *     path is an error, not a fallback — cache discovery is NOT attempted);
+ *   - A Chromium executable: CNB_UAT_CHROMIUM if set to a non-empty value
+ *     (a non-empty-but-invalid path is an error, not a fallback — cache
+ *     discovery is NOT attempted; an unset or empty variable means cache
+ *     discovery);
  *     otherwise the newest chromium-* browser discovered in the platform's
  *     ms-playwright cache directory (%LOCALAPPDATA%/ms-playwright on
  *     Windows, ~/Library/Caches/ms-playwright on macOS,

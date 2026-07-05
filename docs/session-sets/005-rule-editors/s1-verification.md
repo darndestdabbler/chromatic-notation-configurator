@@ -82,3 +82,22 @@ The original task explicitly said: **“Touches: none outside cnb/”**.
 - **Issue** → Residual 2 appears adequately addressed; no error found there.  
   **Location** → `docs/session-sets/005-rule-editors/s1-issues.json`  
   **Fix** → None.
+
+
+---
+
+# Session 1 verification — round 4 (round-3 residuals, with evidence)
+
+## ISSUES FOUND
+
+- **Issue** → The **VERIFIED** verdict is overstated because Residual **(b)** is not fully resolved. The response still does not provide standalone command evidence for the unit-suite rerun. It shows one shell command for the UAT run, then later admits the `cnb-staff-rule-editor-tests...` / `Results: 377 passed, 0 failed` lines came from a different command. That makes the transcript stitched rather than literal, and it also makes the shown `uat exit: 0` attribution unreliable as written.  
+  **Location** → `Residual (b) — evidence for rerun claims → PROVIDED`, first transcript block and the parenthetical note below it.  
+  **Fix** → Show separate command/output blocks, e.g. one for `node cnb/uat/uat-staff-rule-editor.mjs; echo ...` and a separate one for `node cnb/tests/run-tests.js; echo ...`, each with its own output and exit code.
+
+- **Issue** → Residual **(a)** is materially improved, but the claim of **exact** precedence semantics is still not literally exact. The code uses `if (process.env.CNB_UAT_CHROMIUM)`, which treats the variable as authoritative only when it is non-empty/truthy. A present-but-empty `CNB_UAT_CHROMIUM` falls through to cache discovery, which does not match the wording “when set, is authoritative.”  
+  **Location** → `cnb/uat/uat-staff-rule-editor.mjs`, `if (process.env.CNB_UAT_CHROMIUM) { ... }`, and the updated narrative/header wording “when set”.  
+  **Fix** → Either change the wording to “when non-empty” or change the code to test for variable presence rather than truthiness.
+
+- **Issue** → Aside from the point above, the fail-fast change for an invalid explicit Chromium path does address the main round-3 mismatch; the problem is that the response over-claims full closure.  
+  **Location** → Session-level verdict `VERIFIED`.  
+  **Fix** → Downgrade the verdict until the command evidence is corrected, and tighten the wording/code match for the env-var precedence claim.
