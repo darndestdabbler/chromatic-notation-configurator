@@ -3,12 +3,14 @@
 **Date:** 2026-07-05
 **Scope:** per-session (spec `uatScope: per-session`, `uatStyle: dsl`)
 **Surface:** `cnb/test-pages/test-staff-rule-editor.html`
-**Execution:** headless Chromium (Playwright 1.x / chromium-1223) driving the
+**Execution:** headless Chromium (Playwright / chromium-1223) driving the
 page over a local static server; screenshots reviewed. As in set 004, the
 dabbler-uat-dsl compiler pipeline (W0) is still in bootstrap, so the checklist
-below is authored in the DSL's label-based step style and was executed by an
-equivalent Playwright driver script (scratchpad `uat-s1.mjs`); it can be
-recompiled through the DSL pipeline once W1/W2 land.
+below is authored in the DSL's label-based step style and is executed by the
+checked-in Playwright driver `cnb/uat/uat-staff-rule-editor.mjs`
+(`node cnb/uat/uat-staff-rule-editor.mjs`; see its header for the
+playwright-core / Chromium environment knobs); it can be recompiled through
+the DSL pipeline once W1/W2 land.
 
 ## Checklist (DSL style) and results
 

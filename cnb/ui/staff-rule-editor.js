@@ -177,17 +177,29 @@ export const CNBStaffRuleEditor = {
   /**
    * Build a ready `config.staff` slice (plan §4.3) from editor state.
    * Pure function; throws on invalid state rather than guessing.
+   *
+   * Emitted lineOverrides are intersected with the active pattern: an
+   * override for a semitone that is no longer a staff line never reaches the
+   * config. The editor STATE still keeps such entries, so switching a
+   * pattern away and back restores the override in both the UI and the
+   * emitted slice.
+   *
    * @param {object} state
    * @returns {object} config.staff object
    */
   buildStaff(state) {
     const geo = CNBStaffRuleEditor.derivedGeometry(patternOf(state));
+    const activeKeys = new Set(geo.semitonePattern.map(String));
+    const overrides = {};
+    for (const [key, val] of Object.entries(pruneOverrides(state.lineOverrides))) {
+      if (activeKeys.has(key)) overrides[key] = val;
+    }
     return {
       semitonePattern: geo.semitonePattern,
       midpoint: geo.midpoint,
       semitonesPerStaffSpace: geo.semitonesPerStaffSpace,
       lineDefaults: deepClone(state.lineDefaults),
-      lineOverrides: pruneOverrides(state.lineOverrides),
+      lineOverrides: overrides,
     };
   },
 

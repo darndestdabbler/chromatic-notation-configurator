@@ -191,6 +191,28 @@ export const tests = [
     },
   },
   {
+    name: "buildStaff: overrides for lines outside the active pattern are not emitted",
+    fn: () => {
+      const state = defaultState();
+      state.lineOverrides = { "4": { color: "#ff0000" } };
+      state.patternKey = "3-6-9";
+      const s = E.buildStaff(state);
+      assert(!("4" in s.lineOverrides), "semi 4 is not a 3-6-9 staff line");
+      assert(Object.keys(s.lineOverrides).length === 0, "nothing else leaks");
+    },
+  },
+  {
+    name: "buildStaff: out-of-pattern overrides survive in state — switching back restores them",
+    fn: () => {
+      const state = defaultState();
+      state.lineOverrides = { "4": { color: "#ff0000" } };
+      state.patternKey = "3-6-9";
+      assert(!("4" in E.buildStaff(state).lineOverrides), "hidden while 3-6-9");
+      state.patternKey = "4-8";
+      assert(E.buildStaff(state).lineOverrides["4"].color === "#ff0000", "restored on 4-8");
+    },
+  },
+  {
     name: "buildStaff: unknown patternKey throws (no silent fallback)",
     fn: () => {
       const state = { ...defaultState(), patternKey: "5-10" };

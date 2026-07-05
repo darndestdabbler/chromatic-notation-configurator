@@ -1,0 +1,27 @@
+{
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Missing committed Playwright UAT script (driver lived only in scratchpad)",
+      "location": "docs/session-sets/005-rule-editors/s1-uat.md / (scratchpad uat-s1.mjs)",
+      "resolution": "Driver checked in as cnb/uat/uat-staff-rule-editor.mjs (inside cnb/, keeping the Touches scope). Repo-root and page paths resolve relative to the script; playwright-core resolves normally or via CNB_UAT_PLAYWRIGHT; the Chromium executable comes from CNB_UAT_CHROMIUM or the ms-playwright cache default, with explicit exit-2 errors when either dependency is missing (no silent fallbacks). Re-run from the repo: 29/29 checks pass. s1-uat.md now points at the committed driver.",
+      "status": "fixed"
+    },
+    {
+      "id": 2,
+      "title": "Stale staff.lineOverrides survive pattern changes in the emitted config",
+      "location": "cnb/ui/staff-rule-editor.js buildStaff()",
+      "resolution": "buildStaff() now intersects override keys with the active semitonePattern, so an override for a semitone that is no longer a staff line never reaches the emitted config.staff. The editor state deliberately retains such entries so switching a pattern away and back restores the override (documented in the buildStaff docstring). Two unit tests added: out-of-pattern overrides are not emitted; they reappear when the pattern switches back. Suite now 42 tests, 377 total pass.",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "title": "Task scope violation: files outside cnb/ were modified",
+      "location": "docs/session-sets/005-rule-editors/*",
+      "resolution": "Adjudicated not-a-defect: session-state.json, activity-log.json, session-events.jsonl and s1-uat.md are orchestration-mandated artifacts of the tier:full session lifecycle (registered start, activity-log close gate, per-session UAT record required by the spec's own uatScope/uatStyle configuration). The spec's 'Touches' line scopes the product deliverable, not the lifecycle records; the identical adjudication was accepted in set 004 session 2 verification.",
+      "status": "adjudicated"
+    }
+  ]
+}
