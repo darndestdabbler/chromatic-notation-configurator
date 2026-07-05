@@ -34,6 +34,7 @@ const TEST_FILES = [
   "./cnb-lilypond-tests.js",
   "./cnb-svg-importer-tests.js",
   "./cnb-palette-editor-tests.js",
+  "./cnb-staff-rule-editor-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────

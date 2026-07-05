@@ -1,0 +1,25 @@
+{
+  "sessionSetName": "005-rule-editors",
+  "createdDate": "2026-07-05T08:17:56.213472+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-05T08:17:56.224202+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/staff-ledger-rule-editor-module",
+      "dateTime": "2026-07-05T04:30:25.037912-04:00",
+      "description": "Module 13 built: cnb/ui/staff-rule-editor.js (pattern presets + custom, per-line overrides, ledger templates, Module A validation pass-through, Module 3+5 live preview via renderPreview); 40 unit tests registered in run-tests.js (375 total pass); Playwright UAT 29/29 (s1-uat.md)",
+      "status": "complete"
+    }
+  ]
+}
