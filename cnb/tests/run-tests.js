@@ -39,6 +39,7 @@ const TEST_FILES = [
   "./cnb-common-props-editor-tests.js",
   "./cnb-config-io-tests.js",
   "./cnb-config-export-tests.js",
+  "./cnb-preview-display-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────
