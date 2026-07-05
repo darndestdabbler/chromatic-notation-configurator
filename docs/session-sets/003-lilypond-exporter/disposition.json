@@ -1,14 +1,15 @@
 {
   "status": "completed",
-  "summary": "Session 1 of 003-lilypond-exporter complete. Ported the legacy .ly exporter's header, Section A (named definitions), and Section B (engine settings) from legacy/configurator-core.js onto the modular config schema as cnb/src/cnb-lilypond.js (Module 11): path definitions preferring pre-baked lilypondPath with svgPathToLilypond fallback, path/hollow/attachment registrations (4-point anchor model with SVG-to-LilyPond unit conversion), the cnb:use-accessible-colors conditional color block per LY spec 4.5, always-emitted staff geometry with (S - midpoint)/sps position conversion, emit-if-changed engine settings, staff-line thickness pct-to-staff-space conversion per LY spec 5.3, and metadata emission. Added exactly 34 unit tests in cnb/tests/cnb-lilypond-tests.js (registered in run-tests.js); cnb suite 242 passed / 0 failed, legacy suite 240/240 untouched. Cross-provider verification: VERIFIED.",
+  "summary": "Session 2 of 2: ported Section C (configuration procedure) to CNBLilypond.sectionC() with memv/cond grouping, duration-aware compound conditions, and the repeat field; wired generate() end to end behind LY spec §8 export validation; added 19 tests including end-to-end section-by-section parity vs legacy generateLy(). Verification round 1 found 2 issues (missing end-to-end parity test; wildcard fallback for missing lilypondDuration), both remediated; round 2 VERIFIED. Manual per-set UAT of a full generated .ly against the LY spec worked examples complete. 261 cnb + 240 legacy tests pass.",
   "files_changed": [
     "cnb/src/cnb-lilypond.js",
     "cnb/tests/cnb-lilypond-tests.js",
-    "cnb/tests/run-tests.js",
     "docs/session-sets/003-lilypond-exporter/activity-log.json",
     "docs/session-sets/003-lilypond-exporter/session-events.jsonl",
     "docs/session-sets/003-lilypond-exporter/session-state.json",
-    "docs/session-sets/003-lilypond-exporter/s1-verification.md",
+    "docs/session-sets/003-lilypond-exporter/s2-verification.md",
+    "docs/session-sets/003-lilypond-exporter/s2-issues.json",
+    "docs/session-sets/003-lilypond-exporter/change-log.md",
     "docs/session-sets/003-lilypond-exporter/disposition.json"
   ],
   "verification_method": "api",
@@ -20,7 +21,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 2 ports Section C (memv/cond-grouped configuration procedure), wires generate(), and runs legacy-parity validation; same orchestrator retains full context of the Section A/B port decisions."
+      "specifics": "Set 003 complete and VERIFIED; exporter milestone reached. Next work is set 004 (UI) or the cross-repo 007 end-to-end pipeline verification unblocked by this set; same engine/provider has full context on the cnb module conventions."
     }
   },
   "blockers": [],
