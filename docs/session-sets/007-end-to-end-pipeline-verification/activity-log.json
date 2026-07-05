@@ -1,7 +1,7 @@
 {
   "sessionSetName": "007-end-to-end-pipeline-verification",
   "createdDate": "2026-07-05T14:32:19.899762+00:00",
-  "totalSessions": 0,
+  "totalSessions": 2,
   "entries": [
     {
       "sessionNumber": 1,
@@ -27,6 +27,14 @@
       "stepKey": "session-001/baseline-diff-catalog",
       "dateTime": "2026-07-05T10:49:29.240263-04:00",
       "description": "Rendered output diffed against the golden baseline via the engine repo harvest_svg.py per-element diff and its 101-assertion golden spec: as-generated export compiles but is silently ignored (D1) and staff renders at half height (D2); with the two one-line patches applied diagnostically, 74 passed / 0 failed - identical to the golden reference - leaving only cosmetic path-text D3. Catalog with root-cause attribution written to s1-discrepancy-catalog.md: D1 missing use-procedure-model emission (BLOCKER, this repo, sectionB), D2 staff-line-positions half-staff-space factor-2 unit error (MAJOR, this repo, computeStaffLinePositions; architecture plan 4.3 is the erroneous doc), D3 -0.0000 vs 0 path text (cosmetic, no fix), E1 stale tests/joy-to-the-world.ly color names (engine repo coordination item). Fixes deferred to session 2 per spec.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/baseline-diff-catalog",
+      "dateTime": "2026-07-05T11:04:58.424545-04:00",
+      "description": "SUPERSEDING ENTRY (round-1 verification remediation; replaces the step-2 entry counts/scope). Final session-1 state: UAT driver extended to two phases - Phase A authors the Kite system through the set-004/005 editors (SVG import of cnb/fixtures/kite-up.svg + kite-down.svg, 3-6-9 pattern click, repeat-mode click, custom CB-safe 3-color palette, three rules via PC pills/apply controls) and compares the authored export to the fixture export; Phase B loads the fixture and proves byte-parity - 26/26 checks. Diff evidence extended: exhaustive all-element harvest diff (patched: 21 differing of 191 elements, all D3 path-hash-only noteheads, every other type 0/N; as-generated: 191/191) and pixel-level Chromium visual diff at 4x (patched vs golden: 0 differing pixels of 14,266,592; as-generated: 7.68 pct). Catalog now includes authoring-phase discoveries D5 (anchor unit conversion emits semitone units - importer toLilypondAnchors + exporter attachmentPoints fallback, this repo, latent) and D6 (import pipeline cannot author distinct minim anchors - toolkit coordination). activity-log totalSessions corrected to 2 (spec totalSessions). Suites re-run clean: cnb 555 passed 0 failed, legacy 240/240.",
       "status": "complete"
     }
   ]
