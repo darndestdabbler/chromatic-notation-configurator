@@ -565,10 +565,19 @@ export const CNBPaletteEditor = {
       ? selection.family === "cbsafe"
       : (PALETTE_PRESET_KEYS[selection.presetKey] || {}).family === "cbsafe";
 
-    // CB-safe branch pool, aligned index-for-index with the primary pool
-    const cbPool = isCBSafePrimary
-      ? pool.map(c => ({ name: c.name, hex: c.hex }))
-      : matchToCBSafe(pool.map(c => c.hex)).map(m => ({ name: m.cbSafe.name, hex: m.cbSafe.hex }));
+    // CB-safe branch pool, aligned index-for-index with the primary pool.
+    // Matching runs on UNIQUE hexes so a repeated primary hex always maps to
+    // the same CB-safe color — schemeSymbols is keyed by hex, and the
+    // exporter needs one unambiguous accessible mapping per hex/symbol.
+    let cbPool;
+    if (isCBSafePrimary) {
+      cbPool = pool.map(c => ({ name: c.name, hex: c.hex }));
+    } else {
+      const uniqueHexes = [...new Set(pool.map(c => c.hex))];
+      const cbByHex = {};
+      matchToCBSafe(uniqueHexes).forEach((m, i) => { cbByHex[uniqueHexes[i]] = m.cbSafe; });
+      cbPool = pool.map(c => ({ name: cbByHex[c.hex].name, hex: cbByHex[c.hex].hex }));
+    }
 
     const colors = [];
     const cbSafeColors = [];
@@ -629,7 +638,13 @@ export const CNBPaletteEditor = {
     }
 
     sel.source = "custom";
-    sel.family = "standard";
+    // A CB-safe-as-primary palette is stored with cbSafeColors identical to
+    // colors (LY spec §4.5 identity mapping) — recover the CB-safe family
+    // from that so re-editing keeps the identity branch.
+    const cbByPc = new Map((palette.cbSafeColors || []).map(e => [e.pc, e.hex]));
+    const isIdentity = palette.colors.length > 0 &&
+      palette.colors.every(c => cbByPc.get(c.pc) === c.hex);
+    sel.family = isIdentity ? "cbsafe" : "standard";
     sel.customColors = [...pool];
     return sel;
   },

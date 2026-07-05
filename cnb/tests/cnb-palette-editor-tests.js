@@ -310,6 +310,23 @@ export const tests = [
     },
   },
 
+  {
+    name: "buildPalette: duplicate custom hexes share one CB-safe mapping per hex",
+    fn: () => {
+      // Verification round-1 issue: matchToCBSafe is one-to-one per index,
+      // so a repeated primary hex must not fan out to different CB colors —
+      // schemeSymbols is keyed by hex and the exporter needs one accessible
+      // mapping per symbol.
+      const pal = P.buildPalette(customSel(["#FF0000", "#0000FF", "#FF0000"]));
+      assert(pal.cbSafeColors[0].hex === pal.cbSafeColors[2].hex,
+        "repeated primary hex maps to the same CB-safe hex");
+      assert(Object.keys(pal.schemeSymbols).length === 2, "one symbol per unique hex");
+      const uniqueCb = P.matchToCBSafe(["#FF0000", "#0000FF"]);
+      assert(pal.cbSafeColors[0].hex === uniqueCb[0].cbSafe.hex, "matching ran on unique hexes");
+      assert(pal.cbSafeColors[1].hex === uniqueCb[1].cbSafe.hex, "second unique hex pairing");
+    },
+  },
+
   // ── selectionFromPalette round-trip ──
   {
     name: "selectionFromPalette: preset palettes round-trip (key, family, useCBSafe)",
@@ -330,6 +347,24 @@ export const tests = [
       assert(sel.source === "custom", "custom recovered");
       assert(sel.customColors.length === 3, "pool length recovered from cycling");
       assert(sel.customColors.every((h, i) => h === colors[i]), "pool hexes");
+    },
+  },
+  {
+    name: "selectionFromPalette: CB-safe custom palettes keep the identity branch",
+    fn: () => {
+      // Verification round-1 issue: the custom fallback dropped the CB-safe
+      // family, so re-editing a saved CB-safe custom palette silently
+      // switched its cbSafeColors branch to matchToCBSafe pairings.
+      const colors = ["#336699", "#996633"];   // not a preset sequence
+      const saved = P.buildPalette(customSel(colors, { family: "cbsafe" }));
+      const sel = P.selectionFromPalette(saved);
+      assert(sel.source === "custom" && sel.family === "cbsafe", "CB-safe family recovered");
+      const rebuilt = P.buildPalette(sel);
+      assert(rebuilt.colors.every((c, i) => rebuilt.cbSafeColors[i].hex === c.hex),
+        "identity branch preserved through the round trip");
+      // Standard custom palettes still recover as standard
+      const std = P.selectionFromPalette(P.buildPalette(customSel(["#FF0000", "#00FF00"])));
+      assert(std.family === "standard", "matched-branch custom stays standard");
     },
   },
   {
