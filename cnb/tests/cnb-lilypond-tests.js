@@ -92,6 +92,70 @@ function parseSectionCClauses(text) {
   return map;
 }
 
+/**
+ * Legacy app state equivalent to the new default 4-8 config.
+ * Legacy models anchors as 2-point stemUp/stemDown + overlapPercent;
+ * 100% overlap reproduces the default shape's minim==crotchet anchors,
+ * so the derived 4-point attachment set is identical to the new module's.
+ */
+function legacyDefaultApp() {
+  const cfg = CNBConfig.createDefault();
+  const shape = cfg.shapes["crotchet-minim"];
+  const app = Legacy.createDefaultApp();
+  app.meta.name = cfg.meta.configName;
+  app.meta.label = cfg.meta.notationLabel;
+  app.meta.suffix = cfg.meta.fileSuffix;
+  app.defs = {
+    "crotchet-minim": {
+      path: shape.svgPath,
+      hollowPath: shape.svgHollowPath,
+      anchors: { stemUp: shape.anchors.crotchetUp, stemDown: shape.anchors.crotchetDown },
+      overlapPercent: 100,
+      naturalHeight: shape.naturalHeight,
+      naturalWidth: shape.naturalWidth,
+      semitoneHeight: shape.semitoneHeight,
+    },
+  };
+  app.noteheadRules = [
+    { ruleType: "shape", pitchClasses: "all", shape: "crotchet-minim" },
+    { ruleType: "hollow", pitchClasses: [1, 3, 6, 8, 10], hollow: true },
+  ];
+  app.staffRules = [{ type: "staff", pitchClasses: [4, 8] }];
+  return app;
+}
+
+/** Split a full .ly text into { header, a, b, c } on the section banners. */
+function splitSections(text) {
+  const iA = text.indexOf("SECTION A");
+  const iB = text.indexOf("SECTION B");
+  const iC = text.indexOf("SECTION C");
+  assert(iA >= 0 && iB > iA && iC > iB, "file has sections A, B, C in order");
+  return {
+    header: text.slice(0, iA),
+    a: text.slice(iA, iB),
+    b: text.slice(iB, iC),
+    c: text.slice(iC),
+  };
+}
+
+/** Semantic lines: comments and blanks dropped, whitespace runs collapsed. */
+function semanticLines(section) {
+  return section.split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0 && !l.startsWith("%%") && !l.startsWith(";;"))
+    .map(l => l.replace(/\s+/g, " "));
+}
+
+/** Parse single-line `#(set! cnb:name value)` settings into a map. */
+function parseSettings(section) {
+  const map = {};
+  for (const line of section.split("\n")) {
+    const m = line.match(/^#\(set! (cnb:[a-z-]+) (.+)\)\s*$/);
+    if (m) map[m[1]] = m[2];
+  }
+  return map;
+}
+
 export const tests = [
 
   // ── svgPathToLilypond ──────────────────────────────────────────────────────
@@ -551,30 +615,28 @@ export const tests = [
       assert(threw, "generate should throw when path data is missing");
     }},
 
-  // ── Legacy parity (Section C) ──────────────────────────────────────────────
+  { name: "sectionC throws when a duration-varying duration lacks lilypondDuration", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      delete cfg.durations.definitions.find(d => d.name === "minim").lilypondDuration;
+      cfg.noteheadRules.push({
+        name: "C is hollow as a minim",
+        priority: 2,
+        match: { pitchClasses: [0], durations: ["minim"], keys: "all" },
+        apply: { hollow: true },
+      });
+      let threw = false;
+      try { CNBLilypond.sectionC(cfg); } catch (err) {
+        threw = true;
+        contains(err.message, 'Duration "minim" has no numeric lilypondDuration');
+      }
+      assert(threw, "sectionC should refuse to emit a duration-insensitive clause");
+    }},
+
+  // ── Legacy parity ──────────────────────────────────────────────────────────
 
   { name: "parity: sectionC is semantically equivalent to the legacy exporter for the default 4-8 config", fn: () => {
-      const cfg = CNBConfig.createDefault();
-
-      // Equivalent legacy app state: same shape, same cumulative rules
-      // (legacy model: ruleType-per-property, last-match-wins).
-      const shape = cfg.shapes["crotchet-minim"];
-      const legacyApp = {
-        defs: {
-          "crotchet-minim": {
-            path: shape.svgPath,
-            hollowPath: shape.svgHollowPath,
-            anchors: shape.anchors,
-          },
-        },
-        noteheadRules: [
-          { ruleType: "shape", pitchClasses: "all", shape: "crotchet-minim" },
-          { ruleType: "hollow", pitchClasses: [1, 3, 6, 8, 10], hollow: true },
-        ],
-      };
-
-      const legacyOut = Legacy.generateSectionC(legacyApp);
-      const newOut = CNBLilypond.sectionC(cfg);
+      const legacyOut = Legacy.generateSectionC(legacyDefaultApp());
+      const newOut = CNBLilypond.sectionC(CNBConfig.createDefault());
 
       const legacyClauses = parseSectionCClauses(legacyOut);
       const newClauses = parseSectionCClauses(newOut);
@@ -595,6 +657,53 @@ export const tests = [
       eq(_internals.pcCondition([5], "pc"), Legacy.buildPitchClassCondition([5], "pc"));
       eq(_internals.pcCondition([0, 4, 8], "pc"), Legacy.buildPitchClassCondition([0, 4, 8], "pc"));
       eq(_internals.pcCondition([], "pc"), Legacy.buildPitchClassCondition([], "pc"));
+    }},
+
+  { name: "parity: generate() vs legacy generateLy(), section by section, for the default 4-8 config", fn: () => {
+      const newFile = CNBLilypond.generate(CNBConfig.createDefault());
+      const legacyFile = Legacy.generateLy(legacyDefaultApp());
+
+      const n = splitSections(newFile);
+      const l = splitSections(legacyFile);
+
+      // Header: same structural invariants
+      for (const needle of ['\\version "2.24.2"', '\\include "ChromaticNotationBase.ly"',
+                            "Generated by Chromatic Configurator", "DO NOT EDIT BY HAND"]) {
+        contains(n.header, needle, "new header");
+        contains(l.header, needle, "legacy header");
+      }
+
+      // Section A: semantically identical line for line (comments/whitespace
+      // aside) — same path definitions, registrations, cutouts, attachments
+      // (legacy 100% overlap ≡ new 4-point anchors), and color registrations.
+      eq(JSON.stringify(semanticLines(n.a)), JSON.stringify(semanticLines(l.a)),
+        "Section A semantic lines");
+
+      // Section B: same settings, except staff-line-positions — legacy's
+      // deriveStaffLinePositions is a V1 fixed symmetric placement (always
+      // ±2 ±4 ±6 half-spaces), superseded by the architecture plan §4.3
+      // midpoint formula the new exporter implements (worked example:
+      // 4-8 system, midpoint 12, sps 4 → (-2 -1 1 2)). Both pinned here.
+      const nSet = parseSettings(n.b);
+      const lSet = parseSettings(l.b);
+      eq(nSet["cnb:semitones-per-staff-space"], lSet["cnb:semitones-per-staff-space"], "sps parity");
+      eq(nSet["cnb:file-suffix"], lSet["cnb:file-suffix"], "file-suffix parity");
+      eq(nSet["cnb:notation-label"], lSet["cnb:notation-label"], "notation-label parity");
+      eq(Object.keys(nSet).length, 4, "new Section B emits only the always-emitted settings");
+      eq(Object.keys(lSet).length, 4, "legacy Section B emits only the always-emitted settings");
+      eq(nSet["cnb:staff-line-positions"], "'(-2 -1 1 2)", "new: plan §4.3 conversion");
+      eq(lSet["cnb:staff-line-positions"], "'(-6 -4 -2 2 4 6)", "legacy: V1 symmetric placeholder");
+
+      // Section C: full semantic equivalence, from the end-to-end outputs
+      const nClauses = parseSectionCClauses(n.c);
+      const lClauses = parseSectionCClauses(l.c);
+      for (let pc = 0; pc < 12; pc++) {
+        eq(nClauses[pc].shape, lClauses[pc].shape, `pc ${pc} shape parity`);
+        eq(nClauses[pc].color, lClauses[pc].color, `pc ${pc} color parity`);
+        eq(nClauses[pc].hollow, lClauses[pc].hollow, `pc ${pc} hollow parity`);
+        eq(nClauses[pc].attachment, lClauses[pc].attachment, `pc ${pc} attachment parity`);
+        eq(nClauses[pc].condition, lClauses[pc].condition, `pc ${pc} condition parity`);
+      }
     }},
 
 ];

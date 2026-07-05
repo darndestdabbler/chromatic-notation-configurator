@@ -627,6 +627,8 @@ export const CNBLilypond = {
    * "repeat" → #t, otherwise (distinct shapes per duration) → #f.
    * @param {object} config
    * @returns {string}
+   * @throws {Error} when a duration-varying clause is needed for a duration
+   *                 that has no numeric lilypondDuration
    */
   sectionC(config) {
     const lines = [];
@@ -711,14 +713,23 @@ export const CNBLilypond = {
 
     // Duration-varying clauses: compound (and <pc-cond> (= duration N)).
     for (const duration of durations) {
+      const groups = groupBy(varyingPCs, duration);
+      if (groups.length === 0) continue;
       const lyNum = durationLyNumber(config, duration);
-      for (const group of groupBy(varyingPCs, duration)) {
+      if (lyNum === null) {
+        // A wildcard here would make the clause duration-insensitive and
+        // silently wrong — refuse to emit instead.
+        throw new Error(
+          `Duration "${duration}" has no numeric lilypondDuration in ` +
+          `config.durations.definitions — cannot emit duration-aware Section C clauses`
+        );
+      }
+      for (const group of groups) {
         const names = group.pitchClasses.map(pcName).join(", ");
         const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
-        const durCond = lyNum !== null ? `(= duration ${lyNum})` : "#t";
         emitClause(
           `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}`,
-          `(and ${pcCondition(group.pitchClasses, "pc")} ${durCond})`,
+          `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${lyNum}))`,
           group.fields
         );
       }
