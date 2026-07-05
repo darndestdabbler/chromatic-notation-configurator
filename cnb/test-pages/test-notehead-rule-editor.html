@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Notehead Rule Editor Test — Module 14</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 700px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 520px;
+      max-height: 480px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    /* ── Notehead rule editor host styling (module ships structure only) ── */
+    .cnb-nre-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+
+    .cnb-nre-rule-card {
+      border: 1px solid #e5e5e5; border-radius: 8px;
+      padding: 10px 12px; margin-bottom: 10px; background: #fcfcfc;
+    }
+    .cnb-nre-rule-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .cnb-nre-rule-num {
+      width: 20px; height: 20px; line-height: 20px; text-align: center;
+      background: #2b6cb0; color: white; border-radius: 50%; font-size: 11px; flex: none;
+    }
+    .cnb-nre-rule-name {
+      flex: 1; font: inherit; font-size: 13px; padding: 3px 8px;
+      border: 1px solid #ddd; border-radius: 4px;
+    }
+    .cnb-nre-rule-up, .cnb-nre-rule-down, .cnb-nre-rule-remove {
+      font: inherit; font-size: 12px; width: 24px; height: 24px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-nre-rule-up:disabled, .cnb-nre-rule-down:disabled { opacity: 0.3; cursor: default; }
+
+    .cnb-nre-match-row { display: flex; align-items: baseline; gap: 8px; margin: 4px 0; }
+    .cnb-nre-match-label { font-size: 11px; color: #888; width: 78px; flex: none; }
+    .cnb-nre-keys-note { font-size: 11px; color: #aaa; }
+    .cnb-nre-pills { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+    .cnb-nre-pc-pill, .cnb-nre-dur-pill, .cnb-nre-all-pill {
+      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
+      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
+      color: #888; cursor: pointer;
+    }
+    .cnb-nre-pc-pill.on, .cnb-nre-dur-pill.on {
+      background: #2b6cb0; border-color: #2b6cb0; color: white;
+    }
+    .cnb-nre-all-pill.on { background: #444; border-color: #444; color: white; }
+
+    .cnb-nre-apply { margin-top: 8px; border-top: 1px dashed #e5e5e5; padding-top: 8px; }
+    .cnb-nre-apply-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+    .cnb-nre-apply-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; min-height: 26px; }
+    .cnb-nre-apply-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; width: 90px; flex: none; }
+    .cnb-nre-shape-select, .cnb-nre-hollow-select, .cnb-nre-color-mode {
+      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-nre-color-control { display: inline-flex; align-items: center; gap: 6px; }
+    .cnb-nre-color-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+
+    .cnb-nre-rule-add {
+      font: inherit; font-size: 12px; padding: 6px 12px; margin-bottom: 16px;
+      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+
+    .cnb-nre-resolved { margin-top: 4px; }
+    .cnb-nre-resolved-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .cnb-nre-resolved-duration { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-nre-resolved-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cnb-nre-resolved-cell {
+      border: 1px solid #eee; border-radius: 6px; padding: 5px 6px;
+      font-size: 10px; color: #666; text-align: center; min-width: 46px;
+    }
+    .cnb-nre-resolved-pc { font-weight: 600; color: #333; font-size: 12px; }
+    .cnb-nre-resolved-shape { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cnb-nre-resolved-swatch {
+      width: 100%; height: 10px; border-radius: 3px; border: 1px solid #0002; margin-top: 3px;
+    }
+
+    .cnb-nre-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-nre-valid { color: #2e7d32; }
+    .cnb-nre-error { color: #c62828; }
+    .cnb-nre-warning { color: #b45309; }
+
+    /* ── Resolved-notehead preview row (Module 6 rendering) ── */
+    .cnb-nre-preview-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cnb-nre-preview-cell { text-align: center; }
+    .cnb-nre-preview-label { font-size: 12px; color: #555; }
+    .cnb-nre-preview-missing { font-size: 10px; color: #c62828; max-width: 64px; }
+  </style>
+</head>
+<body>
+  <h1>CNB Notehead Rule Editor — Module 14 Visual Test</h1>
+  <p>
+    Create, edit and reorder cumulative notehead rules; rules apply top to
+    bottom and later rules override earlier ones per property
+    (<code>CNBConfig.resolveNotehead</code>). The resolved strip inside the
+    editor, the notehead preview row below (drawn through Module 6), and the
+    live <code>config.noteheadRules</code> JSON all update on every change.
+    The host config carries a second shape ("Diamond") and a small palette so
+    shape and palette-color rules have something to select.
+  </p>
+
+  <div class="card">
+    <h2>Notehead rule editor</h2>
+    <div id="editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Resolved noteheads (Module 6 preview)</h2>
+    <div id="preview-host"></div>
+    <h2 style="margin-top:16px;">config.noteheadRules (live)</h2>
+    <pre id="config-json"></pre>
+  </div>
+
+  <script type="module">
+    import { CNBNoteheadRuleEditor } from "../ui/notehead-rule-editor.js";
+    import { CNBConfig } from "../src/cnb-config.js";
+
+    const config = CNBConfig.createDefault();
+
+    // A second shape so shape rules have an alternative to select. A plain
+    // rhombus, 2 semitones tall, stemless (preview-only geometry).
+    config.shapes["diamond"] = {
+      displayName: "Diamond",
+      svgPath: "M 0 -100 L 120 0 L 0 100 L -120 0 Z",
+      svgHollowPath: "M 0 -55 L 66 0 L 0 55 L -66 0 Z",
+      naturalHeight: 200,
+      naturalWidth: 240,
+      semitoneHeight: 2.0,
+      anchors: null,
+      lilypondPath: null,
+      lilypondHollowPath: null,
+      lilypondAnchors: null,
+    };
+
+    // A small palette so "From palette" color rules are visible.
+    config.palette = {
+      name: "Demo",
+      colors: Array.from({ length: 12 }, (_, pc) => ({
+        pc,
+        hex: ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"][pc % 4],
+        name: ["Shamrock", "Orange", "Lilac", "Pink"][pc % 4],
+      })),
+      cbSafeColors: [],
+      useCBSafe: false,
+      schemeSymbols: {},
+    };
+
+    function refresh(slices) {
+      config.noteheadRules = slices.noteheadRules;
+
+      document.getElementById("config-json").textContent =
+        JSON.stringify(config.noteheadRules, null, 2);
+
+      const host = document.getElementById("preview-host");
+      host.textContent = "";
+      CNBNoteheadRuleEditor.renderResolvedPreview(host, config, {
+        duration: handle ? handle.getState().previewDuration : "crotchet",
+        pxPerSemi: 14,
+      });
+    }
+
+    let handle = null;
+    handle = CNBNoteheadRuleEditor.render(
+      document.getElementById("editor-host"),
+      { config, onChange: (slices) => refresh(slices) }
+    );
+    refresh({ noteheadRules: handle.getRules() });
+  </script>
+</body>
+</html>

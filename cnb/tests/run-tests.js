@@ -35,6 +35,7 @@ const TEST_FILES = [
   "./cnb-svg-importer-tests.js",
   "./cnb-palette-editor-tests.js",
   "./cnb-staff-rule-editor-tests.js",
+  "./cnb-notehead-rule-editor-tests.js",
 ];
 
 // ─── Runner ──────────────────────────────────────────────────────────────────

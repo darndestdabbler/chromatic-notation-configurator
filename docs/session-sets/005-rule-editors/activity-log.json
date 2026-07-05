@@ -1,7 +1,7 @@
 {
   "sessionSetName": "005-rule-editors",
   "createdDate": "2026-07-05T08:17:56.213472+00:00",
-  "totalSessions": 0,
+  "totalSessions": 3,
   "entries": [
     {
       "sessionNumber": 1,
@@ -19,6 +19,46 @@
       "stepKey": "session-001/staff-ledger-rule-editor-module",
       "dateTime": "2026-07-05T04:30:25.037912-04:00",
       "description": "Module 13 built: cnb/ui/staff-rule-editor.js (pattern presets + custom, per-line overrides, ledger templates, Module A validation pass-through, Module 3+5 live preview via renderPreview); 40 unit tests registered in run-tests.js (375 total pass); Playwright UAT 29/29 (s1-uat.md)",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:03:47.687639-04:00",
+      "description": "Read legacy Notehead cards UI (renderNoteheadCard, _buildNoteheadForm, resolveAllNoteheadConfigs) as reference; reconciled single-property list-order rules onto Module A cumulative priority-ordered schema",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:03:47.687639-04:00",
+      "description": "Built cnb/ui/notehead-rule-editor.js (Module 14): create/edit/reorder rules with match (PC/duration/keys) and sparse apply (shape/hollow/color) blocks, priority = list order, partial-apply inherit semantics",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:03:47.687639-04:00",
+      "description": "Surfaced CNBConfig.resolveNotehead live in the editor: per-PC resolved strip with duration selector, plus renderResolvedPreview() drawing actual noteheads via Module 6; test page test-notehead-rule-editor.html hosts both",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 4,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:03:47.687639-04:00",
+      "description": "Unit tests: 35 new tests (build/round-trip/resolveAll/reorder/render UI via DOM stub) in cnb-notehead-rule-editor-tests.js; Playwright UAT driver cnb/uat/uat-notehead-rule-editor.mjs executed 27/27 PASS per s2-uat.md",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 5,
+      "stepKey": "session-002/notehead-rule-editor-module",
+      "dateTime": "2026-07-05T05:03:47.687639-04:00",
+      "description": "node cnb/tests/run-tests.js: 412 passed, 0 failed (377 pre-existing + 35 new)",
       "status": "complete"
     }
   ]
