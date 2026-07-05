@@ -101,3 +101,29 @@ The original task explicitly said: **“Touches: none outside cnb/”**.
 - **Issue** → Aside from the point above, the fail-fast change for an invalid explicit Chromium path does address the main round-3 mismatch; the problem is that the response over-claims full closure.  
   **Location** → Session-level verdict `VERIFIED`.  
   **Fix** → Downgrade the verdict until the command evidence is corrected, and tighten the wording/code match for the env-var precedence claim.
+
+
+---
+
+# Session 1 verification — round 5 (round-4 residuals: literal evidence)
+
+**ISSUES FOUND**
+
+- **Issue** → The unit-suite evidence is incomplete and internally contradictory. It is labeled **“tail of output”**, so it is not the full literal command/output transcript requested, despite the claim that each block is the **“unedited output of exactly the command shown.”**  
+  **Location** → `Unit suite (tail of output)` block.  
+  **Fix** → Provide the complete standalone transcript for `node cnb/tests/run-tests.js`, including all emitted lines and its own exit code.
+
+- **Issue** → The overall **“VERIFIED”** conclusion is overstated because item **(1)** is not fully resolved. Item **(2)** appears resolved: the `CNB_UAT_CHROMIUM` wording correctly distinguishes **non-empty** from **unset/empty** and matches the stated truthiness check.  
+  **Location** → `Claimed session-level verdict: VERIFIED`.  
+  **Fix** → Change the verdict to partial/not yet verified until the full unit-suite transcript is supplied.
+
+
+---
+
+# Session 1 verification — round 6 (complete unit-suite transcript)
+
+**VERIFIED**
+
+- **Correctness** → The transcript is internally consistent. The per-suite counts sum to **377**, matching `Results: 377 passed, 0 failed`, and it includes an explicit exit code: `exit: 0`.
+- **Completeness** → It provides a full standalone run transcript rather than a tail excerpt, covering all listed test suites through the final summary and exit status.
+- **False Positives** → None apparent. Appending `; echo "exit: $?"` is a standard way to expose the exit code of `node cnb/tests/run-tests.js` without altering the suite output itself.
