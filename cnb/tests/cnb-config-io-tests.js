@@ -282,6 +282,14 @@ export const tests = [
     },
   },
   {
+    name: "mergeLoaded: a null/wrong-typed map section falls back to merge behavior (defaults kept)",
+    fn: () => {
+      const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, staff: { lineOverrides: null } });
+      assertEqual(config.shapes, CNBConfig.createDefault().shapes, "null shapes → default shapes kept");
+      assertEqual(config.staff.lineOverrides, {}, "null overrides → default kept");
+    },
+  },
+  {
     name: "mergeLoaded: version notes — missing version and drifted version are advisories",
     fn: () => {
       assert(IO.mergeLoaded({}).notes[0].includes("no version field"), "missing version noted");

@@ -234,7 +234,9 @@ export const CNBConfigIO = {
     const config = CNBConfig.merge(CNBConfig.createDefault(), parsed);
     for (const pathKeys of REPLACE_PATHS) {
       const provided = getPath(parsed, pathKeys);
-      if (provided !== undefined) {
+      // Replace only when the file provides an actual map object; a null or
+      // wrong-typed value falls back to plain merge behavior (defaults kept).
+      if (isPlainObject(provided)) {
         setPath(config, pathKeys, deepClone(provided));
       }
     }
@@ -321,7 +323,6 @@ export const CNBConfigIO = {
     let statusText = "";
     let errorText = "";
     let lastValidation = null;   // { validation, notes } from the last load
-    let lastLoadedName = "";
 
     /** Filename the save button will use right now, or the derive error. */
     function filenamePreview() {
@@ -361,7 +362,6 @@ export const CNBConfigIO = {
         return null;
       }
       lastValidation = { validation: result.validation, notes: result.notes };
-      lastLoadedName = sourceName || "";
       statusText = "Loaded" + (sourceName ? " " + sourceName : "") +
         " — " + (((result.config.meta || {}).configName) || "(unnamed config)");
       redraw();
