@@ -28,3 +28,18 @@
   **Location** → `cnb/test-pages/test-notehead-rule-editor.html`:  
   `.cnb-nre-resolved-mark[data-mark="false"] { visibility: hidden; }`  
   **Fix** → Remove that hiding rule if the intent is to visibly surface the effective false state, or revise the claim/UAT to state that only non-false marks are visibly shown.
+
+## Round 3 (2026-07-05) — correction review
+
+**VERIFIED**
+
+- **Correctness** → Both round-2 issues are addressed in the materials provided:
+  - The erroneous earlier changed-files claim is corrected, and the new correction-commit list matches the supplied `50846b4..3cd15f2` diff exactly.
+  - The CSS rule hiding `data-mark="false"` is removed, and the added UAT assertion checks that `"no mark"` is present and visibly rendered.
+
+- **Completeness** → The submission includes:
+  - complete rerun transcripts for `node cnb/tests/run-tests.js` and the notehead-rule-editor UAT, each with exit status;
+  - the full correction diff for commit `3cd15f2`;
+  - updated documentation reflecting the added 34th UAT check.
+
+- **False Positives** → None apparent. The response does not claim changes that are absent from the supplied correction diff, and the visibility issue is fixed in the place previously identified.
