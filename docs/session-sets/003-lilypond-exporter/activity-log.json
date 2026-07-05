@@ -28,6 +28,22 @@
       "dateTime": "2026-07-04T17:46:36.839267-04:00",
       "description": "Ported Section B (staff geometry always-emitted with staff-line-positions conversion, emit-if-changed engine settings, thickness pct-to-staff-space conversion per LY spec 5.3, metadata) plus 34 unit tests in cnb/tests/cnb-lilypond-tests.js; cnb suite 242 pass, legacy 240 pass",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/lilypond-section-c",
+      "dateTime": "2026-07-05T02:17:00.458818-04:00",
+      "description": "Built CNBLilypond.sectionC() (memv/cond grouping, duration-aware compound conditions, repeat field) and generate() with LY spec \u00a78 export validation; all 259 cnb tests pass",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/lilypond-parity-validation",
+      "dateTime": "2026-07-05T02:17:00.458818-04:00",
+      "description": "Added Section C/generate/parity tests incl. semantic diff vs legacy generateSectionC for the default 4-8 config; 259 cnb + 240 legacy tests pass; manual UAT review of full generated .ly against CNB-LY-EXPORT-SPEC-v1_2 worked examples complete",
+      "status": "complete"
     }
   ]
 }

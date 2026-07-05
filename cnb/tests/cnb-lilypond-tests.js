@@ -4,10 +4,18 @@
  * Session 1 coverage: header, Section A (named definitions), Section B
  * (engine settings), and the svgPathToLilypond / toSchemeSymbol /
  * computeStaffLinePositions helpers.
+ *
+ * Session 2 coverage: Section C (configuration procedure — memv grouping,
+ * duration-aware compound conditions, repeat field), generate() (order +
+ * export validation), and Section C parity against the legacy exporter.
  */
 
+import { createRequire } from "module";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
+
+const require = createRequire(import.meta.url);
+const Legacy = require("../../legacy/configurator-core.js");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -52,6 +60,36 @@ function paletteConfig() {
     },
   };
   return cfg;
+}
+
+/**
+ * Parse a Section C string into a map pc → { shape, color, hollow,
+ * attachment, condition }. Expands memv groups; skips the else fallback.
+ * Used for semantic comparison (structure, not formatting).
+ */
+function parseSectionCClauses(text) {
+  const map = {};
+  let pcs = null;
+  let condition = null;
+
+  for (const line of text.split("\n")) {
+    const memv = line.match(/\(memv pc '\(([\d ]+)\)\)/);
+    const single = line.match(/\(= pc (\d+)\)/);
+    if (line.includes("(else")) { pcs = null; condition = null; continue; }
+    if (memv || single) {
+      pcs = memv ? memv[1].trim().split(/\s+/).map(Number) : [Number(single[1])];
+      condition = line.trim();
+      continue;
+    }
+    const field = line.match(/\((shape|color|hollow|attachment)\s+\.\s+([^)\s]+)\)/);
+    if (field && pcs) {
+      for (const pc of pcs) {
+        if (!map[pc]) map[pc] = { condition };
+        map[pc][field[1]] = field[2];
+      }
+    }
+  }
+  return map;
 }
 
 export const tests = [
@@ -346,6 +384,217 @@ export const tests = [
       eq(colors[0].cbHex, "#009F81");
       eq(colors[0].symbol, "shamrock-1b9e77");
       assert(hasBlack, "PCs 3–11 have no palette entry and should count as black");
+    }},
+
+  // ── Section C: procedure structure ─────────────────────────────────────────
+
+  { name: "sectionC emits the procedure scaffolding (set!/lambda/let/cond)", fn: () => {
+      const out = CNBLilypond.sectionC(CNBConfig.createDefault());
+      contains(out, "SECTION C — CONFIGURATION PROCEDURE");
+      contains(out, "#(set! cnb:get-notehead-config");
+      contains(out, "(lambda (semitone duration key)");
+      contains(out, "(let ((pc (modulo semitone 12)))");
+      contains(out, "(cond");
+    }},
+
+  { name: "sectionC groups identical configs into memv clauses (default: naturals vs sharps)", fn: () => {
+      const out = CNBLilypond.sectionC(CNBConfig.createDefault());
+      contains(out, "((memv pc '(0 2 4 5 7 9 11))");
+      contains(out, "((memv pc '(1 3 6 8 10))");
+      const clauses = parseSectionCClauses(out);
+      // Naturals: solid; sharps: hollow via the shape's cutout
+      eq(clauses[0].hollow, "#f", "pc 0 solid");
+      eq(clauses[1].hollow, "crotchet-minim-cutout", "pc 1 hollow");
+      for (let pc = 0; pc < 12; pc++) {
+        eq(clauses[pc].shape, "crotchet-minim", `pc ${pc} shape`);
+        eq(clauses[pc].color, "black-000000", `pc ${pc} default black`);
+        eq(clauses[pc].attachment, "crotchet-minim-attach", `pc ${pc} attachment`);
+      }
+    }},
+
+  { name: "sectionC uses (= pc N) for single-pc groups", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules.push({
+        name: "F is red",
+        priority: 2,
+        match: { pitchClasses: [5], durations: "all", keys: "all" },
+        apply: { color: "#FF0000" },
+      });
+      const out = CNBLilypond.sectionC(cfg);
+      contains(out, "((= pc 5)");
+      const clauses = parseSectionCClauses(out);
+      eq(clauses[5].color, "color-ff0000");
+    }},
+
+  { name: "sectionC resolves palette colors to their scheme symbols", fn: () => {
+      const out = CNBLilypond.sectionC(paletteConfig());
+      const clauses = parseSectionCClauses(out);
+      eq(clauses[0].color, "shamrock-1b9e77");
+      eq(clauses[1].color, "orange-d95f02");
+      eq(clauses[2].color, "lilac-7570b3");
+      eq(clauses[3].color, "black-000000");
+    }},
+
+  { name: "sectionC emits hollow #f when the shape has no hollow path", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes["crotchet-minim"].svgHollowPath = null;
+      const out = CNBLilypond.sectionC(cfg);
+      const clauses = parseSectionCClauses(out);
+      eq(clauses[1].hollow, "#f", "sharp resolves hollow but shape has no cutout");
+    }},
+
+  { name: "sectionC emits attachment #f for stemless shapes", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes["crotchet-minim"].anchors = null;
+      cfg.shapes["crotchet-minim"].lilypondAnchors = null;
+      const out = CNBLilypond.sectionC(cfg);
+      const clauses = parseSectionCClauses(out);
+      eq(clauses[0].attachment, "#f");
+    }},
+
+  { name: "sectionC repeat field follows representationMode", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      // Default mode is "shape" (distinct shapes per duration) → #f
+      contains(CNBLilypond.sectionC(cfg), "(repeat     . #f)");
+      lacks(CNBLilypond.sectionC(cfg), "(repeat     . #t)");
+      cfg.durations.representationMode = "repeat";
+      contains(CNBLilypond.sectionC(cfg), "(repeat     . #t)");
+      lacks(CNBLilypond.sectionC(cfg), "(repeat     . #f)");
+    }},
+
+  { name: "sectionC emits a fallback else clause closing the procedure", fn: () => {
+      const out = CNBLilypond.sectionC(CNBConfig.createDefault());
+      contains(out, ";; Fallback");
+      contains(out, "(else");
+      // else alist ends the cond, let, lambda, and set! forms
+      contains(out, "(repeat     . #f)))))))");
+    }},
+
+  { name: "sectionC warns and emits no procedure when no rules are defined", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules = [];
+      const out = CNBLilypond.sectionC(cfg);
+      contains(out, "%% WARNING: No notehead rules defined.");
+      lacks(out, "cnb:get-notehead-config");
+    }},
+
+  // ── Section C: duration-aware compound conditions ──────────────────────────
+
+  { name: "sectionC default config has no duration conditions (uniform across durations)", fn: () => {
+      const out = CNBLilypond.sectionC(CNBConfig.createDefault());
+      lacks(out, "(= duration");
+    }},
+
+  { name: "sectionC emits compound (and pc duration) clauses for duration-varying pcs", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules.push({
+        name: "C is hollow as a minim",
+        priority: 2,
+        match: { pitchClasses: [0], durations: ["minim"], keys: "all" },
+        apply: { hollow: true },
+      });
+      const out = CNBLilypond.sectionC(cfg);
+      // pc 0 varies by duration → one compound clause per duration
+      contains(out, "((and (= pc 0) (= duration 3))"); // crotchet: solid
+      contains(out, "((and (= pc 0) (= duration 2))"); // minim: hollow
+      // remaining naturals stay in a duration-free memv group
+      contains(out, "((memv pc '(2 4 5 7 9 11))");
+      // the minim clause carries the hollow cutout
+      const minimClause = out.slice(out.indexOf("((and (= pc 0) (= duration 2))"));
+      contains(minimClause.slice(0, 300), "(hollow     . crotchet-minim-cutout)");
+      // the crotchet clause stays solid
+      const crotchetClause = out.slice(out.indexOf("((and (= pc 0) (= duration 3))"));
+      contains(crotchetClause.slice(0, 300), "(hollow     . #f)");
+    }},
+
+  // ── generate ───────────────────────────────────────────────────────────────
+
+  { name: "generate concatenates header, A, B, C in mandatory order", fn: () => {
+      const out = CNBLilypond.generate(CNBConfig.createDefault());
+      assert(out.startsWith('\\version "2.24.2"'), "file starts with version declaration");
+      const iHeader = out.indexOf("Generated by Chromatic Configurator");
+      const iA = out.indexOf("SECTION A — NAMED DEFINITIONS");
+      const iB = out.indexOf("SECTION B — ENGINE SETTINGS");
+      const iC = out.indexOf("SECTION C — CONFIGURATION PROCEDURE");
+      assert(iHeader >= 0 && iA > iHeader, "A after header");
+      assert(iB > iA, "B after A");
+      assert(iC > iB, "C after B");
+    }},
+
+  { name: "generate output contains the complete Section C procedure", fn: () => {
+      const out = CNBLilypond.generate(CNBConfig.createDefault());
+      contains(out, "#(set! cnb:get-notehead-config");
+      contains(out, "((memv pc '(0 2 4 5 7 9 11))");
+    }},
+
+  { name: "generate throws on blocking validation errors", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.staff.semitonePattern = [4]; // fewer than 2 staff lines
+      let threw = false;
+      try { CNBLilypond.generate(cfg); } catch (err) {
+        threw = true;
+        contains(err.message, "export validation");
+        contains(err.message, "at least 2 semitone positions");
+      }
+      assert(threw, "generate should throw on invalid config");
+    }},
+
+  { name: "generate throws when a used shape has no path data", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes["crotchet-minim"].svgPath = null;
+      cfg.shapes["crotchet-minim"].lilypondPath = null;
+      let threw = false;
+      try { CNBLilypond.generate(cfg); } catch (err) {
+        threw = true;
+        contains(err.message, 'Shape "crotchet-minim" has no path data');
+      }
+      assert(threw, "generate should throw when path data is missing");
+    }},
+
+  // ── Legacy parity (Section C) ──────────────────────────────────────────────
+
+  { name: "parity: sectionC is semantically equivalent to the legacy exporter for the default 4-8 config", fn: () => {
+      const cfg = CNBConfig.createDefault();
+
+      // Equivalent legacy app state: same shape, same cumulative rules
+      // (legacy model: ruleType-per-property, last-match-wins).
+      const shape = cfg.shapes["crotchet-minim"];
+      const legacyApp = {
+        defs: {
+          "crotchet-minim": {
+            path: shape.svgPath,
+            hollowPath: shape.svgHollowPath,
+            anchors: shape.anchors,
+          },
+        },
+        noteheadRules: [
+          { ruleType: "shape", pitchClasses: "all", shape: "crotchet-minim" },
+          { ruleType: "hollow", pitchClasses: [1, 3, 6, 8, 10], hollow: true },
+        ],
+      };
+
+      const legacyOut = Legacy.generateSectionC(legacyApp);
+      const newOut = CNBLilypond.sectionC(cfg);
+
+      const legacyClauses = parseSectionCClauses(legacyOut);
+      const newClauses = parseSectionCClauses(newOut);
+
+      for (let pc = 0; pc < 12; pc++) {
+        assert(legacyClauses[pc], `legacy covers pc ${pc}`);
+        assert(newClauses[pc], `new exporter covers pc ${pc}`);
+        eq(newClauses[pc].shape, legacyClauses[pc].shape, `pc ${pc} shape parity`);
+        eq(newClauses[pc].color, legacyClauses[pc].color, `pc ${pc} color parity`);
+        eq(newClauses[pc].hollow, legacyClauses[pc].hollow, `pc ${pc} hollow parity`);
+        eq(newClauses[pc].attachment, legacyClauses[pc].attachment, `pc ${pc} attachment parity`);
+        // Same grouping: identical configs merge into the same memv clause
+        eq(newClauses[pc].condition, legacyClauses[pc].condition, `pc ${pc} condition parity`);
+      }
+    }},
+
+  { name: "parity: pc-condition helper matches legacy buildPitchClassCondition", fn: () => {
+      eq(_internals.pcCondition([5], "pc"), Legacy.buildPitchClassCondition([5], "pc"));
+      eq(_internals.pcCondition([0, 4, 8], "pc"), Legacy.buildPitchClassCondition([0, 4, 8], "pc"));
+      eq(_internals.pcCondition([], "pc"), Legacy.buildPitchClassCondition([], "pc"));
     }},
 
 ];

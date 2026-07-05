@@ -6,8 +6,8 @@
  * (generateSectionA/B, svgPathToLilypond, toSchemeSymbol, and helpers),
  * mapped onto the modular config schema (Architecture Plan §4).
  *
- * Session 1 scope: header + Section A (named definitions) + Section B
- * (engine settings) + helpers. Section C and generate() land in Session 2.
+ * Covers the full export: header, Section A (named definitions), Section B
+ * (engine settings), Section C (configuration procedure), and generate().
  *
  * Dependencies: Module A (config), Module B (music)
  */
@@ -227,6 +227,55 @@ function paletteLabel(config) {
     name: palette.name || "None",
     mode: palette.useCBSafe ? "cb-safe" : "standard",
   };
+}
+
+/** LilyPond duration number for a named duration, or null when unknown. */
+function durationLyNumber(config, name) {
+  const defs = (config.durations && config.durations.definitions) || [];
+  const def = defs.find(d => d.name === name);
+  return (def && typeof def.lilypondDuration === "number") ? def.lilypondDuration : null;
+}
+
+/**
+ * Normalize one resolved notehead entry into the Section C alist fields.
+ * Mirrors legacy generateSectionC's per-group symbol derivation:
+ *   hollow  → "<shape>-cutout" only when the shape actually has hollow path data
+ *   attach  → "<shape>-attach" only when the shape has stem anchors
+ *   color   → explicit rule hex, else palette primary for the pc, else black
+ */
+function sectionCFields(config, r) {
+  const shapes = config.shapes || {};
+  const shape = shapes[r.shape];
+  const shapeSym = slug(r.shape || "");
+
+  const hasHollowPath = !!(shape && (shape.lilypondHollowPath || shape.svgHollowPath));
+  const hollowSym = (r.hollow && hasHollowPath) ? `${shapeSym}-cutout` : "#f";
+
+  const hasAnchors = !!(shape && (shape.lilypondAnchors || shape.anchors));
+  const attachSym = hasAnchors ? `${shapeSym}-attach` : "#f";
+
+  const palette = config.palette || {};
+  const hex = r.color !== null ? r.color : paletteHexFor(palette.colors, r.pc);
+  const colorSym = (!hex || hex.toLowerCase() === "#000000")
+    ? "black-000000"
+    : colorSymbolFor(config, hex);
+
+  return { shapeSym, colorSym, hollowSym, attachSym };
+}
+
+/** Grouping key: pcs/durations sharing this key share one cond clause. */
+function sectionCKey(f) {
+  return `${f.shapeSym}|${f.colorSym}|${f.hollowSym}|${f.attachSym}`;
+}
+
+/**
+ * Scheme condition for a pitch-class group (port of legacy
+ * buildPitchClassCondition): single pc → (= pc N), several → memv.
+ */
+function pcCondition(pcs, varName) {
+  if (!Array.isArray(pcs) || pcs.length === 0) return "#f";
+  if (pcs.length === 1) return `(= ${varName} ${pcs[0]})`;
+  return `(memv ${varName} '(${pcs.join(" ")}))`;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -568,6 +617,167 @@ export const CNBLilypond = {
     return lines.join("\n");
   },
 
+  /**
+   * Generate Section C — the configuration procedure (LY spec §6):
+   * resolves all 12 pitch classes (× durations) via CNBConfig.resolveNotehead,
+   * groups pitch classes with identical resolved configs, and emits cond
+   * clauses with memv grouping. Pitch classes whose config varies by duration
+   * get compound (and <pc-cond> (= duration N)) clauses (LY spec §6.2).
+   * The repeat field follows config.durations.representationMode:
+   * "repeat" → #t, otherwise (distinct shapes per duration) → #f.
+   * @param {object} config
+   * @returns {string}
+   */
+  sectionC(config) {
+    const lines = [];
+    lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    lines.push("%%     SECTION C — CONFIGURATION PROCEDURE");
+    lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    lines.push("%%");
+    lines.push("%% The procedure below maps (semitone, duration, key) to a config alist.");
+    lines.push("%% Generated from the notehead rules, resolved per pitch class");
+    lines.push("%% (priority-ordered cumulative merge via CNBConfig.resolveNotehead).");
+    lines.push("%%");
+    lines.push("");
+
+    if ((config.noteheadRules || []).length === 0) {
+      lines.push("%% WARNING: No notehead rules defined.");
+      lines.push("");
+      return lines.join("\n");
+    }
+
+    const representationMode = (config.durations && config.durations.representationMode) || "shape";
+    const repeat = representationMode === "repeat" ? "#t" : "#f";
+
+    // Resolve the full pc × duration matrix, normalized to emission fields.
+    const durations = durationNames(config);
+    const byDuration = {};
+    for (const duration of durations) {
+      byDuration[duration] = [];
+      for (let pc = 0; pc < 12; pc++) {
+        const r = CNBConfig.resolveNotehead(config, pc, duration, null);
+        byDuration[duration].push(sectionCFields(config, { pc, ...r }));
+      }
+    }
+
+    // Split pcs into duration-uniform (one clause per group, no duration
+    // condition) and duration-varying (compound clauses per duration).
+    const uniformPCs = [];
+    const varyingPCs = [];
+    for (let pc = 0; pc < 12; pc++) {
+      const keys = durations.map(d => sectionCKey(byDuration[d][pc]));
+      (keys.every(k => k === keys[0]) ? uniformPCs : varyingPCs).push(pc);
+    }
+
+    const groupBy = (pcs, duration) => {
+      const groups = {};
+      for (const pc of pcs) {
+        const f = byDuration[duration][pc];
+        const key = sectionCKey(f);
+        if (!groups[key]) groups[key] = { fields: f, pitchClasses: [] };
+        groups[key].pitchClasses.push(pc);
+      }
+      return Object.values(groups).sort((a, b) => a.pitchClasses[0] - b.pitchClasses[0]);
+    };
+
+    const emitClause = (comment, condition, f) => {
+      lines.push(`         ;; ${comment}`);
+      lines.push(`         (${condition}`);
+      lines.push(`          '((shape      . ${f.shapeSym})`);
+      lines.push(`            (color      . ${f.colorSym})`);
+      lines.push(`            (hollow     . ${f.hollowSym})`);
+      lines.push(`            (attachment . ${f.attachSym})`);
+      lines.push(`            (off-key-mark . #f)`);
+      lines.push(`            (repeat     . ${repeat})))`);
+      lines.push("");
+    };
+
+    lines.push("#(set! cnb:get-notehead-config");
+    lines.push("   (lambda (semitone duration key)");
+    lines.push("     (let ((pc (modulo semitone 12)))");
+    lines.push("       (cond");
+
+    // Duration-uniform clauses (resolved identically for every duration —
+    // grouping evaluated against the first duration, arbitrary by uniformity).
+    for (const group of groupBy(uniformPCs, durations[0])) {
+      const names = group.pitchClasses.map(pcName).join(", ");
+      const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
+      emitClause(
+        `${names} → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}`,
+        pcCondition(group.pitchClasses, "pc"),
+        group.fields
+      );
+    }
+
+    // Duration-varying clauses: compound (and <pc-cond> (= duration N)).
+    for (const duration of durations) {
+      const lyNum = durationLyNumber(config, duration);
+      for (const group of groupBy(varyingPCs, duration)) {
+        const names = group.pitchClasses.map(pcName).join(", ");
+        const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
+        const durCond = lyNum !== null ? `(= duration ${lyNum})` : "#t";
+        emitClause(
+          `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}`,
+          `(and ${pcCondition(group.pitchClasses, "pc")} ${durCond})`,
+          group.fields
+        );
+      }
+    }
+
+    // Fallback (unreachable when all 12 pcs are covered — safety net, as in
+    // the legacy exporter, which also forces hollow #f here).
+    const fb = byDuration[durations[0]][0];
+    lines.push("         ;; Fallback");
+    lines.push(`         (else`);
+    lines.push(`          '((shape      . ${fb.shapeSym})`);
+    lines.push(`            (color      . ${fb.colorSym})`);
+    lines.push(`            (hollow     . #f)`);
+    lines.push(`            (attachment . ${fb.attachSym})`);
+    lines.push(`            (off-key-mark . #f)`);
+    lines.push(`            (repeat     . ${repeat})))))))`);
+    lines.push("");
+
+    return lines.join("\n");
+  },
+
+  /**
+   * Generate the complete .ly file: header + Section A + Section B +
+   * Section C in the mandatory order (LY spec §2). Runs the export
+   * validation checks (LY spec §8) first and throws on blocking errors;
+   * warnings are non-blocking and not surfaced here (use CNBConfig.validate
+   * directly to inspect them).
+   * @param {object} config
+   * @returns {string}
+   * @throws {Error} when the config fails export validation
+   */
+  generate(config) {
+    const validation = CNBConfig.validate(config);
+    const errors = validation.errors.slice();
+
+    // Exporter-side check (LY spec §8 check 1): every shape the resolved
+    // rules reference must carry path data to emit in Section A.
+    const shapes = config.shapes || {};
+    for (const name of usedShapes(config)) {
+      const shape = shapes[name];
+      if (!shape.lilypondPath && !shape.svgPath) {
+        errors.push(`Shape "${name}" has no path data (lilypondPath or svgPath)`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(
+        "Config failed export validation:\n  - " + errors.join("\n  - ")
+      );
+    }
+
+    return [
+      CNBLilypond.header(config),
+      CNBLilypond.sectionA(config),
+      CNBLilypond.sectionB(config),
+      CNBLilypond.sectionC(config),
+    ].join("\n");
+  },
+
 };
 
 // Internal helpers exposed for unit testing only — not part of the module API.
@@ -583,4 +793,7 @@ export const _internals = {
   usedShapes,
   usedColors,
   attachmentPoints,
+  durationLyNumber,
+  sectionCFields,
+  pcCondition,
 };
