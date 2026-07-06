@@ -254,3 +254,49 @@ assign rules, export a `.ly` file, render it with the engine. This doesn't
 need its own session set necessarily; it's a natural fit for Phase 5's
 "document the full workflow" deliverable, extended across all three
 READMEs rather than just this repo's.
+
+---
+
+## 8. Expansion program (post-release-gate; added 2026-07-06)
+
+Phases 0–5 closed with session set 007 (the shared release gate). The
+expansion program validates the platform against the corpus of published
+chromatic notation systems — the Music Notation Project gallery,
+<https://musicnotation.org/systems/gallery/>, ~56 systems — and closes the
+two capability gaps that corpus is expected to surface (custom clefs,
+custom key signatures), then documents the platform for operators,
+including AI-assisted operation.
+
+**Program logic:** survey first (it is cheap and scopes everything else),
+then the enhancements it justifies, then reproduction as the proof, then
+the playbook whose can/can't claims cite that proof. Every enhancement
+carries one binding design rule: **disabled-by-default must reproduce
+current platform output exactly**, so the set-007 round-trip guarantee is
+never invalidated.
+
+**Known structural limits going in (to be confirmed or amended by the
+survey evidence, not assumed):** one pitch per vertical grid position
+(excludes compact staves such as the Twinline family), duration expressed
+in notehead style rather than geometry (excludes Dodeka), horizontal staff
+orientation (excludes Klavar-family vertical notation). These are platform
+invariants; the expansion program documents them rather than attempting
+them.
+
+| Set slug | Scope | Sessions | Tier | Depends on |
+|---|---|---|---|---|
+| `008-gallery-survey-and-feasibility` | Characterize every gallery system; feasibility matrix + enhancement-requirements catalog (scope authority for 009/010, target lists for 011, evidence for 012) | 2 | full | Set 007 |
+| `009-custom-clefs` | `clef` config section, glyph import, grid-positioned preview, UI editor, export per engine capability | 2 | full | Set 008 |
+| `010-custom-key-signatures` | `keys.keySignature` capability (Clairnote DN as reference case), composing with the clef gutter | 2 | full | Sets 008, 009 |
+| `011-gallery-reproduction-suite` | Reproduction-study config fixtures for the matrix's reproducible systems + automated fixture gate + fidelity report | 2 | full | Sets 008, 009, 010 |
+| `012-notation-builder-playbook` | Operator playbook + AI-assisted workflow guide, evidence-cited, operator-approved | 2 | full | Set 011 |
+
+**IP note:** §5 above is binding across this program. Sets 010–012 touch
+named systems directly (Clairnote's *design* is CC BY-SA 4.0 while
+`clairnote.ly` is GPL v3 — study the published design, never that code);
+set 011's fixtures are attributed "reproduction studies," and gallery
+images are compared against, never redistributed in this repo.
+
+**Cross-repo:** sets 009 and 010 each include an engine-capability
+discovery step and a coordination record; missing engine hooks are
+documented as `lilypond-chromatic-notation-base` follow-on work, not
+implemented from this repo.
