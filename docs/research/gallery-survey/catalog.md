@@ -513,8 +513,8 @@ Preamble notes:
 | `aux.key-signature` | none-observed |
 | `aux.octave-markers` | line-marking |
 | `aux.accidentals` | not-needed |
-| `duration.representation` | traditional |
-| `notes` | Staff "basically identical to Isomorph Notation" but with the heavy bottom and top lines representing C (text; image shows heavy lines at staff top and bottom). With the Isomorph structure (group of three whole-step lines, major-3rd gap to the heavy line on each side) anchored so the heavy lines are C, the pattern is [0, 4, 6, 8] (C, E, F#, G#). Heavy C lines mark octaves, hence line-marking. Uses the same alternating (whole-tone) notehead color as Isomorph, hence binary-6-6 fill (also visible in the image). "The rhythmic notation is mostly traditional rather than proportional" (text) — recorded as traditional, but since hollow/solid encodes pitch, duration presumably rides on stems/flags/beams; the qualifier "mostly" is the text's own. |
+| `duration.representation` | unknown |
+| `notes` | Staff "basically identical to Isomorph Notation" but with the heavy bottom and top lines representing C (text; image shows heavy lines at staff top and bottom). With the Isomorph structure (group of three whole-step lines, major-3rd gap to the heavy line on each side) anchored so the heavy lines are C, the pattern is [0, 4, 6, 8] (C, E, F#, G#). Heavy C lines mark octaves, hence line-marking. Uses the same alternating (whole-tone) notehead color as Isomorph, hence binary-6-6 fill (also visible in the image). Duration is `unknown`: the text says "the rhythmic notation is mostly traditional rather than proportional", but because hollow/solid here encodes pitch class, the traditional hollow-half convention cannot apply as defined, and the sources do not specify what device replaces it — so no closed value is confidently supported. |
 
 ### 18. Numbered Notes, Notes-Only (Jason MacCoy, 2009)
 
@@ -549,12 +549,12 @@ Preamble notes:
 
 | Field | Value |
 |---|---|
-| `name` | Numbered Notes, Numbers-Only Version |
+| `name` | Numbered Notes, Numbers-Only |
 | `creator` | Jason MacCoy |
 | `year` | 2009 |
 | `gallery-category` | Lines a Minor 3rd Apart, 3 or 4 Lines per Octave |
 | `detail-url` | https://musicnotation.org/system/numbered-notes-numbers-only-by-jason-maccoy/ |
-| `sources` | https://musicnotation.org/system/numbered-notes-numbers-only-by-jason-maccoy/; https://musicnotation.org/wp-content/uploads/2012/07/numbered-notes-numbers-jason-maccoy.png |
+| `sources` | https://musicnotation.org/system/numbered-notes-numbers-only-by-jason-maccoy/; https://musicnotation.org/wp-content/uploads/2012/07/numbered-notes-numbers-jason-maccoy.png; https://musicnotation.org/system/hass-notation-3-line-version/ (gallery detail page consulted as corroboration for the shared staff anchoring) |
 | `staff.orientation` | horizontal |
 | `staff.pitch-axis` | linear-chromatic |
 | `staff.interval-structure` | uniform-minor-3rd |
@@ -572,7 +572,7 @@ Preamble notes:
 | `aux.octave-markers` | none-observed |
 | `aux.accidentals` | not-needed |
 | `duration.representation` | other |
-| `notes` | The numerals 1–12 (1 = C) serve as the noteheads themselves, so shape-scheme = per-pc-distinct and internal-glyphs = numbers; there is no solid/hollow fill dimension (fill-scheme = other). Semitone pattern from pixel measurement of the gallery image: lines sit at E, G, A# ([4, 7, 10]) with C#-position ledger lines at semitones 1 and 13 (C hangs just below its C# ledger); the Hass 3-line page confirms "this staff is the same as that of the Numbered Notes system" with C# on a ledger line. Image shows two 3-line octave groups separated by a 6-semitone gap (grouping-gap at the octave boundary). Duration: page text says rhythmic notation "is the same as in traditional notation, except that a novel means of distinguishing between half and quarter notes is introduced"; numeral noteheads preclude the traditional hollow/solid convention and the novel half/quarter device is not specified in the sources, hence `other`. |
+| `notes` | The numerals 1–12 (1 = C) serve as the noteheads themselves, so shape-scheme = per-pc-distinct and internal-glyphs = numbers; there is no solid/hollow fill dimension (fill-scheme = other). Semitone pattern from pixel measurement of the gallery image: lines sit at E, G, A# ([4, 7, 10]) with C#-position ledger lines at semitones 1 and 13 (C hangs just below its C# ledger); the Hass 3-line gallery detail page (listed in sources) corroborates this: "this staff is the same as that of the Numbered Notes system" with C# on a ledger line. Image shows two 3-line octave groups separated by a 6-semitone gap (grouping-gap at the octave boundary). Duration: page text says rhythmic notation "is the same as in traditional notation, except that a novel means of distinguishing between half and quarter notes is introduced"; numeral noteheads preclude the traditional hollow/solid convention and the novel half/quarter device is not specified in the sources, hence `other`. |
 
 ### 20. Lautus Notation (Bruce Allen Dickey, 2011)
 
@@ -948,8 +948,8 @@ Preamble notes:
 | `aux.key-signature` | none-observed |
 | `aux.octave-markers` | none-observed |
 | `aux.accidentals` | not-needed |
-| `duration.representation` | traditional |
-| `notes` | Compact Twinline-family staff: 2-line staff with the lower line E (and by the major-3rd category, the upper line G#/Ab), C on a ledger line above and below (text). Between any two adjacent lines there are only three elevations for notes (text), so the octave is vertically compressed and notes adjacent to a line crowd the line's vertical zone: DISAMBIGUATION is by notehead shape — a note resting against a line takes a semicircular shape (flat side on the line, body above or below it indicating which neighbor pitch it is), while other notes are ovals (text + image). Hence pitch-axis/compactness = compact and semitone-pattern not-derivable. Fill alternates in a 6-6 pattern: semicircles black, ovals white (text + image), and the shape classes coincide with the two whole-tone sets, so both shape and fill are binary-6-6. Image (two-octave form) shows the line pairs separated by a larger octave gap (grouping-gap) with a mid-gap C ledger, hence `ledgers = modified`. Duration: text says only "rhythmic notation is mostly traditional"; since fill is pitch-bound, the traditional hollow-half convention cannot apply and the half-note device is unspecified in the sources. No clef, key signature, octave markers, or accidentals in image or text. |
+| `duration.representation` | unknown |
+| `notes` | Compact Twinline-family staff: 2-line staff with the lower line E (and by the major-3rd category, the upper line G#/Ab), C on a ledger line above and below (text). Between any two adjacent lines there are only three elevations for notes (text), so the octave is vertically compressed and notes adjacent to a line crowd the line's vertical zone: DISAMBIGUATION is by notehead shape — a note resting against a line takes a semicircular shape (flat side on the line, body above or below it indicating which neighbor pitch it is), while other notes are ovals (text + image). Hence pitch-axis/compactness = compact and semitone-pattern not-derivable. Fill alternates in a 6-6 pattern: semicircles black, ovals white (text + image), and the shape classes coincide with the two whole-tone sets, so both shape and fill are binary-6-6. Image (two-octave form) shows the line pairs separated by a larger octave gap (grouping-gap) with a mid-gap C ledger, hence `ledgers = modified`. Duration is `unknown`: the text says only "rhythmic notation is mostly traditional", but since fill is pitch-bound the traditional hollow-half convention cannot apply as defined, and the sources do not specify the replacement half-note device — no closed value is confidently supported. No clef, key signature, octave markers, or accidentals in image or text. |
 
 ### 33. Diatonic Twinline (Leo de Vries, 1986)
 
@@ -977,8 +977,8 @@ Preamble notes:
 | `aux.key-signature` | none-observed |
 | `aux.octave-markers` | none-observed |
 | `aux.accidentals` | not-needed |
-| `duration.representation` | traditional |
-| `notes` | Identical staff geometry to Chromatic Twinline: 2-line staff (lower line E), C ledger above and below, three elevations between adjacent lines, semicircular notehead shape when a note rests against a line (text) — pitches sharing a line's vertical zone are disambiguated by shape (semicircle vs oval) and by which side of the line the semicircle's body sits. Shape classes follow the same 6-6 structural alternation as Chromatic Twinline, but FILL follows the 7-5 piano-key pattern: notehead color (solid/hollow) corresponds to black/white piano keys (text; mixed solid ovals and solid semicircles visible in image) — hence fill = by-pc-set. Intended by de Vries as a temporary transitional system toward Chromatic Twinline (text). Image (two-octave form) shows grouping-gap between line pairs and mid-gap C ledger (`ledgers = modified`). Duration: text says only "rhythmic notation is mostly traditional"; fill is pitch-bound so the half-note device is unspecified. No clef, key signature, octave markers, or accidentals in image or text. |
+| `duration.representation` | unknown |
+| `notes` | Identical staff geometry to Chromatic Twinline: 2-line staff (lower line E), C ledger above and below, three elevations between adjacent lines, semicircular notehead shape when a note rests against a line (text) — pitches sharing a line's vertical zone are disambiguated by shape (semicircle vs oval) and by which side of the line the semicircle's body sits. Shape classes follow the same 6-6 structural alternation as Chromatic Twinline, but FILL follows the 7-5 piano-key pattern: notehead color (solid/hollow) corresponds to black/white piano keys (text; mixed solid ovals and solid semicircles visible in image) — hence fill = by-pc-set. Intended by de Vries as a temporary transitional system toward Chromatic Twinline (text). Image (two-octave form) shows grouping-gap between line pairs and mid-gap C ledger (`ledgers = modified`). Duration is `unknown`: the text says only "rhythmic notation is mostly traditional", but fill is pitch-bound (7-5 piano-key pattern) so the traditional hollow-half convention cannot apply as defined, and the sources do not specify the replacement device. No clef, key signature, octave markers, or accidentals in image or text. |
 
 ### 34. Twinline Notation (Thomas Reed, 1986)
 
@@ -1383,8 +1383,8 @@ Preamble notes:
 | `aux.key-signature` | none-observed |
 | `aux.octave-markers` | none-observed |
 | `aux.accidentals` | not-needed |
-| `duration.representation` | stem-flag-only |
-| `notes` | Text: characters 0,1,2,3,4,5,6,7,8,9,X,N replace noteheads, one per chromatic pitch, placed at twelve elevations on a 3-line staff spanning an octave; upper and lower lines are C, middle line is F# → pattern [0, 6]. Gallery image confirms evenly spaced lines a tritone apart (5 lines shown covering two octaves) with digits ascending in even steps. Shape/fill marked `other` because the "noteheads" are numeral/letter glyphs with no solid-hollow dimension; internal-glyphs `numbers` (X and N serve as 10 and 11). Absolute-pitch system, not relative. Duration `stem-flag-only` is an inference from text ("Stems extend upward or downward from the numbers") plus uniform glyph heads; flags/beams not documented. No stems or ledgers appear in the sample image. Stuckey has withdrawn the proposal. |
+| `duration.representation` | unknown |
+| `notes` | Text: characters 0,1,2,3,4,5,6,7,8,9,X,N replace noteheads, one per chromatic pitch, placed at twelve elevations on a 3-line staff spanning an octave; upper and lower lines are C, middle line is F# → pattern [0, 6]. Gallery image confirms evenly spaced lines a tritone apart (5 lines shown covering two octaves) with digits ascending in even steps. Shape/fill marked `other` because the "noteheads" are numeral/letter glyphs with no solid-hollow dimension; internal-glyphs `numbers` (X and N serve as 10 and 11). Absolute-pitch system, not relative. Duration is `unknown`: the text documents stems ("Stems extend upward or downward from the numbers"), but flags/beams and the treatment of longer values are undocumented and no stems appear in the sample image — `stem-flag-only` would be an inference beyond the sources. Stuckey has withdrawn the proposal. |
 
 ### 48. Untitled (Nicolai Dolmatov, 1995)
 
@@ -1603,7 +1603,7 @@ reference case for the duration-encoding constraint.
 |---|---|
 | `name` | Dodeka Music Notation |
 | `creator` | Jacques-Daniel Rochat |
-| `year` | unknown (Wikipedia: "invented and designed in the 1980s"; no single year given) |
+| `year` | unknown |
 | `gallery-category` | out-of-gallery |
 | `detail-url` | https://dodekamusic.com/learn/alternative-music-notation/dodeka-alternative-music-notation/ |
 | `sources` | https://dodekamusic.com/learn/alternative-music-notation/dodeka-alternative-music-notation/ (text + images `files/small-802.png`, `small-805.png`, `small-823.png`, `small-835.png`); https://en.wikipedia.org/wiki/Dodeka_music_notation; https://musicnotation.org/systems/more-notation-systems/ (listing + criteria references) |
@@ -1624,4 +1624,4 @@ reference case for the duration-encoding constraint.
 | `aux.octave-markers` | unknown |
 | `aux.accidentals` | not-needed |
 | `duration.representation` | proportional-spatial |
-| `notes` | Line pitches are stated by the source text: "on the line (C, E, G#); above the line (C#, F, A); between the lines (D, F#, A#); and under the line (D#, G, B)" — hence semitone pattern [0, 4, 8] with C on a line. The site draws one octave as a four-line block ("DODEKA's four-line structure", `small-802.png`): the 4th line is the next octave's C, so the per-octave period is 3 lines. Duration is the platform-relevant attribute: "the easiest way to indicate the length of a note is to give it a horizontal size proportional to its duration" (piano-roll-like bar length; `small-823.png` shows uniform solid rectangular noteheads for all 12 pitch classes). Multi-octave diagrams (`small-805.png`) show out-of-staff notes (e.g. C6, E-1) without ledger lines. Octave labels (C1…C6) appear in teaching diagrams, but whether scores carry octave markers is not determinable from the sources. No clef glyph, key signature, or accidental appears in any consulted notation image; the system's own text says sheet music "is devoid of any accidentals". Dodeka uses its own note-letter names (C K D T E F H G P A V B, `small-823.png`) as pedagogy, not as in-notehead glyphs. The notation was co-designed with the Dodeka isomorphic keyboard. |
+| `notes` | Year is `unknown` as a single value: Wikipedia says the system was "invented and designed in the 1980s" — a decade, not a year. Line pitches are stated by the source text: "on the line (C, E, G#); above the line (C#, F, A); between the lines (D, F#, A#); and under the line (D#, G, B)" — hence semitone pattern [0, 4, 8] with C on a line. The site draws one octave as a four-line block ("DODEKA's four-line structure", `small-802.png`): the 4th line is the next octave's C, so the per-octave period is 3 lines. Duration is the platform-relevant attribute: "the easiest way to indicate the length of a note is to give it a horizontal size proportional to its duration" (piano-roll-like bar length; `small-823.png` shows uniform solid rectangular noteheads for all 12 pitch classes). Multi-octave diagrams (`small-805.png`) show out-of-staff notes (e.g. C6, E-1) without ledger lines. Octave labels (C1…C6) appear in teaching diagrams, but whether scores carry octave markers is not determinable from the sources. No clef glyph, key signature, or accidental appears in any consulted notation image; the system's own text says sheet music "is devoid of any accidentals". Dodeka uses its own note-letter names (C K D T E F H G P A V B, `small-823.png`) as pedagogy, not as in-notehead glyphs. The notation was co-designed with the Dodeka isomorphic keyboard. |

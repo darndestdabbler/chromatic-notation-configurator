@@ -4,8 +4,11 @@
 **Date:** 2026-07-06
 **Purpose:** Fixed record schema for characterizing every notation system in
 the Music Notation Project gallery (<https://musicnotation.org/systems/gallery/>).
-Every record in `catalog.md` conforms to this schema. Every attribute has a
-**closed value set** defined here, plus the universal value `unknown`.
+Every record in `catalog.md` conforms to this schema. Every **categorical**
+attribute has a **closed value set** defined here, plus the universal value
+`unknown`. The identity/citation fields (§1), the numeric field
+`staff.lines-per-octave`, the derived-list field `staff.semitone-pattern`,
+and the free-text `notes` field (§7) are typed but open-valued.
 
 ## Rules
 
