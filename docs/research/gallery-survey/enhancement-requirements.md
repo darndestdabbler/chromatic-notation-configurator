@@ -33,7 +33,7 @@ sets 009/010 inherit it as an acceptance criterion.
 
 ## E1 — Custom clefs / register devices (scope authority for set 009)
 
-**Prevalence — drivers (10):**
+**Prevalence — drivers (9):**
 
 | Record | System | Device (from catalog notes) |
 |---|---|---|
@@ -42,7 +42,6 @@ sets 009/010 inherit it as an acceptance criterion.
 | 27 | Clairnote SN | "system of alternative … clefs" (form not shown in sources) |
 | 29 | Clairnote DN | "system of alternative … clefs" |
 | 30 | Chromatic Lyre Notation | traditional alto clef with 8va/8vb/15va/15vb incorporated |
-| 42 | Thumline Notation | arcs at staff start pointing to the Do line |
 | 43 | Express Stave: Pianoforte Notation | custom F, B, D clef symbols + piano-symbol line identifier |
 | 44 | Express Stave, 6-6 Jazz Font | custom F, B, D clef symbols |
 | 45 | Express Stave, Original Version | traditional bass/treble/alto clefs as register indicators |
@@ -50,7 +49,8 @@ sets 009/010 inherit it as an acceptance criterion.
 
 **Additional evidence (Tier 4):** 37 Bilinear Notation ("new register
 symbols", form unknown), 40 Chromatic Nydana (Roman numerals identify the
-octave in place of clefs).
+octave in place of clefs), 42 Thumline Notation (arcs at staff start
+pointing to the Do line; Tier 4 under invariant I5).
 
 **Scope note:** register-identification devices in the clef slot —
 octave numerals/letters (`aux.clef = octave-number-or-label`) and
@@ -86,17 +86,18 @@ today via `staff.lineOverrides` (matrix rule M1).
 
 ## E2 — Custom key signatures (scope authority for set 010)
 
-**Prevalence — drivers (4):**
+**Prevalence — drivers (3):**
 
 | Record | System | Device (from catalog notes) |
 |---|---|---|
 | 4 | Notation Godjevatz | optional traditional key signatures |
 | 27 | Clairnote SN | "system of alternative … key signatures" |
 | 29 | Clairnote DN | "system of alternative … key signatures" |
-| 42 | Thumline Notation | tonic named in the signature + symbols for key changes and modulation distance |
 
 **Additional evidence (Tier 4):** 40 Chromatic Nydana (single sharp/flat
-with a count numeral; natural sign = C major).
+with a count numeral; natural sign = C major), 42 Thumline Notation
+(tonic named in the signature + symbols for key changes and modulation
+distance; Tier 4 under invariant I5).
 
 **Requirements sketch:**
 
@@ -190,23 +191,18 @@ both. **Not** a separate set.
 
 ---
 
-## Observed gaps NOT cataloged (single-system; named in tier verdicts instead)
+## Observed gaps NOT cataloged
 
 - **Grouped far-side ledger display** (record 7, 6-6 Trigram Notation):
   ledger stacks rendered on the far side of the note exceed the
-  between-note-and-staff display rule. One system; handled as a
-  documented Tier-3 partial in set 011.
-- **Bounded staff extent** (record 14, Note for Note; surfaced in the
-  session-2 UAT round): the platform expands `staff.semitonePattern`
-  across every rendered octave, so a fixed staff span whose pattern
-  positions continue as ledger lines beyond it (down to a
-  differently-styled boundary line) has no representation. One driver
-  system (Lautus Notation's *recommended* single-octave variant would
-  also hit it, but its depicted form does not); handled as a documented
-  Tier-3 partial in set 011.
-- **Movable-Do (relative) pitch anchoring** (record 42, Thumline
-  Notation): the config anchors `staff.semitonePattern` to absolute
-  pitch classes. One system; per-key configs approximate it.
+  between-note-and-staff display rule. A display-fidelity partial (every
+  configured element representable, output pitch-identical), below
+  invariant level; handled as a documented Tier-3 partial in set 011.
+- *Bounded staff extent* and *movable-Do (relative) pitch anchoring*,
+  observed on records 14 and 42, are **not** enhancement material or
+  Tier-3 gaps: they are structural and were amended into the platform
+  invariant set as **I4** and **I5** respectively during verification
+  round 1 — see `feasibility-matrix.md` §1.
 
 ## Summary for downstream sets
 

@@ -17,8 +17,17 @@ notes are quoted where they qualify an enum.
 ## 1. Platform invariants (confirmed against the survey)
 
 The set spec named three candidate invariants and asked that they be
-confirmed or amended against the survey evidence. All three are confirmed;
-no additional invariant is needed.
+confirmed or amended against the survey evidence. All three are
+confirmed, and the evidence forced **two amendments** (I4, I5 below).
+
+**Invariant test (architectural, not prevalence-based):** a constraint is
+an invariant when it is an architectural assumption of the config schema
+or rendering model whose violation makes the platform's output
+*structurally different* from the system — as opposed to a display rule
+omitting an optional or redundant mark while the rendered notation stays
+structurally identical. How many surveyed systems break a constraint is
+irrelevant to invariant status; prevalence matters only for enhancement
+prioritization.
 
 - **I1 — Horizontal staff orientation.** The grid (`cnb-grid.js`) maps
   pitch to the vertical axis of a horizontal staff; there is no
@@ -41,18 +50,41 @@ no additional invariant is needed.
   proportional-spatial`. **Broken by 6 records** (9, 16, 23, 28, 49, S1 —
   Dodeka is the reference case, as anticipated).
 
-**No amendment needed.** In particular, the candidate fourth constraint —
-"staff expressible as a per-octave semitone pattern" — was the binding
-obstacle only once (record 14, surfaced in the UAT round: a **bounded**
-staff span whose pattern positions continue as *ledger* lines below the
-staff — the platform expands the pattern across every rendered octave, so
-there is no staff-extent bound). A single system does not justify an
-invariant; the gap is named in its Tier-3 verdict. Every other
-horizontal, linear-chromatic record's `staff.semitone-pattern` is either
-derivable or `unknown` only in its anchoring pitch class (which does not
-affect expressibility; see method rule M2). In total, three narrow gaps
-were observed and are handled as named Tier-3 gaps, not invariants
-(records 7, 14, and 42, §3).
+**Amendments (per the spec's confirm-or-amend instruction):**
+
+- **I4 — Per-octave staff periodicity.** `staff.semitonePattern` is
+  per-octave *by construction* and expands across every octave of the
+  rendered range; the config has no staff-extent concept. `schema.md`'s
+  feasibility hooks already anticipated this as an invariant witness
+  ("Staff expressible as a per-octave semitone pattern"). A **bounded**
+  staff — a fixed span whose pattern positions continue *beyond* it as
+  ledger lines (with boundary-specific styling) — renders structurally
+  wrong: the platform draws full staff lines through the ledger zone,
+  and a ledger template at a pattern-covered offset never fires because
+  the display rule finds a staff line there first. Witness fields:
+  `staff.semitone-pattern` + record notes on staff extent. **Broken by 1
+  record** (14 — surfaced by the human UAT round).
+- **I5 — Absolute pitch anchoring.** The config anchors
+  `staff.semitonePattern`, ledger templates, and notehead rules to
+  absolute pitch classes (offset 0 = pitch class C, per `schema.md`'s
+  stated convention). A system whose lines denote *scale degrees from a
+  movable tonic* has no representation: any single config is correct for
+  exactly one key, and the system as such — one notation whose meaning
+  transposes with the key — cannot be expressed. Witness: record notes
+  on relative pitch axis (the `unknown` semitone pattern is
+  key-dependence, not missing data). **Broken by 1 record** (42).
+
+Both amendments pass the architectural test above: in each case the
+platform's output would be structurally different from the system (extra
+staff lines / wrong pitches under transposition), not merely missing an
+optional mark. Every other horizontal, linear-chromatic record's
+`staff.semitone-pattern` is either derivable or `unknown` only in its
+anchoring pitch class (which does not affect expressibility; see method
+rule M2). One narrow gap remains below invariant level and is handled as
+a named Tier-3 gap (record 7, §3): it fails the architectural test
+because every configured element is representable and the rendered
+notation is pitch-identical — a display rule omits redundant far-side
+ledger marks only.
 
 ## 2. Tier definitions
 
@@ -62,12 +94,15 @@ were observed and are handled as named Tier-3 gaps, not invariants
 - **Tier 2 — expressible with planned enhancements:** needs one or more
   entries from the enhancement-requirements catalog
   (`enhancement-requirements.md`, E1–E4), and nothing else.
-- **Tier 3 — partially expressible:** the staff/notehead core is
-  reproducible, but one or more of the system's devices or display
-  behaviors is not covered by the schema today nor by a cataloged
-  enhancement; the gap is named in the verdict.
+- **Tier 3 — partially expressible:** staff/notehead core reproducible,
+  one or more auxiliary devices not; the gap is named. *Documented
+  amendment (added in verification round 1 of this session):* Tier 3
+  also covers a named partial-**display** gap — every configured element
+  representable, but a display rule renders a strict subset of the
+  system's marks while the notation stays pitch-identical. Sole case:
+  record 7.
 - **Tier 4 — structurally out of scope:** the system breaks a platform
-  invariant (I1/I2/I3); the invariant is named. Secondary obstacles are
+  invariant (I1–I5); the invariant is named. Secondary obstacles are
   noted but the invariant is decisive.
 
 **Provisional flag (spec step 2):** a verdict is *provisional* when a
@@ -88,19 +123,17 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
   the octave, so a variation must apply to every octave's instance of that
   line — true of every bold/dashed line cataloged except record 14's
   dashed *lower* C, which differs from the same pattern position's
-  in-staff instance (part of that record's Tier-3 gap).
+  in-staff instance (part of that record's I4 break).
 - **M2 — Staff pattern.** Any `staff.semitone-pattern` list is
   expressible, including adjacent-semitone lines (record 53) and a single
   line per octave (record 48). An `unknown` pattern whose *structure* is
   fixed (uniform interval, known lines-per-octave) but whose anchoring
   pitch class is not, is expressible for every candidate anchor — not
   load-bearing for the tier, but flagged for set 011 (reproduction needs
-  the anchor pinned). Caveat (UAT finding, record 14): the pattern
-  expands across **every** octave of the rendered range — a bounded
-  staff span whose pattern positions continue as *ledger* lines beyond
-  the staff has no representation (a ledger template at a
-  pattern-covered offset never renders, because the display rule finds a
-  staff line at that position first).
+  the anchor pinned). The pattern expands across **every** octave of the
+  rendered range — a bounded staff span is invariant I4's subject
+  (record 14), and a key-relative (movable) anchoring is invariant I5's
+  (record 42).
 - **M3 — Ledgers.** Ledger templates are octave-aware, carry
   per-position style overrides, and have no outside-staff gate — so
   `modified` usages with fixed in-staff/mid-gap ledger positions (records
@@ -150,13 +183,13 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 | 11 | Ambros System (August Ambros) | 1 | no | Alternating solid/dashed lines `[0,2,4,6,8,10]` (M1), uniform heads, `duration.representation = traditional` (M4a). `ledgers.usage = unknown` is not load-bearing: every closed ledger value is expressible (M3). |
 | 12 | Douzave System (John Leon Acheson) | 1 | yes | Bold C + dashed F# via `lineOverrides` (M1) on `[0,2,4,6,8,10]`. Provisional: `duration.representation = unknown` (and `fill-scheme = unknown`, same resolution). |
 | 13 | Notagraph (Constance Virtue) | 1 | no | Whole-step staff `[0,2,4,6,8,10]` with dashed F# (M1); both C boundary lines fall out of the per-octave pattern over the rendered range. `duration.representation = traditional` (M4a). |
-| 14 | Note for Note (Walter H. Thelwall) | 3 | no | Whole-step pattern, bold middle C, and `duration.representation = traditional` are covered within the staff span (M1, M4a), but the staff is a **bounded** ~1.5-octave 7-line span whose same pattern positions continue *below* it as ledger lines down to a dashed C — the platform expands the pattern across every rendered octave (M2 caveat), so the ledger-zone whole-step positions would render as full staff lines and the dashed lower C cannot be styled apart from the in-staff C (M1). Gap named: bounded staff extent with pattern-position ledger continuation. Re-tiered from 1 in the UAT round (operator: "there isn't a repeating sequence [of] lines and ledgers across octaves"). |
+| 14 | Note for Note (Walter H. Thelwall) | 4 | no | The **bounded** ~1.5-octave 7-line staff, whose same whole-step pattern positions continue *below* it as ledger lines down to a dashed C, breaks **I4** (per-octave staff periodicity): the platform would draw full staff lines through the ledger zone and cannot style the boundary C apart from the in-staff C. First flagged by the operator at UAT ("there isn't a repeating sequence [of] lines and ledgers across octaves"); the continuous-grid core (whole-step pattern, bold middle C, traditional duration) would otherwise be Tier 1. |
 | 15 | Proportional Chromatic Musical Notation (Henri Carcelle) | 4 | no | `staff.orientation = vertical` breaks **I1**. |
 | 16 | Isomorph Notation (Tadeusz Wójcik) | 4 | no | `duration.representation = proportional-spatial` breaks **I3** (M4e). Core (`[2,6,8,10]`, heavy D line, binary-6-6 fill) would otherwise be expressible. |
 | 17 | DA Notation (Rich Reed) | 1 | yes | Staff `[0,4,6,8]` with heavy C lines (M1), binary-6-6 fill via per-PC hollow rules (M5). Provisional: `duration.representation = unknown` — the record's notes state the traditional hollow-half convention cannot apply and the replacement device is unspecified (M4). |
 | 18 | Numbered Notes, Notes-Only (Jason MacCoy) | 1 | no | Uniform minor-3rd 4-line staff, `duration.representation = traditional` (M4a). `staff.semitone-pattern = unknown` is only the anchoring pitch class — expressible for every candidate anchor, so not load-bearing (M2); set 011 must pin the anchor before reproduction. |
 | 19 | Numbered Notes, Numbers-Only (Jason MacCoy) | 2 | yes | Numeral noteheads are per-PC-distinct shape paths (M5) on the `[4,7,10]` staff (M2, M3). Needs E3 provisionally: `duration.representation = other` with the novel half/quarter device unspecified in the sources — a notehead-baked resolution would make it Tier 1 (M4c), a stem device confirms E3 (M4d). |
-| 20 | Lautus Notation (Bruce Allen Dickey) | 2 | no | Staff `[2,5,8,11]` with bold F line (M1), all-solid heads (M5) are covered — the staff as depicted is continuous across stacked octaves, which is exactly the platform's expansion model (M2). Needs E1 (octave-numeral in place of a clef; M6) and E3 (stem-count duration system: half-height neighbor stem, double/triple stems, nontraditional stem-like rests; M4d). Dickey's *recommended* single-octave-plus-ledgers variant would additionally hit record 14's bounded-staff-extent gap; the verdict covers the depicted form. |
+| 20 | Lautus Notation (Bruce Allen Dickey) | 2 | no | Staff `[2,5,8,11]` with bold F line (M1), all-solid heads (M5) are covered — the staff as depicted is continuous across stacked octaves, which is exactly the platform's expansion model (M2). Needs E1 (octave-numeral in place of a clef; M6) and E3 (stem-count duration system: half-height neighbor stem, double/triple stems, nontraditional stem-like rests; M4d). Dickey's *recommended* single-octave-plus-ledgers variant would break I4; the verdict covers the depicted continuous form. |
 | 21 | Hass Notation, 3-Line Version (Peter Hass) | 1 | no | Staff `[4,7,10]` with C# ledger template (M3); oval/triangle by-pc-set shapes with center-attached stems via shape anchors (M5). `duration.representation = traditional` (M4a). |
 | 22 | Trilinear Notation (José A. Sotorrio) | 2 | no | X/O/< by-pc-set glyph shapes on `[4,7,10]` are covered (M5); whole = stemless bare glyph is covered (M4b). Needs E3: the half-note tick sits "on the opposite side from the conventional stem" — direction-dependent, so it cannot be baked into a fixed shape variant (M4d). |
 | 23 | Chromatic 6-6 Notation (Johannes Beyreuther) | 4 | no | `duration.representation = proportional-spatial` breaks **I3** (M4e). Core (`[0,4,8]`, binary-6-6 fill) would otherwise be expressible. |
@@ -178,7 +211,7 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 | 39 | TwinNote TD (Paul Morris) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. |
 | 40 | Chromatic Nydana (Dan Lindgren) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also Roman-numeral octave clef, custom key signature, hooked/novel stems — E1/E2/E3 evidence.) |
 | 41 | MUTO Notation (MUTO Foundation) | 1 | yes | Staff `[0,6]` with bold C lines (M1); the fixed in-staff D/E and G#/A# ledger positions are override templates (M3). Provisional: `duration.representation = unknown`. |
-| 42 | Thumline Notation (Jim Plamondon) | 3 | yes | The whole-step grid staff and in-staff ledgers are expressible *per key* (M2, M3), but the pitch axis is **relative** (lines are scale degrees from a movable Do) — the config anchors patterns to absolute pitch classes, so the movable anchoring has no representation; a per-key family of configs only approximates it. Gap named: movable-Do (relative) pitch anchoring. Also needs E1 (arc clef device) and E2 (tonic/modulation signature). Provisional: `staff.semitone-pattern` and `duration.representation` both `unknown`. |
+| 42 | Thumline Notation (Jim Plamondon) | 4 | no | The pitch axis is **relative** — lines are scale degrees from a movable Do, so the `unknown` semitone pattern is key-dependence, not missing data — which breaks **I5** (absolute pitch anchoring): any one config is correct for exactly one key, and the system as such has no representation. The per-key geometry (whole-step grid, in-staff ledgers) would otherwise be expressible; the arc clef device and tonic/modulation signature are additional E1/E2 evidence. |
 | 43 | Express Stave: Pianoforte Notation (John Keller) | 2 | no | Staff `[2,8]` with D ledger template (M3); inverse-7-5 fill via per-PC hollow rules (M5); half/whole side strokes are symmetric notehead-baked marks (M4c). Needs E1 only: custom F/B/D clef symbols (M6). |
 | 44 | Express Stave, 6-6 Jazz Font (John Keller) | 2 | no | As record 43 plus slant alternation = two shape variants by PC set (M5). Needs E1 only (same custom clefs). |
 | 45 | Express Stave, Original Version (John Keller) | 2 | no | As record 43; the optional B/F center dash/spot bakes into per-PC shape variants (M5). Needs E1 only — this version uses the three *traditional* clefs as register indicators, which the platform equally lacks (M6). |
@@ -199,18 +232,19 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 |---|---|---|---|---|
 | 1 | 21 | 8 | 13 | firm: 11, 13, 18, 21, 25, 31, 53, 54 · provisional: 1, 3, 5, 6, 8, 10, 12, 17, 26, 41, 47, 48, 52 |
 | 2 | 12 | 8 | 4 | firm: 20, 22, 27, 29, 30, 43, 44, 45 · provisional: 2, 4, 19, 46 |
-| 3 | 3 | 1 | 2 | firm: 14 · provisional: 7, 42 |
-| 4 | 19 | 19 | 0 | 9, 15, 16, 23, 24, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 49, 50, 51, S1 |
-| **Total** | **55** | 36 | 19 | 54 gallery records + S1 |
+| 3 | 1 | 0 | 1 | provisional: 7 |
+| 4 | 21 | 21 | 0 | 9, 14, 15, 16, 23, 24, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 49, 50, 51, S1 |
+| **Total** | **55** | 37 | 18 | 54 gallery records + S1 |
 
 Tier 4 by invariant: **I1** (orientation): 15, 24, 50, 51 (4). **I2**
 (compact): 32–40 (9). **I3** (duration geometry): 9, 16, 23, 28, 49, S1
-(6). Each record is counted under the invariant named first in its
+(6). **I4** (staff periodicity): 14 (1). **I5** (absolute anchoring): 42
+(1). Each record is counted under the invariant named first in its
 verdict; secondary breaks are noted in the justifications (50 also breaks
 I3).
 
-Dominant provisional driver: `duration.representation = unknown` (17 of
-the 19 provisional verdicts) — a direct consequence of the gallery's
+Dominant provisional driver: `duration.representation = unknown` (16 of
+the 18 provisional verdicts) — a direct consequence of the gallery's
 standardized single-duration scale images, as the catalog preamble
 records. (The other two: record 19's unspecified `other` duration device
 and record 48's `fill-scheme = unknown`.)
@@ -241,7 +275,7 @@ per-system source work should resolve them.
 7. Avique Notation (53)
 8. 0-5-7 Notation (54)
 
-**Session 2 targets — Tier 2 firm (8), plus documented Tier-3 partials (3):**
+**Session 2 targets — Tier 2 firm (8), plus documented Tier-3 partials (1):**
 
 Tier 2 (contingent on the enhancements each verdict names; E1/E2 land in
 sets 009/010, E3/E4 per `enhancement-requirements.md` recommendations —
@@ -261,11 +295,6 @@ Documented Tier-3 partials (reproduce the expressible core; document the
 named gap as a known deviation):
 
 9. 6-6 Trigram Notation (7) — gap: grouped far-side ledger display
-10. Note for Note (14) — gap: bounded staff extent (reproduce the
-    continuous-grid form; document the fixed-span/dashed-lower-C
-    deviation)
-11. Thumline Notation (42) — gap: movable-Do anchoring (reproduce one
-    documented key)
 
 Provisional records (tiers 1–3) join these lists only after their named
 unknowns are resolved; resolving them is in scope for set 011's
@@ -297,5 +326,11 @@ per-system source work, not for this set.
   12 distinct appearances) is staff-agnostic per its own documentation
   and is expressible today on a horizontal staff — a candidate playbook
   example of porting a notehead system across staff geometries.
+- **The two amended invariants each have adaptation paths** worth a
+  playbook entry: Note for Note (14, I4) is directly reproducible in its
+  *continuous-grid* form (the whole-step pattern with bold C is Tier-1
+  material once the bounded-extent requirement is dropped), and Thumline
+  (42, I5) is reproducible *per fixed key* — a per-key config family
+  approximates the movable-Do system.
 - **Line-marking octave cues are free:** every bold/dashed octave-cyclic
   line in the survey mapped onto `lineOverrides` with no enhancement.
