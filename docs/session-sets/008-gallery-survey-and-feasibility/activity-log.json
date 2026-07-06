@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "008-gallery-survey-and-feasibility",
+  "createdDate": "2026-07-06T10:00:00.836764+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-06T10:00:00.857388+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/survey-schema",
+      "dateTime": "2026-07-06T06:22:09.083556-04:00",
+      "description": "Defined the fixed characterization record schema (docs/research/gallery-survey/schema.md): identity/citation, staff (orientation, pitch-axis, interval structure, lines/octave, semitonePattern equivalent, line variations, compactness), ledgers, noteheads (shape/fill/color/glyph schemes), auxiliary devices (clef, key signature, octave markers, accidentals), duration representation; every attribute has a closed value set plus unknown.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/gallery-catalog",
+      "dateTime": "2026-07-06T06:22:09.089430-04:00",
+      "description": "Harvested the musicnotation.org gallery (54 systems in 10 categories, verified against raw HTML detail links) into docs/research/gallery-survey/index.md, and characterized every indexed system from its detail page text + gallery image(s) into catalog.md \u2014 54 schema-conformant records plus the supplementary out-of-gallery Dodeka record (S1). All 55 records machine-validated against the schema field list and closed enums; unknown recorded wherever sources did not support a confident value (most commonly duration.representation and noteheads.fill-scheme).",
+      "status": "complete"
+    }
+  ]
+}
