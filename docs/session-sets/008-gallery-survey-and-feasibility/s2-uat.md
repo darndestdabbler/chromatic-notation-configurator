@@ -49,7 +49,9 @@ item 12, I2 item 9, I3 items 3 and 14).
 ## Operator responses (verbatim)
 
 Initial attestation (selected from the session's AskUserQuestion prompt,
-2026-07-06):
+2026-07-06 — **preliminary; superseded** by the itemized responses below
+and by the post-correction attestation in the addendum, since the
+operator's subsequent itemized review produced a correction):
 
 > **"Attested — records and tier verdicts match the source images"**
 
@@ -81,7 +83,8 @@ And a follow-up message (verbatim):
 
 ## Corrections made
 
-**Item 4 / record 14 (Note for Note) — re-tiered 1 → 3.** The operator's
+**Item 4 / record 14 (Note for Note) — re-tiered 1 → 3 in the UAT round,
+then 3 → 4 in verification round 1 (see addendum).** The operator's
 objection is correct and exposed a modeling error in the original
 verdict: the platform expands `staff.semitonePattern` across every
 rendered octave, so Note for Note's *bounded* 7-line staff — whose same
@@ -136,3 +139,27 @@ UAT complete: 14/14 items reviewed by the operator; 13 passes (some with
 remarks), 1 correction (record 14 re-tier) applied and re-validated. The
 attestation and itemized responses above are the operator's verbatim
 words.
+
+## Addendum — post-correction attestation (after verification round 1)
+
+Verification round 1 (cross-provider, gpt-5-4) found that the two gaps
+surfaced around records 14 and 42 are *structural* and belong in the
+invariant set rather than in Tier 3, and that the initial attestation
+predated the corrections. Remediation: invariants **I4 (per-octave staff
+periodicity)** and **I5 (absolute pitch anchoring)** were added under
+the spec's confirm-or-amend instruction, record 14 re-tiered 3 → 4 (I4)
+and record 42 re-tiered 3 → 4 (I5); Tier 3's definition was restored to
+the spec's wording with the display-fidelity amendment (sole case:
+record 7) explicitly documented; final counts Tier 1 = 21, Tier 2 = 12,
+Tier 3 = 1, Tier 4 = 21. The consistency validator was re-run: all
+checks passed.
+
+The operator was then asked (AskUserQuestion, 2026-07-06) to attest the
+corrected deliverables, with both changed verdicts and the two new
+invariants described, and all other verdicts stated as unchanged from
+the reviewed sample. Operator's post-correction attestation, verbatim:
+
+> **"Attested — corrected records and tier verdicts stand as final"**
+
+No remarks or issue notes were attached. This attestation covers the
+final, corrected deliverables and supersedes the preliminary one above.

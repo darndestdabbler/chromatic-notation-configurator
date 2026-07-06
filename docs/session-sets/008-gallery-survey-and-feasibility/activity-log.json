@@ -52,6 +52,14 @@
       "dateTime": "2026-07-06T07:30:10.432106-04:00",
       "description": "Supersedes step 1 counts after the human UAT round: operator reviewed all 14 sampled systems and re-tiered record 14 (Note for Note) from Tier 1 to Tier 3 (bounded staff extent gap). Final classification of 55 records: 21 Tier 1 (8 firm / 13 provisional), 12 Tier 2 (8/4), 3 Tier 3 (1/2), 19 Tier 4. Feed-forward: 8 firm Tier-1 targets for set-011 session 1; 8 firm Tier-2 + 3 documented Tier-3 partials for session 2. Consistency validator re-run after corrections: all checks passed. UAT sample, verbatim operator responses, corrections, and remark dispositions recorded in s2-uat.md.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 4,
+      "stepKey": "session-002/feasibility-matrix",
+      "dateTime": "2026-07-06T19:55:02.877572-04:00",
+      "description": "Supersedes step 3 counts after verification round 1 remediation: invariants amended to five (added I4 per-octave staff periodicity, I5 absolute pitch anchoring, per the spec confirm-or-amend instruction and an explicit architectural invariant test); record 14 re-tiered 3->4 (I4), record 42 re-tiered 3->4 (I5); Tier 3 definition restored to spec wording with the record-7 display-fidelity amendment explicitly documented. Final counts: 21 Tier 1 (8 firm/13 provisional), 12 Tier 2 (8/4), 1 Tier 3 (provisional), 21 Tier 4. E1 drivers 9, E2 drivers 3 (Thumline moved to Tier-4 evidence). Operator post-correction attestation obtained and recorded in s2-uat.md addendum. Validator re-run: all checks passed.",
+      "status": "complete"
     }
   ]
 }
