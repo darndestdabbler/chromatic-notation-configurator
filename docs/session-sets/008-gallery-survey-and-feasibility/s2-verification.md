@@ -21,3 +21,22 @@
   - **Fix →** Base invariant decisions on whether the platform architecture can represent the feature, not on how many surveyed systems need it. Prevalence is relevant for enhancement prioritization, not for deciding whether a limitation is structural.
 
 No other major completeness gaps are evident from the submitted text alone.
+
+## Round 2 (2026-07-06)
+
+**VERIFIED**
+
+- **Issue 1 resolved:** records **14** and **42** are now re-tiered from Tier 3 to **Tier 4** with explicit new invariants **I4** and **I5**. The reasoning is architectural, not cosmetic:
+  - **I4** = no bounded staff-extent concept; per-octave pattern expands across all octaves.
+  - **I5** = absolute pitch-class anchoring; movable-Do semantics are not representable as one system.
+- **Issue 4 resolved:** the new invariant test is explicitly **architecture-based**, and the prior “single system does not justify an invariant” prevalence logic is removed. Counts of affected records remain descriptive, not justificatory.
+- **Issue 2 resolved:** Tier 3 is restored to the spec definition, and the extra “partial-display” case is clearly separated as an **explicit amendment** rather than silently redefining Tier 3. Record **7** is consistently handled under that amendment.
+- **Issue 3 resolved:** `s2-uat.md` now clearly marks the earlier attestation as preliminary/superseded and includes a **post-correction attestation** covering the corrected verdicts and final deliverables.
+
+**Consistency/completeness checks passed from the material shown:**
+- Tier counts are internally consistent: **21 / 12 / 1 / 21 = 55**
+- Firm/provisional counts reconcile: **37 / 18**
+- Tier-4 partition reconciles: **I1:4, I2:9, I3:6, I4:1, I5:1**
+- Downstream/feed-forward lists and enhancement-driver tables were updated consistently with the re-tiering of 14 and 42.
+
+**No material false positives found** in the remediation itself.
