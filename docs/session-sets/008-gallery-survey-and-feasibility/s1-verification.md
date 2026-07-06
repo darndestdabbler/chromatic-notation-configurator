@@ -36,3 +36,27 @@
 - **Issue** → Missing session-1 UAT artifact
   **Location** → whole submission
   **Fix** → No fix needed; per-set UAT is deferred to session 2 by the provided configuration.
+
+## Round 2 (2026-07-06, resolutions-only + remediation diff)
+
+**VERIFIED**
+
+- **Correctness**
+  - **Issue 1** is resolved: `schema.md` no longer claims every attribute has a closed value set; it now scopes that claim to **categorical** attributes and explicitly carves out open-valued fields.
+  - **Issue 2** is resolved: Dodeka record `year` is now exactly `unknown`, with the decade-only explanation moved into `notes`.
+  - **Issue 3** is resolved: records **17, 32, 33, 47** have `duration.representation` changed to `unknown`, and the rewritten notes correctly limit conclusions to what the cited sources support.
+  - **Issue 4** is resolved: record **19** now includes the Hass 3-line page in `sources`, and the note text treats it as corroboration rather than uncited evidence.
+  - **Issue 5** is resolved: record **19** `name` now matches the index exactly.
+  - **Issue 6** is adequately resolved: the response shows the lifecycle-record exemption already existed in the session-set `spec.md` before this session, so this was effectively a substantiated round-1 false positive rather than a remediation change.
+
+- **Completeness**
+  - All six round-1 issues are explicitly addressed.
+  - The shown diff covers the actual document edits needed for issues 1–5.
+  - Issue 6 is supported with repo-history evidence rather than a new edit, which is appropriate given the claim that the exemption already existed.
+
+- **False positives**
+  - No new false positives in this round’s response.
+  - Round-1 **issue 6** appears convincingly demonstrated to have been a false positive.
+
+- **Minor imprecision**
+  - The sentence **“All fixes are in commit `a8bbc5d`”** is not literally true for issue 6, since that item relies on pre-existing content in commit `afa6132`. This does not affect the remediation verdict.
