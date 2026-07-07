@@ -44,6 +44,14 @@
       "dateTime": "2026-07-06T22:01:19.430251-04:00",
       "description": "CNB-ARCHITECTURE-PLAN-v2.md updated (clef in top-level structure, new section 4.12, Modules 20-21 inventory + specs, file structure, Appendix A); LY export spec untouched (no emission added - its condition not met). UAT per uatScope per-set / uatStyle dsl: DSL checklist in s2-uat.md executed by cnb/uat/uat-clef-editor.mjs (Playwright, real app) covering import - enable - position - preview - save/load - export; final run 28/28 PASS exit 0 (run history incl. one fixed check assumption recorded); human attestation obtained and recorded verbatim (three-round dialogue, final: Attested - clef renders correctly).",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/clef-ui-and-export",
+      "dateTime": "2026-07-06T22:04:41.978735-04:00",
+      "description": "Correction superseding the step-1 entry test counts: cnb/tests/cnb-clef-editor-tests.js contains 21 tests (not 26). Exact arithmetic verified by running the suite at the session base commit ee4e59a (592 passed) vs HEAD (618 passed): +26 net = 21 clef-editor + 4 config-io + 1 lilypond no-emission. All other step-1 content stands.",
+      "status": "complete"
     }
   ]
 }

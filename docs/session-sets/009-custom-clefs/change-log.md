@@ -49,7 +49,7 @@ mechanically.
   active definition's anchor-semitone control (float, step "any"), gutter
   sizing; property-based event wiring (Node-testable `render()`), pure
   builders, Module A validation pass-through, explicit empty states.
-  26 unit tests (`cnb/tests/cnb-clef-editor-tests.js`). Wired into
+  21 unit tests (`cnb/tests/cnb-clef-editor-tests.js`). Wired into
   `cnb/index.html` (new "Custom clef (set 009)" card, `.cnb-cle-*` host
   styling, `mountEditors` re-seed on config load).
 - **Export (spec step 2, per s1 coordination):** NO emission —
@@ -80,8 +80,9 @@ mechanically.
 ## Test totals
 
 - `node cnb/tests/run-tests.js`: **618 passed, 0 failed**
-  (session 1 ended at 587; session 2 added 26 clef-editor + 4 config-IO +
-  1 lilypond no-emission tests)
+  (session 1 ended at 592 after its remediation round; session 2 added
+  21 clef-editor + 4 config-IO + 1 lilypond no-emission tests — verified
+  by running the suite at the session base commit ee4e59a: 592 passed)
 - `node legacy/run-tests.js`: **240/240** (untouched, regression-only)
 
 ## Out of scope / follow-on
