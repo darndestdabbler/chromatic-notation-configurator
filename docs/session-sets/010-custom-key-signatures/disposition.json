@@ -1,21 +1,28 @@
 {
   "status": "completed",
-  "summary": "Set 010 session 1 complete, VERIFIED (round 2, gpt-5-4, cross-provider; r1 ISSUES_FOUND with 3 legitimate issues, all remediated: explicit keys.keySignature.placement={rule,tonicOctave} surface, parseTonicPc relocated out of cnb-music.js with Module B restored byte-identical to base, engine-parity claim narrowed). Delivered: keys.keySignature schema (default-off, style notehead-chords per the operator directive mirroring engine keysig.ly, dot alternative, scale-from-tonic placement rule, gold separator) + validate() coverage; cnb-key-signature.js renderer (two-column 7th-chord stack of real noteheads, shared octave-aware ledger rules, separator bar, dot style, tonic chain tonicPc->parseTonicPc->first-pc, auto midpoint-centered anchoring); collection keysig gutter composing after the set-009 clef, driven by options.keys[0]; default-export baseline pin + keysig-enabled==disabled export pin; test-key-signature.html visual page; 31/31 Chromium geometry smoke. Engine discovery: the engine ALREADY renders notehead-chord keysigs unconditionally from the score key via the quarter-note procedure-model config — session 2 export emits NOTHING (pinned); engine-repo follow-ons recorded in s1-engine-coordination.md. Tests: cnb 618->660 (+14 config, +28 new suite), legacy 240/240. Verification cost ~$0.50.",
+  "summary": "Set 010 session 2 (final): shipped the Key Signature Editor (Module 23) — keys master gate, key definitions, and the note-stack key-signature controls — wired into the assembled UI, with export no-emission and JSON round-trip pins, architecture plan §4.9 activated, and a multi-round human UAT. During UAT the task owner directed the separator geometry (engine-verified against real LilyPond renders) and chose the note stack as the sole mark style, deferring generalized custom-symbol signatures to a future set after a GPT+Gemini design consult; those changes touched cnb-config.js and cnb-key-signature.js and the spec Touches line was amended with attribution. Tests: cnb 691/691, legacy 240/240, UAT 38/38. Verified cross-provider by gemini-pro (round 1, no issues) after OpenAI/gpt-5-4 quota exhaustion; set 010 complete.",
   "files_changed": [
+    "cnb/index.html",
     "cnb/src/cnb-config.js",
     "cnb/src/cnb-key-signature.js",
-    "cnb/src/cnb-collection.js",
-    "cnb/tests/cnb-key-signature-tests.js",
+    "cnb/tests/cnb-config-io-tests.js",
     "cnb/tests/cnb-config-tests.js",
+    "cnb/tests/cnb-key-signature-editor-tests.js",
+    "cnb/tests/cnb-key-signature-tests.js",
+    "cnb/tests/cnb-lilypond-tests.js",
     "cnb/tests/run-tests.js",
-    "cnb/test-pages/test-key-signature.html",
-    "docs/session-sets/010-custom-key-signatures/session-state.json",
-    "docs/session-sets/010-custom-key-signatures/session-events.jsonl",
+    "cnb/uat/uat-key-signature.mjs",
+    "cnb/ui/key-signature-editor.js",
+    "docs/CNB-ARCHITECTURE-PLAN-v2.md",
+    "docs/session-sets/010-custom-key-signatures/spec.md",
+    "docs/session-sets/010-custom-key-signatures/s2-notes.md",
+    "docs/session-sets/010-custom-key-signatures/s2-uat.md",
+    "docs/session-sets/010-custom-key-signatures/s2-design-consult.md",
+    "docs/session-sets/010-custom-key-signatures/s2-verification.md",
+    "docs/session-sets/010-custom-key-signatures/change-log.md",
     "docs/session-sets/010-custom-key-signatures/activity-log.json",
-    "docs/session-sets/010-custom-key-signatures/s1-notes.md",
-    "docs/session-sets/010-custom-key-signatures/s1-engine-coordination.md",
-    "docs/session-sets/010-custom-key-signatures/s1-verification.md",
-    "docs/session-sets/010-custom-key-signatures/s1-issues.json",
+    "docs/session-sets/010-custom-key-signatures/session-events.jsonl",
+    "docs/session-sets/010-custom-key-signatures/session-state.json",
     "docs/session-sets/010-custom-key-signatures/disposition.json"
   ],
   "verification_method": "api",
@@ -27,7 +34,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 2 builds the key-signature editor UI on the s1 schema (placement surface added for its controls), pins the no-emission export per s1-engine-coordination.md, runs the per-set UAT, and closes the set; same orchestrator context is the efficient continuation."
+      "specifics": "Set 010 is complete (both sessions VERIFIED). The next not-started set is 011-gallery-reproduction-suite; continue on the same claude-code/anthropic trajectory, which has closed sets 001-010 cleanly."
     }
   },
   "blockers": [],
