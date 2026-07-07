@@ -463,10 +463,14 @@ export const tests = [
     eq(ks.placement.tonicOctave, null, "tonicOctave auto");
     eq(ks.separator.enabled, true, "separator on");
     eq(ks.separator.color, "#ffd42a", "engine cnb:gold");
-    eq(ks.separator.thicknessPct, 25, "separator thickness");
+    eq(ks.separator.thicknessPct, 160, "separator thickness (0.4 staff-space at sps 4 — engine bar, s2 UAT measurement)");
     eq(ks.separator.extentSemis, 12, "±1 octave like the engine bar");
-    eq(ks.dot.radiusPct, 30, "dot radius");
     eq(ks.gutter.paddingH, 12, "gutter padding");
+    // style is a single-value vocabulary — no per-alternate-style config
+    // subsections (the simple-mark styles were removed at the task owner's
+    // s2 UAT direction; s2-uat.md).
+    assert(!("dot" in ks) && !("intervalBlocks" in ks) && !("staggeredLedgers" in ks),
+      "no simple-mark style subsections");
   }},
 
   { name: "keysig: merge — config predating the keySignature section gains the default-off subsection", fn: () => {
@@ -496,10 +500,16 @@ export const tests = [
     assert(result.warnings.some(w => w.includes("keys.enabled is false")), "gate warning emitted");
   }},
 
-  { name: "keysig: validate — unknown style is an error; absent style falls back to the default", fn: () => {
-    const bad = keysigConfig();
-    bad.keys.keySignature.style = "sparkles";
-    assert(CNBConfig.validate(bad).errors.some(e => e.includes("keys.keySignature.style")), "style error");
+  { name: "keysig: validate — notehead-chords passes; unknown style is an error; absent falls back to the default", fn: () => {
+    const ok = keysigConfig();
+    ok.keys.keySignature.style = "notehead-chords";
+    assert(CNBConfig.validate(ok).valid, "notehead-chords valid");
+    for (const bad of ["sparkles", "dot", "interval-blocks", "staggered-ledgers"]) {
+      const cfg = keysigConfig();
+      cfg.keys.keySignature.style = bad;
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("keys.keySignature.style")),
+        `${bad} rejected (only notehead-chords is implemented)`);
+    }
     const absent = keysigConfig();
     delete absent.keys.keySignature.style;
     assert(CNBConfig.validate(absent).valid, "absent style valid (defaults to notehead-chords)");
@@ -542,15 +552,6 @@ export const tests = [
     const nonObject = keysigConfig();
     nonObject.keys.keySignature.separator = "bar";
     assert(CNBConfig.validate(nonObject).errors.some(e => e.includes("separator must be an object")), "type error");
-  }},
-
-  { name: "keysig: validate — dot.radiusPct must be a finite positive number", fn: () => {
-    for (const bad of [0, -3, NaN, "big"]) {
-      const cfg = keysigConfig();
-      cfg.keys.keySignature.dot = { radiusPct: bad };
-      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("dot.radiusPct")),
-        "radius error for " + String(bad));
-    }
   }},
 
   { name: "keysig: validate — gutter.paddingH must be a finite non-negative number when enabled", fn: () => {

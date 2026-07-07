@@ -6,27 +6,36 @@
  * state, no event listeners. Composes with the set-009 clef gutter (clef
  * first, then key signature, left to right).
  *
- * Two mark styles (s1 decision D2; binding rule 2's two arms):
+ * One mark style is implemented, "notehead-chords" (mirroring the engine's
+ * keysig.ly — the glyph-from-the-shape-pipeline arm of binding rule 2). The
+ * task owner evaluated simple built-in marks (dot, interval blocks,
+ * staggered ledgers) across set-010 s2 UAT and chose the note stack as the
+ * sole style, deferring richer custom-symbol signatures to a future set
+ * (s2-uat.md, s2-design-consult.md). `style` is a single-value vocabulary;
+ * an unknown style renders nothing (validation reports it), keeping the
+ * field the extension point for those future styles.
  *
- *   "notehead-chords" (default — operator directive, mirroring the engine's
- *   keysig.ly): the key's scale as REAL noteheads — every pitch class of the
- *   key ascending from the tonic, plus the octave tonic — interleaved into
- *   two columns (even indices left, odd indices right). For a 7-note key
- *   this reads as two stacked 7th chords: degrees 1-3-5-7 on the root in
- *   the left column, degrees 2-4-6-8 on the second degree in the right
- *   column, chord qualities falling out of the mode automatically. Each
- *   notehead is resolved through the normal rule pipeline at crotchet
+ *   "notehead-chords": the key's scale as REAL noteheads — every pitch
+ *   class of the key ascending from the tonic, plus the octave tonic —
+ *   interleaved into two columns (even indices left, odd indices right).
+ *   For a 7-note key this reads as two stacked 7th chords: degrees 1-3-5-7
+ *   on the root in the left column, degrees 2-4-6-8 on the second degree in
+ *   the right column, chord qualities falling out of the mode automatically.
+ *   Each notehead is resolved through the normal rule pipeline at crotchet
  *   duration (the engine resolves keysig noteheads at quarter-note
  *   duration — stencils.ly cnb:get-keysig-note-stencil), with the selected
  *   key passed as the rule-match key context. Ledger lines are drawn per
  *   column through the shared ledger rules, beneath the noteheads
- *   (keysig.ly's two-pass layering). A vertical separator bar (the engine's
- *   gold bar, cnb:gold #ffd42a) caps the right edge, spanning
- *   staff.midpoint ± extentSemis.
+ *   (keysig.ly's two-pass layering).
  *
- *   "dot": a simple built-in mark — one filled circle per scale degree at
- *   the same grid positions, single column, colored by the same notehead
- *   color resolution.
+ * A vertical separator bar — the engine's gold STEM (cnb:gold #ffd42a) —
+ * runs through the horizontal middle of the columns, beneath the marks,
+ * spanning staff.midpoint ± extentSemis. (keysig.ly draws its bar at
+ * max-notehead-x-offset − width/2 = exactly midway between the column
+ * centers, 0.4 staff-space thick, stencil-added UNDER the marks; geometry
+ * confirmed against engine SVG renders in s2 UAT after the operator
+ * corrected session 1's "right edge" reading, which came from a misleading
+ * keysig.ly comment.)
  *
  * The displayed key is EXAMPLE DATA (architecture principle 1): it arrives
  * as the keyName argument (the collection passes options.keys[0]), never
@@ -192,11 +201,16 @@ export const CNBKeySignature = {
    * always matches what is drawn. Null when nothing would render (feature
    * gated off, no notes, or — for notehead-chords — no resolvable shape).
    *
-   * markWidth: notehead-chords → the widest resolved notehead in px;
-   *            dot → the dot diameter in px.
-   * columns:   2 for notehead-chords, 1 for dot.
+   * markWidth: the per-mark horizontal extent of ONE column in px — the
+   *            widest resolved notehead.
+   * columns:   2 (marks stagger left/right of the stem).
    * separatorPx: separator bar thickness in px (0 when disabled).
-   * contentWidth: columns × markWidth + separatorPx.
+   * contentWidth: columns × markWidth — the separator runs through the
+   *            middle of the columns (the engine's gold stem), so it adds
+   *            no width of its own.
+   *
+   * Null when the style is unknown (validation reports it) or no referenced
+   * shape resolves.
    *
    * @param {object} config
    * @param {number} pxPerSemi
@@ -210,36 +224,32 @@ export const CNBKeySignature = {
 
     const ks = (config.keys || {}).keySignature || {};
     const style = ks.style ?? "notehead-chords";
+    if (style !== "notehead-chords") return null;   // unknown style renders nothing
     const shapes = config.shapes || {};
+    const columns = 2;
 
+    // The widest resolved notehead sets the column width.
     let markWidth = 0;
-    let columns = 1;
-    if (style === "dot") {
-      const radiusPct = ks.dot?.radiusPct ?? 30;
-      markWidth = 2 * (radiusPct / 100) * pxPerSemi;
-    } else {
-      columns = 2;
-      for (const semi of semis) {
-        const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
-        const shape = shapes[mark.shape];
-        if (!shape) continue;
-        const { pixelWidth } = CNBNotehead.measure(shape, pxPerSemi);
-        if (pixelWidth > markWidth) markWidth = pixelWidth;
-      }
+    for (const semi of semis) {
+      const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
+      const shape = shapes[mark.shape];
+      if (!shape) continue;
+      const { pixelWidth } = CNBNotehead.measure(shape, pxPerSemi);
+      if (pixelWidth > markWidth) markWidth = pixelWidth;
     }
     if (!(markWidth > 0)) return null;
 
     const sep = ks.separator || {};
     const separatorPx = sep.enabled === false
       ? 0
-      : CNBConfig.pctToPx(sep.thicknessPct ?? 25, pxPerSemi);
+      : CNBConfig.pctToPx(sep.thicknessPct ?? 160, pxPerSemi);
 
     return {
       style,
       markWidth,
       columns,
       separatorPx,
-      contentWidth: columns * markWidth + separatorPx,
+      contentWidth: columns * markWidth,
       semis,
     };
   },
@@ -283,52 +293,14 @@ export const CNBKeySignature = {
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-key-signature");
 
-    if (m.style === "dot") {
-      const radius = m.markWidth / 2;
-      const cx = paddingH + radius;
-      for (const semi of m.semis) {
-        const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
-        const circle = document.createElementNS(NS, "circle");
-        circle.setAttribute("cx", String(cx));
-        circle.setAttribute("cy", String(gridContext.semiToY(semi)));
-        circle.setAttribute("r", String(radius));
-        circle.setAttribute("fill", mark.color);
-        g.appendChild(circle);
-      }
-    } else {
-      const leftX = paddingH + m.markWidth / 2;
-      const rightX = leftX + m.markWidth;
-      const evenSemis = m.semis.filter((_, i) => i % 2 === 0);
-      const oddSemis = m.semis.filter((_, i) => i % 2 === 1);
-
-      // Ledger layer first, noteheads on top (keysig.ly's two-pass
-      // layering). Ledger length = 4/3 × notehead width, the engine's
-      // keysig ledger proportion.
-      const ledgerOpts = { width: m.markWidth * (4 / 3) };
-      CNBLedgerSet.render(g, gridContext, config, evenSemis, { ...ledgerOpts, centerX: leftX });
-      CNBLedgerSet.render(g, gridContext, config, oddSemis, { ...ledgerOpts, centerX: rightX });
-
-      m.semis.forEach((semi, i) => {
-        const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
-        const shape = shapes[mark.shape];
-        if (!shape) return;
-        const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
-        CNBNotehead.render(g, {
-          shape,
-          x: i % 2 === 0 ? leftX : rightX,
-          y: gridContext.semiToY(semi),
-          scaleFactor,
-          hollow: mark.hollow,
-          color: mark.color,
-        });
-      });
-    }
-
+    // Separator first — the engine's gold stem is stencil-added UNDER the
+    // ledger lines and noteheads (keysig.ly bottom layer), running through
+    // the horizontal middle of the mark columns.
     if (m.separatorPx > 0) {
       const sep = ks.separator || {};
       const midpoint = (config.staff || {}).midpoint ?? 12;
       const extent = sep.extentSemis ?? 12;
-      const x = paddingH + m.columns * m.markWidth + m.separatorPx / 2;
+      const x = paddingH + (m.columns * m.markWidth) / 2;
       const line = document.createElementNS(NS, "line");
       line.setAttribute("class", "cnb-key-signature-separator");
       line.setAttribute("x1", String(x));
@@ -339,6 +311,35 @@ export const CNBKeySignature = {
       line.setAttribute("stroke-width", String(m.separatorPx));
       g.appendChild(line);
     }
+
+    // Marks stagger left/right of the stem, which sits at the boundary
+    // between the two columns.
+    const leftX = paddingH + m.markWidth / 2;
+    const rightX = leftX + m.markWidth;
+    const evenSemis = m.semis.filter((_, i) => i % 2 === 0);
+    const oddSemis = m.semis.filter((_, i) => i % 2 === 1);
+
+    // Ledger layer first, noteheads on top (keysig.ly's two-pass
+    // layering). Ledger length = 4/3 × notehead width, the engine's
+    // keysig ledger proportion.
+    const ledgerOpts = { width: m.markWidth * (4 / 3) };
+    CNBLedgerSet.render(g, gridContext, config, evenSemis, { ...ledgerOpts, centerX: leftX });
+    CNBLedgerSet.render(g, gridContext, config, oddSemis, { ...ledgerOpts, centerX: rightX });
+
+    m.semis.forEach((semi, i) => {
+      const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
+      const shape = shapes[mark.shape];
+      if (!shape) return;
+      const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+      CNBNotehead.render(g, {
+        shape,
+        x: i % 2 === 0 ? leftX : rightX,
+        y: gridContext.semiToY(semi),
+        scaleFactor,
+        hollow: mark.hollow,
+        color: mark.color,
+      });
+    });
 
     svgParent.appendChild(g);
     return g;

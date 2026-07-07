@@ -85,7 +85,9 @@ function keysigConfig(definitions = [C_MAJOR], ksOverrides = {}) {
 // semitoneHeight 2.724, naturalHeight 272.4, naturalWidth 344.852).
 const PX_PER_SEMI = 16;
 const MARK_W = (2.724 * PX_PER_SEMI / 272.4) * 344.852; // ≈ 55.17632
-const SEPARATOR_PX = (25 / 100) * PX_PER_SEMI;          // 4
+// 160% of a semitone = the engine bar's 0.4 staff-space at the default
+// staff's 4 semitones per space (s2 UAT engine-render measurement).
+const SEPARATOR_PX = (160 / 100) * PX_PER_SEMI;         // 25.6
 const GRID_RANGE = { minSemi: -4, maxSemi: 28 };
 const semiToYExpected = semi => (28 - semi) * PX_PER_SEMI;
 
@@ -217,18 +219,18 @@ export const tests = [
       eq(CNBKeySignature.gutterWidth(keysigConfig(), PX_PER_SEMI, "G"), 0, "unknown key → 0");
     }},
 
-  { name: "gutterWidth: notehead-chords → two columns + separator + 2×padding", fn: () => {
+  { name: "gutterWidth: notehead-chords → two columns + 2×padding (the separator runs through the middle, adding no width)", fn: () => {
       approx(CNBKeySignature.gutterWidth(keysigConfig(), PX_PER_SEMI, "C"),
-             2 * MARK_W + SEPARATOR_PX + 2 * 12, "2 notehead columns + bar + padding");
+             2 * MARK_W + 2 * 12, "2 notehead columns + padding");
       const noBar = keysigConfig([C_MAJOR], { separator: { enabled: false } });
       approx(CNBKeySignature.gutterWidth(noBar, PX_PER_SEMI, "C"),
-             2 * MARK_W + 2 * 12, "separator disabled drops its width");
+             2 * MARK_W + 2 * 12, "separator on/off does not change the width");
     }},
 
-  { name: "gutterWidth: dot style → dot diameter + separator + 2×padding", fn: () => {
+  { name: "gutterWidth: 0 for an unknown style (validation reports it; renderer inactive)", fn: () => {
       const cfg = keysigConfig([C_MAJOR], { style: "dot" });
-      // radiusPct 30 → diameter 2 × 0.30 × 16 = 9.6
-      approx(CNBKeySignature.gutterWidth(cfg, PX_PER_SEMI, "C"), 9.6 + 4 + 24, "single dot column");
+      eq(CNBKeySignature.gutterWidth(cfg, PX_PER_SEMI, "C"), 0, "unknown style → no gutter");
+      eq(CNBKeySignature.measure(cfg, PX_PER_SEMI, "C"), null, "measure null");
     }},
 
   { name: "measure: null (and gutterWidth 0) when no referenced shape resolves", fn: () => {
@@ -253,21 +255,23 @@ export const tests = [
       });
     }},
 
-  { name: "render: two ledger layers, 8 noteheads, separator bar — in that paint order", fn: () => {
+  { name: "render: separator bar, two ledger layers, 8 noteheads — in that paint order (engine layering: bar at the bottom)", fn: () => {
       withSvgStub(svg => {
         const config = keysigConfig();
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
         eq(g.getAttribute("class"), "cnb-key-signature", "group class");
-        eq(g.children.length, 2 + 8 + 1, "2 ledger groups + 8 noteheads + separator");
-        eq(g.children[0].getAttribute("class"), "cnb-ledger-set", "even-column ledgers first");
-        eq(g.children[1].getAttribute("class"), "cnb-ledger-set", "odd-column ledgers second");
+        eq(g.children.length, 1 + 2 + 8, "separator + 2 ledger groups + 8 noteheads");
+        // keysig.ly stencil-adds the gold bar UNDER the notehead/ledger
+        // stencil (s2 UAT engine-render correction of the s1 layering).
+        eq(g.children[0].tag, "line", "separator drawn first (bottom layer)");
+        eq(g.children[1].getAttribute("class"), "cnb-ledger-set", "even-column ledgers next");
+        eq(g.children[2].getAttribute("class"), "cnb-ledger-set", "odd-column ledgers next");
         // C major on the default 4-8 staff: even column [12,16,19,23] needs
         // the C-ledger at 12; odd column [14,17,21,24] needs 12 (D triggers
         // the C-ledger), 14, and 24 — the shared octave-aware ledger rules.
-        eq(g.children[0].children.length, 1, "even column: ledger at 12");
-        eq(g.children[1].children.length, 3, "odd column: ledgers at 12, 14, 24");
-        eq(g.children[10].tag, "line", "separator drawn last (on top)");
+        eq(g.children[1].children.length, 1, "even column: ledger at 12");
+        eq(g.children[2].children.length, 3, "odd column: ledgers at 12, 14, 24");
       });
     }},
 
@@ -276,7 +280,7 @@ export const tests = [
         const config = keysigConfig();
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
-        const noteheads = g.children.slice(2, 10);
+        const noteheads = g.children.slice(3, 11);
         const leftX = 12 + MARK_W / 2;
         const rightX = leftX + MARK_W;
         const semis = [12, 14, 16, 17, 19, 21, 23, 24];
@@ -296,18 +300,23 @@ export const tests = [
       });
     }},
 
-  { name: "render: separator bar sits right of both columns, spans midpoint ± extentSemis, engine gold", fn: () => {
+  { name: "render: separator bar runs through the middle of the two columns (the engine's gold stem), spans midpoint ± extentSemis", fn: () => {
       withSvgStub(svg => {
         const config = keysigConfig();
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
-        const line = g.children[10];
-        approx(parseFloat(line.getAttribute("x1")), 12 + 2 * MARK_W + SEPARATOR_PX / 2, "bar x");
+        const line = g.children[0];
+        // keysig.ly bar x = max-notehead-x-offset − width/2 — exactly
+        // midway between the column centers (engine-SVG-verified in s2
+        // UAT: bar x 7.0212 = midpoint of columns 6.3545/7.6880).
+        approx(parseFloat(line.getAttribute("x1")), 12 + MARK_W, "bar x = column midpoint");
         eq(line.getAttribute("x1"), line.getAttribute("x2"), "vertical");
         approx(parseFloat(line.getAttribute("y1")), semiToYExpected(24), "top at midpoint+12");
         approx(parseFloat(line.getAttribute("y2")), semiToYExpected(0), "bottom at midpoint−12");
         eq(line.getAttribute("stroke"), "#ffd42a", "engine cnb:gold");
-        approx(parseFloat(line.getAttribute("stroke-width")), SEPARATOR_PX, "thickness 25% of a semitone");
+        // Engine bar = 0.4 staff-space (both sps-3 and sps-4 renders) →
+        // 160% of a semitone on the default sps-4 staff.
+        approx(parseFloat(line.getAttribute("stroke-width")), SEPARATOR_PX, "thickness 0.4 staff-space (160% of a semitone at sps 4)");
       });
     }},
 
@@ -330,7 +339,7 @@ export const tests = [
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "A");
         const semis = CNBKeySignature.signatureSemis(config, "A");
-        const noteheads = g.children.slice(2, 2 + semis.length);
+        const noteheads = g.children.slice(3, 3 + semis.length);
         noteheads.forEach((nh, i) => {
           const pc = ((semis[i] % 12) + 12) % 12;
           const expected = CNBCard.resolveNotehead(config, pc, "crotchet", "A");
@@ -350,7 +359,7 @@ export const tests = [
         });
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
-        const noteheads = g.children.slice(2, 10);
+        const noteheads = g.children.slice(3, 11);
         assert(noteheads.every(nh => nh.children[0].getAttribute("fill") === "#123456"),
           "key-scoped rule applies to the signature");
         // Cards still resolve with key = null (key rows deferred), so the
@@ -359,27 +368,16 @@ export const tests = [
       });
     }},
 
-  // ── render: dot style ───────────────────────────────────────────────────
+  // ── render: unknown style renders nothing ───────────────────────────────
 
-  { name: "render: dot style draws one circle per scale degree at the same grid positions", fn: () => {
+  { name: "render: an unknown style renders nothing and returns null (validation reports it)", fn: () => {
       withSvgStub(svg => {
+        // style is a single-value vocabulary; the simple-mark styles were
+        // removed at the task owner's s2 UAT direction (s2-uat.md).
         const config = keysigConfig([C_MAJOR], { style: "dot" });
-        config.palette.colors = Array.from({ length: 12 }, (_, pc) => ({
-          pc, hex: `#2000${pc.toString(16).padStart(2, "0")}`.toUpperCase(), name: `PC${pc}`,
-        }));
         const grid = CNBGrid.create(config, GRID_RANGE);
-        const g = CNBKeySignature.render(svg, grid, config, "C");
-        eq(g.children.length, 9, "8 circles + separator");
-        const semis = [12, 14, 16, 17, 19, 21, 23, 24];
-        g.children.slice(0, 8).forEach((c, i) => {
-          eq(c.tag, "circle", `child ${i} is a circle`);
-          approx(parseFloat(c.getAttribute("cx")), 12 + 4.8, "single column center");
-          approx(parseFloat(c.getAttribute("cy")), semiToYExpected(semis[i]), `dot ${i} grid y`);
-          approx(parseFloat(c.getAttribute("r")), 4.8, "radius 30% of a semitone");
-          const pc = ((semis[i] % 12) + 12) % 12;
-          eq(c.getAttribute("fill"), CNBCard.resolveNotehead(config, pc, "crotchet", "C").color,
-             `dot ${i} color parity`);
-        });
+        eq(CNBKeySignature.render(svg, grid, config, "C"), null, "returns null");
+        eq(svg.children.length, 0, "nothing appended");
       });
     }},
 
@@ -405,7 +403,7 @@ export const tests = [
         eq(columns.children.length, 14, "keysig column + 13 cards");
         const col = columns.children[0];
         eq(col.className, "keysig-col", "keysig column first");
-        approx(parseFloat(col.style.width), 2 * MARK_W + SEPARATOR_PX + 24, "gutter width");
+        approx(parseFloat(col.style.width), 2 * MARK_W + 24, "gutter width");
         const slice = col.children[1];
         eq(slice.getAttribute("class"), "keysig-slice", "keysig SVG between the spacers");
         eq(slice.children[0].getAttribute("class"), "cnb-key-signature", "signature rendered into the slice");

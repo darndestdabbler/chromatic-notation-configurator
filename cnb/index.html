@@ -374,6 +374,72 @@
     .cnb-cle-valid { color: #2e7d32; }
     .cnb-cle-error { color: #c62828; }
     .cnb-cle-warning { color: #b45309; }
+
+    /* ── Key signature editor host styling (set 010) ── */
+    .cnb-kse-section { margin-bottom: 16px; }
+    .cnb-kse-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-kse-subtitle { font-size: 11px; color: #999; text-transform: uppercase; margin: 12px 0 4px; }
+    .cnb-kse-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+    .cnb-kse-keys-enable, .cnb-kse-sig-enable {
+      display: flex; align-items: center; gap: 8px; font-size: 13px;
+      color: #444; margin-bottom: 14px; cursor: pointer;
+    }
+    .cnb-kse-sig-enable { margin-bottom: 6px; }
+    .cnb-kse-disabled-note {
+      font-size: 12px; color: #b45309; background: #fff8eb;
+      border: 1px solid #f1dfc0; border-radius: 6px;
+      padding: 8px 10px; margin-bottom: 14px; max-width: 460px;
+    }
+    .cnb-kse-empty { font-size: 12px; color: #b45309; margin-bottom: 6px; }
+    .cnb-kse-def-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 6px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
+    }
+    .cnb-kse-def-name {
+      width: 110px; font: inherit; font-size: 12px; padding: 3px 6px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-kse-def-pcs { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+    .cnb-kse-pc-pill {
+      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
+      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
+      color: #888; cursor: pointer;
+    }
+    .cnb-kse-pc-pill.on { background: #2b6cb0; border-color: #2b6cb0; color: white; }
+    .cnb-kse-def-tonic { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-kse-def-tonic-hint { font-size: 11px; color: #999; }
+    .cnb-kse-def-remove {
+      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-kse-def-add {
+      font: inherit; font-size: 12px; padding: 5px 10px;
+      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-kse-style-option {
+      padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px;
+      margin-bottom: 5px; background: #fafafa; cursor: pointer; max-width: 460px;
+    }
+    .cnb-kse-style-option.selected { border-color: #2b6cb0; background: #eaf2fb; }
+    .cnb-kse-style-label { font-size: 13px; color: #444; }
+    .cnb-kse-style-option.selected .cnb-kse-style-label { color: #1a4e85; font-weight: 600; }
+    .cnb-kse-style-detail { font-size: 11px; color: #888; margin-top: 2px; }
+    .cnb-kse-fields { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+    .cnb-kse-field-label { font-size: 11px; color: #888; width: 78px; flex: none; }
+    .cnb-kse-field-unit { font-size: 11px; color: #999; }
+    .cnb-kse-octave-auto { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; }
+    .cnb-kse-placement-rule { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent,
+    .cnb-kse-gutter-input {
+      width: 64px; font: inherit; font-size: 12px; padding: 3px 6px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-kse-sep-enable { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; }
+    .cnb-kse-sep-color { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-kse-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-kse-valid { color: #2e7d32; }
+    .cnb-kse-error { color: #c62828; }
+    .cnb-kse-warning { color: #b45309; }
   </style>
 </head>
 <body>
@@ -436,6 +502,11 @@
   </div>
 
   <div class="card">
+    <h2>Keys &amp; key signature (set 010)</h2>
+    <div id="key-signature-editor-host"></div>
+  </div>
+
+  <div class="card">
     <h2>Shared config state (full config, live)</h2>
     <pre id="state-json"></pre>
   </div>
@@ -448,6 +519,7 @@
     import { CNBNoteheadRuleEditor } from "./ui/notehead-rule-editor.js";
     import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
     import { CNBClefEditor } from "./ui/clef-editor.js";
+    import { CNBKeySignatureEditor } from "./ui/key-signature-editor.js";
     import { CNBConfigIO } from "./ui/config-io.js";
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
@@ -513,6 +585,7 @@
       byId("notehead-editor-host").textContent = "";
       byId("props-editor-host").textContent = "";
       byId("clef-editor-host").textContent = "";
+      byId("key-signature-editor-host").textContent = "";
 
       CNBPaletteEditor.render(byId("palette-editor-host"), {
         palette: appConfig.palette,
@@ -531,13 +604,7 @@
         },
       });
 
-      CNBNoteheadRuleEditor.render(byId("notehead-editor-host"), {
-        config: appConfig,
-        onChange: (slices) => {
-          appConfig.noteheadRules = slices.noteheadRules;
-          refreshShared();
-        },
-      });
+      mountNoteheadEditor();
 
       CNBCommonPropsEditor.render(byId("props-editor-host"), {
         config: appConfig,
@@ -555,6 +622,34 @@
         config: appConfig,
         onChange: (slices) => {
           appConfig.clef = slices.clef;
+          refreshShared();
+        },
+      });
+
+      // Keys & key signature (set 010). The panel writes the whole keys
+      // section (enabled, definitions, keySignature). Key definitions are
+      // a vocabulary the notehead rule editor reads at mount time (its
+      // match.keys pills), so that editor is re-seeded after every keys
+      // change — same rationale as the SVG-import re-mount below.
+      CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.keys = slices.keys;
+          mountNoteheadEditor();
+          refreshShared();
+        },
+      });
+    }
+
+    /** The notehead rule editor reads its shape/duration/key vocabularies
+     *  at mount time, so it re-seeds whenever one of them changes. Its own
+     *  edits commit to appConfig immediately, so re-mounting loses nothing. */
+    function mountNoteheadEditor() {
+      byId("notehead-editor-host").textContent = "";
+      CNBNoteheadRuleEditor.render(byId("notehead-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.noteheadRules = slices.noteheadRules;
           refreshShared();
         },
       });

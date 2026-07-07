@@ -134,12 +134,18 @@ function buildDefault() {
 
       // Key signature (set 010). Default-off: with enabled:false the preview
       // and the LilyPond export are byte-identical to the pre-set-010 output.
-      // The default style "notehead-chords" mirrors the engine's keysig.ly:
-      // the key's scale rendered as real noteheads — 7 degrees ascending
-      // from the tonic plus the octave tonic, interleaved into two columns
-      // (two stacked 7th chords) — capped with a gold separator bar
-      // (engine cnb:gold #ffd42a). "dot" is the simple built-in mark
-      // alternative.
+      // The style "notehead-chords" mirrors the engine's keysig.ly: the key's
+      // scale rendered as real noteheads — 7 degrees ascending from the tonic
+      // plus the octave tonic, interleaved into two columns (two stacked 7th
+      // chords) — with a gold separator stem through the middle (engine
+      // cnb:gold #ffd42a). style is a single-value vocabulary (only
+      // "notehead-chords" is implemented): the task owner evaluated simple
+      // built-in marks (dot, interval blocks, staggered ledgers) in set-010
+      // s2 UAT and chose the note stack as the sole style, deferring richer
+      // custom-symbol signatures (Clairnote-style) to a future set (see
+      // s2-uat.md and s2-design-consult.md). The field stays the extension
+      // point for those future styles (validation rejects unknown values;
+      // the renderer treats an unknown style as inactive).
       //
       // placement is the explicit placement-rule surface (binding rule 2;
       // session 2's placement-rule controls edit it): rule names how the
@@ -151,6 +157,17 @@ function buildDefault() {
       // span on staff.midpoint; ties resolve upward, so a C tonic with
       // midpoint 12 sits at semitone 12, matching the engine's middle-C
       // anchor for the default config); an explicit integer overrides.
+      //
+      // The separator is the engine's gold STEM: keysig.ly draws it
+      // through the horizontal middle of the two notehead columns
+      // (bar x = max-notehead-x-offset − width/2), beneath the noteheads,
+      // 0.4 staff-space thick (measured from engine SVG renders at sps 3
+      // and sps 4 during set-010 s2 UAT; the file's "at the right edge"
+      // comment does not match its own computed x). thicknessPct stays in
+      // semitone units like every other thickness: 160% of a semitone =
+      // 0.4 staff-space at the default staff's 4 semitones per space.
+      // dot.radiusPct 60 (diameter 1.2 semitones) per the s2 UAT operator
+      // feedback that 30 rendered "really small".
       keySignature: {
         enabled: false,
         style: "notehead-chords",
@@ -161,10 +178,9 @@ function buildDefault() {
         separator: {
           enabled: true,
           color: "#ffd42a",
-          thicknessPct: 25,
+          thicknessPct: 160,
           extentSemis: 12,
         },
-        dot: { radiusPct: 30 },
         gutter: { paddingH: 12 },
       },
     },
@@ -448,8 +464,8 @@ export const CNBConfig = {
         warnings.push("keys.keySignature.enabled is true but keys.enabled is false — the key signature will not render (rendering is gated on keys.enabled per the E2 requirements entry)");
       }
       const ksStyle = keySig.style === undefined || keySig.style === null ? "notehead-chords" : keySig.style;
-      if (ksStyle !== "notehead-chords" && ksStyle !== "dot") {
-        errors.push(`keys.keySignature.style must be "notehead-chords" or "dot" (got ${JSON.stringify(keySig.style)})`);
+      if (ksStyle !== "notehead-chords") {
+        errors.push(`keys.keySignature.style must be "notehead-chords" (got ${JSON.stringify(keySig.style)}; the vocabulary extends when new mark styles are implemented)`);
       }
       const placement = keySig.placement;
       if (placement !== undefined && placement !== null) {
@@ -481,15 +497,6 @@ export const CNBConfig = {
               (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0)) {
             errors.push(`keys.keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
           }
-        }
-      }
-      const dot = keySig.dot;
-      if (dot !== undefined && dot !== null) {
-        if (!isPlainObject(dot)) {
-          errors.push("keys.keySignature.dot must be an object");
-        } else if (dot.radiusPct !== undefined && dot.radiusPct !== null &&
-                   (typeof dot.radiusPct !== "number" || !Number.isFinite(dot.radiusPct) || dot.radiusPct <= 0)) {
-          errors.push(`keys.keySignature.dot.radiusPct must be a finite positive number (got ${JSON.stringify(dot.radiusPct)})`);
         }
       }
       const ksGutter = keySig.gutter;

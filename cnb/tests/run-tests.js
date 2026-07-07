@@ -40,6 +40,7 @@ const TEST_FILES = [
   "./cnb-notehead-rule-editor-tests.js",
   "./cnb-common-props-editor-tests.js",
   "./cnb-clef-editor-tests.js",
+  "./cnb-key-signature-editor-tests.js",
   "./cnb-config-io-tests.js",
   "./cnb-config-export-tests.js",
   "./cnb-preview-display-tests.js",

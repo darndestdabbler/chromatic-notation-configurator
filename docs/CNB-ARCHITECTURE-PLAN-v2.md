@@ -118,6 +118,8 @@ The system is being rebuilt from a 3,057-line monolithic HTML file into a modula
 | **19** | Preview Display | UI | Full preview with controls for pitch range, duration range, key selection |
 | **20** | Clef Renderer | Rendering | Renders the active clef glyph into a left gutter, positioned via the semitone grid *(added set 009)* |
 | **21** | Clef Editor | UI | Enable toggle, clef glyph import/selection, anchor-semitone and gutter controls *(added set 009)* |
+| **22** | Key Signature Renderer | Rendering | Renders the selected key's signature marks on the semitone grid in a staff-start gutter, after the clef *(added set 010)* |
+| **23** | Key Signature Editor | UI | keys master gate, key definitions (name/pitch classes/tonic), signature enable, mark style, placement, separator/gutter controls *(added set 010)* |
 
 ---
 
@@ -137,7 +139,7 @@ The config is a single JSON object that defines a notation system. It does NOT c
   palette: { ... },          // Color palette
   display: { ... },          // Preview rendering settings (NOT exported to LilyPond)
   durations: { ... },        // Duration definitions and representation mode
-  keys: { ... },             // Key definitions (future)
+  keys: { ... },             // Key definitions + key signature (set 010 — see §4.9)
   clef: { ... },             // Custom clef (set 009 — see §4.12)
   engine: { ... },           // LilyPond engine settings
   meta: { ... }              // Metadata
@@ -532,20 +534,99 @@ durations: {
 | `representationMode == "repeat"` | `(repeat . #t)` (or omit, since default) |
 | `durations[].lilypondDuration` | Used in compound `cond` conditions: `(= duration 3)` |
 
-### 4.9 Key Settings (Future)
+### 4.9 Key Settings (activated set 010)
+
+> **Addendum (set 010, July 2026).** The `keys` section, stubbed here as
+> "future", was activated by session-set `010-custom-key-signatures` per
+> the E2 entry of the gallery-survey enhancement requirements
+> (`docs/research/gallery-survey/enhancement-requirements.md`): key
+> definitions gained an optional explicit tonic, and a `keySignature`
+> subsection renders per-key marks on the semitone grid in a staff-start
+> gutter (Clairnote DN's stacked signatures are the motivating reference;
+> design CC BY-SA 4.0 — inspiration only, no code from `clairnote.ly`).
+> Off-key marking (`offKeyMark`) remains deferred (§11).
 
 ```javascript
 keys: {
-  enabled: false,
+  enabled: false,              // master gate for everything key-related
   definitions: [
+    // Optional tonicPc (0–11) pins the tonic explicitly. Without it the
+    // tonic resolves from the name's leading note letter ("F# minor" → 6),
+    // else the first listed pitch class (validation warns on the fallback).
     { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
-    { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] },
+    { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11], tonicPc: 7 },
   ],
   offKeyMark: {
     // Visual treatment for off-key notes. Deferred.
+  },
+
+  // Key signature (set 010). Default-off compatibility: with enabled:false
+  // the preview layout and the LilyPond export are byte-identical to the
+  // pre-set-010 output (pinned by tests against a pre-change baseline).
+  keySignature: {
+    enabled: false,
+
+    // Mark style. "notehead-chords" mirrors the engine's keysig.ly: the
+    // key's scale as REAL noteheads — 7 degrees ascending from the tonic
+    // plus the octave tonic, interleaved into two columns (even indices
+    // left, odd right), which reads as two stacked 7th chords — resolved
+    // through the normal notehead rule pipeline at crotchet duration with
+    // the selected key as rule-match context. `style` is a single-value
+    // vocabulary: the task owner evaluated simple built-in marks (dot,
+    // interval blocks, staggered ledgers) in set-010 s2 UAT and chose the
+    // note stack as the sole style, deferring richer custom-symbol
+    // signatures (Clairnote-style) to a future set (s2-uat.md,
+    // s2-design-consult.md). The field stays the extension point for those
+    // future styles (validation rejects unknown values; the renderer
+    // treats an unknown style as inactive).
+    style: "notehead-chords",
+
+    // Placement rule: how the key's pitch classes map to grid positions.
+    // "scale-from-tonic" (the keysig.ly rule) is the only implemented
+    // value; validation rejects others and the renderer treats an unknown
+    // rule as inactive. tonicOctave null = auto (center the octave span
+    // [tonic, tonic+12] on staff.midpoint, ties resolving upward — matches
+    // the engine's middle-C anchor for the default config); an explicit
+    // integer overrides (preview-only: the engine derives the octave from
+    // middleCPosition).
+    placement: { rule: "scale-from-tonic", tonicOctave: null },
+
+    // The gold STEM running through the horizontal middle of the mark
+    // columns, beneath the marks (the engine's keysig bar, cnb:gold
+    // #ffd42a: keysig.ly draws it at max-notehead-x-offset − width/2 =
+    // midway between the column centers, 0.4 staff-space thick — set-010
+    // s2 UAT engine-render measurement; 160% of a semitone at the default
+    // staff's 4 semitones per space). Styling is preview-side; the engine
+    // hard-codes its color/thickness.
+    separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
+
+    gutter: { paddingH: 12 }     // px each side of the signature's gutter
   }
 }
 ```
+
+**Design notes:**
+- **The displayed key is example data, not config** (principle 1): the
+  collection's `options.keys[0]` selects which key's signature renders;
+  rendering is gated on `keys.enabled && keySignature.enabled && (the
+  selected key name resolves to a definition)`. No key selected → no
+  gutter reserved.
+- **Composes with the set-009 clef gutter** — clef first, then key
+  signature, left to right, both positioned via the semitone grid
+  (Module 1). No second placement mechanism.
+- **No LilyPond emission (set 010 state).** The engine ALREADY renders
+  notehead-chord key signatures: its `cnb-key-signature-engraver` is
+  unconditionally installed and driven by the score's `\key` through the
+  procedure-model notehead config the Configurator already exports — so
+  the exporter emits NOTHING for this section, and a keysig-enabled
+  config exports byte-identically to the same config with it disabled
+  (pinned by tests). Engine-side configurability (disable flag, separator
+  styling, dot mode, anchor-octave control) is recorded as engine-repo
+  work in `docs/session-sets/010-custom-key-signatures/s1-engine-coordination.md`;
+  the LY export spec is unchanged.
+- **No new open-keyed maps**: `keySignature` is fixed-shape and
+  `definitions` is an array (replaced wholesale by Module A's merge), so
+  config-IO needs no `REPLACE_PATHS` entry.
 
 ### 4.10 LilyPond Engine Settings
 
@@ -1251,6 +1332,47 @@ editor contract as Modules 12–17: property-based event wiring
 
 ---
 
+### Modules 22–23: Custom Key Signature (added set 010)
+
+**Module 22 — Key Signature Renderer** (`cnb-key-signature.js`,
+Rendering): pure config-in/DOM-out renderer for the `keys.keySignature`
+config section (§4.9). The displayed key is EXAMPLE DATA — it arrives as
+the `keyName` argument (the collection passes `options.keys[0]`), never
+from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
+`tonicPc(def)`, `tonicSemi(config, def)`, `signatureSemis(config,
+keyName)` (the placement rule's grid positions), `measure(config,
+pxPerSemi, keyName)`, `gutterWidth(config, pxPerSemi, keyName)` (0 when
+nothing renders — no gutter reserved), and `render(svgParent,
+gridContext, config, keyName)`. One mark style is implemented,
+"notehead-chords": marks resolve through
+`CNBConfig.resolveNotehead(config, pc, "crotchet", keyName)` (the
+engine's quarter-note keysig resolution), with per-column ledger lines
+beneath re-drawn noteheads (keysig.ly's two-pass layering). The separator
+runs through the horizontal middle of the columns beneath the marks (the
+engine's gold bar geometry). `style` is a single-value vocabulary; an
+unknown style renders nothing (the task owner deferred richer styles to a
+future set — s2-uat.md). Integrated into Module 10 as a `div.keysig-col`
+after the clef column. Dependencies: Modules A, B, 1 (grid context passed
+in), 5, 6. Visual test page: `test-key-signature.html`.
+
+**Module 23 — Key Signature Editor** (`ui/key-signature-editor.js`, UI):
+edits the whole `keys` section — the `keys.enabled` master gate, the key
+definitions (name, pitch-class pills, optional explicit tonic; the
+definition controls live here because sets 005–006 shipped only key
+CONSUMERS — the rule editor's `match.keys` pills and the preview's key
+selector — and the signature is defined relative to a definition), and
+the `keySignature` subsection (enable, mark style, placement rule +
+tonic octave, separator, gutter). While `keys.enabled` is false the
+panel renders an explicit DISABLED state (controls shown but inert, with
+a note) rather than hiding. Same editor contract as Modules 12–17:
+property-based event wiring (Node-testable `render()`), pure `buildKeys`
+/ `applyToConfig` / `stateFromConfig` builders, Module A validation
+pass-through plus editor-level duplicate-name checks,
+`onChange({ keys }, state)`. Dependencies: Module A, Module B,
+Module 22 (tonic-resolution chain for the hint).
+
+---
+
 ## 6. Build Order
 
 ### Phase 1: Foundation (Sessions 8–9)
@@ -1352,6 +1474,7 @@ cnb/
 │   ├── cnb-card.js             Module 9
 │   ├── cnb-collection.js       Module 10
 │   ├── cnb-clef.js             Module 20 (set 009)
+│   ├── cnb-key-signature.js    Module 22 (set 010)
 │   └── cnb-lilypond.js         Module 11
 │
 ├── tests/
@@ -1366,6 +1489,8 @@ cnb/
 │   ├── cnb-card-tests.js
 │   ├── cnb-clef-tests.js       (set 009)
 │   ├── cnb-clef-editor-tests.js (set 009)
+│   ├── cnb-key-signature-tests.js (set 010)
+│   ├── cnb-key-signature-editor-tests.js (set 010)
 │   └── cnb-lilypond-tests.js
 │
 ├── test-pages/
@@ -1376,6 +1501,7 @@ cnb/
 │   ├── test-stem.html
 │   ├── test-card.html
 │   ├── test-clef.html          (set 009)
+│   ├── test-key-signature.html (set 010)
 │   └── test-collection.html
 │
 ├── ui/                          (Phase 5)
@@ -1384,6 +1510,7 @@ cnb/
 │   ├── notehead-rule-editor.js
 │   ├── common-props-editor.js
 │   ├── clef-editor.js          Module 21 (set 009)
+│   ├── key-signature-editor.js Module 23 (set 010)
 │   ├── svg-importer.js
 │   ├── config-io.js
 │   ├── preview-display.js
@@ -1604,7 +1731,18 @@ Complete default config for development and testing.
     repeatCounts: { minim: 2, semibreve: 4, breve: 8 }
   },
 
-  keys: { enabled: false, definitions: [], offKeyMark: {} },
+  keys: {
+    enabled: false,
+    definitions: [],
+    offKeyMark: {},
+    keySignature: {
+      enabled: false,
+      style: "notehead-chords",
+      placement: { rule: "scale-from-tonic", tonicOctave: null },
+      separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
+      gutter: { paddingH: 12 },
+    },
+  },
 
   clef: { enabled: false, active: null, glyphs: {}, gutter: { paddingH: 12 } },
 

@@ -416,6 +416,60 @@ export const tests = [
     },
   },
   {
+    name: "round-trip: keys-enabled config (definitions with tonicPc, non-default keySignature) is deep-equal after save → load",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.meta.configName = "Keysig Roundtrip";
+      cfg.keys = {
+        enabled: true,
+        definitions: [
+          { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+          { name: "Mystery", pitchClasses: [3, 7, 10], tonicPc: 7 },
+        ],
+        offKeyMark: {},
+        keySignature: {
+          enabled: true,
+          style: "notehead-chords",
+          placement: { rule: "scale-from-tonic", tonicOctave: 2 },
+          separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
+          gutter: { paddingH: 20 },
+        },
+      };
+      const built = IO.buildSaveFile(cfg, { now: NOW_1 });
+      const loaded = IO.loadFromText(built.json);
+      assertEqual(loaded.config, built.config, "deep-equal after round trip");
+      assertEqual(loaded.config.keys.definitions.length, 2, "exactly the saved definitions");
+      assertEqual(loaded.config.keys.definitions[1].tonicPc, 7, "optional tonicPc survives");
+      assertEqual(loaded.config.keys.keySignature.placement.tonicOctave, 2,
+        "explicit placement octave survives");
+      assert(loaded.validation.valid, "round-tripped keysig config valid");
+    },
+  },
+  {
+    name: "mergeLoaded: a config file predating the keySignature subsection gains it default-off (no REPLACE_PATHS entry needed — s1 decision D6: fixed-shape object + array definitions)",
+    fn: () => {
+      // Pre-set-010 file shape: keys with enabled/definitions only.
+      const { config } = IO.mergeLoaded({
+        version: "1.0",
+        keys: { enabled: true, definitions: [{ name: "G", pitchClasses: [7] }], offKeyMark: {} },
+      });
+      assertEqual(config.keys.enabled, true, "enabled from file");
+      assertEqual(config.keys.definitions, [{ name: "G", pitchClasses: [7] }],
+        "definitions array taken as saved (arrays replace wholesale in Module A merge)");
+      assertEqual(config.keys.keySignature, CNBConfig.createDefault().keys.keySignature,
+        "default-off keySignature subsection added");
+      // Partial keySignature: omitted fields gain defaults (fixed-shape merge).
+      const partial = IO.mergeLoaded({
+        version: "1.0",
+        keys: { keySignature: { enabled: true, style: "notehead-chords", gutter: { paddingH: 8 } } },
+      });
+      assertEqual(partial.config.keys.keySignature.gutter.paddingH, 8, "provided field kept");
+      assertEqual(partial.config.keys.keySignature.separator,
+        CNBConfig.createDefault().keys.keySignature.separator,
+        "omitted separator merged from defaults");
+    },
+  },
+  {
     name: "round-trip: second save of a loaded config preserves created, updates modified",
     fn: () => {
       const first = IO.buildSaveFile(CNBConfig.createDefault(), { now: NOW_1 });

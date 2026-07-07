@@ -777,4 +777,39 @@ export const tests = [
       lacks(enabledLy, "clef", "no clef token anywhere in the export");
     }},
 
+  // ── Key-signature non-emission (set 010 session 2, per that set's
+  //    s1-engine-coordination.md: the engine already renders notehead-chord
+  //    key signatures from the score's \key through the exported notehead
+  //    config, and exposes no key-signature configuration surface — there
+  //    is nothing for the exporter to emit. A keysig-enabled config must
+  //    export exactly like the same config with it disabled, and remain a
+  //    valid export) ──
+
+  { name: "generate: key-signature-enabled config passes validation and exports byte-identically to key-signature-disabled (engine renders keysigs from the score's \\key — s1 coordination)", fn: () => {
+      const enabled = CNBConfig.createDefault();
+      enabled.keys.enabled = true;
+      enabled.keys.definitions = [
+        { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+        { name: "A", pitchClasses: [1, 2, 4, 6, 8, 9, 11], tonicPc: 9 },
+      ];
+      enabled.keys.keySignature = {
+        enabled: true,
+        style: "notehead-chords",
+        placement: { rule: "scale-from-tonic", tonicOctave: 2 },
+        separator: { enabled: true, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
+        gutter: { paddingH: 20 },
+      };
+      const disabled = CNBConfig.clone(enabled);
+      disabled.keys.keySignature.enabled = false;
+
+      assert(CNBConfig.validate(enabled).valid, "keysig-enabled config is valid");
+      const enabledLy = CNBLilypond.generate(enabled);   // throws on blocking errors
+      const disabledLy = CNBLilypond.generate(disabled);
+      // The header stamps a date-only line, so two same-run exports are
+      // byte-identical without normalization.
+      eq(enabledLy, disabledLy, "keySignature section is invisible to the exporter");
+      lacks(enabledLy, "keysig", "no keysig token anywhere in the export");
+      lacks(enabledLy, "keySignature", "no keySignature token anywhere in the export");
+    }},
+
 ];
