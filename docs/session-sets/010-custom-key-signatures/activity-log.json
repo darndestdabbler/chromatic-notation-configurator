@@ -36,6 +36,22 @@
       "dateTime": "2026-07-07T02:46:49.057508-04:00",
       "description": "SUPERSEDES the step-1 test counts after verification round-1 remediation (s1-issues.json): explicit keys.keySignature.placement = {rule, tonicOctave} surface (rule scale-from-tonic validated, unknown rule renders nothing); parseTonicPc relocated from cnb-music.js (outside Touches; Module B restored byte-identical to base) into cnb-key-signature.js; engine-parity claim narrowed in s1-engine-coordination.md. Final counts: cnb 660 passed 0 failed (base 618, +14 config, +28 new cnb-key-signature-tests, music back to base 46), legacy 240/240, Chromium smoke 31/31 exit 0.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/keysig-ui-and-export",
+      "dateTime": "2026-07-07T07:32:43.339995-04:00",
+      "description": "Key Signature Editor (Module 23), app wiring, export no-emission pin, JSON round-trip; operator-directed separator geometry + single note-stack style",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/docs-and-uat",
+      "dateTime": "2026-07-07T07:32:43.339995-04:00",
+      "description": "Architecture plan \u00a74.9 activated + Modules 22/23; DSL UAT + Playwright driver, operator attestation, GPT+Gemini design consult, change-log",
+      "status": "complete"
     }
   ]
 }

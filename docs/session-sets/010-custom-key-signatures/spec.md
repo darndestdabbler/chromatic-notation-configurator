@@ -193,7 +193,26 @@ coordination outcome, and updated project docs.
 **Touches:** `cnb/src/cnb-lilypond.js` (only if emission was pinned in
 session 1), `cnb/ui/` (app wiring, config IO), `cnb/uat/`, `cnb/tests/`,
 `docs/CNB-ARCHITECTURE-PLAN-v2.md`, `docs/CNB-LY-EXPORT-SPEC-v1_2.md`
-(conditional, per step 4)
+(conditional, per step 4), `cnb/src/cnb-config.js` and
+`cnb/src/cnb-key-signature.js` (see the note below)
+
+> **Touches expansion — operator UAT direction (added during session 2,
+> attributed to the task owner):** the set's `requiresUAT: true` flow and
+> session-2 step 5 ("obtain the human operator's visual attestation")
+> invoke the task owner's authority over the rendered result. In session-2
+> UAT the operator directed changes to the key-signature RENDERER and
+> SCHEMA — specifically: (a) the separator bar must run through the
+> horizontal middle of the note columns and be thicker (engine-verified
+> geometry: `keys.keySignature.separator` defaults + `cnb-key-signature.js`
+> render order); and (b) after evaluating simple-mark styles (dot, interval
+> blocks, staggered ledgers), ship the note-stack as the SOLE style and
+> defer richer custom-symbol signatures — reverting the `style` vocabulary
+> to a single value and removing the alternate-style schema subsections.
+> These land in `cnb/src/cnb-config.js` (schema defaults + validation) and
+> `cnb/src/cnb-key-signature.js` (the Module 22 renderer, a session-1
+> Creates file), both outside the original session-2 Touches list. The
+> verbatim operator dialogue driving each change is recorded in `s2-uat.md`
+> (UAT rounds 1–3) and the design consult in `s2-design-consult.md`.
 
 **Ends with:** a key signature can be configured, previewed, saved,
 loaded, and exported through the UI; default-off output is proven
