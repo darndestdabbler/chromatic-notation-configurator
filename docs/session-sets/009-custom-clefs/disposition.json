@@ -1,0 +1,37 @@
+{
+  "status": "completed",
+  "summary": "Session 1 of set 009 (custom clefs): added the default-off `clef` config section (enabled/active/glyphs map/gutter) with type-safe enabled-gated validation incl. gutter.paddingH; pure cnb-clef.js renderer (glyph + text/numeral kinds) with FLOAT top-edge anchorSemi (investigation-backed: Bravura/Clairnote/Express Stave all put glyph tops at fractional grid offsets); clef gutter column in cnb-collection.js (staff lines span the gutter; zero layout change when disabled); clef SVG import (extractClef/buildClefGlyph/parseClefSvgText, toolkit data-* contract, no stem attrs); pre-change export baseline fixture + byte-identity invariance tests; test-clef.html (6 panels) + 15/15 Chromium smoke with pixel-exact anchor geometry. Engine discovery: no custom-clef hook (dozenal engraver only, unconditional) -> session 2 export emits nothing for clefs (s1-engine-coordination.md). Suites: cnb 592/592, legacy 240/240. Verification round 1 ISSUES_FOUND (3 issues: config-test placement, type-unsafe validation, unvalidated paddingH) -> remediated -> round 2 VERIFIED via gemini-pro (cross-provider verifier swap after 90+ minutes of OpenAI 429s; sanctioned by the router config's own session-verification override comment, applied via AI_ROUTER_CONFIG without modifying the installed config — see the verifier-model note in s1-verification.md round 2).",
+  "files_changed": [
+    "cnb/fixtures/default-export-baseline.ly",
+    "cnb/src/cnb-clef.js",
+    "cnb/src/cnb-collection.js",
+    "cnb/src/cnb-config.js",
+    "cnb/test-pages/test-clef.html",
+    "cnb/tests/cnb-clef-tests.js",
+    "cnb/tests/cnb-config-tests.js",
+    "cnb/tests/run-tests.js",
+    "cnb/ui/svg-importer.js",
+    "docs/session-sets/009-custom-clefs/activity-log.json",
+    "docs/session-sets/009-custom-clefs/s1-engine-coordination.md",
+    "docs/session-sets/009-custom-clefs/s1-notes.md",
+    "docs/session-sets/009-custom-clefs/s1-issues.json",
+    "docs/session-sets/009-custom-clefs/s1-verification.md",
+    "docs/session-sets/009-custom-clefs/session-events.jsonl",
+    "docs/session-sets/009-custom-clefs/session-state.json",
+    "docs/session-sets/009-custom-clefs/disposition.json"
+  ],
+  "verification_method": "api",
+  "verification_message_ids": [],
+  "next_orchestrator": {
+    "engine": "claude-code",
+    "provider": "anthropic",
+    "model": "claude-fable-5",
+    "effort": "medium",
+    "reason": {
+      "code": "continue-current-trajectory",
+      "specifics": "Session 2 builds the clef editor UI, export (pinned: emit nothing per s1-engine-coordination.md), JSON round-trip (clef.glyphs into CNBConfigIO.REPLACE_PATHS), docs, and per-set UAT; same engine/provider closed s1 cleanly in two rounds."
+    }
+  },
+  "blockers": [],
+  "verification_verdict": "VERIFIED"
+}

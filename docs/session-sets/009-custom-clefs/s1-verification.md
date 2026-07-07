@@ -22,3 +22,28 @@ Verifier: routed task_type=session-verification (cross-provider).
 - **False positive to avoid: using a dedicated `clef.glyphs` map is not an error** → `cnb/src/cnb-config.js`, `docs/session-sets/009-custom-clefs/s1-notes.md` → No fix needed. The task explicitly allowed choosing between reusing `shapes` storage and a dedicated clef map, provided the choice was documented.
 
 - **False positive to avoid: Date-line normalization in the export baseline test is not an error** → `cnb/tests/cnb-clef-tests.js`, `cnb/fixtures/default-export-baseline.ly` → No fix needed. The exporter embeds the current date, so normalizing only that line is a reasonable way to test schema-change invariance.
+
+---
+
+# Round 2 (remediation) — 2026-07-06
+
+> **Verifier-model note:** round 2 was routed to **gemini-pro (Google)** instead of the
+> configured gpt-5-4: the OpenAI endpoint returned persistent 429s for ~90+ minutes
+> (7 route() invocations x 3 internal attempts, round-1 succeeded earlier the same day,
+> i.e. quota exhaustion, not a transient spike). The router config's own comment on
+> `task_type_overrides.session-verification` sanctions swapping to a different-provider
+> Tier-3 verifier; gemini-pro is `is_enabled_as_verifier: true`, carries dedicated
+> session-verification generation params, and Google is cross-provider from the
+> orchestrating provider (anthropic), so the Full-tier cross-provider guarantee holds.
+> Override applied via the supported `AI_ROUTER_CONFIG` env var pointing at a scratch
+> copy of the config; the installed config was not modified.
+
+**VERIFIED**
+
+The AI's remediation is correct, complete, and of high quality. It has successfully resolved all three issues from the previous round.
+
+1.  **Issue 1 ("Missing requested config-test additions"):** The resolution is correct. The clef configuration tests have been moved from `cnb-clef-tests.js` to `cnb-config-tests.js`, which is the correct location for Module A behavior tests. The commit diff confirms this move.
+2.  **Issue 2 ("Clef validation is not type-safe"):** The resolution is correct and robust. The validation logic in `cnb-config.js` now uses an `isPlainObject` helper to guard against malformed inputs at every level of the `clef` configuration object (`clef` itself, `clef.glyphs`, and the specific glyph definition). The new tests comprehensively cover various non-object types, confirming that the validator now reports errors instead of throwing them.
+3.  **Issue 3 ("New gutter config is unvalidated"):** The resolution is correct. The diff shows new validation logic in `cnb-config.js` that ensures `clef.gutter` is an object and `clef.gutter.paddingH` is a finite, non-negative number. The corresponding new test case is thorough, checking multiple invalid types, edge cases (like `0`), and valid states (like an absent `gutter` object).
+
+The provided test transcripts show all 592 modern tests and 240 legacy tests passing, indicating no regressions were introduced. The code changes are precise and limited to the required scope.
