@@ -455,11 +455,12 @@ export const tests = [
 
   // ── keys.keySignature (set 010) ───────────────────────────────────────────
 
-  { name: "keysig: default config has keySignature section — disabled, notehead-chords style, auto octave, gold separator", fn: () => {
+  { name: "keysig: default config has keySignature section — disabled, notehead-chords style, scale-from-tonic placement, gold separator", fn: () => {
     const ks = CNBConfig.createDefault().keys.keySignature;
     eq(ks.enabled, false, "enabled");
     eq(ks.style, "notehead-chords", "default style per the operator directive (engine keysig.ly)");
-    eq(ks.tonicOctave, null, "tonicOctave auto");
+    eq(ks.placement.rule, "scale-from-tonic", "placement rule (s1 decision D1)");
+    eq(ks.placement.tonicOctave, null, "tonicOctave auto");
     eq(ks.separator.enabled, true, "separator on");
     eq(ks.separator.color, "#ffd42a", "engine cnb:gold");
     eq(ks.separator.thicknessPct, 25, "separator thickness");
@@ -504,15 +505,27 @@ export const tests = [
     assert(CNBConfig.validate(absent).valid, "absent style valid (defaults to notehead-chords)");
   }},
 
-  { name: "keysig: validate — tonicOctave must be an integer or null", fn: () => {
+  { name: "keysig: validate — placement.rule must be a known rule; absent placement/rule defaults", fn: () => {
+    const badRule = keysigConfig();
+    badRule.keys.keySignature.placement = { rule: "spiral", tonicOctave: null };
+    assert(CNBConfig.validate(badRule).errors.some(e => e.includes("placement.rule")), "rule error");
+    const nonObject = keysigConfig();
+    nonObject.keys.keySignature.placement = "top";
+    assert(CNBConfig.validate(nonObject).errors.some(e => e.includes("placement must be an object")), "type error");
+    const absent = keysigConfig();
+    delete absent.keys.keySignature.placement;
+    assert(CNBConfig.validate(absent).valid, "absent placement valid (renderer defaults scale-from-tonic)");
+  }},
+
+  { name: "keysig: validate — placement.tonicOctave must be an integer or null", fn: () => {
     for (const bad of [1.5, "1", NaN]) {
       const cfg = keysigConfig();
-      cfg.keys.keySignature.tonicOctave = bad;
-      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("tonicOctave")),
+      cfg.keys.keySignature.placement = { rule: "scale-from-tonic", tonicOctave: bad };
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("placement.tonicOctave")),
         "tonicOctave error for " + String(bad));
     }
     const explicit = keysigConfig();
-    explicit.keys.keySignature.tonicOctave = 2;
+    explicit.keys.keySignature.placement = { rule: "scale-from-tonic", tonicOctave: 2 };
     assert(CNBConfig.validate(explicit).valid, "integer tonicOctave valid");
   }},
 

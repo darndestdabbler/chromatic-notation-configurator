@@ -129,6 +129,35 @@ export const tests = [
 
   // ── Tonic resolution chain (decision D3) ───────────────────────────────
 
+  { name: "parseTonicPc: natural note letters, either case", fn: () => {
+      eq(CNBKeySignature.parseTonicPc("C"), 0);
+      eq(CNBKeySignature.parseTonicPc("D"), 2);
+      eq(CNBKeySignature.parseTonicPc("g"), 7);
+      eq(CNBKeySignature.parseTonicPc("A"), 9);
+      eq(CNBKeySignature.parseTonicPc("B"), 11);
+    }},
+
+  { name: "parseTonicPc: sharps and flats, ASCII and unicode accidentals", fn: () => {
+      eq(CNBKeySignature.parseTonicPc("F#"), 6);
+      eq(CNBKeySignature.parseTonicPc("F♯ minor"), 6);
+      eq(CNBKeySignature.parseTonicPc("Eb"), 3);
+      eq(CNBKeySignature.parseTonicPc("B♭ Dorian"), 10);
+      eq(CNBKeySignature.parseTonicPc("bb"), 10, "lowercase b tonic + flat");
+      eq(CNBKeySignature.parseTonicPc("Cb"), 11, "flat wraps below C");
+    }},
+
+  { name: "parseTonicPc: trailing words and leading whitespace are tolerated", fn: () => {
+      eq(CNBKeySignature.parseTonicPc("C major"), 0);
+      eq(CNBKeySignature.parseTonicPc("  A"), 9);
+    }},
+
+  { name: "parseTonicPc: null when the name does not begin with a note letter", fn: () => {
+      eq(CNBKeySignature.parseTonicPc("Mystery"), null);
+      eq(CNBKeySignature.parseTonicPc(""), null);
+      eq(CNBKeySignature.parseTonicPc(null), null);
+      eq(CNBKeySignature.parseTonicPc(undefined), null);
+    }},
+
   { name: "tonicPc: explicit tonicPc → parsed name → first listed pitch class", fn: () => {
       eq(CNBKeySignature.tonicPc({ name: "C", pitchClasses: [0], tonicPc: 4 }), 4, "explicit tonicPc wins");
       eq(CNBKeySignature.tonicPc({ name: "F# minor", pitchClasses: [0] }), 6, "parsed from name");
@@ -150,10 +179,21 @@ export const tests = [
       eq(CNBKeySignature.tonicSemi(highMid, { name: "C", pitchClasses: [0] }), 12, "midpoint 18 → C span 12–24 centered on it");
     }},
 
-  { name: "tonicSemi: explicit integer tonicOctave overrides the auto rule", fn: () => {
-      const cfg = keysigConfig([C_MAJOR], { tonicOctave: 2 });
+  { name: "tonicSemi: explicit integer placement.tonicOctave overrides the auto rule", fn: () => {
+      const cfg = keysigConfig([C_MAJOR], { placement: { rule: "scale-from-tonic", tonicOctave: 2 } });
       eq(CNBKeySignature.tonicSemi(cfg, { name: "C", pitchClasses: [0] }), 24, "octave 2 → 24");
       eq(CNBKeySignature.tonicSemi(cfg, { name: "A", pitchClasses: [9] }), 33, "octave 2 → 33");
+    }},
+
+  // ── Placement rule surface (verification round-1 remediation) ──────────
+
+  { name: "placement.rule: unknown rule renders nothing (signatureSemis null, gutterWidth 0)", fn: () => {
+      const cfg = keysigConfig([C_MAJOR], { placement: { rule: "spiral", tonicOctave: null } });
+      eq(CNBKeySignature.signatureSemis(cfg, "C"), null, "unknown rule → null");
+      eq(CNBKeySignature.gutterWidth(cfg, PX_PER_SEMI, "C"), 0, "unknown rule → no gutter");
+      const absent = keysigConfig([C_MAJOR], { placement: {} });
+      deepEq(CNBKeySignature.signatureSemis(absent, "C"),
+             [12, 14, 16, 17, 19, 21, 23, 24], "absent rule defaults to scale-from-tonic");
     }},
 
   // ── signatureSemis ──────────────────────────────────────────────────────

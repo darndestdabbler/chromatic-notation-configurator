@@ -34,11 +34,17 @@
  * keys.keySignature.enabled AND the key name resolving to a definition
  * (E2: "only when keys.enabled and a signature device is configured").
  *
- * Vertical anchoring (s1 decision D4): tonicOctave null = auto — the
- * octave span [tonicSemi, tonicSemi+12] is centered on staff.midpoint,
- * ties resolving upward (C tonic, midpoint 12 → tonic at semitone 12,
- * matching the engine's middle-C anchor for the default config). An
- * explicit integer tonicOctave overrides.
+ * Placement is driven by the keys.keySignature.placement subsection
+ * (binding rule 2's placement rule; session 2's placement-rule controls
+ * edit it): placement.rule names how the key's pitch classes map to grid
+ * positions — "scale-from-tonic" (s1 decision D1) is the vocabulary's
+ * only implemented value, and an unknown rule renders nothing (validation
+ * reports it as an error). Vertical anchoring (s1 decision D4):
+ * placement.tonicOctave null = auto — the octave span
+ * [tonicSemi, tonicSemi+12] is centered on staff.midpoint, ties resolving
+ * upward (C tonic, midpoint 12 → tonic at semitone 12, matching the
+ * engine's middle-C anchor for the default config). An explicit integer
+ * tonicOctave overrides.
  *
  * Inspired by Clairnote DN's alternative key signatures (design
  * CC BY-SA 4.0, Paul Morris); no code is ported from clairnote.ly — the
@@ -74,6 +80,25 @@ function resolveMark(config, pc, keyName) {
 export const CNBKeySignature = {
 
   /**
+   * Parse the tonic pitch class from a key name (s1 decision D3).
+   * Reads a leading note letter A–G (either case) plus an optional
+   * accidental (# ♯ b ♭) immediately after it, ignoring leading
+   * whitespace: "C" → 0, "F# minor" → 6, "bb" → 10, "B♭ Dorian" → 10.
+   * Returns null when the name does not begin with a note letter.
+   * (Lives here rather than in Module B: cnb-music.js is outside this
+   * session's product-file scope.)
+   * @param {string} name
+   * @returns {number|null}
+   */
+  parseTonicPc(name) {
+    const m = /^\s*([A-Ga-g])([#♯b♭]?)/.exec(String(name ?? ""));
+    if (!m) return null;
+    const base = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[m[1].toLowerCase()];
+    const alt = m[2] === "#" || m[2] === "♯" ? 1 : (m[2] === "b" || m[2] === "♭" ? -1 : 0);
+    return (((base + alt) % 12) + 12) % 12;
+  },
+
+  /**
    * Resolve the key definition the signature renders, or null when the
    * feature is disabled, no key is selected, or the name is unknown or has
    * no usable pitchClasses.
@@ -104,7 +129,7 @@ export const CNBKeySignature = {
     if (Number.isInteger(def.tonicPc) && def.tonicPc >= 0 && def.tonicPc <= 11) {
       return def.tonicPc;
     }
-    const parsed = CNBMusic.parseTonicPc(def.name);
+    const parsed = CNBKeySignature.parseTonicPc(def.name);
     if (parsed !== null) return parsed;
     const first = (def.pitchClasses || []).find(pc => Number.isInteger(pc));
     return CNBMusic.pitchClass(first ?? 0);
@@ -112,9 +137,9 @@ export const CNBKeySignature = {
 
   /**
    * Absolute semitone of the rendered tonic (s1 decision D4).
-   * Explicit integer keySignature.tonicOctave places the tonic in that
-   * octave; null/absent auto-centers the octave span on staff.midpoint
-   * with ties resolving upward.
+   * An explicit integer keySignature.placement.tonicOctave places the
+   * tonic in that octave; null/absent auto-centers the octave span on
+   * staff.midpoint with ties resolving upward.
    *
    * @param {object} config
    * @param {object} def
@@ -123,8 +148,9 @@ export const CNBKeySignature = {
   tonicSemi(config, def) {
     const pc = CNBKeySignature.tonicPc(def);
     const ks = (config.keys || {}).keySignature || {};
-    if (Number.isInteger(ks.tonicOctave)) {
-      return CNBMusic.absoluteSemi(pc, ks.tonicOctave);
+    const placement = ks.placement || {};
+    if (Number.isInteger(placement.tonicOctave)) {
+      return CNBMusic.absoluteSemi(pc, placement.tonicOctave);
     }
     const midpoint = (config.staff || {}).midpoint ?? 12;
     // Center [t, t+12] on the midpoint: minimize |t + 6 − midpoint| over
@@ -135,10 +161,11 @@ export const CNBKeySignature = {
   },
 
   /**
-   * The signature's absolute semitones, ascending: every distinct pitch
-   * class of the key ordered as a scale from the tonic, plus the octave
-   * tonic (keysig.ly's 8-pitch layout for 7-note keys). Null when no key
-   * resolves.
+   * The signature's absolute semitones, ascending, per the configured
+   * placement rule. "scale-from-tonic" (the only implemented rule): every
+   * distinct pitch class of the key ordered as a scale from the tonic,
+   * plus the octave tonic (keysig.ly's 8-pitch layout for 7-note keys).
+   * Null when no key resolves or the placement rule is unknown.
    *
    * @param {object} config
    * @param {string|null} keyName
@@ -147,6 +174,8 @@ export const CNBKeySignature = {
   signatureSemis(config, keyName) {
     const active = CNBKeySignature.activeKey(config, keyName);
     if (!active) return null;
+    const placement = ((config.keys || {}).keySignature || {}).placement || {};
+    if ((placement.rule ?? "scale-from-tonic") !== "scale-from-tonic") return null;
     const tonic = CNBKeySignature.tonicPc(active.def);
     const t = CNBKeySignature.tonicSemi(config, active.def);
     const pcs = [...new Set(active.def.pitchClasses.filter(pc => Number.isInteger(pc)))];

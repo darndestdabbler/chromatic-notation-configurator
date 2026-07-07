@@ -139,14 +139,25 @@ function buildDefault() {
       // from the tonic plus the octave tonic, interleaved into two columns
       // (two stacked 7th chords) — capped with a gold separator bar
       // (engine cnb:gold #ffd42a). "dot" is the simple built-in mark
-      // alternative. tonicOctave null = auto (center the octave span on
-      // staff.midpoint; ties resolve upward, so a C tonic with midpoint 12
-      // sits at semitone 12, matching the engine's middle-C anchor for the
-      // default config).
+      // alternative.
+      //
+      // placement is the explicit placement-rule surface (binding rule 2;
+      // session 2's placement-rule controls edit it): rule names how the
+      // key's pitch classes map to grid positions — "scale-from-tonic"
+      // (the s1 decision D1: full pitch-class set ascending from the tonic
+      // plus the octave tonic, per keysig.ly) is the vocabulary's only
+      // implemented value; future rules (e.g. a tonic-label mode, catalog
+      // record 42) extend it. tonicOctave null = auto (center the octave
+      // span on staff.midpoint; ties resolve upward, so a C tonic with
+      // midpoint 12 sits at semitone 12, matching the engine's middle-C
+      // anchor for the default config); an explicit integer overrides.
       keySignature: {
         enabled: false,
         style: "notehead-chords",
-        tonicOctave: null,
+        placement: {
+          rule: "scale-from-tonic",
+          tonicOctave: null,
+        },
         separator: {
           enabled: true,
           color: "#ffd42a",
@@ -440,8 +451,19 @@ export const CNBConfig = {
       if (ksStyle !== "notehead-chords" && ksStyle !== "dot") {
         errors.push(`keys.keySignature.style must be "notehead-chords" or "dot" (got ${JSON.stringify(keySig.style)})`);
       }
-      if (keySig.tonicOctave !== undefined && keySig.tonicOctave !== null && !Number.isInteger(keySig.tonicOctave)) {
-        errors.push(`keys.keySignature.tonicOctave must be an integer octave or null for auto (got ${JSON.stringify(keySig.tonicOctave)})`);
+      const placement = keySig.placement;
+      if (placement !== undefined && placement !== null) {
+        if (!isPlainObject(placement)) {
+          errors.push("keys.keySignature.placement must be an object");
+        } else {
+          const rule = placement.rule === undefined || placement.rule === null ? "scale-from-tonic" : placement.rule;
+          if (rule !== "scale-from-tonic") {
+            errors.push(`keys.keySignature.placement.rule must be "scale-from-tonic" (got ${JSON.stringify(placement.rule)}; the vocabulary extends when new placement rules are implemented)`);
+          }
+          if (placement.tonicOctave !== undefined && placement.tonicOctave !== null && !Number.isInteger(placement.tonicOctave)) {
+            errors.push(`keys.keySignature.placement.tonicOctave must be an integer octave or null for auto (got ${JSON.stringify(placement.tonicOctave)})`);
+          }
+        }
       }
       const sep = keySig.separator;
       if (sep !== undefined && sep !== null) {
