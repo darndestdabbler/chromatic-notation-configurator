@@ -343,14 +343,31 @@ export const CNBConfig = {
 
     // 8. Clef checks (set 009) — only when the clef is enabled, so configs
     //    predating the clef section (and default-off configs) validate
-    //    exactly as before.
-    const clef = config.clef || {};
+    //    exactly as before. Malformed sections report errors rather than
+    //    throwing: validate() must always return a result object.
+    const isPlainObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+    const clef = isPlainObject(config.clef) ? config.clef : {};
     if (clef.enabled) {
-      const glyphs = clef.glyphs || {};
-      if (!clef.active) {
+      const glyphsOk = clef.glyphs === undefined || isPlainObject(clef.glyphs);
+      if (!glyphsOk) {
+        errors.push("clef.glyphs must be an object map of clef definitions");
+      }
+      const glyphs = glyphsOk && clef.glyphs ? clef.glyphs : {};
+      const gutter = clef.gutter;
+      if (gutter !== undefined && gutter !== null) {
+        if (!isPlainObject(gutter)) {
+          errors.push("clef.gutter must be an object");
+        } else if (gutter.paddingH !== undefined && gutter.paddingH !== null &&
+                   (typeof gutter.paddingH !== "number" || !Number.isFinite(gutter.paddingH) || gutter.paddingH < 0)) {
+          errors.push(`clef.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(gutter.paddingH)})`);
+        }
+      }
+      if (!clef.active || typeof clef.active !== "string") {
         errors.push("clef.enabled is true but clef.active names no glyph");
       } else if (!(clef.active in glyphs)) {
         errors.push(`clef.active references unknown clef glyph "${clef.active}"`);
+      } else if (!isPlainObject(glyphs[clef.active])) {
+        errors.push(`Clef glyph "${clef.active}" is not an object`);
       } else {
         const def = glyphs[clef.active];
         const kind = def.kind || "glyph";

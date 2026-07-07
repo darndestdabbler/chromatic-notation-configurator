@@ -319,4 +319,166 @@ export const tests = [
   { name: "pctToPx(40, 20) = 8",    fn: () => approx(CNBConfig.pctToPx(40,  20), 8,    "pctToPx(40,20)") },
   { name: "pctToPx(26, 16) = 4.16", fn: () => approx(CNBConfig.pctToPx(26,  16), 4.16, "pctToPx(26,16)") },
 
+  // ── Clef section (set 009): defaults, merge, validation ──────────────────
+
+  { name: "clef: default config has clef section — disabled, no active, empty glyphs, paddingH 12", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    eq(cfg.clef.enabled, false, "enabled");
+    eq(cfg.clef.active, null, "active");
+    eq(Object.keys(cfg.clef.glyphs).length, 0, "glyphs empty");
+    eq(cfg.clef.gutter.paddingH, 12, "gutter padding");
+  }},
+
+  { name: "clef: merge — config predating the clef section gains the default-off clef", fn: () => {
+    const old = CNBConfig.createDefault();
+    delete old.clef;
+    const merged = CNBConfig.merge(CNBConfig.createDefault(), old);
+    eq(merged.clef.enabled, false, "clef restored default-off");
+  }},
+
+  { name: "clef: validate — default (disabled) config produces no clef errors or warnings", fn: () => {
+    const result = CNBConfig.validate(CNBConfig.createDefault());
+    assert(result.valid, "default config valid");
+    assert(!result.errors.some(e => /clef/i.test(e)), "no clef errors");
+    assert(!result.warnings.some(w => /clef/i.test(w)), "no clef warnings");
+  }},
+
+  { name: "clef: validate — enabled without active is an error", fn: () => {
+    const cfg = clefConfig();
+    cfg.clef.active = null;
+    const result = CNBConfig.validate(cfg);
+    assert(result.errors.some(e => e.includes("clef.active names no glyph")), "error emitted");
+  }},
+
+  { name: "clef: validate — active referencing an unknown glyph is an error", fn: () => {
+    const cfg = clefConfig();
+    cfg.clef.active = "nope";
+    const result = CNBConfig.validate(cfg);
+    assert(result.errors.some(e => e.includes('unknown clef glyph "nope"')), "error emitted");
+  }},
+
+  { name: "clef: validate — well-formed enabled clef adds no errors", fn: () => {
+    const result = CNBConfig.validate(clefConfig());
+    assert(result.valid, "valid: " + result.errors.join("; "));
+  }},
+
+  { name: "clef: validate — FLOAT anchorSemi is accepted (s1 anchoring decision)", fn: () => {
+    // Surveyed clef designs (Bravura gClef top +1.392 staff-spaces above
+    // the top line, Clairnote fractional glyph extents) need non-integer
+    // anchors, so anchorSemi is validated as any finite number.
+    const result = CNBConfig.validate(clefConfig({ anchorSemi: 22.784 }));
+    assert(result.valid, "float anchor valid: " + result.errors.join("; "));
+    assert(!result.warnings.some(w => /anchorSemi/.test(w)), "no anchor warning in range");
+  }},
+
+  { name: "clef: validate — missing/non-numeric anchorSemi is an error", fn: () => {
+    const result = CNBConfig.validate(clefConfig({ anchorSemi: undefined }));
+    assert(result.errors.some(e => e.includes("no numeric anchorSemi")), "error emitted");
+  }},
+
+  { name: "clef: validate — anchorSemi far outside typical range is a warning, not an error", fn: () => {
+    const result = CNBConfig.validate(clefConfig({ anchorSemi: 100 }));
+    assert(result.valid, "still valid");
+    assert(result.warnings.some(w => w.includes("far outside the typical range")), "warning emitted");
+  }},
+
+  { name: "clef: validate — glyph kind missing svgPath / dimensions is an error", fn: () => {
+    const result = CNBConfig.validate(clefConfig({ svgPath: "", naturalHeight: 0 }));
+    assert(result.errors.some(e => e.includes("has no svgPath")), "svgPath error");
+    assert(result.errors.some(e => e.includes("positive natural dimensions")), "dimensions error");
+  }},
+
+  { name: "clef: validate — text kind requires text and positive textHeightSemis", fn: () => {
+    const bad = CNBConfig.validate(clefConfig({ kind: "text", text: "", textHeightSemis: 0 }));
+    assert(bad.errors.some(e => e.includes("has no text")), "text error");
+    assert(bad.errors.some(e => e.includes("positive textHeightSemis")), "height error");
+    const good = CNBConfig.validate(clefConfig({ kind: "text", text: "4", textHeightSemis: 5 }));
+    assert(good.valid, "text entry valid: " + good.errors.join("; "));
+  }},
+
+  { name: "clef: validate — unknown kind is an error", fn: () => {
+    const result = CNBConfig.validate(clefConfig({ kind: "hologram" }));
+    assert(result.errors.some(e => e.includes('unknown kind "hologram"')), "error emitted");
+  }},
+
+  { name: "clef: validate — wrong-typed clef.glyphs reports errors instead of throwing", fn: () => {
+    for (const badGlyphs of [42, "map", [1, 2]]) {
+      const cfg = clefConfig();
+      cfg.clef.glyphs = badGlyphs;
+      const result = CNBConfig.validate(cfg);
+      assert(result.errors.some(e => e.includes("clef.glyphs must be an object map")),
+        "glyphs type error for " + JSON.stringify(badGlyphs));
+      assert(result.errors.some(e => e.includes("unknown clef glyph")),
+        "active unresolvable for " + JSON.stringify(badGlyphs));
+    }
+  }},
+
+  { name: "clef: validate — null/primitive glyph definition reports an error instead of throwing", fn: () => {
+    for (const badDef of [null, 7, "glyph"]) {
+      const cfg = clefConfig();
+      cfg.clef.glyphs["test-clef"] = badDef;
+      const result = CNBConfig.validate(cfg);
+      assert(result.errors.some(e => e.includes('Clef glyph "test-clef" is not an object')),
+        "def type error for " + JSON.stringify(badDef));
+    }
+  }},
+
+  { name: "clef: validate — malformed clef section (non-object) is treated as absent, no throw", fn: () => {
+    for (const badClef of [7, "on", [true], null]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.clef = badClef;
+      const result = CNBConfig.validate(cfg);
+      assert(result.valid, "no clef errors for clef = " + JSON.stringify(badClef));
+    }
+  }},
+
+  { name: "clef: validate — non-string active (enabled) reports the no-glyph error, no throw", fn: () => {
+    const cfg = clefConfig();
+    cfg.clef.active = 3;
+    const result = CNBConfig.validate(cfg);
+    assert(result.errors.some(e => e.includes("clef.active names no glyph")), "error emitted");
+  }},
+
+  { name: "clef: validate — gutter.paddingH must be a finite non-negative number when enabled", fn: () => {
+    for (const bad of [-4, NaN, "12", Infinity]) {
+      const result = CNBConfig.validate(clefConfig({}, { gutter: { paddingH: bad } }));
+      assert(result.errors.some(e => e.includes("clef.gutter.paddingH must be a finite non-negative number")),
+        "paddingH error for " + String(bad));
+    }
+    const zero = CNBConfig.validate(clefConfig({}, { gutter: { paddingH: 0 } }));
+    assert(zero.valid, "paddingH 0 valid");
+    const absent = CNBConfig.validate(clefConfig({}, { gutter: undefined }));
+    assert(absent.valid, "absent gutter valid (renderer defaults 12)");
+    const nonObject = CNBConfig.validate(clefConfig({}, { gutter: "wide" }));
+    assert(nonObject.errors.some(e => e.includes("clef.gutter must be an object")), "gutter type error");
+  }},
+
 ];
+
+// ── Clef test helpers (set 009) ───────────────────────────────────────────────
+
+const TEST_CLEF_GLYPH = {
+  displayName: "Test Clef",
+  kind: "glyph",
+  svgPath: "M 0 0 L 100 0 L 100 300 L 0 300 Z",
+  naturalHeight: 300,
+  naturalWidth: 100,
+  semitoneHeight: 6,
+  viewBoxMinX: 0,
+  viewBoxMinY: 0,
+  lilypondPath: null,
+  anchorSemi: 20,
+};
+
+/** Default config with the clef enabled on a fresh copy of TEST_CLEF_GLYPH. */
+function clefConfig(glyphOverrides = {}, clefOverrides = {}) {
+  const config = CNBConfig.createDefault();
+  config.clef = {
+    ...config.clef,
+    enabled: true,
+    active: "test-clef",
+    glyphs: { "test-clef": { ...TEST_CLEF_GLYPH, ...glyphOverrides } },
+    ...clefOverrides,
+  };
+  return config;
+}
