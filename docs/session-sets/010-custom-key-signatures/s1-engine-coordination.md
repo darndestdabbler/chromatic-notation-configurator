@@ -72,20 +72,27 @@ Per spec binding rule 4 ("Engine capability governs export"):
   added the pinning test (`cnb/tests/cnb-key-signature-tests.js`,
   "keysig-enabled config exports identically to keysig-disabled"), so
   session 2 inherits it.
-- **Preview/engine agreement for the default style is by construction.**
-  The preview's `"notehead-chords"` style reproduces the keysig.ly layout
-  (same 8-pitch scale stack, two-column interleave, quarter-note notehead
-  resolution keyed to the selected key, shared ledger rules, gold bar), so
-  what the preview shows for the selected key is what the engine engraves
-  when the score is in that key. Documented preview-side deviation:
-  vertical auto-anchoring centers the stack on `staff.midpoint` (the
-  engine anchors at middle C, which coincides with the staff center for
-  the default config) — see `s1-notes.md` D4.
-- **The `"dot"` style is preview-only.** The engine has no simple-mark
-  key-signature mode; a config using `style: "dot"` previews dots but
-  engraves the engine's notehead chords. This is recorded as a documented
-  divergence (UI copy in session 2 should note it) and as engine-repo
-  work below.
+- **Preview/engine agreement — scope of the claim (narrowed in
+  verification round 1).** The preview's `"notehead-chords"` style
+  follows the keysig.ly *layout design*: the same 8-pitch scale stack,
+  two-column even/odd interleave, quarter-note notehead resolution keyed
+  to the selected key, ledger lines beneath re-drawn noteheads, and a
+  gold right-edge bar. That is a design-level correspondence, **not** an
+  output-identity guarantee. Known divergences, none of which the engine
+  can honor from exported config today:
+    1. `style: "dot"` is **preview-only** — the engine has no simple-mark
+       key-signature mode; such a config previews dots but engraves the
+       engine's notehead chords (session 2's UI copy should note this).
+    2. `placement.tonicOctave` (explicit) and the auto-anchoring rule for
+       non-C tonics are **preview-only placement** — the engine derives
+       the octave from `middleCPosition` (middle-C anchoring), which
+       coincides with the preview's auto rule only when the tonic's
+       octave span centers on the staff midpoint (e.g. a C tonic with the
+       default midpoint 12).
+    3. Separator styling (`separator.color/thicknessPct/extentSemis`) and
+       all pixel sizing are preview-side values; the engine hard-codes
+       `cnb:gold` and `thickness . 4`.
+  These divergences are the source of engine-repo items 2–4 below.
 - `docs/CNB-LY-EXPORT-SPEC-v1_2.md` needs **no** version-note addendum
   (spec session 2 step 4's condition "only if export emission was added"
   is not met).

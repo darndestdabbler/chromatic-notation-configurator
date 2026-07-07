@@ -28,6 +28,14 @@
       "dateTime": "2026-07-07T02:34:35.130450-04:00",
       "description": "Engine inspection (keysig.ly, stencils.ly:393, layout.ly:48, config.ly, colors.ly:47): the engine ALREADY renders notehead-chord key signatures unconditionally from the score \\key via the quarter-note procedure-model config \u2014 export emits NOTHING (pinned by test); preview default style reproduces keysig.ly by construction; dot style preview-only; engine-repo follow-ons recorded. s1-engine-coordination.md written.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/keysig-schema-and-preview",
+      "dateTime": "2026-07-07T02:46:49.057508-04:00",
+      "description": "SUPERSEDES the step-1 test counts after verification round-1 remediation (s1-issues.json): explicit keys.keySignature.placement = {rule, tonicOctave} surface (rule scale-from-tonic validated, unknown rule renders nothing); parseTonicPc relocated from cnb-music.js (outside Touches; Module B restored byte-identical to base) into cnb-key-signature.js; engine-parity claim narrowed in s1-engine-coordination.md. Final counts: cnb 660 passed 0 failed (base 618, +14 config, +28 new cnb-key-signature-tests, music back to base 46), legacy 240/240, Chromium smoke 31/31 exit 0.",
+      "status": "complete"
     }
   ]
 }

@@ -83,25 +83,44 @@ simple built-in mark such as a dot)".
 tonic field. The renderer resolves the tonic pitch class as:
 
 1. `def.tonicPc` (new OPTIONAL field, integer 0–11) when present;
-2. else `CNBMusic.parseTonicPc(def.name)` — leading note letter A–G plus
-   optional accidental (`#`, `♯`, `b`, `♭`), so "C", "F# minor",
+2. else `CNBKeySignature.parseTonicPc(def.name)` — leading note letter
+   A–G plus optional accidental (`#`, `♯`, `b`, `♭`), so "C", "F# minor",
    "B♭ Dorian" all parse;
 3. else the first listed pitch class (validation warns when a definition
    will hit this fallback).
+
+*(Round-1 remediation: the parser was first added to `cnb-music.js`
+(Module B), which is outside this session's product-file scope; it now
+lives in `cnb-key-signature.js` and Module B is byte-identical to its
+pre-session state. See the remediation section below.)*
 
 ### D4 — Vertical anchoring: auto-centering on the staff midpoint, explicit `tonicOctave` override
 
 The engine anchors the signature at middle C (tonic placed in the octave
 starting at the engraved staff center). Reproducing that literally in the
 preview puts high-tonic signatures (e.g. B) mostly above the preview's
-default viewport. **Decision:** `keySignature.tonicOctave: null` (the
-default) auto-selects the octave that centers the signature's octave span
-on `staff.midpoint` (ties resolve upward, so a C tonic with midpoint 12
-lands at semitone 12 — matching the engine exactly for the default
-config); an explicit integer `tonicOctave` overrides. Documented
+default viewport. **Decision:** `keySignature.placement.tonicOctave:
+null` (the default) auto-selects the octave that centers the signature's
+octave span on `staff.midpoint` (ties resolve upward, so a C tonic with
+midpoint 12 lands at semitone 12 — matching the engine exactly for the
+default config); an explicit integer `tonicOctave` overrides. Documented
 deviation: for non-C tonics the preview centers the stack on the staff
 while the engine anchors at middle C — a display-only placement
 difference in the same spirit as other preview-only display settings.
+
+### D8 — Explicit placement-rule surface (added in verification round 1)
+
+Round 1 of session-1 verification correctly observed that the placement
+behavior was hard-coded with no config surface for session 2's
+"placement-rule controls" to edit. Remediation: the schema now carries
+`keys.keySignature.placement = { rule, tonicOctave }`, where `rule` names
+how the key's pitch classes map to grid positions — `"scale-from-tonic"`
+(decision D1, the keysig.ly rule) is the only implemented value,
+validation rejects anything else, and the renderer treats an unknown rule
+as inactive (renders nothing). Future placement rules (e.g. a tonic-label
+mode, catalog record 42) extend the `rule` vocabulary. `tonicOctave`
+moved from the subsection root into `placement`, since it is a placement
+parameter.
 
 ### D5 — The displayed key is example data, not config
 
