@@ -9,7 +9,9 @@
  *       ├── div.cnb-duration-caption   (only when several durations shown)
  *       └── div.preview-container
  *           ├── svg.staff-lines-bg     (absolute, offset by topLabelHeight)
- *           └── div.pc-columns         (flex row of Module 9 cards)
+ *           └── div.pc-columns         (flex row of Module 9 cards,
+ *                                       preceded by div.clef-col when
+ *                                       clef.enabled — set 009)
  *
  * The background SVG is offset down by the grid's topLabelHeight so its
  * coordinate system lines up with each card's note-slice SVG, giving
@@ -24,6 +26,7 @@
 import { CNBGrid } from "./cnb-grid.js";
 import { CNBStaff } from "./cnb-staff.js";
 import { CNBCard } from "./cnb-card.js";
+import { CNBClef } from "./cnb-clef.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -52,7 +55,11 @@ function renderRow(config, { pitchClasses, duration, showCaption }) {
   previewContainer.style.display = "inline-block";
   previewContainer.style.background = config.display?.card?.background ?? "#FFFFFF";
 
-  const totalWidth = pitchClasses.reduce(
+  // Clef gutter (set 009): 0 when clef.enabled is false, so the default
+  // layout is unchanged. Staff lines run behind the gutter (bg spans it).
+  const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
+
+  const totalWidth = clefGutterWidth + pitchClasses.reduce(
     (sum, pc) => sum + CNBCard.columnWidth(config, grid, { pc, duration }),
     0
   );
@@ -78,6 +85,31 @@ function renderRow(config, { pitchClasses, duration, showCaption }) {
   columns.className = "pc-columns";
   columns.style.display = "flex";
   columns.style.position = "relative";
+
+  if (clefGutterWidth > 0) {
+    const clefCol = document.createElement("div");
+    clefCol.className = "clef-col";
+    clefCol.style.width = clefGutterWidth + "px";
+    clefCol.style.flex = "0 0 auto";
+
+    const topSpacer = document.createElement("div");
+    topSpacer.style.height = grid.topLabelHeight + "px";
+    clefCol.appendChild(topSpacer);
+
+    const clefSvg = document.createElementNS(NS, "svg");
+    clefSvg.setAttribute("class", "clef-slice");
+    clefSvg.setAttribute("width", String(clefGutterWidth));
+    clefSvg.setAttribute("height", String(grid.svgHeight));
+    clefSvg.style.display = "block";
+    CNBClef.render(clefSvg, grid, config);
+    clefCol.appendChild(clefSvg);
+
+    const bottomSpacer = document.createElement("div");
+    bottomSpacer.style.height = grid.bottomLabelHeight + "px";
+    clefCol.appendChild(bottomSpacer);
+
+    columns.appendChild(clefCol);
+  }
 
   for (const pc of pitchClasses) {
     CNBCard.render(columns, grid, config, { pc, duration, key: null });

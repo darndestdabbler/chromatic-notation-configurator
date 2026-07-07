@@ -133,6 +133,20 @@ function buildDefault() {
       offKeyMark: {},
     },
 
+    // Custom clef (set 009). Default-off: with enabled:false the preview and
+    // the LilyPond export are byte-identical to the pre-clef output.
+    // glyphs is an open-keyed map of named clef definitions; active selects
+    // one by name. Each definition carries its own anchorSemi — the semitone
+    // the TOP edge of the glyph sits on (floats allowed: glyph designs like
+    // the traditional treble clef do not top-align to a staff unit, so the
+    // anchor is not restricted to integers).
+    clef: {
+      enabled: false,
+      active: null,
+      glyphs: {},
+      gutter: { paddingH: 12 },
+    },
+
     engine: {
       lilypondVersion: "2.24.2",
       falseHollow: false,
@@ -325,6 +339,48 @@ export const CNBConfig = {
     const ledgerColor = ((config.ledgers || {}).lineDefaults || {}).color;
     if (ledgerColor !== undefined && ledgerColor !== null && !isValidHex(ledgerColor)) {
       errors.push(`ledgers.lineDefaults.color has invalid hex "${ledgerColor}"`);
+    }
+
+    // 8. Clef checks (set 009) — only when the clef is enabled, so configs
+    //    predating the clef section (and default-off configs) validate
+    //    exactly as before.
+    const clef = config.clef || {};
+    if (clef.enabled) {
+      const glyphs = clef.glyphs || {};
+      if (!clef.active) {
+        errors.push("clef.enabled is true but clef.active names no glyph");
+      } else if (!(clef.active in glyphs)) {
+        errors.push(`clef.active references unknown clef glyph "${clef.active}"`);
+      } else {
+        const def = glyphs[clef.active];
+        const kind = def.kind || "glyph";
+        if (kind === "glyph") {
+          if (!def.svgPath) {
+            errors.push(`Clef glyph "${clef.active}" has no svgPath`);
+          }
+          if (!(def.naturalHeight > 0) || !(def.naturalWidth > 0) || !(def.semitoneHeight > 0)) {
+            errors.push(`Clef glyph "${clef.active}" is missing positive natural dimensions / semitoneHeight`);
+          }
+        } else if (kind === "text") {
+          if (typeof def.text !== "string" || def.text.length === 0) {
+            errors.push(`Clef text entry "${clef.active}" has no text`);
+          }
+          if (!(def.textHeightSemis > 0)) {
+            errors.push(`Clef text entry "${clef.active}" needs a positive textHeightSemis`);
+          }
+        } else {
+          errors.push(`Clef glyph "${clef.active}" has unknown kind "${kind}" (expected "glyph" or "text")`);
+        }
+        // anchorSemi is deliberately a float: surveyed clef designs
+        // (Bravura gClef top +1.392 staff-spaces above the top line,
+        // Clairnote glyph tops at fractional extents) do not top-align to
+        // integer grid positions.
+        if (typeof def.anchorSemi !== "number" || !Number.isFinite(def.anchorSemi)) {
+          errors.push(`Clef glyph "${clef.active}" has no numeric anchorSemi`);
+        } else if (def.anchorSemi < -24 || def.anchorSemi > 72) {
+          warnings.push(`Clef glyph "${clef.active}" anchorSemi ${def.anchorSemi} is far outside the typical range (-24 to 72)`);
+        }
+      }
     }
 
     // ── Warnings ─────────────────────────────────────────────────────────

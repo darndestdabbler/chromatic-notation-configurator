@@ -391,6 +391,155 @@ export const CNBSvgImporter = {
   },
 
   /**
+   * Extract raw clef glyph data from a parsed SVG document (set 009).
+   * Reuses the toolkit data-* contract; stem/anchor placemarkers and hollow
+   * cutouts are not part of the clef contract and are ignored. The glyph
+   * element is id="clef" when present, falling back to id="notehead"
+   * (toolkit-authored files) and then to the first <path> in the document.
+   *
+   * @param {Document|object} doc
+   * @returns {object} extracted fields, or { error }
+   */
+  extractClef(doc) {
+    const root = (doc.documentElement && localTag(doc.documentElement) === "svg")
+      ? doc.documentElement
+      : (typeof doc.querySelector === "function" ? doc.querySelector("svg") : null);
+    if (!root) return { error: "No <svg> root element found" };
+
+    const glyphEl = byId(doc, "clef") || byId(doc, "notehead") ||
+      (typeof doc.querySelector === "function" ? doc.querySelector("path") : null);
+    if (!glyphEl) return { error: 'No clef glyph element found (id="clef", id="notehead", or any <path>)' };
+
+    const svgPath = glyphEl.getAttribute("d") || "";
+    if (!svgPath) return { error: "The clef glyph element has no path data (d attribute)" };
+
+    const semitoneHeightStr = glyphEl.getAttribute("data-semitone-height");
+    const semitoneHeight = semitoneHeightStr !== null && semitoneHeightStr !== ""
+      ? parseFloat(semitoneHeightStr)
+      : null;
+
+    const numAttr = (el, name) => {
+      const v = el.getAttribute(name);
+      if (v === null || v === "" || String(v).trim().endsWith("%")) return null;
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const viewBox = CNBSvgImporter.parseViewBox(root.getAttribute("viewBox"));
+
+    return {
+      svgPath,
+      lilypondPath: glyphEl.getAttribute("data-lilypond-clef")
+        || glyphEl.getAttribute("data-lilypond-notehead") || null,
+      semitoneHeight: Number.isFinite(semitoneHeight) ? semitoneHeight : null,
+      viewBoxMinX: viewBox ? viewBox.minX : null,
+      viewBoxMinY: viewBox ? viewBox.minY : null,
+      viewBoxWidth: viewBox ? viewBox.width : null,
+      viewBoxHeight: viewBox ? viewBox.height : null,
+      rootWidth: numAttr(root, "width"),
+      rootHeight: numAttr(root, "height"),
+      error: null,
+    };
+  },
+
+  /**
+   * Build a `config.clef.glyphs[name]` entry from extractClef() output.
+   * Pure function — no DOM access.
+   *
+   * anchorSemi (the semitone of the glyph's TOP edge — a float; see
+   * cnb-clef.js) defaults to centering the glyph on defaultMidpoint, so a
+   * freshly imported clef lands mid-staff until positioned.
+   *
+   * @param {object} extracted           Output of extractClef()
+   * @param {string} [displayName]
+   * @param {{defaultMidpoint?:number}} [opts]
+   * @returns {{glyph:object|null, warnings:string[], error:string|null}}
+   */
+  buildClefGlyph(extracted, displayName, opts = {}) {
+    const warnings = [];
+    if (extracted.error) return { glyph: null, warnings, error: extracted.error };
+
+    let semitoneHeight = extracted.semitoneHeight;
+    if (semitoneHeight === null) {
+      if (extracted.viewBoxHeight) {
+        semitoneHeight = roundTo(extracted.viewBoxHeight / TOOLKIT_UNITS_PER_SEMITONE, 4);
+        warnings.push(
+          "Missing data-semitone-height — derived " + semitoneHeight +
+          " from the viewBox height (100 SVG units per semitone)");
+      } else {
+        return {
+          glyph: null, warnings,
+          error: "Cannot determine clef size: no data-semitone-height and no viewBox",
+        };
+      }
+    }
+
+    const naturalHeight = extracted.viewBoxHeight || extracted.rootHeight ||
+      semitoneHeight * TOOLKIT_UNITS_PER_SEMITONE;
+    const naturalWidth = extracted.viewBoxWidth || extracted.rootWidth || null;
+    if (naturalWidth === null) {
+      return {
+        glyph: null, warnings,
+        error: "Cannot determine clef width: no viewBox and no numeric width attribute",
+      };
+    }
+    if (!extracted.viewBoxHeight) {
+      warnings.push(extracted.rootHeight
+        ? "Missing viewBox — natural dimensions read from root width/height attributes"
+        : "Missing viewBox — natural height assumed from semitone height");
+    }
+    if (!extracted.lilypondPath) {
+      warnings.push(
+        "No data-lilypond-clef / data-lilypond-notehead attribute — export of " +
+        "this glyph will need a fallback conversion if the engine gains clef support");
+    }
+
+    const midpoint = opts.defaultMidpoint ?? 12;
+    const glyph = {
+      displayName: displayName || "Imported Clef",
+      kind: "glyph",
+      svgPath: extracted.svgPath,
+      naturalHeight,
+      naturalWidth,
+      semitoneHeight,
+      viewBoxMinX: extracted.viewBoxMinX ?? 0,
+      viewBoxMinY: extracted.viewBoxMinY ?? 0,
+      lilypondPath: extracted.lilypondPath || null,
+      anchorSemi: roundTo(midpoint + semitoneHeight / 2, 4),
+    };
+    return { glyph, warnings, error: null };
+  },
+
+  /**
+   * Parse raw SVG text into a `config.clef.glyphs[name]` entry (set 009).
+   * Clef counterpart of parseSvgText.
+   *
+   * @param {string} svgText
+   * @param {string} filename
+   * @param {{parser?:{parseFromString:Function}, defaultMidpoint?:number}} [opts]
+   * @returns {{name:string|null, glyph:object|null, warnings:string[], error:string|null}}
+   */
+  parseClefSvgText(svgText, filename, opts = {}) {
+    const parser = opts.parser || new globalThis.DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+
+    const parseError = typeof doc.querySelector === "function"
+      ? doc.querySelector("parsererror")
+      : null;
+    if (parseError) {
+      const detail = (parseError.textContent || "malformed XML").substring(0, 120);
+      return { name: null, glyph: null, warnings: [], error: "Invalid SVG: " + detail };
+    }
+
+    const name = CNBSvgImporter.shapeNameFromFilename(filename);
+    const built = CNBSvgImporter.buildClefGlyph(
+      CNBSvgImporter.extractClef(doc),
+      CNBSvgImporter.displayNameFromShapeName(name),
+      opts);
+    return { name, glyph: built.glyph, warnings: built.warnings, error: built.error };
+  },
+
+  /**
    * Parse raw SVG text into a Module A shape entry. Browser entry point —
    * uses DOMParser (injectable for tests via opts.parser).
    *
