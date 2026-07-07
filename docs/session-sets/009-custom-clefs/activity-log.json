@@ -28,6 +28,22 @@
       "dateTime": "2026-07-06T20:29:51.029695-04:00",
       "description": "engine inspected (cnb/clefs.ly, layout.ly, config.ly): dozenal clef engraver unconditionally installed, NO custom-clef/glyph hook, no config surface; s1-engine-coordination.md pins session-2 export = emit nothing; engine-repo backlog recorded",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/clef-ui-and-export",
+      "dateTime": "2026-07-06T22:01:19.430251-04:00",
+      "description": "Clef editor UI (cnb/ui/clef-editor.js, Module 21 pattern: property-wired Node-testable render, pure buildClef/applyToConfig/stateFromConfig, clef import wiring via parseClefSvgText) with 26 unit tests; wired into cnb/index.html (mountEditors + .cnb-cle-* host styling); clef.glyphs added to CNBConfigIO.REPLACE_PATHS with 4 IO tests (replace semantics, pre-clef file gains default-off section, save/load deep-equal round trip incl. float anchor); export per s1-engine-coordination.md: NO emission (engine has no clef hook) pinned by a new cnb-lilypond-tests.js test (clef-enabled valid + byte-identical to clef-disabled, no clef token). Suites: 618/618 cnb, 240/240 legacy.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/docs-and-uat",
+      "dateTime": "2026-07-06T22:01:19.430251-04:00",
+      "description": "CNB-ARCHITECTURE-PLAN-v2.md updated (clef in top-level structure, new section 4.12, Modules 20-21 inventory + specs, file structure, Appendix A); LY export spec untouched (no emission added - its condition not met). UAT per uatScope per-set / uatStyle dsl: DSL checklist in s2-uat.md executed by cnb/uat/uat-clef-editor.mjs (Playwright, real app) covering import - enable - position - preview - save/load - export; final run 28/28 PASS exit 0 (run history incl. one fixed check assumption recorded); human attestation obtained and recorded verbatim (three-round dialogue, final: Attested - clef renders correctly).",
+      "status": "complete"
     }
   ]
 }
