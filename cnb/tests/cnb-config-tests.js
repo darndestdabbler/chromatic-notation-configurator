@@ -453,6 +453,147 @@ export const tests = [
     assert(nonObject.errors.some(e => e.includes("clef.gutter must be an object")), "gutter type error");
   }},
 
+  // ── keys.keySignature (set 010) ───────────────────────────────────────────
+
+  { name: "keysig: default config has keySignature section — disabled, notehead-chords style, auto octave, gold separator", fn: () => {
+    const ks = CNBConfig.createDefault().keys.keySignature;
+    eq(ks.enabled, false, "enabled");
+    eq(ks.style, "notehead-chords", "default style per the operator directive (engine keysig.ly)");
+    eq(ks.tonicOctave, null, "tonicOctave auto");
+    eq(ks.separator.enabled, true, "separator on");
+    eq(ks.separator.color, "#ffd42a", "engine cnb:gold");
+    eq(ks.separator.thicknessPct, 25, "separator thickness");
+    eq(ks.separator.extentSemis, 12, "±1 octave like the engine bar");
+    eq(ks.dot.radiusPct, 30, "dot radius");
+    eq(ks.gutter.paddingH, 12, "gutter padding");
+  }},
+
+  { name: "keysig: merge — config predating the keySignature section gains the default-off subsection", fn: () => {
+    const old = CNBConfig.createDefault();
+    delete old.keys.keySignature;
+    const merged = CNBConfig.merge(CNBConfig.createDefault(), old);
+    eq(merged.keys.keySignature.enabled, false, "keySignature restored default-off");
+    eq(merged.keys.keySignature.style, "notehead-chords", "default style restored");
+  }},
+
+  { name: "keysig: validate — default (disabled) config produces no keysig errors or warnings", fn: () => {
+    const result = CNBConfig.validate(CNBConfig.createDefault());
+    assert(result.valid, "valid");
+    assert(!result.errors.some(e => /keySignature|key definition/i.test(e)), "no keysig errors");
+    assert(!result.warnings.some(w => /keySignature|key definition/i.test(w)), "no keysig warnings");
+  }},
+
+  { name: "keysig: validate — well-formed enabled key signature adds no errors", fn: () => {
+    const result = CNBConfig.validate(keysigConfig());
+    assert(result.valid, `no errors expected: ${result.errors.join("; ")}`);
+  }},
+
+  { name: "keysig: validate — enabled while keys.enabled is false is a warning (E2 gate)", fn: () => {
+    const cfg = keysigConfig();
+    cfg.keys.enabled = false;
+    const result = CNBConfig.validate(cfg);
+    assert(result.warnings.some(w => w.includes("keys.enabled is false")), "gate warning emitted");
+  }},
+
+  { name: "keysig: validate — unknown style is an error; absent style falls back to the default", fn: () => {
+    const bad = keysigConfig();
+    bad.keys.keySignature.style = "sparkles";
+    assert(CNBConfig.validate(bad).errors.some(e => e.includes("keys.keySignature.style")), "style error");
+    const absent = keysigConfig();
+    delete absent.keys.keySignature.style;
+    assert(CNBConfig.validate(absent).valid, "absent style valid (defaults to notehead-chords)");
+  }},
+
+  { name: "keysig: validate — tonicOctave must be an integer or null", fn: () => {
+    for (const bad of [1.5, "1", NaN]) {
+      const cfg = keysigConfig();
+      cfg.keys.keySignature.tonicOctave = bad;
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("tonicOctave")),
+        "tonicOctave error for " + String(bad));
+    }
+    const explicit = keysigConfig();
+    explicit.keys.keySignature.tonicOctave = 2;
+    assert(CNBConfig.validate(explicit).valid, "integer tonicOctave valid");
+  }},
+
+  { name: "keysig: validate — separator color/thicknessPct/extentSemis are checked", fn: () => {
+    const badColor = keysigConfig();
+    badColor.keys.keySignature.separator.color = "gold";
+    assert(CNBConfig.validate(badColor).errors.some(e => e.includes("separator.color")), "color error");
+    const badThickness = keysigConfig();
+    badThickness.keys.keySignature.separator.thicknessPct = -1;
+    assert(CNBConfig.validate(badThickness).errors.some(e => e.includes("separator.thicknessPct")), "thickness error");
+    const badExtent = keysigConfig();
+    badExtent.keys.keySignature.separator.extentSemis = 0;
+    assert(CNBConfig.validate(badExtent).errors.some(e => e.includes("separator.extentSemis")), "extent error");
+    const nonObject = keysigConfig();
+    nonObject.keys.keySignature.separator = "bar";
+    assert(CNBConfig.validate(nonObject).errors.some(e => e.includes("separator must be an object")), "type error");
+  }},
+
+  { name: "keysig: validate — dot.radiusPct must be a finite positive number", fn: () => {
+    for (const bad of [0, -3, NaN, "big"]) {
+      const cfg = keysigConfig();
+      cfg.keys.keySignature.dot = { radiusPct: bad };
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("dot.radiusPct")),
+        "radius error for " + String(bad));
+    }
+  }},
+
+  { name: "keysig: validate — gutter.paddingH must be a finite non-negative number when enabled", fn: () => {
+    for (const bad of [-4, NaN, "12", Infinity]) {
+      const cfg = keysigConfig();
+      cfg.keys.keySignature.gutter = { paddingH: bad };
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("keys.keySignature.gutter.paddingH")),
+        "paddingH error for " + String(bad));
+    }
+    const zero = keysigConfig();
+    zero.keys.keySignature.gutter = { paddingH: 0 };
+    assert(CNBConfig.validate(zero).valid, "paddingH 0 valid");
+  }},
+
+  { name: "keysig: validate — key definitions are checked when the signature is enabled", fn: () => {
+    const notArray = keysigConfig();
+    notArray.keys.definitions = "C";
+    assert(CNBConfig.validate(notArray).errors.some(e => e.includes("keys.definitions must be an array")), "array error");
+    const empty = keysigConfig();
+    empty.keys.definitions = [];
+    assert(CNBConfig.validate(empty).warnings.some(w => w.includes("keys.definitions is empty")), "empty warning");
+    const noName = keysigConfig();
+    noName.keys.definitions = [{ pitchClasses: [0, 2, 4] }];
+    assert(CNBConfig.validate(noName).errors.some(e => e.includes("has no name")), "name error");
+    const badPcs = keysigConfig();
+    badPcs.keys.definitions = [{ name: "C", pitchClasses: [0, 12] }];
+    assert(CNBConfig.validate(badPcs).errors.some(e => e.includes("pitchClasses array of integers 0–11")), "pcs error");
+    const badTonic = keysigConfig();
+    badTonic.keys.definitions[0].tonicPc = 12;
+    assert(CNBConfig.validate(badTonic).errors.some(e => e.includes("tonicPc must be an integer 0–11")), "tonicPc error");
+  }},
+
+  { name: "keysig: validate — tonic fallback warning fires only when neither tonicPc nor a parsable name exists", fn: () => {
+    const fallback = keysigConfig();
+    fallback.keys.definitions = [{ name: "Mystery", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
+    assert(CNBConfig.validate(fallback).warnings.some(w => w.includes("falls back to the first listed pitch class")),
+      "fallback warning emitted");
+    const withTonicPc = keysigConfig();
+    withTonicPc.keys.definitions = [{ name: "Mystery", pitchClasses: [0, 2, 4, 5, 7, 9, 11], tonicPc: 0 }];
+    assert(!CNBConfig.validate(withTonicPc).warnings.some(w => w.includes("falls back")), "tonicPc suppresses it");
+    const noteName = keysigConfig();
+    noteName.keys.definitions = [{ name: "C major", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
+    assert(!CNBConfig.validate(noteName).warnings.some(w => w.includes("falls back")), "parsable name suppresses it");
+  }},
+
+  { name: "keysig: validate — wrong-typed keys/keySignature sections report or ignore, never throw", fn: () => {
+    const keysNotObject = CNBConfig.createDefault();
+    keysNotObject.keys = "twelve";
+    const r1 = CNBConfig.validate(keysNotObject);
+    assert(!r1.errors.some(e => /keySignature/.test(e)), "non-object keys section treated as absent");
+    const ksNotObject = CNBConfig.createDefault();
+    ksNotObject.keys.keySignature = "on";
+    const r2 = CNBConfig.validate(ksNotObject);
+    assert(!r2.errors.some(e => /keySignature/.test(e)), "non-object keySignature treated as absent");
+  }},
+
 ];
 
 // ── Clef test helpers (set 009) ───────────────────────────────────────────────
@@ -480,5 +621,16 @@ function clefConfig(glyphOverrides = {}, clefOverrides = {}) {
     glyphs: { "test-clef": { ...TEST_CLEF_GLYPH, ...glyphOverrides } },
     ...clefOverrides,
   };
+  return config;
+}
+
+// ── Key-signature test helpers (set 010) ─────────────────────────────────────
+
+/** Default config with keys + key signature enabled and a C-major definition. */
+function keysigConfig() {
+  const config = CNBConfig.createDefault();
+  config.keys.enabled = true;
+  config.keys.definitions = [{ name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
+  config.keys.keySignature.enabled = true;
   return config;
 }

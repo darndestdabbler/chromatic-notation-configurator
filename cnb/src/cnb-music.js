@@ -78,6 +78,23 @@ export const CNBMusic = {
   },
 
   /**
+   * Parse the tonic pitch class from a key name (set 010, decision D3).
+   * Reads a leading note letter A–G (either case) plus an optional
+   * accidental (# ♯ b ♭) immediately after it, ignoring leading whitespace:
+   * "C" → 0, "F# minor" → 6, "bb" → 10, "B♭ Dorian" → 10.
+   * Returns null when the name does not begin with a note letter.
+   * @param {string} name
+   * @returns {number|null}
+   */
+  parseTonicPc(name) {
+    const m = /^\s*([A-Ga-g])([#♯b♭]?)/.exec(String(name ?? ""));
+    if (!m) return null;
+    const base = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[m[1].toLowerCase()];
+    const alt = m[2] === "#" || m[2] === "♯" ? 1 : (m[2] === "b" || m[2] === "♭" ? -1 : 0);
+    return (((base + alt) % 12) + 12) % 12;
+  },
+
+  /**
    * Which octave region a semitone belongs to for ledger line purposes.
    * Currently identical to octave(), but kept as a separate function because
    * the ledger algorithm may need a different definition in some staff configs.

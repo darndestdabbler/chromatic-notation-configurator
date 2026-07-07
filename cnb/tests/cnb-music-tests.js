@@ -84,6 +84,33 @@ export const tests = [
     deepEq(CNBMusic.chromaticLabels()[11], { text: "B", sharp: false });
   }},
 
+  // ── parseTonicPc (set 010, tonic resolution decision D3) ─────────────────
+  { name: "parseTonicPc: natural note letters, either case", fn: () => {
+    eq(CNBMusic.parseTonicPc("C"), 0);
+    eq(CNBMusic.parseTonicPc("D"), 2);
+    eq(CNBMusic.parseTonicPc("g"), 7);
+    eq(CNBMusic.parseTonicPc("A"), 9);
+    eq(CNBMusic.parseTonicPc("B"), 11);
+  }},
+  { name: "parseTonicPc: sharps and flats, ASCII and unicode accidentals", fn: () => {
+    eq(CNBMusic.parseTonicPc("F#"), 6);
+    eq(CNBMusic.parseTonicPc("F♯ minor"), 6);
+    eq(CNBMusic.parseTonicPc("Eb"), 3);
+    eq(CNBMusic.parseTonicPc("B♭ Dorian"), 10);
+    eq(CNBMusic.parseTonicPc("bb"), 10, "lowercase b tonic + flat");
+    eq(CNBMusic.parseTonicPc("Cb"), 11, "flat wraps below C");
+  }},
+  { name: "parseTonicPc: trailing words and leading whitespace are tolerated", fn: () => {
+    eq(CNBMusic.parseTonicPc("C major"), 0);
+    eq(CNBMusic.parseTonicPc("  A"), 9);
+  }},
+  { name: "parseTonicPc: null when the name does not begin with a note letter", fn: () => {
+    eq(CNBMusic.parseTonicPc("Mystery"), null);
+    eq(CNBMusic.parseTonicPc(""), null);
+    eq(CNBMusic.parseTonicPc(null), null);
+    eq(CNBMusic.parseTonicPc(undefined), null);
+  }},
+
   // ── ledgerOctaveRegion ────────────────────────────────────────────────────
   { name: "ledgerOctaveRegion(0) = 0",   fn: () => eq(CNBMusic.ledgerOctaveRegion(0),   0) },
   { name: "ledgerOctaveRegion(11) = 0",  fn: () => eq(CNBMusic.ledgerOctaveRegion(11),  0) },

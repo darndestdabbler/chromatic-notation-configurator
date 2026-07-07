@@ -131,6 +131,31 @@ function buildDefault() {
       enabled: false,
       definitions: [],
       offKeyMark: {},
+
+      // Key signature (set 010). Default-off: with enabled:false the preview
+      // and the LilyPond export are byte-identical to the pre-set-010 output.
+      // The default style "notehead-chords" mirrors the engine's keysig.ly:
+      // the key's scale rendered as real noteheads — 7 degrees ascending
+      // from the tonic plus the octave tonic, interleaved into two columns
+      // (two stacked 7th chords) — capped with a gold separator bar
+      // (engine cnb:gold #ffd42a). "dot" is the simple built-in mark
+      // alternative. tonicOctave null = auto (center the octave span on
+      // staff.midpoint; ties resolve upward, so a C tonic with midpoint 12
+      // sits at semitone 12, matching the engine's middle-C anchor for the
+      // default config).
+      keySignature: {
+        enabled: false,
+        style: "notehead-chords",
+        tonicOctave: null,
+        separator: {
+          enabled: true,
+          color: "#ffd42a",
+          thicknessPct: 25,
+          extentSemis: 12,
+        },
+        dot: { radiusPct: 30 },
+        gutter: { paddingH: 12 },
+      },
     },
 
     // Custom clef (set 009). Default-off: with enabled:false the preview and
@@ -397,6 +422,99 @@ export const CNBConfig = {
         } else if (def.anchorSemi < -24 || def.anchorSemi > 72) {
           warnings.push(`Clef glyph "${clef.active}" anchorSemi ${def.anchorSemi} is far outside the typical range (-24 to 72)`);
         }
+      }
+    }
+
+    // 9. Key-signature checks (set 010) — only when the key signature is
+    //    enabled, so configs predating the section (and default-off configs)
+    //    validate exactly as before. Type-safe against malformed sections:
+    //    errors are reported rather than thrown, same posture as the clef
+    //    checks above.
+    const keysSection = isPlainObject(config.keys) ? config.keys : {};
+    const keySig = isPlainObject(keysSection.keySignature) ? keysSection.keySignature : {};
+    if (keySig.enabled) {
+      if (!keysSection.enabled) {
+        warnings.push("keys.keySignature.enabled is true but keys.enabled is false — the key signature will not render (rendering is gated on keys.enabled per the E2 requirements entry)");
+      }
+      const ksStyle = keySig.style === undefined || keySig.style === null ? "notehead-chords" : keySig.style;
+      if (ksStyle !== "notehead-chords" && ksStyle !== "dot") {
+        errors.push(`keys.keySignature.style must be "notehead-chords" or "dot" (got ${JSON.stringify(keySig.style)})`);
+      }
+      if (keySig.tonicOctave !== undefined && keySig.tonicOctave !== null && !Number.isInteger(keySig.tonicOctave)) {
+        errors.push(`keys.keySignature.tonicOctave must be an integer octave or null for auto (got ${JSON.stringify(keySig.tonicOctave)})`);
+      }
+      const sep = keySig.separator;
+      if (sep !== undefined && sep !== null) {
+        if (!isPlainObject(sep)) {
+          errors.push("keys.keySignature.separator must be an object");
+        } else {
+          if (sep.color !== undefined && sep.color !== null && !isValidHex(sep.color)) {
+            errors.push(`keys.keySignature.separator.color has invalid hex "${sep.color}"`);
+          }
+          if (sep.thicknessPct !== undefined && sep.thicknessPct !== null &&
+              (typeof sep.thicknessPct !== "number" || !Number.isFinite(sep.thicknessPct) || sep.thicknessPct < 0)) {
+            errors.push(`keys.keySignature.separator.thicknessPct must be a finite non-negative number (got ${JSON.stringify(sep.thicknessPct)})`);
+          }
+          if (sep.extentSemis !== undefined && sep.extentSemis !== null &&
+              (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0)) {
+            errors.push(`keys.keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
+          }
+        }
+      }
+      const dot = keySig.dot;
+      if (dot !== undefined && dot !== null) {
+        if (!isPlainObject(dot)) {
+          errors.push("keys.keySignature.dot must be an object");
+        } else if (dot.radiusPct !== undefined && dot.radiusPct !== null &&
+                   (typeof dot.radiusPct !== "number" || !Number.isFinite(dot.radiusPct) || dot.radiusPct <= 0)) {
+          errors.push(`keys.keySignature.dot.radiusPct must be a finite positive number (got ${JSON.stringify(dot.radiusPct)})`);
+        }
+      }
+      const ksGutter = keySig.gutter;
+      if (ksGutter !== undefined && ksGutter !== null) {
+        if (!isPlainObject(ksGutter)) {
+          errors.push("keys.keySignature.gutter must be an object");
+        } else if (ksGutter.paddingH !== undefined && ksGutter.paddingH !== null &&
+                   (typeof ksGutter.paddingH !== "number" || !Number.isFinite(ksGutter.paddingH) || ksGutter.paddingH < 0)) {
+          errors.push(`keys.keySignature.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(ksGutter.paddingH)})`);
+        }
+      }
+      // Key definitions are what the signature renders from.
+      if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
+          !Array.isArray(keysSection.definitions)) {
+        errors.push("keys.definitions must be an array of key definitions");
+      } else {
+        const keyDefs = keysSection.definitions || [];
+        if (keyDefs.length === 0) {
+          warnings.push("keys.keySignature is enabled but keys.definitions is empty — there is no key to render");
+        }
+        keyDefs.forEach((def, i) => {
+          if (!isPlainObject(def)) {
+            errors.push(`keys.definitions[${i}] must be an object`);
+            return;
+          }
+          const defLabel = typeof def.name === "string" && def.name.length > 0 ? `"${def.name}"` : `[${i}]`;
+          if (typeof def.name !== "string" || def.name.length === 0) {
+            errors.push(`keys.definitions[${i}] has no name`);
+          }
+          const pcs = def.pitchClasses;
+          if (!Array.isArray(pcs) || pcs.length === 0 ||
+              !pcs.every(pc => Number.isInteger(pc) && pc >= 0 && pc <= 11)) {
+            errors.push(`Key definition ${defLabel} needs a non-empty pitchClasses array of integers 0–11`);
+          }
+          if (def.tonicPc !== undefined && def.tonicPc !== null &&
+              !(Number.isInteger(def.tonicPc) && def.tonicPc >= 0 && def.tonicPc <= 11)) {
+            errors.push(`Key definition ${defLabel} tonicPc must be an integer 0–11 (got ${JSON.stringify(def.tonicPc)})`);
+          }
+          // Tonic fallback warning: no explicit tonicPc and the name does not
+          // lead with a note letter — the exact condition under which
+          // CNBMusic.parseTonicPc fails — so the renderer will fall back to
+          // the first listed pitch class (s1 decision D3).
+          if ((def.tonicPc === undefined || def.tonicPc === null) &&
+              typeof def.name === "string" && !/^\s*[A-Ga-g]/.test(def.name)) {
+            warnings.push(`Key definition ${defLabel} has no tonicPc and its name does not begin with a note letter — the tonic falls back to the first listed pitch class`);
+          }
+        });
       }
     }
 
