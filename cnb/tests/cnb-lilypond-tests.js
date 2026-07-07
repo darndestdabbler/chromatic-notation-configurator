@@ -739,4 +739,42 @@ export const tests = [
       }
     }},
 
+  // ── Clef non-emission (set 009 session 2, per s1-engine-coordination.md:
+  //    the engine exposes no clef hook, so the exporter emits NOTHING for
+  //    clefs — a clef-enabled config must export exactly like the same
+  //    config with the clef disabled, and remain a valid export) ──
+
+  { name: "generate: clef-enabled config passes validation and exports byte-identically to clef-disabled (no engine clef hook — s1 coordination)", fn: () => {
+      const enabled = CNBConfig.createDefault();
+      enabled.clef = {
+        enabled: true,
+        active: "express-b",
+        glyphs: {
+          "express-b": {
+            displayName: "Express B Clef",
+            kind: "glyph",
+            svgPath: "M 0 0 L 100 0 L 100 300 L 0 300 Z",
+            naturalHeight: 300,
+            naturalWidth: 100,
+            semitoneHeight: 6,
+            viewBoxMinX: 0,
+            viewBoxMinY: 0,
+            lilypondPath: null,
+            anchorSemi: 22.784,
+          },
+        },
+        gutter: { paddingH: 20 },
+      };
+      const disabled = CNBConfig.clone(enabled);
+      disabled.clef.enabled = false;
+
+      assert(CNBConfig.validate(enabled).valid, "clef-enabled config is valid");
+      const enabledLy = CNBLilypond.generate(enabled);   // throws on blocking errors
+      const disabledLy = CNBLilypond.generate(disabled);
+      // The header stamps a date-only line, so two same-run exports are
+      // byte-identical without normalization.
+      eq(enabledLy, disabledLy, "clef section is invisible to the exporter");
+      lacks(enabledLy, "clef", "no clef token anywhere in the export");
+    }},
+
 ];

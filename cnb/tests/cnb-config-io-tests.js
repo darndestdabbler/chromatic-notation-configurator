@@ -117,6 +117,39 @@ function customConfig() {
   return cfg;
 }
 
+/** A config with the set-009 clef section enabled on two glyph entries. */
+function clefEnabledConfig() {
+  const cfg = CNBConfig.createDefault();
+  cfg.meta.configName = "Clef Roundtrip";
+  cfg.clef = {
+    enabled: true,
+    active: "express-b",
+    glyphs: {
+      "express-b": {
+        displayName: "Express B Clef",
+        kind: "glyph",
+        svgPath: "M 0 0 L 100 0 L 100 300 L 0 300 Z",
+        naturalHeight: 300,
+        naturalWidth: 100,
+        semitoneHeight: 6,
+        viewBoxMinX: 0,
+        viewBoxMinY: 0,
+        lilypondPath: null,
+        anchorSemi: 22.784,
+      },
+      "register-5": {
+        displayName: "Register 5",
+        kind: "text",
+        text: "5",
+        textHeightSemis: 4,
+        anchorSemi: 18,
+      },
+    },
+    gutter: { paddingH: 20 },
+  };
+  return cfg;
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 export const tests = [
@@ -282,6 +315,40 @@ export const tests = [
     },
   },
   {
+    name: "REPLACE_PATHS: includes the set-009 clef.glyphs open-keyed map",
+    fn: () => {
+      assert(IO.REPLACE_PATHS.some(p => p.length === 2 && p[0] === "clef" && p[1] === "glyphs"),
+        "clef.glyphs listed in REPLACE_PATHS");
+    },
+  },
+  {
+    name: "mergeLoaded: provided clef.glyphs REPLACE defaults wholesale; sibling clef fields still merge",
+    fn: () => {
+      const parsed = {
+        version: "1.0",
+        clef: {
+          enabled: true,
+          active: "only-glyph",
+          glyphs: { "only-glyph": { displayName: "Only", kind: "glyph", anchorSemi: 15 } },
+        },
+      };
+      const { config } = IO.mergeLoaded(parsed);
+      assertEqual(Object.keys(config.clef.glyphs), ["only-glyph"], "glyph map taken as saved");
+      assertEqual(config.clef.active, "only-glyph", "active from file");
+      assertEqual(config.clef.enabled, true, "enabled from file");
+      assertEqual(config.clef.gutter, { paddingH: 12 }, "omitted gutter merged from defaults");
+    },
+  },
+  {
+    name: "mergeLoaded: a config file predating the clef section gains the default-off clef",
+    fn: () => {
+      const { config } = IO.mergeLoaded({ version: "1.0", staff: { semitonePattern: [4, 8] } });
+      assertEqual(config.clef,
+        { enabled: false, active: null, glyphs: {}, gutter: { paddingH: 12 } },
+        "default-off clef section added");
+    },
+  },
+  {
     name: "mergeLoaded: a null/wrong-typed map section falls back to merge behavior (defaults kept)",
     fn: () => {
       const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, staff: { lineOverrides: null } });
@@ -333,6 +400,19 @@ export const tests = [
       assertEqual(loaded.config, built.config, "deep-equal after round trip");
       assertEqual(Object.keys(loaded.config.shapes), ["kite-up"], "only the saved shape");
       assertEqual(loaded.config.durations.repeatCounts, { minim: 2 }, "only the saved counts");
+    },
+  },
+  {
+    name: "round-trip: clef-enabled config (glyph + text entries, float anchor) is deep-equal after save → load",
+    fn: () => {
+      const built = IO.buildSaveFile(clefEnabledConfig(), { now: NOW_1 });
+      const loaded = IO.loadFromText(built.json);
+      assertEqual(loaded.config, built.config, "deep-equal after round trip");
+      assertEqual(Object.keys(loaded.config.clef.glyphs).sort(), ["express-b", "register-5"],
+        "exactly the saved glyph entries");
+      assertEqual(loaded.config.clef.glyphs["express-b"].anchorSemi, 22.784,
+        "float anchorSemi survives");
+      assert(loaded.validation.valid, "round-tripped clef config valid");
     },
   },
   {

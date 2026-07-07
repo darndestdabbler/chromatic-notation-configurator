@@ -32,7 +32,8 @@
  *     open-keyed map section that the loaded file provides — the list is
  *     REPLACE_PATHS below (shapes, staff.lineOverrides,
  *     ledgers.lineOverrides, palette.schemeSymbols, durations.repeatCounts,
- *     keys.offKeyMark). Fixed-schema objects (staff.lineDefaults, display,
+ *     keys.offKeyMark, clef.glyphs — the last added with the set-009 clef
+ *     section). Fixed-schema objects (staff.lineDefaults, display,
  *     engine, meta, …) still merge field-by-field so older files gain new
  *     fields' defaults, and arrays already replace wholesale in Module A.
  *   - Loading NEVER blocks on validation: a config with validation errors
@@ -74,6 +75,7 @@ const REPLACE_PATHS = [
   ["palette", "schemeSymbols"],
   ["durations", "repeatCounts"],
   ["keys", "offKeyMark"],
+  ["clef", "glyphs"],
 ];
 
 const FILENAME_EXTENSION = ".cnb.json";

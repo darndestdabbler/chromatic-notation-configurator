@@ -342,6 +342,38 @@
     .cnb-cpe-valid { color: #2e7d32; }
     .cnb-cpe-error { color: #c62828; }
     .cnb-cpe-warning { color: #b45309; }
+
+    /* ── Clef editor host styling (set 009) ── */
+    .cnb-cle-section { margin-bottom: 16px; }
+    .cnb-cle-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-cle-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+    .cnb-cle-enable {
+      display: flex; align-items: center; gap: 8px; font-size: 13px;
+      color: #444; margin-bottom: 14px; cursor: pointer;
+    }
+    .cnb-cle-file { font-size: 12px; }
+    .cnb-cle-import-status { font-size: 12px; color: #2e7d32; margin: 6px 0 0; min-height: 15px; }
+    .cnb-cle-import-error { font-size: 12px; color: #c62828; margin: 2px 0 0; min-height: 15px; }
+    .cnb-cle-import-warnings { font-size: 11px; color: #ef6c00; margin: 4px 0 0; padding-left: 18px; }
+    .cnb-cle-glyph-option {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
+      margin-bottom: 4px; cursor: pointer; font-size: 13px; color: #444;
+    }
+    .cnb-cle-glyph-option:hover { border-color: #bbb; }
+    .cnb-cle-glyph-option.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-cle-glyph-detail { font-size: 11px; color: #999; }
+    .cnb-cle-empty, .cnb-cle-anchor-empty { font-size: 12px; color: #b45309; }
+    .cnb-cle-fields { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+    .cnb-cle-anchor-input, .cnb-cle-gutter-input {
+      width: 84px; font: inherit; font-size: 12px; padding: 3px 6px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-cle-anchor-name { font-size: 12px; color: #888; }
+    .cnb-cle-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-cle-valid { color: #2e7d32; }
+    .cnb-cle-error { color: #c62828; }
+    .cnb-cle-warning { color: #b45309; }
   </style>
 </head>
 <body>
@@ -399,6 +431,11 @@
   </div>
 
   <div class="card">
+    <h2>Custom clef (set 009)</h2>
+    <div id="clef-editor-host"></div>
+  </div>
+
+  <div class="card">
     <h2>Shared config state (full config, live)</h2>
     <pre id="state-json"></pre>
   </div>
@@ -410,6 +447,7 @@
     import { CNBStaffRuleEditor } from "./ui/staff-rule-editor.js";
     import { CNBNoteheadRuleEditor } from "./ui/notehead-rule-editor.js";
     import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
+    import { CNBClefEditor } from "./ui/clef-editor.js";
     import { CNBConfigIO } from "./ui/config-io.js";
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
@@ -474,6 +512,7 @@
       byId("staff-editor-host").textContent = "";
       byId("notehead-editor-host").textContent = "";
       byId("props-editor-host").textContent = "";
+      byId("clef-editor-host").textContent = "";
 
       CNBPaletteEditor.render(byId("palette-editor-host"), {
         palette: appConfig.palette,
@@ -505,6 +544,17 @@
         onChange: (slices) => {
           appConfig.durations = slices.durations;
           appConfig.engine = slices.engine;
+          refreshShared();
+        },
+      });
+
+      // Custom clef (set 009). The editor also hosts the clef glyph import
+      // wiring (session-1 importer, clef kind), so the whole
+      // import → enable → position flow lives in this one panel.
+      CNBClefEditor.render(byId("clef-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.clef = slices.clef;
           refreshShared();
         },
       });

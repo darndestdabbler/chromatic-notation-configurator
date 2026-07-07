@@ -116,6 +116,8 @@ The system is being rebuilt from a 3,057-line monolithic HTML file into a modula
 | **17** | Config Save/Load (JSON) | UI | Save and load config as JSON files |
 | **18** | Config Export (LilyPond) | UI | Save config as LilyPond file (wraps Module 11) |
 | **19** | Preview Display | UI | Full preview with controls for pitch range, duration range, key selection |
+| **20** | Clef Renderer | Rendering | Renders the active clef glyph into a left gutter, positioned via the semitone grid *(added set 009)* |
+| **21** | Clef Editor | UI | Enable toggle, clef glyph import/selection, anchor-semitone and gutter controls *(added set 009)* |
 
 ---
 
@@ -136,6 +138,7 @@ The config is a single JSON object that defines a notation system. It does NOT c
   display: { ... },          // Preview rendering settings (NOT exported to LilyPond)
   durations: { ... },        // Duration definitions and representation mode
   keys: { ... },             // Key definitions (future)
+  clef: { ... },             // Custom clef (set 009 — see §4.12)
   engine: { ... },           // LilyPond engine settings
   meta: { ... }              // Metadata
 }
@@ -586,6 +589,77 @@ meta: {
 | `meta.notationLabel` | B3 | `#(set! cnb:notation-label "...")` |
 | `meta.notationFootnote` | B3 | `#(set! cnb:notation-footnote "...")` |
 | `meta.configName` | Header | Comment block |
+
+### 4.12 Custom Clef (added set 009)
+
+> **Addendum (set 009, July 2026).** Added by session-set `009-custom-clefs`
+> per the E1 entry of the gallery-survey enhancement requirements
+> (`docs/research/gallery-survey/enhancement-requirements.md`). In the
+> config OBJECT the section sits between `keys` and `engine` (see §4.1);
+> it is numbered 4.12 here to keep the existing section anchors stable.
+
+```javascript
+clef: {
+  // Default-off compatibility: with enabled:false the preview layout and
+  // the LilyPond export are byte-identical to the pre-set-009 output
+  // (pinned by tests against a pre-change export baseline fixture).
+  enabled: false,
+
+  // Name of the active definition in `glyphs`, or null.
+  active: null,
+
+  // Open-keyed map of named clef definitions (config-IO REPLACE_PATHS
+  // member, like `shapes`). Two kinds:
+  //   kind "glyph" — imported SVG (toolkit contract: svgPath, natural
+  //                  dimensions, semitoneHeight, viewBox min offsets,
+  //                  optional pre-baked lilypondPath)
+  //   kind "text"  — register label (octave numeral/letter) rendered as
+  //                  an SVG <text> sized by textHeightSemis
+  glyphs: {
+    // "express-b": {
+    //   displayName: "Express B Clef",
+    //   kind: "glyph",
+    //   svgPath: "M ...",
+    //   naturalHeight: 300, naturalWidth: 100,
+    //   semitoneHeight: 6,
+    //   viewBoxMinX: 0, viewBoxMinY: 0,
+    //   lilypondPath: null,
+    //   anchorSemi: 22.784          // per-definition anchor (see below)
+    // }
+  },
+
+  // Horizontal padding (px) each side of the glyph in the preview's left
+  // gutter. Gutter width = glyph width + 2 × paddingH; no gutter is
+  // reserved while disabled.
+  gutter: { paddingH: 12 }
+}
+```
+
+**Design notes:**
+- **Per-definition float top-edge anchor.** `anchorSemi` lives on EACH
+  definition and is the semitone position of the glyph's TOP edge, stored
+  as a float. Surveyed designs (Bravura/SMuFL gClef, Clairnote 2017 clefs,
+  Express Stave F/B/D) register clefs by interior musical features, which
+  puts the bounding-box top at fractional grid offsets — any interior
+  registration reduces to `anchorSemi = markedPitchSemi + k` with
+  fractional `k`. Validation accepts any finite number and warns outside
+  −24…72.
+- **Grid-positioned rendering (Module 20, `cnb-clef.js`).** The clef
+  renders into a left gutter column of the card collection; the glyph top
+  is placed at `semiToY(anchorSemi)` — the grid module is the positioning
+  system, as §5 Module 1 anticipated for clefs.
+- **Import rides the shape pipeline.** Clef glyphs are imported through
+  Module 16 (`extractClef` / `buildClefGlyph` / `parseClefSvgText`),
+  reusing the toolkit `data-*` contract; stem/anchor attributes are not
+  required for clefs.
+- **No LilyPond emission (set 009 state).** The CNB engine exposes no
+  custom-clef hook (its dozenal clef engraver is unconditional and takes
+  no configuration), so the exporter emits NOTHING for clefs: a
+  clef-enabled config exports byte-identically to the same config with
+  the clef disabled. The section still round-trips through JSON save/load.
+  See `docs/session-sets/009-custom-clefs/s1-engine-coordination.md` for
+  the engine-repo follow-on work; the LY export spec is unchanged (its
+  "only if emission was added" condition is not met).
 
 ---
 
@@ -1153,6 +1227,30 @@ Detailed specifications deferred. Summary:
 
 ---
 
+### Modules 20–21: Custom Clef (added set 009)
+
+**Module 20 — Clef Renderer** (`cnb-clef.js`, Rendering): pure
+config-in/DOM-out renderer for the `clef` config section (§4.12). API:
+`activeGlyph(config)` (resolves the active definition or null),
+`measure(def, pxPerSemi)`, `gutterWidth(config, pxPerSemi)` (0 when no
+clef renders — the collection reserves no gutter), and
+`render(svgParent, gridContext, config)` (glyph TOP edge at
+`semiToY(anchorSemi)`, left edge at `gutter.paddingH`). Integrated into
+Module 10 as a `div.clef-col` prepended inside `.pc-columns` behind
+`clef.enabled`; the background staff SVG spans the gutter.
+Dependencies: Module 1, Module A. Visual test page: `test-clef.html`.
+
+**Module 21 — Clef Editor** (`ui/clef-editor.js`, UI): edits the `clef`
+section — enable toggle, clef glyph import (wraps Module 16's
+`parseClefSvgText`), glyph selection, the active definition's
+anchor-semitone control (float, step "any"), and gutter sizing. Same
+editor contract as Modules 12–17: property-based event wiring
+(Node-testable `render()`), pure `buildClef` / `applyToConfig` /
+`stateFromConfig` builders, Module A validation pass-through,
+`onChange({ clef }, state)`. Dependencies: Module A, Module 16.
+
+---
+
 ## 6. Build Order
 
 ### Phase 1: Foundation (Sessions 8–9)
@@ -1253,6 +1351,7 @@ cnb/
 │   ├── cnb-stem.js             Module 8
 │   ├── cnb-card.js             Module 9
 │   ├── cnb-collection.js       Module 10
+│   ├── cnb-clef.js             Module 20 (set 009)
 │   └── cnb-lilypond.js         Module 11
 │
 ├── tests/
@@ -1265,6 +1364,8 @@ cnb/
 │   ├── cnb-notehead-tests.js
 │   ├── cnb-stem-tests.js
 │   ├── cnb-card-tests.js
+│   ├── cnb-clef-tests.js       (set 009)
+│   ├── cnb-clef-editor-tests.js (set 009)
 │   └── cnb-lilypond-tests.js
 │
 ├── test-pages/
@@ -1274,6 +1375,7 @@ cnb/
 │   ├── test-notehead.html
 │   ├── test-stem.html
 │   ├── test-card.html
+│   ├── test-clef.html          (set 009)
 │   └── test-collection.html
 │
 ├── ui/                          (Phase 5)
@@ -1281,6 +1383,7 @@ cnb/
 │   ├── staff-rule-editor.js
 │   ├── notehead-rule-editor.js
 │   ├── common-props-editor.js
+│   ├── clef-editor.js          Module 21 (set 009)
 │   ├── svg-importer.js
 │   ├── config-io.js
 │   ├── preview-display.js
@@ -1502,6 +1605,8 @@ Complete default config for development and testing.
   },
 
   keys: { enabled: false, definitions: [], offKeyMark: {} },
+
+  clef: { enabled: false, active: null, glyphs: {}, gutter: { paddingH: 12 } },
 
   engine: {
     lilypondVersion: "2.24.2",
