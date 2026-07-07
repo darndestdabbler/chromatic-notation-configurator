@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "010-custom-key-signatures",
+  "createdDate": "2026-07-07T06:10:15.536246+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-07T06:10:15.545110+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/keysig-schema-and-preview",
+      "dateTime": "2026-07-07T02:34:35.130450-04:00",
+      "description": "keys.keySignature schema (default-off, style notehead-chords per operator directive mirroring engine keysig.ly, dot alternative, tonic chain D3, auto anchoring D4) + validate() additions; CNBMusic.parseTonicPc; cnb-key-signature.js renderer (two-column 7th-chord stack, shared ledger rules, gold separator); collection keysig gutter after the clef driven by options.keys[0]; default-export baseline pin + keysig-enabled==disabled export pin; tests 618->658 (+4 music, +13 config, +23 new cnb-key-signature-tests), legacy 240/240; test-key-signature.html visual page; 31/31 Chromium geometry smoke.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/engine-coordination",
+      "dateTime": "2026-07-07T02:34:35.130450-04:00",
+      "description": "Engine inspection (keysig.ly, stencils.ly:393, layout.ly:48, config.ly, colors.ly:47): the engine ALREADY renders notehead-chord key signatures unconditionally from the score \\key via the quarter-note procedure-model config \u2014 export emits NOTHING (pinned by test); preview default style reproduces keysig.ly by construction; dot style preview-only; engine-repo follow-ons recorded. s1-engine-coordination.md written.",
+      "status": "complete"
+    }
+  ]
+}
