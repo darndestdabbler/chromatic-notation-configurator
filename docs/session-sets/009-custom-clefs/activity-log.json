@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "009-custom-clefs",
+  "createdDate": "2026-07-07T00:17:00.936586+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-07T00:17:00.936586+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/clef-schema-and-preview",
+      "dateTime": "2026-07-06T20:29:51.029695-04:00",
+      "description": "clef config section (default-off, validated), cnb-clef.js renderer with float top-edge anchorSemi (investigation-backed), collection clef gutter, clef SVG import (extractClef/buildClefGlyph/parseClefSvgText), 31 unit tests incl. export-invariance vs pre-change baseline fixture, test-clef.html 6 panels; suites 587/587 + legacy 240/240; browser smoke 15/15",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/engine-coordination",
+      "dateTime": "2026-07-06T20:29:51.029695-04:00",
+      "description": "engine inspected (cnb/clefs.ly, layout.ly, config.ly): dozenal clef engraver unconditionally installed, NO custom-clef/glyph hook, no config surface; s1-engine-coordination.md pins session-2 export = emit nothing; engine-repo backlog recorded",
+      "status": "complete"
+    }
+  ]
+}
