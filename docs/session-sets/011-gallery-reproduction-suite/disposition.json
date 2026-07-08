@@ -1,0 +1,40 @@
+{
+  "status": "completed",
+  "summary": "Session 1 of set 011: authored 8 Tier-1 gallery reproduction-study fixtures (Ambros, Notagraph, Numbered Notes Notes-Only, Hass 3-line, Schoenberg, AxLoMaFi, Avique, 0-5-7) at cnb/assets/examples/gallery/, each attributed and reconciled against the operator's per-pitch-class reference at UAT (3 substantive fixes: Ambros dash grouping, Numbered Notes 3-line staff, Schoenberg slash direction; 2-semitone notehead height on all). Added cnb/tests/check-gallery-examples.js (validate+resolve+generate over the corpus, registered with run-tests.js) and cnb/uat/uat-gallery-previews.mjs (Playwright capture driver). reproduction-report.md carries the roster, per-system fidelity notes, known stylistic deviations (dash-length platform gap; glyph SVG assets deferred), and human-attested UAT outcomes. Tests: cnb 700, legacy 240, gallery 8 (all green). Operator attested acceptable-with-noted-deviations for all 8 and chose to close with stylistics deferred. gpt-5-4 VERIFIED in one round (~$0.046).",
+  "files_changed": [
+    "cnb/assets/examples/gallery/ambros-system.json",
+    "cnb/assets/examples/gallery/notagraph.json",
+    "cnb/assets/examples/gallery/numbered-notes-notes-only.json",
+    "cnb/assets/examples/gallery/hass-notation-3-line.json",
+    "cnb/assets/examples/gallery/schoenberg-untitled.json",
+    "cnb/assets/examples/gallery/axlomafi.json",
+    "cnb/assets/examples/gallery/avique-notation.json",
+    "cnb/assets/examples/gallery/0-5-7-notation.json",
+    "cnb/tests/check-gallery-examples.js",
+    "cnb/tests/run-tests.js",
+    "cnb/uat/uat-gallery-previews.mjs",
+    "docs/research/gallery-survey/reproduction-report.md",
+    "docs/research/gallery-config.xlsx",
+    "docs/research/gallery-config-notes.txt",
+    "docs/session-sets/011-gallery-reproduction-suite/s1-uat.md",
+    "docs/session-sets/011-gallery-reproduction-suite/s1-verification.md",
+    "docs/session-sets/011-gallery-reproduction-suite/activity-log.json",
+    "docs/session-sets/011-gallery-reproduction-suite/session-events.jsonl",
+    "docs/session-sets/011-gallery-reproduction-suite/session-state.json",
+    "docs/session-sets/011-gallery-reproduction-suite/disposition.json"
+  ],
+  "verification_method": "api",
+  "verification_message_ids": [],
+  "next_orchestrator": {
+    "engine": "claude-code",
+    "provider": "anthropic",
+    "model": "claude-fable-5",
+    "effort": "medium",
+    "reason": {
+      "code": "continue-current-trajectory",
+      "specifics": "Session 2 (Tier-2 fixtures exercising the set-009 clef and set-010 key-signature capabilities, documented Tier-3 partials, and the report's summary table) continues the same reproduction-suite trajectory; the fixture pipeline, check gate, UAT capture driver, and operator-reference reconciliation flow are all established and reusable."
+    }
+  },
+  "blockers": [],
+  "verification_verdict": "VERIFIED"
+}
