@@ -1,15 +1,18 @@
 {
   "schemaVersion": 4,
   "sessionSetName": "011-gallery-reproduction-suite",
-  "status": "not-started",
+  "status": "in-progress",
   "sessions": [
     {
       "number": 1,
       "title": "Session 1",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "in-progress",
+      "startedAt": "2026-07-07T17:44:55.727237-04:00",
       "completedAt": null,
-      "orchestrator": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
       "verificationVerdict": null
     },
     {

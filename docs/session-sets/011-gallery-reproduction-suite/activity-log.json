@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "011-gallery-reproduction-suite",
+  "createdDate": "2026-07-07T21:44:55.741466+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-07T21:44:55.742465+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/tier1-fixtures",
+      "dateTime": "2026-07-08T01:59:09.818186-04:00",
+      "description": "Authored 8 Tier-1 gallery reproduction fixtures (Ambros, Notagraph, Numbered Notes Notes-Only, Hass 3-line, Schoenberg, AxLoMaFi, Avique, 0-5-7) under cnb/assets/examples/gallery/, with attribution and per-system fidelity notes in reproduction-report.md; corrected against the operator's per-PC reference at UAT.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 7,
+      "stepKey": "session-001/fixture-check-and-uat",
+      "dateTime": "2026-07-08T01:59:09.818186-04:00",
+      "description": "Added cnb/tests/check-gallery-examples.js (validate+resolve+generate over the corpus), registered it with run-tests.js; all suites green (cnb 700, legacy 240, gallery 8). Captured previews via cnb/uat/uat-gallery-previews.mjs; operator attested acceptable-with-noted-deviations for all 8, stylistics deferred.",
+      "status": "complete"
+    }
+  ]
+}
