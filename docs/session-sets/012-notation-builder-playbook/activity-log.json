@@ -28,6 +28,30 @@
       "dateTime": "2026-07-10T04:21:32.844739-04:00",
       "description": "Wrote Parts 4-5: an executable config-composition build walkthrough (staff -> ledger -> shapes/import -> notehead rules -> palette -> durations -> clef/keysig -> validate -> preview -> save -> export -> render) using the checked-in Hass 3-Line set-011 fixture as the worked example throughout and linking the README round-trip for the render half; and a troubleshooting section (validation errors + meanings, rule-priority mistakes, hollow-on-nonwhite limitation, stem-anchor/thickness consistency, reproduction pitfalls). All cited file paths, module numbers, invariants, tier counts, and fixture facts verified against current code/docs.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/ai-workflow-guide",
+      "dateTime": "2026-07-10T04:47:40.070546-04:00",
+      "description": "Wrote docs/playbook/ai-assisted-workflow.md (pipeline map, prompt templates, cautions), evidence-cited",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/linkage-and-operator-review",
+      "dateTime": "2026-07-10T04:47:40.070546-04:00",
+      "description": "Cross-linked README to both playbook docs and playbook->AI guide; operator UAT pending",
+      "status": "in-progress"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/linkage-and-operator-review",
+      "dateTime": "2026-07-10T05:01:50.566040-04:00",
+      "description": "README + playbook cross-links added; operator UAT: Approved as-is (s2-uat.md); change-log.md written",
+      "status": "complete"
     }
   ]
 }
