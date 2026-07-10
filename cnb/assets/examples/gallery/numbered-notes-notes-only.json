@@ -46,7 +46,9 @@
       {
         "semiWithinOctave": 1,
         "triggerPCs": [
-          1
+          0,
+          1,
+          2
         ],
         "triggerMode": "override"
       }
@@ -75,7 +77,7 @@
     "notationLabel": "Numbered Notes, Notes-Only — reproduction study",
     "notationFootnote": "",
     "author": "Jason MacCoy",
-    "description": "Reproduction study — inspired by Numbered Notes, Notes-Only (Jason MacCoy, 2009). Minor-third staff with lines on E/G/A# and C# on a ledger (the same staff as the Numbers-Only sibling and Hass Notation), uniform solid ovals (the numeral glyphs of the Numbers-Only version are omitted). Staff anchor resolved from the operator reference. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "description": "Reproduction study — inspired by Numbered Notes, Notes-Only (Jason MacCoy, 2009). Minor-third staff with lines on E/G/A# and a C# ledger shown for C, C# and D (operator effective-ledger rule; the same staff as the Numbers-Only sibling and Hass Notation), uniform solid ovals (the numeral glyphs of the Numbers-Only version are omitted). Staff anchor resolved from the operator reference. Built from the public gallery description/image; not endorsed by or derived from the original.",
     "systemName": "Numbered Notes, Notes-Only",
     "systemCreator": "Jason MacCoy",
     "systemYear": 2009,

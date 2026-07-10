@@ -104,6 +104,7 @@
       {
         "semiWithinOctave": 1,
         "triggerPCs": [
+          0,
           1
         ],
         "triggerMode": "override"
@@ -172,7 +173,7 @@
     "notationLabel": "Hass Notation, 3-Line — reproduction study",
     "notationFootnote": "",
     "author": "Peter Hass",
-    "description": "Reproduction study — inspired by Hass Notation, 3-Line Version (Peter Hass, 2014). Minor-third staff at E/G/A# with C# on a ledger; three notehead shapes assigned by the three diminished-7th pitch-class sets (ovals on {C#,E,G,A#}, up/down triangles on the other two sets), stems horizontally centred. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "description": "Reproduction study — inspired by Hass Notation, 3-Line Version (Peter Hass, 2014). Minor-third staff at E/G/A# with a C# ledger shown for C and C# (operator effective-ledger rule); three notehead shapes assigned by the three diminished-7th pitch-class sets (ovals on {C#,E,G,A#}, up/down triangles on the other two sets), stems horizontally centred. Built from the public gallery description/image; not endorsed by or derived from the original.",
     "systemName": "Hass Notation, 3-Line Version",
     "systemCreator": "Peter Hass",
     "systemYear": 2014,

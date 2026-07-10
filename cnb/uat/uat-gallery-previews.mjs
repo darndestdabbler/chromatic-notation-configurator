@@ -98,8 +98,15 @@ const CAPTURE_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8">
     const card = document.getElementById("card");
     card.textContent = "";
     const { config, validation } = CNBConfigIO.loadFromText(text);
-    CNBCollection.render(card, config, { pitchClasses: [0,1,2,3,4,5,6,7,8,9,10,11,12], durations: ["crotchet"] });
-    return { valid: validation.valid, errors: validation.errors, label: (config.meta||{}).notationLabel || "" };
+    // The displayed key is EXAMPLE DATA (architecture principle 1): a key
+    // signature only renders when the collection is given a selected key.
+    // For keysig-enabled fixtures (set-010 Tier-2 systems) supply the
+    // fixture's own first key definition so its signature is captured.
+    const ks = (config.keys || {});
+    const keys = (ks.enabled && (ks.keySignature||{}).enabled && (ks.definitions||[]).length)
+      ? [ks.definitions[0].name] : null;
+    CNBCollection.render(card, config, { pitchClasses: [0,1,2,3,4,5,6,7,8,9,10,11,12], durations: ["crotchet"], keys });
+    return { valid: validation.valid, errors: validation.errors, label: (config.meta||{}).notationLabel || "", key: keys ? keys[0] : null };
   };
 </script></body></html>`;
 
@@ -145,12 +152,12 @@ for (const f of files) {
   if (!card) { console.log(`  ✗ ${slug}: no preview element rendered`); failed++; continue; }
   const shot = path.join(OUT_DIR, `${slug}.png`);
   await card.screenshot({ path: shot });
-  manifest.push({ slug, label: info.label, valid: info.valid, png: shot });
-  console.log(`  ✓ ${slug} → ${shot}${info.valid ? "" : "  (VALIDATION ERRORS: " + info.errors.join("; ") + ")"}`);
+  manifest.push({ slug, label: info.label, valid: info.valid, key: info.key, png: shot });
+  console.log(`  ✓ ${slug}${info.key ? " [key " + info.key + "]" : ""} → ${shot}${info.valid ? "" : "  (VALIDATION ERRORS: " + info.errors.join("; ") + ")"}`);
 }
 
 await writeFile(path.join(OUT_DIR, "manifest.json"),
-  JSON.stringify({ generated: "set-011-s1", count: manifest.length, fixtures: manifest }, null, 2));
+  JSON.stringify({ generated: "set-011", count: manifest.length, fixtures: manifest }, null, 2));
 
 await browser.close();
 await new Promise(r => server.close(r));
