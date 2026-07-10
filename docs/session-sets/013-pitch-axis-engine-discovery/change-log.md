@@ -24,6 +24,11 @@ document or a session-lifecycle record.
 
 ## Session 2 (2026-07-10) — design + operator sign-off (this session)
 
+*(This log is recorded while session 2 is **in progress** — the close gate
+requires `change-log.md` to exist before `close_session` runs, so it
+necessarily predates the close-out records. `session-state.json` flips
+session 2 to complete at close.)*
+
 - **`docs/planning/pitch-axis-design.md`** (new) — the consolidated design
   specification: the optional `pitchAxis` config section (explicit
   `pitch-class-map-v1` pitch-class→position map, `octaveStride`,
@@ -47,20 +52,30 @@ document or a session-lifecycle record.
   nonzero-only, in the grouping key), pitch-axis validation, and the
   fail-loud interim export gate. Disabled `pitchAxis` ⇒ output
   byte-identical to v1.2.1.
-- **`s2-evidence/`** — `check-design-claims.mjs` + transcript: 53/53
-  machine checks (linear degeneracy against the real exporter's
+- **`s2-evidence/`** — `check-design-claims.mjs` + transcript: 62/62
+  machine checks covering the assertions the script enumerates (groups
+  A–F: linear degeneracy against the real exporter's
   `computeStaffLinePositions`; reproduction of session 1's measured spike
   geometry — staff lines `'(-3 -1 1 4 6 8)`, notehead positions, shared
-  pairs, stem-flip anchor; euclidean octave arithmetic; every cited code
-  quote and path). cnb test suite unchanged at 709/709.
+  pairs, stem-flip anchor; euclidean octave arithmetic; the cited code
+  quotes; the cited paths and anchors; and the numeric source-citation
+  anchors added in verification round 1 — the +0.85 / 26-column s1
+  measurements, the 35/35 · 7/7 · 30/30 s1 tallies, the 9-record I2 count
+  from the feasibility matrix, and PA-8 monotonicity of the worked
+  example). cnb test suite unchanged at 709/709.
 - **`s2-uat.md`** — the operator's per-set UAT decision, verbatim:
   **"Approve — authorize implementation set"** (recorded before
   verification round 1). The end-of-set deliverable "operator decision on
   record" is satisfied in the affirmative.
-- Session-lifecycle records: `session-state.json`, `session-events.jsonl`,
-  `activity-log.json`, `disposition.json`, `s2-verification.md`, this
-  `change-log.md` — per the spec's scope note (lifecycle records are exempt
-  from the Touches restriction and committed as docs-only commits).
+- Session-lifecycle records committed **with** this change log:
+  `session-state.json`, `session-events.jsonl`, `activity-log.json`,
+  `s2-uat.md`, `s2-evidence/`, this `change-log.md`. The remaining
+  close-out records are **born after this log by construction** — the gate
+  sequences them: `s2-verification.md` is created when verification
+  round 1's output is saved, `s2-issues.json` only if a round finds
+  issues, and the session-2 `disposition.json` update is written just
+  before `close_session`. All are exempt from the Touches restriction per
+  the spec's scope note and committed as docs-only commits.
 
 ## Net effect on the platform
 

@@ -44,6 +44,14 @@
       "dateTime": "2026-07-10T19:39:38.428704-04:00",
       "description": "Wrote the phased implementation-program plan (P0 engine hook E13-1..E13-5 parallel-capable, P1 spec adoption, P2 CNBPitchAxis+grid, P3 consumer rethread byte-identical, P4 exporter+fixtures+engine round-trip gated on E13-1/E13-2, P5 UI presets, P6 feasibility-matrix re-tier of records 32-40; suggested ~4-session set 014) with the consolidated risk list, and recommended authorization. Operator UAT (per-set, ad-hoc, before verification round 1): reviewed the s1 GO and both design deliverables and selected \"Approve \u2014 authorize implementation set (Recommended)\" \u2014 verbatim decision recorded in s2-uat.md; no objections or corrections. change-log.md written (final session).",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/schema-and-export-design",
+      "dateTime": "2026-07-10T19:48:38.143198-04:00",
+      "description": "SUPERSEDING entry (verification round-1 remediation): evidence script extended with group F (numeric source-citation anchors: +0.85 / 26-column s1 measurements, 35/35 7/7 30/30 tallies, 9-record I2 count recomputed from feasibility-matrix rows 32-40, PA-8 monotonicity incl. negative control) \u2014 final count 62/62, exit 0. Coverage claim narrowed to the enumerated groups A-F. Design change: non-monotonic maps promoted from warning PA-W2 to blocking error PA-8 (global monotonicity: non-decreasing in pc order AND positions[11] <= positions[0] + octaveStride), reflected in design sections 1.4/2.2/5.2 and draft section 8 check 12 \u2014 adopted from the verifier round-1 suggestion. change-log.md reworded: close-out records (s2-verification.md, s2-issues.json, disposition update) identified as born after the log by gate construction; explicit in-progress status line added. Suite still 709/709.",
+      "status": "complete"
     }
   ]
 }

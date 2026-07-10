@@ -57,6 +57,16 @@ PASS  E anchor in docs/CNB-LY-EXPORT-SPEC-v1_2.md  [canonical spec version cited
 PASS  E anchor in docs/planning/pitch-axis-design-recommendation.md  [consult field name]
 PASS  E anchor in docs/planning/pitch-axis-design-recommendation.md  [consult field name]
 PASS  E anchor in docs/planning/pitch-axis-design-consult.md  [consult field name]
+── F. Numeric source citations (added in verification round 1) ──
+PASS  F1 s1 record contains the +0.850 measured head/stem shift (design §3.1 / draft §6.3 example value)
+PASS  F2 s1 record contains the 26-single-note-column measurement
+PASS  F3 s1 record contains the 35/35 noteheads, 7/7 ledgers, 30/30 stems tallies
+PASS  F4 feasibility-matrix rows 32–40 breaking I2 number exactly 9 ('9 systems' claim)  [counted 9]
+PASS  F5 matrix's own tier-4-by-invariant line lists I2 records 32–40 count (9)
+PASS  F6 worked-example map satisfies PA-8: non-decreasing in pc order
+PASS  F7 worked-example map satisfies PA-8: positions[11] <= positions[0] + octaveStride  [6 <= 7]
+PASS  F8 PA-8 conditions imply global monotonicity of positionOfSemi over [-24,48]
+PASS  F9 PA-8 rejects a non-monotonic map (negative control)
 
-TOTAL: 53 passed, 0 failed
+TOTAL: 62 passed, 0 failed
 exit: 0

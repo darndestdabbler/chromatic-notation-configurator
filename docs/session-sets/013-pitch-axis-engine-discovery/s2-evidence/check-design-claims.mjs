@@ -1,10 +1,14 @@
 /**
  * check-design-claims.mjs — session 2 evidence script (set 013).
  *
- * Machine-checks every numeric/verifiable claim in the two design
- * deliverables:
+ * Machine-checks the enumerated claims below (groups A–F) from the two
+ * design deliverables:
  *   docs/planning/pitch-axis-design.md
  *   docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md
+ * The coverage claim is exactly these groups — computed results are
+ * recomputed against real modules; numeric SOURCE CITATIONS (values the
+ * docs quote from session 1's measurements or the survey) are anchored
+ * against their source documents (group F, added in verification round 1).
  *
  * Groups:
  *   A. Linear degeneracy — the axis formula with the identity map reproduces
@@ -22,6 +26,12 @@
  *      the named source files at the named behavior sites.
  *   E. Cited paths — every repo path referenced by the two deliverables
  *      exists; cited anchors/IDs exist in their target docs.
+ *   F. Numeric source citations (added in verification round 1) — values
+ *      the docs quote from session 1's measurements (+0.85 offset, 26
+ *      single-note columns, 35/35 · 7/7 · 30/30 tallies) exist verbatim in
+ *      s1-engine-coordination.md; the "9 systems" I2 count is recomputed
+ *      from the feasibility matrix's own rows 32–40; the worked-example
+ *      map satisfies validation rule PA-8 (global monotonicity).
  *
  * Run from the repo root:  node docs/session-sets/013-pitch-axis-engine-discovery/s2-evidence/check-design-claims.mjs
  * Exit code 0 = all checks pass.
@@ -201,6 +211,45 @@ console.log("── E. Cited paths and anchors resolve ──");
     const text = readFileSync(p(file), "utf8");
     check(`E anchor in ${file}`, text.includes(needle), why);
   }
+}
+
+console.log("── F. Numeric source citations (added in verification round 1) ──");
+{
+  const s1 = readFileSync(p("docs/session-sets/013-pitch-axis-engine-discovery/s1-engine-coordination.md"), "utf8");
+  // design §3.1 / draft §6.3 example value 0.85 = s1's measured offset
+  check("F1 s1 record contains the +0.850 measured head/stem shift (design §3.1 / draft §6.3 example value)",
+    s1.includes("+0.850") && s1.includes("0.85"));
+  // design §3.3 "all 26 single-note columns"
+  check("F2 s1 record contains the 26-single-note-column measurement",
+    s1.includes("all 26 single-note columns"));
+  // change-log / submission tallies 35/35, 7/7, 30/30
+  check("F3 s1 record contains the 35/35 noteheads, 7/7 ledgers, 30/30 stems tallies",
+    s1.includes("35/35 noteheads, 7/7 ledgers, 30/30 stems"));
+  // "9 systems" / "records 32–40": recompute from the matrix's own rows
+  const matrix = readFileSync(p("docs/research/gallery-survey/feasibility-matrix.md"), "utf8");
+  const i2Rows = matrix.split("\n").filter(line =>
+    /^\|\s*(3[2-9]|40)\s*\|/.test(line) && line.includes("breaks **I2**"));
+  check("F4 feasibility-matrix rows 32–40 breaking I2 number exactly 9 ('9 systems' claim)",
+    i2Rows.length === 9, `counted ${i2Rows.length}`);
+  check("F5 matrix's own tier-4-by-invariant line lists I2 records 32–40 count (9)",
+    matrix.includes("(compact): 32–40 (9)"));
+  // PA-8 (global monotonicity) holds for the worked-example map
+  const pos = [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6], stride = 7;
+  const nonDecreasing = pos.every((v, i) => i === 0 || v >= pos[i - 1]);
+  check("F6 worked-example map satisfies PA-8: non-decreasing in pc order", nonDecreasing);
+  check("F7 worked-example map satisfies PA-8: positions[11] <= positions[0] + octaveStride",
+    pos[11] <= pos[0] + stride, `${pos[11]} <= ${pos[0] + stride}`);
+  // and PA-8's cross-octave guarantee: positionOfSemi globally non-decreasing over a wide range
+  const twin = makeAxis({ positions: pos, octaveStride: stride, axisUnitsPerStaffSpace: 2 });
+  let global = true;
+  for (let s = -24; s < 48; s++) {
+    if (twin.positionOfSemi(s + 1) < twin.positionOfSemi(s)) global = false;
+  }
+  check("F8 PA-8 conditions imply global monotonicity of positionOfSemi over [-24,48]", global);
+  // sanity: PA-8 correctly REJECTS a non-monotonic map
+  const bad = [0, 2, 1, 3, 3, 4, 4, 5, 5, 6, 6, 6];
+  check("F9 PA-8 rejects a non-monotonic map (negative control)",
+    !bad.every((v, i) => i === 0 || v >= bad[i - 1]));
 }
 
 console.log(`\nTOTAL: ${pass} passed, ${fail} failed`);
