@@ -300,3 +300,34 @@ images are compared against, never redistributed in this repo.
 discovery step and a coordination record; missing engine hooks are
 documented as `lilypond-chromatic-notation-base` follow-on work, not
 implemented from this repo.
+
+---
+
+## 9. Compact-staff / pitch-axis program (post-expansion; added 2026-07-10)
+
+The expansion program (§8) closed with set 012, which reframed the survey's
+Tier-4 verdicts as a **prioritized capability roadmap** toward full-gallery
+support. The first structural invariant taken up from that roadmap is **I2**
+(one pitch per vertical grid position) — its relaxation would bring the
+compact-staff family into scope (the Twinline / TwinNote / Bilinear lineage,
+~9 systems, the single largest Tier-4 group).
+
+Two independent architects (GPT-5-4, Gemini-Pro) were consulted cross-provider
+on the design; both converged on an explicit pitch-class→position map
+(`pitchAxis`, default-off byte-identical), a grid axis-gatekeeper with a
+many-to-one inverse, a per-pitch notehead-rule horizontal-offset for
+disambiguation, and — decisively — an **engine-first, two-repo** change with
+fail-loud export (no preview-only, because a compact system exported through
+the linear engine engraves at the *wrong pitch positions*). Recorded in
+`docs/planning/pitch-axis-design-consult.md` and
+`docs/planning/pitch-axis-design-recommendation.md`.
+
+| Set slug | Scope | Sessions | Tier | Depends on |
+|---|---|---|---|---|
+| `013-pitch-axis-engine-discovery` | Engine-first go/no-go spike (render-evidenced) + compact-staff schema/export **design** front end; **no product code, no engine commits** | 2 | full | Set 012 |
+| *(implementation set, TBD)* | Grid + `pitchAxis` + consumer rethread + compact fixtures + UI presets — **contingent on set 013's GO** | TBD | full | Set 013 (GO) |
+
+The program logic mirrors §8: **resolve the riskiest dependency first** (can the
+engine place noteheads/stems/ledgers from an arbitrary semitone→staff-position
+map?), design around the answer, and only then authorize implementation. Set
+013's binding rule 1 makes a render-evidenced NO-GO a complete, valid outcome.
