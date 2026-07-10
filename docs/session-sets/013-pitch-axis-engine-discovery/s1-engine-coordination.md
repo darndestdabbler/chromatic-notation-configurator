@@ -23,15 +23,23 @@ The engine placed a Twinline-like compact axis (12 pitch classes on 7
 positions per octave, five shared-position pairs) **exactly** — 35/35
 noteheads at the mapped staff positions, 7/7 expected ledger lines at mapped
 axis positions with all negative cases correct, stems attached to and
-directed from the mapped geometry — from a score-level override equivalent to
-the proposed hook, with **no engine-source changes at all**. The minimal
-engine change is a bounded, single-site hook (≈5 lines in one engraver) plus
-enumerated bounded follow-ons; no engraver rewrite is required. The consult's
-STOP condition ("cannot consume an arbitrary semitone→staff-position
-procedure without a large engraver rewrite") is **not met**. One real but
-bounded complication was found and measured: chord-internal horizontal
-arrangement is diatonic-derived, which affects the `x-offset` disambiguation
-for chords (§6.3) — a named engine work item, not a blocker.
+directed from the mapped geometry — from a score-level override that
+approximates the proposed hook (a post-placement coercion of the same
+formula site; see §2.1 for its limits), with **no engine-source changes at
+all**.
+
+Scope of the GO, stated precisely: the spike proves **vertical-placement
+feasibility** — that noteheads, stems, and ledgers follow an arbitrary
+many-to-one semitone→staff-position procedure. Clean compact-axis rendering
+additionally requires at least one further bounded engine change beyond the
+vertical hook: chord-internal horizontal arrangement is diatonic-derived
+(`staff-position`-based, not geometry-based), so the `x-offset`
+disambiguation for chords needs its own decided mechanism — measured in
+§3.4 and named as engine work item E13-2. Collision behavior beyond
+single-voice chords was only partially explored (§3.4, §5). Neither finding
+requires an engraver rewrite; the consult's STOP condition ("cannot consume
+an arbitrary semitone→staff-position procedure without a large engraver
+rewrite") is **not met**.
 
 ---
 
@@ -60,13 +68,17 @@ Two properties of this site are decisive for the pitch-axis question:
   (diatonic, pitch-derived) `staff-position` property untouched and simply
   overrides the geometry.
 
-### 1.2 Everything downstream reads the geometry back, not the pitch
+### 1.2 The vertical-placement consumers read the geometry back, not the pitch
 
-This is the engine's central architectural fact for this discovery:
-LilyPond's `Staff_symbol_referencer` derives a grob's staff position
-**geometry-first** (from its actual Y coordinate relative to the staff
-symbol), so every consumer of "where is this note" sees the *placed*
-position, not the linear formula or the diatonic pitch:
+The load-bearing architectural fact for this discovery: LilyPond's
+`Staff_symbol_referencer` derives a grob's staff position **geometry-first**
+(from its actual Y coordinate relative to the staff symbol), so the
+*vertical-placement* consumers listed below see the *placed* position, not
+the linear formula or the diatonic pitch. This is deliberately a claim about
+these enumerated consumers, verified empirically in §3 — NOT about every
+grob property: chord-internal **horizontal** arrangement reads the diatonic
+`staff-position` property instead, as §3.4 measures (the one counterexample
+found, handled by work item E13-2):
 
 - **Ledger lines.** LilyPond's native ledger machinery calls
   `StaffSymbol.ledger-positions-function` with the notehead's geometric
@@ -92,8 +104,12 @@ position, not the linear formula or the diatonic pitch:
 
 **Consequence:** a non-linear, many-to-one pitch→position map inserted at the
 one formula in §1.1 propagates to ledgers, dots, articulations, stem extents,
-and stem directions *automatically*. There is no second placement pipeline to
-rewrite. (The spike below confirms this empirically rather than by argument.)
+and stem directions *automatically* — there is no second **vertical**
+placement pipeline to rewrite. (The spike below confirms this empirically
+for noteheads, stems, and ledgers rather than by argument; dots and
+articulations share the same geometric read but were not separately
+exercised in the spike.) Horizontal chord arrangement is the exception,
+per §3.4.
 
 ### 1.3 The other linear sites (secondary consumers of the hook)
 
@@ -126,7 +142,19 @@ engine into a compact axis **without touching engine source**, by adding a
 score-level engraver that re-sets `NoteHead.Y-offset` at
 `stop-translation-timestep` — i.e., deterministically *after* the engine's
 own acknowledger has applied the linear formula — from a simulated hook with
-the exact proposed signature:
+the proposed signature:
+
+> **What this coercion is and is not.** It is a proof of *post-placement*
+> feasibility: it demonstrates that overriding the §1.1 formula's output
+> propagates through everything that reads geometry (ledgers, stem extents,
+> stem directions). It is an **approximation of** — not fully equivalent
+> to — an actual engine hook: it runs later in the timestep than the
+> engine's acknowledger would call the hook, and it leaves LilyPond's
+> diatonic `staff-position` property untouched, so it cannot validate (and
+> §3.4 shows it does not control) behaviors that depend on
+> `staff-position`-based logic or earlier layout phases — chord-internal
+> horizontal arrangement being the measured case. Those belong to the
+> engine-side work items in §6.
 
 ```scheme
 #(define (spike:get-pitch-staff-position semitone) ...)
@@ -210,7 +238,27 @@ negative-octave arithmetic both place exactly.
 
 ### 3.2 Ledger lines: 7/7 correct in axis coordinates, negatives correct
 
-The seven ledger rects extracted from the spanner stencil:
+The LedgerLineSpanner is one spanner grob per system, so the harvester
+reports it as a single element (`ledger-lines=1` in
+`measure_transcript.txt`); the individual ledger lines are the `<rect>`s
+inside its stencil. `s1-evidence/extract_ledgers.py` walks the tagged
+spanner subtree and prints each rect with its true staff position
+(rect center = rect top + half height); its complete transcript with exit
+code is `s1-evidence/ledger_extraction_transcript.txt`:
+
+```
+ledger rect 1: x=68.066 ... y_center=11.845 staff_position=-4.991
+ledger rect 2: x=68.066 ... y_center=12.845 staff_position=-6.991
+ledger rect 3: x=65.868 ... y_center=11.845 staff_position=-4.991
+ledger rect 4: x=63.669 ... y_center=11.845 staff_position=-4.991
+ledger rect 5: x=60.621 ... y_center=11.845 staff_position=-4.991
+ledger rect 6: x=56.662 ... y_center=4.345  staff_position=+10.009
+ledger rect 7: x=54.464 ... y_center=4.345  staff_position=+10.009
+total ledger rects: 7
+```
+
+(The ±0.009 is the same line-thickness measurement artifact as the
+noteheads' +0.010.) Mapped to their triggering notes by x:
 
 | trigger note (pos) | ledger(s) drawn at | expected |
 |---|---|---|
@@ -257,7 +305,9 @@ Negative cases, equally important:
 ### 3.4 The x-offset disambiguation: proven for single notes; chords need a named work item
 
 Diffing the offset render against the byte-identical control
-(`spike:x-offset 0.85` vs `0.0`), per notehead:
+(`spike:x-offset 0.85` vs `0.0`) per notehead — the comparison is
+`s1-evidence/xoffset_control_diff.py`, complete transcript with exit code in
+`s1-evidence/xoffset_control_diff_transcript.txt`:
 
 - **Single (non-chord) notes: exact and complete.** Each offset pc's head
   moved **+0.850** and *its stem moved with it* (Δx_stem = Δx_head to 3
@@ -300,9 +350,13 @@ internal gap, ledgers below m6 and above m5, correct stems throughout.
 ## 4. The minimal engine hook (spec step 3)
 
 The spike demonstrates that overriding the §1.1 formula's output is
-*sufficient* for noteheads, stems, ledgers, dots, and articulations. The
-minimal engine change is therefore exactly the consult's proposal, at the
-site §1.1 identified:
+sufficient for the **vertical placement** of noteheads, stems, and ledgers
+(measured in §3; dots and articulations share the same geometric read,
+§1.2). The minimal engine change *for vertical placement* is therefore
+exactly the consult's proposal, at the site §1.1 identified — with the
+explicit caveat that clean compact-axis rendering as a whole also needs
+E13-2 (chord-internal horizontal arrangement, §3.4), which this hook alone
+does not solve:
 
 ```scheme
 %% cnb/config.ly — new setting, default #f = today's behavior
@@ -310,7 +364,7 @@ site §1.1 identified:
 ```
 
 ```scheme
-%% cnb/noteheads.ly — the ONLY required placement change
+%% cnb/noteheads.ly — the only required VERTICAL-placement change
 (ly:grob-set-property! grob 'Y-offset
       (* (if (procedure? cnb:get-pitch-staff-position)
              (cnb:get-pitch-staff-position note-semis)     ;; half-staff-spaces
@@ -333,21 +387,39 @@ Configurator preserves it on the export side.)
   already has a precedent for explicit-anchor-overrides-middleCPosition:
   `cnb:keysig-tonic-octave`, config.ly:216-222). **Session 2 design input.**
 - **This is a bounded addition, not a rewrite.** One conditional at one
-  site; ledgers/dots/articulations/stem geometry need **zero** changes
-  (§1.2, proven §3). The consult's STOP condition is not met.
+  site; ledger, dot, articulation, and stem-geometry code needs **zero**
+  changes for vertical placement (§1.2; empirically shown for noteheads,
+  stems, and ledgers in §3). Unlike the spike's coercion, the real hook
+  runs inside the acknowledger (the earliest point the engine touches
+  placement), and E13-2 will decide whether it should *additionally* write
+  the mapped value into `staff-position` so `staff-position`-based logic
+  (chord arrangement, collisions) operates in axis space — a question the
+  spike deliberately could not answer (§2.1). The consult's STOP condition
+  is not met.
 
 ## 5. Conclusion: GO (spec step 4)
 
 - The engine **can** place noteheads, stems, and ledgers from an arbitrary
-  many-to-one semitone→staff-position procedure: proven by an actual
+  many-to-one semitone→staff-position procedure: shown by an actual
   LilyPond 2.24.2 render of a hand-authored Twinline-like compact axis,
-  measured element-by-element (35/35 noteheads, 7/7 ledgers, 30/30 stems).
-- The required engine change is the single-site hook of §4 plus the bounded
-  work items of §6 — no engraver rewrite.
-- The one measured complication (chord x-offset absorption, §3.4) is
-  a named, bounded engine work item with two candidate mechanisms, not a
-  feasibility threat: it does not affect placement, ledgers, stems, or any
-  single-note surface.
+  measured element-by-element (35/35 noteheads, 7/7 ledgers, 30/30 stems —
+  transcripts in `s1-evidence/`). This is the go/no-go question the spec
+  poses, and the evidence answers it affirmatively.
+- The GO is for **vertical-placement feasibility**. Clean compact-axis
+  rendering as a whole needs the §4 hook **plus** at least E13-2
+  (chord-internal horizontal arrangement) from §6 — still bounded additions,
+  no engraver rewrite.
+- The one measured complication (chord x-offset absorption, §3.4) is a
+  named, bounded engine work item with two candidate mechanisms, not a
+  feasibility threat: it does not affect where anything is placed
+  vertically, and the entire single-note surface (the octave-card preview's
+  rendering model) is unaffected.
+- **Collision coverage is partial.** The spike exercised single-voice
+  chords only (unison-, second-, shared-position and spanning chords); the
+  diatonic-second absorption is the one collision-adjacent break observed.
+  Multi-voice collisions, `NoteCollision` shifts across voices, and
+  collision thresholds in axis space were **not** exercised and remain
+  follow-on observation work under E13-2/E13-5.
 - Until the engine work ships, the Configurator side must follow the
   consult's fail-loud rule (production export errors when
   `pitchAxis.enabled`; no silent linear `.ly`) — session 2 design scope.
@@ -381,7 +453,10 @@ convention:
 
 ## 7. What this set's session 2 takes from this record
 
-1. GO — proceed to the `pitchAxis` schema + export v1.3 draft design.
+1. GO (scoped per §5: vertical-placement feasibility proven; chord
+   x-offset mechanism is engine work item E13-2, a design input rather than
+   a blocker) — proceed to the `pitchAxis` schema + export v1.3 draft
+   design.
 2. The hook unit contract (half-staff-spaces; `staff.midpoint` anchored at
    LilyPond position 0; explicit octave anchor rule — §3.3, §4).
 3. The chord x-offset evidence (§3.4) feeds the disambiguation-field design
