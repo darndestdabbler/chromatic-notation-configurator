@@ -185,6 +185,24 @@ fixtures), `change-log.md`
 `docs/research/gallery-survey/feasibility-matrix.md` (correction notes
 only, per step 2)
 
+> **Touches amendment (session 2, 2026-07-09, operator-directed at UAT).**
+> The `requiresUAT: true` / `uatScope: per-session` UAT became a four-round
+> product collaboration in which the task owner supplied an authoritative
+> `Effective Ledger Rules` reference and itemized corrections (recorded
+> verbatim in `s2-uat.md`). Acting on that direction reached three files
+> outside the session-2 Touches/Creates line, recorded here as an explicit,
+> task-owner-authorized expansion (the same remedy applied in set-006-s2 and
+> set-010-s2): **(1)** three session-1 product fixtures —
+> `cnb/assets/examples/gallery/hass-notation-3-line.json`,
+> `numbered-notes-notes-only.json`, and `axlomafi.json` — corrected for the
+> ledger rule the owner's new reference column fixed (and, for `axlomafi.json`,
+> a mirrored slant-left glyph the owner requested); **(2)**
+> `cnb/uat/uat-gallery-previews.mjs`, extended to pass a preview key so the
+> set-010 key-signature renders for the keysig-enabled Tier-2 fixtures. The
+> requiresUAT config + step-4 UAT is the task-owner authority for these; the
+> verbatim dialogue lives in `s2-uat.md`. These are committed with the other
+> product changes, separate from the docs-only lifecycle commits.
+
 **Ends with:** the fixture corpus covers both feed-forward lists (or
 records a flagged correction where a target moved), the reproduction
 report's summary table is complete with human-attested outcomes, and the

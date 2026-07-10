@@ -212,9 +212,9 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 | 40 | Chromatic Nydana (Dan Lindgren) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also Roman-numeral octave clef, custom key signature, hooked/novel stems — E1/E2/E3 evidence.) |
 | 41 | MUTO Notation (MUTO Foundation) | 1 | yes | Staff `[0,6]` with bold C lines (M1); the fixed in-staff D/E and G#/A# ledger positions are override templates (M3). Provisional: `duration.representation = unknown`. |
 | 42 | Thumline Notation (Jim Plamondon) | 4 | no | The pitch axis is **relative** — lines are scale degrees from a movable Do, so the `unknown` semitone pattern is key-dependence, not missing data — which breaks **I5** (absolute pitch anchoring): any one config is correct for exactly one key, and the system as such has no representation. The per-key geometry (whole-step grid, in-staff ledgers) would otherwise be expressible; the arc clef device and tonic/modulation signature are additional E1/E2 evidence. |
-| 43 | Express Stave: Pianoforte Notation (John Keller) | 2 | no | Staff `[2,8]` with D ledger template (M3); inverse-7-5 fill via per-PC hollow rules (M5); half/whole side strokes are symmetric notehead-baked marks (M4c). Needs E1 only: custom F/B/D clef symbols (M6). |
-| 44 | Express Stave, 6-6 Jazz Font (John Keller) | 2 | no | As record 43 plus slant alternation = two shape variants by PC set (M5). Needs E1 only (same custom clefs). |
-| 45 | Express Stave, Original Version (John Keller) | 2 | no | As record 43; the optional B/F center dash/spot bakes into per-PC shape variants (M5). Needs E1 only — this version uses the three *traditional* clefs as register indicators, which the platform equally lacks (M6). |
+| 43 | Express Stave: Pianoforte Notation (John Keller) | 2 → **2 + I4** | no | Staff `[2,8]` with D ledger template (M3); inverse-7-5 fill via per-PC hollow rules (M5); half/whole side strokes are symmetric notehead-baked marks (M4c). Needs E1 only: custom F/B/D clef symbols (M6). **Correction (011-s2):** additionally breaks **I4** — see §8. |
+| 44 | Express Stave, 6-6 Jazz Font (John Keller) | 2 → **2 + I4** | no | As record 43 plus slant alternation = two shape variants by PC set (M5). Needs E1 only (same custom clefs). **Correction (011-s2):** additionally breaks **I4** — see §8. |
+| 45 | Express Stave, Original Version (John Keller) | 2 → **2 + I4** | no | As record 43; the optional B/F center dash/spot bakes into per-PC shape variants (M5). Needs E1 only — this version uses the three *traditional* clefs as register indicators, which the platform equally lacks (M6). **Correction (011-s2):** additionally breaks **I4** — see §8. |
 | 46 | Express Stave, Tricolor Version (John Keller) | 2 | yes | Staff `[2,8]` (M2); the tricolor scheme is per-PC shape/fill variants — solid, hollow, and line-through heads baked per PC (M5, M4c). Needs E1 (Keller's clef symbols). Provisional: `duration.representation = unknown`. |
 | 47 | Untitled (Robert Stuckey) | 1 | yes | Numeral glyphs are per-PC-distinct shape paths (M5) on staff `[0,6]` (M2). Provisional: `duration.representation = unknown` (stems documented, but flags/longer values undocumented; M4). |
 | 48 | Untitled (Nicolai Dolmatov) | 1 | yes | Single C line per octave `[0]` (M2 — the multi-octave range yields the ≥2 absolute lines the validator requires); fixed E/G# ledger templates (M3); oval/x alternation = binary-6-6 shapes (M5). Provisional: `fill-scheme = unknown` with x-heads carrying no fill dimension — the half-note device is indeterminate and could require E3 (M4d). |
@@ -334,3 +334,43 @@ per-system source work, not for this set.
   approximates the movable-Do system.
 - **Line-marking octave cues are free:** every bold/dashed octave-cyclic
   line in the survey mapped onto `lineOverrides` with no enhancement.
+
+## 8. Corrections from set 011 (reproduction findings)
+
+> **Amendment (set 011, session 2, 2026-07-09).** Building the reproduction
+> fixtures against the task owner's authoritative reference surfaced one tier
+> correction and one method observation. Recorded here as dated amendments per
+> the framework-change rule established in 008-s2 (any tier change is an
+> explicit, dated, documented amendment). Full evidence:
+> `docs/research/gallery-survey/reproduction-report.md` (gaps A–D and the
+> per-system fidelity notes) and `docs/session-sets/011-gallery-reproduction-suite/s2-uat.md`.
+
+- **Records 43, 44, 45 (Express Stave family) — additional I4 break.** These
+  were tiered **Tier 2 (E1 only)** on the reading that the depicted staff is a
+  continuous tritone `[2,8]` grid. The task owner confirmed at UAT that the
+  Express Stave staff is **bounded** — exactly three lines (G#, D, G#) over one
+  octave, with the register-repeated D drawn as a **ledger a tritone beyond**
+  the staff (plus a ledger just above the upper C) and a partial vertical
+  compression (line-adjacent notes touch their line). A bounded, register-fixed
+  staff whose pattern positions continue beyond it as ledgers is exactly
+  invariant **I4** (per-octave staff periodicity; the same structure as record
+  14, Note for Note). The corrected verdict is **Tier 2 with an additional I4
+  break**: the clef need (E1) is real, but the staff geometry is not fully
+  expressible on the platform's per-octave-repeating full-height staff.
+  Set 011 kept the fixtures (reproducing the fill scheme, clef, and the `[2,8]`
+  line pitch classes) with the I4 deviation documented, rather than removing
+  them — the expressible core is still evidence.
+
+- **Method observation — ledger octave-region rule (not a tier change).**
+  Several Tier-1/Tier-2 systems (Clairnote SN/DN, Chromatic Lyre, AxLoMaFi)
+  have ledgers whose trigger notes sit just below a C-boundary (A#, B). The
+  platform's ledger octave-regions align to C (`cnb-music.js`
+  `ledgerOctaveRegion = floor(semi/12)`), and its between-note-and-staff test
+  does not suppress a ledger when a staff line intervenes, so such a note
+  renders a ledger at the wrong (lower) C. This is a **display-rule
+  refinement**, below invariant level (every configured element is
+  representable; the affected fixtures render cleanly once the cross-boundary
+  triggers are trimmed) — it does **not** change any tier verdict. The task
+  owner proposed a "suppress a ledger when a staff line intervenes between it
+  and the closest note" rule; cataloged as reproduction-report gap A for the
+  enhancement track.
