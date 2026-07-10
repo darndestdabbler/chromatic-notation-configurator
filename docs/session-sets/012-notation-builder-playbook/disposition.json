@@ -1,10 +1,15 @@
 {
   "status": "completed",
-  "summary": "Set 012 session 1 (non-final): authored docs/playbook/notation-builder-playbook.md, the evidence-cited human operator playbook. Five parts: the platform model (two inputs, semitone grid, staff/stem, ledger templates, cumulative notehead rules, palette/CB-safe, durations, set-009 clefs + set-010 key signatures, JSON/LilyPond relationship); the five architectural invariants I1-I5 with exemplar systems and operator redesign guidance; a capability summary (tier counts, reproduction outcomes, gaps A-D) grounded in the set-008 feasibility matrix and set-011 reproduction report; an executable config-composition build walkthrough with the Hass 3-Line set-011 fixture as the worked example (README round-trip linked, not duplicated); and troubleshooting. Every capability claim cites the schema/module/fixture; every limit cites an invariant + named exemplar; all 33 file/anchor references verified to resolve. Docs-only; Touches honored (README + AI guide untouched, their cross-links are session-2 tasks). Routed cross-provider verification VERIFIED (gpt-5-4, round 8).",
+  "summary": "Set 012 session 2 (FINAL): authored docs/playbook/ai-assisted-workflow.md — the AI-assistance companion to the session-1 human playbook. Part 1 states the core discipline (AI drafts; the platform's CNBConfig.validate() and the human verify; grounded in the repo's own never-emit-an-underivable-value philosophy). Part 2 is a pipeline map tagging each of the playbook's 12 build-walkthrough steps High/Lower/Human for AI value with the platform machinery that verifies each. Part 3 gives eight fill-in prompt templates for the high-value steps (characterize-a-system, staff pattern, ledger templates, notehead rules, clef/keysig config, validate()-error interpretation, SVG glyph geometry, export-render-diff loop), each embedding the schema excerpt/doc pointer and ending with a platform-check verification instruction. Part 4 is cautions (mandatory validate(), mandatory visual geometry check, never-guess/record-unknowns, invariants can't be prompted away, aesthetics reserved to the human, IP posture). Added a README 'Designing a Notation System' section linking both playbook docs and a forward pointer from the human playbook to the AI guide; wrote change-log.md closing the expansion program (sets 008-012). Every capability claim cites schema/module/fixture; every limitation is invariant-framed with exemplars in the cited playbook Part 2. Operator UAT: 'Approved as-is' on both documents (s2-uat.md). Docs-only: full suite 709 passed/0 failed, unchanged; no product code, no new fixtures. Routed cross-provider verification VERIFIED (gpt-5-4, 2 rounds; round 1 found 2 internal-consistency issues — missing templates for two High-tagged steps, and an emit-null vs must-validate contradiction in the characterization template — both remediated in commit 4942b9c).",
   "files_changed": [
+    "README.md",
+    "docs/playbook/ai-assisted-workflow.md",
     "docs/playbook/notation-builder-playbook.md",
     "docs/session-sets/012-notation-builder-playbook/activity-log.json",
-    "docs/session-sets/012-notation-builder-playbook/s1-verification.md",
+    "docs/session-sets/012-notation-builder-playbook/change-log.md",
+    "docs/session-sets/012-notation-builder-playbook/s2-uat.md",
+    "docs/session-sets/012-notation-builder-playbook/s2-verification.md",
+    "docs/session-sets/012-notation-builder-playbook/disposition.json",
     "docs/session-sets/012-notation-builder-playbook/session-events.jsonl",
     "docs/session-sets/012-notation-builder-playbook/session-state.json"
   ],
@@ -17,7 +22,7 @@
     "effort": "medium",
     "reason": {
       "code": "continue-current-trajectory",
-      "specifics": "Session 2 (AI-assisted workflow guide + README/playbook cross-linking + per-set operator UAT) follows directly from the playbook this session created; the same full-tier claude-code trajectory fits."
+      "specifics": "Final session of set 012 and of the expansion program (sets 008-012); both playbook documents are complete, cross-linked, VERIFIED, and operator-approved. No further session in this set; a future set would start fresh from the project plan."
     }
   },
   "blockers": [],
