@@ -617,11 +617,21 @@ staff (I4), **C** notehead vertical offset, **D** polished glyph SVG assets.
 **Coverage check.** Both feasibility-matrix feed-forward lists are fully
 covered: session-1 Tier-1 firm (8/8), session-2 Tier-2 firm (8/8), and the one
 documented Tier-3 partial (7). Every target's expressible core was reproduced;
-each named dependency was recorded as a deviation rather than forcing a
-fixture. **One matrix correction resulted:** records 43–45 (Express Stave) were
-tiered "Tier 2 (E1 only)" but additionally break invariant I4 (bounded staff) —
-flagged in `feasibility-matrix.md` per the set's non-goal that a target proving
-to need a feature is corrected, not force-fit. Four platform-feature gaps
+each named dependency was recorded as a deviation.
+
+**One matrix correction resulted, with Express Stave reclassified.** Records
+43–45 (Express Stave) were tiered "Tier 2 (E1 only)"; the owner's UAT
+confirmation showed they additionally break invariant I4 (bounded staff). Per
+the spec's step-2 handling, both branches were applied: the feasibility matrix
+entry is **flagged** (`feasibility-matrix.md` §8), *and* — because a meaningful
+expressible core remains (the `[2,8]` line pitch classes, the inverse/direct
+7-5 fill, the register-label clef) — the three fixtures are **kept as documented
+expressible-core partials** (the same "author the reproducible core as a fixture
+and record the named gap" pattern the spec applies to Tier-3), **not** as claims
+of full Tier-2 fidelity. They are counted above as reproduced-core, with the I4
+gap (B) named on each. This is the spec's "record a correction note … and flag
+the feasibility matrix entry" branch combined with the reproducible-core branch;
+no fixture was force-fit past its expressible core. Four platform-feature gaps
 (A–D) were surfaced and documented for the enhancement track / set 012.
 
 ## UAT outcomes (session 2)
