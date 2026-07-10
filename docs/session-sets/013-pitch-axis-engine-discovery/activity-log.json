@@ -1,0 +1,33 @@
+{
+  "sessionSetName": "013-pitch-axis-engine-discovery",
+  "createdDate": "2026-07-10T22:37:43.691984+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-10T22:37:43.716056+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/engine-placement-study",
+      "dateTime": "2026-07-10T18:56:41.399117-04:00",
+      "description": "Studied the engine placement model: the notehead engraver (cnb/noteheads.ly:102-105) is the single semitone-to-Y site (sets Y-offset directly, never staff-position); ledgers/dots/articulations/stem geometry all read position back geometrically, so an arbitrary map at that one site propagates automatically. Secondary linear sites: keysig.ly mark placement, clefs.ly anchor. Findings in s1-engine-coordination.md section 1.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/spike-and-go-no-go",
+      "dateTime": "2026-07-10T18:56:41.400117-04:00",
+      "description": "Hand-authored throwaway compact-axis proof (Twinline-like 7-position octave, 12 pcs, 5 shared pairs) rendered through the real engine (LilyPond 2.24.2, -dbackend=svg) with a score-level stop-translation-timestep engraver simulating cnb:get-pitch-staff-position; measured via test-ids + harvest_svg.py: 35/35 noteheads at exact mapped positions, 7/7 ledgers at axis positions with correct negatives, stems correct (direction flips at LilyPond position 0), x-offset disambiguation proven for single notes and diatonic-unison chords, absorbed for diatonic-second chords (named engine work item E13-2). RECOMMENDATION: GO. Record: s1-engine-coordination.md; evidence: s1-evidence/.",
+      "status": "complete"
+    }
+  ]
+}
