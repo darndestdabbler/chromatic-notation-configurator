@@ -227,10 +227,14 @@ numbering continues v1.2.1 §8):
 10. No two ledger templates (or staff pattern entries) that collapse onto
     one axis position carry conflicting style overrides (design PA-5/PA-6).
 11. Every `apply.xOffsetStaffSpaces` is a finite number.
+12. The map is globally non-decreasing: positions non-decreasing in pc
+    order and `positions[11] ≤ positions[0] + octaveStride` (design PA-8 —
+    non-monotonic maps are rejected in `pitch-class-map-v1`; promoted from
+    a warning during session-2 verification round 1).
 
-New warnings: positions outside `[0, octaveStride)`; non-monotonic
-positions; indistinguishable shared-position pairs; `xOffsetStaffSpaces`
-present while `pitchAxis` is disabled (design PA-W1…PA-W4).
+New warnings: positions outside `[0, octaveStride)`; indistinguishable
+shared-position pairs; `xOffsetStaffSpaces` present while `pitchAxis` is
+disabled (design PA-W1, PA-W3, PA-W4).
 
 ### 8a The fail-loud interim gate
 

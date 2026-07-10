@@ -215,13 +215,14 @@ predating the feature validate exactly as before).
 | PA-5 | Two ledger templates whose `semiWithinOctave` values collapse onto the same axis position must not carry **conflicting** `ledgers.lineOverrides` entries (same property, different values). Identical or absent overrides are fine — the collapsed pair draws one line (§2.4). *(Spec step 1 names this rule explicitly.)* |
 | PA-6 | Two `staff.semitonePattern` entries whose axis positions collapse must not carry conflicting `staff.lineOverrides` entries (same rationale; the drawn/emitted line set is deduplicated by axis position, §2.3) |
 | PA-7 | `apply.xOffsetStaffSpaces` in any notehead rule must be a finite number when present (§3) |
+| PA-8 | The map must be **globally non-decreasing**: `position` values non-decreasing in pc order, **and** `positions[11] ≤ positions[0] + octaveStride` (so monotonicity holds across octave boundaries too). Non-monotonic maps are **rejected** in `pitch-class-map-v1` — the grid's extent math (`maxAxisPos`, `svgHeight`, §2.2) and label layout assume monotonicity; a future `kind` may lift this. *(Promoted from warning to blocking error during session-2 verification round 1, at the verifier's suggestion.)* |
 
 **Warnings (non-blocking):**
 
 | # | Rule |
 |---|---|
-| PA-W1 | Any `position` outside `[0, octaveStride)` — octave bands overlap or interleave |
-| PA-W2 | Positions not non-decreasing in pc order — visual pitch order inverts within the octave |
+| PA-W1 | Any `position` outside `[0, octaveStride)` — octave bands overlap or interleave (still legal when PA-8 holds, e.g. a uniformly shifted map) |
+| PA-W2 | *(moved to blocking error PA-8 — see above)* |
 | PA-W3 | A shared-position pc pair whose resolved noteheads (at crotchet, key null) are indistinguishable — same shape, hollow, color, **and** equal `xOffsetStaffSpaces` — the notation cannot disambiguate them |
 | PA-W4 | `xOffsetStaffSpaces` present in rules while `pitchAxis` is disabled/absent — the field is axis-gated (§3.2) and will be ignored |
 
@@ -277,7 +278,9 @@ exposes:
     — the exact current body of `cnb/src/cnb-grid.js` `semiToY`;
   - **axis path:** `(maxAxisPos − axis.positionOfSemi(semi)) × pxPerAxisUnit`
     with `pxPerAxisUnit = display.pxPerSemi` (§1.2) and
-    `maxAxisPos = axis.positionOfSemi(maxSemi)`.
+    `maxAxisPos = axis.positionOfSemi(maxSemi)` — sound because PA-8
+    guarantees the map is globally non-decreasing, so the range endpoint's
+    position is the extreme.
 - `svgHeight`: disabled — unchanged formula; axis —
   `(positionOfSemi(maxSemi) − positionOfSemi(minSemi)) × pxPerAxisUnit`.
 - `yToSemi(y)`: **linear contexts only** (kept literal). In axis-enabled
@@ -500,10 +503,13 @@ per the s1 coordination record, and P4 explicitly blocked on their landing.
    semantics in axis space (shared positions make geometric distance 0
    common) are P0/E13-5 observation work before P4 claims engine parity
    beyond single voice.
-5. **Monotonicity assumptions** — PA-W2 warns on non-monotonic maps;
-   `maxAxisPos` derivation and label layout assume the octave map is
-   non-decreasing. Non-monotonic axes render but are unsupported territory
-   until a real system needs one.
+5. **Monotonicity assumptions** — `maxAxisPos` derivation and label layout
+   assume the map is non-decreasing, so PA-8 **rejects** non-monotonic maps
+   outright in `pitch-class-map-v1` (promoted from a warning during
+   session-2 verification round 1). The residual risk is future scope, not
+   current correctness: if a real system ever needs an inverted axis, a new
+   `kind` must specify extent/anchor/layout behavior before validation
+   admits it.
 
 ### 5.3 Recommendation
 
