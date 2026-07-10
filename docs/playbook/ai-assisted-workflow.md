@@ -128,12 +128,14 @@ pointers (they are named in each template).
 >
 > Output: a JSON config skeleton (staff, ledgers, noteheadRules, palette,
 > meta) as partial-over-default JSON. For any value you cannot derive from the
-> description, **emit `null` and list it under an `"_unknowns"` note** — do not
-> guess.
+> description, **omit that field and list it under a separate `"_unknowns"`
+> note** — do not guess and do not emit a `null` placeholder for a field that
+> is not nullable (a `null` sentinel would fail validation).
 >
-> **Verification:** I will load your JSON through `CNBConfig.validate()` and the
-> live preview; it must validate with no errors and resolve a notehead for all
-> 12 pitch classes. Any `_unknowns` you flag, I will resolve by hand.
+> **Verification:** I first resolve every `_unknowns` item you flag by hand, so
+> no underivable value is invented. I then load the completed config through
+> `CNBConfig.validate()` and the live preview; it must validate with no errors
+> and resolve a notehead for all 12 pitch classes.
 
 ### 3.2 Staff pattern → `semitonePattern` / `midpoint`
 
@@ -238,7 +240,68 @@ pointers (they are named in each template).
 > ~1/5 semitone (playbook Part 5); a wrong anchor looks off-center even when the
 > JSON is valid.
 
-### 3.6 The export → render → diff verification loop
+### 3.6 Described clef / key signature → `clef` or `keys.keySignature` config
+
+> Draft the optional clef or key-signature config block from this description.
+> Both sections are **default-off** and, when unused, change neither the preview
+> nor the export (`docs/CNB-ARCHITECTURE-PLAN-v2.md` §4.9, §4.12).
+>
+> - **Clef** (`config.clef`, `cnb/src/cnb-clef.js`): set `enabled: true`,
+>   `active: "‹name›"`, and a `glyphs["‹name›"]` definition. Use `kind: "text"`
+>   for an octave-numeral or register-letter clef (`text`, `textHeightSemis`),
+>   `kind: "glyph"` for an imported SVG. Every definition needs a numeric
+>   `anchorSemi` (the semitone position of the glyph's top edge).
+> - **Key signature** (`config.keys.keySignature`,
+>   `cnb/src/cnb-key-signature.js`): set `keys.enabled: true`, define at least
+>   one key in `keys.definitions` (`name`, `pitchClasses`, optional `tonicPc`),
+>   and set `keySignature.enabled: true` with `style: "notehead-chords"` and
+>   `placement.rule: "scale-from-tonic"`. The signature marks resolve through
+>   your existing `noteheadRules`, so a fill scheme carries into it.
+>
+> Described device: ‹e.g. "an octave register numeral '4' in the left gutter",
+> or "a G-major notehead-chord key signature"›.
+>
+> Output: the `clef` and/or `keys` config block as partial-over-default JSON.
+> Do not invent a `svgPath`/`anchorSemi` you cannot derive — flag it under
+> `_unknowns` (a glyph clef needs a real imported SVG; §3.5 drafts that).
+>
+> **Constraint:** neither section emits anything to the LilyPond export today
+> (the engine renders its own clef and engraves key signatures from the score's
+> `\key`), so an enabled clef/keysig exports byte-identically to a disabled one.
+> Do not claim otherwise.
+>
+> **Verification:** I enable it in the Clef Editor / Key Signature Editor and
+> confirm the gutter renders in the preview; `CNBConfig.validate()` must pass
+> (its clef/keysig checks fire only when the sections are enabled — an active
+> clef must name a real glyph with a numeric `anchorSemi`; an enabled signature
+> needs a valid style, placement rule, and ≥1 key definition).
+
+### 3.7 A `CNBConfig.validate()` error → interpretation and fix
+
+> I ran `CNBConfig.validate()` and got the error(s) below. Explain what each
+> means and the minimal config change that clears it. The validation checks and
+> their meanings are in `docs/playbook/notation-builder-playbook.md` Part 5 and
+> `docs/CNB-LY-EXPORT-SPEC-v1_2.md` §8; do not invent checks that are not in
+> those lists.
+>
+> Validator output: ‹paste the `errors` (and `warnings`) array verbatim›.
+> Relevant config excerpt: ‹paste the rule / shape / staff section the error
+> names›.
+>
+> Output: for each error, one sentence on the cause and the exact edit to make
+> (which field, what value). Common cases: an `apply.shape` naming a shape not
+> in `config.shapes` (import/define it, or fix the name — remember `shapes` is
+> replaced wholesale on load, so a fixture must re-include any shape its
+> `durations.defaultShape` references); `hollow: true` on a shape with no
+> `svgHollowPath`; a color not matching `#RRGGBB`; a pitch class covered by no
+> rule (keep a `pitchClasses: "all"` base rule); fewer than 2 staff positions;
+> a `meta.fileSuffix` not starting with `-`.
+>
+> **Verification:** your explanation is not the pass — I apply the edit and
+> **re-run `CNBConfig.validate()`**; it must return `{ valid: true }` with an
+> empty `errors` array before I trust the fix.
+
+### 3.8 The export → render → diff verification loop
 
 > Write a runnable script for the reproduction verification loop
 > (playbook Part 4 step 12; README end-to-end walkthrough). Given a config JSON,
