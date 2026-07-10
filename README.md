@@ -155,6 +155,21 @@ Rendered through the engine, this export passes the engine's golden
 assertion suite (74/74) and is pixel-identical to the engine repo's
 `joy-to-the-world` golden baseline.
 
+## Designing a Notation System
+
+Two operator-facing guides under [`docs/playbook/`](docs/playbook/) cover the
+design workflow end to end:
+
+- **[Notation-builder playbook](docs/playbook/notation-builder-playbook.md)** —
+  the platform model, what the platform can and cannot express (five
+  architectural invariants, with exemplar systems and evidence), how much of the
+  published-systems gallery it reproduces, and an executable 12-step build
+  walkthrough with a checked-in fixture as the worked example.
+- **[AI-assisted workflow guide](docs/playbook/ai-assisted-workflow.md)** —
+  where an AI assistant is high-value across that same walkthrough, prompt
+  templates for the high-value steps, and the verification/sign-off points that
+  keep AI output honest.
+
 ## Architecture
 
 The Configurator is being rebuilt from a monolithic HTML file into a modular architecture. The new design separates concerns into independent JavaScript modules:

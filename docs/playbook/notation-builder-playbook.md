@@ -542,3 +542,17 @@ sets `anchors: null` and draws no stem.
   your fidelity notes (and, if it re-tiers a system, flag the feasibility
   matrix) rather than forcing it — the discipline that produced the Part 3
   evidence base.
+
+---
+
+## Using an AI assistant
+
+Much of the walkthrough above — characterizing a published system into a draft
+config, translating a prose notehead scheme into `noteheadRules` JSON, drafting
+SVG glyph geometry, running the export-render-diff loop — is work an AI
+assistant can accelerate, provided its output is checked by the platform's own
+validator and your eyes before you trust it. The companion
+**[AI-assisted workflow guide](ai-assisted-workflow.md)** maps each step above
+to its AI value, gives ready-to-fill prompt templates for the high-value steps,
+and states the verification and human-sign-off points that keep AI output
+honest.
