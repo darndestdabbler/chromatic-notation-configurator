@@ -1,0 +1,62 @@
+$ node docs/session-sets/013-pitch-axis-engine-discovery/s2-evidence/check-design-claims.mjs
+── A. Linear degeneracy against the real exporter ──
+PASS  A1 real exporter default 4-8 positions  [[-4,-2,2,4]]
+PASS  A2 identity-map axis formula == real exporter output  [axis=[-4,-2,2,4]]
+PASS  A3 identity map: positionOfSemi(s) === s for s in [-13,25]
+PASS  A4 identity map: regionOfSemi === floor(s/12) (== CNBMusic.ledgerOctaveRegion)
+── B. Spike reproduction (s1 measured geometry) ──
+PASS  B1 midpoint semi 7 -> axis position 4
+PASS  B2 staff pattern [2,5,8] -> '(-3 -1 1 4 6 8) (spike's cnb:staff-line-positions)  [[-3,-1,1,4,6,8]]
+PASS  B3 c' semi 0 -> staff position -4  [got -4]
+PASS  B3 c#' semi 1 -> staff position -4  [got -4]
+PASS  B3 d' semi 2 -> staff position -3  [got -3]
+PASS  B3 c'' (stride) semi 12 -> staff position 3  [got 3]
+PASS  B3 c''' semi 24 -> staff position 10  [got 10]
+PASS  B3 b (negative octave) semi -1 -> staff position -5  [got -5]
+PASS  B3 g (negative octave) semi -5 -> staff position -7  [got -7]
+PASS  B4 all five shared pairs coincide (positions equal within pairs)
+PASS  B5 D and G unshared
+PASS  B6 stem-flip anchor: f'(5) and f#'(6) -> -1; g'(7) -> 0 (midpoint at position 0)
+── C. Octave arithmetic (compiled-procedure semantics) ──
+PASS  C1 euclidean pc/oct == CNBMusic.pitchClass/octave, oct exact integer, s in [-25,25]
+PASS  C2 (modulo -1 12) semantics: pc(-1)=11, oct(-1)=-1
+── D. Cited code quotes exist at the cited sites ──
+PASS  D cnb/src/cnb-grid.js contains cited quote  [literal linear semiToY body (design §1.3/§2.2)]
+PASS  D cnb/src/cnb-card.js contains cited quote  [card hardcodes symmetric zero offset (design §3.3)]
+PASS  D cnb/src/cnb-stem.js contains cited quote  [semitone-average stem direction (design §2.3)]
+PASS  D cnb/src/cnb-ledger-set.js contains cited quote  [strict-< proximity tie rule (design §2.4)]
+PASS  D cnb/src/cnb-lilypond.js contains cited quote  [attachment ÷ sps conversion site (draft §4.4a)]
+PASS  D cnb/src/cnb-lilypond.js contains cited quote  [linear staff-line-positions formula (draft §5.4a degeneracy)]
+PASS  D cnb/src/cnb-lilypond.js contains cited quote  [thickness ÷ sps conversion site (draft §5.3a)]
+PASS  D cnb/src/cnb-music.js contains cited quote  [ledgerOctaveRegion variant anticipated (design §2.3)]
+PASS  D cnb/src/cnb-config.js contains cited quote  [type-safe validation posture reused (design §1.4)]
+── E. Cited paths and anchors resolve ──
+PASS  E path exists: docs/planning/pitch-axis-design.md
+PASS  E path exists: docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md
+PASS  E path exists: docs/planning/pitch-axis-design-consult.md
+PASS  E path exists: docs/planning/pitch-axis-design-recommendation.md
+PASS  E path exists: docs/session-sets/013-pitch-axis-engine-discovery/s1-engine-coordination.md
+PASS  E path exists: docs/session-sets/013-pitch-axis-engine-discovery/s2-evidence
+PASS  E path exists: docs/research/gallery-survey/feasibility-matrix.md
+PASS  E path exists: docs/CNB-LY-EXPORT-SPEC-v1_2.md
+PASS  E path exists: cnb/src/cnb-grid.js
+PASS  E path exists: cnb/src/cnb-ledger-set.js
+PASS  E path exists: cnb/src/cnb-double-notehead.js
+PASS  E path exists: cnb/src/cnb-stem.js
+PASS  E path exists: cnb/src/cnb-card.js
+PASS  E path exists: cnb/src/cnb-collection.js
+PASS  E path exists: cnb/src/cnb-key-signature.js
+PASS  E path exists: cnb/src/cnb-music.js
+PASS  E path exists: cnb/src/cnb-config.js
+PASS  E path exists: cnb/src/cnb-lilypond.js
+PASS  E anchor in docs/research/gallery-survey/feasibility-matrix.md  [I2 invariant]
+PASS  E anchor in docs/session-sets/013-pitch-axis-engine-discovery/s1-engine-coordination.md  [engine work item cited]
+PASS  E anchor in docs/session-sets/013-pitch-axis-engine-discovery/s1-engine-coordination.md  [spike staff-line positions cited]
+PASS  E anchor in docs/session-sets/013-pitch-axis-engine-discovery/s1-engine-coordination.md  [engine anchor precedent cited]
+PASS  E anchor in docs/CNB-LY-EXPORT-SPEC-v1_2.md  [canonical spec version cited by the draft]
+PASS  E anchor in docs/planning/pitch-axis-design-recommendation.md  [consult field name]
+PASS  E anchor in docs/planning/pitch-axis-design-recommendation.md  [consult field name]
+PASS  E anchor in docs/planning/pitch-axis-design-consult.md  [consult field name]
+
+TOTAL: 53 passed, 0 failed
+exit: 0
