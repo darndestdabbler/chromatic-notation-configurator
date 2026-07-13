@@ -818,9 +818,13 @@ export const CNBLilypond = {
     // a pitch-axis-enabled config must NOT export: the linear engine would
     // engrave a compact config at wrong pitch positions. Session 3 removes
     // this gate in the same change that first emits §5.4/§6.3, with the
-    // engine round-trip as evidence. Fires on the enabled flag alone (before
-    // any other validation): no silent linear .ly for a compact config, ever.
-    if (config.pitchAxis?.enabled) {
+    // engine round-trip as evidence. Fires on the BOOLEAN enabled flag alone
+    // (the design §1.3 consumer gate, strictly === true — the same strict
+    // check CNBGrid and CNBPitchAxis use, so export and preview agree),
+    // before any other validation: no silent linear .ly for a compact
+    // config, ever. Non-boolean truthy values are not the consumer gate and
+    // follow the normal validation/export rules instead.
+    if (config.pitchAxis?.enabled === true) {
       throw new Error(PITCH_AXIS_GATE_MESSAGE);
     }
 

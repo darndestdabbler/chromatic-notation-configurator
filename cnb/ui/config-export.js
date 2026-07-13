@@ -164,9 +164,11 @@ export const CNBConfigExport = {
     // (CNB-LY-EXPORT-SPEC v1.3 §8a / set-014 binding rule 3): a
     // pitchAxis-enabled config must not export until the engine ships
     // E13-1/E13-2 (set-014 session 3 verifies and removes the gate).
-    // Identical message text — the validateForExport ↔ generate() parity
-    // contract, pinned by the unit test "fail-loud gate parity".
-    if (config.pitchAxis?.enabled) {
+    // Identical message text AND identical strict-boolean condition (the
+    // design §1.3 consumer gate, === true) — the validateForExport ↔
+    // generate() parity contract, pinned by the unit test "fail-loud gate
+    // parity".
+    if (config.pitchAxis?.enabled === true) {
       errors.push(PITCH_AXIS_GATE_MESSAGE);
     }
 

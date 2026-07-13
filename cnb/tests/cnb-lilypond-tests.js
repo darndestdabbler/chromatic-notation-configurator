@@ -846,6 +846,29 @@ export const tests = [
       lacks(disabledLy, "pitchAxis", "no pitchAxis token in the export");
     }},
 
+  { name: "fail-loud gate (§8a): strict boolean — non-boolean truthy enabled values do not trip the gate and follow the normal validation/export rules", fn: () => {
+      const defaultLy = CNBLilypond.generate(CNBConfig.createDefault());
+      for (const truthy of [1, "true"]) {
+        // Otherwise-valid section: consumers (CNBGrid/CNBPitchAxis, === true)
+        // treat it as inactive → linear preview; the exporter must agree and
+        // export the normal linear output, NOT throw the §8a gate.
+        const config = pitchAxisEnabledConfig();
+        config.pitchAxis.enabled = truthy;
+        const ly = CNBLilypond.generate(config);   // must not throw the gate
+        eq(ly, defaultLy, `enabled: ${JSON.stringify(truthy)} exports the normal linear output`);
+      }
+      // With a MALFORMED section, normal validation blocking applies (Module
+      // A's checks gate on truthy enabled per design §1.4): the throw is the
+      // validation error list, not the §8a gate message.
+      const malformed = CNBConfig.createDefault();
+      malformed.pitchAxis = { enabled: 1 };   // truthy, no kind/map/stride
+      let threw = null;
+      try { CNBLilypond.generate(malformed); } catch (err) { threw = err; }
+      assert(threw !== null, "malformed truthy-enabled section is blocked by validation");
+      assert(threw.message !== PITCH_AXIS_GATE_MESSAGE, "not the §8a gate message");
+      contains(threw.message, "pitchAxis.kind", "the block is the normal validation error");
+    }},
+
 ];
 
 // ── Pitch-axis gate test helper (set 014) ────────────────────────────────────

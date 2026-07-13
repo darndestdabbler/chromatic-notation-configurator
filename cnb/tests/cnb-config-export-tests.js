@@ -494,6 +494,12 @@ export const tests = [
       const lifted = CNBConfigExport.validateForExport(config);
       assert(!lifted.errors.some(e => e.includes("§8a")), "no gate error when disabled");
       assert(CNBConfigExport.buildExport(config).ok === true, "export proceeds when disabled");
+      // Strict boolean parity with generate(): a non-boolean truthy enabled
+      // does not trip the gate here either (design §1.3 consumer gate).
+      config.pitchAxis.enabled = 1;
+      const truthy = CNBConfigExport.validateForExport(config);
+      assert(!truthy.errors.some(e => e.includes("§8a")), "no gate error for enabled: 1");
+      assert(CNBConfigExport.buildExport(config).ok === true, "export proceeds for enabled: 1 (normal linear output)");
     },
   },
 ];
