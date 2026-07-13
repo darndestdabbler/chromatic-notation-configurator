@@ -22,3 +22,19 @@
   - **Fix** → Change both to a strict check, e.g. `config?.pitchAxis?.enabled === true` (or equivalent consistent with existing caller-bug policy), and add a regression test proving non-boolean truthy values such as `{ enabled: 1 }` or `{ enabled: "true" }` do **not** trip the §8a gate and instead follow normal validation/export blocking rules.
 
 The inverse-candidate-contract remediation appears sound, but this gate-condition mismatch means the claimed **VERIFIED** verdict is not correct.
+
+
+## Round 3 (2026-07-12) — strict-boolean gate remediation review
+
+**VERIFIED**
+
+- The round-2 issue is remediated at both relevant gate sites:
+  - `cnb/src/cnb-lilypond.js`
+  - `cnb/ui/config-export.js`
+  - Both now use `config.pitchAxis?.enabled === true`, which matches the required strict-boolean consumer gate.
+
+- The added regression coverage is aligned with the issue:
+  - valid non-boolean truthy values (`1`, `"true"`) do **not** trigger the §8a gate
+  - malformed truthy values are still blocked by normal validation rather than the gate
+
+- No new errors, omissions, or incorrect reasoning are evident in this remediation within the stated round-3 scope.
