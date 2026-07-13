@@ -120,6 +120,7 @@ The system is being rebuilt from a 3,057-line monolithic HTML file into a modula
 | **21** | Clef Editor | UI | Enable toggle, clef glyph import/selection, anchor-semitone and gutter controls *(added set 009)* |
 | **22** | Key Signature Renderer | Rendering | Renders the selected key's signature marks on the semitone grid in a staff-start gutter, after the clef *(added set 010)* |
 | **23** | Key Signature Editor | UI | keys master gate, key definitions (name/pitch classes/tonic), signature enable, mark style, placement, separator/gutter controls *(added set 010)* |
+| **24** | Pitch Axis | Foundation | `CNBPitchAxis` — the axis gatekeeper: sole owner of the pitch→grid-position mapping (many-to-one pitch-class map, I2 relaxation); linear degeneracy when disabled *(added set 014)* |
 
 ---
 
@@ -134,6 +135,7 @@ The config is a single JSON object that defines a notation system. It does NOT c
   version: "1.0",
   shapes: { ... },           // Notehead geometries
   staff: { ... },            // Staff line configuration
+  pitchAxis: { ... },        // OPTIONAL pitch→axis-position map (set 014 — see §4.13)
   ledgers: { ... },          // Ledger line configuration
   noteheadRules: [ ... ],    // Rules for shape, hollow, color assignment
   palette: { ... },          // Color palette
@@ -741,6 +743,97 @@ clef: {
   See `docs/session-sets/009-custom-clefs/s1-engine-coordination.md` for
   the engine-repo follow-on work; the LY export spec is unchanged (its
   "only if emission was added" condition is not met).
+
+### 4.13 Pitch Axis (added set 014)
+
+> **Addendum (set 014, July 2026).** Added by session-set
+> `014-pitch-axis-implementation`, implementing the operator-approved
+> design [`docs/planning/pitch-axis-design.md`](planning/pitch-axis-design.md)
+> (the I2 relaxation from the set-013 engine discovery — feasibility-matrix
+> records 32–40, the Twinline family). The design doc is the authoritative
+> specification for this section; this addendum summarizes it. In the
+> config OBJECT the section sits between `staff` and `ledgers` (see §4.1);
+> it is numbered 4.13 here to keep the existing section anchors stable.
+
+```javascript
+pitchAxis: {
+  // Master gate. false (or the whole section absent) = today's linear
+  // behavior, byte-identical (design §1.3).
+  enabled: true,
+
+  // Version tag for the map model. Single-value vocabulary, the extension
+  // point for future axis kinds; validation rejects unknown values and
+  // consumers treat an unknown kind as inactive (the set-010 style/rule
+  // vocabulary pattern).
+  kind: "pitch-class-map-v1",
+
+  // Axis positions advance by this much per octave. 12 pitch classes on 7
+  // positions (Twinline-like) → 7. Linear behavior would be 12.
+  octaveStride: 7,
+
+  // The unit contract (design §1.2): how many axis units make one LilyPond
+  // staff space. When enabled, this REPLACES staff.semitonesPerStaffSpace
+  // in every semitone→staff-space unit conversion, and positionOfSemi
+  // replaces identity in every semitone→grid-position read. Lengths
+  // expressed in semitone units are unchanged.
+  axisUnitsPerStaffSpace: 2,
+
+  // The explicit pitch-class → position map. Exactly one entry per pc
+  // 0–11. position is a finite number in axis units within the octave;
+  // fractional values are allowed (non-uniform 1:1 axes use them).
+  // positionOfSemi(s) = pitchClasses[pc(s)].position + octave(s) × octaveStride
+  // (fractional semitone input interpolates linearly between the two
+  // adjacent integer semitones' positions).
+  pitchClasses: [
+    { pc: 0,  position: 0 }, { pc: 1,  position: 0 },
+    { pc: 2,  position: 1 },
+    { pc: 3,  position: 2 }, { pc: 4,  position: 2 },
+    { pc: 5,  position: 3 }, { pc: 6,  position: 3 },
+    { pc: 7,  position: 4 },
+    { pc: 8,  position: 5 }, { pc: 9,  position: 5 },
+    { pc: 10, position: 6 }, { pc: 11, position: 6 }
+  ]
+}
+```
+
+**Design notes:**
+- **Semitones remain pitch identity everywhere; axis positions are
+  geometry only.** `CNBPitchAxis` (Module 24, `cnb-pitch-axis.js`) is the
+  sole owner of the mapping; consumers reach it through the grid context
+  (`gridContext.axis`).
+- **Default-off byte-identity by construction (design §1.3, deviation
+  D3):** disabled/absent `pitchAxis` runs the LITERAL pre-existing code
+  paths (the current `semiToY` body, the current exporter functions), not
+  an equivalent re-derivation. **`createDefault()` does not gain a
+  `pitchAxis` section** — a named deviation from the sets-009/010
+  default-off-stub pattern, because an absent section is already a fully
+  defined state and byte-identity is the governing constraint. Module A's
+  `merge` needs no change (`pitchClasses` is an array — replaced
+  wholesale) and config-IO needs no `REPLACE_PATHS` entry (fixed-shape
+  section).
+- **Validation (design §1.4):** blocking errors PA-1…PA-8 (kind
+  vocabulary; exact 12-pc map; positive finite stride/units; no
+  conflicting overrides on collapsing ledger/staff lines; finite
+  `xOffsetStaffSpaces`; globally non-decreasing map — non-monotonic maps
+  are REJECTED in `pitch-class-map-v1`) and warnings PA-W1/W3/W4
+  (positions outside `[0, octaveStride)`; indistinguishable
+  shared-position pairs; `xOffsetStaffSpaces` on a linear config). All
+  checks except PA-W4 are gated on `pitchAxis.enabled` — configs
+  predating the feature validate exactly as before.
+- **Disambiguation field:** notehead rules' `apply` blocks gain optional
+  `xOffsetStaffSpaces` (staff-space units; negative = left; missing/0 =
+  centered), resolved through the normal cumulative-rule pipeline
+  (`resolveNotehead` default 0). Its whole lifecycle is axis-gated
+  (design §3.2, deviation D2): preview applies it only in axis mode and
+  export emits it only when enabled ∧ nonzero.
+- **Export surface:** per the canonical
+  [`CNB-LY-EXPORT-SPEC-v1_3.md`](CNB-LY-EXPORT-SPEC-v1_3.md) (adopted by
+  set 014 session 1): compiled `cnb:get-pitch-staff-position` procedure,
+  axis-formula staff-line positions with collapse dedup,
+  `axisUnitsPerStaffSpace` substitutions, Section C `(x-offset . N)`.
+  **Fail-loud gate:** until the engine ships E13-1/E13-2, `generate()`
+  throws on `pitchAxis.enabled` (spec §8a) — no silent linear `.ly` for a
+  compact config.
 
 ---
 
@@ -1373,6 +1466,38 @@ Module 22 (tonic-resolution chain for the hint).
 
 ---
 
+### Module 24: Pitch Axis (added set 014)
+
+**Module 24 — Pitch Axis** (`cnb-pitch-axis.js`, Foundation): the axis
+gatekeeper for the `pitchAxis` config section (§4.13) — the **sole owner**
+of pitch→grid-position mapping (design
+[`docs/planning/pitch-axis-design.md`](planning/pitch-axis-design.md)
+§2.1). API: `create(config) → axis` with `axis.enabled`,
+`axis.octaveStride`, `axis.unitsPerStaffSpace`, `axis.positionOfSemi(semi)`
+(integer semantics per §4.13; fractional input interpolates linearly),
+`axis.regionOfSemi(semi)` (`Math.floor(positionOfSemi(semi) /
+octaveStride)` — the axis analogue of `CNBMusic.ledgerOctaveRegion`),
+`axis.distance(aSemi, bSemi)`, and the many-to-one inverses
+`axis.semisAtPosition(position, {minSemi, maxSemi})` /
+`axis.nearestSemisForY(y, gridContext)`, which return CANDIDATE arrays,
+never a fake scalar. Linear degeneracy when the section is
+absent/disabled/inactive: identity map, stride 12, `unitsPerStaffSpace =
+staff.semitonesPerStaffSpace` — `positionOfSemi(s) === s` exactly.
+
+**Grid integration (Module 1, set 014):** axis-enabled grid contexts use
+the axis formula (`semiToY(semi) = (maxAxisPos − positionOfSemi(semi)) ×
+pxPerAxisUnit` with `pxPerAxisUnit = display.pxPerSemi`), expose
+`yToAxis(y)` and `axis`, and provide **no scalar `yToSemi`** (callers must
+choose from candidate inverses — a fake single semitone would hide the
+many-to-one fact). Disabled contexts keep the LITERAL pre-set-014 body and
+construct no axis at all (design deviation D3; pinned byte-for-byte
+against a pre-change baseline fixture). The debug overlay in axis contexts
+draws one line per declared axis position labeled with all semitones
+mapping there. Dependencies: Module A, Module B. Unit tests:
+`cnb-pitch-axis-tests.js`.
+
+---
+
 ## 6. Build Order
 
 ### Phase 1: Foundation (Sessions 8–9)
@@ -1475,6 +1600,7 @@ cnb/
 │   ├── cnb-collection.js       Module 10
 │   ├── cnb-clef.js             Module 20 (set 009)
 │   ├── cnb-key-signature.js    Module 22 (set 010)
+│   ├── cnb-pitch-axis.js       Module 24 (set 014)
 │   └── cnb-lilypond.js         Module 11
 │
 ├── tests/
@@ -1491,6 +1617,7 @@ cnb/
 │   ├── cnb-clef-editor-tests.js (set 009)
 │   ├── cnb-key-signature-tests.js (set 010)
 │   ├── cnb-key-signature-editor-tests.js (set 010)
+│   ├── cnb-pitch-axis-tests.js (set 014)
 │   └── cnb-lilypond-tests.js
 │
 ├── test-pages/
