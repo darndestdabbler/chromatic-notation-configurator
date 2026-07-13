@@ -608,6 +608,251 @@ export const tests = [
     assert(!r2.errors.some(e => /keySignature/.test(e)), "non-object keySignature treated as absent");
   }},
 
+  // ── Pitch axis (set 014): schema posture ──────────────────────────────────
+
+  { name: "pitchAxis: createDefault() gains NO pitchAxis section (design §1.3 — absent is the default state)", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    assert(!("pitchAxis" in cfg), "no pitchAxis key in the default config");
+  }},
+
+  { name: "pitchAxis: validate — a disabled or absent section adds zero checks (output identical to the default config's)", fn: () => {
+    const base = CNBConfig.validate(CNBConfig.createDefault());
+    const withDisabled = CNBConfig.validate(pitchAxisConfig({ enabled: false }));
+    deepEq(withDisabled, base, "disabled section validates exactly as before");
+    const withAbsent = CNBConfig.validate(CNBConfig.createDefault());
+    deepEq(withAbsent, base, "absent section validates exactly as before");
+  }},
+
+  { name: "pitchAxis: validate — malformed sections report errors, never throw (type-safe posture)", fn: () => {
+    const notObject = CNBConfig.createDefault();
+    notObject.pitchAxis = "compact";
+    const r1 = CNBConfig.validate(notObject);
+    assert(!r1.errors.some(e => /pitchAxis/.test(e)), "non-object section treated as absent");
+    const bare = CNBConfig.createDefault();
+    bare.pitchAxis = { enabled: true };
+    const r2 = CNBConfig.validate(bare);
+    assert(r2.errors.some(e => e.includes("pitchAxis.kind")), "missing kind reported");
+    assert(r2.errors.some(e => e.includes("pitchAxis.octaveStride")), "missing stride reported");
+    assert(r2.errors.some(e => e.includes("pitchAxis.axisUnitsPerStaffSpace")), "missing units reported");
+    assert(r2.errors.some(e => e.includes("pitchAxis.pitchClasses")), "missing map reported");
+  }},
+
+  { name: "pitchAxis: validate — the design §1.1 Twinline config passes with no pitch-axis errors or warnings", fn: () => {
+    const r = CNBConfig.validate(pitchAxisConfig());
+    assert(!r.errors.some(e => /pitchAxis|axis position|xOffsetStaffSpaces/.test(e)), "no axis errors: " + r.errors.join(" | "));
+    assert(!r.warnings.some(w => /pitchAxis|axis position|xOffsetStaffSpaces/.test(w)), "no axis warnings: " + r.warnings.join(" | "));
+  }},
+
+  // ── Pitch axis: blocking rules PA-1…PA-8 ──────────────────────────────────
+
+  { name: "pitchAxis PA-1: unknown kind is a blocking error", fn: () => {
+    const r = CNBConfig.validate(pitchAxisConfig({ kind: "pitch-class-map-v2" }));
+    assert(r.errors.some(e => e.includes('pitchAxis.kind must be "pitch-class-map-v1"')), "kind error");
+  }},
+
+  { name: "pitchAxis PA-2: the map must cover pc 0–11 exactly once with finite positions", fn: () => {
+    const eleven = CNBConfig.validate(pitchAxisConfig({ pitchClasses: twinlineMap().slice(0, 11) }));
+    assert(eleven.errors.some(e => e.includes("exactly 12 entries")), "11 entries rejected");
+
+    const dup = twinlineMap();
+    dup[11] = { pc: 0, position: 6 };
+    const rDup = CNBConfig.validate(pitchAxisConfig({ pitchClasses: dup }));
+    assert(rDup.errors.some(e => e.includes("more than one entry for pc 0")), "duplicate pc rejected");
+
+    const badPc = twinlineMap();
+    badPc[5] = { pc: 12, position: 3 };
+    const rBadPc = CNBConfig.validate(pitchAxisConfig({ pitchClasses: badPc }));
+    assert(rBadPc.errors.some(e => e.includes(".pc must be an integer 0–11")), "pc out of range rejected");
+
+    const badPos = twinlineMap();
+    badPos[5] = { pc: 5, position: "3" };
+    const rBadPos = CNBConfig.validate(pitchAxisConfig({ pitchClasses: badPos }));
+    assert(rBadPos.errors.some(e => e.includes("position must be a finite number")), "non-numeric position rejected");
+
+    const nanPos = twinlineMap();
+    nanPos[5] = { pc: 5, position: NaN };
+    const rNan = CNBConfig.validate(pitchAxisConfig({ pitchClasses: nanPos }));
+    assert(rNan.errors.some(e => e.includes("position must be a finite number")), "NaN position rejected");
+
+    const notObj = twinlineMap();
+    notObj[5] = 3;
+    const rNotObj = CNBConfig.validate(pitchAxisConfig({ pitchClasses: notObj }));
+    assert(rNotObj.errors.some(e => e.includes("must be an object")), "non-object entry rejected");
+  }},
+
+  { name: "pitchAxis PA-3/PA-4: octaveStride and axisUnitsPerStaffSpace must be finite and > 0", fn: () => {
+    for (const bad of [0, -7, NaN, Infinity, "7", null]) {
+      const r = CNBConfig.validate(pitchAxisConfig({ octaveStride: bad }));
+      assert(r.errors.some(e => e.includes("pitchAxis.octaveStride must be a finite number > 0")),
+        "stride error for " + String(bad));
+    }
+    for (const bad of [0, -2, NaN, "2"]) {
+      const r = CNBConfig.validate(pitchAxisConfig({ axisUnitsPerStaffSpace: bad }));
+      assert(r.errors.some(e => e.includes("pitchAxis.axisUnitsPerStaffSpace must be a finite number > 0")),
+        "units error for " + String(bad));
+    }
+  }},
+
+  { name: "pitchAxis PA-8: non-monotonic maps are blocking errors (in-octave and cross-octave)", fn: () => {
+    const decreasing = CNBConfig.validate(pitchAxisConfig({
+      pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 5].map((position, pc) => ({ pc, position })),
+    }));
+    assert(decreasing.errors.some(e => e.includes("not globally non-decreasing")), "in-octave violation rejected");
+
+    const crossOctave = CNBConfig.validate(pitchAxisConfig({
+      pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7.5].map((position, pc) => ({ pc, position })),
+    }));
+    assert(crossOctave.errors.some(e => e.includes("across the octave boundary")), "cross-octave violation rejected");
+
+    // The boundary case positions[11] === positions[0] + stride is LEGAL
+    const boundary = CNBConfig.validate(pitchAxisConfig({
+      pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7].map((position, pc) => ({ pc, position })),
+    }));
+    assert(!boundary.errors.some(e => e.includes("monotonic") || e.includes("non-decreasing")), "boundary equality legal");
+  }},
+
+  { name: "pitchAxis PA-6: staff pattern entries collapsing onto one axis position must not carry conflicting lineOverrides", fn: () => {
+    // Semis 3 and 4 share Twinline position 2
+    const conflicting = pitchAxisConfig();
+    conflicting.staff.semitonePattern = [3, 4, 8];
+    conflicting.staff.lineOverrides = { "3": { color: "#FF0000" }, "4": { color: "#0000FF" } };
+    const r1 = CNBConfig.validate(conflicting);
+    assert(r1.errors.some(e => e.includes("Staff pattern entries 3 and 4 collapse")), "conflict rejected");
+
+    const identical = pitchAxisConfig();
+    identical.staff.semitonePattern = [3, 4, 8];
+    identical.staff.lineOverrides = { "3": { color: "#FF0000" }, "4": { color: "#FF0000" } };
+    assert(!CNBConfig.validate(identical).errors.some(e => e.includes("collapse")), "identical overrides fine");
+
+    const absent = pitchAxisConfig();
+    absent.staff.semitonePattern = [3, 4, 8];
+    assert(!CNBConfig.validate(absent).errors.some(e => e.includes("collapse")), "absent overrides fine");
+  }},
+
+  { name: "pitchAxis PA-5: ledger templates collapsing onto one axis position must not carry conflicting lineOverrides", fn: () => {
+    // Template semis 0 and 1 share Twinline position 0
+    const conflicting = pitchAxisConfig();
+    conflicting.ledgers.templates = [
+      { semiWithinOctave: 0, triggerPCs: [0], triggerMode: "override" },
+      { semiWithinOctave: 1, triggerPCs: [1], triggerMode: "override" },
+    ];
+    conflicting.ledgers.lineOverrides = { "0": { thicknessPct: 40 }, "1": { thicknessPct: 60 } };
+    const r1 = CNBConfig.validate(conflicting);
+    assert(r1.errors.some(e => e.includes("Ledger templates at semiWithinOctave 0 and 1 collapse")), "conflict rejected");
+
+    const compatible = pitchAxisConfig();
+    compatible.ledgers.templates = conflicting.ledgers.templates;
+    compatible.ledgers.lineOverrides = { "0": { thicknessPct: 60 }, "1": { thicknessPct: 60 } };
+    assert(!CNBConfig.validate(compatible).errors.some(e => e.includes("collapse")), "identical overrides fine");
+
+    const disjoint = pitchAxisConfig();
+    disjoint.ledgers.templates = conflicting.ledgers.templates;
+    disjoint.ledgers.lineOverrides = { "0": { thicknessPct: 60 }, "1": { color: "#333333" } };
+    assert(!CNBConfig.validate(disjoint).errors.some(e => e.includes("collapse")), "disjoint properties fine");
+  }},
+
+  { name: "pitchAxis PA-7: apply.xOffsetStaffSpaces must be a finite number when present (enabled configs)", fn: () => {
+    for (const bad of ["0.85", NaN, Infinity, null, true]) {
+      const cfg = pitchAxisConfig();
+      cfg.noteheadRules.push({
+        name: "offset", priority: 5,
+        match: { pitchClasses: [1], durations: "all", keys: "all" },
+        apply: { xOffsetStaffSpaces: bad },
+      });
+      const r = CNBConfig.validate(cfg);
+      assert(r.errors.some(e => e.includes('"offset" apply.xOffsetStaffSpaces must be a finite number')),
+        "rejected for " + String(bad));
+    }
+    const ok = pitchAxisConfig();
+    ok.noteheadRules.push({
+      name: "offset", priority: 5,
+      match: { pitchClasses: [1], durations: "all", keys: "all" },
+      apply: { xOffsetStaffSpaces: 0.85 },
+    });
+    assert(!CNBConfig.validate(ok).errors.some(e => e.includes("xOffsetStaffSpaces")), "finite value accepted");
+  }},
+
+  // ── Pitch axis: warnings PA-W1/W3/W4 ──────────────────────────────────────
+
+  { name: "pitchAxis PA-W1: positions outside [0, octaveStride) warn (shifted map, still PA-8-legal)", fn: () => {
+    // Uniformly shifted map: positions 7..13 with stride 7 — every position
+    // outside [0,7); positions[11]=13 ≤ positions[0]+7=14, so PA-8 holds.
+    const shifted = CNBConfig.validate(pitchAxisConfig({
+      pitchClasses: [7, 7, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13].map((position, pc) => ({ pc, position })),
+    }));
+    assert(!shifted.errors.some(e => /pitchAxis/.test(e)), "shifted map has no errors");
+    assert(shifted.warnings.some(w => w.includes("outside [0, octaveStride)")), "W1 warning fires");
+    const inRange = CNBConfig.validate(pitchAxisConfig());
+    assert(!inRange.warnings.some(w => w.includes("outside [0, octaveStride)")), "no W1 for the design map");
+  }},
+
+  { name: "pitchAxis PA-W3: indistinguishable shared-position pairs warn; the default sharps-hollow rule disambiguates", fn: () => {
+    // Default config rules make sharps hollow → every Twinline shared pair
+    // (C,C♯) (D♯,E) (F,F♯) (G♯,A) (A♯,B) differs in hollowness → no warning.
+    const distinguishable = CNBConfig.validate(pitchAxisConfig());
+    assert(!distinguishable.warnings.some(w => w.includes("indistinguishable")), "sharps-hollow disambiguates");
+
+    // Drop the sharps rule → shared pairs identical → warning per pair.
+    const cfg = pitchAxisConfig();
+    cfg.noteheadRules = [cfg.noteheadRules[0]];
+    const r = CNBConfig.validate(cfg);
+    assert(r.warnings.some(w => w.includes("pitch classes 0 and 1") && w.includes("indistinguishable")), "pair (0,1) flagged");
+    assert(r.warnings.some(w => w.includes("pitch classes 3 and 4")), "pair (3,4) flagged");
+
+    // An xOffsetStaffSpaces on one member disambiguates again.
+    const offset = pitchAxisConfig();
+    offset.noteheadRules = [offset.noteheadRules[0], {
+      name: "sharps sit right", priority: 1,
+      match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+      apply: { xOffsetStaffSpaces: 0.85 },
+    }];
+    const r2 = CNBConfig.validate(offset);
+    assert(!r2.warnings.some(w => w.includes("indistinguishable")), "offset disambiguates");
+  }},
+
+  { name: "pitchAxis PA-W4: xOffsetStaffSpaces in rules warns when pitchAxis is disabled or absent (axis-gated lifecycle)", fn: () => {
+    const absent = CNBConfig.createDefault();
+    absent.noteheadRules.push({
+      name: "stray offset", priority: 5,
+      match: { pitchClasses: [1], durations: "all", keys: "all" },
+      apply: { xOffsetStaffSpaces: 0.85 },
+    });
+    const r1 = CNBConfig.validate(absent);
+    assert(r1.warnings.some(w => w.includes('"stray offset"') && w.includes("axis-gated")), "warns on absent section");
+
+    const disabled = pitchAxisConfig({ enabled: false });
+    disabled.noteheadRules.push(absent.noteheadRules[absent.noteheadRules.length - 1]);
+    const r2 = CNBConfig.validate(disabled);
+    assert(r2.warnings.some(w => w.includes("axis-gated")), "warns on disabled section");
+
+    const enabled = pitchAxisConfig();
+    enabled.noteheadRules.push(absent.noteheadRules[absent.noteheadRules.length - 1]);
+    const r3 = CNBConfig.validate(enabled);
+    assert(!r3.warnings.some(w => w.includes("axis-gated")), "no W4 when enabled");
+  }},
+
+  // ── Pitch axis: resolveNotehead xOffsetStaffSpaces ────────────────────────
+
+  { name: "resolveNotehead: xOffsetStaffSpaces defaults to 0", fn: () => {
+    const r = CNBConfig.resolveNotehead(CNBConfig.createDefault(), 0, "crotchet", null);
+    eq(r.xOffsetStaffSpaces, 0, "built-in default");
+  }},
+
+  { name: "resolveNotehead: xOffsetStaffSpaces merges in priority order like every other apply field", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.noteheadRules.push(
+      { name: "sharps right", priority: 5, match: { pitchClasses: [1, 6], durations: "all", keys: "all" }, apply: { xOffsetStaffSpaces: 0.85 } },
+      { name: "F♯ further", priority: 6, match: { pitchClasses: [6], durations: "all", keys: "all" }, apply: { xOffsetStaffSpaces: -0.5 } },
+    );
+    eq(CNBConfig.resolveNotehead(cfg, 1, "crotchet", null).xOffsetStaffSpaces, 0.85, "rule value");
+    eq(CNBConfig.resolveNotehead(cfg, 6, "crotchet", null).xOffsetStaffSpaces, -0.5, "higher priority wins");
+    eq(CNBConfig.resolveNotehead(cfg, 0, "crotchet", null).xOffsetStaffSpaces, 0, "unmatched pc keeps default");
+    // Partial apply inheritance: the offset rule sets nothing else
+    const r = CNBConfig.resolveNotehead(cfg, 1, "crotchet", null);
+    eq(r.hollow, true, "hollow inherited from the sharps rule");
+    eq(r.shape, "crotchet-minim", "shape inherited from the default rule");
+  }},
+
 ];
 
 // ── Clef test helpers (set 009) ───────────────────────────────────────────────
@@ -646,5 +891,26 @@ function keysigConfig() {
   config.keys.enabled = true;
   config.keys.definitions = [{ name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
   config.keys.keySignature.enabled = true;
+  return config;
+}
+
+// ── Pitch-axis test helpers (set 014) ────────────────────────────────────────
+
+/** The design §1.1 Twinline-like map: five shared-position pairs. */
+function twinlineMap() {
+  return [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position }));
+}
+
+/** Default config with an enabled Twinline-like pitch axis (design §1.1). */
+function pitchAxisConfig(overrides = {}) {
+  const config = CNBConfig.createDefault();
+  config.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: twinlineMap(),
+    ...overrides,
+  };
   return config;
 }

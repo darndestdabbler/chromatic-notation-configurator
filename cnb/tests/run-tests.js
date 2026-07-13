@@ -23,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEST_FILES = [
   "./cnb-music-tests.js",
   "./cnb-config-tests.js",
+  "./cnb-pitch-axis-tests.js",
   "./cnb-grid-tests.js",
   "./cnb-staff-tests.js",
   "./cnb-notehead-tests.js",

@@ -547,6 +547,203 @@ export const CNBConfig = {
       }
     }
 
+    // 10. Pitch-axis checks (set 014) — design §1.4, rules PA-1…PA-8 and
+    //     PA-W1/W3/W4 (docs/planning/pitch-axis-design.md). All checks are
+    //     gated on pitchAxis.enabled being truthy — except PA-W4, which by
+    //     definition fires on a disabled/absent section — so configs
+    //     predating the feature validate exactly as before. Same type-safe
+    //     posture as checks 8–9: malformed sections report errors, never
+    //     throw.
+    const pitchAxis = isPlainObject(config.pitchAxis) ? config.pitchAxis : {};
+    if (pitchAxis.enabled) {
+      // PA-1: kind vocabulary (single value; extends when new kinds are implemented)
+      if (pitchAxis.kind !== "pitch-class-map-v1") {
+        errors.push(`pitchAxis.kind must be "pitch-class-map-v1" (got ${JSON.stringify(pitchAxis.kind)}; the vocabulary extends when new axis kinds are implemented)`);
+      }
+
+      // PA-3: octaveStride finite > 0
+      const strideOk = typeof pitchAxis.octaveStride === "number" &&
+                       Number.isFinite(pitchAxis.octaveStride) && pitchAxis.octaveStride > 0;
+      if (!strideOk) {
+        errors.push(`pitchAxis.octaveStride must be a finite number > 0 (got ${JSON.stringify(pitchAxis.octaveStride)})`);
+      }
+
+      // PA-4: axisUnitsPerStaffSpace finite > 0
+      const unitsOk = typeof pitchAxis.axisUnitsPerStaffSpace === "number" &&
+                      Number.isFinite(pitchAxis.axisUnitsPerStaffSpace) && pitchAxis.axisUnitsPerStaffSpace > 0;
+      if (!unitsOk) {
+        errors.push(`pitchAxis.axisUnitsPerStaffSpace must be a finite number > 0 (got ${JSON.stringify(pitchAxis.axisUnitsPerStaffSpace)})`);
+      }
+
+      // PA-2: exactly one entry per pitch class 0–11, finite numeric positions.
+      // `positions` (by pc) is non-null only when the map is structurally
+      // sound — the map-dependent checks below (PA-5/6/8, W1/W3) need it.
+      let positions = null;
+      const pcEntries = pitchAxis.pitchClasses;
+      if (!Array.isArray(pcEntries) || pcEntries.length !== 12) {
+        errors.push(`pitchAxis.pitchClasses must be an array of exactly 12 entries, one per pitch class 0–11 (got ${Array.isArray(pcEntries) ? pcEntries.length + " entries" : JSON.stringify(pcEntries)})`);
+      } else {
+        const seen = new Array(12).fill(undefined);
+        let entriesOk = true;
+        pcEntries.forEach((entry, i) => {
+          if (!isPlainObject(entry)) {
+            errors.push(`pitchAxis.pitchClasses[${i}] must be an object with integer pc and finite numeric position`);
+            entriesOk = false;
+            return;
+          }
+          if (!Number.isInteger(entry.pc) || entry.pc < 0 || entry.pc > 11) {
+            errors.push(`pitchAxis.pitchClasses[${i}].pc must be an integer 0–11 (got ${JSON.stringify(entry.pc)})`);
+            entriesOk = false;
+            return;
+          }
+          if (seen[entry.pc] !== undefined) {
+            errors.push(`pitchAxis.pitchClasses has more than one entry for pc ${entry.pc}`);
+            entriesOk = false;
+            return;
+          }
+          if (typeof entry.position !== "number" || !Number.isFinite(entry.position)) {
+            errors.push(`pitchAxis.pitchClasses[${i}] (pc ${entry.pc}) position must be a finite number (got ${JSON.stringify(entry.position)})`);
+            entriesOk = false;
+            return;
+          }
+          seen[entry.pc] = entry.position;
+        });
+        if (entriesOk) positions = seen;
+      }
+
+      // PA-8: the map must be globally non-decreasing — positions
+      // non-decreasing in pc order AND positions[11] ≤ positions[0] +
+      // octaveStride, so monotonicity holds across octave boundaries too.
+      // Non-monotonic maps are REJECTED in "pitch-class-map-v1" (promoted
+      // from warning to blocking error in set-013 s2 verification round 1):
+      // the grid's extent math and label layout assume monotonicity.
+      if (positions) {
+        let nonDecreasing = true;
+        for (let pc = 1; pc < 12; pc++) {
+          if (positions[pc] < positions[pc - 1]) {
+            errors.push(`pitchAxis map is not globally non-decreasing: position of pc ${pc} (${positions[pc]}) is below position of pc ${pc - 1} (${positions[pc - 1]}) — non-monotonic maps are rejected in "pitch-class-map-v1"`);
+            nonDecreasing = false;
+            break;
+          }
+        }
+        if (nonDecreasing && strideOk && positions[11] > positions[0] + pitchAxis.octaveStride) {
+          errors.push(`pitchAxis map breaks monotonicity across the octave boundary: position of pc 11 (${positions[11]}) exceeds position of pc 0 (${positions[0]}) + octaveStride (${pitchAxis.octaveStride}) — non-monotonic maps are rejected in "pitch-class-map-v1"`);
+        }
+      }
+
+      // Shared helper for PA-5/PA-6: property names on which two override
+      // objects CONFLICT (same property, different values). Identical or
+      // absent overrides are fine — the collapsed pair draws one line.
+      const overrideConflicts = (ovA, ovB) => {
+        if (!isPlainObject(ovA) || !isPlainObject(ovB)) return [];
+        return Object.keys(ovA).filter(k =>
+          k in ovB && JSON.stringify(ovA[k]) !== JSON.stringify(ovB[k]));
+      };
+      const axisPosOf = (semi, stride) =>
+        positions[((semi % 12) + 12) % 12] + Math.floor(semi / 12) * stride;
+
+      if (positions && strideOk) {
+        // PA-6: staff pattern entries collapsing onto one axis position
+        // must not carry conflicting staff.lineOverrides entries.
+        const staffSection = isPlainObject(config.staff) ? config.staff : {};
+        const pattern = Array.isArray(staffSection.semitonePattern) ? staffSection.semitonePattern : [];
+        const staffOverrides = isPlainObject(staffSection.lineOverrides) ? staffSection.lineOverrides : {};
+        for (let i = 0; i < pattern.length; i++) {
+          for (let j = i + 1; j < pattern.length; j++) {
+            const a = pattern[i], b = pattern[j];
+            if (typeof a !== "number" || typeof b !== "number") continue;
+            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
+            const conflicts = overrideConflicts(staffOverrides[String(a)], staffOverrides[String(b)]);
+            if (conflicts.length > 0) {
+              errors.push(`Staff pattern entries ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
+            }
+          }
+        }
+
+        // PA-5: ledger templates collapsing onto one axis position must
+        // not carry conflicting ledgers.lineOverrides entries.
+        const ledgerSection = isPlainObject(config.ledgers) ? config.ledgers : {};
+        const templates = Array.isArray(ledgerSection.templates) ? ledgerSection.templates : [];
+        const ledgerOverrides = isPlainObject(ledgerSection.lineOverrides) ? ledgerSection.lineOverrides : {};
+        for (let i = 0; i < templates.length; i++) {
+          for (let j = i + 1; j < templates.length; j++) {
+            const ta = templates[i], tb = templates[j];
+            if (!isPlainObject(ta) || !isPlainObject(tb)) continue;
+            const a = ta.semiWithinOctave, b = tb.semiWithinOctave;
+            if (typeof a !== "number" || typeof b !== "number" || a === b) continue;
+            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
+            const conflicts = overrideConflicts(ledgerOverrides[String(a)], ledgerOverrides[String(b)]);
+            if (conflicts.length > 0) {
+              errors.push(`Ledger templates at semiWithinOctave ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
+            }
+          }
+        }
+      }
+
+      // PA-7: apply.xOffsetStaffSpaces must be a finite number when present
+      for (const rule of rules) {
+        if (!rule || !isPlainObject(rule.apply)) continue;
+        const v = rule.apply.xOffsetStaffSpaces;
+        if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" apply.xOffsetStaffSpaces must be a finite number (got ${JSON.stringify(v)})`);
+        }
+      }
+
+      // PA-W1: positions outside [0, octaveStride) — octave bands overlap
+      // or interleave (still legal when PA-8 holds).
+      if (positions && strideOk) {
+        const outside = [];
+        for (let pc = 0; pc < 12; pc++) {
+          if (positions[pc] < 0 || positions[pc] >= pitchAxis.octaveStride) outside.push(pc);
+        }
+        if (outside.length > 0) {
+          warnings.push(`pitchAxis positions for pc ${outside.join(", ")} lie outside [0, octaveStride) — octave bands overlap or interleave`);
+        }
+      }
+
+      // PA-W3: a shared-position pc pair whose resolved noteheads (at
+      // crotchet, key null) are indistinguishable — same shape, hollow,
+      // effective color, and equal xOffsetStaffSpaces — cannot be told
+      // apart in the notation.
+      if (positions) {
+        const byPosition = new Map();
+        for (let pc = 0; pc < 12; pc++) {
+          const key = String(positions[pc]);
+          if (!byPosition.has(key)) byPosition.set(key, []);
+          byPosition.get(key).push(pc);
+        }
+        for (const [posKey, pcs] of byPosition) {
+          if (pcs.length < 2) continue;
+          for (let i = 0; i < pcs.length; i++) {
+            for (let j = i + 1; j < pcs.length; j++) {
+              try {
+                const a = CNBConfig.resolveNotehead(config, pcs[i], "crotchet", null);
+                const b = CNBConfig.resolveNotehead(config, pcs[j], "crotchet", null);
+                const colorA = a.color ?? CNBConfig.resolveColor(config, pcs[i]);
+                const colorB = b.color ?? CNBConfig.resolveColor(config, pcs[j]);
+                if (a.shape === b.shape && a.hollow === b.hollow && colorA === colorB &&
+                    a.xOffsetStaffSpaces === b.xOffsetStaffSpaces) {
+                  warnings.push(`Shared axis position ${posKey}: pitch classes ${pcs[i]} and ${pcs[j]} resolve to indistinguishable noteheads (same shape, hollow, color, and xOffsetStaffSpaces) — the notation cannot disambiguate them`);
+                }
+              } catch (_) {
+                // Skip if resolution fails (covered by error 4)
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // PA-W4: xOffsetStaffSpaces present in rules while pitchAxis is
+      // disabled/absent — the field's whole lifecycle is axis-gated
+      // (design §3.2, deviation D2) and it will be ignored.
+      for (const rule of rules) {
+        if (!rule || !isPlainObject(rule.apply)) continue;
+        if (rule.apply.xOffsetStaffSpaces !== undefined) {
+          warnings.push(`Rule "${rule.name || "(unnamed)"}" sets apply.xOffsetStaffSpaces while pitchAxis is disabled or absent — the field is axis-gated and will be ignored`);
+        }
+      }
+    }
+
     // ── Warnings ─────────────────────────────────────────────────────────
 
     // W1. notationLabel is empty
@@ -635,11 +832,18 @@ export const CNBConfig = {
    * Resolve notehead properties for a given (pc, duration, key).
    * Walks noteheadRules in priority order (ascending), merging apply blocks.
    * Only fields explicitly present in rule.apply overwrite the current result.
+   *
+   * xOffsetStaffSpaces (set 014, design §3.1): horizontal disambiguation
+   * offset in STAFF-SPACE units (negative = left, 0 = centered). Default 0;
+   * merges in priority order like every other apply field. The field is
+   * meaningful only while pitchAxis is enabled (design §3.2) — nothing
+   * reads it on the linear path, and export emission is axis-gated.
+   *
    * @param {object} config
    * @param {number} pc       0–11
    * @param {string} duration e.g. "crotchet"
    * @param {string|null} key e.g. "C" or null
-   * @returns {{ shape: string, hollow: boolean, color: string|null, offKeyMark: boolean|string }}
+   * @returns {{ shape: string, hollow: boolean, color: string|null, offKeyMark: boolean|string, xOffsetStaffSpaces: number }}
    */
   resolveNotehead(config, pc, duration, key) {
     const first = firstShapeName(config);
@@ -650,6 +854,7 @@ export const CNBConfig = {
       hollow:      false,
       color:       null,
       offKeyMark:  false,
+      xOffsetStaffSpaces: 0,
     };
 
     const rules = (config.noteheadRules || []).slice().sort((a, b) => (a.priority || 0) - (b.priority || 0));
@@ -661,6 +866,7 @@ export const CNBConfig = {
         if (apply.hollow     !== undefined) result.hollow     = apply.hollow;
         if (apply.color      !== undefined) result.color      = apply.color;
         if (apply.offKeyMark !== undefined) result.offKeyMark = apply.offKeyMark;
+        if (apply.xOffsetStaffSpaces !== undefined) result.xOffsetStaffSpaces = apply.xOffsetStaffSpaces;
       }
     }
 
