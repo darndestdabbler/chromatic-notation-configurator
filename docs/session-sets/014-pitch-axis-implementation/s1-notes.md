@@ -218,6 +218,30 @@ byte-identical against the base-commit worktree post-remediation
 (`s1-evidence/kite-byte-identity-transcript-r2.txt`) — the gate touches
 only the enabled path, and no committed fixture enables the axis.
 
+## Verification round-2 remediation (2026-07-12)
+
+Round 2 (gpt-5-4) accepted the inverse-candidate fix and found one issue
+in the round-1 gate remediation: the gate condition was TRUTHY
+(`config.pitchAxis?.enabled`) where the design's consumer gate is the
+strict boolean (`=== true`, design §1.3: "Every consumer gates on
+`config.pitchAxis?.enabled === true`") — a non-boolean truthy value
+(`enabled: 1`) would over-block the exporter while CNBGrid/CNBPitchAxis
+treat the same section as inactive (linear preview), an export↔preview
+disagreement. Fixed: both gate sites now check `=== true`, matching the
+grid and the gatekeeper exactly. Regression tests per the verifier's
+instruction: `enabled: 1` and `enabled: "true"` with an otherwise-valid
+section export the normal linear output (byte-equal to the default
+export) without tripping the gate; a MALFORMED truthy-enabled section is
+blocked by the normal validation error list (Module A's checks gate on
+truthy enabled per design §1.4 — its message, not the §8a gate's);
+validateForExport parity asserted for `enabled: 1`.
+
+Post-remediation: full suite **758 passed, 0 failed** (757 + 1:
+cnb-lilypond-tests 59→60; the config-export parity test extended in
+place). Complete transcript: `s1-evidence/full-suite-transcript-r3.txt`.
+Kite export re-verified byte-identical
+(`s1-evidence/kite-byte-identity-transcript-r3.txt`).
+
 ## What session 2 needs
 
 Consumer rethread (P3) per design §2.3–§2.5, all gated through

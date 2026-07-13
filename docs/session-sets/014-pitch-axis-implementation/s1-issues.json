@@ -28,8 +28,26 @@
       ]
     }
   ],
+  "round2": {
+    "verifier": "gpt-5-4 (cross-provider, session-verification route)",
+    "verdict": "ISSUES_FOUND",
+    "issues": [
+      {
+        "id": "s1-r2-1",
+        "summary": "The §8a gate used a truthy check instead of the strict boolean enabled check the design's consumer gate prescribes; non-boolean truthy values would over-block instead of following normal validation/export rules.",
+        "resolution": "fixed",
+        "fix": "Both gate sites now check config.pitchAxis?.enabled === true (the design §1.3 consumer gate, matching CNBGrid and CNBPitchAxis exactly, so export and preview agree). Regression tests: enabled: 1 and enabled: \"true\" with an otherwise-valid section export the normal linear output without tripping the gate; a malformed truthy-enabled section is blocked by the NORMAL validation error list (Module A gates on truthy per design §1.4), not the §8a message; validateForExport parity for enabled: 1.",
+        "files": [
+          "cnb/src/cnb-lilypond.js",
+          "cnb/ui/config-export.js",
+          "cnb/tests/cnb-lilypond-tests.js",
+          "cnb/tests/cnb-config-export-tests.js"
+        ]
+      }
+    ]
+  },
   "postRemediation": {
-    "suite": "757 passed, 0 failed (752 + 5: lilypond 56->59, config-export 26->27, pitch-axis 18->19)",
-    "kiteExport": "byte-identical vs base 2cf7d647 worktree (s1-evidence/kite-byte-identity-transcript-r2.txt)"
+    "suite": "758 passed, 0 failed (757 + 1: lilypond 59->60; config-export test extended in place)",
+    "kiteExport": "byte-identical vs base 2cf7d647 worktree (s1-evidence/kite-byte-identity-transcript-r3.txt)"
   }
 }
