@@ -1,0 +1,35 @@
+{
+  "session": 1,
+  "round": 1,
+  "verifier": "gpt-5-4 (cross-provider, session-verification route)",
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": "s1-r1-1",
+      "summary": "Missing mandatory fail-loud export gate for enabled pitchAxis; enabled configs could export silently through the unchanged linear exporter, violating binding rule 3.",
+      "resolution": "fixed",
+      "fix": "CNBLilypond.generate() now throws PITCH_AXIS_GATE_MESSAGE (exported constant naming E13-1/E13-2, the cnb:get-pitch-staff-position hook, and spec v1.3 §8a) on config.pitchAxis?.enabled, before any other validation. CNBConfigExport.validateForExport() surfaces the identical text as a blocking error (parity contract). Tests: 3 in cnb-lilypond-tests.js, 1 parity test in cnb-config-export-tests.js. Session 3 still owns the §8 checks 8–12 additions and the gate's verified removal.",
+      "files": [
+        "cnb/src/cnb-lilypond.js",
+        "cnb/ui/config-export.js",
+        "cnb/tests/cnb-lilypond-tests.js",
+        "cnb/tests/cnb-config-export-tests.js"
+      ]
+    },
+    {
+      "id": "s1-r1-2",
+      "summary": "Inverse-candidate contract overstated as 0/1/2 entries; legal PA-W1 / PA-8-boundary-equality maps can produce 3+ candidates at one absolute axis position.",
+      "resolution": "fixed",
+      "fix": "semisAtPosition doc comment and the session notes now state candidate arrays of ANY length (0 none / 1 one-to-one / 2 shared / 3+ on touching or overlapping octave bands). Added a boundary-equality test (map [0,0,1,2,2,3,3,4,5,5,6,7], stride 7, positions[11] === positions[0] + stride): semisAtPosition(7) -> [11,12,13], nearestSemisForY returns the trio, range-end clipping [23,24].",
+      "files": [
+        "cnb/src/cnb-pitch-axis.js",
+        "cnb/tests/cnb-pitch-axis-tests.js",
+        "docs/session-sets/014-pitch-axis-implementation/s1-notes.md"
+      ]
+    }
+  ],
+  "postRemediation": {
+    "suite": "757 passed, 0 failed (752 + 5: lilypond 56->59, config-export 26->27, pitch-axis 18->19)",
+    "kiteExport": "byte-identical vs base 2cf7d647 worktree (s1-evidence/kite-byte-identity-transcript-r2.txt)"
+  }
+}

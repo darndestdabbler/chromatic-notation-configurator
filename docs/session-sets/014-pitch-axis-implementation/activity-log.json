@@ -28,6 +28,14 @@
       "dateTime": "2026-07-12T20:01:04.279533-04:00",
       "description": "CNBPitchAxis built per design 2.1 (positionOfSemi with fractional interpolation, regionOfSemi, distance, candidate inverses semisAtPosition/nearestSemisForY, exact linear degeneracy); grid axis path per design 2.2 (literal disabled branch, yToAxis, no scalar yToSemi, axis-aware debug overlay); Module A PA-1..PA-8 + PA-W1/W3/W4 validation and resolveNotehead xOffsetStaffSpaces. Tests 709 -> 752 (+16 config, +9 grid, +18 pitch-axis new), all byte-identity pins green: grid pre-change baseline fixture byte-identical, default export baseline, Kite export byte-identical vs base 2cf7d647 worktree.",
       "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:13:32.939428-04:00",
+      "description": "Verification round-1 remediation (supersedes step 2 counts): section-8a fail-loud gate implemented in CNBLilypond.generate (PITCH_AXIS_GATE_MESSAGE, throws on pitchAxis.enabled before any other validation) and mirrored as a blocking error in CNBConfigExport.validateForExport (parity contract); candidate-inverse contract corrected to arrays of any length with a boundary-equality 3-candidate test. Final suite: 757 passed 0 failed (752 + 5: lilypond 56->59, config-export 26->27, pitch-axis 18->19). Kite export re-verified byte-identical vs base 2cf7d647.",
+      "status": "complete"
     }
   ]
 }

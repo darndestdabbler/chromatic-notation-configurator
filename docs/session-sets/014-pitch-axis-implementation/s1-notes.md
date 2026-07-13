@@ -46,8 +46,13 @@ distance, semisAtPosition, nearestSemisForY }`.
   (degeneracy exact by construction, per the spec step's "linear
   degeneracy exact"), stride 12, `unitsPerStaffSpace =
   staff.semitonesPerStaffSpace`.
-- `semisAtPosition` and `nearestSemisForY` return CANDIDATE arrays (0, 1,
-  or 2 entries), never a fake scalar (consult §3 / design §2.1).
+- `semisAtPosition` and `nearestSemisForY` return CANDIDATE arrays of any
+  length, never a fake scalar (consult §3 / design §2.1). On the typical
+  Twinline-like map that is 0/1/2 entries, but legal maps whose octave
+  bands touch (the PA-8 boundary equality `positions[11] === positions[0]
+  + octaveStride`) or overlap (PA-W1) produce 3+ candidates — pinned by a
+  test *(wording corrected in verification round 1 remediation; the
+  original note capped the count at 2)*.
 
 ### Step 3 — Grid axis path (`cnb/src/cnb-grid.js`)
 
@@ -166,6 +171,52 @@ design's own stated postures.
 - The `start_session` run printed the recurring `router-config.yaml
   pricing last reviewed 41 days ago` advisory (threshold 30) — surfaced to
   the operator in the session summary; no pricing action taken here.
+
+## Verification round-1 remediation (2026-07-12)
+
+Round 1 (gpt-5-4, cross-provider) returned ISSUES_FOUND with two findings;
+both accepted and fixed:
+
+1. **§8a fail-loud gate implemented now, not in session 3.** The verifier
+   read binding rule 3 ("`generate()` throws on `pitchAxis.enabled` …
+   No silent linear `.ly` for a compact config, ever") as effective the
+   moment the schema exists — correct: between s1 and s3 an enabled
+   config could otherwise export silently through the linear exporter.
+   Fix: `CNBLilypond.generate()` now throws `PITCH_AXIS_GATE_MESSAGE`
+   (exported constant naming E13-1/E13-2, the hook, and §8a) on the
+   enabled flag alone, before any other validation;
+   `CNBConfigExport.validateForExport()` surfaces the IDENTICAL text as a
+   blocking error (the validateForExport ↔ generate() parity contract),
+   so the UI blocks with an explanation instead of crashing. Tests: 3 in
+   `cnb-lilypond-tests.js` (throws with the exact message on a VALID
+   compact config; fires on the enabled flag even for a malformed
+   section; disabled section exports byte-identically to the default) and
+   1 parity test in `cnb-config-export-tests.js` (validateForExport error
+   verbatim, generate() throw parity, `buildExport` blocked contract,
+   gate lifted on disable). Session 3 step 1 still owns the §8 checks
+   8–12 validation additions and the gate's verified REMOVAL. Scope note:
+   `cnb/src/cnb-lilypond.js`, `cnb/ui/config-export.js` and their test
+   files are outside session 1's Touches — changed at the verifier's
+   explicit direction ("Add the interim `generate()` throw now … and make
+   the export helpers surface/block it, with tests"), the round-1
+   remediation precedent of sets 007-s2/013-s2.
+2. **Candidate-count claim corrected to "arrays of any length".** The
+   0/1/2 wording (module doc + notes + submission) undercounted legal
+   maps: the PA-8 boundary equality (`positions[11] === positions[0] +
+   octaveStride`) puts pc 11 ON the next octave's shared pair → 3
+   candidates; PA-W1 overlapping bands can produce more. Fixed the
+   `semisAtPosition` doc comment and this file's API note, and added a
+   boundary-equality test (map `[0,0,1,2,2,3,3,4,5,5,6,7]`, stride 7:
+   `semisAtPosition(7) → [11,12,13]`, `nearestSemisForY` returns the
+   trio, range-end clipping `[23,24]`).
+
+Post-remediation: full suite **757 passed, 0 failed** — 752 + 5 exactly:
+cnb-lilypond-tests 56→59 (+3), cnb-config-export-tests 26→27 (+1),
+cnb-pitch-axis-tests 18→19 (+1). Complete transcript:
+`s1-evidence/full-suite-transcript-r2.txt`. Kite export re-verified
+byte-identical against the base-commit worktree post-remediation
+(`s1-evidence/kite-byte-identity-transcript-r2.txt`) — the gate touches
+only the enabled path, and no committed fixture enables the axis.
 
 ## What session 2 needs
 
