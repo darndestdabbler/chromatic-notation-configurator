@@ -56,7 +56,7 @@
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
-import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBLilypond, PITCH_AXIS_GATE_MESSAGE } from "../src/cnb-lilypond.js";
 
 const LY_EXTENSION = ".ly";
 
@@ -159,6 +159,16 @@ export const CNBConfigExport = {
     const base = CNBConfig.validate(config);
     const errors = base.errors.slice();
     const warnings = base.warnings.slice();
+
+    // Fail-loud interim gate mirrored from CNBLilypond.generate()
+    // (CNB-LY-EXPORT-SPEC v1.3 §8a / set-014 binding rule 3): a
+    // pitchAxis-enabled config must not export until the engine ships
+    // E13-1/E13-2 (set-014 session 3 verifies and removes the gate).
+    // Identical message text — the validateForExport ↔ generate() parity
+    // contract, pinned by the unit test "fail-loud gate parity".
+    if (config.pitchAxis?.enabled) {
+      errors.push(PITCH_AXIS_GATE_MESSAGE);
+    }
 
     // Exporter-side check mirrored from CNBLilypond.generate() (LY spec §8
     // check 1): surface the block here so the UI can explain it instead of

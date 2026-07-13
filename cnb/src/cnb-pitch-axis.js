@@ -139,7 +139,11 @@ export const CNBPitchAxis = {
      * The many-to-one inverse — returns CANDIDATES, never a fake scalar.
      * Every integer semitone in [minSemi, maxSemi] whose mapped position
      * equals `position` EXACTLY (the map's declared values; no float
-     * tolerance): 0 or 1 entries on a 1:1 axis, 2 on a shared position.
+     * tolerance). The array may have ANY length: 0 when nothing maps
+     * there, 1 on a 1:1 axis, 2 on a shared position — and 3+ on legal
+     * maps whose octave bands touch or overlap (PA-W1 territory, or the
+     * PA-8 boundary equality positions[11] === positions[0] + stride,
+     * where a pc-11 semitone joins the next octave's shared pair).
      * @param {number} position
      * @param {{ minSemi: number, maxSemi: number }} range
      * @returns {number[]}  ascending

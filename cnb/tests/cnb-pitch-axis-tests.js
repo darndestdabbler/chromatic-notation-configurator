@@ -350,6 +350,27 @@ export const tests = [
     }
   }},
 
+  { name: "boundary-equality map (PA-8 boundary, legal): candidate arrays can carry 3+ entries — pc 11 joins the next octave's shared pair", fn: () => {
+    // positions[11] === positions[0] + octaveStride: B sits exactly one
+    // stride above C, i.e. ON the next octave's (C,C♯) shared position.
+    // PA-8 admits this (boundary equality is legal, pinned in the config
+    // tests); the inverse at that position has THREE candidates, so the
+    // candidate contract is "arrays of any length", not capped at 2.
+    const positions = [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7];
+    const config = twinlineConfig({ pitchClasses: pitchClassesFrom(positions) });
+    const axis = CNBPitchAxis.create(config);
+    eq(axis.enabled, true, "boundary-equality map is legal and active");
+    eq(axis.positionOfSemi(11), 7, "B → position 7");
+    eq(axis.positionOfSemi(12), 7, "C' → position 7");
+    eq(axis.positionOfSemi(13), 7, "C♯' → position 7");
+    const range = { minSemi: 0, maxSemi: 24 };
+    deepEq(axis.semisAtPosition(7, range), [11, 12, 13], "three candidates at one position");
+    deepEq(axis.semisAtPosition(14, range), [23, 24], "B' joins C'' at the range end (C♯'' is out of range)");
+    // Hit-testing surfaces the full trio too:
+    const grid = CNBGrid.create(config, range);
+    deepEq(grid.axis.nearestSemisForY(grid.semiToY(12), grid), [11, 12, 13], "nearestSemisForY returns all three");
+  }},
+
   { name: "twinline: nearestSemisForY snaps to the nearest declared position (ties resolve upward)", fn: () => {
     const config = twinlineConfig();
     const grid = CNBGrid.create(config, { minSemi: 0, maxSemi: 24 });

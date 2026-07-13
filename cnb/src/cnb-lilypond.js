@@ -33,6 +33,19 @@ const ENGINE_DEFAULTS = {
   staffLineThicknessPct: 20,
 };
 
+// The §8a fail-loud interim gate's message (CNB-LY-EXPORT-SPEC v1.3 / set-014
+// binding rule 3). Exported so the UI export wrapper (Module 18) surfaces the
+// IDENTICAL text as a blocking validation error — the validateForExport ↔
+// generate() parity contract.
+export const PITCH_AXIS_GATE_MESSAGE =
+  "Pitch-axis export is blocked (CNB-LY-EXPORT-SPEC v1.3 §8a fail-loud gate): " +
+  "the CNB engine has not yet shipped the pitch-axis capability — E13-1 " +
+  "(the cnb:get-pitch-staff-position hook) and E13-2 (the x-offset notehead " +
+  "field). Exporting a pitchAxis-enabled config through the linear engine " +
+  "would engrave it at wrong pitch positions. Disable pitchAxis to export; " +
+  "set 014 session 3 removes this gate once the engine capability is " +
+  "verified from the engine repo's handoff record.";
+
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
 /**
@@ -798,6 +811,19 @@ export const CNBLilypond = {
    * @throws {Error} when the config fails export validation
    */
   generate(config) {
+    // Fail-loud interim gate (CNB-LY-EXPORT-SPEC v1.3 §8a / set-014 binding
+    // rule 3): until the engine ships E13-1 (the cnb:get-pitch-staff-position
+    // hook) and E13-2 (the x-offset notehead field) — verified in set-014
+    // session 3 from the engine repo's set-008 configurator-handoff record —
+    // a pitch-axis-enabled config must NOT export: the linear engine would
+    // engrave a compact config at wrong pitch positions. Session 3 removes
+    // this gate in the same change that first emits §5.4/§6.3, with the
+    // engine round-trip as evidence. Fires on the enabled flag alone (before
+    // any other validation): no silent linear .ly for a compact config, ever.
+    if (config.pitchAxis?.enabled) {
+      throw new Error(PITCH_AXIS_GATE_MESSAGE);
+    }
+
     const validation = CNBConfig.validate(config);
     const errors = validation.errors.slice();
 

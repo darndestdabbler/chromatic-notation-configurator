@@ -12,7 +12,7 @@
 
 import { createRequire } from "module";
 import { CNBConfig } from "../src/cnb-config.js";
-import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
+import { CNBLilypond, _internals, PITCH_AXIS_GATE_MESSAGE } from "../src/cnb-lilypond.js";
 
 const require = createRequire(import.meta.url);
 const Legacy = require("../../legacy/configurator-core.js");
@@ -812,4 +812,53 @@ export const tests = [
       lacks(enabledLy, "keySignature", "no keySignature token anywhere in the export");
     }},
 
+  // ── Pitch axis (set 014): the §8a fail-loud interim gate ─────────────────
+
+  { name: "fail-loud gate (§8a): generate() throws on a pitchAxis-enabled config, naming the missing engine capability", fn: () => {
+      const enabled = pitchAxisEnabledConfig();
+      assert(CNBConfig.validate(enabled).valid, "the compact config itself is VALID — the gate is an engine-capability block, not a validation failure");
+      let threw = null;
+      try { CNBLilypond.generate(enabled); } catch (err) { threw = err; }
+      assert(threw !== null, "generate() must throw (binding rule 3: no silent linear .ly for a compact config, ever)");
+      eq(threw.message, PITCH_AXIS_GATE_MESSAGE, "the exact §8a gate message");
+      contains(threw.message, "E13-1", "names the missing hook work item");
+      contains(threw.message, "E13-2", "names the missing x-offset work item");
+      contains(threw.message, "cnb:get-pitch-staff-position", "names the engine hook");
+      contains(threw.message, "§8a", "cites the spec rule");
+    }},
+
+  { name: "fail-loud gate (§8a): the gate fires on the enabled flag alone, even when the section is otherwise malformed", fn: () => {
+      const config = CNBConfig.createDefault();
+      config.pitchAxis = { enabled: true };   // no kind/map/stride — still blocked
+      let threw = null;
+      try { CNBLilypond.generate(config); } catch (err) { threw = err; }
+      assert(threw !== null, "throws");
+      eq(threw.message, PITCH_AXIS_GATE_MESSAGE, "the gate message, not a generic validation error");
+    }},
+
+  { name: "fail-loud gate (§8a): a disabled pitchAxis section does not trip the gate and exports byte-identically to the default", fn: () => {
+      const disabled = pitchAxisEnabledConfig();
+      disabled.pitchAxis.enabled = false;
+      const disabledLy = CNBLilypond.generate(disabled);   // must not throw
+      const defaultLy = CNBLilypond.generate(CNBConfig.createDefault());
+      eq(disabledLy, defaultLy, "disabled pitchAxis section is invisible to the exporter");
+      lacks(disabledLy, "pitch-axis", "no pitch-axis token in the export");
+      lacks(disabledLy, "pitchAxis", "no pitchAxis token in the export");
+    }},
+
 ];
+
+// ── Pitch-axis gate test helper (set 014) ────────────────────────────────────
+
+/** Default config with the design §1.1 Twinline-like pitch axis enabled. */
+function pitchAxisEnabledConfig() {
+  const config = CNBConfig.createDefault();
+  config.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  return config;
+}

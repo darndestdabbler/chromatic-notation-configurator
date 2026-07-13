@@ -15,7 +15,7 @@
 
 import { CNBConfigExport } from "../ui/config-export.js";
 import { CNBConfig } from "../src/cnb-config.js";
-import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBLilypond, PITCH_AXIS_GATE_MESSAGE } from "../src/cnb-lilypond.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -462,5 +462,38 @@ export const tests = [
       assert(!statusEl.className.includes("cnb-cex-status-blocked"),
         "blocked modifier class cleared after the fix");
     }),
+  },
+
+  // ── Pitch axis (set 014): the §8a fail-loud gate through the UI path ──────
+
+  {
+    name: "fail-loud gate parity: validateForExport blocks a pitchAxis-enabled config with the exact message generate() throws; buildExport blocks without throwing",
+    fn: () => {
+      const config = CNBConfig.createDefault();
+      config.pitchAxis = {
+        enabled: true,
+        kind: "pitch-class-map-v1",
+        octaveStride: 7,
+        axisUnitsPerStaffSpace: 2,
+        pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+      };
+      // UI side: a blocking validation error (no throw), so the export
+      // button explains the block instead of crashing.
+      const v = CNBConfigExport.validateForExport(config);
+      assert(v.valid === false, "export is blocked");
+      assert(v.errors.includes(PITCH_AXIS_GATE_MESSAGE), "the §8a gate message is surfaced verbatim");
+      // Parity: generate() throws with the IDENTICAL text.
+      assertThrows(() => CNBLilypond.generate(config), PITCH_AXIS_GATE_MESSAGE,
+        "generate() throws the same §8a message");
+      // buildExport follows the blocked contract (ok:false, no throw).
+      const result = CNBConfigExport.buildExport(config);
+      assert(result.ok === false && result.ly === null, "buildExport blocks");
+      assert(result.validation.errors.includes(PITCH_AXIS_GATE_MESSAGE), "blocked result carries the gate error");
+      // Disabling the section lifts the gate.
+      config.pitchAxis.enabled = false;
+      const lifted = CNBConfigExport.validateForExport(config);
+      assert(!lifted.errors.some(e => e.includes("§8a")), "no gate error when disabled");
+      assert(CNBConfigExport.buildExport(config).ok === true, "export proceeds when disabled");
+    },
   },
 ];
