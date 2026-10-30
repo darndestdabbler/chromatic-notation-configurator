@@ -7,3 +7,8 @@
 # OS cruft
 Thumbs.db
 .DS_Store
+
+# Dabbler router machine-side state: the run ledger records each
+# verification round after the tree it describes, so committing it
+# makes verified work look like it changed post-verification.
+.dabbler/
