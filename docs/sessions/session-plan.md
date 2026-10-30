@@ -295,10 +295,14 @@ the app should tell them what is wrong rather than fail in the console.
    the console.
 3. Open the app in Chromium, Firefox and Edge; fix what breaks; add a
    "Supported browsers" table to the README.
-4. If the toolkit has shipped minim stem anchors (`data-stem-minim-*`, its
-   wrap-up session T2), read them in the SVG importer
-   (`cnb/ui/svg-importer.js`) into `anchors.minimUp`/`minimDown` and export
-   them; otherwise record that the importer still copies crotchet anchors.
+4. If the toolkit has shipped minim stem anchors (its session 4: a second
+   placemarker pair, `<rect id="stem-minim-up">` / `<rect id="stem-minim-down">`,
+   with no `data-*` attributes), read them in the SVG importer
+   (`cnb/ui/svg-importer.js`) with the same `readStemRect` rule as the
+   regular pair (bottom-centre of up, top-centre of down) into
+   `anchors.minimUp`/`minimDown`, falling back to the crotchet anchors when
+   the pair is absent, and export them; otherwise record that the importer
+   still copies crotchet anchors.
 
 **Non-goals.** Schema changes. Mobile layouts.
 
