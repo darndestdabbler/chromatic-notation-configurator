@@ -101,14 +101,13 @@ This code is reference only. New modules are in `cnb/src/`. Do not modify legacy
 
 ## Session Workflow
 
-Work is organized into Dabbler **session sets** under `docs/session-sets/`.
-To run a session (start, work, close), follow the procedure in
-`docs/dabbler/start-here.md` — it resolves the active set, registers the
-session start via the AI router, and closes through the shared gate.
+Work runs as numbered Dabbler 3.x sessions under `docs/sessions/`; the
+plan is `docs/sessions/session-plan.md` and the procedure is the managed
+section of `AGENTS.md`, imported below.
 
-The current session's goals and deliverables are defined in the active
-session set's `spec.md`.
-
-**Historical note:** `docs/batons/` and `docs/checklists/` are records of
-pre-Dabbler sessions (sessions 1–9). They are kept as historical record —
-do not delete them, and do not generate new batons or checklists.
+**Historical records — read-only, do not delete:**
+- `docs/session-sets/` holds the v1 session sets 001–014. Set 014 was
+  migrated into `docs/sessions/` on 2026-10-30; the others are history.
+  Other documents link into these directories, so leave them in place.
+- `docs/batons/` and `docs/checklists/` are records of pre-Dabbler
+  sessions (sessions 1–9). Do not generate new batons or checklists.
