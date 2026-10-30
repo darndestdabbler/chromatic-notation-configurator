@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 5,
+  "sessions": [
+    {
+      "number": 1,
+      "title": "Export-spec adoption + `CNBPitchAxis` + grid (P1, P2)",
+      "status": "complete",
+      "startedAt": "2026-07-12T19:37:52.931333-04:00",
+      "completedAt": "2026-07-12T20:20:05.789308-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
+      "verificationVerdict": "VERIFIED"
+    },
+    {
+      "number": 2,
+      "title": "Consumer rethread (P3)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 3,
+      "title": "Exporter + fixtures + engine round-trip (P4) \u2014 **gated on engine set 008**",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 4,
+      "title": "UI presets + re-tier + operator UAT (P5, P6)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    }
+  ]
+}
