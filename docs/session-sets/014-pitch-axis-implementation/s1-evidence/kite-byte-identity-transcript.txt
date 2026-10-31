@@ -1,0 +1,23 @@
+# Transcript: test suite + Kite export at the BASE commit 2cf7d647 (temp worktree)
+# Date: 2026-07-12T19:59:03-04:00
+$ git worktree list
+D:/Projects/chromatic-notation-configurator         2cf7d64 [main]
+C:/Users/denmi/AppData/Local/Temp/cnb-base-010s2    a6d6213 (detached HEAD)
+C:/Users/denmi/AppData/Local/Temp/cnb-base-2cf7d64  2cf7d64 (detached HEAD)
+$ node <worktree>/cnb/tests/run-tests.js (tail)
+──────────────────────────────────────────────────
+Results: 709 passed, 0 failed
+All tests passed.
+exit: 0
+
+$ node <worktree>/cnb/fixtures/export-kite-4-369.mjs $TEMP/kite-base.ly
+wrote C:\Users\denmi\AppData\Local\Temp/kite-base.ly (7665 bytes)
+exit: 0
+
+$ node cnb/fixtures/export-kite-4-369.mjs $TEMP/kite-post-change.ly   (working tree)
+wrote C:\Users\denmi\AppData\Local\Temp/kite-post-change.ly (7665 bytes)
+exit: 0
+
+$ cmp $TEMP/kite-base.ly $TEMP/kite-post-change.ly && echo BYTE-IDENTICAL
+BYTE-IDENTICAL
+exit: 0
