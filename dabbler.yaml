@@ -15,9 +15,12 @@ schema_version: 1
 # change to cnb/src/cnb-grid.js name cnb/tests/cnb-grid-tests.js for the
 # reviewer.
 #
-# The Playwright UAT drivers under cnb/uat/ are not declared: on 2026-10-30
-# nothing in the repository installs playwright-core or a Chromium. Session 5
-# makes them runnable and decides whether they become a second suite.
+# The browser UAT is the second suite (session 5). `npm run uat` runs every
+# cnb/uat/uat-*.mjs Playwright driver in turn and stops at the first failure;
+# 11 drivers in about a minute on 2026-10-31. Its prerequisites are per
+# machine and not installed by the suite: `npm install` (playwright-core, the
+# only devDependency) and `npx playwright install chromium`. Without them a
+# driver exits 2 naming what is missing. Results: docs/uat-status.md.
 #
 # A suite must use `command`: the run-of-record reader refuses an argv-only
 # suite (testEvidence.loadSuitesChecked in the router).
@@ -32,6 +35,12 @@ testing:
       test_roots: [cnb/tests]
       test_glob: "*-tests.js"
       test_name: "{name}-tests.js"
+    - name: cnb-uat
+      command: npm run uat
+      expensive: true
+      whole_at_close: true
+      runs_whole: true
+      covers: [cnb/]
 
 # Step (f) of the lifecycle: pack, then push to a feed. A session that
 # declared itself releasable publishes through these -- both argv, never

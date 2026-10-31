@@ -1,6 +1,9 @@
 # Python virtual environment (Dabbler AI router runtime)
 .venv/
 
+# npm dev tooling (playwright-core for the UAT drivers)
+node_modules/
+
 # Office lock files
 ~$*
 

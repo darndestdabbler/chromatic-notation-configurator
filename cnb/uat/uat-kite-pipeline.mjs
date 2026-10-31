@@ -74,8 +74,8 @@ try {
   const alt = process.env.CNB_UAT_PLAYWRIGHT;
   if (!alt) {
     console.error(
-      "playwright-core not found. Run `npm install playwright-core` next to " +
-      "this repo, or set CNB_UAT_PLAYWRIGHT to a directory whose " +
+      "playwright-core not found. Run `npm install` at the repository root, " +
+      "or set CNB_UAT_PLAYWRIGHT to a directory whose " +
       "node_modules contains it.");
     process.exit(2);
   }

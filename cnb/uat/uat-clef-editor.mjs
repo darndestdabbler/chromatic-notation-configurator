@@ -27,7 +27,7 @@
  *   node cnb/uat/uat-clef-editor.mjs
  *
  * Requirements — the driver errors out (exit 2) rather than guessing:
- *   - playwright-core resolvable from this file, or set CNB_UAT_PLAYWRIGHT
+ *   - playwright-core in the repo's node_modules (`npm install`), or set CNB_UAT_PLAYWRIGHT
  *     to a directory whose node_modules contains it.
  *   - A Chromium executable: CNB_UAT_CHROMIUM if set to a non-empty value
  *     (a non-empty-but-invalid path is an error, not a fallback); otherwise
@@ -64,8 +64,8 @@ try {
   const alt = process.env.CNB_UAT_PLAYWRIGHT;
   if (!alt) {
     console.error(
-      "playwright-core not found. Run `npm install playwright-core` next to " +
-      "this repo, or set CNB_UAT_PLAYWRIGHT to a directory whose " +
+      "playwright-core not found. Run `npm install` at the repository root, " +
+      "or set CNB_UAT_PLAYWRIGHT to a directory whose " +
       "node_modules contains it.");
     process.exit(2);
   }

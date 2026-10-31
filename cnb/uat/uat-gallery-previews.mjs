@@ -42,7 +42,7 @@ try {
 } catch {
   const alt = process.env.CNB_UAT_PLAYWRIGHT;
   if (!alt) {
-    console.error("playwright-core not found. Run `npm install playwright-core`, or set CNB_UAT_PLAYWRIGHT.");
+    console.error("playwright-core not found. Run `npm install` at the repository root, or set CNB_UAT_PLAYWRIGHT.");
     process.exit(2);
   }
   try {

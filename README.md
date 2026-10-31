@@ -59,8 +59,31 @@ No build step required.
 ### Running Tests
 
 ```bash
-node cnb/tests/run-tests.js
+npm test            # same as: node cnb/tests/run-tests.js (no install needed)
 ```
+
+### Running the Browser UAT
+
+The Playwright drivers under `cnb/uat/` drive the real app in Chromium. The
+root `package.json` declares only dev tooling (`playwright-core`); the app
+itself stays dependency-free. Once per clone:
+
+```bash
+npm install                        # installs playwright-core into node_modules/
+npx playwright install chromium    # downloads the matching Chromium build
+```
+
+then:
+
+```bash
+npm run uat     # runs every cnb/uat/uat-*.mjs in turn; stops at the first failure
+```
+
+A single driver runs on its own with `node cnb/uat/uat-<name>.mjs`.
+`CNB_UAT_CHROMIUM` points the drivers at a specific Chromium binary, and
+`CNB_UAT_PLAYWRIGHT` at another directory whose `node_modules` holds
+`playwright-core`. Results are recorded in
+[`docs/uat-status.md`](docs/uat-status.md).
 
 ## End-to-End Walkthrough: From Shape to Rendered Score
 
