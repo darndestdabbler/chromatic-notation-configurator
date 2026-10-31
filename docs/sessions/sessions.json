@@ -38,9 +38,9 @@
     {
       "number": 3,
       "title": "Exporter + fixtures + engine round-trip (P4) \u2014 **gated on engine set 008**",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-31T05:05:28.980000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-31T05:27:38.048000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
