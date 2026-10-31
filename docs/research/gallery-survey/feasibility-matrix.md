@@ -38,7 +38,8 @@ prioritization.
   semitone its own vertical position; compact staves where two pitches
   share a position and are disambiguated by notehead shape/side have no
   config representation. Witness fields: `staff.pitch-axis`,
-  `staff.compactness`. **Broken by 9 records** (32–40 — the Twinline
+  `staff.compactness`. *(Relaxed by set 014 on 2026-10-31 — the optional
+  `pitchAxis` section; see §9.)* **Broken by 9 records** (32–40 — the Twinline
   family).
 - **I3 — Duration is expressed in notehead style, not glyph geometry.**
   The platform's duration devices are hollow/solid per duration
@@ -201,15 +202,15 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 | 29 | Clairnote DN (Paul Morris) | 2 | no | Staff `[4,8]` + mid-gap C ledger (M3), binary-6-6 fill (M5), compression as record 27. Needs E1, E2, E4 (documented alternative clefs/signatures/accidentals) and E3 (double-stem half notes; `duration.representation = stem-flag-only`, M4d). |
 | 30 | Chromatic Lyre Notation (Jan Braunstein) | 2 | no | Staff `[4,8]` + mid-gap C ledger (M3), inverted binary-6-6 fill (M5). Duration devices are covered today: stemless half notes (`hasStem`), whole/double-whole side lines are symmetric notehead-baked marks (M4c). Needs E1 only: traditional alto clef with embedded 8va/8vb/15va/15vb register variants (M6). |
 | 31 | AxLoMaFi (Jai Park) | 1 | no | Slant-orientation binary-6-6 = two shape variants by PC set, center-attached stems via anchors (M5); staff `[4,8]` + mid-gap C ledger (M3); `duration.representation = traditional` (M4a). `fill-scheme = unknown` is not load-bearing: hollow variants of the slanted shapes are expressible if they exist. Optional per-PC colors = palette (M5). |
-| 32 | Chromatic Twinline (Leo de Vries) | 4 | no | `staff.pitch-axis = compact` breaks **I2** (semicircle-vs-oval disambiguation of co-located pitches). |
-| 33 | Diatonic Twinline (Leo de Vries) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. |
-| 34 | Twinline Notation (Thomas Reed) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also a novel half-note flag — E3 evidence.) |
-| 35 | Black Triangle Twinline (Doug Keislar) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. |
-| 36 | Black-Oval Twinline (Paul Morris) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also double-stem half notes — E3 evidence.) |
-| 37 | Bilinear Notation (José A. Sotorrío) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also duration-varying notehead size/shape and "new register symbols" — E3/E1 evidence.) |
-| 38 | TwinNote (Paul Morris) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also double-stem half notes — E3 evidence.) |
-| 39 | TwinNote TD (Paul Morris) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. |
-| 40 | Chromatic Nydana (Dan Lindgren) | 4 | no | `staff.pitch-axis = compact` breaks **I2**. (Also Roman-numeral octave clef, custom key signature, hooked/novel stems — E1/E2/E3 evidence.) |
+| 32 | Chromatic Twinline (Leo de Vries) | 4 → **1** | no → **yes** | `staff.pitch-axis = compact` breaks **I2** (semicircle-vs-oval disambiguation of co-located pitches). **Re-tiered (set 014, 2026-10-31):** I2 relaxed — see §9. |
+| 33 | Diatonic Twinline (Leo de Vries) | 4 → **1** | no → **yes** | `staff.pitch-axis = compact` breaks **I2**. **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 34 | Twinline Notation (Thomas Reed) | 4 → **2** | no | `staff.pitch-axis = compact` breaks **I2**. (Also a novel half-note flag — E3 evidence.) **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 35 | Black Triangle Twinline (Doug Keislar) | 4 → **1** | no → **yes** | `staff.pitch-axis = compact` breaks **I2**. **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 36 | Black-Oval Twinline (Paul Morris) | 4 → **2** | no | `staff.pitch-axis = compact` breaks **I2**. (Also double-stem half notes — E3 evidence.) **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 37 | Bilinear Notation (José A. Sotorrío) | 4 → **2** | no | `staff.pitch-axis = compact` breaks **I2**. (Also duration-varying notehead size/shape and "new register symbols" — E3/E1 evidence.) **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 38 | TwinNote (Paul Morris) | 4 → **2** | no | `staff.pitch-axis = compact` breaks **I2**. (Also double-stem half notes — E3 evidence.) **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 39 | TwinNote TD (Paul Morris) | 4 → **1** | no | `staff.pitch-axis = compact` breaks **I2**. **Re-tiered (set 014, 2026-10-31):** see §9. |
+| 40 | Chromatic Nydana (Dan Lindgren) | 4 → **2** | no | `staff.pitch-axis = compact` breaks **I2**. (Also Roman-numeral octave clef, custom key signature, hooked/novel stems — E1/E2/E3 evidence.) **Re-tiered (set 014, 2026-10-31):** see §9. |
 | 41 | MUTO Notation (MUTO Foundation) | 1 | yes | Staff `[0,6]` with bold C lines (M1); the fixed in-staff D/E and G#/A# ledger positions are override templates (M3). Provisional: `duration.representation = unknown`. |
 | 42 | Thumline Notation (Jim Plamondon) | 4 | no | The pitch axis is **relative** — lines are scale degrees from a movable Do, so the `unknown` semitone pattern is key-dependence, not missing data — which breaks **I5** (absolute pitch anchoring): any one config is correct for exactly one key, and the system as such has no representation. The per-key geometry (whole-step grid, in-staff ledgers) would otherwise be expressible; the arc clef device and tonic/modulation signature are additional E1/E2 evidence. |
 | 43 | Express Stave: Pianoforte Notation (John Keller) | 2 → **2 + I4** | no | Staff `[2,8]` with D ledger template (M3); inverse-7-5 fill via per-PC hollow rules (M5); half/whole side strokes are symmetric notehead-baked marks (M4c). Needs E1 only: custom F/B/D clef symbols (M6). **Correction (011-s2):** additionally breaks **I4** — see §8. |
@@ -228,23 +229,29 @@ Rules applied uniformly; each verdict cites the rule(s) it leans on.
 
 ## 5. Tier summary
 
+> **Amended 2026-10-31 (set 014, §9).** The table below is the current
+> count, after records 32–40 left Tier 4. The original 2026-07-06 counts
+> were: Tier 1 — 21 (8 firm, 13 provisional); Tier 2 — 12 (8, 4); Tier 3 —
+> 1 (0, 1); Tier 4 — 21 (21, 0), of which I2 — 32–40 (9); total 37 firm,
+> 18 provisional.
+
 | Tier | Count | Firm | Provisional | Records |
 |---|---|---|---|---|
-| 1 | 21 | 8 | 13 | firm: 11, 13, 18, 21, 25, 31, 53, 54 · provisional: 1, 3, 5, 6, 8, 10, 12, 17, 26, 41, 47, 48, 52 |
-| 2 | 12 | 8 | 4 | firm: 20, 22, 27, 29, 30, 43, 44, 45 · provisional: 2, 4, 19, 46 |
+| 1 | 25 | 9 | 16 | firm: 11, 13, 18, 21, 25, 31, 39, 53, 54 · provisional: 1, 3, 5, 6, 8, 10, 12, 17, 26, 32, 33, 35, 41, 47, 48, 52 |
+| 2 | 17 | 13 | 4 | firm: 20, 22, 27, 29, 30, 34, 36, 37, 38, 40, 43, 44, 45 · provisional: 2, 4, 19, 46 |
 | 3 | 1 | 0 | 1 | provisional: 7 |
-| 4 | 21 | 21 | 0 | 9, 14, 15, 16, 23, 24, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 49, 50, 51, S1 |
-| **Total** | **55** | 37 | 18 | 54 gallery records + S1 |
+| 4 | 12 | 12 | 0 | 9, 14, 15, 16, 23, 24, 28, 42, 49, 50, 51, S1 |
+| **Total** | **55** | 34 | 21 | 54 gallery records + S1 |
 
 Tier 4 by invariant: **I1** (orientation): 15, 24, 50, 51 (4). **I2**
-(compact): 32–40 (9). **I3** (duration geometry): 9, 16, 23, 28, 49, S1
+(compact): none since the §9 amendment (originally 32–40, 9). **I3** (duration geometry): 9, 16, 23, 28, 49, S1
 (6). **I4** (staff periodicity): 14 (1). **I5** (absolute anchoring): 42
 (1). Each record is counted under the invariant named first in its
 verdict; secondary breaks are noted in the justifications (50 also breaks
 I3).
 
 Dominant provisional driver: `duration.representation = unknown` (16 of
-the 18 provisional verdicts) — a direct consequence of the gallery's
+the 18 provisional verdicts; 19 of 21 after the §9 amendment) — a direct consequence of the gallery's
 standardized single-duration scale images, as the catalog preamble
 records. (The other two: record 19's unspecified `other` duration device
 and record 48's `fill-scheme = unknown`.)
@@ -310,7 +317,9 @@ per-system source work, not for this set.
 - **The compact-staff family (I2, 9 records) is a single design lineage**
   (Twinline and descendants); supporting it would require a
   one-position/two-pitch grid concept plus side/shape disambiguation —
-  out of scope by invariant, not by accident. Operator interest in
+  out of scope by invariant, not by accident. *(Superseded 2026-10-31: set
+  014 built exactly that concept and re-tiered the family — see §9.)*
+  Operator interest in
   eventually representing this family was recorded at UAT ("we should be
   able to represent this with the platform", on record 38); any such
   support means relaxing I2, a platform-level decision beyond this
@@ -374,3 +383,90 @@ per-system source work, not for this set.
   owner proposed a "suppress a ledger when a staff line intervenes between it
   and the closest note" rule; cataloged as reproduction-report gap A for the
   enhancement track.
+
+## 9. Amendment (2026-10-31, set 014): Twinline family re-tiered
+
+> **Amendment (set 014 `pitch-axis-implementation`, session 4,
+> 2026-10-31).** A framework change: invariant **I2** ("one pitch per
+> vertical grid position") is relaxed by the optional `pitchAxis` config
+> section. Per the framework-change rule from 008-s2, every tier change it
+> causes is recorded here as an explicit, dated amendment. The §4 rows keep
+> their original justifications as history, with the new tier beside the
+> old one (`4 → 1`). The §5 counts are amended in place, with the originals
+> quoted there.
+
+### 9.1 What changed in the platform
+
+Set 014 implemented the operator-approved design
+`docs/planning/pitch-axis-design.md`. Its parts:
+
+- the `pitchAxis` section (`kind: "pitch-class-map-v1"`), an explicit
+  pitch-class → axis-position map in which several pitch classes may share
+  one position (the map must not decrease, PA-8);
+- the `CNBPitchAxis` gatekeeper and the grid, staff, ledger, stem and card
+  consumers that place everything through it;
+- the notehead-rule field `apply.xOffsetStaffSpaces`, which moves a
+  co-located pitch sideways;
+- the v1.3 export (`cnb:get-pitch-staff-position`, `(x-offset . N)`)
+  against the engine's set-008 hook;
+- the pitch-axis editor with its "Twinline-like 7-position" preset.
+
+Disambiguating co-located pitches by notehead shape is expressible under
+the existing rule **M5**: per-pitch-class shapes are arbitrary imported
+paths, so a semicircle or triangle whose body sits above or below the line
+is a shape path offset from its centre. Disambiguating them by horizontal
+side is the new `xOffsetStaffSpaces` field. Both are therefore expressible
+now, and I2 no longer decides any record's tier. Each record is re-tiered
+on its remaining devices, using the unchanged rules M1–M6.
+
+### 9.2 Evidence
+
+- **Fixture:** `cnb/assets/examples/gallery/twinline-compact.json`. It holds
+  the design's Twinline-like 7-position map (five shared-position pairs; D
+  and G unshared), with the upper member of each pair offset +0.85 staff
+  spaces. It loads through `CNBConfigIO` like every gallery fixture and
+  passes the gallery gate (`cnb/tests/check-gallery-examples.js`).
+- **Pinned export:** `cnb/fixtures/twinline-compact-export-baseline.ly`
+  (byte-identity test in `cnb/tests/cnb-lilypond-tests.js`).
+- **Engine round-trip:** `docs/sessions/session-003/roundtrip/` (README,
+  `transcript.txt`, harvested SVGs). The result was PARITY PASS against
+  LilyPond 2.24.2 and the engine's set-008 hook. All 37 noteheads sat at
+  their mapped positions, the 6 shared pairs coincided vertically, the
+  x-offset effect measured +0.850 against a control render, and stems,
+  staff lines and the key signature all matched the preview's model.
+
+**Scope of the evidence.** The fixture shows the *mechanism*: a monotonic
+many-to-one map, shared positions, and side and shape disambiguation,
+through both preview and engine. It is not a reproduction of any single
+record. Each record's own map is a different monotonic `pitch-class-map-v1`
+map. TwinNote's (38) is two pitches on every line and every space, six
+positions per octave. De Vries's (32) puts three pitches in each line's
+zone (semicircle below, oval on, semicircle above). Reproducing each one is
+gallery work (the set-011 feed-forward pattern); no record's tier depends
+on that work.
+
+**Residual parity limit (not a tier change).** Every record here draws a
+mid-gap C ledger between octave line pairs. On a compact axis, the
+preview's template-driven ledgers and the engine's own ledgers can differ
+inside staff gaps. This is the documented in-gap ledger limit (design
+§2.4), a display-parity limit and not an invariant break.
+
+### 9.3 Re-tiered verdicts
+
+| # | System | Was | Now | Provisional | Justification (rules M1–M6) |
+|---|---|---|---|---|---|
+| 32 | Chromatic Twinline (de Vries) | 4 | **1** | yes | Compact axis via `pitchAxis`. The E / G♯ line pair with the mid-gap C ledger follows from the map (M2, M3). Semicircle-vs-oval shapes and binary-6-6 fill come from per-PC rules (M5). Provisional: `duration.representation = unknown`, for the same reason as record 17 (pitch-bound fill, replacement half-note device unspecified; M4). |
+| 33 | Diatonic Twinline (de Vries) | 4 | **1** | yes | As record 32, with 7-5 by-pc-set fill (M5). Provisional: `duration.representation = unknown` (M4). |
+| 34 | Twinline Notation (Reed) | 4 | **2** | no | As record 32, with triangle/oval shapes and all-hollow fill (one `hollow` rule over all PCs; M5). Needs **E3**: the novel half-note flag (`stem-flag-only`, M4d). |
+| 35 | Black Triangle Twinline (Keislar) | 4 | **1** | yes | As record 34, with solid triangles and hollow ovals (binary-6-6 fill; M5). Provisional: `duration.representation = unknown` (M4). |
+| 36 | Black-Oval Twinline (Morris) | 4 | **2** | no | As record 34, with hollow triangles and solid ovals (M5). Needs **E3**: double-stem half notes (M4d), as record 29. |
+| 37 | Bilinear Notation (Sotorrío) | 4 | **2** | no | Compact axis, conventional ledgers (M3), oval/triangle alternation (M5). Notehead shape, size and fill vary by duration: rules that match on duration select per-duration shape paths (M4b/c). Needs **E1**: the "new register symbols" (`aux.octave-markers = other`, M6). `aux.clef = unknown` is not load-bearing, since any clef resolves to E1. |
+| 38 | TwinNote (Morris) | 4 | **2** | no | Compact axis (two pitches per line and per space), point-up/point-down triangles with binary-6-6 fill (M5). Needs **E3**: double-stem half notes (M4d). The 2011 one-semitone shift is a different map, equally expressible. |
+| 39 | TwinNote TD (Morris) | 4 | **1** | no | As record 38. Triangle orientation carries pitch (M5) and hollow/solid carries duration traditionally (`defaultHollow`, M4a). Firm. |
+| 40 | Chromatic Nydana (Lindgren) | 4 | **2** | no | Compact axis, circle/rectangle alternation with 7-5 fill (M5). Needs **E1** (Roman-numeral octave label in place of a clef), **E2** (compact custom key signature) and **E3** (hooked/novel stems; M4d). |
+
+**Net effect:** Tier 4 goes from 21 records to 12, and I2 is broken by none
+of them. Tier 1 gains 32, 33, 35 (provisional) and 39 (firm). Tier 2 gains
+34, 36, 37, 38 and 40 (firm). The amended counts are in §5. Records 32, 33
+and 35 join the provisional list on the same `duration.representation =
+unknown` driver as the 16 earlier ones.

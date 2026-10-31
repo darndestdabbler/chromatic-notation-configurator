@@ -58,7 +58,8 @@
  *         match: { pitchClasses: "all"|number[], durations: "all"|string[],
  *                  keys: "all"|string[] },
  *         apply: { shape?: string, hollow?: boolean,
- *                  color?: string|null, offKeyMark?: false|string }
+ *                  color?: string|null, offKeyMark?: false|string,
+ *                  xOffsetStaffSpaces?: number }   // axis-gated (set 014)
  *       }, ...
  *     ],
  *     previewDuration: string,       // display-only: duration the resolved
@@ -195,6 +196,14 @@ export const CNBNoteheadRuleEditor = {
         }
         out.apply.offKeyMark = mark;
       }
+      if (apply.xOffsetStaffSpaces !== undefined) {
+        const x = apply.xOffsetStaffSpaces;
+        if (typeof x !== "number" || !Number.isFinite(x)) {
+          throw new Error(
+            `Rule ${i + 1} has invalid apply.xOffsetStaffSpaces ${JSON.stringify(x)} — must be a finite number (staff spaces)`);
+        }
+        out.apply.xOffsetStaffSpaces = x;
+      }
       return out;
     });
   },
@@ -242,6 +251,7 @@ export const CNBNoteheadRuleEditor = {
       if (apply.hollow !== undefined) rule.apply.hollow = !!apply.hollow;
       if (apply.color !== undefined) rule.apply.color = apply.color;
       if (apply.offKeyMark !== undefined) rule.apply.offKeyMark = deepClone(apply.offKeyMark);
+      if (apply.xOffsetStaffSpaces !== undefined) rule.apply.xOffsetStaffSpaces = apply.xOffsetStaffSpaces;
       return rule;
     });
 
@@ -309,6 +319,10 @@ export const CNBNoteheadRuleEditor = {
     const shapeNames = Object.keys(baseConfig.shapes || {});
     const durNames = durationNames(baseConfig);
     const keyVocab = keyNames(baseConfig);
+    // xOffsetStaffSpaces is axis-gated (design §3.2): the row is offered
+    // only while the pitch axis is enabled, or to a rule that already sets
+    // it (so a loaded value stays visible and removable).
+    const axisEnabled = !!(baseConfig.pitchAxis && baseConfig.pitchAxis.enabled);
 
     // Pill vocabulary for a name-list dimension: the config's definitions
     // plus any names already selected on the rule (union), so names loaded
@@ -603,6 +617,27 @@ export const CNBNoteheadRuleEditor = {
           }
           return wrap;
         }));
+
+      if (axisEnabled || rule.apply.xOffsetStaffSpaces !== undefined) {
+        apply.appendChild(applyRow("cnb-nre-apply-xoffset", "Horizontal offset (staff spaces)",
+          rule.apply.xOffsetStaffSpaces !== undefined,
+          (on) => {
+            if (on) rule.apply.xOffsetStaffSpaces = 0;
+            else delete rule.apply.xOffsetStaffSpaces;
+          },
+          () => {
+            const input = el("input", "cnb-nre-xoffset-input");
+            input.type = "number";
+            input.step = "any";
+            input.value = String(rule.apply.xOffsetStaffSpaces);
+            input.title = "Shift right (positive) or left (negative) to tell apart pitch classes that share a staff position";
+            input.onchange = (e) => {
+              const v = parseFloat(valueFrom(e, input));
+              if (Number.isFinite(v)) { rule.apply.xOffsetStaffSpaces = v; changed(); }
+            };
+            return input;
+          }));
+      }
 
       card.appendChild(apply);
       return card;

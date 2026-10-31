@@ -12,8 +12,20 @@
  * against the SVG stub.
  */
 
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { CNBNoteheadRuleEditor } from "../ui/notehead-rule-editor.js";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+
+const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/** The Twinline compact gallery fixture (set 014), loaded through CNBConfigIO. */
+function twinlineConfig() {
+  const text = readFileSync(path.join(CNB_DIR, "assets", "examples", "gallery", "twinline-compact.json"), "utf8");
+  return CNBConfigIO.loadFromText(text).config;
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -791,6 +803,79 @@ export const tests = [
       assert(fillOf(out.cells[2]) === "#000000", "D falls back to black");
       const labels = findAll(out.row, "cnb-nre-preview-label").map(l => l.textContent);
       assertEqualJson(labels.slice(0, 3), ["C", "C♯", "D"], "PC labels");
+    }),
+  },
+
+  // ── xOffsetStaffSpaces (set 014, axis-gated) ─────────────────────────────
+  {
+    name: "xOffsetStaffSpaces: the Twinline fixture's offset rule round-trips through the builders",
+    fn: () => {
+      const config = twinlineConfig();
+      const rules = E.buildRules(E.stateFromConfig(config));
+      const offset = rules.find(r => r.apply.xOffsetStaffSpaces !== undefined);
+      assert(offset, "offset rule kept");
+      assertEqualJson(offset.apply, { xOffsetStaffSpaces: 0.85 }, "apply block");
+      assertEqualJson(offset.match.pitchClasses, [1, 4, 6, 9, 11], "match");
+      for (let pc = 0; pc < 12; pc++) {
+        const before = CNBConfig.resolveNotehead(config, pc, "crotchet", null).xOffsetStaffSpaces;
+        const after = CNBConfig.resolveNotehead({ ...config, noteheadRules: rules }, pc, "crotchet", null).xOffsetStaffSpaces;
+        assert(before === after, `pc ${pc} resolves to the same offset`);
+      }
+    },
+  },
+  {
+    name: "xOffsetStaffSpaces: non-finite or non-numeric values throw; finite values (incl. negative) accepted",
+    fn: () => {
+      const rule = (x) => ({ rules: [{
+        name: "R", match: { pitchClasses: "all", durations: "all", keys: "all" }, apply: { xOffsetStaffSpaces: x },
+      }] });
+      assertThrows(() => E.buildRules(rule(NaN)), "NaN");
+      assertThrows(() => E.buildRules(rule(Infinity)), "Infinity");
+      assertThrows(() => E.buildRules(rule("0.85")), "string");
+      assertThrows(() => E.buildRules(rule(null)), "null");
+      assert(E.buildRules(rule(-0.5))[0].apply.xOffsetStaffSpaces === -0.5, "negative accepted");
+      assert(E.buildRules(rule(0))[0].apply.xOffsetStaffSpaces === 0, "zero accepted");
+    },
+  },
+  {
+    name: "xOffsetStaffSpaces: row absent on a linear config, present on every rule when the axis is enabled",
+    fn: () => withDomStub((container) => {
+      const linear = E.render(container, { config: CNBConfig.createDefault() });
+      assert(findAll(linear.root, "cnb-nre-apply-xoffset").length === 0, "no row while axis absent");
+
+      const axisConfig = twinlineConfig();
+      const axis = E.render(container, { config: axisConfig });
+      assert(findAll(axis.root, "cnb-nre-apply-xoffset").length === axisConfig.noteheadRules.length,
+        "one row per rule while axis enabled");
+    }),
+  },
+  {
+    name: "xOffsetStaffSpaces: a rule carrying the field keeps its row with the axis disabled",
+    fn: () => withDomStub((container) => {
+      const config = twinlineConfig();
+      config.pitchAxis.enabled = false;
+      const api = E.render(container, { config });
+      const rows = findAll(api.root, "cnb-nre-apply-xoffset");
+      assert(rows.length === 1, "only the rule that sets it");
+      assert(findAll(rows[0], "cnb-nre-xoffset-input")[0].value === "0.85", "value shown");
+    }),
+  },
+  {
+    name: "xOffsetStaffSpaces: toggling the row on seeds 0, editing reports the value, toggling off removes it",
+    fn: () => withDomStub((container) => {
+      let last = null;
+      const config = twinlineConfig();
+      const api = E.render(container, { config, onChange: (s) => { last = s; } });
+      const firstRow = () => findAll(api.root, "cnb-nre-apply-xoffset")[0];
+      findAll(firstRow(), "cnb-nre-apply-check")[0].onchange({ target: { checked: true } });
+      assert(last.noteheadRules[0].apply.xOffsetStaffSpaces === 0, "seeded 0");
+      findAll(firstRow(), "cnb-nre-xoffset-input")[0].onchange({ target: { value: "-0.4" } });
+      assert(last.noteheadRules[0].apply.xOffsetStaffSpaces === -0.4, "edited");
+      last = null;
+      findAll(firstRow(), "cnb-nre-xoffset-input")[0].onchange({ target: { value: "" } });
+      assert(last === null, "empty input ignored");
+      findAll(firstRow(), "cnb-nre-apply-check")[0].onchange({ target: { checked: false } });
+      assert(!("xOffsetStaffSpaces" in last.noteheadRules[0].apply), "removed");
     }),
   },
 ];

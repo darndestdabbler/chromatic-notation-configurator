@@ -440,6 +440,30 @@
     .cnb-kse-valid { color: #2e7d32; }
     .cnb-kse-error { color: #c62828; }
     .cnb-kse-warning { color: #b45309; }
+
+    /* ── Pitch axis editor host styling (set 014) ── */
+    .cnb-pae-section { margin-bottom: 16px; }
+    .cnb-pae-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-pae-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+    .cnb-pae-enable {
+      display: flex; align-items: center; gap: 8px; font-size: 13px;
+      color: #444; margin-bottom: 14px; cursor: pointer;
+    }
+    .cnb-pae-preset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .cnb-pae-preset .cnb-pae-title, .cnb-pae-preset .cnb-pae-hint { flex-basis: 100%; }
+    .cnb-pae-preset-select, .cnb-pae-kind-select { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-pae-preset-apply { font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid #aaa; border-radius: 6px; background: #fafafa; cursor: pointer; }
+    .cnb-pae-field, .cnb-pae-position { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; color: #444; }
+    .cnb-pae-label { width: 220px; flex: none; color: #888; }
+    .cnb-pae-pc-name { width: 28px; flex: none; color: #888; }
+    .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input {
+      width: 64px; font: inherit; font-size: 12px; padding: 3px 6px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-pae-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-pae-valid { color: #2e7d32; }
+    .cnb-pae-error { color: #c62828; }
+    .cnb-pae-warning { color: #b45309; }
   </style>
 </head>
 <body>
@@ -507,6 +531,11 @@
   </div>
 
   <div class="card">
+    <h2>Pitch axis (set 014)</h2>
+    <div id="pitch-axis-editor-host"></div>
+  </div>
+
+  <div class="card">
     <h2>Shared config state (full config, live)</h2>
     <pre id="state-json"></pre>
   </div>
@@ -520,6 +549,7 @@
     import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
     import { CNBClefEditor } from "./ui/clef-editor.js";
     import { CNBKeySignatureEditor } from "./ui/key-signature-editor.js";
+    import { CNBPitchAxisEditor } from "./ui/pitch-axis-editor.js";
     import { CNBConfigIO } from "./ui/config-io.js";
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
@@ -600,6 +630,7 @@
         onChange: (slices) => {
           appConfig.staff = slices.staff;
           appConfig.ledgers = slices.ledgers;
+          mountPitchAxisEditor();
           refreshShared();
         },
       });
@@ -639,6 +670,30 @@
           refreshShared();
         },
       });
+
+      mountPitchAxisEditor();
+    }
+
+    /** Pitch axis (set 014). A null slice means "no section": the editor
+     *  never creates one the user did not ask for (default-off
+     *  byte-identity). A preset also rewrites noteheadRules (its offset
+     *  rule), and the notehead editor's offset row is axis-gated, so that
+     *  editor is re-seeded after every axis change. The axis editor works
+     *  from a copy of the config taken at mount (its preset appends to the
+     *  current rules; its validation reads staff and rules), so it is
+     *  re-seeded in turn when the staff or the notehead rules change. */
+    function mountPitchAxisEditor() {
+      byId("pitch-axis-editor-host").textContent = "";
+      CNBPitchAxisEditor.render(byId("pitch-axis-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          if (slices.pitchAxis) appConfig.pitchAxis = slices.pitchAxis;
+          else delete appConfig.pitchAxis;
+          if (slices.noteheadRules) appConfig.noteheadRules = slices.noteheadRules;
+          mountNoteheadEditor();
+          refreshShared();
+        },
+      });
     }
 
     /** The notehead rule editor reads its shape/duration/key vocabularies
@@ -650,6 +705,7 @@
         config: appConfig,
         onChange: (slices) => {
           appConfig.noteheadRules = slices.noteheadRules;
+          mountPitchAxisEditor();
           refreshShared();
         },
       });

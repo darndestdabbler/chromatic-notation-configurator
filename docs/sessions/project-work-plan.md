@@ -15,7 +15,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 1 | Export-spec adoption + `CNBPitchAxis` + grid (P1, P2) | — | not declared |
 | 2 | Consumer rethread (P3) | no | 2026-10-31 |
 | 3 | Exporter + fixtures + engine round-trip (P4) — **gated on engine set 008** | no | 2026-10-31 |
-| 4 | UI presets + re-tier + operator UAT (P5, P6) | — | not declared |
+| 4 | UI presets + re-tier + operator UAT (P5, P6) | no | 2026-10-31 |
 | 5 | Browser UAT becomes reproducible | — | not declared |
 | 6 | Hostile input, error paths and the browser matrix | — | not declared |
 | 7 | Retire `legacy/`, rewrite the README and the guidance | — | not declared |
@@ -39,3 +39,9 @@ Session 3 (P4) of the pitch-axis program. The engine gate is met: the engine rep
 - 2026-10-31 — step 'spec-clarification': its files: The architecture plan's §4.13 export-surface note still states that generate() throws on pitchAxis.enabled (the lifted §8a gate); it must be corrected alongside the spec. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-31 — step 'compact-fixture': its files: The set-014 s2 preview baseline sweeps every gallery fixture to pin the axis-DISABLED (pre-rethread) preview; an axis-enabled gallery fixture has no linear baseline, so previewProbes() must skip pitchAxis-enabled fixtures (axis previews are covered by the s2 axis render tests). (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-31 — step 'engine-roundtrip': its files: A shared-position chord pair is already separated by LilyPond's own arrangement (+0.49 here), so the x-offset effect is measured test-minus-control (engine set 008 s2 method): the control export, score, SVG and harvest join the evidence; measure.mjs reads the key-signature marks from the SVGs, so both SVGs are kept. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 4 — UI presets + re-tier + operator UAT (P5, P6)
+
+**Releasable: no.**
+
+Finish the pitch-axis implementation (design phases P5 and P6). Build the pitch-axis editor panel (cnb/ui/pitch-axis-editor.js) on the Modules 12–17 editor contract: property-based event wiring, a Node-testable render(), pure stateFromConfig/buildPitchAxis/applyToConfig builders and Module A validation pass-through. It edits enable, kind, octaveStride, axisUnitsPerStaffSpace and the 12 per-pc positions, and offers one preset, "Twinline-like 7-position", which compiles into the explicit design §1.1 map plus a named notehead rule carrying the shared-pair xOffsetStaffSpaces. The editor never creates a pitchAxis section the user did not ask for, so default configs stay byte-identical. Let the notehead rule editor keep and edit apply.xOffsetStaffSpaces; today its builder drops the field, so loading the Twinline fixture loses its offsets. Wire the panel into the app shell, cnb/index.html (the repository has no cnb/ui/app.js; index.html is the shell that the plan's app.js entry stands for). Re-tier feasibility-matrix records 32–40 as a dated amendment, with the twinline-compact fixture and the session-3 engine round-trip as evidence. Record the operator's verbatim UAT decision in docs/sessions/uat-session-4.md. Close out the pitch-axis work in docs/sessions/change-log.md.
