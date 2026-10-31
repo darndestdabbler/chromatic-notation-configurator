@@ -6,12 +6,98 @@
  * is verified on test-collection.html.
  */
 
+import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCard } from "../src/cnb-card.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURES = path.resolve(__dirname, "..", "fixtures");
+const GALLERY_DIR = path.resolve(__dirname, "..", "assets", "examples", "gallery");
+const PREVIEW_BASELINE = path.join(FIXTURES, "preview-baseline.json");
+
+// ─── Preview-DOM byte-identity pin (set 014 s2) ─────────────────────────────
+//
+// Every probe renders CNBCollection.render through the stub DOM and hashes
+// the JSON serialization of the resulting tree. The hashes in
+// cnb/fixtures/preview-baseline.json were captured by capturePreviewBaseline()
+// BEFORE any consumer module gained an axis path, so a match proves the
+// axis-disabled preview is byte-identical to the pre-rethread code.
+
+/** The 013 Twinline-like map (design §1.1) — five shared pairs. */
+export const TWINLINE_PITCH_AXIS = {
+  enabled: true,
+  kind: "pitch-class-map-v1",
+  octaveStride: 7,
+  axisUnitsPerStaffSpace: 2,
+  pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+};
+
+function loadViaIO(file) {
+  return CNBConfigIO.loadFromText(readFileSync(file, "utf8")).config;
+}
+
+function keySigDefault() {
+  const config = CNBConfig.createDefault();
+  config.keys.enabled = true;
+  config.keys.definitions = [{ name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
+  config.keys.keySignature.enabled = true;
+  return config;
+}
+
+/** The pinned probes: [{ id, config, options }], in a fixed order. */
+export function previewProbes() {
+  const durations = ["crotchet", "minim"];
+  const debug = CNBConfig.createDefault();
+  debug.display.debugGrid = true;
+  const probes = [
+    { id: "default", config: CNBConfig.createDefault(), options: { durations } },
+    { id: "default-debug-grid", config: debug, options: {} },
+    { id: "default-key-signature", config: keySigDefault(), options: { durations, keys: ["C"] } },
+    { id: "kite-4-369", config: loadViaIO(path.join(FIXTURES, "kite-4-369-config.json")), options: { durations } },
+  ];
+  for (const f of readdirSync(GALLERY_DIR).filter(n => n.endsWith(".json")).sort()) {
+    const config = loadViaIO(path.join(GALLERY_DIR, f));
+    const keyName = config.keys?.enabled && config.keys.definitions?.[0]?.name;
+    probes.push({
+      id: `gallery/${f}`,
+      config,
+      options: keyName ? { durations, keys: [keyName] } : { durations },
+    });
+  }
+  return probes;
+}
+
+/** A present-but-disabled pitchAxis section plus an axis-gated offset rule. */
+function withDisabledAxis(config) {
+  const c = CNBConfig.clone(config);
+  c.pitchAxis = { ...TWINLINE_PITCH_AXIS, enabled: false };
+  c.noteheadRules = [...(c.noteheadRules || []), {
+    name: "axis-gated offset (ignored on a linear config)",
+    priority: 1000,
+    match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+    apply: { xOffsetStaffSpaces: 0.85 },
+  }];
+  return c;
+}
+
+function renderHash(config, options) {
+  const json = withDomStub(container => JSON.stringify(CNBCollection.render(container, config, options)));
+  return { sha256: createHash("sha256").update(json).digest("hex"), length: json.length };
+}
+
+/** Recompute every probe's hash (used to write the fixture, and by the pin). */
+export function capturePreviewBaseline() {
+  return previewProbes().map(p => ({ id: p.id, ...renderHash(p.config, p.options) }));
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -148,6 +234,74 @@ export const tests = [
         eq(bg.children[0].getAttribute("class"), "cnb-debug-grid", "debug overlay first (behind)");
         eq(bg.children[1].getAttribute("class"), "cnb-staff", "staff lines on top");
       });
+    }},
+
+  { name: "preview baseline: every probe renders byte-identically to the pre-rethread capture", fn: () => {
+      const baseline = JSON.parse(readFileSync(PREVIEW_BASELINE, "utf8"));
+      const byId = new Map(baseline.probes.map(p => [p.id, p]));
+      const probes = previewProbes();
+      eq(probes.length, baseline.probes.length, "probe count matches the baseline");
+      for (const p of probes) {
+        const pinned = byId.get(p.id);
+        assert(pinned, `baseline has probe ${p.id}`);
+        const got = renderHash(p.config, p.options);
+        eq(got.length, pinned.length, `${p.id}: serialized length`);
+        eq(got.sha256, pinned.sha256, `${p.id}: serialized sha256`);
+      }
+    }},
+
+  { name: "render (axis): full Twinline row — deduped staff, axis svgHeight, shared pairs level, offsets applied", fn: () => {
+      const config = CNBConfig.createDefault();
+      config.pitchAxis = CNBConfig.clone(TWINLINE_PITCH_AXIS);
+      config.staff.semitonePattern = [2, 5, 6, 8, 9];   // axis {1,3,3,5,5}
+      config.staff.midpoint = 7;
+      config.noteheadRules.push({
+        name: "shared-position sharps sit right",
+        priority: 10,
+        match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+        apply: { xOffsetStaffSpaces: 0.85 },
+      });
+      const pcs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      const grid = CNBGrid.create(config, CNBCollection.gridRange(pcs));
+      assert(grid.axis && grid.axis.enabled, "axis grid");
+      eq(grid.svgHeight, (16 - -2) * 16, "svgHeight from axis positions of -4 and 28");
+
+      withDomStub(container => {
+        const root = CNBCollection.render(container, config);
+        const { bg, columns } = dissectRow(root.children[0]);
+        eq(bg.getAttribute("height"), String(grid.svgHeight), "bg height");
+
+        const staffSemis = CNBStaff.getPositions(config, grid);
+        const distinct = new Set(staffSemis.map(s => grid.axis.positionOfSemi(s)));
+        const staffG = bg.children.find(c => c.getAttribute("class") === "cnb-staff");
+        eq(staffG.children.length, distinct.size, "one background line per axis position");
+        assert(distinct.size < staffSemis.length, "the pattern really collapses");
+
+        const widths = columns.children.map(c => Number(c.style.width.replace("px", "")));
+        approx(Number(bg.getAttribute("width")), widths.reduce((a, b) => a + b, 0), "bg width = sum of columns");
+        approx(widths[1] - widths[0], 0.85 * 2 * 16, "C♯ column widened by its offset");
+
+        const headXY = col => {
+          const svg = col.children[1];
+          const head = svg.children.filter(c => c.tag === "g" && c.getAttribute("class") !== "cnb-ledger-set")[0];
+          const [, x, y] = /translate\(([^,]+),([^)]+)\)/.exec(head.getAttribute("transform")).map(Number);
+          return { x, y, width: Number(svg.getAttribute("width")) };
+        };
+        const c = headXY(columns.children[0]);
+        const cs = headXY(columns.children[1]);
+        eq(cs.y, c.y, "C and C♯ share a y");
+        approx(c.x, c.width / 2, "C centered");
+        approx(cs.x, cs.width / 2 + (0.85 * 2 * 16) / 2, "C♯ shifted right of its column center");
+      });
+    }},
+
+  { name: "preview baseline: a present-but-disabled pitchAxis (plus xOffsetStaffSpaces rules) changes no byte", fn: () => {
+      const baseline = JSON.parse(readFileSync(PREVIEW_BASELINE, "utf8"));
+      const byId = new Map(baseline.probes.map(p => [p.id, p]));
+      for (const p of previewProbes()) {
+        const got = renderHash(withDisabledAxis(p.config), p.options);
+        eq(got.sha256, byId.get(p.id).sha256, `${p.id} with disabled axis: serialized sha256`);
+      }
     }},
 
 ];

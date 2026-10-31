@@ -12,11 +12,19 @@ import { CNBConfig } from "./cnb-config.js";
 export const CNBStem = {
   /**
    * Decide stem direction based on chord semitone average vs staff midpoint.
+   * With an enabled axis (set 014, design §2.5) the chord's axis-position
+   * average is compared against the midpoint's axis position instead —
+   * same `<` → up, ≥ → down form.
    * @param {number[]} chordSemitones
    * @param {number} staffMidpoint
+   * @param {object} [axis]  gridContext.axis; absent/disabled = linear
    * @returns {"up"|"down"}
    */
-  direction(chordSemitones, staffMidpoint) {
+  direction(chordSemitones, staffMidpoint, axis) {
+    if (axis && axis.enabled) {
+      const avgPos = chordSemitones.reduce((a, s) => a + axis.positionOfSemi(s), 0) / chordSemitones.length;
+      return avgPos < axis.positionOfSemi(staffMidpoint) ? "up" : "down";
+    }
     const avg = chordSemitones.reduce((a, b) => a + b, 0) / chordSemitones.length;
     return avg < staffMidpoint ? "up" : "down";
   },

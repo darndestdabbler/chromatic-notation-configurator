@@ -4,10 +4,14 @@
  * Uses staff pattern from configuration to compute absolute semitone positions
  * and render all staff lines across the SVG width.
  *
- * Dependencies: Module A (config) and Module 2 (staff line)
+ * Dependencies: Module A (config), Module B (music) and Module 2 (staff line)
+ *
+ * Set 014 (pitch axis): axis-enabled grid contexts deduplicate lines by
+ * axis position; linear contexts run the literal pre-set-014 loop.
  */
 
 import { CNBConfig } from "./cnb-config.js";
+import { CNBMusic } from "./cnb-music.js";
 import { CNBStaffLine } from "./cnb-staff-line.js";
 
 export const CNBStaff = {
@@ -60,6 +64,32 @@ export const CNBStaff = {
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-staff");
 
+    // Axis path (set 014, design §2.3): pattern semitones collapsing onto
+    // one axis position draw ONE line, their overrides merged (PA-6
+    // guarantees they do not conflict).
+    const axis = gridContext.axis;
+    if (axis && axis.enabled) {
+      const byPos = new Map();
+      for (const abs of positions) {
+        const pos = axis.positionOfSemi(abs);
+        if (!byPos.has(pos)) byPos.set(pos, { abs, props: Object.assign({}, defaults) });
+        Object.assign(byPos.get(pos).props, overrides[String(CNBMusic.pitchClass(abs))] || {});
+      }
+      for (const { abs, props } of byPos.values()) {
+        CNBStaffLine.render(g, {
+          y: gridContext.semiToY(abs),
+          x1: 0,
+          x2: totalWidth,
+          thickness: CNBConfig.pctToPx(props.thicknessPct, gridContext.pxPerSemi),
+          color: props.color,
+          style: props.style,
+        });
+      }
+      svgParent.appendChild(g);
+      return g;
+    }
+
+    // Linear path — the literal pre-set-014 loop.
     for (const abs of positions) {
       const pc = abs % 12;
       const props = Object.assign({}, defaults, overrides[String(pc)] || {});

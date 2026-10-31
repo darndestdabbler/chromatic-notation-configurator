@@ -450,4 +450,66 @@ export const tests = [
       });
     }},
 
+  // ── Pitch axis (set 014 s2, design §2.3) ──────────────────────────────────
+
+  { name: "measure (axis): resolved xOffsetStaffSpaces widens the content; linear measure unchanged", fn: () => {
+      const config = axisKeysigConfig();
+      const pxPerSemi = config.display.pxPerSemi;
+      const m = CNBKeySignature.measure(config, pxPerSemi, "C");
+      const off = 0.85 * 2 * pxPerSemi;  // E, A, B carry the 0.85 rule
+      deepEq(m.offsets, m.semis.map(s => [4, 9, 11].includes(s % 12) ? off : 0), "per-mark offsets");
+      eq(m.extraLeftPx, 0, "no leftward offsets");
+      approx(m.contentWidth, 2 * m.markWidth + off, "content widened by the largest offset");
+
+      const linear = CNBConfig.clone(config);
+      linear.pitchAxis.enabled = false;
+      const lm = CNBKeySignature.measure(linear, pxPerSemi, "C");
+      assert(!("offsets" in lm), "no offsets on a linear config");
+      approx(lm.contentWidth, 2 * lm.markWidth, "linear content width");
+    }},
+
+  { name: "render (axis): offset marks shift right; separator extent is a length, not an axis span", fn: () => {
+      const config = axisKeysigConfig();
+      const grid = CNBGrid.create(config, CNBCollection.gridRange([0, 12]));
+      const m = CNBKeySignature.measure(config, grid.pxPerSemi, "C");
+      const paddingH = config.keys.keySignature.gutter.paddingH;
+      const leftX = paddingH + m.markWidth / 2;
+      withSvgStub(svg => {
+        const g = CNBKeySignature.render(svg, grid, config, "C");
+        const sep = g.children[0];
+        eq(sep.getAttribute("class"), "cnb-key-signature-separator", "separator first");
+        const midY = grid.semiToY(7);
+        approx(Number(sep.getAttribute("y1")), midY - 12 * grid.pxPerSemi, "separator top = midY − 12 semitone lengths");
+        approx(Number(sep.getAttribute("y2")), midY + 12 * grid.pxPerSemi, "separator bottom");
+        const heads = g.children.filter(c => c.tag === "g" && c.getAttribute("class") !== "cnb-ledger-set");
+        eq(heads.length, m.semis.length, "one notehead per mark");
+        m.semis.forEach((semi, i) => {
+          const { x, y } = parseTranslate(heads[i].getAttribute("transform"));
+          approx(x, leftX + (i % 2) * m.markWidth + m.offsets[i], `mark ${semi} x`);
+          approx(y, grid.semiToY(semi), `mark ${semi} y`);
+        });
+      });
+    }},
+
 ];
+
+/** C-major key signature on the 013 Twinline axis with the 0.85 offset rule. */
+function axisKeysigConfig() {
+  const config = keysigConfig();
+  config.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  config.staff.semitonePattern = [2, 5, 9];
+  config.staff.midpoint = 7;
+  config.noteheadRules.push({
+    name: "shared-position sharps sit right",
+    priority: 10,
+    match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+    apply: { xOffsetStaffSpaces: 0.85 },
+  });
+  return config;
+}

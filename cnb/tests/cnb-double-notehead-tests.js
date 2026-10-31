@@ -177,4 +177,35 @@ export const tests = [
       });
     }},
 
+  { name: "layout: per-note offsets default to 0 and leave the symmetric layout unchanged", fn: () => {
+      const { grid, shape } = fixture();
+      const base = { lowerSemi: 0, upperSemi: 12, lowerNote: { shape }, upperNote: { shape }, centerX: 100, offsetPercent: 20 };
+      const a = CNBDoubleNotehead.layout(grid, base);
+      const b = CNBDoubleNotehead.layout(grid, { ...base, lowerOffsetPx: 0, upperOffsetPx: 0 });
+      eq(JSON.stringify(a), JSON.stringify(b), "explicit zeros match the defaults");
+    }},
+
+  { name: "layout: per-note offsets add to the symmetric offsetPercent result", fn: () => {
+      const { grid, shape } = fixture();
+      const base = { lowerSemi: 0, upperSemi: 12, lowerNote: { shape }, upperNote: { shape }, centerX: 100, offsetPercent: 20 };
+      const a = CNBDoubleNotehead.layout(grid, base);
+      const b = CNBDoubleNotehead.layout(grid, { ...base, lowerOffsetPx: 13.6, upperOffsetPx: -5 });
+      approx(b.lowerX, a.lowerX + 13.6, "lower shifted right");
+      approx(b.upperX, a.upperX - 5, "upper shifted left");
+      eq(b.lowerY, a.lowerY, "y unaffected");
+    }},
+
+  { name: "render: per-note offsets move the rendered noteheads", fn: () => {
+      const { grid, shape } = fixture();
+      withSvgStub(svg => {
+        const opts = { lowerSemi: 0, upperSemi: 12, lowerNote: { shape }, upperNote: { shape }, centerX: 100 };
+        const expected = CNBDoubleNotehead.layout(grid, { ...opts, lowerOffsetPx: 10, upperOffsetPx: 10 });
+        const plain = CNBDoubleNotehead.layout(grid, opts);
+        eq(expected.lowerX, plain.lowerX + 10, "layout carries the offset");
+        const r = CNBDoubleNotehead.render(svg, grid, { ...opts, lowerOffsetPx: 10, upperOffsetPx: 10 });
+        eq(r.lowerG.getAttribute("transform"), `translate(${expected.lowerX},${expected.lowerY})`, "lower placed at offset x");
+        eq(r.upperG.getAttribute("transform"), `translate(${expected.upperX},${expected.upperY})`, "upper placed at offset x");
+      });
+    }},
+
 ];

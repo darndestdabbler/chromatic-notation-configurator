@@ -12,6 +12,9 @@
  * - The staff is periodic. render() expands the staff pattern one octave
  *   beyond the grid range so that viewport cropping does not change ledger
  *   decisions near the range edges.
+ * - Set 014 (pitch axis): with an enabled gridContext.axis, resolve/render
+ *   run the same algorithm in axis coordinates and key lines by axis
+ *   position (design §2.4); otherwise the literal pre-set-014 arithmetic.
  *
  * Dependencies: Module A (config), Module B (music), Module 4 (ledger line),
  * Module 1 (grid context is passed in). Module 3 (staff) is deliberately NOT
@@ -46,6 +49,47 @@ function defaultLedgerWidth(config, pxPerSemi) {
   const shape = config.shapes[names[0]];
   const scaleFactor = (shape.semitoneHeight * pxPerSemi) / shape.naturalHeight;
   return shape.naturalWidth * scaleFactor * multiplier;
+}
+
+/**
+ * CNBLedgerSet.resolve on an enabled axis (design §2.4): the linear
+ * algorithm with positions in place of semitones. Returns one
+ * representative semitone (the lowest shown def) per axis position.
+ */
+function resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis) {
+  const staffPos = [...new Set(staffPositions.map(s => axis.positionOfSemi(s)))];
+  const byPos = new Map();
+
+  for (const noteSemi of noteSemitones) {
+    const pc = CNBMusic.pitchClass(noteSemi);
+    const notePos = axis.positionOfSemi(noteSemi);
+    const noteRegion = axis.regionOfSemi(noteSemi);
+    let nearestStaff = Infinity;
+    for (const s of staffPos) {
+      const d = Math.abs(notePos - s);
+      if (d < nearestStaff) nearestStaff = d;
+    }
+
+    for (const ld of ledgerDefs) {
+      if (axis.regionOfSemi(ld.semi) !== noteRegion) continue;
+      const ledgerPos = axis.positionOfSemi(ld.semi);
+      const between = CNBLedgerSet.isBetweenNoteAndStaff(notePos, ledgerPos, staffPos);
+
+      let show = false;
+      if (ld.triggerMode === "override") {
+        show = ld.triggerPCs.includes(pc) && between;
+      } else if (ld.triggerMode === "proximity") {
+        // Strict `<` is load-bearing: shared positions and staff
+        // coincidences produce exact ties, which must not add ledgers.
+        show = Math.abs(notePos - ledgerPos) < nearestStaff && between;
+      }
+      if (show && !(byPos.has(ledgerPos) && byPos.get(ledgerPos) <= ld.semi)) {
+        byPos.set(ledgerPos, ld.semi);
+      }
+    }
+  }
+
+  return [...byPos.values()].sort((a, b) => a - b);
 }
 
 export const CNBLedgerSet = {
@@ -114,12 +158,23 @@ export const CNBLedgerSet = {
    * isBetweenNoteAndStaff, and both are octave-aware: a def only responds to
    * notes in its own octave region.
    *
+   * Axis mode (set 014, design §2.4): with an enabled axis, every input is
+   * converted to axis positions at the top and the SAME predicates run in
+   * axis coordinates — region via axis.regionOfSemi, the strict `<`
+   * proximity rule, betweenness against the deduplicated staff positions.
+   * Defs collapsing onto one axis position yield ONE result: the lowest
+   * shown def semitone at that position stands for the line.
+   *
    * @param {number[]} noteSemitones
    * @param {Array<{semi:number, triggerPCs:number[], triggerMode:string}>} ledgerDefs
    * @param {number[]} staffPositions
+   * @param {object} [axis]  gridContext.axis; absent/disabled = linear
    * @returns {number[]} sorted, de-duplicated ledger semitone positions
    */
-  resolve(noteSemitones, ledgerDefs, staffPositions) {
+  resolve(noteSemitones, ledgerDefs, staffPositions, axis) {
+    if (axis && axis.enabled) return resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis);
+
+    // Linear path — the literal pre-set-014 arithmetic.
     const result = new Set();
 
     for (const noteSemi of noteSemitones) {
@@ -177,7 +232,8 @@ export const CNBLedgerSet = {
       gridContext.minSemi - 12,
       gridContext.maxSemi + 12
     );
-    const semis = CNBLedgerSet.resolve(noteSemitones, defs, staffPositions);
+    const axis = gridContext.axis && gridContext.axis.enabled ? gridContext.axis : null;
+    const semis = CNBLedgerSet.resolve(noteSemitones, defs, staffPositions, axis);
 
     const lineDefaults = (config.ledgers && config.ledgers.lineDefaults) || {};
     const width = opts.width ?? defaultLedgerWidth(config, gridContext.pxPerSemi);
@@ -185,6 +241,16 @@ export const CNBLedgerSet = {
     const centerX = opts.centerX ?? paddingH + width / 2;
 
     const overridesBySemi = new Map(defs.map(d => [d.semi, d.overrides]));
+    if (axis) {
+      // Axis-keyed overrides: every def at one axis position merges into
+      // that position's line (PA-5 guarantees no conflicts).
+      const byPos = new Map();
+      for (const d of defs) {
+        const pos = axis.positionOfSemi(d.semi);
+        byPos.set(pos, Object.assign(byPos.get(pos) || {}, d.overrides));
+      }
+      for (const semi of semis) overridesBySemi.set(semi, byPos.get(axis.positionOfSemi(semi)));
+    }
 
     const NS = "http://www.w3.org/2000/svg";
     const g = document.createElementNS(NS, "g");

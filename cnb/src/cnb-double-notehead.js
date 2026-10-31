@@ -22,21 +22,29 @@ export const CNBDoubleNotehead = {
   /**
    * Compute positions and scale factors for the pair (pure — no DOM).
    *
+   * lowerOffsetPx / upperOffsetPx (set 014, design §2.3) are per-note
+   * horizontal shifts in px, ADDED to the symmetric offsetPercent result
+   * (the pitch-axis xOffsetStaffSpaces disambiguation; default 0).
+   *
    * @param {object} gridContext  From CNBGrid.create()
    * @param {{lowerSemi:number, upperSemi:number,
    *          lowerNote:{shape:object}, upperNote:{shape:object},
-   *          centerX:number, offsetPercent?:number}} opts
+   *          centerX:number, offsetPercent?:number,
+   *          lowerOffsetPx?:number, upperOffsetPx?:number}} opts
    * @returns {{lowerX:number, upperX:number, lowerY:number, upperY:number,
    *            lowerScale:number, upperScale:number}}
    */
-  layout(gridContext, { lowerSemi, upperSemi, lowerNote, upperNote, centerX, offsetPercent = 0 }) {
+  layout(gridContext, {
+    lowerSemi, upperSemi, lowerNote, upperNote, centerX, offsetPercent = 0,
+    lowerOffsetPx = 0, upperOffsetPx = 0,
+  }) {
     const lowerM = CNBNotehead.measure(lowerNote.shape, gridContext.pxPerSemi);
     const upperM = CNBNotehead.measure(upperNote.shape, gridContext.pxPerSemi);
     const refWidth = Math.max(lowerM.pixelWidth, upperM.pixelWidth);
     const offset = (offsetPercent / 100) * refWidth;
     return {
-      lowerX: centerX - offset / 2,
-      upperX: centerX + offset / 2,
+      lowerX: centerX - offset / 2 + lowerOffsetPx,
+      upperX: centerX + offset / 2 + upperOffsetPx,
       lowerY: gridContext.semiToY(lowerSemi),
       upperY: gridContext.semiToY(upperSemi),
       lowerScale: lowerM.scaleFactor,

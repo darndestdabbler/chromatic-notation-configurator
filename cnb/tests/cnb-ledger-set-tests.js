@@ -9,6 +9,7 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { withSvgStub } from "./svg-stub.js";
 
 function assert(condition, message) {
@@ -297,4 +298,94 @@ export const tests = [
       });
     }},
 
+  // ── Axis path (set 014 s2, design §2.4) ───────────────────────────────────
+
+  { name: "resolve (axis): override defs collapsing onto one axis position yield one ledger", fn: () => {
+      const cfg = twinline({ pattern: [2, 9], templates: [
+        { semiWithinOctave: 0, triggerPCs: [0, 1], triggerMode: "override" },
+        { semiWithinOctave: 1, triggerPCs: [1], triggerMode: "override" },
+      ] });
+      const axis = CNBPitchAxis.create(cfg);
+      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 11 });
+      const staff = staffSemis(cfg);
+      // C♯ (semi 1, axis 0) sits on both defs' shared position 0.
+      eqArr(CNBLedgerSet.resolve([1], defs, staff, axis), [0], "one line, lowest def semitone");
+      eqArr(CNBLedgerSet.resolve([1], defs, staff), [0, 1], "linear path keeps both");
+    }},
+
+  { name: "resolve (axis): proximity keeps the strict `<` — an exact tie adds no ledger", fn: () => {
+      const templates = [{ semiWithinOctave: 7, triggerPCs: [], triggerMode: "proximity" }];
+      const near = twinline({ pattern: [2, 9], templates });    // staff axis {1,5}
+      const tie = twinline({ pattern: [4, 9], templates });     // staff axis {2,5}
+      const range = { minSemi: 0, maxSemi: 11 };
+      // F (semi 5, axis 3) vs G-ledger (axis 4): distance 1.
+      eqArr(CNBLedgerSet.resolve([5], CNBLedgerSet.buildDefs(near, range), staffSemis(near),
+        CNBPitchAxis.create(near)), [7], "closer than the nearest staff line (2) → shown");
+      eqArr(CNBLedgerSet.resolve([5], CNBLedgerSet.buildDefs(tie, range), staffSemis(tie),
+        CNBPitchAxis.create(tie)), [], "tie with staff line at axis 2 → not shown");
+    }},
+
+  { name: "resolve (axis): region gate uses axis.regionOfSemi", fn: () => {
+      const cfg = twinline({ pattern: [2, 9], templates: [
+        { semiWithinOctave: 0, triggerPCs: [0], triggerMode: "override" },
+      ] });
+      const axis = CNBPitchAxis.create(cfg);
+      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 11 }); // def at semi 0 only
+      eqArr(CNBLedgerSet.resolve([12], defs, staffSemis(cfg), axis), [], "C' (region 1) ignores the region-0 C ledger");
+      eqArr(CNBLedgerSet.resolve([0], defs, staffSemis(cfg), axis), [0], "C (region 0) triggers it");
+    }},
+
+  { name: "resolve (axis): betweenness in axis coordinates — no ledger on a note that sits on a staff line", fn: () => {
+      // F♯ (semi 6) shares axis 3 with the staff line at F (semi 5).
+      const cfg = twinline({ pattern: [2, 5], templates: [
+        { semiWithinOctave: 6, triggerPCs: [6], triggerMode: "override" },
+      ] });
+      const axis = CNBPitchAxis.create(cfg);
+      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 11 });
+      eqArr(CNBLedgerSet.resolve([6], defs, staffSemis(cfg), axis), [], "axis: note on staff position");
+      eqArr(CNBLedgerSet.resolve([6], defs, staffSemis(cfg)), [6], "linear: semi 6 is not a staff line");
+    }},
+
+  { name: "render (axis): one line per axis position, overrides merged, placed via semiToY", fn: () => {
+      const cfg = twinline({ pattern: [2, 9], templates: [
+        { semiWithinOctave: 0, triggerPCs: [0, 1], triggerMode: "override" },
+        { semiWithinOctave: 1, triggerPCs: [1], triggerMode: "override" },
+      ] });
+      cfg.ledgers.lineOverrides = { "0": { color: "#ff0000" }, "1": { thicknessPct: 50 } };
+      const grid = CNBGrid.create(cfg, { minSemi: -2, maxSemi: 16 });
+      withSvgStub(svg => {
+        const g = CNBLedgerSet.render(svg, grid, cfg, [1, 13], { centerX: 50, width: 40 });
+        eq(g.children.length, 2, "one ledger per octave's shared position");
+        const [low] = g.children;
+        eq(low.getAttribute("fill"), "#ff0000", "color from the pc-0 def");
+        eq(low.getAttribute("height"), "8", "thickness from the pc-1 def");
+        eq(Number(low.getAttribute("y")) + 4, grid.semiToY(1), "centered on the shared y");
+      });
+    }},
+
 ];
+
+function eq(a, b, msg) {
+  if (a !== b) throw new Error(`${msg || "eq"}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+}
+
+/** The 013 Twinline map with a given staff pattern and ledger templates. */
+function twinline({ pattern, templates }) {
+  const cfg = CNBConfig.createDefault();
+  cfg.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  cfg.staff.semitonePattern = pattern;
+  cfg.staff.midpoint = 7;
+  cfg.ledgers.templates = templates;
+  return cfg;
+}
+
+/** The pattern expanded over octaves −1…1 (render()'s periodic expansion). */
+function staffSemis(cfg) {
+  return [-12, 0, 12].flatMap(o => cfg.staff.semitonePattern.map(s => s + o)).sort((a, b) => a - b);
+}

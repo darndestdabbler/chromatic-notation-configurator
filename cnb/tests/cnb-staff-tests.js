@@ -1,12 +1,14 @@
 /**
  * cnb-staff-tests.js — Unit tests for Module 3 (Staff)
  *
- * Only the pure logic functions are tested; rendering requires DOM and is
- * verified via the visual test page.
+ * Pure logic is tested directly; the axis-path render (set 014) runs
+ * through the svg stub. Visual correctness is verified on the test pages.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStaff } from "../src/cnb-staff.js";
+import { CNBGrid } from "../src/cnb-grid.js";
+import { withSvgStub } from "./svg-stub.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -78,4 +80,56 @@ export const tests = [
       const props = Object.assign({}, defaults, overrides[String(pc)] || {});
       eq(props.thicknessPct, 50);
     }},
+
+  // ── Axis path (set 014 s2, design §2.3) ──────────────────────────────
+
+  { name: "render (axis): pattern semitones collapsing onto one axis position draw one line", fn: () => {
+      const cfg = twinlineConfig();
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        const g = CNBStaff.render(svg, grid, cfg, 100);
+        // [2,5,6,8,9] → axis {1,3,3,5,5}: three lines per octave, two octaves.
+        eq(g.children.length, 6, "deduplicated line count");
+        const ys = g.children.map(l => Number(l.getAttribute("y1")));
+        eq(new Set(ys).size, 6, "distinct y per line");
+        eq(ys[1], grid.semiToY(5), "F/F♯ collapsed line at their shared y");
+        eq(grid.semiToY(5), grid.semiToY(6), "F and F♯ share a y");
+      });
+    }},
+
+  { name: "render (axis): collapsed lines merge their overrides", fn: () => {
+      const cfg = twinlineConfig();
+      cfg.staff.lineOverrides = { "5": { thicknessPct: 50 }, "6": { color: "#ff0000" } };
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 12 });
+      withSvgStub(svg => {
+        const g = CNBStaff.render(svg, grid, cfg, 100);
+        const line = g.children.find(l => Number(l.getAttribute("y1")) === grid.semiToY(5));
+        eq(line.getAttribute("stroke-width"), "8", "thickness override from pc 5");
+        eq(line.getAttribute("stroke"), "#ff0000", "color override from pc 6");
+      });
+    }},
+
+  { name: "render (linear): the same pattern without the axis draws every semitone", fn: () => {
+      const cfg = twinlineConfig();
+      cfg.pitchAxis.enabled = false;
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        eq(CNBStaff.render(svg, grid, cfg, 100).children.length, 10, "no dedup on the linear path");
+      });
+    }},
 ];
+
+/** Default config on the 013 Twinline axis with staff lines at axis {1,3,5}. */
+function twinlineConfig() {
+  const cfg = CNBConfig.createDefault();
+  cfg.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  cfg.staff.semitonePattern = [2, 5, 6, 8, 9];
+  cfg.staff.midpoint = 7;
+  return cfg;
+}

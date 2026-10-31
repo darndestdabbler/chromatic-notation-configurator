@@ -4,6 +4,7 @@
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStem } from "../src/cnb-stem.js";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -116,4 +117,40 @@ export const tests = [
       const expected = CNBConfig.pctToPx(cfg.display.stemThicknessPct, cfg.display.pxPerSemi);
       eq(geom.thickness, expected);
     }},
+
+  // ── Axis path (set 014 s2, design §2.5) ──────────────────────────────
+
+  { name: "direction (axis): axis-position average vs the midpoint's axis position", fn: () => {
+      const axis = twinlineAxis();                  // midpoint G = semi 7 → axis 4
+      // C♯ octave pair [1, 13]: linear avg 7 ≥ 7 → down; axis avg (0 + 7)/2 = 3.5 < 4 → up.
+      eq(CNBStem.direction([1, 13], 7), "down", "linear");
+      eq(CNBStem.direction([1, 13], 7, axis), "up", "axis");
+      // F pair [5, 17]: axis avg (3 + 10)/2 = 6.5 ≥ 4 → down.
+      eq(CNBStem.direction([5, 17], 7, axis), "down", "axis F pair");
+    }},
+
+  { name: "direction (axis): a note sharing the midpoint's axis position ties → down", fn: () => {
+      // Midpoint A (semi 9, axis 5); G♯ (8) shares axis 5: linear 8 < 9 → up, axis tie → down.
+      const axis = twinlineAxis();
+      eq(CNBStem.direction([8], 9), "up", "linear");
+      eq(CNBStem.direction([8], 9, axis), "down", "axis: tie on a shared position → down");
+    }},
+
+  { name: "direction: a disabled axis runs the linear body", fn: () => {
+      const axis = CNBPitchAxis.create(CNBConfig.createDefault());
+      eq(axis.enabled, false, "inactive axis");
+      eq(CNBStem.direction([8], 9, axis), "up", "linear result");
+    }},
 ];
+
+function twinlineAxis() {
+  const cfg = CNBConfig.createDefault();
+  cfg.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  return CNBPitchAxis.create(cfg);
+}

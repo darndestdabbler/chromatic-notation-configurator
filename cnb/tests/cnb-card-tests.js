@@ -271,4 +271,87 @@ export const tests = [
       });
     }},
 
+  // ── Pitch axis (set 014 s2, design §2.3 / §3.3) ───────────────────────────
+
+  { name: "columnWidth (axis): widens by |xOffsetStaffSpaces × unitsPerStaffSpace × pxPerSemi|", fn: () => {
+      const { config, grid } = axisFixture();
+      const linear = fixture();
+      const base = CNBCard.columnWidth(linear.config, linear.grid, { pc: 0, duration: "crotchet" });
+      approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "crotchet" }), base, "no offset on C");
+      approx(CNBCard.columnWidth(config, grid, { pc: 1, duration: "crotchet" }), base + 0.85 * 2 * 16, "C♯ widened by 27.2px");
+    }},
+
+  { name: "render (axis): offset heads, their ledgers and the stem all shift by the offset", fn: () => {
+      const { config, grid, shape } = axisFixture();
+      withDomStub(container => {
+        const col = CNBCard.render(container, grid, config, { pc: 1, duration: "crotchet" });
+        const { svg, ledgerG, stem, noteheads } = dissect(col);
+        const colWidth = Number(svg.getAttribute("width"));
+        const headX = colWidth / 2 + (0.85 * 2 * 16) / 2;
+        for (const [i, semi] of [[0, 1], [1, 13]]) {
+          approx(Number(/translate\(([^,]+),/.exec(noteheads[i].getAttribute("transform"))[1]), headX, `head ${i} x`);
+          approx(Number(/,([^)]+)\)/.exec(noteheads[i].getAttribute("transform"))[1]), grid.semiToY(semi), `head ${i} y`);
+        }
+        assert(ledgerG.children.length > 0, "C♯ draws its C ledger");
+        const ledger = ledgerG.children[0];
+        approx(Number(ledger.getAttribute("x")) + Number(ledger.getAttribute("width")) / 2, headX, "ledger centered on the head");
+        const { scaleFactor } = CNBNotehead.measure(shape, grid.pxPerSemi);
+        approx(Number(stem.getAttribute("x1")), headX + shape.anchors.crotchetUp.x * scaleFactor, "stem follows the head (up)");
+      });
+    }},
+
+  { name: "render (axis): stem direction reads the axis (C♯ pair up on Twinline, down linearly)", fn: () => {
+      const { config, grid, shape } = axisFixture();
+      const { scaleFactor } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      withDomStub(container => {
+        const { svg, stem } = dissect(CNBCard.render(container, grid, config, { pc: 1, duration: "crotchet" }));
+        assert(Number(stem.getAttribute("x1")) > Number(svg.getAttribute("width")) / 2, "axis: stem right of center (up)");
+      });
+      const linear = CNBConfig.clone(config);
+      linear.pitchAxis.enabled = false;
+      const lgrid = CNBGrid.create(linear, { minSemi: -4, maxSemi: 28 });
+      withDomStub(container => {
+        const { svg, stem } = dissect(CNBCard.render(container, lgrid, linear, { pc: 1, duration: "crotchet" }));
+        approx(Number(stem.getAttribute("x1")),
+          Number(svg.getAttribute("width")) / 2 + shape.anchors.crotchetDown.x * scaleFactor, "linear: stem down, unshifted");
+      });
+    }},
+
+  { name: "render (linear): xOffsetStaffSpaces rules are ignored — identical DOM", fn: () => {
+      const { config: plain, grid } = fixture();
+      const withRule = CNBConfig.clone(plain);
+      withRule.noteheadRules.push(OFFSET_RULE);
+      for (const pc of [0, 1, 4]) {
+        const a = withDomStub(c => JSON.stringify(CNBCard.render(c, grid, plain, { pc, duration: "crotchet" })));
+        const b = withDomStub(c => JSON.stringify(CNBCard.render(c, grid, withRule, { pc, duration: "crotchet" })));
+        eq(b, a, `pc ${pc} card DOM`);
+        eq(CNBCard.columnWidth(withRule, grid, { pc, duration: "crotchet" }),
+          CNBCard.columnWidth(plain, grid, { pc, duration: "crotchet" }), `pc ${pc} width`);
+      }
+    }},
+
 ];
+
+const OFFSET_RULE = {
+  name: "shared-position sharps sit right",
+  priority: 10,
+  match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+  apply: { xOffsetStaffSpaces: 0.85 },
+};
+
+/** Default config on the 013 Twinline axis (midpoint G = 7) with the 0.85 offset rule. */
+function axisFixture() {
+  const config = CNBConfig.createDefault();
+  config.pitchAxis = {
+    enabled: true,
+    kind: "pitch-class-map-v1",
+    octaveStride: 7,
+    axisUnitsPerStaffSpace: 2,
+    pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+  };
+  config.staff.semitonePattern = [2, 5, 9];
+  config.staff.midpoint = 7;
+  config.noteheadRules.push(OFFSET_RULE);
+  const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+  return { config, grid, shape: config.shapes["crotchet-minim"] };
+}

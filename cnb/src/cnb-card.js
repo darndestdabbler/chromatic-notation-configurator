@@ -17,6 +17,12 @@
  * chromatic row); the card renders the octave chord at semitones pc and
  * pc + 12.
  *
+ * Set 014 (pitch axis): on an axis grid the resolved xOffsetStaffSpaces
+ * shifts both noteheads, their ledgers and the stem by
+ * xOffsetStaffSpaces × axis.unitsPerStaffSpace × pxPerSemi, the column
+ * widens by that |offset|, and stem direction reads the axis (design
+ * §2.3/§3.3). On a linear grid the offset is ignored (axis-gated, §3.2).
+ *
  * Dependencies: Modules A, B, 1 (grid context passed in), 5, 6, 7, 8.
  */
 
@@ -78,6 +84,17 @@ function buildLabel(config, heightPx, { text, sharp }, position) {
   return div;
 }
 
+/**
+ * Pitch-axis notehead offset in px (set 014, design §3.3):
+ * xOffsetStaffSpaces × axis.unitsPerStaffSpace × pxPerSemi. Axis-gated
+ * (design §3.2) — 0 on a linear grid, whatever the rules say.
+ */
+function axisOffsetPx(gridContext, resolved) {
+  const axis = gridContext.axis;
+  if (!axis || !axis.enabled) return 0;
+  return (resolved.xOffsetStaffSpaces || 0) * axis.unitsPerStaffSpace * gridContext.pxPerSemi;
+}
+
 export const CNBCard = {
 
   /**
@@ -90,7 +107,8 @@ export const CNBCard = {
    * @param {number} pc        0–12
    * @param {string} duration  e.g. "crotchet"
    * @param {string|null} key
-   * @returns {{shape:string, hollow:boolean, color:string, offKeyMark:boolean|string}}
+   * @returns {{shape:string, hollow:boolean, color:string, offKeyMark:boolean|string,
+   *            xOffsetStaffSpaces:number}}
    */
   resolveNotehead(config, pc, duration, key) {
     const normalized = CNBMusic.pitchClass(pc);
@@ -105,7 +123,8 @@ export const CNBCard = {
    * Column width for a card: resolved notehead width × the ledger
    * widthMultiplier (the widest element in the column) plus horizontal
    * padding on both sides. Module 10 sums these to size the background
-   * staff SVG.
+   * staff SVG. On a pitch-axis grid the column widens by the notehead's
+   * |offset| (set 014) so an offset head does not clip.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -118,6 +137,9 @@ export const CNBCard = {
     const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const paddingH = config.display?.column?.paddingH ?? 16;
+    if (gridContext.axis && gridContext.axis.enabled) {
+      return pixelWidth * multiplier + 2 * paddingH + Math.abs(axisOffsetPx(gridContext, resolved));
+    }
     return pixelWidth * multiplier + 2 * paddingH;
   },
 
@@ -139,6 +161,13 @@ export const CNBCard = {
 
     const colWidth = CNBCard.columnWidth(config, gridContext, { pc, duration, key });
     const centerX = colWidth / 2;
+    // Pitch-axis offset (set 014): the octave pair shares one pc, hence one
+    // offset. The offset heads — with their ledgers and stem — sit at headX;
+    // the unshifted center moves the other way by half, so both fit the
+    // widened column. On a linear grid offsetPx is 0 and both are centerX.
+    const offsetPx = axisOffsetPx(gridContext, resolved);
+    const baseX = offsetPx === 0 ? centerX : centerX - offsetPx / 2;
+    const headX = offsetPx === 0 ? centerX : centerX + offsetPx / 2;
     const labelInfo = CNBMusic.pcLabel(CNBMusic.pitchClass(pc));
 
     const col = document.createElement("div");
@@ -158,7 +187,7 @@ export const CNBCard = {
     const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
-      centerX,
+      centerX: headX,
       width: pixelWidth * multiplier,
     });
 
@@ -167,13 +196,14 @@ export const CNBCard = {
     if (!durationDef || durationDef.hasStem !== false) {
       const direction = CNBStem.direction(
         [lowerSemi, upperSemi],
-        config.staff?.midpoint ?? 12
+        config.staff?.midpoint ?? 12,
+        gridContext.axis
       );
       const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
       const geometry = CNBStem.geometry(config, {
         shape,
         scaleFactor,
-        centerX,
+        centerX: headX,
         noteYPositions: [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)],
         direction,
         duration,
@@ -187,8 +217,10 @@ export const CNBCard = {
       upperSemi,
       lowerNote: { shape, hollow: resolved.hollow, color: resolved.color },
       upperNote: { shape, hollow: resolved.hollow, color: resolved.color },
-      centerX,
+      centerX: baseX,
       offsetPercent: 0,
+      lowerOffsetPx: offsetPx,
+      upperOffsetPx: offsetPx,
     });
 
     col.appendChild(svg);

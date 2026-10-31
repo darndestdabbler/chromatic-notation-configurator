@@ -44,6 +44,13 @@
       "dateTime": "2026-07-12T20:18:01.950536-04:00",
       "description": "Verification round-2 remediation (supersedes step 3 counts): section-8a gate condition made strict boolean (=== true, the design 1.3 consumer gate) in generate() and validateForExport, matching CNBGrid/CNBPitchAxis; regression tests for non-boolean truthy enabled values (export normal linear output; malformed truthy sections blocked by normal validation, not the gate). Final suite: 758 passed 0 failed (757 + 1: lilypond 59->60). Kite export re-verified byte-identical vs base 2cf7d647.",
       "status": "complete"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 2,
+      "dateTime": "2026-10-31T04:45:24.068000-04:00",
+      "task": "Rethread every preview geometry consumer through the grid's pitch axis (design docs/planning/pitch-axis-design.md \u00a72.3\u2013\u00a72.5, \u00a73.3), keeping the axis-disabled surface byte-identical by construction. First, before any source change, capture a pre-change preview-DOM baseline fixture (CNBCollection.render through the svg/DOM stub for the default config, the Kite 4-369 config, every gallery example, a key-signature-enabled config, a debug-grid config, and the same configs with a present-but-disabled pitchAxis section) and pin it with a test. Then: CNBStaff.render dedups lines by axis position on the axis path (overrides merged) and keeps its literal loop on the linear path; CNBLedgerSet.resolve/render gain an axis path that converts to axis positions at the top, gates on axis.regionOfSemi, keeps the strict `<` proximity rule, and draws keyed by axis position, while the linear path runs the literal current arithmetic; CNBStem.direction averages axis positions against positionOfSemi(staff.midpoint) when given an enabled axis (literal body otherwise); CNBDoubleNotehead.layout accepts additive per-note lowerOffsetPx/upperOffsetPx (default 0); CNBCard computes offsetPx = xOffsetStaffSpaces \u00d7 axis.unitsPerStaffSpace \u00d7 pxPerSemi in axis mode only, applies it to both noteheads, the ledgers and the stem centerX, and widens columnWidth by |offsetPx|; CNBKeySignature treats separator.extentSemis as a length on the axis path and applies the same resolved offset to its marks. The collection needs no code change (everything flows through the grid context) and gets an axis-row integration test. Finally a visual test page cnb/test-pages/test-pitch-axis.html renders a compact-axis card row with the 013 Twinline map and debug grid, and a Chromium geometry smoke driver cnb/uat/uat-pitch-axis.mjs (the repo's existing driver pattern) asserts its geometry in a real browser.",
+      "releasable": false
     }
   ]
 }

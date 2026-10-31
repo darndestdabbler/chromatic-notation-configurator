@@ -60,14 +60,21 @@
  * notehead-chord layout follows this project's own engine module
  * (keysig.ly in the chromatic-notation-base repo).
  *
+ * Set 014 (pitch axis): mark placement already flows through semiToY; on
+ * an axis config each mark also takes its resolved xOffsetStaffSpaces
+ * (widening the gutter to fit), its ledgers follow it, and the separator's
+ * extentSemis is converted as a length, not mapped through the axis
+ * (design §1.2/§2.3). Linear configs render exactly as before.
+ *
  * Dependencies: Modules A (config), B (music), 1 (grid context passed in),
- * 5 (ledger set), 6 (notehead).
+ * 5 (ledger set), 6 (notehead), 24 (pitch axis — gutter measurement).
  */
 
 import { CNBConfig } from "./cnb-config.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBNotehead } from "./cnb-notehead.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
+import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -244,7 +251,7 @@ export const CNBKeySignature = {
       ? 0
       : CNBConfig.pctToPx(sep.thicknessPct ?? 160, pxPerSemi);
 
-    return {
+    const result = {
       style,
       markWidth,
       columns,
@@ -252,6 +259,19 @@ export const CNBKeySignature = {
       contentWidth: columns * markWidth,
       semis,
     };
+
+    // Pitch axis (set 014): each mark carries its resolved
+    // xOffsetStaffSpaces (the notehead pipeline's disambiguation, axis-gated
+    // like the card's), and the content widens so offset marks don't clip.
+    const axis = CNBPitchAxis.create(config);
+    if (!axis.enabled) return result;
+    const offsets = semis.map(semi =>
+      (resolveMark(config, CNBMusic.pitchClass(semi), keyName).xOffsetStaffSpaces || 0) *
+      axis.unitsPerStaffSpace * pxPerSemi);
+    result.offsets = offsets;
+    result.extraLeftPx = Math.max(0, ...offsets.map(o => -o));
+    result.contentWidth += result.extraLeftPx + Math.max(0, ...offsets);
+    return result;
   },
 
   /**
@@ -287,7 +307,12 @@ export const CNBKeySignature = {
     if (!m) return null;
 
     const ks = (config.keys || {}).keySignature || {};
-    const paddingH = ks.gutter?.paddingH ?? 12;
+    // Pitch axis (set 014): offset marks shift the columns right by the
+    // largest leftward offset; on a linear grid m.offsets is absent and
+    // paddingH is used unchanged.
+    const paddingH = m.offsets
+      ? (ks.gutter?.paddingH ?? 12) + m.extraLeftPx
+      : ks.gutter?.paddingH ?? 12;
     const shapes = config.shapes || {};
 
     const g = document.createElementNS(NS, "g");
@@ -305,8 +330,15 @@ export const CNBKeySignature = {
       line.setAttribute("class", "cnb-key-signature-separator");
       line.setAttribute("x1", String(x));
       line.setAttribute("x2", String(x));
-      line.setAttribute("y1", String(gridContext.semiToY(midpoint + extent)));
-      line.setAttribute("y2", String(gridContext.semiToY(midpoint - extent)));
+      if (gridContext.axis && gridContext.axis.enabled) {
+        // extentSemis is a LENGTH (design §1.2/§2.3): px, not axis positions.
+        const midY = gridContext.semiToY(midpoint);
+        line.setAttribute("y1", String(midY - extent * gridContext.pxPerSemi));
+        line.setAttribute("y2", String(midY + extent * gridContext.pxPerSemi));
+      } else {
+        line.setAttribute("y1", String(gridContext.semiToY(midpoint + extent)));
+        line.setAttribute("y2", String(gridContext.semiToY(midpoint - extent)));
+      }
       line.setAttribute("stroke", sep.color ?? "#ffd42a");
       line.setAttribute("stroke-width", String(m.separatorPx));
       g.appendChild(line);
@@ -323,8 +355,22 @@ export const CNBKeySignature = {
     // layering). Ledger length = 4/3 × notehead width, the engine's
     // keysig ledger proportion.
     const ledgerOpts = { width: m.markWidth * (4 / 3) };
-    CNBLedgerSet.render(g, gridContext, config, evenSemis, { ...ledgerOpts, centerX: leftX });
-    CNBLedgerSet.render(g, gridContext, config, oddSemis, { ...ledgerOpts, centerX: rightX });
+    if (m.offsets) {
+      // Axis path: ledgers follow their marks — one render per
+      // (column, offset) group, so equal-offset marks share ledgers.
+      const groups = new Map();
+      m.semis.forEach((semi, i) => {
+        const x = (i % 2 === 0 ? leftX : rightX) + m.offsets[i];
+        if (!groups.has(x)) groups.set(x, []);
+        groups.get(x).push(semi);
+      });
+      for (const [x, semis] of groups) {
+        CNBLedgerSet.render(g, gridContext, config, semis, { ...ledgerOpts, centerX: x });
+      }
+    } else {
+      CNBLedgerSet.render(g, gridContext, config, evenSemis, { ...ledgerOpts, centerX: leftX });
+      CNBLedgerSet.render(g, gridContext, config, oddSemis, { ...ledgerOpts, centerX: rightX });
+    }
 
     m.semis.forEach((semi, i) => {
       const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
@@ -333,7 +379,9 @@ export const CNBKeySignature = {
       const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
       CNBNotehead.render(g, {
         shape,
-        x: i % 2 === 0 ? leftX : rightX,
+        x: m.offsets
+          ? (i % 2 === 0 ? leftX : rightX) + m.offsets[i]
+          : i % 2 === 0 ? leftX : rightX,
         y: gridContext.semiToY(semi),
         scaleFactor,
         hollow: mark.hollow,
