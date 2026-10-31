@@ -1,0 +1,904 @@
+/**
+ * cnb-config.js — Module A: Config Schema
+ *
+ * Canonical JSON config structure with defaults, validation, deep merge,
+ * clone, notehead rule resolution, and color resolution.
+ *
+ * No external dependencies.
+ *
+ * Part of the Chromatic Notation Builder modular architecture.
+ */
+
+// ─── Default 4-8 configuration (Architecture Plan Appendix A) ───────────────
+
+function buildDefault() {
+  return {
+    version: "1.0",
+
+    shapes: {
+      "crotchet-minim": {
+        displayName: "Crotchet–Minim",
+
+        // SVG data (for preview rendering)
+        svgPath: "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+        svgHollowPath: "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+        naturalHeight: 272.4,
+        naturalWidth: 344.852,
+        semitoneHeight: 2.724,
+
+        // 4-point stem anchor model (in native SVG units)
+        anchors: {
+          crotchetUp:   { x: 157.2926,  y: -42.9985 },
+          crotchetDown: { x: -157.2934, y:  43.0027 },
+          minimUp:      { x: 157.2926,  y: -42.9985 },
+          minimDown:    { x: -157.2934, y:  43.0027 },
+        },
+
+        // LilyPond data (for export — null = fallback conversion at export time)
+        lilypondPath: null,
+        lilypondHollowPath: null,
+        lilypondAnchors: null,
+      },
+    },
+
+    staff: {
+      semitonePattern: [4, 8],
+      midpoint: 12,
+      semitonesPerStaffSpace: 4,
+      lineDefaults: {
+        thicknessPct: 20,
+        style: "solid",
+        color: "#000000",
+      },
+      lineOverrides: {},
+    },
+
+    ledgers: {
+      templates: [
+        { semiWithinOctave: 0,  triggerPCs: [0, 1, 2], triggerMode: "override" },
+        { semiWithinOctave: 2,  triggerPCs: [2],        triggerMode: "override" },
+        { semiWithinOctave: 10, triggerPCs: [10],       triggerMode: "override" },
+      ],
+      proximityRule: true,
+      lineDefaults: {
+        thicknessPct: 40,
+        widthMultiplier: 2.0,
+        style: "solid",
+        color: "#000000",
+        roundedEnds: true,
+      },
+      lineOverrides: {},
+    },
+
+    noteheadRules: [
+      {
+        name: "Default",
+        priority: 0,
+        match: { pitchClasses: "all", durations: "all", keys: "all" },
+        apply: { shape: "crotchet-minim", hollow: false, color: null, offKeyMark: false },
+      },
+      {
+        name: "Sharps are hollow",
+        priority: 1,
+        match: { pitchClasses: [1, 3, 6, 8, 10], durations: "all", keys: "all" },
+        apply: { hollow: true },
+      },
+    ],
+
+    palette: {
+      name: "None",
+      colors: [],
+      cbSafeColors: [],
+      useCBSafe: false,
+      schemeSymbols: {},
+    },
+
+    display: {
+      pxPerSemi: 16,
+      stemThicknessPct: 26,
+      stemExtension: 2.5,
+      label: {
+        fontFamily: "Oswald",
+        fontSize: 22,
+        fontWeight: 400,
+        color: "#555555",
+        marginTop: 14,
+        marginBottom: 14,
+        padding: 6,
+        sharpStyle: { fontSize: 0.75, raise: -0.15 },
+      },
+      column: { paddingH: 16 },
+      card: {
+        background: "#FFFFFF",
+        borderRadius: 6,
+        shadow: "0 2px 12px rgba(0,0,0,0.12)",
+      },
+      debugGrid: false,
+    },
+
+    durations: {
+      definitions: [
+        { name: "crotchet",  displayName: "Crotchet (Quarter)",   lilypondDuration: 3, defaultShape: "crotchet-minim", defaultHollow: false, hasStem: true  },
+        { name: "minim",     displayName: "Minim (Half)",         lilypondDuration: 2, defaultShape: "crotchet-minim", defaultHollow: true,  hasStem: true  },
+        { name: "semibreve", displayName: "Semibreve (Whole)",    lilypondDuration: 1, defaultShape: "semibreve",      defaultHollow: false, hasStem: false },
+        { name: "breve",     displayName: "Breve (Double Whole)", lilypondDuration: 0, defaultShape: "breve",          defaultHollow: false, hasStem: false },
+      ],
+      representationMode: "shape",
+      repeatCounts: { minim: 2, semibreve: 4, breve: 8 },
+    },
+
+    keys: {
+      enabled: false,
+      definitions: [],
+      offKeyMark: {},
+
+      // Key signature (set 010). Default-off: with enabled:false the preview
+      // and the LilyPond export are byte-identical to the pre-set-010 output.
+      // The style "notehead-chords" mirrors the engine's keysig.ly: the key's
+      // scale rendered as real noteheads — 7 degrees ascending from the tonic
+      // plus the octave tonic, interleaved into two columns (two stacked 7th
+      // chords) — with a gold separator stem through the middle (engine
+      // cnb:gold #ffd42a). style is a single-value vocabulary (only
+      // "notehead-chords" is implemented): the task owner evaluated simple
+      // built-in marks (dot, interval blocks, staggered ledgers) in set-010
+      // s2 UAT and chose the note stack as the sole style, deferring richer
+      // custom-symbol signatures (Clairnote-style) to a future set (see
+      // s2-uat.md and s2-design-consult.md). The field stays the extension
+      // point for those future styles (validation rejects unknown values;
+      // the renderer treats an unknown style as inactive).
+      //
+      // placement is the explicit placement-rule surface (binding rule 2;
+      // session 2's placement-rule controls edit it): rule names how the
+      // key's pitch classes map to grid positions — "scale-from-tonic"
+      // (the s1 decision D1: full pitch-class set ascending from the tonic
+      // plus the octave tonic, per keysig.ly) is the vocabulary's only
+      // implemented value; future rules (e.g. a tonic-label mode, catalog
+      // record 42) extend it. tonicOctave null = auto (center the octave
+      // span on staff.midpoint; ties resolve upward, so a C tonic with
+      // midpoint 12 sits at semitone 12, matching the engine's middle-C
+      // anchor for the default config); an explicit integer overrides.
+      //
+      // The separator is the engine's gold STEM: keysig.ly draws it
+      // through the horizontal middle of the two notehead columns
+      // (bar x = max-notehead-x-offset − width/2), beneath the noteheads,
+      // 0.4 staff-space thick (measured from engine SVG renders at sps 3
+      // and sps 4 during set-010 s2 UAT; the file's "at the right edge"
+      // comment does not match its own computed x). thicknessPct stays in
+      // semitone units like every other thickness: 160% of a semitone =
+      // 0.4 staff-space at the default staff's 4 semitones per space.
+      // dot.radiusPct 60 (diameter 1.2 semitones) per the s2 UAT operator
+      // feedback that 30 rendered "really small".
+      keySignature: {
+        enabled: false,
+        style: "notehead-chords",
+        placement: {
+          rule: "scale-from-tonic",
+          tonicOctave: null,
+        },
+        separator: {
+          enabled: true,
+          color: "#ffd42a",
+          thicknessPct: 160,
+          extentSemis: 12,
+        },
+        gutter: { paddingH: 12 },
+      },
+    },
+
+    // Custom clef (set 009). Default-off: with enabled:false the preview and
+    // the LilyPond export are byte-identical to the pre-clef output.
+    // glyphs is an open-keyed map of named clef definitions; active selects
+    // one by name. Each definition carries its own anchorSemi — the semitone
+    // the TOP edge of the glyph sits on (floats allowed: glyph designs like
+    // the traditional treble clef do not top-align to a staff unit, so the
+    // anchor is not restricted to integers).
+    clef: {
+      enabled: false,
+      active: null,
+      glyphs: {},
+      gutter: { paddingH: 12 },
+    },
+
+    engine: {
+      lilypondVersion: "2.24.2",
+      falseHollow: false,
+      multinotePadding: -0.5,
+      defaultMagnify: "7/4",
+      indent: 0,
+      collisionThreshold: 2,
+      stemThickness: null,
+      useAccessibleColors: false,
+    },
+
+    meta: {
+      configName: "Default 4-8 System",
+      fileSuffix: "-Default48",
+      notationLabel: "Default 4-8 System",
+      notationFootnote: "",
+      author: "",
+      description: "Two staff lines per octave at semitones 4 (E) and 8 (G♯)",
+      created: null,
+      modified: null,
+    },
+  };
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Deep merge: recursively merges `partial` into `base`.
+ * Arrays are replaced in full (not concatenated).
+ * Objects are merged field by field. Primitives overwrite.
+ * Neither argument is mutated; returns a new object.
+ */
+function deepMerge(base, partial) {
+  if (partial === null || partial === undefined) return deepClone(base);
+  if (typeof partial !== "object" || Array.isArray(partial)) return deepClone(partial);
+  if (typeof base !== "object" || base === null || Array.isArray(base)) return deepClone(partial);
+
+  const result = {};
+  const allKeys = new Set([...Object.keys(base), ...Object.keys(partial)]);
+  for (const key of allKeys) {
+    if (!(key in partial)) {
+      result[key] = deepClone(base[key]);
+    } else if (!(key in base)) {
+      result[key] = deepClone(partial[key]);
+    } else {
+      result[key] = deepMerge(base[key], partial[key]);
+    }
+  }
+  return result;
+}
+
+function deepClone(value) {
+  if (value === null || value === undefined) return value;
+  if (typeof value !== "object") return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+/** Returns the name of the first shape in config.shapes, or null. */
+function firstShapeName(config) {
+  const keys = Object.keys(config.shapes || {});
+  return keys.length > 0 ? keys[0] : null;
+}
+
+/** True if the rule's match block covers this (pc, duration, key). */
+function ruleMatches(rule, pc, duration, key) {
+  const m = rule.match;
+  const pcMatch  = m.pitchClasses === "all" || (Array.isArray(m.pitchClasses) && m.pitchClasses.includes(pc));
+  const durMatch = m.durations    === "all" || (Array.isArray(m.durations)    && m.durations.includes(duration));
+  const keyMatch = m.keys         === "all" || (Array.isArray(m.keys)         && m.keys.includes(key));
+  return pcMatch && durMatch && keyMatch;
+}
+
+/** Returns true if str is a valid #RRGGBB hex color (case-insensitive). */
+function isValidHex(str) {
+  return typeof str === "string" && /^#[0-9A-Fa-f]{6}$/.test(str);
+}
+
+// ─── Public API ─────────────────────────────────────────────────────────────
+
+export const CNBConfig = {
+
+  VERSION: "1.0",
+
+  /**
+   * Create a complete config with all defaults (the 4-8 system).
+   * Each call returns a fresh, independent copy.
+   * @returns {object}
+   */
+  createDefault() {
+    return buildDefault();
+  },
+
+  /**
+   * Validate a config. Returns errors (blocking) and warnings (non-blocking).
+   * Implements validation rules from LY Spec §8.
+   * @param {object} config
+   * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+   */
+  validate(config) {
+    const errors   = [];
+    const warnings = [];
+
+    const shapes = config.shapes || {};
+    const rules  = config.noteheadRules || [];
+
+    // ── Errors ───────────────────────────────────────────────────────────
+
+    // 1. Shape names in rules must exist in config.shapes
+    for (const rule of rules) {
+      if (rule.apply && rule.apply.shape !== undefined) {
+        if (!(rule.apply.shape in shapes)) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" references unknown shape "${rule.apply.shape}"`);
+        }
+      }
+    }
+
+    // 2. Shapes referenced with hollow:true must have svgHollowPath
+    //    (check rules that explicitly set hollow:true and reference a real shape)
+    // We do this through resolution: for each PC, if resolved hollow=true check svgHollowPath.
+    // But error 2 from the spec is about *rule-level* references, so check shapes directly:
+    // Any shape that exists and is used in a hollow context must have a hollow path.
+    // We'll check this at resolution time below (warning 2), but also flag here if a rule
+    // sets hollow:true AND an apply.shape that has no hollow path. Only flag if both are in
+    // the same rule (direct reference).
+    for (const rule of rules) {
+      if (rule.apply && rule.apply.hollow === true && rule.apply.shape !== undefined) {
+        const shape = shapes[rule.apply.shape];
+        if (shape && !shape.svgHollowPath) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" sets hollow:true on shape "${rule.apply.shape}" which has no svgHollowPath`);
+        }
+      }
+    }
+
+    // 3. Explicit color hex values in rules must be valid (covers palette hex check per spec)
+    //    Config.palette.colors[].hex must also be valid
+    for (const rule of rules) {
+      if (rule.apply && rule.apply.color !== null && rule.apply.color !== undefined) {
+        if (!isValidHex(rule.apply.color)) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" has invalid color hex "${rule.apply.color}"`);
+        }
+      }
+    }
+    const palette = config.palette || {};
+    for (const entry of (palette.colors || [])) {
+      if (!isValidHex(entry.hex)) {
+        errors.push(`Palette color for PC ${entry.pc} has invalid hex "${entry.hex}"`);
+      }
+    }
+    for (const entry of (palette.cbSafeColors || [])) {
+      if (!isValidHex(entry.hex)) {
+        errors.push(`CB-safe palette color for PC ${entry.pc} has invalid hex "${entry.hex}"`);
+      }
+    }
+
+    // 4. All 12 PCs must be covered by at least one rule
+    const coveredPCs = new Set();
+    for (let pc = 0; pc < 12; pc++) {
+      for (const rule of rules) {
+        const m = rule.match || {};
+        if (m.pitchClasses === "all" || (Array.isArray(m.pitchClasses) && m.pitchClasses.includes(pc))) {
+          coveredPCs.add(pc);
+          break;
+        }
+      }
+    }
+    for (let pc = 0; pc < 12; pc++) {
+      if (!coveredPCs.has(pc)) {
+        errors.push(`Pitch class ${pc} is not covered by any notehead rule`);
+      }
+    }
+
+    // 5. At least 2 staff lines
+    const staffPattern = (config.staff || {}).semitonePattern || [];
+    if (staffPattern.length < 2) {
+      errors.push(`Staff pattern must have at least 2 semitone positions (found ${staffPattern.length})`);
+    }
+
+    // 6. fileSuffix must start with hyphen if non-empty
+    const fileSuffix = ((config.meta || {}).fileSuffix) || "";
+    if (fileSuffix.length > 0 && !fileSuffix.startsWith("-")) {
+      errors.push(`meta.fileSuffix must begin with "-" (got "${fileSuffix}")`);
+    }
+
+    // 7. All color hex values match #RRGGBB — already covered in check 3 above for rules/palette.
+    //    Also check staff and ledger colors.
+    const staffColor = ((config.staff || {}).lineDefaults || {}).color;
+    if (staffColor !== undefined && staffColor !== null && !isValidHex(staffColor)) {
+      errors.push(`staff.lineDefaults.color has invalid hex "${staffColor}"`);
+    }
+    const ledgerColor = ((config.ledgers || {}).lineDefaults || {}).color;
+    if (ledgerColor !== undefined && ledgerColor !== null && !isValidHex(ledgerColor)) {
+      errors.push(`ledgers.lineDefaults.color has invalid hex "${ledgerColor}"`);
+    }
+
+    // 8. Clef checks (set 009) — only when the clef is enabled, so configs
+    //    predating the clef section (and default-off configs) validate
+    //    exactly as before. Malformed sections report errors rather than
+    //    throwing: validate() must always return a result object.
+    const isPlainObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+    const clef = isPlainObject(config.clef) ? config.clef : {};
+    if (clef.enabled) {
+      const glyphsOk = clef.glyphs === undefined || isPlainObject(clef.glyphs);
+      if (!glyphsOk) {
+        errors.push("clef.glyphs must be an object map of clef definitions");
+      }
+      const glyphs = glyphsOk && clef.glyphs ? clef.glyphs : {};
+      const gutter = clef.gutter;
+      if (gutter !== undefined && gutter !== null) {
+        if (!isPlainObject(gutter)) {
+          errors.push("clef.gutter must be an object");
+        } else if (gutter.paddingH !== undefined && gutter.paddingH !== null &&
+                   (typeof gutter.paddingH !== "number" || !Number.isFinite(gutter.paddingH) || gutter.paddingH < 0)) {
+          errors.push(`clef.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(gutter.paddingH)})`);
+        }
+      }
+      if (!clef.active || typeof clef.active !== "string") {
+        errors.push("clef.enabled is true but clef.active names no glyph");
+      } else if (!(clef.active in glyphs)) {
+        errors.push(`clef.active references unknown clef glyph "${clef.active}"`);
+      } else if (!isPlainObject(glyphs[clef.active])) {
+        errors.push(`Clef glyph "${clef.active}" is not an object`);
+      } else {
+        const def = glyphs[clef.active];
+        const kind = def.kind || "glyph";
+        if (kind === "glyph") {
+          if (!def.svgPath) {
+            errors.push(`Clef glyph "${clef.active}" has no svgPath`);
+          }
+          if (!(def.naturalHeight > 0) || !(def.naturalWidth > 0) || !(def.semitoneHeight > 0)) {
+            errors.push(`Clef glyph "${clef.active}" is missing positive natural dimensions / semitoneHeight`);
+          }
+        } else if (kind === "text") {
+          if (typeof def.text !== "string" || def.text.length === 0) {
+            errors.push(`Clef text entry "${clef.active}" has no text`);
+          }
+          if (!(def.textHeightSemis > 0)) {
+            errors.push(`Clef text entry "${clef.active}" needs a positive textHeightSemis`);
+          }
+        } else {
+          errors.push(`Clef glyph "${clef.active}" has unknown kind "${kind}" (expected "glyph" or "text")`);
+        }
+        // anchorSemi is deliberately a float: surveyed clef designs
+        // (Bravura gClef top +1.392 staff-spaces above the top line,
+        // Clairnote glyph tops at fractional extents) do not top-align to
+        // integer grid positions.
+        if (typeof def.anchorSemi !== "number" || !Number.isFinite(def.anchorSemi)) {
+          errors.push(`Clef glyph "${clef.active}" has no numeric anchorSemi`);
+        } else if (def.anchorSemi < -24 || def.anchorSemi > 72) {
+          warnings.push(`Clef glyph "${clef.active}" anchorSemi ${def.anchorSemi} is far outside the typical range (-24 to 72)`);
+        }
+      }
+    }
+
+    // 9. Key-signature checks (set 010) — only when the key signature is
+    //    enabled, so configs predating the section (and default-off configs)
+    //    validate exactly as before. Type-safe against malformed sections:
+    //    errors are reported rather than thrown, same posture as the clef
+    //    checks above.
+    const keysSection = isPlainObject(config.keys) ? config.keys : {};
+    const keySig = isPlainObject(keysSection.keySignature) ? keysSection.keySignature : {};
+    if (keySig.enabled) {
+      if (!keysSection.enabled) {
+        warnings.push("keys.keySignature.enabled is true but keys.enabled is false — the key signature will not render (rendering is gated on keys.enabled per the E2 requirements entry)");
+      }
+      const ksStyle = keySig.style === undefined || keySig.style === null ? "notehead-chords" : keySig.style;
+      if (ksStyle !== "notehead-chords") {
+        errors.push(`keys.keySignature.style must be "notehead-chords" (got ${JSON.stringify(keySig.style)}; the vocabulary extends when new mark styles are implemented)`);
+      }
+      const placement = keySig.placement;
+      if (placement !== undefined && placement !== null) {
+        if (!isPlainObject(placement)) {
+          errors.push("keys.keySignature.placement must be an object");
+        } else {
+          const rule = placement.rule === undefined || placement.rule === null ? "scale-from-tonic" : placement.rule;
+          if (rule !== "scale-from-tonic") {
+            errors.push(`keys.keySignature.placement.rule must be "scale-from-tonic" (got ${JSON.stringify(placement.rule)}; the vocabulary extends when new placement rules are implemented)`);
+          }
+          if (placement.tonicOctave !== undefined && placement.tonicOctave !== null && !Number.isInteger(placement.tonicOctave)) {
+            errors.push(`keys.keySignature.placement.tonicOctave must be an integer octave or null for auto (got ${JSON.stringify(placement.tonicOctave)})`);
+          }
+        }
+      }
+      const sep = keySig.separator;
+      if (sep !== undefined && sep !== null) {
+        if (!isPlainObject(sep)) {
+          errors.push("keys.keySignature.separator must be an object");
+        } else {
+          if (sep.color !== undefined && sep.color !== null && !isValidHex(sep.color)) {
+            errors.push(`keys.keySignature.separator.color has invalid hex "${sep.color}"`);
+          }
+          if (sep.thicknessPct !== undefined && sep.thicknessPct !== null &&
+              (typeof sep.thicknessPct !== "number" || !Number.isFinite(sep.thicknessPct) || sep.thicknessPct < 0)) {
+            errors.push(`keys.keySignature.separator.thicknessPct must be a finite non-negative number (got ${JSON.stringify(sep.thicknessPct)})`);
+          }
+          if (sep.extentSemis !== undefined && sep.extentSemis !== null &&
+              (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0)) {
+            errors.push(`keys.keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
+          }
+        }
+      }
+      const ksGutter = keySig.gutter;
+      if (ksGutter !== undefined && ksGutter !== null) {
+        if (!isPlainObject(ksGutter)) {
+          errors.push("keys.keySignature.gutter must be an object");
+        } else if (ksGutter.paddingH !== undefined && ksGutter.paddingH !== null &&
+                   (typeof ksGutter.paddingH !== "number" || !Number.isFinite(ksGutter.paddingH) || ksGutter.paddingH < 0)) {
+          errors.push(`keys.keySignature.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(ksGutter.paddingH)})`);
+        }
+      }
+      // Key definitions are what the signature renders from.
+      if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
+          !Array.isArray(keysSection.definitions)) {
+        errors.push("keys.definitions must be an array of key definitions");
+      } else {
+        const keyDefs = keysSection.definitions || [];
+        if (keyDefs.length === 0) {
+          warnings.push("keys.keySignature is enabled but keys.definitions is empty — there is no key to render");
+        }
+        keyDefs.forEach((def, i) => {
+          if (!isPlainObject(def)) {
+            errors.push(`keys.definitions[${i}] must be an object`);
+            return;
+          }
+          const defLabel = typeof def.name === "string" && def.name.length > 0 ? `"${def.name}"` : `[${i}]`;
+          if (typeof def.name !== "string" || def.name.length === 0) {
+            errors.push(`keys.definitions[${i}] has no name`);
+          }
+          const pcs = def.pitchClasses;
+          if (!Array.isArray(pcs) || pcs.length === 0 ||
+              !pcs.every(pc => Number.isInteger(pc) && pc >= 0 && pc <= 11)) {
+            errors.push(`Key definition ${defLabel} needs a non-empty pitchClasses array of integers 0–11`);
+          }
+          if (def.tonicPc !== undefined && def.tonicPc !== null &&
+              !(Number.isInteger(def.tonicPc) && def.tonicPc >= 0 && def.tonicPc <= 11)) {
+            errors.push(`Key definition ${defLabel} tonicPc must be an integer 0–11 (got ${JSON.stringify(def.tonicPc)})`);
+          }
+          // Tonic fallback warning: no explicit tonicPc and the name does not
+          // lead with a note letter — the exact condition under which
+          // CNBMusic.parseTonicPc fails — so the renderer will fall back to
+          // the first listed pitch class (s1 decision D3).
+          if ((def.tonicPc === undefined || def.tonicPc === null) &&
+              typeof def.name === "string" && !/^\s*[A-Ga-g]/.test(def.name)) {
+            warnings.push(`Key definition ${defLabel} has no tonicPc and its name does not begin with a note letter — the tonic falls back to the first listed pitch class`);
+          }
+        });
+      }
+    }
+
+    // 10. Pitch-axis checks (set 014) — design §1.4, rules PA-1…PA-8 and
+    //     PA-W1/W3/W4 (docs/planning/pitch-axis-design.md). All checks are
+    //     gated on pitchAxis.enabled being truthy — except PA-W4, which by
+    //     definition fires on a disabled/absent section — so configs
+    //     predating the feature validate exactly as before. Same type-safe
+    //     posture as checks 8–9: malformed sections report errors, never
+    //     throw.
+    const pitchAxis = isPlainObject(config.pitchAxis) ? config.pitchAxis : {};
+    if (pitchAxis.enabled) {
+      // PA-1: kind vocabulary (single value; extends when new kinds are implemented)
+      if (pitchAxis.kind !== "pitch-class-map-v1") {
+        errors.push(`pitchAxis.kind must be "pitch-class-map-v1" (got ${JSON.stringify(pitchAxis.kind)}; the vocabulary extends when new axis kinds are implemented)`);
+      }
+
+      // PA-3: octaveStride finite > 0
+      const strideOk = typeof pitchAxis.octaveStride === "number" &&
+                       Number.isFinite(pitchAxis.octaveStride) && pitchAxis.octaveStride > 0;
+      if (!strideOk) {
+        errors.push(`pitchAxis.octaveStride must be a finite number > 0 (got ${JSON.stringify(pitchAxis.octaveStride)})`);
+      }
+
+      // PA-4: axisUnitsPerStaffSpace finite > 0
+      const unitsOk = typeof pitchAxis.axisUnitsPerStaffSpace === "number" &&
+                      Number.isFinite(pitchAxis.axisUnitsPerStaffSpace) && pitchAxis.axisUnitsPerStaffSpace > 0;
+      if (!unitsOk) {
+        errors.push(`pitchAxis.axisUnitsPerStaffSpace must be a finite number > 0 (got ${JSON.stringify(pitchAxis.axisUnitsPerStaffSpace)})`);
+      }
+
+      // PA-2: exactly one entry per pitch class 0–11, finite numeric positions.
+      // `positions` (by pc) is non-null only when the map is structurally
+      // sound — the map-dependent checks below (PA-5/6/8, W1/W3) need it.
+      let positions = null;
+      const pcEntries = pitchAxis.pitchClasses;
+      if (!Array.isArray(pcEntries) || pcEntries.length !== 12) {
+        errors.push(`pitchAxis.pitchClasses must be an array of exactly 12 entries, one per pitch class 0–11 (got ${Array.isArray(pcEntries) ? pcEntries.length + " entries" : JSON.stringify(pcEntries)})`);
+      } else {
+        const seen = new Array(12).fill(undefined);
+        let entriesOk = true;
+        pcEntries.forEach((entry, i) => {
+          if (!isPlainObject(entry)) {
+            errors.push(`pitchAxis.pitchClasses[${i}] must be an object with integer pc and finite numeric position`);
+            entriesOk = false;
+            return;
+          }
+          if (!Number.isInteger(entry.pc) || entry.pc < 0 || entry.pc > 11) {
+            errors.push(`pitchAxis.pitchClasses[${i}].pc must be an integer 0–11 (got ${JSON.stringify(entry.pc)})`);
+            entriesOk = false;
+            return;
+          }
+          if (seen[entry.pc] !== undefined) {
+            errors.push(`pitchAxis.pitchClasses has more than one entry for pc ${entry.pc}`);
+            entriesOk = false;
+            return;
+          }
+          if (typeof entry.position !== "number" || !Number.isFinite(entry.position)) {
+            errors.push(`pitchAxis.pitchClasses[${i}] (pc ${entry.pc}) position must be a finite number (got ${JSON.stringify(entry.position)})`);
+            entriesOk = false;
+            return;
+          }
+          seen[entry.pc] = entry.position;
+        });
+        if (entriesOk) positions = seen;
+      }
+
+      // PA-8: the map must be globally non-decreasing — positions
+      // non-decreasing in pc order AND positions[11] ≤ positions[0] +
+      // octaveStride, so monotonicity holds across octave boundaries too.
+      // Non-monotonic maps are REJECTED in "pitch-class-map-v1" (promoted
+      // from warning to blocking error in set-013 s2 verification round 1):
+      // the grid's extent math and label layout assume monotonicity.
+      if (positions) {
+        let nonDecreasing = true;
+        for (let pc = 1; pc < 12; pc++) {
+          if (positions[pc] < positions[pc - 1]) {
+            errors.push(`pitchAxis map is not globally non-decreasing: position of pc ${pc} (${positions[pc]}) is below position of pc ${pc - 1} (${positions[pc - 1]}) — non-monotonic maps are rejected in "pitch-class-map-v1"`);
+            nonDecreasing = false;
+            break;
+          }
+        }
+        if (nonDecreasing && strideOk && positions[11] > positions[0] + pitchAxis.octaveStride) {
+          errors.push(`pitchAxis map breaks monotonicity across the octave boundary: position of pc 11 (${positions[11]}) exceeds position of pc 0 (${positions[0]}) + octaveStride (${pitchAxis.octaveStride}) — non-monotonic maps are rejected in "pitch-class-map-v1"`);
+        }
+      }
+
+      // Shared helper for PA-5/PA-6: property names on which two override
+      // objects CONFLICT (same property, different values). Identical or
+      // absent overrides are fine — the collapsed pair draws one line.
+      const overrideConflicts = (ovA, ovB) => {
+        if (!isPlainObject(ovA) || !isPlainObject(ovB)) return [];
+        return Object.keys(ovA).filter(k =>
+          k in ovB && JSON.stringify(ovA[k]) !== JSON.stringify(ovB[k]));
+      };
+      const axisPosOf = (semi, stride) =>
+        positions[((semi % 12) + 12) % 12] + Math.floor(semi / 12) * stride;
+
+      if (positions && strideOk) {
+        // PA-6: staff pattern entries collapsing onto one axis position
+        // must not carry conflicting staff.lineOverrides entries.
+        const staffSection = isPlainObject(config.staff) ? config.staff : {};
+        const pattern = Array.isArray(staffSection.semitonePattern) ? staffSection.semitonePattern : [];
+        const staffOverrides = isPlainObject(staffSection.lineOverrides) ? staffSection.lineOverrides : {};
+        for (let i = 0; i < pattern.length; i++) {
+          for (let j = i + 1; j < pattern.length; j++) {
+            const a = pattern[i], b = pattern[j];
+            if (typeof a !== "number" || typeof b !== "number") continue;
+            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
+            const conflicts = overrideConflicts(staffOverrides[String(a)], staffOverrides[String(b)]);
+            if (conflicts.length > 0) {
+              errors.push(`Staff pattern entries ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
+            }
+          }
+        }
+
+        // PA-5: ledger templates collapsing onto one axis position must
+        // not carry conflicting ledgers.lineOverrides entries.
+        const ledgerSection = isPlainObject(config.ledgers) ? config.ledgers : {};
+        const templates = Array.isArray(ledgerSection.templates) ? ledgerSection.templates : [];
+        const ledgerOverrides = isPlainObject(ledgerSection.lineOverrides) ? ledgerSection.lineOverrides : {};
+        for (let i = 0; i < templates.length; i++) {
+          for (let j = i + 1; j < templates.length; j++) {
+            const ta = templates[i], tb = templates[j];
+            if (!isPlainObject(ta) || !isPlainObject(tb)) continue;
+            const a = ta.semiWithinOctave, b = tb.semiWithinOctave;
+            if (typeof a !== "number" || typeof b !== "number" || a === b) continue;
+            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
+            const conflicts = overrideConflicts(ledgerOverrides[String(a)], ledgerOverrides[String(b)]);
+            if (conflicts.length > 0) {
+              errors.push(`Ledger templates at semiWithinOctave ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
+            }
+          }
+        }
+      }
+
+      // PA-7: apply.xOffsetStaffSpaces must be a finite number when present
+      for (const rule of rules) {
+        if (!rule || !isPlainObject(rule.apply)) continue;
+        const v = rule.apply.xOffsetStaffSpaces;
+        if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" apply.xOffsetStaffSpaces must be a finite number (got ${JSON.stringify(v)})`);
+        }
+      }
+
+      // PA-W1: positions outside [0, octaveStride) — octave bands overlap
+      // or interleave (still legal when PA-8 holds).
+      if (positions && strideOk) {
+        const outside = [];
+        for (let pc = 0; pc < 12; pc++) {
+          if (positions[pc] < 0 || positions[pc] >= pitchAxis.octaveStride) outside.push(pc);
+        }
+        if (outside.length > 0) {
+          warnings.push(`pitchAxis positions for pc ${outside.join(", ")} lie outside [0, octaveStride) — octave bands overlap or interleave`);
+        }
+      }
+
+      // PA-W3: a shared-position pc pair whose resolved noteheads (at
+      // crotchet, key null) are indistinguishable — same shape, hollow,
+      // effective color, and equal xOffsetStaffSpaces — cannot be told
+      // apart in the notation.
+      if (positions) {
+        const byPosition = new Map();
+        for (let pc = 0; pc < 12; pc++) {
+          const key = String(positions[pc]);
+          if (!byPosition.has(key)) byPosition.set(key, []);
+          byPosition.get(key).push(pc);
+        }
+        for (const [posKey, pcs] of byPosition) {
+          if (pcs.length < 2) continue;
+          for (let i = 0; i < pcs.length; i++) {
+            for (let j = i + 1; j < pcs.length; j++) {
+              try {
+                const a = CNBConfig.resolveNotehead(config, pcs[i], "crotchet", null);
+                const b = CNBConfig.resolveNotehead(config, pcs[j], "crotchet", null);
+                const colorA = a.color ?? CNBConfig.resolveColor(config, pcs[i]);
+                const colorB = b.color ?? CNBConfig.resolveColor(config, pcs[j]);
+                if (a.shape === b.shape && a.hollow === b.hollow && colorA === colorB &&
+                    a.xOffsetStaffSpaces === b.xOffsetStaffSpaces) {
+                  warnings.push(`Shared axis position ${posKey}: pitch classes ${pcs[i]} and ${pcs[j]} resolve to indistinguishable noteheads (same shape, hollow, color, and xOffsetStaffSpaces) — the notation cannot disambiguate them`);
+                }
+              } catch (_) {
+                // Skip if resolution fails (covered by error 4)
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // PA-W4: xOffsetStaffSpaces present in rules while pitchAxis is
+      // disabled/absent — the field's whole lifecycle is axis-gated
+      // (design §3.2, deviation D2) and it will be ignored.
+      for (const rule of rules) {
+        if (!rule || !isPlainObject(rule.apply)) continue;
+        if (rule.apply.xOffsetStaffSpaces !== undefined) {
+          warnings.push(`Rule "${rule.name || "(unnamed)"}" sets apply.xOffsetStaffSpaces while pitchAxis is disabled or absent — the field is axis-gated and will be ignored`);
+        }
+      }
+    }
+
+    // ── Warnings ─────────────────────────────────────────────────────────
+
+    // W1. notationLabel is empty
+    const label = ((config.meta || {}).notationLabel) || "";
+    if (!label) {
+      warnings.push("meta.notationLabel is empty");
+    }
+
+    // W2. A PC resolves hollow:true but its shape has no svgHollowPath
+    const firstShape = firstShapeName(config);
+    if (firstShape) {
+      for (let pc = 0; pc < 12; pc++) {
+        try {
+          const resolved = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
+          if (resolved.hollow) {
+            const shape = shapes[resolved.shape];
+            if (shape && !shape.svgHollowPath) {
+              warnings.push(`PC ${pc} resolves to hollow but shape "${resolved.shape}" has no svgHollowPath`);
+            }
+          }
+        } catch (_) {
+          // Skip if resolution fails (covered by error 4)
+        }
+      }
+    }
+
+    // W3. Any shape has lilypondPath: null
+    for (const [name, shape] of Object.entries(shapes)) {
+      if (shape.lilypondPath === null || shape.lilypondPath === undefined) {
+        warnings.push(`Shape "${name}" has no lilypondPath (will use fallback SVG conversion at export)`);
+      }
+    }
+
+    // W4. Some PCs have color:null and palette is empty
+    const hasColors = (palette.colors || []).length > 0;
+    if (!hasColors) {
+      let anyColorNull = false;
+      for (let pc = 0; pc < 12; pc++) {
+        try {
+          const resolved = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
+          if (resolved.color === null) { anyColorNull = true; break; }
+        } catch (_) { /* skip */ }
+      }
+      if (anyColorNull) {
+        warnings.push("Some pitch classes have no color rule and no palette — will render black");
+      }
+    }
+
+    // W5. CB-safe palette has fewer entries than primary palette
+    const primaryCount  = (palette.colors || []).length;
+    const cbSafeCount   = (palette.cbSafeColors || []).length;
+    if (primaryCount > 0 && cbSafeCount < primaryCount) {
+      warnings.push(`CB-safe palette has ${cbSafeCount} entries but primary palette has ${primaryCount}`);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  },
+
+  /**
+   * Deep-merge a partial config over a base config.
+   * Arrays in partial replace arrays in base entirely.
+   * Objects are merged field by field. Primitives overwrite.
+   * Neither argument is mutated; returns a new object.
+   * @param {object} base
+   * @param {object} partial
+   * @returns {object}
+   */
+  merge(base, partial) {
+    return deepMerge(base, partial);
+  },
+
+  /**
+   * Deep-clone a config. No shared references between clone and original.
+   * @param {object} config
+   * @returns {object}
+   */
+  clone(config) {
+    return deepClone(config);
+  },
+
+  /**
+   * Resolve notehead properties for a given (pc, duration, key).
+   * Walks noteheadRules in priority order (ascending), merging apply blocks.
+   * Only fields explicitly present in rule.apply overwrite the current result.
+   *
+   * xOffsetStaffSpaces (set 014, design §3.1): horizontal disambiguation
+   * offset in STAFF-SPACE units (negative = left, 0 = centered). Default 0;
+   * merges in priority order like every other apply field. The field is
+   * meaningful only while pitchAxis is enabled (design §3.2) — nothing
+   * reads it on the linear path, and export emission is axis-gated.
+   *
+   * @param {object} config
+   * @param {number} pc       0–11
+   * @param {string} duration e.g. "crotchet"
+   * @param {string|null} key e.g. "C" or null
+   * @returns {{ shape: string, hollow: boolean, color: string|null, offKeyMark: boolean|string, xOffsetStaffSpaces: number }}
+   */
+  resolveNotehead(config, pc, duration, key) {
+    const first = firstShapeName(config);
+
+    // Built-in defaults
+    const result = {
+      shape:       first,
+      hollow:      false,
+      color:       null,
+      offKeyMark:  false,
+      xOffsetStaffSpaces: 0,
+    };
+
+    const rules = (config.noteheadRules || []).slice().sort((a, b) => (a.priority || 0) - (b.priority || 0));
+
+    for (const rule of rules) {
+      if (ruleMatches(rule, pc, duration, key)) {
+        const apply = rule.apply || {};
+        if (apply.shape      !== undefined) result.shape      = apply.shape;
+        if (apply.hollow     !== undefined) result.hollow     = apply.hollow;
+        if (apply.color      !== undefined) result.color      = apply.color;
+        if (apply.offKeyMark !== undefined) result.offKeyMark = apply.offKeyMark;
+        if (apply.xOffsetStaffSpaces !== undefined) result.xOffsetStaffSpaces = apply.xOffsetStaffSpaces;
+      }
+    }
+
+    return result;
+  },
+
+  /**
+   * Get the effective display color for a pitch class.
+   * Respects config.palette.useCBSafe to choose between primary and CB-safe colors.
+   * Returns hex string (e.g. "#FF0000") or null if no palette is configured.
+   * @param {object} config
+   * @param {number} pc  0–11
+   * @returns {string|null}
+   */
+  resolveColor(config, pc) {
+    const palette = config.palette || {};
+    const useCB   = !!palette.useCBSafe;
+    const colors  = useCB ? (palette.cbSafeColors || []) : (palette.colors || []);
+    if (colors.length === 0) return null;
+    const entry = colors.find(c => c.pc === pc);
+    return entry ? entry.hex : null;
+  },
+
+  /**
+   * Convert a thickness percentage to pixels for preview rendering.
+   * pctToPx(20, 16) = 3.2
+   * @param {number} pct       Percentage (e.g. 20 for 20%)
+   * @param {number} pxPerSemi Pixels per semitone
+   * @returns {number}
+   */
+  pctToPx(pct, pxPerSemi) {
+    return (pct / 100) * pxPerSemi;
+  },
+
+};
