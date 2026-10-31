@@ -830,10 +830,11 @@ pitchAxis: {
   [`CNB-LY-EXPORT-SPEC-v1_3.md`](CNB-LY-EXPORT-SPEC-v1_3.md) (adopted by
   set 014 session 1): compiled `cnb:get-pitch-staff-position` procedure,
   axis-formula staff-line positions with collapse dedup,
-  `axisUnitsPerStaffSpace` substitutions, Section C `(x-offset . N)`.
-  **Fail-loud gate:** until the engine ships E13-1/E13-2, `generate()`
-  throws on `pitchAxis.enabled` (spec §8a) — no silent linear `.ly` for a
-  compact config.
+  `axisUnitsPerStaffSpace` substitutions (including the emitted
+  `cnb:semitones-per-staff-space`), an explicit `cnb:keysig-tonic-octave`,
+  Section C `(x-offset . N)`. The spec §8a fail-loud gate was lifted by set
+  014 session 3 (spec 1.3.1), once the engine's set-008 handoff recorded
+  E13-1/E13-2 as shipped and an engine round-trip confirmed preview parity.
 
 ---
 

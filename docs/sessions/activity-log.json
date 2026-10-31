@@ -51,6 +51,37 @@
       "dateTime": "2026-10-31T04:45:24.068000-04:00",
       "task": "Rethread every preview geometry consumer through the grid's pitch axis (design docs/planning/pitch-axis-design.md \u00a72.3\u2013\u00a72.5, \u00a73.3), keeping the axis-disabled surface byte-identical by construction. First, before any source change, capture a pre-change preview-DOM baseline fixture (CNBCollection.render through the svg/DOM stub for the default config, the Kite 4-369 config, every gallery example, a key-signature-enabled config, a debug-grid config, and the same configs with a present-but-disabled pitchAxis section) and pin it with a test. Then: CNBStaff.render dedups lines by axis position on the axis path (overrides merged) and keeps its literal loop on the linear path; CNBLedgerSet.resolve/render gain an axis path that converts to axis positions at the top, gates on axis.regionOfSemi, keeps the strict `<` proximity rule, and draws keyed by axis position, while the linear path runs the literal current arithmetic; CNBStem.direction averages axis positions against positionOfSemi(staff.midpoint) when given an enabled axis (literal body otherwise); CNBDoubleNotehead.layout accepts additive per-note lowerOffsetPx/upperOffsetPx (default 0); CNBCard computes offsetPx = xOffsetStaffSpaces \u00d7 axis.unitsPerStaffSpace \u00d7 pxPerSemi in axis mode only, applies it to both noteheads, the ledgers and the stem centerX, and widens columnWidth by |offsetPx|; CNBKeySignature treats separator.extentSemis as a length on the axis path and applies the same resolved offset to its marks. The collection needs no code change (everything flows through the grid context) and gets an axis-row integration test. Finally a visual test page cnb/test-pages/test-pitch-axis.html renders a compact-axis card row with the 013 Twinline map and debug grid, and a Chromium geometry smoke driver cnb/uat/uat-pitch-axis.mjs (the repo's existing driver pattern) asserts its geometry in a real browser.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:09:32.090000-04:00",
+      "task": "Session 3 (P4) of the pitch-axis program. The engine gate is met: the engine repo's set 008-pitch-axis-hook closed 2026-07-13 and its configurator-handoff.md records E13-1 (the cnb:get-pitch-staff-position hook) and E13-2 (the x-offset field) as shipped with golden-baseline evidence. This session (1) removes the \u00a78a fail-loud gate from cnb-lilypond.js and its mirror in the UI export wrapper in the same change that first emits the v1.3 surface: the compiled pitch-axis procedure and axis staff-line positions with collapse dedup (\u00a75.4a/b), the axisUnitsPerStaffSpace substitutions in attachments and staff-line thickness (\u00a74.4a/\u00a75.3a), and the (x-offset . N) field in the Section C grouping key (\u00a76.3), with exporter-level tests that \u00a78 checks 8-12 (already Module A PA-1..PA-8) now block generate(), reconciled against the handoff: cnb:semitones-per-staff-space is emitted as axisUnitsPerStaffSpace under an axis (handoff \u00a74.1) and an explicit cnb:keysig-tonic-octave is emitted under an axis (handoff \u00a74.2, octave convention verified by the round-trip render); (2) records those reconciliations as a v1.3.1 clarification of the canonical spec; (3) adds a Twinline-family compact fixture (the 013 map, shared-pair xOffsetStaffSpaces 0.85) under cnb/assets/examples/gallery/ so it loads through CNBConfigIO via the existing gallery gate, with a pinned export baseline; (4) runs the engine round-trip (export, then lilypond 2.24.2 -dbackend=svg in the engine repo, then tools/harvest_svg.py) and commits a driver, the harvested evidence and a node measurement script that checks engine positions and x-offsets against the preview's CNBPitchAxis model, excluding the documented divergence list. All axis-disabled exports stay byte-identical (existing default and Kite baselines unchanged).",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:20:20.561000-04:00",
+      "what": "step 'spec-clarification': its files",
+      "reason": "The architecture plan's \u00a74.13 export-surface note still states that generate() throws on pitchAxis.enabled (the lifted \u00a78a gate); it must be corrected alongside the spec.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:23:18.762000-04:00",
+      "what": "step 'compact-fixture': its files",
+      "reason": "The set-014 s2 preview baseline sweeps every gallery fixture to pin the axis-DISABLED (pre-rethread) preview; an axis-enabled gallery fixture has no linear baseline, so previewProbes() must skip pitchAxis-enabled fixtures (axis previews are covered by the s2 axis render tests).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:24:17.706000-04:00",
+      "what": "step 'engine-roundtrip': its files",
+      "reason": "A shared-position chord pair is already separated by LilyPond's own arrangement (+0.49 here), so the x-offset effect is measured test-minus-control (engine set 008 s2 method): the control export, score, SVG and harvest join the evidence; measure.mjs reads the key-signature marks from the SVGs, so both SVGs are kept.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

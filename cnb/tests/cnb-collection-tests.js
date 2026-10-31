@@ -66,6 +66,10 @@ export function previewProbes() {
   ];
   for (const f of readdirSync(GALLERY_DIR).filter(n => n.endsWith(".json")).sort()) {
     const config = loadViaIO(path.join(GALLERY_DIR, f));
+    // The baseline pins the axis-DISABLED preview; an axis-enabled fixture
+    // (twinline-compact.json, set 014 s3) has no pre-rethread render and is
+    // covered by the axis render tests instead.
+    if (config.pitchAxis?.enabled === true) continue;
     const keyName = config.keys?.enabled && config.keys.definitions?.[0]?.name;
     probes.push({
       id: `gallery/${f}`,

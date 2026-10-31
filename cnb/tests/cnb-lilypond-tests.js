@@ -11,10 +11,15 @@
  */
 
 import { createRequire } from "module";
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { CNBConfig } from "../src/cnb-config.js";
-import { CNBLilypond, _internals, PITCH_AXIS_GATE_MESSAGE } from "../src/cnb-lilypond.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
 
 const require = createRequire(import.meta.url);
+const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const Legacy = require("../../legacy/configurator-core.js");
 
 function assert(condition, message) {
@@ -81,7 +86,7 @@ function parseSectionCClauses(text) {
       condition = line.trim();
       continue;
     }
-    const field = line.match(/\((shape|color|hollow|attachment)\s+\.\s+([^)\s]+)\)/);
+    const field = line.match(/\((shape|color|hollow|attachment|x-offset)\s+\.\s+([^)\s]+)\)/);
     if (field && pcs) {
       for (const pc of pcs) {
         if (!map[pc]) map[pc] = { condition };
@@ -812,69 +817,166 @@ export const tests = [
       lacks(enabledLy, "keySignature", "no keySignature token anywhere in the export");
     }},
 
-  // ── Pitch axis (set 014): the §8a fail-loud interim gate ─────────────────
+  // ── Pitch axis (set 014 session 3): v1.3 emission, §8a gate lifted ──────
 
-  { name: "fail-loud gate (§8a): generate() throws on a pitchAxis-enabled config, naming the missing engine capability", fn: () => {
-      const enabled = pitchAxisEnabledConfig();
-      assert(CNBConfig.validate(enabled).valid, "the compact config itself is VALID — the gate is an engine-capability block, not a validation failure");
-      let threw = null;
-      try { CNBLilypond.generate(enabled); } catch (err) { threw = err; }
-      assert(threw !== null, "generate() must throw (binding rule 3: no silent linear .ly for a compact config, ever)");
-      eq(threw.message, PITCH_AXIS_GATE_MESSAGE, "the exact §8a gate message");
-      contains(threw.message, "E13-1", "names the missing hook work item");
-      contains(threw.message, "E13-2", "names the missing x-offset work item");
-      contains(threw.message, "cnb:get-pitch-staff-position", "names the engine hook");
-      contains(threw.message, "§8a", "cites the spec rule");
+  { name: "pitch axis §5.4a: computeStaffLinePositions reproduces the 013 spike staff '(-3 -1 1 4 6 8)", fn: () => {
+      const config = spikeAxisConfig();
+      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-3 -1 1 4 6 8", "spike staff positions");
     }},
 
-  { name: "fail-loud gate (§8a): the gate fires on the enabled flag alone, even when the section is otherwise malformed", fn: () => {
-      const config = CNBConfig.createDefault();
-      config.pitchAxis = { enabled: true };   // no kind/map/stride — still blocked
-      let threw = null;
-      try { CNBLilypond.generate(config); } catch (err) { threw = err; }
-      assert(threw !== null, "throws");
-      eq(threw.message, PITCH_AXIS_GATE_MESSAGE, "the gate message, not a generic validation error");
+  { name: "pitch axis §5.4a: staff lines collapsing onto one axis position are emitted once", fn: () => {
+      const config = spikeAxisConfig();
+      config.staff.semitonePattern = [2, 5, 6, 8, 9];   // 5/6 and 8/9 share positions 3 and 5
+      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-3 -1 1 4 6 8", "deduplicated and sorted");
     }},
 
-  { name: "fail-loud gate (§8a): a disabled pitchAxis section does not trip the gate and exports byte-identically to the default", fn: () => {
-      const disabled = pitchAxisEnabledConfig();
-      disabled.pitchAxis.enabled = false;
-      const disabledLy = CNBLilypond.generate(disabled);   // must not throw
-      const defaultLy = CNBLilypond.generate(CNBConfig.createDefault());
-      eq(disabledLy, defaultLy, "disabled pitchAxis section is invisible to the exporter");
-      lacks(disabledLy, "pitch-axis", "no pitch-axis token in the export");
-      lacks(disabledLy, "pitchAxis", "no pitchAxis token in the export");
+  { name: "pitch axis §5.4b: the compiled procedure inlines map, stride, midpoint anchor and axis units; middle C maps to -4", fn: () => {
+      const config = spikeAxisConfig();
+      const b = CNBLilypond.sectionB(config);
+      contains(b, "#(set! cnb:get-pitch-staff-position", "hook set");
+      contains(b, "(vector-ref #(0 0 1 2 2 3 3 4 5 5 6 6) pc)", "positions vector");
+      contains(b, "(* oct 7))))", "octave stride");
+      contains(b, "(/ (* 2 (- pos 4)) 2))))", "midpoint anchor 4 and axis-units divisor 2");
+      contains(b, "12 pitch classes on 7 positions/octave", "comment counts distinct positions");
+      // Evaluate the emitted arithmetic the way Scheme does (floored modulo).
+      const hook = (semi) => {
+        const pc = ((semi % 12) + 12) % 12;
+        const oct = (semi - pc) / 12;
+        const pos = [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6][pc] + oct * 7;
+        return (2 * (pos - 4)) / 2;
+      };
+      eq(hook(0), -4, "middle C → -4");
+      eq(hook(7), 0, "midpoint G → 0");
+      eq(hook(-1), -5, "B below middle C (negative octave) → -5");
+      // The hook block sits after staff geometry and before the metadata.
+      assert(b.indexOf("cnb:staff-line-positions") < b.indexOf("cnb:get-pitch-staff-position"), "after staff geometry");
+      assert(b.indexOf("cnb:get-pitch-staff-position") < b.indexOf("%% Metadata"), "before metadata");
     }},
 
-  { name: "fail-loud gate (§8a): strict boolean — non-boolean truthy enabled values do not trip the gate and follow the normal validation/export rules", fn: () => {
-      const defaultLy = CNBLilypond.generate(CNBConfig.createDefault());
-      for (const truthy of [1, "true"]) {
-        // Otherwise-valid section: consumers (CNBGrid/CNBPitchAxis, === true)
-        // treat it as inactive → linear preview; the exporter must agree and
-        // export the normal linear output, NOT throw the §8a gate.
-        const config = pitchAxisEnabledConfig();
-        config.pitchAxis.enabled = truthy;
-        const ly = CNBLilypond.generate(config);   // must not throw the gate
-        eq(ly, defaultLy, `enabled: ${JSON.stringify(truthy)} exports the normal linear output`);
+  { name: "pitch axis: cnb:semitones-per-staff-space and staff-line thickness use axisUnitsPerStaffSpace (handoff 008 §4.1, §5.3a)", fn: () => {
+      const config = spikeAxisConfig();
+      config.staff.semitonesPerStaffSpace = 4;
+      config.staff.lineDefaults.thicknessPct = 30;
+      const b = CNBLilypond.sectionB(config);
+      contains(b, "#(set! cnb:semitones-per-staff-space 2)", "axis units, not the linear sps");
+      contains(b, "#(set! cnb:default-staff-line-thickness 0.15)", "(30/100) × (1/2)");
+    }},
+
+  { name: "pitch axis §4.4a: attachment points divide by axisUnitsPerStaffSpace", fn: () => {
+      const config = spikeAxisConfig();
+      config.staff.semitonesPerStaffSpace = 4;
+      config.shapes["crotchet-minim"].lilypondAnchors = {
+        crotchetUp: { x: 1, y: 0.5 }, crotchetDown: { x: -1, y: -0.5 },
+        minimUp: { x: 1, y: 0.5 }, minimDown: { x: -1, y: -0.5 },
+      };
+      const a = CNBLilypond.sectionA(config);
+      contains(a, "(cons 'crotchet-up   '(0.5 . 0.25))", "÷ 2, not ÷ 4");
+    }},
+
+  { name: "pitch axis: explicit cnb:keysig-tonic-octave — placement.tonicOctave when integer, else the auto octave for a C tonic (handoff 008 §4.2)", fn: () => {
+      const config = spikeAxisConfig();
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-tonic-octave 0)", "auto: midpoint 7 → octave 0");
+      config.staff.midpoint = 19;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-tonic-octave 1)", "auto: midpoint 19 → octave 1");
+      config.keys.keySignature.placement.tonicOctave = -1;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-tonic-octave -1)", "explicit octave as given");
+    }},
+
+  { name: "pitch axis §6.3: nonzero x-offset is emitted, joins the grouping key, and zero is omitted", fn: () => {
+      const config = spikeAxisConfig();
+      config.noteheadRules.push({
+        name: "shared-position sharps sit right", priority: 10,
+        match: { pitchClasses: [1, 4, 6, 9, 11], durations: "all", keys: "all" },
+        apply: { xOffsetStaffSpaces: 0.85 },
+      });
+      config.noteheadRules.push({
+        name: "zero offset is no offset", priority: 11,
+        match: { pitchClasses: [2], durations: "all", keys: "all" },
+        apply: { xOffsetStaffSpaces: 0 },
+      });
+      const c = CNBLilypond.sectionC(config);
+      const byPc = parseSectionCClauses(c);
+      for (let pc = 0; pc < 12; pc++) {
+        const expected = [1, 4, 6, 9, 11].includes(pc) ? "0.85" : undefined;
+        eq(byPc[pc]["x-offset"], expected, `pc ${pc} x-offset`);
       }
-      // With a MALFORMED section, normal validation blocking applies (Module
-      // A's checks gate on truthy enabled per design §1.4): the throw is the
-      // validation error list, not the §8a gate message.
-      const malformed = CNBConfig.createDefault();
-      malformed.pitchAxis = { enabled: 1 };   // truthy, no kind/map/stride
-      let threw = null;
-      try { CNBLilypond.generate(malformed); } catch (err) { threw = err; }
-      assert(threw !== null, "malformed truthy-enabled section is blocked by validation");
-      assert(threw.message !== PITCH_AXIS_GATE_MESSAGE, "not the §8a gate message");
-      contains(threw.message, "pitchAxis.kind", "the block is the normal validation error");
+      // Grouping: an offset pc never shares a clause with an unshifted pc of
+      // otherwise-identical fields (E is solid like C, D, F — but alone with
+      // the other solid offset pcs).
+      eq(byPc[4].condition, "((memv pc '(4 9 11))", "solid offset pcs E, A, B grouped together");
+      eq(byPc[0].condition, "((memv pc '(0 2 5 7))", "solid unshifted pcs grouped apart");
+      contains(c, "+0.85 staff-space right", "clause comment names the offset");
+      lacks(c, "(x-offset   . 0)", "zero offsets never emitted");
+    }},
+
+  { name: "pitch axis: generate() exports an enabled axis config (the §8a gate is lifted)", fn: () => {
+      const ly = CNBLilypond.generate(spikeAxisConfig());
+      contains(ly, "cnb:get-pitch-staff-position", "the hook is emitted");
+      contains(ly, "#(set! cnb:staff-line-positions '(-3 -1 1 4 6 8))", "axis staff");
+    }},
+
+  { name: "pitch axis: disabled or non-boolean-enabled sections export byte-identically to the default, even with xOffsetStaffSpaces rules", fn: () => {
+      const defaultLy = CNBLilypond.generate(CNBConfig.createDefault());
+      for (const enabled of [false, 1, "true"]) {
+        const config = CNBConfig.createDefault();
+        config.pitchAxis = { ...spikeAxisConfig().pitchAxis, enabled };
+        config.noteheadRules.push({
+          name: "offset", priority: 10,
+          match: { pitchClasses: [1], durations: "all", keys: "all" },
+          apply: { xOffsetStaffSpaces: 0.85 },
+        });
+        eq(CNBLilypond.generate(config), defaultLy, `enabled: ${JSON.stringify(enabled)}`);
+      }
+    }},
+
+  { name: "pitch axis §8 checks 8-12: generate() refuses configs failing the axis validation", fn: () => {
+      const cases = [
+        ["8 kind", c => { c.pitchAxis.kind = "other"; }, "pitchAxis.kind must be"],
+        ["9 map coverage", c => { c.pitchAxis.pitchClasses.pop(); }, "exactly 12 entries"],
+        ["9 duplicate pc", c => { c.pitchAxis.pitchClasses[11].pc = 10; }, "more than one entry for pc 10"],
+        ["9 stride", c => { c.pitchAxis.octaveStride = 0; }, "octaveStride must be a finite number > 0"],
+        ["9 axis units", c => { c.pitchAxis.axisUnitsPerStaffSpace = -2; }, "axisUnitsPerStaffSpace must be a finite number > 0"],
+        ["10 collapsing overrides", c => {
+          c.staff.semitonePattern = [2, 5, 6, 8];
+          c.staff.lineOverrides = { 5: { color: "#ff0000" }, 6: { color: "#0000ff" } };
+        }, "collapse onto one axis position"],
+        ["11 x-offset", c => {
+          c.noteheadRules.push({ name: "bad", priority: 9, match: { pitchClasses: [1], durations: "all", keys: "all" }, apply: { xOffsetStaffSpaces: "0.85" } });
+        }, "xOffsetStaffSpaces must be a finite number"],
+        ["12 monotonic", c => { c.pitchAxis.pitchClasses[3].position = 0.5; c.pitchAxis.pitchClasses[2].position = 1; }, "not globally non-decreasing"],
+      ];
+      for (const [label, mutate, message] of cases) {
+        const config = spikeAxisConfig();
+        mutate(config);
+        let threw = null;
+        try { CNBLilypond.generate(config); } catch (err) { threw = err; }
+        assert(threw !== null, `check ${label}: generate() must throw`);
+        contains(threw.message, "Config failed export validation", `check ${label}: validation error`);
+        contains(threw.message, message, `check ${label}`);
+      }
+    }},
+
+  { name: "pitch axis: the Twinline compact fixture, loaded through CNBConfigIO, exports byte-identically to its pinned baseline", fn: () => {
+      const normalize = (text) => text
+        .replace(/\r\n/g, "\n")
+        .replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
+      const fixture = readFileSync(path.join(CNB_DIR, "assets", "examples", "gallery", "twinline-compact.json"), "utf8");
+      const { config, validation } = CNBConfigIO.loadFromText(fixture);
+      assert(validation.valid, "fixture validates: " + validation.errors.join("; "));
+      const baseline = readFileSync(path.join(CNB_DIR, "fixtures", "twinline-compact-export-baseline.ly"), "utf8");
+      eq(normalize(CNBLilypond.generate(config)), normalize(baseline), "pinned compact export");
     }},
 
 ];
 
-// ── Pitch-axis gate test helper (set 014) ────────────────────────────────────
+// ── Pitch-axis test helper (set 014) ─────────────────────────────────────────
 
-/** Default config with the design §1.1 Twinline-like pitch axis enabled. */
-function pitchAxisEnabledConfig() {
+/**
+ * The v1.3 §5.4b worked-check configuration (the 013 session-1 spike):
+ * Twinline-like map, stride 7, 2 axis units per staff space, staff pattern
+ * [2, 5, 8], midpoint 7.
+ */
+function spikeAxisConfig() {
   const config = CNBConfig.createDefault();
   config.pitchAxis = {
     enabled: true,
@@ -883,5 +985,7 @@ function pitchAxisEnabledConfig() {
     axisUnitsPerStaffSpace: 2,
     pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
   };
+  config.staff.semitonePattern = [2, 5, 8];
+  config.staff.midpoint = 7;
   return config;
 }

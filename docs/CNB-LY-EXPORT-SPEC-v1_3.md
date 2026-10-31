@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3 (Pitch axis / I2 relaxation)
-**Date:** July 12, 2026 (adopted; drafted July 10, 2026)
+**Version:** 1.3.1 (Pitch axis / I2 relaxation; engine-handoff reconciliation)
+**Date:** October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -10,10 +10,15 @@ under set 013's session-1 GO and the operator's implementation
 authorization (013 s2 UAT). The v1.2.1 spec
 [`CNB-LY-EXPORT-SPEC-v1_2.md`](CNB-LY-EXPORT-SPEC-v1_2.md) stays in place
 for history and remains the base this delta amends.
-**The §8a fail-loud gate is IN EFFECT:** engine work items E13-1/E13-2 have
-not yet been verified as shipped, so `generate()` must refuse a
-pitch-axis-enabled config until the implementation set's session 3 confirms
-them from the engine repo's set-008 configurator-handoff record.
+**The §8a fail-loud gate is LIFTED (1.3.1):** the engine repo's set
+`008-pitch-axis-hook` closed on 2026-07-13, and its
+`docs/session-sets/008-pitch-axis-hook/configurator-handoff.md` records
+E13-1 and E13-2 as shipped with the golden baseline byte-identical. Set 014
+session 3 removed the gate in the same change that first emitted §5.4/§6.3,
+with an engine round-trip as evidence
+([`sessions/session-003/roundtrip/`](sessions/session-003/roundtrip/)).
+1.3.1 also reconciles the spec with what the engine actually landed (§5.4a,
+§5.4d, §6.3).
 **Delta spec:** this document specifies **only the v1.3 additions and
 substitutions**. Everything in v1.2.1 not mentioned here is unchanged.
 **Companion design:** [`planning/pitch-axis-design.md`](planning/pitch-axis-design.md)
@@ -113,10 +118,20 @@ Degeneracy: with the identity map (position(pc) = pc, stride 12) and
 `axisUnitsPerStaffSpace = semitonesPerStaffSpace` this is exactly the
 v1.2.1 formula `2 × (S − midpoint) / sps`.
 
-`cnb:semitones-per-staff-space` is still emitted per v1.2.1 (Always). With
-the hook set, the engine's linear placement formula no longer consumes it;
-remaining engine consumers (key-signature and clef stencil placement)
-migrate to the hook under engine work items E13-3/E13-4.
+`cnb:semitones-per-staff-space` is still emitted (Always), but **under a
+pitch axis its value is `pitchAxis.axisUnitsPerStaffSpace`** (1.3.1,
+engine handoff 008 §4.1). The engine's placement consumers moved to the
+hook (E13-3/E13-4), but its LENGTH consumers — `cnb:clef-size-semitones`,
+`cnb:clef-gutter-semitones`, custom-clef `height-semitones`,
+`cnb:keysig-bar-extent-semis` — still divide by this setting, by design:
+an absolute-pitch hook cannot map an interval on a non-uniform axis.
+Emitting the axis unit makes those settings read "grid units", the same
+substitution rule as §4.4a and §5.3a; emitting the linear
+`staff.semitonesPerStaffSpace` would mis-size clefs, clef gutters and the
+key-signature bar. Linear configs are unaffected.
+
+*(1.3 said the remaining consumers "migrate to the hook"; that was true of
+placement only.)*
 
 #### 5.4b The compiled pitch-axis procedure
 
@@ -173,6 +188,45 @@ engine with the hook renders all existing exports byte-identically. The
 Configurator emits the setting **only** when a pitch axis is enabled —
 emit-if-changed at the section level.
 
+**Semitone numbering under the hook (1.3.1).** The compiled procedure reads
+its argument — the engine's `ly:pitch-semitones`, middle C = 0 — directly
+as a Configurator semitone: `staff.midpoint` and the map are applied to it
+with no octave shift. Configurator semitone `s` and engine semitone `s` are
+therefore the same pitch under an axis, and the axis — not the clef — sets
+the register. (The linear path differs: there the treble clef puts
+Configurator semitone 12 on middle C, which is where the set-006 −1 octave
+offset of `cnb:keysig-tonic-octave` comes from. That offset does not apply
+under an axis; see §5.4d.)
+
+#### 5.4d Key-signature octave under a pitch axis (new in 1.3.1)
+
+With the hook set, key-signature marks are PLACED through it, but the
+engine still SELECTS which octave of the key to display from
+`middleCPosition` unless `cnb:keysig-tonic-octave` is an integer (engine
+handoff 008 §4.2). Under an axis that would bring the clef back into what
+is shown, so the exporter **always emits an explicit value when a pitch
+axis is enabled**, in Section B right after the §5.4b procedure:
+
+```lilypond
+%% Key-signature octave — explicit under a pitch axis (engine handoff 008 §4.2)
+#(set! cnb:keysig-tonic-octave 0)
+```
+
+- Value: `keys.keySignature.placement.tonicOctave` when it is an integer;
+  otherwise the octave the preview's auto rule picks for a C tonic,
+  `round((staff.midpoint − 6) / 12)` (the `CNBKeySignature.tonicSemi`
+  rule at pc 0).
+- Numbering: Configurator octaves, emitted **as is** — no −1 offset (see
+  the numbering note in §5.4c). Verified by the set-014 session-3
+  round-trip: `\key g \major` with the emitted `0` puts the eight marks on
+  semitones 7…19, exactly the preview's signature positions.
+- Known divergence, auto placement only: the engine takes one octave for
+  every key, while the preview's auto rule centers each tonic on the
+  midpoint, so the two can differ by an octave for some tonics (for the
+  Twinline fixture, midpoint 7: tonics G♯, A, A♯ and B). An explicit
+  `tonicOctave` removes the divergence.
+- Not emitted for linear configs (byte-identity with v1.2.1).
+
 ---
 
 ## 6. SECTION C — ADDITIONS
@@ -197,11 +251,22 @@ When `pitchAxis.enabled` **and** a clause's resolved
   attachment, **and x-offset** all match.
 - Value formatting: the exporter's standard number formatting.
 - Engine semantics (E13-2): "offset this notehead by N staff spaces
-  horizontally." The mechanism (mapped `staff-position` vs post-layout
-  `X-offset`) is the engine's decision; session 1 measured stencil
-  translation exact for single notes and unison-treated chord pairs, and
-  absorbed for diatonic-neighbor chord pairs — E13-2's acceptance evidence
-  must include a diatonic-second shared-position chord (s1 record §3.4).
+  horizontally." **As landed (1.3.1, engine handoff 008 §3):** neither
+  mechanism 1.3 named survived measurement. Writing mapped values into
+  `staff-position` does not change chord arrangement, and the `X-offset`
+  property is discarded for chord members. The engine instead translates
+  the NoteColumn by the least-displaced head's offset and each head by its
+  residual, so head, stem, flag and ledgers move together, including for
+  the diatonic-second shared-position chord (`<gis' a'>`) that a stencil
+  translation alone loses. That loss was caused by the stem's
+  extent-based head arrangement (`Stem::calc_positioning_done`), not by a
+  "diatonic-`staff-position`-derived arrangement" as the 013 record §3.4
+  supposed. Any combination of per-member values is safe; no exporter
+  action is needed.
+- A shared-position pair is already separated a little by LilyPond's own
+  arrangement, so the offset's effect is measured against a render
+  without it: the set-014 session-3 round-trip measures +0.850 staff space
+  for every shared pair of the Twinline fixture.
 
 Example clause under the §5.4b axis (C and C♯ share axis position 0; C♯
 carries the offset):
@@ -241,7 +306,11 @@ New warnings: positions outside `[0, octaveStride)`; indistinguishable
 shared-position pairs; `xOffsetStaffSpaces` present while `pitchAxis` is
 disabled (design PA-W1, PA-W3, PA-W4).
 
-### 8a The fail-loud interim gate
+### 8a The fail-loud interim gate — lifted in 1.3.1
+
+*Historical:* the gate was removed by set 014 session 3 once the engine's
+set-008 handoff recorded E13-1 and E13-2 as shipped; checks 8–12 above
+remain blocking. As specified in 1.3:
 
 Between v1.3 adoption and the engine shipping E13-1 + E13-2, `generate()`
 **throws** on `pitchAxis.enabled` with an error naming the missing engine
@@ -261,6 +330,8 @@ engine round-trip test as evidence.
 | Variable | Type | Default | Required |
 |----------|------|---------|----------|
 | `cnb:get-pitch-staff-position` | `#f` or procedure `(semitone) → half-staff-spaces` | `#f` | Only when `pitchAxis.enabled` — **new v1.3 (E13-1)** |
+| `cnb:keysig-tonic-octave` | `#f` or integer | `#f` | Only when `pitchAxis.enabled` (§5.4d) — **new 1.3.1** |
+| `cnb:semitones-per-staff-space` | Integer | `2` | Always; `pitchAxis.axisUnitsPerStaffSpace` under an axis (§5.4a) — **clarified 1.3.1** |
 
 ### Procedure Return Alist
 
@@ -274,6 +345,7 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3** | **Jul 12, 2026** | **Adopted as canonical by set 014 (pitch-axis implementation) session 1: the 1.3-draft renamed from `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` into `docs/`, content unchanged except this status/adoption header. The §8a fail-loud gate is in effect until set 014 session 3 verifies E13-1/E13-2 from the engine repo's handoff record.** |
+| **1.3.1** | **Oct 31, 2026** | **Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged.** |
+| 1.3 | Jul 12, 2026 | Adopted as canonical by set 014 (pitch-axis implementation) session 1: the 1.3-draft renamed from `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` into `docs/`, content unchanged except this status/adoption header. The §8a fail-loud gate is in effect until set 014 session 3 verifies E13-1/E13-2 from the engine repo's handoff record. |
 | 1.3-draft | Jul 10, 2026 | Pitch-axis export surface (set 013 design, DRAFT): compiled `cnb:get-pitch-staff-position` procedure (half-staff-spaces, midpoint anchored at staff position 0) and axis-formula `cnb:staff-line-positions` with collapse dedup (§5.4); `axisUnitsPerStaffSpace` substitution in attachment (§4.4a) and thickness (§5.3a) conversions; optional Section C `(x-offset . N)` field, axis-gated, nonzero-only, in the grouping key (§6.3); pitch-axis validation and the fail-loud interim gate (§8/§8a). All emissions gated on `pitchAxis.enabled`; disabled output byte-identical to v1.2.1. |
 | 1.2.1 | Jul 5, 2026 | (canonical for the base format — see `CNB-LY-EXPORT-SPEC-v1_2.md`) |

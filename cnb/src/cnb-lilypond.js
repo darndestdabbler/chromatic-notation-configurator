@@ -1,7 +1,9 @@
 /**
  * cnb-lilypond.js — Module 11: LilyPond Exporter
  *
- * Generates .ly file content from a config JSON per CNB-LY-EXPORT-SPEC-v1.2.
+ * Generates .ly file content from a config JSON per CNB-LY-EXPORT-SPEC-v1.2,
+ * plus the v1.3 pitch-axis surface (CNB-LY-EXPORT-SPEC-v1_3.md), emitted only
+ * when pitchAxis is enabled — disabled configs run the literal v1.2.1 paths.
  * This is a port of the proven export logic in legacy/configurator-core.js
  * (generateSectionA/B, svgPathToLilypond, toSchemeSymbol, and helpers),
  * mapped onto the modular config schema (Architecture Plan §4).
@@ -9,11 +11,12 @@
  * Covers the full export: header, Section A (named definitions), Section B
  * (engine settings), Section C (configuration procedure), and generate().
  *
- * Dependencies: Module A (config), Module B (music)
+ * Dependencies: Module A (config), Module B (music), Module 24 (pitch axis)
  */
 
 import { CNBConfig } from "./cnb-config.js";
 import { CNBMusic } from "./cnb-music.js";
+import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
 // Values the CNB engine assumes when a setting is not emitted. Section B
@@ -32,19 +35,6 @@ const ENGINE_DEFAULTS = {
   // emitted value is the converted absolute (staff-space) thickness.
   staffLineThicknessPct: 20,
 };
-
-// The §8a fail-loud interim gate's message (CNB-LY-EXPORT-SPEC v1.3 / set-014
-// binding rule 3). Exported so the UI export wrapper (Module 18) surfaces the
-// IDENTICAL text as a blocking validation error — the validateForExport ↔
-// generate() parity contract.
-export const PITCH_AXIS_GATE_MESSAGE =
-  "Pitch-axis export is blocked (CNB-LY-EXPORT-SPEC v1.3 §8a fail-loud gate): " +
-  "the CNB engine has not yet shipped the pitch-axis capability — E13-1 " +
-  "(the cnb:get-pitch-staff-position hook) and E13-2 (the x-offset notehead " +
-  "field). Exporting a pitchAxis-enabled config through the linear engine " +
-  "would engrave it at wrong pitch positions. Disable pitchAxis to export; " +
-  "set 014 session 3 removes this gate once the engine capability is " +
-  "verified from the engine repo's handoff record.";
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
@@ -302,7 +292,57 @@ function sectionCFields(config, r) {
 
 /** Grouping key: pcs/durations sharing this key share one cond clause. */
 function sectionCKey(f) {
-  return `${f.shapeSym}|${f.colorSym}|${f.hollowSym}|${f.attachSym}`;
+  const base = `${f.shapeSym}|${f.colorSym}|${f.hollowSym}|${f.attachSym}`;
+  // v1.3 §6.3: a nonzero x-offset joins the grouping key (0 leaves it as is).
+  return f.xOffset ? `${base}|${f.xOffset}` : base;
+}
+
+/**
+ * Section B lines for an enabled pitch axis (v1.3 §5.4b): the compiled
+ * cnb:get-pitch-staff-position procedure — absolute semitone (exact
+ * integer; middle C = 0) → staff position in half-staff-spaces, with
+ * staff.midpoint anchored at 0 — then an explicit cnb:keysig-tonic-octave
+ * (engine handoff 008 §4.2): placement through the hook is clef-independent,
+ * so the signature's octave SELECTION must not fall back to middleCPosition.
+ * The hook reads its argument as a Configurator semitone, so the octave is
+ * given in Configurator octave numbering — placement.tonicOctave when it is
+ * an integer, else the octave the preview's auto rule picks for a C tonic.
+ *
+ * @param {object} config
+ * @param {object} axis  an enabled CNBPitchAxis context for config
+ * @returns {string[]}
+ */
+function pitchAxisLines(config, axis) {
+  const pa = config.pitchAxis;
+  const staff = config.staff || {};
+  const midpoint = staff.midpoint || 0;
+  const positions = pa.pitchClasses.slice().sort((a, b) => a.pc - b.pc).map(e => e.position);
+  const vector = positions.map(fmtNum).join(" ");
+  const anchor = fmtNum(axis.positionOfSemi(midpoint));
+  const stride = fmtNum(axis.octaveStride);
+  const units = fmtNum(axis.unitsPerStaffSpace);
+  const distinct = new Set(positions).size;
+
+  const placement = ((config.keys || {}).keySignature || {}).placement || {};
+  const tonicOctave = Number.isInteger(placement.tonicOctave)
+    ? placement.tonicOctave
+    : Math.round((midpoint - 6) / 12);   // CNBKeySignature.tonicSemi auto rule, pc 0
+
+  return [
+    `%% Pitch axis (${pa.kind}) — 12 pitch classes on ${distinct} positions/octave`,
+    `%% map [${vector}] · octave stride ${stride}`,
+    `%% axis units per staff space: ${units} · midpoint semi ${fmtNum(midpoint)} → axis position ${anchor}`,
+    "#(set! cnb:get-pitch-staff-position",
+    "   (lambda (semitone)",
+    "     (let* ((pc (modulo semitone 12))",
+    "            (oct (/ (- semitone pc) 12))",
+    `            (pos (+ (vector-ref #(${vector}) pc)`,
+    `                    (* oct ${stride}))))`,
+    `       (/ (* 2 (- pos ${anchor})) ${units}))))`,
+    "",
+    "%% Key-signature octave — explicit under a pitch axis (engine handoff 008 §4.2)",
+    `#(set! cnb:keysig-tonic-octave ${tonicOctave})`,
+  ];
 }
 
 /**
@@ -404,6 +444,9 @@ export const CNBLilypond = {
    * cnb/config.ly). 4-8 system, midpoint 12, sps 4 → [-4, -2, 2, 4];
    * 3-6-9, midpoint 12, sps 3 → [-6, -4, -2, 2, 4, 6] (007-s1 D2).
    * Non-integer results are kept as decimals (plan open question 7).
+   * Under an enabled pitch axis the v1.3 §5.4a axis formula applies instead:
+   * 2 × (pos(S) − pos(midpoint)) / axisUnitsPerStaffSpace, deduplicated
+   * (pattern lines may collapse onto one axis position) and sorted.
    *
    * @param {object} config
    * @returns {number[]}
@@ -412,6 +455,19 @@ export const CNBLilypond = {
     const staff = config.staff || {};
     const pattern = (staff.semitonePattern || []).slice().sort((a, b) => a - b);
     const midpoint = staff.midpoint || 0;
+
+    const axis = CNBPitchAxis.create(config);
+    if (axis.enabled) {
+      const anchor = axis.positionOfSemi(midpoint);
+      const unique = new Set();
+      for (const oct of [0, 1]) {
+        for (const s of pattern) {
+          unique.add(2 * (axis.positionOfSemi(s + oct * 12) - anchor) / axis.unitsPerStaffSpace);
+        }
+      }
+      return [...unique].sort((a, b) => a - b);
+    }
+
     const sps = staff.semitonesPerStaffSpace || 1;
 
     const positions = [];
@@ -516,8 +572,12 @@ export const CNBLilypond = {
     }
 
     // A4. Stem attachment registrations (4-point model), converted to
-    // staff-space units against the current staff config (D5).
-    const attachSps = (config.staff || {}).semitonesPerStaffSpace || 1;
+    // staff-space units against the current staff config (D5) — under a
+    // pitch axis, ÷ axisUnitsPerStaffSpace instead (v1.3 §4.4a).
+    const axis = CNBPitchAxis.create(config);
+    const attachSps = axis.enabled
+      ? axis.unitsPerStaffSpace
+      : (config.staff || {}).semitonesPerStaffSpace || 1;
     lines.push("%% --- Register stem attachments ---");
     for (const name of shapeNames) {
       const sym = slug(name);
@@ -600,13 +660,23 @@ export const CNBLilypond = {
     lines.push("#(set! cnb:use-procedure-model #t)");
     lines.push("");
 
-    // B1. Staff geometry — always emitted
+    // B1. Staff geometry — always emitted. Under a pitch axis the axis unit
+    // takes the semitone's place in every semitone→staff-space conversion
+    // (v1.3 §5.3a/§5.4a; engine handoff 008 §4.1), so the engine's remaining
+    // ÷sps length conversions (clef size/gutter, keysig bar extent) read
+    // grid units, as the preview does.
     lines.push("%% Staff geometry");
-    const sps = staff.semitonesPerStaffSpace || 1;
+    const axis = CNBPitchAxis.create(config);
+    const sps = axis.enabled ? axis.unitsPerStaffSpace : staff.semitonesPerStaffSpace || 1;
     const positions = CNBLilypond.computeStaffLinePositions(config);
     lines.push(`#(set! cnb:semitones-per-staff-space ${fmtNum(sps)})`);
     lines.push(`#(set! cnb:staff-line-positions '(${positions.map(fmtNum).join(" ")}))`);
     lines.push("");
+
+    if (axis.enabled) {
+      lines.push(...pitchAxisLines(config, axis));
+      lines.push("");
+    }
 
     // B2. Emit-if-changed engine settings
     const changed = [];
@@ -628,7 +698,8 @@ export const CNBLilypond = {
 
     // Staff-line styling (LY spec §5.3): thickness is canonical as % of
     // semitone height; the emitted absolute value is
-    //   (pct / 100) × (1 / semitonesPerStaffSpace)   [staff-space units].
+    //   (pct / 100) × (1 / semitonesPerStaffSpace)   [staff-space units]
+    // (÷ axisUnitsPerStaffSpace under a pitch axis — v1.3 §5.3a; see sps).
     // Emit-if-changed is judged against the canonical default (20%), not the
     // engine's absolute default — the converted value and the engine default
     // live on different scales.
@@ -701,13 +772,18 @@ export const CNBLilypond = {
     const repeat = representationMode === "repeat" ? "#t" : "#f";
 
     // Resolve the full pc × duration matrix, normalized to emission fields.
+    // The x-offset field's whole lifecycle is axis-gated (v1.3 §6.3): 0 on a
+    // linear config whatever the rules say, and a 0 is never emitted.
+    const axisOn = CNBPitchAxis.create(config).enabled;
     const durations = durationNames(config);
     const byDuration = {};
     for (const duration of durations) {
       byDuration[duration] = [];
       for (let pc = 0; pc < 12; pc++) {
         const r = CNBConfig.resolveNotehead(config, pc, duration, null);
-        byDuration[duration].push(sectionCFields(config, { pc, ...r }));
+        const f = sectionCFields(config, { pc, ...r });
+        f.xOffset = axisOn && r.xOffsetStaffSpaces ? r.xOffsetStaffSpaces : 0;
+        byDuration[duration].push(f);
       }
     }
 
@@ -739,9 +815,13 @@ export const CNBLilypond = {
       lines.push(`            (hollow     . ${f.hollowSym})`);
       lines.push(`            (attachment . ${f.attachSym})`);
       lines.push(`            (off-key-mark . #f)`);
+      if (f.xOffset) lines.push(`            (x-offset   . ${fmtNum(f.xOffset)})`);
       lines.push(`            (repeat     . ${repeat})))`);
       lines.push("");
     };
+
+    const offsetLabel = (f) => !f.xOffset ? ""
+      : `, ${f.xOffset > 0 ? "+" : ""}${fmtNum(f.xOffset)} staff-space ${f.xOffset > 0 ? "right" : "left"}`;
 
     lines.push("#(set! cnb:get-notehead-config");
     lines.push("   (lambda (semitone duration key)");
@@ -754,7 +834,7 @@ export const CNBLilypond = {
       const names = group.pitchClasses.map(pcName).join(", ");
       const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
       emitClause(
-        `${names} → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}`,
+        `${names} → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
         pcCondition(group.pitchClasses, "pc"),
         group.fields
       );
@@ -777,7 +857,7 @@ export const CNBLilypond = {
         const names = group.pitchClasses.map(pcName).join(", ");
         const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
         emitClause(
-          `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}`,
+          `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
           `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${lyNum}))`,
           group.fields
         );
@@ -794,6 +874,7 @@ export const CNBLilypond = {
     lines.push(`            (hollow     . #f)`);
     lines.push(`            (attachment . ${fb.attachSym})`);
     lines.push(`            (off-key-mark . #f)`);
+    if (fb.xOffset) lines.push(`            (x-offset   . ${fmtNum(fb.xOffset)})`);
     lines.push(`            (repeat     . ${repeat})))))))`);
     lines.push("");
 
@@ -811,23 +892,10 @@ export const CNBLilypond = {
    * @throws {Error} when the config fails export validation
    */
   generate(config) {
-    // Fail-loud interim gate (CNB-LY-EXPORT-SPEC v1.3 §8a / set-014 binding
-    // rule 3): until the engine ships E13-1 (the cnb:get-pitch-staff-position
-    // hook) and E13-2 (the x-offset notehead field) — verified in set-014
-    // session 3 from the engine repo's set-008 configurator-handoff record —
-    // a pitch-axis-enabled config must NOT export: the linear engine would
-    // engrave a compact config at wrong pitch positions. Session 3 removes
-    // this gate in the same change that first emits §5.4/§6.3, with the
-    // engine round-trip as evidence. Fires on the BOOLEAN enabled flag alone
-    // (the design §1.3 consumer gate, strictly === true — the same strict
-    // check CNBGrid and CNBPitchAxis use, so export and preview agree),
-    // before any other validation: no silent linear .ly for a compact
-    // config, ever. Non-boolean truthy values are not the consumer gate and
-    // follow the normal validation/export rules instead.
-    if (config.pitchAxis?.enabled === true) {
-      throw new Error(PITCH_AXIS_GATE_MESSAGE);
-    }
-
+    // Pitch-axis configs export since set 014 session 3 lifted the v1.3 §8a
+    // fail-loud gate: the engine shipped E13-1/E13-2 (engine set 008
+    // configurator-handoff). The §8 axis checks 8-12 are Module A's PA-1…PA-8
+    // blocking errors, enforced by the validate() call below.
     const validation = CNBConfig.validate(config);
     const errors = validation.errors.slice();
 
