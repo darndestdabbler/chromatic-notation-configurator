@@ -327,7 +327,9 @@ template placeholder.
    "Known limitations" section that summarizes and links Part 2 of
    `docs/playbook/notation-builder-playbook.md` (the five invariants, as
    amended by sessions 2–4), and a "Running the tests and UAT" section that
-   matches `dabbler.yaml`. Update `CLAUDE.md` (spec v1.3, Module 24, no
+   matches `dabbler.yaml`. Where it names the LilyPond needed to engrave an
+   export, say 2.24.x or 2.26.x (the engine supports 2.26 from 1.1.0); the
+   current "LilyPond 2.24+" overclaims versions nobody tested. Update `CLAUDE.md` (spec v1.3, Module 24, no
    legacy section).
 4. Replace the placeholder `lessons-learned.md` with real lessons harvested
    from the session-set `change-log.md` files, or delete it with
