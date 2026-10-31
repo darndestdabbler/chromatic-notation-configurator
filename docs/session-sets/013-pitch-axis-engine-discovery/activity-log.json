@@ -1,0 +1,57 @@
+{
+  "sessionSetName": "013-pitch-axis-engine-discovery",
+  "createdDate": "2026-07-10T22:37:43.691984+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-10T22:37:43.716056+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/engine-placement-study",
+      "dateTime": "2026-07-10T18:56:41.399117-04:00",
+      "description": "Studied the engine placement model: the notehead engraver (cnb/noteheads.ly:102-105) is the single semitone-to-Y site (sets Y-offset directly, never staff-position); ledgers/dots/articulations/stem geometry all read position back geometrically, so an arbitrary map at that one site propagates automatically. Secondary linear sites: keysig.ly mark placement, clefs.ly anchor. Findings in s1-engine-coordination.md section 1.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/spike-and-go-no-go",
+      "dateTime": "2026-07-10T18:56:41.400117-04:00",
+      "description": "Hand-authored throwaway compact-axis proof (Twinline-like 7-position octave, 12 pcs, 5 shared pairs) rendered through the real engine (LilyPond 2.24.2, -dbackend=svg) with a score-level stop-translation-timestep engraver simulating cnb:get-pitch-staff-position; measured via test-ids + harvest_svg.py: 35/35 noteheads at exact mapped positions, 7/7 ledgers at axis positions with correct negatives, stems correct (direction flips at LilyPond position 0), x-offset disambiguation proven for single notes and diatonic-unison chords, absorbed for diatonic-second chords (named engine work item E13-2). RECOMMENDATION: GO. Record: s1-engine-coordination.md; evidence: s1-evidence/.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/schema-and-export-design",
+      "dateTime": "2026-07-10T19:34:21.307895-04:00",
+      "description": "Designed the pitchAxis config section (explicit pitch-class-map-v1, octaveStride, axisUnitsPerStaffSpace unit contract, PA-1..PA-7 validation incl. ledger-collapse conflict rejection), the CNBPitchAxis grid/coordinate contract (positionOfSemi/regionOfSemi/distance, many-to-one inverse-returns-candidates, literal-old-path disabled branch) with the full consumer-module change inventory, the xOffsetStaffSpaces disambiguation field (axis-gated lifecycle), and export-format v1.3 draft (compiled cnb:get-pitch-staff-position procedure, axis staff-line-positions, x-offset Section C field, fail-loud interim gate). Deliverables: docs/planning/pitch-axis-design.md, docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md. All numeric claims machine-checked: s2-evidence/check-design-claims.mjs 53/53 (linear degeneracy vs real exporter, s1 spike geometry reproduction). cnb suite 709/709 unchanged (no product code).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/program-plan-and-operator-review",
+      "dateTime": "2026-07-10T19:39:38.428704-04:00",
+      "description": "Wrote the phased implementation-program plan (P0 engine hook E13-1..E13-5 parallel-capable, P1 spec adoption, P2 CNBPitchAxis+grid, P3 consumer rethread byte-identical, P4 exporter+fixtures+engine round-trip gated on E13-1/E13-2, P5 UI presets, P6 feasibility-matrix re-tier of records 32-40; suggested ~4-session set 014) with the consolidated risk list, and recommended authorization. Operator UAT (per-set, ad-hoc, before verification round 1): reviewed the s1 GO and both design deliverables and selected \"Approve \u2014 authorize implementation set (Recommended)\" \u2014 verbatim decision recorded in s2-uat.md; no objections or corrections. change-log.md written (final session).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/schema-and-export-design",
+      "dateTime": "2026-07-10T19:48:38.143198-04:00",
+      "description": "SUPERSEDING entry (verification round-1 remediation): evidence script extended with group F (numeric source-citation anchors: +0.85 / 26-column s1 measurements, 35/35 7/7 30/30 tallies, 9-record I2 count recomputed from feasibility-matrix rows 32-40, PA-8 monotonicity incl. negative control) \u2014 final count 62/62, exit 0. Coverage claim narrowed to the enumerated groups A-F. Design change: non-monotonic maps promoted from warning PA-W2 to blocking error PA-8 (global monotonicity: non-decreasing in pc order AND positions[11] <= positions[0] + octaveStride), reflected in design sections 1.4/2.2/5.2 and draft section 8 check 12 \u2014 adopted from the verifier round-1 suggestion. change-log.md reworded: close-out records (s2-verification.md, s2-issues.json, disposition update) identified as born after the log by gate construction; explicit in-progress status line added. Suite still 709/709.",
+      "status": "complete"
+    }
+  ]
+}
