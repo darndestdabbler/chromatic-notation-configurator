@@ -104,9 +104,9 @@
     {
       "number": 6,
       "title": "Hostile input, error paths and the browser matrix",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-01T17:14:36.277000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-01T17:41:35.663000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
