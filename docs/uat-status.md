@@ -1,9 +1,11 @@
 # Browser UAT status
 
 The Playwright drivers under `cnb/uat/` drive the real app (or a module's
-test page) in Chromium. `npm run uat` runs every `cnb/uat/uat-*.mjs` in name
-order through `cnb/uat/run-uat.mjs` and stops at the first driver that exits
-non-zero. Setup is in the README ("Running the Browser UAT").
+test page) in Chromium; `uat-hostile-input.mjs` (session 6) runs its
+checklist in Chromium, Firefox and Edge. `npm run uat` runs every
+`cnb/uat/uat-*.mjs` in name order through `cnb/uat/run-uat.mjs` and stops
+at the first driver that exits non-zero. Setup is in the README ("Running
+the Browser UAT").
 
 ## A declared suite
 
@@ -12,10 +14,38 @@ The UAT is declared as the second suite, `cnb-uat`, in `dabbler.yaml`
 Every driver passed on the first run with no repairs, and the whole run
 takes about a minute, so nothing argues for leaving it to the operator. The
 suite does not install its prerequisites (`npm install`,
-`npx playwright install chromium`). On a machine without them a driver
-exits 2 and names what is missing.
+`npx playwright install chromium firefox`, an installed Microsoft Edge). On
+a machine without them a driver exits 2 and names what is missing.
 
-## Last run — 2026-10-31 (session 5)
+## Last run — 2026-11-01 (session 6)
+
+- playwright-core 1.64.1; Chromium `chromium-1248` (156.0.8078.4); Firefox
+  `firefox-1555` (157.0), installed by `npx playwright install firefox`;
+  Microsoft Edge 155.0.4283.62 (system install, channel `msedge`)
+- Windows 11, Node 25.8.1
+- `npm run uat`: 12 of 12 drivers pass. The eleven drivers below are
+  unchanged and pass as in session 5.
+
+`uat-hostile-input.mjs` feeds `cnb/index.html` a toolkit SVG, a non-toolkit
+SVG, an SVG without `data-lilypond-*`, a file that is not XML, an
+older-version JSON save, a truncated JSON file, a legacy-monolith save, a
+JSON file the app cannot display, and an export of an invalid config. It
+checks for a visible message each time, that the previous state survives
+every refusal, and that no console or page error is logged.
+
+| Browser | Version | Result |
+|---|---|---|
+| Chromium | 156.0.8078.4 | pass, 18/18 checks |
+| Firefox | 157.0 | pass, 18/18 checks |
+| Edge | 155.0.4283.62 | pass, 18/18 checks |
+
+**Fixed:** Firefox logs an "XML Parsing Error" to the console as an error
+whenever `DOMParser` is handed text that is not XML (Chromium and Edge do
+not). The importer now refuses text with no `<svg` element before parsing
+it, so a non-SVG file gets its message without a console error. Nothing
+else broke in Firefox or Edge.
+
+## Earlier run — 2026-10-31 (session 5)
 
 - playwright-core 1.64.1 (from the repository's `node_modules`, via
   `npm install`)

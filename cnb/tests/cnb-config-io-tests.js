@@ -667,4 +667,115 @@ export const tests = [
       assert(findAll(api.root, "cnb-cio-valid").length === 1, "prior validation display intact");
     }),
   },
+
+  // ── Hostile input (session 6) ─────────────────────────────────────────────
+
+  {
+    name: "mergeLoaded: an older-version save missing later sections loads with the version note and defaults filled",
+    fn: () => {
+      // Shaped like a pre-set-009 save: no clef section, keys without
+      // keySignature, no pitchAxis.
+      const old = CNBConfig.createDefault();
+      old.version = "0.9";
+      delete old.clef;
+      delete old.keys.keySignature;
+      const { config, validation, notes } = IO.mergeLoaded(JSON.parse(JSON.stringify(old)));
+      assert(notes.length === 1 && notes[0].includes('"0.9"'), "version note: " + notes.join("; "));
+      assertEqual(config.clef, CNBConfig.createDefault().clef, "clef section defaulted");
+      assertEqual(config.keys.keySignature, CNBConfig.createDefault().keys.keySignature,
+        "keySignature defaulted");
+      assert(!("pitchAxis" in config), "no pitchAxis invented");
+      assert(validation.valid, "loads clean: " + validation.errors.join("; "));
+    },
+  },
+  {
+    name: "mergeLoaded: a legacy-monolith-shaped save is rejected naming the field",
+    fn: () => {
+      // The legacy single-file app saved its App object: shapes as an array.
+      const legacy = { meta: { name: "Old" }, shapes: [{ name: "kite" }], noteheadPalette: {} };
+      assertThrows(() => IO.mergeLoaded(legacy), 'field "shapes" should be an object, got an array',
+        "legacy save rejected");
+    },
+  },
+  {
+    name: "mergeLoaded: wrong-kinded sections are rejected naming the first such field",
+    fn: () => {
+      assertThrows(() => IO.mergeLoaded({ staff: { semitonePattern: "4,8" } }),
+        '"staff.semitonePattern" should be an array, got a string', "string for array");
+      assertThrows(() => IO.mergeLoaded({ noteheadRules: {} }),
+        '"noteheadRules" should be an array, got an object', "object for array");
+      assertThrows(() => IO.mergeLoaded({ palette: { colors: "red" } }),
+        '"palette.colors" should be an array', "nested");
+      assertThrows(() => IO.mergeLoaded({ display: { pxPerSemi: "big" } }),
+        '"display.pxPerSemi" should be a number, got a string', "number field");
+      assertThrows(() => IO.mergeLoaded({ engine: { falseHollow: "no" } }),
+        '"engine.falseHollow" should be a boolean', "boolean field");
+    },
+  },
+  {
+    name: "mergeLoaded: kind check leaves user map keys, extra keys and null-default fields alone",
+    fn: () => {
+      const cfg = customConfig();
+      cfg.engine.stemThickness = 0.15;      // default null: number allowed
+      cfg.clef.active = "none-yet";         // default null: string allowed
+      cfg.extraNote = ["kept"];             // not in the schema
+      const { config } = IO.mergeLoaded(JSON.parse(JSON.stringify(cfg)));
+      assert(config.engine.stemThickness === 0.15 && config.clef.active === "none-yet", "null-default fields");
+      assert("kite-up" in config.shapes, "map keys not checked against defaults");
+      assertEqual(config.extraNote, ["kept"], "extra key untouched");
+    },
+  },
+  {
+    name: "mergeLoaded: a file that still makes validation throw is a schema error, not a crash",
+    fn: () => {
+      // Elements of the wrong kind pass the section-level check (the
+      // sections ARE an array / an object) but break Module A's validator.
+      assertThrows(() => IO.mergeLoaded({ noteheadRules: [null] }),
+        "does not match the configuration schema", "null rule");
+      assertThrows(() => IO.mergeLoaded({ shapes: { kite: null } }),
+        "does not match the configuration schema", "null shape entry");
+    },
+  },
+  {
+    name: "render load: truncated JSON and non-JSON text show 'not valid JSON' without calling onLoad",
+    fn: () => withDomStub((container) => {
+      let loads = 0;
+      const api = IO.render(container, { getConfig: () => CNBConfig.createDefault(), onLoad: () => loads++ });
+      const full = IO.buildSaveFile(CNBConfig.createDefault(), { now: NOW_1 }).json;
+      for (const text of [full.slice(0, Math.floor(full.length / 2)), "Shape: kite-up\nColor: red", ""]) {
+        assert(api.loadText(text, "bad.json") === null, "load returns null");
+        assert(findAll(api.root, "cnb-cio-error")[0].textContent.includes("not valid JSON"),
+          "cause shown for " + JSON.stringify(text.slice(0, 20)));
+      }
+      assert(loads === 0, "onLoad never called");
+    }),
+  },
+  {
+    name: "render load: a wrong-kinded file shows the field in the error area without calling onLoad",
+    fn: () => withDomStub((container) => {
+      let loads = 0;
+      const api = IO.render(container, { getConfig: () => CNBConfig.createDefault(), onLoad: () => loads++ });
+      assert(api.loadText(JSON.stringify({ shapes: [] })) === null, "load returns null");
+      assert(loads === 0, "onLoad not called");
+      assert(findAll(api.root, "cnb-cio-error")[0].textContent.includes('"shapes" should be an object'),
+        "field named in the visible error");
+    }),
+  },
+  {
+    name: "render load: a throwing onLoad leaves a visible error and loadText does not throw",
+    fn: () => withDomStub((container) => {
+      const api = IO.render(container, {
+        getConfig: () => CNBConfig.createDefault(),
+        onLoad: () => { throw new Error("the preview could not render this config"); },
+      });
+      let result;
+      try { result = api.loadText(IO.buildSaveFile(CNBConfig.createDefault(), { now: NOW_1 }).json, "x.json"); }
+      catch (err) { throw new Error("loadText threw: " + err.message); }
+      assert(result === null, "failed adoption returns null");
+      assert(findAll(api.root, "cnb-cio-error")[0].textContent ===
+        "Load failed: the preview could not render this config", "error shown");
+      assert(findAll(api.root, "cnb-cio-status")[0].textContent === "", "no Loaded status");
+      assert(findAll(api.root, "cnb-cio-valid").length === 0, "no validation badge for the refused config");
+    }),
+  },
 ];

@@ -16,6 +16,7 @@
 import { CNBConfigExport } from "../ui/config-export.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBSvgImporter } from "../ui/svg-importer.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -462,6 +463,90 @@ export const tests = [
       assert(!statusEl.className.includes("cnb-cex-status-blocked"),
         "blocked modifier class cleared after the fix");
     }),
+  },
+
+  // ── Hostile input (session 6): export of an invalid config ────────────────
+  {
+    name: "render blocked: several errors at once → one .cnb-cex-verror row per error, count in the status",
+    fn: () => withDomStub((container) => {
+      const cfg = CNBConfig.createDefault();
+      cfg.meta.fileSuffix = "NoHyphen";                         // LY spec §8 check 6
+      cfg.staff.lineDefaults.color = "black";                   // check 7: not #RRGGBB
+      cfg.noteheadRules.push({                                   // check 1: missing shape
+        name: "Ghost", priority: 5,
+        match: { pitchClasses: [0], durations: "all", keys: "all" },
+        apply: { shape: "ghost-shape" },
+      });
+      let downloads = 0, exports = 0;
+      const api = EX.render(container, {
+        getConfig: () => cfg, download: () => downloads++, onExport: () => exports++,
+      });
+      let result;
+      try { result = api.exportLy(); } catch (err) { throw new Error("exportLy threw: " + err.message); }
+      assert(result === null && downloads === 0 && exports === 0, "blocked: no download, no onExport");
+      const errors = EX.validateForExport(cfg).errors;
+      const rows = findAll(api.root, "cnb-cex-verror").map(r => r.textContent);
+      assertEqual(rows, errors, "every validation error is a visible row");
+      assert(rows.some(r => r.includes("fileSuffix") || r.includes("hyphen")), "suffix error shown: " + rows.join(" | "));
+      assert(rows.some(r => r.includes("black")), "colour error shown: " + rows.join(" | "));
+      assert(rows.some(r => r.includes("ghost-shape")), "missing-shape error shown: " + rows.join(" | "));
+      const status = findAll(api.root, "cnb-cex-status")[0].textContent;
+      assert(status.includes(`fix ${errors.length} errors`), "status counts the errors: " + status);
+    }),
+  },
+  {
+    name: "render export: a config whose validation throws shows 'Export failed' and exportLy returns null",
+    fn: () => withDomStub((container) => {
+      // Structurally broken (a null shape entry): Module A's validate() throws.
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes["crotchet-minim"] = null;
+      let downloads = 0;
+      const api = EX.render(container, { getConfig: () => cfg, download: () => downloads++ });
+      let result;
+      try { result = api.exportLy(); } catch (err) { throw new Error("exportLy threw: " + err.message); }
+      assert(result === null && downloads === 0, "nothing exported");
+      const err = findAll(api.root, "cnb-cex-error")[0].textContent;
+      assert(err.startsWith("Export failed: "), "visible failure: " + err);
+      assert(findAll(api.root, "cnb-cex-valid").length === 0, "no valid badge");
+    }),
+  },
+
+  // ── Minim stem anchors (toolkit session 4 pair) reach the export ──────────
+
+  {
+    name: "an imported shape with a minim stem pair exports distinct minim-up/minim-down attachments",
+    fn: () => {
+      // buildShape() is pure: feed it extract()-shaped fields directly.
+      const rect = (x, y) => ({ x, y, width: 20, height: 350 });
+      const { shape, error } = CNBSvgImporter.buildShape({
+        svgPath: "M 120 0 C 120 -55 66 -100 0 -100 C -66 -100 -120 -55 -120 0 C -120 55 -66 100 0 100 C 66 100 120 55 120 0 Z",
+        svgHollowPath: null, isFalseHollow: false,
+        lilypondNotehead: null, lilypondHollow: null,
+        semitoneHeight: 2, viewBoxWidth: 240, viewBoxHeight: 200,
+        stemUpRect: rect(100, -350), stemDownRect: rect(-120, 0),
+        stemMinimUpRect: rect(70, -380), stemMinimDownRect: rect(-90, 25),
+        stemUpPoint: null, stemDownPoint: null,
+      }, "Oval");
+      assert(error === null, "shape builds: " + error);
+      const config = CNBConfig.createDefault();
+      config.shapes = { oval: shape };
+      config.noteheadRules[0].apply.shape = "oval";
+      const result = CNBConfigExport.buildExport(config);
+      assert(result.ok, "export succeeds: " + result.validation.errors.join("; "));
+      const pair = (key) => {
+        const m = result.ly.match(new RegExp(`\\(cons '${key}\\s+'\\(([^)]*)\\)`));
+        assert(m, `${key} attachment emitted`);
+        return m[1].trim();
+      };
+      // Default staff: 4 semitones per staff space. minimUp (0.8, 0.3) and
+      // minimDown (-0.8, -0.25) in semitones → ÷ 4.
+      assert(pair("minim-up") !== pair("crotchet-up"), "minim-up differs from crotchet-up");
+      assert(pair("minim-down") !== pair("crotchet-down"), "minim-down differs from crotchet-down");
+      const [ux, uy] = pair("minim-up").split(" . ").map(Number);
+      const [dx, dy] = pair("minim-down").split(" . ").map(Number);
+      assert(Math.abs(ux - 0.2) < 1e-4 && Math.abs(uy - 0.075) < 1e-4, "minim-up value: " + pair("minim-up"));
+      assert(Math.abs(dx + 0.2) < 1e-4 && Math.abs(dy + 0.0625) < 1e-4, "minim-down value: " + pair("minim-down"));
+    },
   },
 
   // ── Pitch axis (set 014 session 3): export through the UI path ────────────

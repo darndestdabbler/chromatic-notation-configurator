@@ -17,7 +17,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 3 | Exporter + fixtures + engine round-trip (P4) — **gated on engine set 008** | no | 2026-10-31 |
 | 4 | UI presets + re-tier + operator UAT (P5, P6) | no | 2026-10-31 |
 | 5 | Browser UAT becomes reproducible | no | 2026-10-31 |
-| 6 | Hostile input, error paths and the browser matrix | — | not declared |
+| 6 | Hostile input, error paths and the browser matrix | no | 2026-11-01 |
 | 7 | Retire `legacy/`, rewrite the README and the guidance | — | not declared |
 | 8 | Packaging | — | not declared |
 | 9 | Release 1.0.0 (release: 1.0.0) | — | not declared |
@@ -51,3 +51,13 @@ Finish the pitch-axis implementation (design phases P5 and P6). Build the pitch-
 **Releasable: no.**
 
 Make the browser UAT reproducible from a fresh clone. Add a private root package.json with no runtime dependencies that declares playwright-core as its only devDependency (with the generated package-lock.json committed and node_modules/ ignored), a `test` script (`node cnb/tests/run-tests.js`) and a `uat` script that runs a small sequential runner, cnb/uat/run-uat.mjs, which spawns every cnb/uat/uat-*.mjs driver in turn and exits non-zero on the first failure; document `npm install` and `npx playwright install chromium` in the README. The drivers already resolve playwright-core from their own location first (which reaches the repository's node_modules) and fall back to CNB_UAT_PLAYWRIGHT; their not-found messages are updated to point at `npm install` at the repository root. Then run every driver (there are eleven uat-*.mjs files, not the ten the plan counts: uat-gallery-previews.mjs is a capture tool and is included), fix whatever drift broke in the drivers or the app, and record each driver's result in docs/uat-status.md. Finally declare the UAT run as a second suite `cnb-uat` in dabbler.yaml (`command: npm run uat`, expensive, whole_at_close, runs_whole, covers [cnb/]) and update the comment there that says the drivers are undeclared.
+
+### Session 6 — Hostile input, error paths and the browser matrix
+
+**Releasable: no.**
+
+Make the app report hostile input instead of failing in the console, prove it in three browsers, and read the toolkit's minim stem anchors. A probe of the current code found the gaps: wrong-typed sections in a loaded JSON (shapes as an array, noteheadRules as an object, staff.semitonePattern as a string, palette.colors as a string) either throw inside CNBConfig.validate with an unhelpful message or load cleanly and then crash the preview/editors inside the load promise, which reaches the console and leaves the app half-mounted; the SVG import control has no catch around reading/parsing a file; and the non-toolkit-SVG error does not say what to do. The fixes stay small: config-io checks the merged config's value types against createDefault() (array vs object vs primitive, where the default is not null) and rejects a mismatch with a message naming the field, and catches a throwing onLoad into its error area; the app shell's onLoad restores the previous config and re-mounts when adopting a loaded config throws; the import control catches read/parse failures into an error result, and the missing-#notehead error says the file is not Music Glyph Toolkit output. The toolkit has shipped the minim pair (its session 4: <rect id="stem-minim-up"> / <rect id="stem-minim-down">), so the SVG importer reads it with the same rect rule as the regular pair into anchors.minimUp/minimDown, falling back to the crotchet anchors when the pair is absent (with a warning on a half pair); the exporter already emits minim-up/minim-down from lilypondAnchors, which a new export test pins. A new Playwright driver runs the hostile inputs against cnb/index.html in Chromium, Firefox and Edge, asserting a visible message for each and no page or console errors; anything it finds broken is fixed, and the README gains a Supported browsers table.
+
+**Amended after acceptance:**
+
+- 2026-11-01 — step 'uat-hostile-input': its files: Firefox logs an 'XML Parsing Error' console error whenever DOMParser receives non-XML text; the importer now refuses text with no <svg element before parsing, which needs the importer and its tests (claude-code (anthropic, claude-opus-5-5))

@@ -589,10 +589,22 @@
       },
       // Replace the shared state with the merged config and re-seed every
       // editor from it (their vocabularies and values come from the config).
+      // Adoption is all-or-nothing: if an editor or the preview cannot take
+      // the loaded config, the previous one is restored and the error is
+      // thrown back to Module 17, which shows it as a failed load.
       onLoad: (config) => {
-        appConfig = config;
-        mountEditors();
-        refreshShared();
+        const previous = appConfig;
+        try {
+          appConfig = config;
+          mountEditors();
+          refreshShared();
+        } catch (err) {
+          appConfig = previous;
+          mountEditors();
+          refreshShared();
+          throw new Error("this config could not be displayed (" + err.message +
+            ") — the previous config is still loaded");
+        }
       },
     });
 
@@ -729,14 +741,27 @@
           return;   // config untouched
         }
         const replaced = result.name in appConfig.shapes;
-        appConfig.shapes[result.name] = result.shape;
+        const previousShape = appConfig.shapes[result.name];
+        try {
+          appConfig.shapes[result.name] = result.shape;
+          // The shape vocabulary changed: re-seed the editors (the notehead
+          // rule editor's shape selects read it at mount time).
+          mountEditors();
+          refreshShared();
+        } catch (err) {
+          // The shape could not be displayed: put the previous entry back.
+          if (replaced) appConfig.shapes[result.name] = previousShape;
+          else delete appConfig.shapes[result.name];
+          mountEditors();
+          refreshShared();
+          importStatus.className = "err";
+          importStatus.textContent = "Import failed: the shape could not be displayed (" +
+            err.message + ")";
+          return;
+        }
         importStatus.className = "ok";
         importStatus.textContent = "Imported shape \"" + result.name + "\"" +
           (replaced ? " (replaced the existing entry with that name)" : "");
-        // The shape vocabulary changed: re-seed the editors (the notehead
-        // rule editor's shape selects read it at mount time).
-        mountEditors();
-        refreshShared();
       },
     });
 

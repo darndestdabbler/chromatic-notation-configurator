@@ -39,7 +39,7 @@ PDF / SVG / PNG output
 
 ### Prerequisites
 
-- A modern web browser (Chrome, Firefox, Safari, Edge)
+- A desktop web browser — see [Supported browsers](#supported-browsers)
 - [Node.js](https://nodejs.org/) 18+ (for running tests and serving the app locally)
 
 ### Usage
@@ -56,6 +56,20 @@ python -m http.server 8000
 then open `http://localhost:8000/cnb/index.html` (port per your server).
 No build step required.
 
+### Supported browsers
+
+The app is checked in these desktop browsers by the browser UAT
+(`cnb/uat/uat-hostile-input.mjs` runs the same checklist in all three; the
+other drivers run in Chromium):
+
+| Browser | Version checked | Status |
+|---|---|---|
+| Chromium / Chrome | 156 | Supported |
+| Firefox | 157 | Supported |
+| Microsoft Edge | 155 | Supported |
+
+Safari and mobile browsers are untested; mobile layouts are not a goal.
+
 ### Running Tests
 
 ```bash
@@ -69,11 +83,12 @@ root `package.json` declares only dev tooling (`playwright-core`); the app
 itself stays dependency-free. Once per clone:
 
 ```bash
-npm install                        # installs playwright-core into node_modules/
-npx playwright install chromium    # downloads the matching Chromium build
+npm install                                # installs playwright-core into node_modules/
+npx playwright install chromium firefox    # downloads the matching Chromium and Firefox builds
 ```
 
-then:
+Edge is used from its normal installation (Playwright channel `msedge`).
+Then:
 
 ```bash
 npm run uat     # runs every cnb/uat/uat-*.mjs in turn; stops at the first failure
@@ -108,15 +123,22 @@ the [engine repository's README](https://github.com/darndestdabbler/lilypond-chr
    the metadata the Configurator reads: `data-semitone-height`, stem
    placemarker rects (attachment anchors), and pre-baked
    `data-lilypond-notehead` / `data-lilypond-hollow` path strings.
+   If minims attach their stems elsewhere, draw the optional second pair of
+   rects, `stem-minim-up` / `stem-minim-down`; without it, minims use the
+   crotchet anchors.
 
 ### 2. Import the shape into the Configurator
 
 Open the app (see Usage above) and load your SVG in the **Shape
 Importer** panel. The importer extracts the SVG paths, the LilyPond
-paths, and the stem anchors (stored in semitone units; the exporter
-converts them to staff-space units at export time). Warnings are shown
-for shapes missing `data-lilypond-*` attributes — those fall back to
-automatic path conversion at export.
+paths, and the stem anchors, including the minim pair when present
+(stored in semitone units; the exporter converts them to staff-space
+units at export time). Warnings are shown for shapes missing
+`data-lilypond-*` attributes — those fall back to automatic path
+conversion at export. A file that is not toolkit output, or not an SVG at
+all, is refused with a message saying so, and the configuration is left
+unchanged; so is a JSON file that is not a configuration this version can
+open.
 
 ### 3. Design the notation system
 

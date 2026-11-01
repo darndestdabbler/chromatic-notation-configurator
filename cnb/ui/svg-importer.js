@@ -18,6 +18,10 @@
  *     placemarker geometry: the attachment point is the bottom-center of
  *     the stem-up rect and the top-center of the stem-down rect (matches
  *     legacy computeStemAnchorsFromRects()).
+ *   - Optional minim pair (toolkit session 4): `<rect id="stem-minim-up">` /
+ *     `<rect id="stem-minim-down">`, user-drawn, read with the same rule into
+ *     anchors.minimUp/minimDown. Absent (or only half present, with a
+ *     warning) → the minim anchors copy the crotchet anchors.
  *   - The toolkit normalizes shapes to 100 SVG units per semitone, centered
  *     on the origin, and sets the root viewBox to the exact notehead bounds.
  *     Pre-baked LilyPond paths are SVG coordinates ÷ 100 with Y negated.
@@ -49,6 +53,18 @@ function byId(doc, id) {
     return doc.querySelector(`[id="${id}"]`);
   }
   return null;
+}
+
+/**
+ * The error message for text that is not an SVG file at all, or null. It
+ * is refused BEFORE DOMParser sees it: Firefox logs every XML parse failure
+ * to the console as an error, and a file with no <svg element cannot be an
+ * SVG anyway.
+ */
+function notSvgError(svgText) {
+  return /<svg\b/i.test(String(svgText))
+    ? null
+    : "Invalid SVG: the file contains no <svg> element (is it an SVG file?)";
 }
 
 /** Local (namespace-free, lowercase) tag name of an element. */
@@ -134,35 +150,39 @@ export const CNBSvgImporter = {
 
   /**
    * Derive the 4-point anchor model (architecture plan §4.2) from the
-   * toolkit's stem placemarker rects. The toolkit provides one up/down pair,
-   * so crotchet and minim anchors are identical at import time.
+   * toolkit's stem placemarker rects. The regular pair gives the crotchet
+   * anchors; the optional minim pair, when BOTH rects are given, gives the
+   * minim anchors, otherwise the minim anchors copy the crotchet ones.
    *
-   * Attachment points: bottom-center of the stem-up rect, top-center of the
-   * stem-down rect (in native SVG units, same space as svgPath).
+   * Attachment points: bottom-center of an up rect, top-center of a down
+   * rect (in native SVG units, same space as svgPath).
    *
    * @param {{x:number,y:number,width:number,height:number}|null} stemUpRect
    * @param {{x:number,y:number,width:number,height:number}|null} stemDownRect
+   * @param {{x:number,y:number,width:number,height:number}|null} [minimUpRect]
+   * @param {{x:number,y:number,width:number,height:number}|null} [minimDownRect]
    * @returns {{crotchetUp:{x,y},crotchetDown:{x,y},minimUp:{x,y},minimDown:{x,y}}|null}
-   *          null when neither rect is present (stemless shape)
+   *          null when neither regular rect is present (stemless shape)
    */
-  anchorsFromStemRects(stemUpRect, stemDownRect) {
+  anchorsFromStemRects(stemUpRect, stemDownRect, minimUpRect = null, minimDownRect = null) {
     if (!stemUpRect && !stemDownRect) return null;
 
-    const up = stemUpRect
-      ? { x: roundTo(stemUpRect.x + stemUpRect.width / 2, 4),
-          y: roundTo(stemUpRect.y + stemUpRect.height, 4) }
+    const upPoint = r => r
+      ? { x: roundTo(r.x + r.width / 2, 4), y: roundTo(r.y + r.height, 4) }
+      : { x: 0, y: 0 };
+    const downPoint = r => r
+      ? { x: roundTo(r.x + r.width / 2, 4), y: roundTo(r.y, 4) }
       : { x: 0, y: 0 };
 
-    const down = stemDownRect
-      ? { x: roundTo(stemDownRect.x + stemDownRect.width / 2, 4),
-          y: roundTo(stemDownRect.y, 4) }
-      : { x: 0, y: 0 };
+    const up = upPoint(stemUpRect);
+    const down = downPoint(stemDownRect);
+    const minimPair = !!minimUpRect && !!minimDownRect;
 
     return {
       crotchetUp:   { ...up },
       crotchetDown: { ...down },
-      minimUp:      { ...up },
-      minimDown:    { ...down },
+      minimUp:      minimPair ? upPoint(minimUpRect) : { ...up },
+      minimDown:    minimPair ? downPoint(minimDownRect) : { ...down },
     };
   },
 
@@ -212,7 +232,12 @@ export const CNBSvgImporter = {
     if (!root) return { error: "No <svg> root element found" };
 
     const noteheadEl = byId(doc, "notehead");
-    if (!noteheadEl) return { error: 'No element with id="notehead" found' };
+    if (!noteheadEl) {
+      return {
+        error: 'No element with id="notehead" found — this does not look like ' +
+          "Music Glyph Toolkit output (run the toolkit's Notehead mode on it first)",
+      };
+    }
 
     const svgPath = noteheadEl.getAttribute("d") || "";
     if (!svgPath) return { error: 'The "notehead" element has no path data (d attribute)' };
@@ -239,6 +264,8 @@ export const CNBSvgImporter = {
     };
     const up = readStemRect("stem-up");
     const down = readStemRect("stem-down");
+    const minimUp = readStemRect("stem-minim-up");
+    const minimDown = readStemRect("stem-minim-down");
 
     const semitoneHeightStr = noteheadEl.getAttribute("data-semitone-height");
     const semitoneHeight = semitoneHeightStr !== null && semitoneHeightStr !== ""
@@ -272,6 +299,10 @@ export const CNBSvgImporter = {
       stemDownRect: down.rect,
       stemUpNonRect: up.nonRect,
       stemDownNonRect: down.nonRect,
+      stemMinimUpRect: minimUp.rect,
+      stemMinimDownRect: minimDown.rect,
+      stemMinimUpNonRect: minimUp.nonRect,
+      stemMinimDownNonRect: minimDown.nonRect,
       stemUpPoint: stemPoint("data-stem-up-x", "data-stem-up-y"),
       stemDownPoint: stemPoint("data-stem-down-x", "data-stem-down-y"),
       viewBoxWidth: viewBox ? viewBox.width : null,
@@ -330,7 +361,8 @@ export const CNBSvgImporter = {
         : "Missing viewBox — natural height assumed from semitone height");
     }
 
-    if (extracted.stemUpNonRect || extracted.stemDownNonRect) {
+    if (extracted.stemUpNonRect || extracted.stemDownNonRect ||
+        extracted.stemMinimUpNonRect || extracted.stemMinimDownNonRect) {
       warnings.push(
         "Stem element(s) present but not <rect> placemarkers — ignored " +
         "(re-run the Music Glyph Toolkit to regenerate stems)");
@@ -339,10 +371,22 @@ export const CNBSvgImporter = {
       warnings.push("Only one stem placemarker rect found — missing anchor defaults to (0,0)");
     }
 
+    const minimUpRect = extracted.stemMinimUpRect || null;
+    const minimDownRect = extracted.stemMinimDownRect || null;
+    if (!!minimUpRect !== !!minimDownRect) {
+      warnings.push(
+        "Only one minim stem placemarker rect found (" +
+        (minimUpRect ? "stem-minim-down" : "stem-minim-up") + " is missing) — " +
+        "minim anchors copy the crotchet anchors");
+    }
+    if ((minimUpRect || minimDownRect) && !extracted.stemUpRect && !extracted.stemDownRect) {
+      warnings.push("Minim stem placemarkers without stem-up/stem-down rects — ignored");
+    }
+
     // Anchor sources in order: stem placemarker rects (current toolkit
     // contract), then LY spec §7.1 data-stem-* attributes (legacy contract).
     let anchors = CNBSvgImporter.anchorsFromStemRects(
-      extracted.stemUpRect, extracted.stemDownRect);
+      extracted.stemUpRect, extracted.stemDownRect, minimUpRect, minimDownRect);
     if (!anchors) {
       anchors = CNBSvgImporter.anchorsFromStemPoints(
         extracted.stemUpPoint, extracted.stemDownPoint);
@@ -520,6 +564,8 @@ export const CNBSvgImporter = {
    * @returns {{name:string|null, glyph:object|null, warnings:string[], error:string|null}}
    */
   parseClefSvgText(svgText, filename, opts = {}) {
+    const notSvg = notSvgError(svgText);
+    if (notSvg) return { name: null, glyph: null, warnings: [], error: notSvg };
     const parser = opts.parser || new globalThis.DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
 
@@ -549,6 +595,8 @@ export const CNBSvgImporter = {
    * @returns {{name:string|null, shape:object|null, warnings:string[], error:string|null}}
    */
   parseSvgText(svgText, filename, opts = {}) {
+    const notSvg = notSvgError(svgText);
+    if (notSvg) return { name: null, shape: null, warnings: [], error: notSvg };
     const parser = opts.parser || new globalThis.DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
 
@@ -588,10 +636,20 @@ export const CNBSvgImporter = {
     input.accept = ".svg";
     input.style.display = "none";
 
+    // A file that cannot be read or parsed is user input, not a defect:
+    // it reaches onResult as an error result, never as an unhandled rejection.
     const importFile = async (file) => {
       if (!file) return;
-      const text = await file.text();
-      onResult(CNBSvgImporter.parseSvgText(text, file.name));
+      let result;
+      try {
+        result = CNBSvgImporter.parseSvgText(await file.text(), file.name);
+      } catch (err) {
+        result = {
+          name: null, shape: null, warnings: [],
+          error: `Could not read ${file.name}: ${(err && err.message) || err}`,
+        };
+      }
+      onResult(result);
     };
 
     zone.addEventListener("click", () => input.click());

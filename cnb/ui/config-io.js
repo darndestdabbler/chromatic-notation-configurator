@@ -46,6 +46,14 @@
  *     .cnb-cio-error, and leaves app state untouched (onLoad is not
  *     called). The pure functions themselves keep the verified Modules
  *     13–15 policy: they THROW on invalid input rather than guessing.
+ *   - Hostile input (session 6): mergeLoaded() also rejects a file whose
+ *     merged value KINDS differ from createDefault()'s (an array where an
+ *     object belongs, a string where a number does — older or foreign
+ *     saves), naming the first such field, and a file that still makes
+ *     CNBConfig.validate() throw. A host whose onLoad() throws (it could
+ *     not adopt the config and has restored its own state) gets the same
+ *     treatment: the error shows in .cnb-cio-error and loadText() returns
+ *     null.
  *
  * Editor-side contract (same rendering rules as Modules 12–15): render()
  * builds plain DOM via document.createElement, wires events as element
@@ -108,6 +116,41 @@ function setPath(obj, pathKeys, value) {
     cur = cur[key];
   }
   cur[pathKeys[pathKeys.length - 1]] = value;
+}
+
+/** "array" | "object" | "null" | typeof — the kind of a JSON value. */
+function kindOf(v) {
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v;
+}
+
+const ARTICLE = { array: "an array", object: "an object", string: "a string",
+  number: "a number", boolean: "a boolean", null: "null" };
+
+/**
+ * Throw naming the first field of `config` whose kind differs from the
+ * default's at the same path. Recurses into fixed-schema objects, not into
+ * the REPLACE_PATHS maps (their keys are the user's), and skips paths whose
+ * default is null (those fields legitimately take more than one kind).
+ * Keys the default does not have are left alone.
+ */
+function checkKinds(def, config, pathKeys = []) {
+  for (const key of Object.keys(def)) {
+    const dv = def[key];
+    if (dv === null || !(key in config)) continue;
+    const here = [...pathKeys, key];
+    const want = kindOf(dv);
+    const got = kindOf(config[key]);
+    if (got !== want) {
+      throw new Error(
+        `Config file field "${here.join(".")}" should be ${ARTICLE[want]}, ` +
+        `got ${ARTICLE[got] || got} — this file does not match the current ` +
+        "configuration schema");
+    }
+    const isMap = REPLACE_PATHS.some(p => p.join(".") === here.join("."));
+    if (want === "object" && !isMap) checkKinds(dv, config[key], here);
+  }
 }
 
 export const CNBConfigIO = {
@@ -242,7 +285,18 @@ export const CNBConfigIO = {
         setPath(config, pathKeys, deepClone(provided));
       }
     }
-    return { config, validation: CNBConfig.validate(config), notes };
+    // A wrong-kinded section (an older or foreign save) is rejected here,
+    // naming the field, rather than crashing the editors after adoption.
+    checkKinds(CNBConfig.createDefault(), config);
+    let validation;
+    try {
+      validation = CNBConfig.validate(config);
+    } catch (err) {
+      throw new Error(
+        "Config file does not match the configuration schema (validation " +
+        `could not run: ${err.message})`);
+    }
+    return { config, validation, notes };
   },
 
   /**
@@ -365,13 +419,20 @@ export const CNBConfigIO = {
         redraw();
         return null;
       }
+      // Callback first, redraw second: the filename preview reads
+      // getConfig(), so it shows the LOADED config's name only after the
+      // host has adopted it. A host that cannot adopt the config throws
+      // (after restoring its own state); that is a failed load, shown here.
+      try {
+        onLoad(result.config, { validation: result.validation, notes: result.notes });
+      } catch (err) {
+        errorText = "Load failed: " + err.message;
+        redraw();
+        return null;
+      }
       lastValidation = { validation: result.validation, notes: result.notes };
       statusText = "Loaded" + (sourceName ? " " + sourceName : "") +
         " — " + (((result.config.meta || {}).configName) || "(unnamed config)");
-      // Callback first, redraw second: the filename preview reads
-      // getConfig(), so it shows the LOADED config's name only after the
-      // host has adopted it.
-      onLoad(result.config, { validation: result.validation, notes: result.notes });
       redraw();
       return result;
     }

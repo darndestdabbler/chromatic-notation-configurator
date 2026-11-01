@@ -21,6 +21,11 @@ function approx(a, b, msg, epsilon = 1e-6) {
     throw new Error(`${msg || "approx"}: expected ~${b}, got ${a}`);
 }
 
+function assertSame(a, b, msg) {
+  if (a.x !== b.x || a.y !== b.y)
+    throw new Error(`${msg}: expected (${b.x}, ${b.y}), got (${a.x}, ${a.y})`);
+}
+
 // ─── Stub document helpers (mirror DOM getAttribute/tagName contract) ────────
 
 function stubEl(tagName, attrs = {}) {
@@ -300,6 +305,70 @@ export const tests = [
       assert(r2.shape.anchors.crotchetDown.x === 0, "missing down anchor defaulted");
     }},
 
+  // — minim stem placemarker pair (toolkit session 4) —
+  { name: "anchorsFromStemRects reads the minim pair with the same rect rule as the regular pair", fn: () => {
+      const a = CNBSvgImporter.anchorsFromStemRects(
+        { x: 97.7778, y: -350, width: 22.2222, height: 350 },
+        { x: -120, y: 0, width: 22.2222, height: 350 },
+        { x: 70, y: -380, width: 20, height: 350 },
+        { x: -90, y: 25, width: 20, height: 350 });
+      approx(a.crotchetUp.x, 108.8889, "crotchet up unchanged");
+      approx(a.minimUp.x, 80, "minimUp.x = rect.x + width/2");
+      approx(a.minimUp.y, -30, "minimUp.y = rect bottom edge");
+      approx(a.minimDown.x, -80, "minimDown.x = rect.x + width/2");
+      approx(a.minimDown.y, 25, "minimDown.y = rect top edge");
+    }},
+  { name: "anchorsFromStemRects: a half minim pair falls back to the crotchet anchors", fn: () => {
+      const a = CNBSvgImporter.anchorsFromStemRects(
+        { x: 10, y: -100, width: 20, height: 100 },
+        { x: -30, y: 5, width: 20, height: 100 },
+        { x: 70, y: -380, width: 20, height: 350 }, null);
+      assert(a.minimUp.x === a.crotchetUp.x && a.minimUp.y === a.crotchetUp.y, "minimUp == crotchetUp");
+      assert(a.minimDown.x === a.crotchetDown.x && a.minimDown.y === a.crotchetDown.y, "minimDown == crotchetDown");
+    }},
+  { name: "extract + buildShape: minim pair present → distinct minim anchors and lilypondAnchors", fn: () => {
+      const doc = toolkitDoc({
+        "stem-minim-up": stubEl("rect", { id: "stem-minim-up", x: "70", y: "-380", width: "20", height: "350" }),
+        "stem-minim-down": stubEl("rect", { id: "stem-minim-down", x: "-90", y: "25", width: "20", height: "350" }),
+      });
+      const e = CNBSvgImporter.extract(doc);
+      approx(e.stemMinimUpRect.x, 70, "minim up rect extracted");
+      approx(e.stemMinimDownRect.y, 25, "minim down rect extracted");
+      const { shape, warnings } = CNBSvgImporter.buildShape(e, "X");
+      assert(warnings.length === 0, "clean file with a minim pair yields no warnings: " + warnings.join("; "));
+      approx(shape.anchors.minimUp.x, 80, "anchors.minimUp.x");
+      approx(shape.anchors.minimDown.y, 25, "anchors.minimDown.y");
+      approx(shape.anchors.crotchetUp.x, 108.8889, "crotchet anchors from the regular pair");
+      // ÷ 100 SVG units per semitone, Y inverted
+      approx(shape.lilypondAnchors.minimUp.x, 0.8, "lilypondAnchors.minimUp.x", 1e-4);
+      approx(shape.lilypondAnchors.minimUp.y, 0.3, "lilypondAnchors.minimUp.y inverted", 1e-4);
+      approx(shape.lilypondAnchors.minimDown.x, -0.8, "lilypondAnchors.minimDown.x", 1e-4);
+      approx(shape.lilypondAnchors.minimDown.y, -0.25, "lilypondAnchors.minimDown.y inverted", 1e-4);
+    }},
+  { name: "buildShape: minim pair absent → minim anchors copy the crotchet anchors, no warning", fn: () => {
+      const { shape, warnings } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(toolkitDoc()), "X");
+      assert(!warnings.some(w => /minim/i.test(w)), "no minim warning");
+      assertSame(shape.anchors.minimUp, shape.anchors.crotchetUp, "minimUp");
+      assertSame(shape.anchors.minimDown, shape.anchors.crotchetDown, "minimDown");
+    }},
+  { name: "buildShape: half minim pair warns naming the missing rect and falls back", fn: () => {
+      const doc = toolkitDoc({
+        "stem-minim-up": stubEl("rect", { id: "stem-minim-up", x: "70", y: "-380", width: "20", height: "350" }),
+      });
+      const { shape, warnings } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      assert(warnings.some(w => /minim/.test(w) && /stem-minim-down/.test(w)), "names the missing rect: " + warnings.join("; "));
+      assertSame(shape.anchors.minimUp, shape.anchors.crotchetUp, "minimUp falls back");
+    }},
+  { name: "buildShape: non-rect minim placemarker warns like the regular pair", fn: () => {
+      const doc = toolkitDoc({
+        "stem-minim-up": stubEl("path", { id: "stem-minim-up", d: "M 0 0 L 0 -100" }),
+        "stem-minim-down": stubEl("rect", { id: "stem-minim-down", x: "-90", y: "25", width: "20", height: "350" }),
+      });
+      const { shape, warnings } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      assert(warnings.some(w => /not <rect>/.test(w)), "non-rect warning");
+      assertSame(shape.anchors.minimUp, shape.anchors.crotchetUp, "minim anchors fall back");
+    }},
+
   // — imported shape plugs into downstream modules —
   { name: "imported shape works with CNBNotehead.measure (renders at semitoneHeight × pxPerSemi)", fn: () => {
       const { shape } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(toolkitDoc()), "X");
@@ -423,6 +492,67 @@ export const tests = [
         assert(results.length === 1, "onResult called");
         assert(results[0].name === "kite-up", "named from picked file");
         assert(results[0].shape.svgPath === ELLIPSE_D, "shape parsed");
+      } finally {
+        if (hadDoc) globalThis.document = prevDoc; else delete globalThis.document;
+        if (hadParser) globalThis.DOMParser = prevParser; else delete globalThis.DOMParser;
+      }
+    }},
+
+  // — hostile input (session 6): every failure is a result, never a throw —
+  { name: "parseSvgText: a plain SVG that is not toolkit output names the toolkit", fn: () => {
+      // e.g. an icon drawn in any editor: an <svg> root and an unnamed <path>
+      const plain = Object.assign(
+        stubDoc({ viewBox: "0 0 24 24" }, {}),
+        { querySelector: (sel) => sel === "path" ? stubEl("path", { d: "M 0 0 L 24 24" }) : null });
+      const r = CNBSvgImporter.parseSvgText("<svg>…</svg>", "icon.svg", { parser: { parseFromString: () => plain } });
+      assert(r.shape === null, "no shape");
+      assert(/id="notehead"/.test(r.error) && /Music Glyph Toolkit/.test(r.error) && /Notehead mode/.test(r.error),
+        "error says what to do: " + r.error);
+    }},
+  { name: "parseSvgText: an SVG without data-lilypond-* imports with both fallback warnings", fn: () => {
+      const doc = Object.assign(toolkitDoc({
+        notehead: stubEl("path", { id: "notehead", d: ELLIPSE_D, "data-semitone-height": "2.0" }),
+        hollow: stubEl("path", { id: "hollow", d: HOLLOW_D }),
+      }), { querySelector: () => null });
+      const r = CNBSvgImporter.parseSvgText("<svg/>", "oval.svg", { parser: { parseFromString: () => doc } });
+      assert(r.error === null, "imports: " + r.error);
+      assert(r.shape.lilypondPath === null && r.shape.lilypondHollowPath === null, "export falls back");
+      assert(r.warnings.some(w => /data-lilypond-notehead/.test(w)), "notehead warning");
+      assert(r.warnings.some(w => /data-lilypond-hollow/.test(w)), "hollow warning");
+    }},
+  { name: "parseSvgText: non-XML text gives an Invalid SVG error without reaching the parser", fn: () => {
+      // Refused before DOMParser: Firefox logs every XML parse failure to
+      // the console as an error.
+      let parsed = 0;
+      const parser = { parseFromString: () => { parsed++; return {}; } };
+      const r = CNBSvgImporter.parseSvgText("this is not xml", "notes.svg", { parser });
+      assert(r.shape === null && r.name === null, "no shape");
+      assert(/^Invalid SVG: the file contains no <svg> element/.test(r.error), "error: " + r.error);
+      assert(parsed === 0, "parser never called");
+      const c = CNBSvgImporter.parseClefSvgText("{\"not\": \"svg\"}", "clef.svg", { parser });
+      assert(c.glyph === null && /no <svg> element/.test(c.error) && parsed === 0, "clef path too: " + c.error);
+    }},
+  { name: "renderImportControl: a file that cannot be read or parsed reaches onResult as an error", fn: async () => {
+      const makeEl = (tag) => ({
+        tag, children: [], listeners: {}, className: "", textContent: "", style: {},
+        classList: { add() {}, remove() {} },
+        addEventListener(type, fn) { this.listeners[type] = fn; },
+        appendChild(c) { this.children.push(c); return c; },
+        click() {},
+      });
+      const hadDoc = "document" in globalThis, prevDoc = globalThis.document;
+      const hadParser = "DOMParser" in globalThis, prevParser = globalThis.DOMParser;
+      globalThis.document = { createElement: makeEl };
+      globalThis.DOMParser = class { parseFromString() { throw new Error("parser exploded"); } };
+      try {
+        const results = [];
+        const ctl = CNBSvgImporter.renderImportControl(makeEl("div"), { onResult: r => results.push(r) });
+        await ctl.importFile({ name: "locked.svg", text: () => Promise.reject(new Error("permission denied")) });
+        assert(results.length === 1, "onResult called for the unreadable file");
+        assert(results[0].shape === null && /locked\.svg/.test(results[0].error) &&
+          /permission denied/.test(results[0].error), "read error surfaced: " + results[0].error);
+        await ctl.importFile({ name: "odd.svg", text: async () => "<svg/>" });
+        assert(results.length === 2 && /parser exploded/.test(results[1].error), "parser throw surfaced");
       } finally {
         if (hadDoc) globalThis.document = prevDoc; else delete globalThis.document;
         if (hadParser) globalThis.DOMParser = prevParser; else delete globalThis.DOMParser;
