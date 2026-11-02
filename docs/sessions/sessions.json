@@ -184,9 +184,9 @@
     {
       "number": 10,
       "title": "No imported text can become Scheme",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-02T06:23:56.825000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-02T07:20:50.414000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
