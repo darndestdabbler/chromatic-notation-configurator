@@ -1,10 +1,10 @@
 /**
  * palette-editor.js — Module 12: Palette Editor
  *
- * Ports the working palette system from `legacy/music-color-palettes.js` and
- * the legacy PaletteUI modal (`legacy/chromatic-configurator.html`) onto the
- * Module A config schema (architecture plan §4.6). The legacy files are
- * reference behavior only and are not touched.
+ * Ports the working palette system from `music-color-palettes.js` and
+ * the legacy PaletteUI modal (`chromatic-configurator.html`) onto the
+ * Module A config schema (architecture plan §4.6). The legacy files were
+ * removed in 1.0.0 and are preserved at git tag `legacy-monolith-final`.
  *
  * What is ported verbatim (same algorithms, same constants):
  *   - CIELAB / CIEDE2000 color math: hexToRgb, rgbToHex, hexToLab, deltaE
@@ -55,7 +55,7 @@
 
 // ============================================================
 // COLOR MATH (sRGB → XYZ → CIELAB, ΔE 2000) — ported from
-// legacy/music-color-palettes.js
+// the legacy music-color-palettes.js (tag legacy-monolith-final)
 // ============================================================
 
 function hexToRgb(hex) {
@@ -110,7 +110,7 @@ function hexToLab(hex) {
 
 /**
  * CIEDE2000 color difference. Reference: Sharma, Wu, Dalal (2005).
- * Ported unchanged from legacy/music-color-palettes.js.
+ * Ported unchanged from the legacy music-color-palettes.js.
  */
 function deltaE(hex1, hex2) {
   const PI = Math.PI;
@@ -265,7 +265,7 @@ function baseColorName(hex) {
 }
 
 // ============================================================
-// SCHEME SYMBOL PIPELINE — ported from legacy/configurator-core.js
+// SCHEME SYMBOL PIPELINE — ported from the legacy configurator-core.js
 // ============================================================
 
 /**

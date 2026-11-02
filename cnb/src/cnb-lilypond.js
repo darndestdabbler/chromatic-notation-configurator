@@ -4,7 +4,8 @@
  * Generates .ly file content from a config JSON per CNB-LY-EXPORT-SPEC-v1.2,
  * plus the v1.3 pitch-axis surface (CNB-LY-EXPORT-SPEC-v1_3.md), emitted only
  * when pitchAxis is enabled — disabled configs run the literal v1.2.1 paths.
- * This is a port of the proven export logic in legacy/configurator-core.js
+ * This is a port of the proven export logic in the legacy monolith's
+ * configurator-core.js (preserved at git tag legacy-monolith-final)
  * (generateSectionA/B, svgPathToLilypond, toSchemeSymbol, and helpers),
  * mapped onto the modular config schema (Architecture Plan §4).
  *

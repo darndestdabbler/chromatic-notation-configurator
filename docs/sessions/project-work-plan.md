@@ -18,7 +18,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 4 | UI presets + re-tier + operator UAT (P5, P6) | no | 2026-10-31 |
 | 5 | Browser UAT becomes reproducible | no | 2026-10-31 |
 | 6 | Hostile input, error paths and the browser matrix | no | 2026-11-01 |
-| 7 | Retire `legacy/`, rewrite the README and the guidance | — | not declared |
+| 7 | Retire `legacy/`, rewrite the README and the guidance | no | 2026-11-01 |
 | 8 | Packaging | — | not declared |
 | 9 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
@@ -61,3 +61,9 @@ Make the app report hostile input instead of failing in the console, prove it in
 **Amended after acceptance:**
 
 - 2026-11-01 — step 'uat-hostile-input': its files: Firefox logs an 'XML Parsing Error' console error whenever DOMParser receives non-XML text; the importer now refuses text with no <svg element before parsing, which needs the importer and its tests (claude-code (anthropic, claude-opus-5-5))
+
+### Session 7 — Retire `legacy/`, rewrite the README and the guidance
+
+**Releasable: no.**
+
+Retire the legacy monolith and bring the repository's front-door documentation up to a 1.0.0 product. Tag the current commit `legacy-monolith-final`, delete `legacy/`, and repoint every live reference to it at the tag: the architecture plan's file-structure section, `docs/planning/project-plan.md`, the port-origin comments in four `cnb/` files, and `cnb/tests/cnb-lilypond-tests.js`, which (contrary to the session plan's note) still requires `legacy/configurator-core.js` for three legacy-parity tests; those tests and their now-unused helpers go with the code they compared against. Rewrite the README for a complete 1.0.0 product: status complete, export spec v1.3, no `legacy/`, a "Known limitations" section summarizing and linking Part 2 of the notation-builder playbook (I1, I3, I4, I5 as hard limits; I2 relaxed by the optional `pitchAxis` section per the feasibility matrix §9), a "Running the tests and UAT" section matching `dabbler.yaml`, and LilyPond 2.24.x or 2.26.x for engraving. Update `CLAUDE.md` (spec v1.3, Module 24 `cnb-pitch-axis.js`, no legacy section or legacy test command). Replace the placeholder `docs/planning/lessons-learned.md` with real lessons harvested from the session-set change logs, delete the empty `lessons-archive.md` and the TODO-template `project-guidance.md`, leaving no v1 `ai_router` instructions, and add a root `version.json` reading `{ "version": "1.0.0" }`.

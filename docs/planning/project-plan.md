@@ -40,7 +40,9 @@ own release gate until this repo's exporter is real.
 
 Two codebases coexist in this repo right now, deliberately:
 
-- **`legacy/`** — the original working monolith
+- **The legacy monolith** — removed from the tree in 1.0.0 and preserved at
+  git tag `legacy-monolith-final` (it lived in `legacy/` when this plan was
+  written) — the original working monolith
   (`chromatic-configurator.html`, ~3,057 lines, plus `configurator-core.js`
   and `music-color-palettes.js`). Fully functional, 240 passing tests,
   marked **reference only — do not modify**. This is the source of truth

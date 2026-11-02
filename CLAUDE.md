@@ -12,7 +12,7 @@ This repo is one of three in the ChromaticNotationBase ecosystem:
 ## Architecture & Key Documents
 
 - Full architecture plan: @docs/CNB-ARCHITECTURE-PLAN-v2.md
-- LilyPond export spec: @docs/CNB-LY-EXPORT-SPEC-v1_2.md
+- LilyPond export spec: @docs/CNB-LY-EXPORT-SPEC-v1_3.md
 
 ## Language & Environment
 
@@ -38,6 +38,7 @@ Visual test pages: `cnb/test-pages/test-{module}.html`
 ### Foundation
 - `cnb-config.js` — Config schema, validation, defaults, notehead rule resolution
 - `cnb-music.js` — Pitch class math, note names, octave arithmetic
+- `cnb-pitch-axis.js` — Module 24: sole owner of the pitch → staff-position map (`pitchAxis`); identity when absent or disabled
 
 ### Rendering (bottom → top)
 - `cnb-grid.js` — Coordinate system (semiToY, viewport sizing, debug overlay)
@@ -47,14 +48,15 @@ Visual test pages: `cnb/test-pages/test-{module}.html`
 - `cnb-stem.js` — Stem with 4-point anchor model
 - `cnb-card.js` — Octave chord card (composes all above)
 - `cnb-collection.js` — Row/grid of cards
+- `cnb-clef.js`, `cnb-key-signature.js` — Clef and key-signature gutters, placed on the grid
 
 ### Export
-- `cnb-lilypond.js` — Generates .ly files per CNB-LY-EXPORT-SPEC-v1.2
+- `cnb-lilypond.js` — Generates .ly files per CNB-LY-EXPORT-SPEC-v1.3 (`docs/CNB-LY-EXPORT-SPEC-v1_3.md`)
 
 ## Testing
 
 Run all tests: `node cnb/tests/run-tests.js`
-Legacy tests: `node legacy/run-tests.js` (240 tests — do not modify)
+Browser UAT: `npm run uat` (prerequisites in the README)
 
 Test pattern:
 ```javascript
@@ -85,19 +87,9 @@ export const tests = [
 - Section A: named definitions (paths, hollows, attachments, colors with CB-safe conditional block)
 - Section B: engine settings (emit-if-changed pattern — skip values at defaults)
 - Section C: `cnb:get-notehead-config` procedure with `memv`/`cond` grouping
-- Staff-line-positions conversion: `(semi - midpoint) / semitonesPerStaffSpace`
+- Staff-line-positions conversion (half-staff-spaces): `2 × (semi - midpoint) / semitonesPerStaffSpace`
 - Color symbols: generated via `nearestColorName()` → `toSchemeSymbol()` (e.g., `shamrock-1b9e77`)
 - `repeat` field: `#t` when representationMode is "repeat", `#f` when using distinct shapes per duration
-
-## Legacy Code
-
-The `legacy/` directory contains the monolithic predecessor:
-- `chromatic-configurator.html` — 3,057-line single-file app
-- `configurator-core.js` — Core logic (240 unit tests passing)
-- `music-color-palettes.js` — Color palette library
-- `run-tests.js` — Legacy test runner
-
-This code is reference only. New modules are in `cnb/src/`. Do not modify legacy code.
 
 ## Session Workflow
 

@@ -1648,14 +1648,13 @@ cnb/
 │   ├── shapes/                  Built-in SVG shape files
 │   └── palettes/                Palette definitions
 │
-├── legacy/                      Existing monolithic files (reference)
-│   ├── chromatic-configurator.html
-│   ├── configurator-core.js
-│   ├── music-color-palettes.js
-│   └── run-tests.js
-│
 └── index.html                   Application entry point (Phase 6)
 ```
+
+The monolithic predecessor (`chromatic-configurator.html`,
+`configurator-core.js`, `music-color-palettes.js` and its test runner) was
+removed from the tree in 1.0.0; it is preserved at git tag
+`legacy-monolith-final`.
 
 ---
 

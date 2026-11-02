@@ -1,11 +1,12 @@
 /**
  * staff-rule-editor.js — Module 13: Staff/Ledger Rule Editor
  *
- * Ports the legacy "Staff rules panel" (`legacy/chromatic-configurator.html`
+ * Ports the legacy "Staff rules panel" (`chromatic-configurator.html`
  * STAFF PANEL + EditPopup._buildStaffForm + renderStaffCard, and the derived
- * panel driven by `legacy/configurator-core.js` deriveSemitonesPerStaffSpace)
+ * panel driven by `configurator-core.js` deriveSemitonesPerStaffSpace)
  * onto the Module A config schema (architecture plan §4.3–4.4). The legacy
- * files are reference behavior only and are not touched.
+ * files were removed in 1.0.0 and are preserved at git tag
+ * `legacy-monolith-final`.
  *
  * Schema reconciliation (legacy → Module A), decided for this port:
  *   - Legacy kept one first-match-wins `staffRules` list with rule types

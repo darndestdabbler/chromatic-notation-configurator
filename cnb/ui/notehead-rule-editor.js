@@ -1,12 +1,12 @@
 /**
  * notehead-rule-editor.js — Module 14: Notehead Rule Editor
  *
- * Ports the legacy "Notehead cards" UI (`legacy/chromatic-configurator.html`
+ * Ports the legacy "Notehead cards" UI (`chromatic-configurator.html`
  * NOTEHEADS PANEL: renderNoteheadCard, EditPopup._buildNoteheadForm,
  * Actions.moveNoteheadRule/deleteNoteheadRule, and the cumulative resolver
- * `legacy/configurator-core.js` Core.resolveAllNoteheadConfigs) onto the
- * Module A config schema (architecture plan §4.5). The legacy files are
- * reference behavior only and are not touched.
+ * `configurator-core.js` Core.resolveAllNoteheadConfigs) onto the
+ * Module A config schema (architecture plan §4.5). The legacy files were
+ * removed in 1.0.0 and are preserved at git tag `legacy-monolith-final`.
  *
  * Schema reconciliation (legacy → Module A), decided for this port:
  *   - Legacy kept single-property rules (`ruleType: 'shape' | 'hollow' |

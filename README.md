@@ -70,34 +70,42 @@ other drivers run in Chromium):
 
 Safari and mobile browsers are untested; mobile layouts are not a goal.
 
-### Running Tests
+## Running the tests and UAT
+
+Two suites, the same two that [`dabbler.yaml`](dabbler.yaml) declares as the
+run of record.
+
+**Unit suite (`cnb-unit`)** — every `cnb/tests/*-tests.js` file plus the
+gallery gate (`cnb/tests/check-gallery-examples.js`). It needs only Node.js
+18+, takes no arguments, and runs whole in about a second:
 
 ```bash
-npm test            # same as: node cnb/tests/run-tests.js (no install needed)
+node cnb/tests/run-tests.js     # or: npm test
 ```
 
-### Running the Browser UAT
-
-The Playwright drivers under `cnb/uat/` drive the real app in Chromium. The
-root `package.json` declares only dev tooling (`playwright-core`); the app
-itself stays dependency-free. Once per clone:
+**Browser UAT (`cnb-uat`)** — the Playwright drivers under `cnb/uat/` drive
+the real app. The root `package.json` declares only dev tooling
+(`playwright-core`); the app itself stays dependency-free. The prerequisites
+are per machine and the suite does not install them. Once per clone:
 
 ```bash
 npm install                                # installs playwright-core into node_modules/
 npx playwright install chromium firefox    # downloads the matching Chromium and Firefox builds
 ```
 
-Edge is used from its normal installation (Playwright channel `msedge`).
-Then:
+Microsoft Edge is used from its normal installation (Playwright channel
+`msedge`). Then:
 
 ```bash
 npm run uat     # runs every cnb/uat/uat-*.mjs in turn; stops at the first failure
 ```
 
-A single driver runs on its own with `node cnb/uat/uat-<name>.mjs`.
-`CNB_UAT_CHROMIUM` points the drivers at a specific Chromium binary, and
-`CNB_UAT_PLAYWRIGHT` at another directory whose `node_modules` holds
-`playwright-core`. Results are recorded in
+Most drivers run in Chromium; `uat-hostile-input.mjs` runs its checklist in
+Chromium, Firefox and Edge. A driver whose prerequisites are missing exits 2
+naming what is missing. A single driver runs on its own with
+`node cnb/uat/uat-<name>.mjs`. `CNB_UAT_CHROMIUM` points the drivers at a
+specific Chromium binary, and `CNB_UAT_PLAYWRIGHT` at another directory whose
+`node_modules` holds `playwright-core`. Results are recorded in
 [`docs/uat-status.md`](docs/uat-status.md).
 
 ## End-to-End Walkthrough: From Shape to Rendered Score
@@ -161,7 +169,7 @@ The preview re-renders live from the same JSON config the export reads.
 - **Save JSON** to keep an editable design (load it back any time).
 - **Export .ly** produces the LilyPond configuration file (validated
   first; blocking errors are listed in the panel). The export follows
-  [CNB-LY-EXPORT-SPEC](docs/CNB-LY-EXPORT-SPEC-v1_2.md).
+  [CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md).
 
 ### 5. Render it with the engine
 
@@ -177,7 +185,9 @@ config:
 \score { ... your music ... }
 ```
 
-then run `lilypond -dbackend=svg my-score.ly` (LilyPond 2.24+). See the
+then run `lilypond -dbackend=svg my-score.ly` with LilyPond 2.24.x or
+2.26.x (the engine supports 2.26 from its 1.1.0; other versions are
+untested). See the
 engine README for engine installation, options (e.g.
 `cnb:use-accessible-colors`), and its test tooling.
 
@@ -215,40 +225,86 @@ design workflow end to end:
   templates for the high-value steps, and the verification/sign-off points that
   keep AI output honest.
 
+## Known limitations
+
+The Configurator reproduces most of the published chromatic-staff gallery, but
+not all of it. Its limits are five architectural invariants, set out with
+exemplar systems, evidence and redesign paths in
+[Part 2 of the notation-builder playbook](docs/playbook/notation-builder-playbook.md#part-2--what-the-platform-can-and-cannot-do).
+Four are hard limits:
+
+- **I1 — Horizontal staff orientation.** Pitch runs up the page on a
+  horizontal staff; vertically read systems (the Klavar family) are out of
+  scope.
+- **I3 — Duration lives in the notehead.** Duration is hollow/solid, a
+  distinct shape per duration, or a repeat count; duration drawn as the
+  horizontal extent of the glyph (Dodeka and other proportional systems) is
+  not expressible. Reproduce such systems with traditional durations.
+- **I4 — Per-octave staff periodicity.** The staff pattern repeats in every
+  octave; a bounded staff whose pattern continues as ledger lines beyond a
+  fixed span (Note for Note, the Express Stave family) renders as the
+  continuous form.
+- **I5 — Absolute pitch anchoring.** Lines and rules mean absolute pitch
+  classes; a movable-tonic system (Thumline) needs one config per key.
+
+The fifth, **I2 — one pitch per vertical grid position**, is relaxed: the
+optional `pitchAxis` config section maps several pitch classes onto one staff
+position, disambiguated by notehead shape or horizontal offset, which brings
+the Twinline family within reach. With `pitchAxis` absent or disabled the
+Configurator behaves exactly as a one-row-per-semitone staff. The re-tiering
+is recorded in
+[§9 of the feasibility matrix](docs/research/gallery-survey/feasibility-matrix.md#9-amendment-2026-10-31-set-014-twinline-family-re-tiered);
+the playbook's Part 2 text predates it.
+
 ## Architecture
 
-The Configurator is being rebuilt from a monolithic HTML file into a modular architecture. The new design separates concerns into independent JavaScript modules:
+The Configurator is a set of independent JavaScript modules (ES modules, no
+framework, no build step). Rendering modules are pure functions — config and
+example data in, DOM nodes out:
+
+### Foundation
+
+| Module | Purpose |
+|--------|---------|
+| Config Schema | JSON config definition, validation, defaults, notehead rule resolution |
+| Music Theory | Pitch class arithmetic, note naming, octave math |
+| Pitch Axis | Sole owner of the pitch → staff-position mapping; identity when `pitchAxis` is off |
 
 ### Rendering Stack (config in, DOM nodes out)
 
 | Module | Purpose |
 |--------|---------|
-| Config Schema | JSON config definition, validation, defaults |
-| Music Theory | Pitch class arithmetic, note naming, octave math |
-| Semitone Grid | Coordinate system (semitone ↔ pixel conversion) |
+| Semitone Grid | Coordinate system (pitch ↔ pixel conversion) and debug overlay |
 | Staff Line / Staff | Individual and complete staff rendering |
 | Ledger Line / Ledger Set | Individual ledger rendering and display rule evaluation |
 | Notehead / Double Notehead | Single and octave-pair notehead rendering |
 | Stem | Stem rendering with 4-point anchor model |
 | Octave Chord Card | Composite card: labels + staff + ledgers + noteheads + stem |
 | Card Collection | Row/grid of cards for pitch range, duration, and key |
+| Clef | Custom clef glyph in a left gutter, placed on the grid |
+| Key Signature | The selected key's signature marks in a staff-start gutter |
 
 ### Export
 
 | Module | Purpose |
 |--------|---------|
-| LilyPond Exporter | Generates `.ly` file from JSON config (follows CNB-LY-EXPORT-SPEC-v1.2) |
+| LilyPond Exporter | Generates the `.ly` file from the JSON config ([CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md)) |
 
 ### UI Components
 
 | Module | Purpose |
 |--------|---------|
+| SVG Shape Importer | Reads Music Glyph Toolkit SVGs, extracts paths and anchors |
 | Palette Editor | Color palette selection with CB-safe toggle |
 | Staff/Ledger Rule Editor | Staff pattern and ledger template configuration |
 | Notehead Rule Editor | Shape/hollow/color rules by pitch, duration, key |
-| SVG Shape Importer | Reads Music Glyph Toolkit SVGs, extracts paths and anchors |
+| Common Properties Editor | Durations, representation mode, engine settings, metadata |
+| Clef Editor | Clef enable, glyph import and selection, anchor |
+| Key Signature Editor | Key definitions and key-signature settings |
+| Pitch Axis Editor | Pitch-axis presets and the pitch-class → position map |
 | Config Save/Load | JSON import/export |
-| Preview Display | Full notation preview with range controls |
+| Config Export | Validated LilyPond download |
+| Preview Display | Full notation preview with range, duration and key controls |
 
 See [CNB-ARCHITECTURE-PLAN-v2.md](docs/CNB-ARCHITECTURE-PLAN-v2.md) for the complete modular architecture plan.
 
@@ -258,9 +314,13 @@ The Configurator's native format is a JSON configuration that defines a complete
 
 - **Shapes** — Notehead geometries with SVG paths, LilyPond paths, and stem anchors
 - **Staff** — Semitone pattern, line styling (thickness as % of semitone height)
+- **Pitch Axis** (optional) — Maps pitch classes onto staff positions for compact staves
 - **Ledgers** — Templates with proximity and override trigger rules
 - **Notehead Rules** — Cumulative rules assigning shape, hollow, color by pitch/duration/key
 - **Palette** — Color palette with automatic colorblind-safe alternatives
+- **Durations** — Duration definitions and representation mode
+- **Keys** — Key definitions and key-signature settings
+- **Clef** — Custom clef glyphs
 - **Display** — Preview rendering settings (pixels per semitone, label styling)
 - **Engine** — LilyPond-specific settings (not used in preview)
 
@@ -274,6 +334,7 @@ The same JSON config drives both the live preview and the LilyPond export.
 │   ├── src/                         Module source files
 │   │   ├── cnb-config.js            Config schema + validation
 │   │   ├── cnb-music.js             Music theory utilities
+│   │   ├── cnb-pitch-axis.js        Pitch axis (pitch → staff position)
 │   │   ├── cnb-grid.js              Semitone grid coordinate system
 │   │   ├── cnb-staff-line.js        Staff line renderer
 │   │   ├── cnb-staff.js             Complete staff renderer
@@ -284,36 +345,42 @@ The same JSON config drives both the live preview and the LilyPond export.
 │   │   ├── cnb-stem.js              Stem renderer
 │   │   ├── cnb-card.js              Octave chord card
 │   │   ├── cnb-collection.js        Card collection layout
+│   │   ├── cnb-clef.js              Clef renderer
+│   │   ├── cnb-key-signature.js     Key signature renderer
 │   │   └── cnb-lilypond.js          LilyPond exporter
-│   ├── ui/                          UI components (editors, importer, config IO)
+│   ├── ui/                          UI components (editors, importer, config IO, preview)
+│   ├── assets/                      Built-in shapes and palettes
 │   ├── tests/
 │   │   ├── run-tests.js             Test runner
 │   │   └── cnb-*-tests.js           Per-module test files
 │   ├── test-pages/
 │   │   └── test-*.html              Visual test pages per module
-│   ├── fixtures/                    Kite 4-369 release-gate fixtures
+│   ├── fixtures/                    Release-gate fixtures and export baselines
 │   └── uat/                         Browser UAT drivers (Playwright)
-├── legacy/                          Monolithic predecessor (reference)
-│   ├── chromatic-configurator.html
-│   ├── configurator-core.js
-│   ├── music-color-palettes.js
-│   └── run-tests.js
+├── dabbler.yaml                     Test suites of record
+├── version.json                     Product version
 └── docs/
     ├── CNB-ARCHITECTURE-PLAN-v2.md
-    ├── CNB-LY-EXPORT-SPEC-v1_2.md
-    └── session-sets/                Dabbler session records
+    ├── CNB-LY-EXPORT-SPEC-v1_3.md   Current export spec (v1.2 kept for history)
+    ├── playbook/                    Notation-builder and AI-workflow guides
+    ├── research/                    Gallery survey and feasibility matrix
+    ├── sessions/                    Dabbler session plan and records
+    └── session-sets/                Earlier session-set records (history)
 ```
 
 ## Current Status
 
-The modular rebuild is complete through the ecosystem's shared release
-gate: all rendering, export, and UI modules are built (556 unit tests
-passing), and a Configurator-designed system (Kite 4-369) exported through
-the UI renders through the engine pixel-identical to the engine repo's
-golden baseline. The legacy monolithic version (`legacy/`) is kept as
-reference with its 240 core logic tests still passing.
+Version 1.0.0 — complete. All rendering, export and UI modules are built and
+covered by the unit suite and the browser UAT, and a Configurator-designed
+system (Kite 4-369) exported through the UI renders through the engine
+pixel-identical to the engine repo's golden baseline. The monolithic
+predecessor the modules replaced is no longer in the tree; it is preserved at
+git tag `legacy-monolith-final`.
 
-Development sessions are managed with Dabbler session sets (`docs/session-sets/`) — see `docs/dabbler/start-here.md` for the session workflow. The `docs/batons/` and `docs/checklists/` directories are historical records of the pre-Dabbler session workflow (sessions 1–9), kept for reference; they are not part of the active workflow.
+Development runs as numbered Dabbler sessions under `docs/sessions/` (the plan
+is `docs/sessions/session-plan.md`). `docs/session-sets/`, `docs/batons/` and
+`docs/checklists/` are historical records of earlier workflows, kept for
+reference.
 
 ## License
 

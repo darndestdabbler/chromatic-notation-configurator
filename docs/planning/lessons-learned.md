@@ -1,72 +1,82 @@
-# Lessons Learned — `chromatic-notation-configurator`
+# Lessons learned — `chromatic-notation-configurator`
 
-> **Purpose:** Capture durable tactics, failure patterns, and workflow lessons
-> that should influence future sessions before the same mistake repeats.
+Lessons harvested from the `change-log.md` of each session set under
+`docs/session-sets/` (sets 001–013). Each names the set it came from; the
+change log and the set's own records hold the detail.
 
-This is the always-loaded **active** tier of the guidance lifecycle. Its sibling
-`lessons-archive.md` holds archived entries and is **not** read at session
-start. The canonical reference for the lifecycle (metadata, citation, archival,
-ceilings) is the lifecycle doc in the orchestration repo:
-<https://github.com/darndestdabbler/dabbler-ai-orchestration/blob/master/docs/guidance-lifecycle.md>.
+## Audit before you build
 
-**Authoring + lifecycle rules:**
+A spec that says "build" may describe code that already exists. Set 001 found
+that pre-Dabbler Session 9 had built all five Phase-2 modules, so both its
+sessions ran as audits against the architecture plan, and the audits found
+real defects: a ledger body drawn as a hollow outline, and stems that
+computed the anchor's y offset but never applied it. Read the tree before
+planning the work, and test what a module draws, not only what it returns.
 
-- Add entries when a failure, surprise, or avoidable friction reveals a
-  better repeatable strategy. Give each new lesson a **metadata trailer**
-  (see below) so its usage and lifecycle can be tracked.
-- **Per-lesson metadata trailer.** Directly under each `##` lesson
-  heading, add a one-line HTML comment:
-  `<!-- lesson: id="L-<set>-<seq>" added-set="NNN" last-used-set="NNN" status="active" scope="repo-specific" -->`.
-  The `id` is minted once and is permanent across heading renames.
-  Validate trailers with `python -m ai_router.validate_guidance_meta`.
-- **Citation records real usage.** When a lesson is instrumental in a
-  session, list its id in `disposition.lessons_cited` and run
-  `python -m ai_router.cite_lessons --set <N> <id> …` as part of the final
-  commit — that updates the lesson's `last-used-set` inside the pushed
-  work. This usage signal is what every archival decision relies on.
-- **Promotion is orthogonal to archival.** When a lesson has proven itself
-  in two or more different contexts, propose promoting it to
-  `project-guidance.md`. Promotion is a separate axis from archival: a
-  durable tactic can stay active for many sets without being promoted, and a
-  rare-but-critical lesson that fires once in 50 sets is **not** archived for
-  disuse. There is **no** "promote within N sets or archive" rule.
-- **Never delete a lesson; move active → archive.** Archive a lesson when
-  **any** of: it is superseded (`superseded-by` set); it is encoded into live
-  automation (`encoded-in` names a test/lint/guard/template); its subsystem
-  was retired; or it has had no `last-used-set` activity for the disuse window
-  (default 20 sets, `guidance.disuse_window_sets`) **and** is not referenced
-  by active guidance. Archival moves the full text to `lessons-archive.md` (it
-  is never lost) and is **operator-reviewed**, never automatic.
-- **Token ceiling is a backstop, not the trigger.** This file is capped at
-  `guidance.active_lessons_ceiling_tokens` (default 10,000 tokens). Over
-  ceiling means a pruning sweep is **required before adding** new content; the
-  sweep archives by the evidence rules above, not by raw length. Check current
-  overhead with `python -m ai_router.guidance_report`. A repo that is already
-  far over budget on day one uses the one-time
-  [backlog-remediation recipe](https://github.com/darndestdabbler/dabbler-ai-orchestration/blob/master/docs/guidance-backlog-remediation.md).
+## Ask the engine what it renders before deciding what to export
 
----
+Unit tests against a spec cannot catch a spec that disagrees with the engine.
+Set 007 rendered a Configurator export through the real engine and diffed it
+against the golden baseline three ways, and found D1 (the missing
+`cnb:use-procedure-model` flag, without which the engine silently ignores
+Sections A and C), D2 (staff positions in whole rather than half staff
+spaces) and D5 (anchors in the wrong unit). Sets 009, 010 and 013 each began
+with an engine-capability discovery for the same reason: 009 and 010 found
+no engine hook to drive, so their exporters emit nothing; 013 proved the
+pitch-axis hook by a real render before any design was written.
 
-## Portable Lessons (all AI-led-workflow repos)
+## Store canonical units; convert at the boundary
 
-> **TODO:** Portable lessons that apply to every AI-led-workflow repo are
-> maintained in the orchestration repo's
-> [`lessons-learned.md`](https://github.com/darndestdabbler/dabbler-ai-orchestration/blob/master/docs/planning/lessons-learned.md).
-> Copy in only the ones this repo actually relies on, each with its metadata
-> trailer, rather than mirroring the whole list (mirroring re-creates the bloat
-> this lifecycle exists to prevent).
+Set 007's D5: anchors converted to staff-space units at import time went
+stale whenever the staff changed afterwards. Shapes now store anchors in
+semitone units and the exporter converts on export. Keep a value in the unit
+that does not depend on other config, and convert where the dependency is
+known.
 
----
+## Default-off is proven by a byte-identical baseline, not argued
 
-## Repo-Specific Lessons
+Every optional feature since set 009 (clef, key signature, pitch axis)
+captured a pre-change export or geometry baseline under `cnb/fixtures/` and
+pinned the disabled output byte-for-byte against it. The pitch-axis design
+set 013 produced went further: with the feature off, the literal
+pre-existing code path runs, not an equivalent re-derivation. A new optional section should arrive with its
+baseline test in the same change.
 
-> **TODO:** Replace this example with the first real lesson. Keep the metadata
-> trailer on every entry.
+## Open-keyed maps must be replaced on load, not merged
 
-## Example Lesson Heading (delete me)
-<!-- lesson: id="L-001-1" added-set="001" last-used-set="001" status="active" scope="repo-specific" -->
+Set 006: loading a saved config through a key-by-key deep merge resurrects
+default entries the user had deleted from open-keyed maps (`shapes`,
+`lineOverrides`, `schemeSymbols`, ...). `CNBConfigIO.REPLACE_PATHS` replaces
+those wholesale; set 009 added `clef.glyphs` to it. A new open-keyed map
+needs a `REPLACE_PATHS` entry; a fixed-shape section or an array does not.
 
-- **Context:** When this lesson applies.
-- **Failure or friction:** What went wrong or was avoidably hard.
-- **Lesson:** The repeatable strategy that prevents it.
-- **Action for future sessions:** The concrete thing to do next time.
+## Wire UI events as element properties so editors test in Node
+
+Sets 004–006 attached handlers as element properties on plain
+`createElement` nodes, which let every editor's `render()` run against a DOM
+stub in the unit suite. The browser drivers under `cnb/uat/` then verify the
+same flows in a real browser, including byte-comparing a captured download
+with a Node-side `generate()`.
+
+## Let the evidence amend the model
+
+Set 008 started with three platform invariants; the operator's UAT review of
+Note for Note, and Thumline's movable-Do axis, forced I4 and I5. Set 011's
+reproductions then showed Express Stave also breaks I4, and the matrix was
+corrected in place (§8). Record `unknown` rather than guess, and correct the
+classification when a reproduction contradicts it.
+
+## Visual claims need a human looking at a numbered frame
+
+Set 009's clef attestation took three rounds and produced numbered-grid
+frames before the operator could confirm placement. Set 010's separator was
+first drawn at the columns' right edge from a misread engine comment, and was
+corrected only against real engine renders during UAT. Measure against the
+engine's output, and give the reviewer a frame with coordinates.
+
+## Name a deviation instead of hiding it
+
+Systems that cross an invariant (I3 proportional duration, I4 bounded staff)
+were reproduced in set 011 as adaptations with the deviation named in the
+reproduction report, not left out and not passed off as exact. The playbook
+(set 012) carries that pattern into its guidance.

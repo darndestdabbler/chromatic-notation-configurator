@@ -7,10 +7,10 @@
  *
  * Session 2 coverage: Section C (configuration procedure — memv grouping,
  * duration-aware compound conditions, repeat field), generate() (order +
- * export validation), and Section C parity against the legacy exporter.
+ * export validation). The parity tests against the legacy exporter were
+ * retired with the monolith (preserved at tag `legacy-monolith-final`).
  */
 
-import { createRequire } from "module";
 import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -18,9 +18,7 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
 
-const require = createRequire(import.meta.url);
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const Legacy = require("../../legacy/configurator-core.js");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -93,70 +91,6 @@ function parseSectionCClauses(text) {
         map[pc][field[1]] = field[2];
       }
     }
-  }
-  return map;
-}
-
-/**
- * Legacy app state equivalent to the new default 4-8 config.
- * Legacy models anchors as 2-point stemUp/stemDown + overlapPercent;
- * 100% overlap reproduces the default shape's minim==crotchet anchors,
- * so the derived 4-point attachment set is identical to the new module's.
- */
-function legacyDefaultApp() {
-  const cfg = CNBConfig.createDefault();
-  const shape = cfg.shapes["crotchet-minim"];
-  const app = Legacy.createDefaultApp();
-  app.meta.name = cfg.meta.configName;
-  app.meta.label = cfg.meta.notationLabel;
-  app.meta.suffix = cfg.meta.fileSuffix;
-  app.defs = {
-    "crotchet-minim": {
-      path: shape.svgPath,
-      hollowPath: shape.svgHollowPath,
-      anchors: { stemUp: shape.anchors.crotchetUp, stemDown: shape.anchors.crotchetDown },
-      overlapPercent: 100,
-      naturalHeight: shape.naturalHeight,
-      naturalWidth: shape.naturalWidth,
-      semitoneHeight: shape.semitoneHeight,
-    },
-  };
-  app.noteheadRules = [
-    { ruleType: "shape", pitchClasses: "all", shape: "crotchet-minim" },
-    { ruleType: "hollow", pitchClasses: [1, 3, 6, 8, 10], hollow: true },
-  ];
-  app.staffRules = [{ type: "staff", pitchClasses: [4, 8] }];
-  return app;
-}
-
-/** Split a full .ly text into { header, a, b, c } on the section banners. */
-function splitSections(text) {
-  const iA = text.indexOf("SECTION A");
-  const iB = text.indexOf("SECTION B");
-  const iC = text.indexOf("SECTION C");
-  assert(iA >= 0 && iB > iA && iC > iB, "file has sections A, B, C in order");
-  return {
-    header: text.slice(0, iA),
-    a: text.slice(iA, iB),
-    b: text.slice(iB, iC),
-    c: text.slice(iC),
-  };
-}
-
-/** Semantic lines: comments and blanks dropped, whitespace runs collapsed. */
-function semanticLines(section) {
-  return section.split("\n")
-    .map(l => l.trim())
-    .filter(l => l.length > 0 && !l.startsWith("%%") && !l.startsWith(";;"))
-    .map(l => l.replace(/\s+/g, " "));
-}
-
-/** Parse single-line `#(set! cnb:name value)` settings into a map. */
-function parseSettings(section) {
-  const map = {};
-  for (const line of section.split("\n")) {
-    const m = line.match(/^#\(set! (cnb:[a-z-]+) (.+)\)\s*$/);
-    if (m) map[m[1]] = m[2];
   }
   return map;
 }
@@ -650,98 +584,6 @@ export const tests = [
         contains(err.message, 'Duration "minim" has no numeric lilypondDuration');
       }
       assert(threw, "sectionC should refuse to emit a duration-insensitive clause");
-    }},
-
-  // ── Legacy parity ──────────────────────────────────────────────────────────
-
-  { name: "parity: sectionC is semantically equivalent to the legacy exporter for the default 4-8 config", fn: () => {
-      const legacyOut = Legacy.generateSectionC(legacyDefaultApp());
-      const newOut = CNBLilypond.sectionC(CNBConfig.createDefault());
-
-      const legacyClauses = parseSectionCClauses(legacyOut);
-      const newClauses = parseSectionCClauses(newOut);
-
-      for (let pc = 0; pc < 12; pc++) {
-        assert(legacyClauses[pc], `legacy covers pc ${pc}`);
-        assert(newClauses[pc], `new exporter covers pc ${pc}`);
-        eq(newClauses[pc].shape, legacyClauses[pc].shape, `pc ${pc} shape parity`);
-        eq(newClauses[pc].color, legacyClauses[pc].color, `pc ${pc} color parity`);
-        eq(newClauses[pc].hollow, legacyClauses[pc].hollow, `pc ${pc} hollow parity`);
-        eq(newClauses[pc].attachment, legacyClauses[pc].attachment, `pc ${pc} attachment parity`);
-        // Same grouping: identical configs merge into the same memv clause
-        eq(newClauses[pc].condition, legacyClauses[pc].condition, `pc ${pc} condition parity`);
-      }
-    }},
-
-  { name: "parity: pc-condition helper matches legacy buildPitchClassCondition", fn: () => {
-      eq(_internals.pcCondition([5], "pc"), Legacy.buildPitchClassCondition([5], "pc"));
-      eq(_internals.pcCondition([0, 4, 8], "pc"), Legacy.buildPitchClassCondition([0, 4, 8], "pc"));
-      eq(_internals.pcCondition([], "pc"), Legacy.buildPitchClassCondition([], "pc"));
-    }},
-
-  { name: "parity: generate() vs legacy generateLy(), section by section, for the default 4-8 config", fn: () => {
-      const newFile = CNBLilypond.generate(CNBConfig.createDefault());
-      const legacyFile = Legacy.generateLy(legacyDefaultApp());
-
-      const n = splitSections(newFile);
-      const l = splitSections(legacyFile);
-
-      // Header: same structural invariants
-      for (const needle of ['\\version "2.24.2"', '\\include "ChromaticNotationBase.ly"',
-                            "Generated by Chromatic Configurator", "DO NOT EDIT BY HAND"]) {
-        contains(n.header, needle, "new header");
-        contains(l.header, needle, "legacy header");
-      }
-
-      // Section A: semantically identical line for line (comments/whitespace
-      // aside) — same path definitions, registrations, cutouts, and color
-      // registrations — EXCEPT the attachment point values: legacy converts
-      // SVG anchors to semitone units only (frozen pre-catalog behavior),
-      // while the new exporter converts on to staff-space units at export
-      // time (007-s1 D5 fix: ÷ semitonesPerStaffSpace — 1.5729 semitones →
-      // 0.3932 staff-spaces at the default sps 4). Both pinned below.
-      const isAttachValue = (line) => line.startsWith("(cons '");
-      eq(JSON.stringify(semanticLines(n.a).filter(x => !isAttachValue(x))),
-         JSON.stringify(semanticLines(l.a).filter(x => !isAttachValue(x))),
-        "Section A semantic lines (attachment values pinned separately)");
-      contains(n.a, "(cons 'crotchet-up   '(0.3932 . 0.1075))", "new: staff-space units (D5 fix)");
-      contains(n.a, "(cons 'minim-down    '(-0.3932 . -0.1075))", "new: staff-space units (D5 fix)");
-      contains(l.a, "(cons 'crotchet-up   '(1.5729 . 0.43))", "legacy: semitone units (frozen)");
-      contains(l.a, "(cons 'minim-down    '(-1.5729 . -0.43))", "legacy: semitone units (frozen)");
-
-      // Section B: same settings, with two documented divergences pinned:
-      //  - staff-line-positions: legacy's deriveStaffLinePositions is a V1
-      //    fixed symmetric placement (always ±2 ±4 ±6 half-spaces) that
-      //    ignores the actual pattern; the new exporter implements the
-      //    midpoint formula in half-staff-space units, 2 × (S − midpoint) /
-      //    sps (LY spec §5.1; the ×2 is the 007-s1 D2 fix). Worked example:
-      //    4-8 system, midpoint 12, sps 4 → (-4 -2 2 4).
-      //  - use-procedure-model: the new exporter always emits it (007-s1 D1
-      //    fix — the engine defaults to the vector model and silently
-      //    ignores Sections A/C without it); legacy, frozen pre-catalog,
-      //    never emitted it.
-      const nSet = parseSettings(n.b);
-      const lSet = parseSettings(l.b);
-      eq(nSet["cnb:semitones-per-staff-space"], lSet["cnb:semitones-per-staff-space"], "sps parity");
-      eq(nSet["cnb:file-suffix"], lSet["cnb:file-suffix"], "file-suffix parity");
-      eq(nSet["cnb:notation-label"], lSet["cnb:notation-label"], "notation-label parity");
-      eq(Object.keys(nSet).length, 5, "new Section B emits the always-emitted settings incl. use-procedure-model");
-      eq(Object.keys(lSet).length, 4, "legacy Section B emits only its four always-emitted settings");
-      eq(nSet["cnb:use-procedure-model"], "#t", "new: D1 fix — procedure model always on");
-      eq(lSet["cnb:use-procedure-model"], undefined, "legacy: predates the D1 catalog entry");
-      eq(nSet["cnb:staff-line-positions"], "'(-4 -2 2 4)", "new: half-staff-space conversion (D2)");
-      eq(lSet["cnb:staff-line-positions"], "'(-6 -4 -2 2 4 6)", "legacy: V1 symmetric placeholder");
-
-      // Section C: full semantic equivalence, from the end-to-end outputs
-      const nClauses = parseSectionCClauses(n.c);
-      const lClauses = parseSectionCClauses(l.c);
-      for (let pc = 0; pc < 12; pc++) {
-        eq(nClauses[pc].shape, lClauses[pc].shape, `pc ${pc} shape parity`);
-        eq(nClauses[pc].color, lClauses[pc].color, `pc ${pc} color parity`);
-        eq(nClauses[pc].hollow, lClauses[pc].hollow, `pc ${pc} hollow parity`);
-        eq(nClauses[pc].attachment, lClauses[pc].attachment, `pc ${pc} attachment parity`);
-        eq(nClauses[pc].condition, lClauses[pc].condition, `pc ${pc} condition parity`);
-      }
     }},
 
   // ── Clef non-emission (set 009 session 2, per s1-engine-coordination.md:
