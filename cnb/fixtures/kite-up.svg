@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="-200 -200 400 400">
+  <!-- Session-set 007: Kite (up) notehead in music-glyph-toolkit output format,
+       for authoring the Kite 4-369 system through the Module 16 SVG importer.
+       Geometry matches the engine repo's cnb:kite-base-shape (kite pointing up,
+       4 semitones tall); pre-baked data-lilypond-* strings are token-identical
+       to cnb/fixtures/kite-4-369-config.json (single-line here because XML
+       attribute-value normalization folds newlines to spaces anyway). -->
+  <g id="layer1">
+    <rect id="stem-down" x="-10" y="270" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-up" x="-10" y="-620" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <path id="notehead"
+          d="M 0 -200 L 200 -100 L 0 200 L -200 -100 L 0 -200 Z"
+          data-semitone-height="4"
+          data-lilypond-notehead="'( (moveto 0 0.6667) (lineto 0.6667 0.3333) (lineto 0 -0.6667) (lineto -0.6667 0.3333) (lineto 0 0.6667) (closepath))"
+          style="fill:#000000;stroke:none"/>
+    <path id="hollow"
+          d="M 100 -100 L 0 100 L -100 -100 L 100 -100 Z"
+          data-lilypond-hollow="'( (moveto 0.3333 0.3333) (lineto 0 -0.3333) (lineto -0.3333 0.3333) (lineto 0.3333 0.3333) (closepath))"
+          style="fill:#FFFFFF;stroke:none"/>
+  </g>
+</svg>

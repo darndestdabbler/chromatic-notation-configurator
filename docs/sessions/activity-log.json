@@ -1,0 +1,144 @@
+{
+  "sessionSetName": "014-pitch-axis-implementation",
+  "createdDate": "2026-07-12T23:37:52.936659+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-12T23:37:52.936659+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/spec-adoption",
+      "dateTime": "2026-07-12T20:01:04.279533-04:00",
+      "description": "v1.3 draft adopted as docs/CNB-LY-EXPORT-SPEC-v1_3.md (git mv, adoption header, links rebased, fail-loud gate noted in effect); architecture plan amended (Module 24 inventory row, section 4.1 pitchAxis line, section 4.13 addendum, Module 24 spec block, section 8 file entries).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:01:04.279533-04:00",
+      "description": "CNBPitchAxis built per design 2.1 (positionOfSemi with fractional interpolation, regionOfSemi, distance, candidate inverses semisAtPosition/nearestSemisForY, exact linear degeneracy); grid axis path per design 2.2 (literal disabled branch, yToAxis, no scalar yToSemi, axis-aware debug overlay); Module A PA-1..PA-8 + PA-W1/W3/W4 validation and resolveNotehead xOffsetStaffSpaces. Tests 709 -> 752 (+16 config, +9 grid, +18 pitch-axis new), all byte-identity pins green: grid pre-change baseline fixture byte-identical, default export baseline, Kite export byte-identical vs base 2cf7d647 worktree.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:13:32.939428-04:00",
+      "description": "Verification round-1 remediation (supersedes step 2 counts): section-8a fail-loud gate implemented in CNBLilypond.generate (PITCH_AXIS_GATE_MESSAGE, throws on pitchAxis.enabled before any other validation) and mirrored as a blocking error in CNBConfigExport.validateForExport (parity contract); candidate-inverse contract corrected to arrays of any length with a boundary-equality 3-candidate test. Final suite: 757 passed 0 failed (752 + 5: lilypond 56->59, config-export 26->27, pitch-axis 18->19). Kite export re-verified byte-identical vs base 2cf7d647.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 4,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:18:01.950536-04:00",
+      "description": "Verification round-2 remediation (supersedes step 3 counts): section-8a gate condition made strict boolean (=== true, the design 1.3 consumer gate) in generate() and validateForExport, matching CNBGrid/CNBPitchAxis; regression tests for non-boolean truthy enabled values (export normal linear output; malformed truthy sections blocked by normal validation, not the gate). Final suite: 758 passed 0 failed (757 + 1: lilypond 59->60). Kite export re-verified byte-identical vs base 2cf7d647.",
+      "status": "complete"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 2,
+      "dateTime": "2026-10-31T04:45:24.068000-04:00",
+      "task": "Rethread every preview geometry consumer through the grid's pitch axis (design docs/planning/pitch-axis-design.md \u00a72.3\u2013\u00a72.5, \u00a73.3), keeping the axis-disabled surface byte-identical by construction. First, before any source change, capture a pre-change preview-DOM baseline fixture (CNBCollection.render through the svg/DOM stub for the default config, the Kite 4-369 config, every gallery example, a key-signature-enabled config, a debug-grid config, and the same configs with a present-but-disabled pitchAxis section) and pin it with a test. Then: CNBStaff.render dedups lines by axis position on the axis path (overrides merged) and keeps its literal loop on the linear path; CNBLedgerSet.resolve/render gain an axis path that converts to axis positions at the top, gates on axis.regionOfSemi, keeps the strict `<` proximity rule, and draws keyed by axis position, while the linear path runs the literal current arithmetic; CNBStem.direction averages axis positions against positionOfSemi(staff.midpoint) when given an enabled axis (literal body otherwise); CNBDoubleNotehead.layout accepts additive per-note lowerOffsetPx/upperOffsetPx (default 0); CNBCard computes offsetPx = xOffsetStaffSpaces \u00d7 axis.unitsPerStaffSpace \u00d7 pxPerSemi in axis mode only, applies it to both noteheads, the ledgers and the stem centerX, and widens columnWidth by |offsetPx|; CNBKeySignature treats separator.extentSemis as a length on the axis path and applies the same resolved offset to its marks. The collection needs no code change (everything flows through the grid context) and gets an axis-row integration test. Finally a visual test page cnb/test-pages/test-pitch-axis.html renders a compact-axis card row with the 013 Twinline map and debug grid, and a Chromium geometry smoke driver cnb/uat/uat-pitch-axis.mjs (the repo's existing driver pattern) asserts its geometry in a real browser.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:09:32.090000-04:00",
+      "task": "Session 3 (P4) of the pitch-axis program. The engine gate is met: the engine repo's set 008-pitch-axis-hook closed 2026-07-13 and its configurator-handoff.md records E13-1 (the cnb:get-pitch-staff-position hook) and E13-2 (the x-offset field) as shipped with golden-baseline evidence. This session (1) removes the \u00a78a fail-loud gate from cnb-lilypond.js and its mirror in the UI export wrapper in the same change that first emits the v1.3 surface: the compiled pitch-axis procedure and axis staff-line positions with collapse dedup (\u00a75.4a/b), the axisUnitsPerStaffSpace substitutions in attachments and staff-line thickness (\u00a74.4a/\u00a75.3a), and the (x-offset . N) field in the Section C grouping key (\u00a76.3), with exporter-level tests that \u00a78 checks 8-12 (already Module A PA-1..PA-8) now block generate(), reconciled against the handoff: cnb:semitones-per-staff-space is emitted as axisUnitsPerStaffSpace under an axis (handoff \u00a74.1) and an explicit cnb:keysig-tonic-octave is emitted under an axis (handoff \u00a74.2, octave convention verified by the round-trip render); (2) records those reconciliations as a v1.3.1 clarification of the canonical spec; (3) adds a Twinline-family compact fixture (the 013 map, shared-pair xOffsetStaffSpaces 0.85) under cnb/assets/examples/gallery/ so it loads through CNBConfigIO via the existing gallery gate, with a pinned export baseline; (4) runs the engine round-trip (export, then lilypond 2.24.2 -dbackend=svg in the engine repo, then tools/harvest_svg.py) and commits a driver, the harvested evidence and a node measurement script that checks engine positions and x-offsets against the preview's CNBPitchAxis model, excluding the documented divergence list. All axis-disabled exports stay byte-identical (existing default and Kite baselines unchanged).",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:20:20.561000-04:00",
+      "what": "step 'spec-clarification': its files",
+      "reason": "The architecture plan's \u00a74.13 export-surface note still states that generate() throws on pitchAxis.enabled (the lifted \u00a78a gate); it must be corrected alongside the spec.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:23:18.762000-04:00",
+      "what": "step 'compact-fixture': its files",
+      "reason": "The set-014 s2 preview baseline sweeps every gallery fixture to pin the axis-DISABLED (pre-rethread) preview; an axis-enabled gallery fixture has no linear baseline, so previewProbes() must skip pitchAxis-enabled fixtures (axis previews are covered by the s2 axis render tests).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:24:17.706000-04:00",
+      "what": "step 'engine-roundtrip': its files",
+      "reason": "A shared-position chord pair is already separated by LilyPond's own arrangement (+0.49 here), so the x-offset effect is measured test-minus-control (engine set 008 s2 method): the control export, score, SVG and harvest join the evidence; measure.mjs reads the key-signature marks from the SVGs, so both SVGs are kept.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 4,
+      "dateTime": "2026-10-31T05:37:36.034000-04:00",
+      "task": "Finish the pitch-axis implementation (design phases P5 and P6). Build the pitch-axis editor panel (cnb/ui/pitch-axis-editor.js) on the Modules 12\u201317 editor contract: property-based event wiring, a Node-testable render(), pure stateFromConfig/buildPitchAxis/applyToConfig builders and Module A validation pass-through. It edits enable, kind, octaveStride, axisUnitsPerStaffSpace and the 12 per-pc positions, and offers one preset, \"Twinline-like 7-position\", which compiles into the explicit design \u00a71.1 map plus a named notehead rule carrying the shared-pair xOffsetStaffSpaces. The editor never creates a pitchAxis section the user did not ask for, so default configs stay byte-identical. Let the notehead rule editor keep and edit apply.xOffsetStaffSpaces; today its builder drops the field, so loading the Twinline fixture loses its offsets. Wire the panel into the app shell, cnb/index.html (the repository has no cnb/ui/app.js; index.html is the shell that the plan's app.js entry stands for). Re-tier feasibility-matrix records 32\u201340 as a dated amendment, with the twinline-compact fixture and the session-3 engine round-trip as evidence. Record the operator's verbatim UAT decision in docs/sessions/uat-session-4.md. Close out the pitch-axis work in docs/sessions/change-log.md.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 5,
+      "dateTime": "2026-10-31T07:22:41.557000-04:00",
+      "task": "Make the browser UAT reproducible from a fresh clone. Add a private root package.json with no runtime dependencies that declares playwright-core as its only devDependency (with the generated package-lock.json committed and node_modules/ ignored), a `test` script (`node cnb/tests/run-tests.js`) and a `uat` script that runs a small sequential runner, cnb/uat/run-uat.mjs, which spawns every cnb/uat/uat-*.mjs driver in turn and exits non-zero on the first failure; document `npm install` and `npx playwright install chromium` in the README. The drivers already resolve playwright-core from their own location first (which reaches the repository's node_modules) and fall back to CNB_UAT_PLAYWRIGHT; their not-found messages are updated to point at `npm install` at the repository root. Then run every driver (there are eleven uat-*.mjs files, not the ten the plan counts: uat-gallery-previews.mjs is a capture tool and is included), fix whatever drift broke in the drivers or the app, and record each driver's result in docs/uat-status.md. Finally declare the UAT run as a second suite `cnb-uat` in dabbler.yaml (`command: npm run uat`, expensive, whole_at_close, runs_whole, covers [cnb/]) and update the comment there that says the drivers are undeclared.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 6,
+      "dateTime": "2026-11-01T17:19:34.833000-05:00",
+      "task": "Make the app report hostile input instead of failing in the console, prove it in three browsers, and read the toolkit's minim stem anchors. A probe of the current code found the gaps: wrong-typed sections in a loaded JSON (shapes as an array, noteheadRules as an object, staff.semitonePattern as a string, palette.colors as a string) either throw inside CNBConfig.validate with an unhelpful message or load cleanly and then crash the preview/editors inside the load promise, which reaches the console and leaves the app half-mounted; the SVG import control has no catch around reading/parsing a file; and the non-toolkit-SVG error does not say what to do. The fixes stay small: config-io checks the merged config's value types against createDefault() (array vs object vs primitive, where the default is not null) and rejects a mismatch with a message naming the field, and catches a throwing onLoad into its error area; the app shell's onLoad restores the previous config and re-mounts when adopting a loaded config throws; the import control catches read/parse failures into an error result, and the missing-#notehead error says the file is not Music Glyph Toolkit output. The toolkit has shipped the minim pair (its session 4: <rect id=\"stem-minim-up\"> / <rect id=\"stem-minim-down\">), so the SVG importer reads it with the same rect rule as the regular pair into anchors.minimUp/minimDown, falling back to the crotchet anchors when the pair is absent (with a warning on a half pair); the exporter already emits minim-up/minim-down from lilypondAnchors, which a new export test pins. A new Playwright driver runs the hostile inputs against cnb/index.html in Chromium, Firefox and Edge, asserting a visible message for each and no page or console errors; anything it finds broken is fixed, and the README gains a Supported browsers table.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 6,
+      "dateTime": "2026-11-01T17:34:19.713000-05:00",
+      "what": "step 'uat-hostile-input': its files",
+      "reason": "Firefox logs an 'XML Parsing Error' console error whenever DOMParser receives non-XML text; the importer now refuses text with no <svg element before parsing, which needs the importer and its tests",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 7,
+      "dateTime": "2026-11-01T19:01:32.368000-05:00",
+      "task": "Retire the legacy monolith and bring the repository's front-door documentation up to a 1.0.0 product. Tag the current commit `legacy-monolith-final`, delete `legacy/`, and repoint every live reference to it at the tag: the architecture plan's file-structure section, `docs/planning/project-plan.md`, the port-origin comments in four `cnb/` files, and `cnb/tests/cnb-lilypond-tests.js`, which (contrary to the session plan's note) still requires `legacy/configurator-core.js` for three legacy-parity tests; those tests and their now-unused helpers go with the code they compared against. Rewrite the README for a complete 1.0.0 product: status complete, export spec v1.3, no `legacy/`, a \"Known limitations\" section summarizing and linking Part 2 of the notation-builder playbook (I1, I3, I4, I5 as hard limits; I2 relaxed by the optional `pitchAxis` section per the feasibility matrix \u00a79), a \"Running the tests and UAT\" section matching `dabbler.yaml`, and LilyPond 2.24.x or 2.26.x for engraving. Update `CLAUDE.md` (spec v1.3, Module 24 `cnb-pitch-axis.js`, no legacy section or legacy test command). Replace the placeholder `docs/planning/lessons-learned.md` with real lessons harvested from the session-set change logs, delete the empty `lessons-archive.md` and the TODO-template `project-guidance.md`, leaving no v1 `ai_router` instructions, and add a root `version.json` reading `{ \"version\": \"1.0.0\" }`.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 8,
+      "dateTime": "2026-11-01T19:20:06.788000-05:00",
+      "task": "Declare how this repository packages a release: add a `packaging:` block to dabbler.yaml with a `pack` and no `push`, whose argv makes a source archive of the trunk with `git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD`, and correct the comment above it that says the repository declares no packaging. The block is checked with `dabbler packaging --rehearse`.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 9,
+      "dateTime": "2026-11-02T05:22:54.145000-05:00",
+      "task": "Release 1.0.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 10,
+      "dateTime": "2026-11-02T06:32:58.357000-05:00",
+      "task": "Close audit findings H1, L6 and M5 (docs/planning/audit-2026-11-02.md) so that no text from an imported config or SVG can become Scheme in the exported .ly. A new pure module, cnb/src/cnb-scheme.js (CNBScheme), holds the only emitters the exporter may use: comment text (control characters and newlines become spaces), Scheme strings (escape backslash and double quote), symbols (must match ^[a-z][a-z0-9-]*$, else throw naming the field), numbers (finite JavaScript numbers formatted by the exporter; engine.defaultMagnify's fraction string is parsed into two finite numbers and re-emitted from them), versions (^\\d+\\.\\d+\\.\\d+$), and LilyPond path data (strictly parsed into moveto/lineto/curveto/closepath commands with numeric arguments and re-emitted from the numbers in the exporter's existing layout), plus the slug function shape symbols come from. cnb/src/cnb-lilypond.js routes every emitted value through these emitters and never interpolates raw config text. CNBConfig.validate uses the same predicates so it rejects every value an emitter would reject (version, magnify, schemeSymbols values, unparseable lilypondPath/lilypondHollowPath, non-finite numeric fields the exporter emits), and adds the M5 errors: a shape whose slug is empty or not a valid symbol, and two shapes whose slugs collide, each error naming the shapes. The SVG importer parses data-lilypond-* paths (notehead, hollow and clef) and turns a path that does not parse into an import error, storing the re-serialized form otherwise. Hostile-input fixtures (the audit's shared-config.json label payload, an SVG whose data-lilypond-notehead carries #(display ...), and one payload per affected field) drive unit tests asserting each payload is rejected by validation and export alike or exports a .ly whose #( and $( occurrences are exactly those of the same config without the payload, and an engine-backed test that compiles each accepted export with LilyPond (skipping with a logged reason when lilypond is not on PATH or the engine repository is not found) and asserts the payload text is never printed. Output for every valid existing config, including the default, Kite and twinline-compact baselines and the gallery, stays byte-identical.",
+      "releasable": false
+    }
+  ]
+}

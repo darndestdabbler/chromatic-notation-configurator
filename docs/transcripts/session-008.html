@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 008 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 008 transcript</h1>
+<p class="stamp">Rendered 2026-11-02T00:25:14.523Z by dabbler-ai-router 3.27.0 at 3f783e249abc95c714fb6aba06dca8e015f517ce.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-01T19:19:25.240-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 8: Packaging</h3>
+<p>Policy: fast</p>
+<ol><li>Register.</li><li>Write the <code>packaging:</code> block into <code>dabbler.yaml</code>, and nothing else: a <code>pack</code> with no <code>push</code>, whose artifact is a source archive of the trunk: <code>argv: [&quot;git&quot;, &quot;archive&quot;, &quot;--format=zip&quot;, &quot;--output={output}/chromatic-notation-configurator-1.0.0.zip&quot;, &quot;HEAD&quot;]</code>. (<code>release: tag</code> is not usable here: in Dabbler 3.27.0 it validates the orchestration repository's own manifests and names a <code>vsix-v*</code> tag.) Check it with <code>dabbler packaging --rehearse</code>.</li></ol>
+<h2>Work Plan</h2>
+<p>Declare how this repository packages a release: add a <code>packaging:</code> block to dabbler.yaml with a <code>pack</code> and no <code>push</code>, whose argv makes a source archive of the trunk with <code>git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD</code>, and correct the comment above it that says the repository declares no packaging. The block is checked with <code>dabbler packaging --rehearse</code>.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/00db4faf9b86756c734b7858b926565472e96966"><code>00db4faf9b86756c734b7858b926565472e96966</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Packaging block</td><td><p>In dabbler.yaml, add a top-level <code>packaging:</code> block with <code>pack.argv: [&quot;git&quot;, &quot;archive&quot;, &quot;--format=zip&quot;, &quot;--output={output}/chromatic-notation-configurator-1.0.0.zip&quot;, &quot;HEAD&quot;]</code> and no <code>push</code>, and update the comment that says this repository declares no packaging so it describes the pack-only source archive.</p></td><td><span class="mono">dabbler.yaml</span></td><td><code>dabbler packaging --rehearse</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No <code>push</code> and no feed: the release publishes to no feed.</li><li>No <code>release: tag</code> setting (in Dabbler 3.27.0 it validates the orchestration repository's own manifests and names a <code>vsix-v*</code> tag).</li><li>No release itself and no change to any file other than dabbler.yaml; the release is a later session of its own.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[00:19:25]</span> <span class="muted">run-started</span> session=008 mode=pull</div>
+<div class="line"><span class="at">[00:19:25]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[00:20:03]</span> <span class="muted">run-resumed</span> session=008 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[00:20:03]</span> <span class="muted">plan-accepted</span> steps=[&quot;packaging-block&quot;] non_goals=3</div>
+<div class="line"><span class="at">[00:20:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[00:20:12]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=packaging-block</div>
+<div class="line"><span class="at">[00:20:58]</span> <span class="muted">run-resumed</span> session=008 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:21:12]</span> <span class="muted">check-passed</span> step=packaging-block argv=[&quot;dabbler&quot;,&quot;packaging&quot;,&quot;--rehearse&quot;]</div>
+<div class="line"><span class="at">[00:21:15]</span> <span class="muted">report-accepted</span> seq=2 step=packaging-block files=[&quot;dabbler.yaml&quot;] notes=Added pack-only packaging block (git archive zip of HEAD, no push); updated its comment; rehearsal passed.</div>
+<div class="line"><span class="at">[00:21:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[00:21:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[00:21:24]</span> <span class="muted">job-started</span> name=verification pid=75356 log=.dabbler/runs/s8/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[00:22:02]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s8/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[00:22:02]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[00:22:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[00:22:06]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[00:22:07]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=78824 log=.dabbler/runs/s8/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[00:22:16]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s8/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[00:22:19]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[00:22:20]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=32600 log=.dabbler/runs/s8/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[00:23:42]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s8/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[00:23:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[00:24:10]</span> <span class="muted">landed</span> commit=00db4faf9b86756c734b7858b926565472e96966</div>
+<div class="line"><span class="at">[00:24:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[00:24:13]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[00:24:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[00:24:17]</span> <span class="muted">job-started</span> name=close pid=60496 log=.dabbler/runs/s8/driver/jobs/close.log</div>
+<div class="line"><span class="at">[00:25:14]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s8/driver/jobs/close.log</div>
+<div class="line"><span class="at">[00:25:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>1s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>71s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
