@@ -21,6 +21,11 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 7 | Retire `legacy/`, rewrite the README and the guidance | no | 2026-11-01 |
 | 8 | Packaging | no | 2026-11-01 |
 | 9 | Release 1.0.0 (release: 1.0.0) | yes | 2026-11-02 |
+| 10 | No imported text can become Scheme | no | 2026-11-02 |
+| 11 | Path data in the units the engine reads | — | not declared |
+| 12 | Export only what the engine engraves | — | not declared |
+| 13 | Documentation, archive and 1.0.1 | — | not declared |
+| 14 | Release 1.0.1 (release: 1.0.1) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -79,3 +84,9 @@ Declare how this repository packages a release: add a `packaging:` block to dabb
 **Releasable: yes.**
 
 Release 1.0.0: the framework packs and publishes what is on the trunk.
+
+### Session 10 — No imported text can become Scheme
+
+**Releasable: no.**
+
+Close audit findings H1, L6 and M5 (docs/planning/audit-2026-11-02.md) so that no text from an imported config or SVG can become Scheme in the exported .ly. A new pure module, cnb/src/cnb-scheme.js (CNBScheme), holds the only emitters the exporter may use: comment text (control characters and newlines become spaces), Scheme strings (escape backslash and double quote), symbols (must match ^[a-z][a-z0-9-]*$, else throw naming the field), numbers (finite JavaScript numbers formatted by the exporter; engine.defaultMagnify's fraction string is parsed into two finite numbers and re-emitted from them), versions (^\d+\.\d+\.\d+$), and LilyPond path data (strictly parsed into moveto/lineto/curveto/closepath commands with numeric arguments and re-emitted from the numbers in the exporter's existing layout), plus the slug function shape symbols come from. cnb/src/cnb-lilypond.js routes every emitted value through these emitters and never interpolates raw config text. CNBConfig.validate uses the same predicates so it rejects every value an emitter would reject (version, magnify, schemeSymbols values, unparseable lilypondPath/lilypondHollowPath, non-finite numeric fields the exporter emits), and adds the M5 errors: a shape whose slug is empty or not a valid symbol, and two shapes whose slugs collide, each error naming the shapes. The SVG importer parses data-lilypond-* paths (notehead, hollow and clef) and turns a path that does not parse into an import error, storing the re-serialized form otherwise. Hostile-input fixtures (the audit's shared-config.json label payload, an SVG whose data-lilypond-notehead carries #(display ...), and one payload per affected field) drive unit tests asserting each payload is rejected by validation and export alike or exports a .ly whose #( and $( occurrences are exactly those of the same config without the payload, and an engine-backed test that compiles each accepted export with LilyPond (skipping with a logged reason when lilypond is not on PATH or the engine repository is not found) and asserts the payload text is never printed. Output for every valid existing config, including the default, Kite and twinline-compact baselines and the gallery, stays byte-identical.

@@ -853,6 +853,70 @@ export const tests = [
     eq(r.shape, "crotchet-minim", "shape inherited from the default rule");
   }},
 
+  // ── Export safety (audit 2026-11-02, H1/M5) ───────────────────────────────
+  { name: "validate() export safety: the default config gains no new errors", fn: () => {
+    deepEq(CNBConfig.validate(CNBConfig.createDefault()).errors, [], "default errors");
+  }},
+  { name: "validate() export safety: each unsafe field value is a blocking error naming the field", fn: () => {
+    const shape = (c) => c.shapes["crotchet-minim"];
+    const cases = [
+      ["engine.lilypondVersion", (c) => { c.engine.lilypondVersion = '2.24.2"\n#(display "X")'; }],
+      ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = '7/4) #(display "X")'; }],
+      ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = null; }],
+      ["engine.multinotePadding", (c) => { c.engine.multinotePadding = "(display 1)"; }],
+      ["engine.indent", (c) => { c.engine.indent = NaN; }],
+      ["engine.collisionThreshold", (c) => { c.engine.collisionThreshold = Infinity; }],
+      ["engine.stemThickness", (c) => { c.engine.stemThickness = "0.1"; }],
+      ["staff.semitonePattern[1]", (c) => { c.staff.semitonePattern = [4, "8"]; }],
+      ["staff.midpoint", (c) => { c.staff.midpoint = "12"; }],
+      ["staff.semitonesPerStaffSpace", (c) => { c.staff.semitonesPerStaffSpace = "4) (display 1"; }],
+      ["staff.lineDefaults.thicknessPct", (c) => { c.staff.lineDefaults.thicknessPct = "30"; }],
+      ['Duration "crotchet" lilypondDuration', (c) => { c.durations.definitions[0].lilypondDuration = "3)"; }],
+      ['palette.schemeSymbols["#1B9E77"]', (c) => { c.palette.schemeSymbols = { "#1B9E77": 'x) (display "X") (quote' }; }],
+      ['Shape "crotchet-minim" lilypondPath', (c) => { shape(c).lilypondPath = `'()) (system "calc") (define x '()`; }],
+      ['Shape "crotchet-minim" lilypondHollowPath', (c) => { shape(c).lilypondHollowPath = "'((moveto 0 0) #(display 1))"; }],
+      ['Shape "crotchet-minim" anchors.crotchetUp.x', (c) => { shape(c).anchors.crotchetUp.x = "1"; }],
+      ['Shape "crotchet-minim" naturalHeight', (c) => { shape(c).naturalHeight = "272"; }],
+      ['Shape "crotchet-minim" lilypondAnchors.minimUp.y', (c) => {
+        shape(c).lilypondAnchors = { crotchetUp: { x: 1, y: 0 }, minimUp: { x: 1, y: "(display 1)" } }; }],
+    ];
+    for (const [field, mutate] of cases) {
+      const cfg = CNBConfig.createDefault();
+      mutate(cfg);
+      const { valid, errors } = CNBConfig.validate(cfg);
+      assert(!valid, `${field}: config must be invalid`);
+      assert(errors.some(e => e.includes(field)), `${field}: an error names the field, got ${JSON.stringify(errors)}`);
+    }
+  }},
+  { name: "validate() export safety: safe values in the same fields stay valid", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.engine.lilypondVersion = "2.25.10";
+    cfg.engine.defaultMagnify = "8/5";
+    cfg.engine.stemThickness = 0.12;
+    cfg.palette.schemeSymbols = { "#1B9E77": "shamrock-1b9e77" };
+    cfg.shapes["crotchet-minim"].lilypondPath = "'( (moveto 0 1) (lineto 1 0) (closepath))";
+    cfg.shapes["crotchet-minim"].lilypondAnchors = { crotchetUp: { x: 0.7, y: 0 }, minimUp: { x: 1, y: null } };
+    cfg.meta.notationLabel = 'Any text\n#(display "fine in a comment")';
+    deepEq(CNBConfig.validate(cfg).errors, [], "errors");
+  }},
+  { name: "validate() M5: two shapes whose names slug alike are an error naming both", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.shapes["Kite Up"] = CNBConfig.clone(cfg.shapes["crotchet-minim"]);
+    cfg.shapes["kite-up"] = CNBConfig.clone(cfg.shapes["crotchet-minim"]);
+    const { valid, errors } = CNBConfig.validate(cfg);
+    assert(!valid, "must be invalid");
+    assert(errors.some(e => e.includes('"Kite Up"') && e.includes('"kite-up"')), `error names both shapes: ${JSON.stringify(errors)}`);
+  }},
+  { name: "validate() M5: a shape name with no usable slug is an error naming the shape", fn: () => {
+    for (const name of ["音符", "---", "4-8 head"]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.shapes[name] = CNBConfig.clone(cfg.shapes["crotchet-minim"]);
+      const { valid, errors } = CNBConfig.validate(cfg);
+      assert(!valid, `${name}: must be invalid`);
+      assert(errors.some(e => e.includes(`Shape "${name}"`)), `${name}: error names the shape: ${JSON.stringify(errors)}`);
+    }
+  }},
+
 ];
 
 // ── Clef test helpers (set 009) ───────────────────────────────────────────────

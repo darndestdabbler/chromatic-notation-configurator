@@ -32,11 +32,36 @@
  * Only `parseSvgText()` touches DOMParser; file-picker wiring lives in the
  * test page / app layer.
  *
- * Dependencies: none (Module A schema is a structural contract only).
+ * Pre-baked `data-lilypond-*` paths are parsed, never passed through as
+ * text: one that does not parse is an import error, and one that does is
+ * stored re-serialized from its numbers (audit 2026-11-02, H1).
+ *
+ * Dependencies: cnb-scheme.js (path parsing); Module A schema is a
+ * structural contract only.
  */
+
+import { CNBScheme } from "../src/cnb-scheme.js";
 
 // SVG units per semitone in Music Glyph Toolkit output (TARGET_HEIGHT = S × 100)
 const TOOLKIT_UNITS_PER_SEMITONE = 100;
+
+/**
+ * A pre-baked LilyPond path attribute, parsed and re-serialized from its
+ * numbers. Absent → { path: null }; unparseable → { error } naming the
+ * attribute.
+ */
+function prebakedPath(text, attr) {
+  if (!text) return { path: null, error: null };
+  const commands = CNBScheme.parsePath(text);
+  if (!commands) {
+    return {
+      path: null,
+      error: `${attr} is not valid LilyPond path data (only moveto, lineto, ` +
+        "curveto and closepath with numbers are accepted) — not imported",
+    };
+  }
+  return { path: CNBScheme.path(commands, attr), error: null };
+}
 
 function roundTo(value, decimals) {
   const f = Math.pow(10, decimals);
@@ -325,6 +350,11 @@ export const CNBSvgImporter = {
     const warnings = [];
     if (extracted.error) return { shape: null, warnings, error: extracted.error };
 
+    const notehead = prebakedPath(extracted.lilypondNotehead, "data-lilypond-notehead");
+    if (notehead.error) return { shape: null, warnings, error: notehead.error };
+    const hollow = prebakedPath(extracted.lilypondHollow, "data-lilypond-hollow");
+    if (hollow.error) return { shape: null, warnings, error: hollow.error };
+
     // semitoneHeight: from data-semitone-height, else derived from the
     // toolkit's 100-units-per-semitone viewBox convention.
     let semitoneHeight = extracted.semitoneHeight;
@@ -427,8 +457,8 @@ export const CNBSvgImporter = {
       naturalWidth,
       semitoneHeight,
       anchors,
-      lilypondPath: extracted.lilypondNotehead || null,
-      lilypondHollowPath: extracted.lilypondHollow || null,
+      lilypondPath: notehead.path,
+      lilypondHollowPath: hollow.path,
       lilypondAnchors: CNBSvgImporter.toLilypondAnchors(anchors, naturalHeight, semitoneHeight),
     };
     return { shape, warnings, error: null };
@@ -503,6 +533,9 @@ export const CNBSvgImporter = {
     const warnings = [];
     if (extracted.error) return { glyph: null, warnings, error: extracted.error };
 
+    const baked = prebakedPath(extracted.lilypondPath, "data-lilypond-clef / data-lilypond-notehead");
+    if (baked.error) return { glyph: null, warnings, error: baked.error };
+
     let semitoneHeight = extracted.semitoneHeight;
     if (semitoneHeight === null) {
       if (extracted.viewBoxHeight) {
@@ -548,7 +581,7 @@ export const CNBSvgImporter = {
       semitoneHeight,
       viewBoxMinX: extracted.viewBoxMinX ?? 0,
       viewBoxMinY: extracted.viewBoxMinY ?? 0,
-      lilypondPath: extracted.lilypondPath || null,
+      lilypondPath: baked.path,
       anchorSemi: roundTo(midpoint + semitoneHeight / 2, 4),
     };
     return { glyph, warnings, error: null };

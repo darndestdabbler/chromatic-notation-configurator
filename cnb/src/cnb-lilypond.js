@@ -18,6 +18,7 @@
 import { CNBConfig } from "./cnb-config.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
+import { CNBScheme } from "./cnb-scheme.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
 // Values the CNB engine assumes when a setting is not emitted. Section B
@@ -64,29 +65,31 @@ function parseSvgPath(d) {
   return commands;
 }
 
-/** Scheme-safe slug: lowercase, non-alphanumerics collapsed to hyphens. */
-function slug(name) {
-  return String(name)
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+// Every config value reaches the .ly through a CNBScheme emitter (audit
+// 2026-11-02, H1): comment text, Scheme strings, symbols, numbers, ratios,
+// versions and path data. Nothing below interpolates raw config text.
 
-/** Format a number for Scheme output: integer as-is, else max 4 decimals. */
-function fmtNum(n) {
-  if (Number.isInteger(n)) return String(n);
-  return String(parseFloat(n.toFixed(4)));
+/** Scheme-safe slug: lowercase, non-alphanumerics collapsed to hyphens. */
+const slug = CNBScheme.slug;
+
+/** Format a finite number for Scheme output (throws naming the field otherwise). */
+function fmtNum(n, field = "exported number") {
+  return CNBScheme.number(n, field);
 }
 
 /** Format an {x, y} point as a Scheme pair body: "x . y". */
-function fmtPair(pt) {
-  return `${fmtNum(pt.x)} . ${fmtNum(pt.y)}`;
+function fmtPair(pt, field = "exported point") {
+  return `${fmtNum(pt.x, field)} . ${fmtNum(pt.y, field)}`;
 }
 
-/** Escape a string for a Scheme string literal. */
+/** Escape a string for a Scheme string literal (the text between the quotes). */
 function escSchemeString(s) {
-  return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return CNBScheme.string(s).slice(1, -1);
+}
+
+/** The Scheme symbol for a shape name (throws naming the shape when invalid). */
+function shapeSymbol(name) {
+  return CNBScheme.symbol(slug(name), `Shape ${JSON.stringify(name)} name`);
 }
 
 /** Human-readable pitch class name for comments (C, C♯, D, ...). */
@@ -147,12 +150,13 @@ function paletteHexFor(entries, pc) {
  */
 function colorSymbolFor(config, hex) {
   const symbols = (config.palette && config.palette.schemeSymbols) || {};
-  if (symbols[hex]) return symbols[hex];
+  const field = (key) => `palette.schemeSymbols[${JSON.stringify(key)}]`;
+  if (symbols[hex]) return CNBScheme.symbol(symbols[hex], field(hex));
   const lower = hex.toLowerCase();
   for (const [key, sym] of Object.entries(symbols)) {
-    if (key.toLowerCase() === lower) return sym;
+    if (key.toLowerCase() === lower) return CNBScheme.symbol(sym, field(key));
   }
-  return CNBLilypond.toSchemeSymbol("color", hex);
+  return CNBScheme.symbol(CNBLilypond.toSchemeSymbol("color", hex), `color ${JSON.stringify(hex)}`);
 }
 
 /**
@@ -274,7 +278,7 @@ function durationLyNumber(config, name) {
 function sectionCFields(config, r) {
   const shapes = config.shapes || {};
   const shape = shapes[r.shape];
-  const shapeSym = slug(r.shape || "");
+  const shapeSym = shapeSymbol(r.shape || "");
 
   const hasHollowPath = !!(shape && (shape.lilypondHollowPath || shape.svgHollowPath));
   const hollowSym = (r.hollow && hasHollowPath) ? `${shapeSym}-cutout` : "#f";
@@ -318,10 +322,10 @@ function pitchAxisLines(config, axis) {
   const staff = config.staff || {};
   const midpoint = staff.midpoint || 0;
   const positions = pa.pitchClasses.slice().sort((a, b) => a.pc - b.pc).map(e => e.position);
-  const vector = positions.map(fmtNum).join(" ");
-  const anchor = fmtNum(axis.positionOfSemi(midpoint));
-  const stride = fmtNum(axis.octaveStride);
-  const units = fmtNum(axis.unitsPerStaffSpace);
+  const vector = positions.map(p => fmtNum(p, "pitchAxis.pitchClasses position")).join(" ");
+  const anchor = fmtNum(axis.positionOfSemi(midpoint), "pitchAxis position of staff.midpoint");
+  const stride = fmtNum(axis.octaveStride, "pitchAxis.octaveStride");
+  const units = fmtNum(axis.unitsPerStaffSpace, "pitchAxis.axisUnitsPerStaffSpace");
   const distinct = new Set(positions).size;
 
   const placement = ((config.keys || {}).keySignature || {}).placement || {};
@@ -330,9 +334,9 @@ function pitchAxisLines(config, axis) {
     : Math.round((midpoint - 6) / 12);   // CNBKeySignature.tonicSemi auto rule, pc 0
 
   return [
-    `%% Pitch axis (${pa.kind}) — 12 pitch classes on ${distinct} positions/octave`,
+    `%% Pitch axis (${CNBScheme.comment(pa.kind)}) — 12 pitch classes on ${distinct} positions/octave`,
     `%% map [${vector}] · octave stride ${stride}`,
-    `%% axis units per staff space: ${units} · midpoint semi ${fmtNum(midpoint)} → axis position ${anchor}`,
+    `%% axis units per staff space: ${units} · midpoint semi ${fmtNum(midpoint, "staff.midpoint")} → axis position ${anchor}`,
     "#(set! cnb:get-pitch-staff-position",
     "   (lambda (semitone)",
     "     (let* ((pc (modulo semitone 12))",
@@ -342,7 +346,7 @@ function pitchAxisLines(config, axis) {
     `       (/ (* 2 (- pos ${anchor})) ${units}))))`,
     "",
     "%% Key-signature octave — explicit under a pitch axis (engine handoff 008 §4.2)",
-    `#(set! cnb:keysig-tonic-octave ${tonicOctave})`,
+    `#(set! cnb:keysig-tonic-octave ${fmtNum(tonicOctave, "keys.keySignature.placement.tonicOctave")})`,
   ];
 }
 
@@ -493,21 +497,21 @@ export const CNBLilypond = {
     const rule = "%% " + "%".repeat(76);
 
     const lines = [];
-    lines.push(`\\version "${engine.lilypondVersion || "2.24.2"}"`);
+    lines.push(`\\version "${CNBScheme.version(engine.lilypondVersion || "2.24.2", "engine.lilypondVersion")}"`);
     lines.push(`\\include "ChromaticNotationBase.ly"`);
     lines.push("");
     lines.push(rule);
     lines.push("%%");
-    lines.push(`%% ${meta.notationLabel || "Untitled"} — Generated by Chromatic Configurator`);
+    lines.push(`%% ${CNBScheme.comment(meta.notationLabel || "Untitled")} — Generated by Chromatic Configurator`);
     lines.push(`%% Date: ${new Date().toISOString().split("T")[0]}`);
     lines.push(`%% Configurator version: ${CNBConfig.VERSION}`);
     lines.push("%%");
     lines.push("%% DO NOT EDIT BY HAND — regenerate from the Configurator.");
     if (meta.configName) {
-      lines.push(`%% Source: ${meta.configName}.json`);
+      lines.push(`%% Source: ${CNBScheme.comment(meta.configName)}.json`);
     }
     lines.push("%%");
-    lines.push(`%% Color palette: ${pal.name} (${pal.mode})`);
+    lines.push(`%% Color palette: ${CNBScheme.comment(pal.name)} (${pal.mode})`);
     lines.push("%% Set cnb:use-accessible-colors to #t before \\include to use");
     lines.push("%% the colorblind-safe alternative palette.");
     lines.push("%%");
@@ -539,15 +543,21 @@ export const CNBLilypond = {
     lines.push("%% --- Path variables ---");
     for (const name of shapeNames) {
       const shape = shapes[name];
-      const sym = slug(name);
+      const sym = shapeSymbol(name);
+      const field = (key) => `shapes[${JSON.stringify(name)}].${key}`;
 
-      // Prefer the pre-baked LilyPond path from data-lilypond-notehead.
-      const pathDef = shape.lilypondPath || CNBLilypond.svgPathToLilypond(shape.svgPath);
+      // Prefer the pre-baked LilyPond path from data-lilypond-notehead,
+      // re-emitted from its parsed numbers (never as text).
+      const pathDef = shape.lilypondPath
+        ? CNBScheme.path(shape.lilypondPath, field("lilypondPath"))
+        : CNBLilypond.svgPathToLilypond(shape.svgPath);
       lines.push(`#(define cnb:${sym}-path ${pathDef})`);
       lines.push("");
 
       if (shape.lilypondHollowPath || shape.svgHollowPath) {
-        const hollowDef = shape.lilypondHollowPath || CNBLilypond.svgPathToLilypond(shape.svgHollowPath);
+        const hollowDef = shape.lilypondHollowPath
+          ? CNBScheme.path(shape.lilypondHollowPath, field("lilypondHollowPath"))
+          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath);
         lines.push(`#(define cnb:${sym}-cutout-path ${hollowDef})`);
         lines.push("");
       }
@@ -556,7 +566,7 @@ export const CNBLilypond = {
     // A2. Path registrations
     lines.push("%% --- Register paths ---");
     for (const name of shapeNames) {
-      const sym = slug(name);
+      const sym = shapeSymbol(name);
       lines.push(`#(cnb:register-path! '${sym} cnb:${sym}-path)`);
     }
     lines.push("");
@@ -566,7 +576,7 @@ export const CNBLilypond = {
     if (hollowShapes.length > 0) {
       lines.push("%% --- Register hollow cutouts ---");
       for (const name of hollowShapes) {
-        const sym = slug(name);
+        const sym = shapeSymbol(name);
         lines.push(`#(cnb:register-hollow! '${sym}-cutout cnb:${sym}-cutout-path)`);
       }
       lines.push("");
@@ -581,19 +591,20 @@ export const CNBLilypond = {
       : (config.staff || {}).semitonesPerStaffSpace || 1;
     lines.push("%% --- Register stem attachments ---");
     for (const name of shapeNames) {
-      const sym = slug(name);
+      const sym = shapeSymbol(name);
       const pts = attachmentPoints(shapes[name], attachSps);
       if (!pts) {
         lines.push(`%% ${sym}: stemless — no attachment registered`);
         lines.push("");
         continue;
       }
+      const field = `shapes[${JSON.stringify(name)}] stem anchors`;
       lines.push(`#(cnb:register-attachment! '${sym}-attach`);
       lines.push(`   (list`);
-      lines.push(`     (cons 'crotchet-up   '(${fmtPair(pts.crotchetUp)}))`);
-      lines.push(`     (cons 'crotchet-down '(${fmtPair(pts.crotchetDown)}))`);
-      lines.push(`     (cons 'minim-up      '(${fmtPair(pts.minimUp)}))`);
-      lines.push(`     (cons 'minim-down    '(${fmtPair(pts.minimDown)}))))`);
+      lines.push(`     (cons 'crotchet-up   '(${fmtPair(pts.crotchetUp, field)}))`);
+      lines.push(`     (cons 'crotchet-down '(${fmtPair(pts.crotchetDown, field)}))`);
+      lines.push(`     (cons 'minim-up      '(${fmtPair(pts.minimUp, field)}))`);
+      lines.push(`     (cons 'minim-down    '(${fmtPair(pts.minimDown, field)}))))`);
       lines.push("");
     }
 
@@ -602,7 +613,7 @@ export const CNBLilypond = {
     if (colors.length > 0) {
       const pal = paletteLabel(config);
       lines.push("%% Color registrations");
-      lines.push(`%% Primary palette: ${pal.name} (${pal.mode})`);
+      lines.push(`%% Primary palette: ${CNBScheme.comment(pal.name)} (${pal.mode})`);
       lines.push("%% Accessible palette: CB-safe alternative from the palette");
       lines.push("%%");
       lines.push("%% Usage: Set cnb:use-accessible-colors to #t before \\include");
@@ -613,13 +624,13 @@ export const CNBLilypond = {
       lines.push("  (begin");
       lines.push("    ;; Accessible (colorblind-safe) palette");
       for (const c of colors) {
-        lines.push(`    (cnb:register-color! '${c.symbol} "${c.cbHex}")`);
+        lines.push(`    (cnb:register-color! '${c.symbol} ${CNBScheme.string(c.cbHex)})`);
       }
       lines.push("  )");
       lines.push("  (begin");
       lines.push("    ;; Primary palette");
       for (const c of colors) {
-        lines.push(`    (cnb:register-color! '${c.symbol} "${c.hex}")`);
+        lines.push(`    (cnb:register-color! '${c.symbol} ${CNBScheme.string(c.hex)})`);
       }
       lines.push("  ))");
       lines.push("");
@@ -670,8 +681,10 @@ export const CNBLilypond = {
     const axis = CNBPitchAxis.create(config);
     const sps = axis.enabled ? axis.unitsPerStaffSpace : staff.semitonesPerStaffSpace || 1;
     const positions = CNBLilypond.computeStaffLinePositions(config);
-    lines.push(`#(set! cnb:semitones-per-staff-space ${fmtNum(sps)})`);
-    lines.push(`#(set! cnb:staff-line-positions '(${positions.map(fmtNum).join(" ")}))`);
+    const spsField = axis.enabled ? "pitchAxis.axisUnitsPerStaffSpace" : "staff.semitonesPerStaffSpace";
+    lines.push(`#(set! cnb:semitones-per-staff-space ${fmtNum(sps, spsField)})`);
+    lines.push(`#(set! cnb:staff-line-positions '(${positions
+      .map(p => fmtNum(p, "staff-line position (staff.semitonePattern, staff.midpoint)")).join(" ")}))`);
     lines.push("");
 
     if (axis.enabled) {
@@ -685,16 +698,16 @@ export const CNBLilypond = {
       changed.push(`#(set! cnb:false-hollow ${engine.falseHollow ? "#t" : "#f"})`);
     }
     if (engine.multinotePadding !== undefined && engine.multinotePadding !== d.multinotePadding) {
-      changed.push(`#(set! cnb:multinote-padding ${fmtNum(engine.multinotePadding)})`);
+      changed.push(`#(set! cnb:multinote-padding ${fmtNum(engine.multinotePadding, "engine.multinotePadding")})`);
     }
     if (engine.defaultMagnify !== undefined && String(engine.defaultMagnify) !== d.defaultMagnify) {
-      changed.push(`#(set! cnb:default-magnify ${engine.defaultMagnify})`);
+      changed.push(`#(set! cnb:default-magnify ${CNBScheme.ratio(engine.defaultMagnify, "engine.defaultMagnify")})`);
     }
     if (engine.indent !== undefined && engine.indent !== d.indent) {
-      changed.push(`#(set! cnb:indent ${fmtNum(engine.indent)})`);
+      changed.push(`#(set! cnb:indent ${fmtNum(engine.indent, "engine.indent")})`);
     }
     if (engine.collisionThreshold !== undefined && engine.collisionThreshold !== d.collisionThreshold) {
-      changed.push(`#(set! cnb:collision-threshold ${fmtNum(engine.collisionThreshold)})`);
+      changed.push(`#(set! cnb:collision-threshold ${fmtNum(engine.collisionThreshold, "engine.collisionThreshold")})`);
     }
 
     // Staff-line styling (LY spec §5.3): thickness is canonical as % of
@@ -708,15 +721,15 @@ export const CNBLilypond = {
     const thicknessPct = lineDefaults.thicknessPct !== undefined ? lineDefaults.thicknessPct : d.staffLineThicknessPct;
     if (thicknessPct !== d.staffLineThicknessPct) {
       const absolute = (thicknessPct / 100) * (1 / sps);
-      changed.push(`#(set! cnb:default-staff-line-thickness ${fmtNum(absolute)})`);
+      changed.push(`#(set! cnb:default-staff-line-thickness ${fmtNum(absolute, "staff.lineDefaults.thicknessPct")})`);
     }
-    const staffColor = lineDefaults.color || d.staffLineColor;
+    const staffColor = String(lineDefaults.color || d.staffLineColor);
     if (staffColor.toLowerCase() !== d.staffLineColor) {
-      changed.push(`#(set! cnb:default-staff-line-color "${staffColor}")`);
+      changed.push(`#(set! cnb:default-staff-line-color ${CNBScheme.string(staffColor)})`);
     }
 
     if (engine.stemThickness !== null && engine.stemThickness !== undefined) {
-      changed.push(`#(set! cnb:stem-thickness ${fmtNum(engine.stemThickness)})`);
+      changed.push(`#(set! cnb:stem-thickness ${fmtNum(engine.stemThickness, "engine.stemThickness")})`);
     }
 
     if (changed.length > 0) {
@@ -727,11 +740,11 @@ export const CNBLilypond = {
 
     // B3. Metadata — always emitted (footnote only when non-empty)
     lines.push("%% Metadata");
-    lines.push(`#(set! cnb:file-suffix "${escSchemeString(meta.fileSuffix || "")}")`);
-    lines.push(`#(set! cnb:notation-label "${escSchemeString(meta.notationLabel || "")}")`);
+    lines.push(`#(set! cnb:file-suffix ${CNBScheme.string(meta.fileSuffix || "")})`);
+    lines.push(`#(set! cnb:notation-label ${CNBScheme.string(meta.notationLabel || "")})`);
     if (meta.notationFootnote) {
       lines.push(`#(set! cnb:notation-footnote`);
-      lines.push(`  "${escSchemeString(meta.notationFootnote)}")`);
+      lines.push(`  ${CNBScheme.string(meta.notationFootnote)})`);
     }
     lines.push("");
 
@@ -809,20 +822,20 @@ export const CNBLilypond = {
     };
 
     const emitClause = (comment, condition, f) => {
-      lines.push(`         ;; ${comment}`);
+      lines.push(`         ;; ${CNBScheme.comment(comment)}`);
       lines.push(`         (${condition}`);
       lines.push(`          '((shape      . ${f.shapeSym})`);
       lines.push(`            (color      . ${f.colorSym})`);
       lines.push(`            (hollow     . ${f.hollowSym})`);
       lines.push(`            (attachment . ${f.attachSym})`);
       lines.push(`            (off-key-mark . #f)`);
-      if (f.xOffset) lines.push(`            (x-offset   . ${fmtNum(f.xOffset)})`);
+      if (f.xOffset) lines.push(`            (x-offset   . ${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")})`);
       lines.push(`            (repeat     . ${repeat})))`);
       lines.push("");
     };
 
     const offsetLabel = (f) => !f.xOffset ? ""
-      : `, ${f.xOffset > 0 ? "+" : ""}${fmtNum(f.xOffset)} staff-space ${f.xOffset > 0 ? "right" : "left"}`;
+      : `, ${f.xOffset > 0 ? "+" : ""}${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")} staff-space ${f.xOffset > 0 ? "right" : "left"}`;
 
     lines.push("#(set! cnb:get-notehead-config");
     lines.push("   (lambda (semitone duration key)");
@@ -859,7 +872,7 @@ export const CNBLilypond = {
         const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
         emitClause(
           `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
-          `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${lyNum}))`,
+          `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${fmtNum(lyNum, `durations ${JSON.stringify(duration)} lilypondDuration`)}))`,
           group.fields
         );
       }
@@ -875,7 +888,7 @@ export const CNBLilypond = {
     lines.push(`            (hollow     . #f)`);
     lines.push(`            (attachment . ${fb.attachSym})`);
     lines.push(`            (off-key-mark . #f)`);
-    if (fb.xOffset) lines.push(`            (x-offset   . ${fmtNum(fb.xOffset)})`);
+    if (fb.xOffset) lines.push(`            (x-offset   . ${fmtNum(fb.xOffset, "apply.xOffsetStaffSpaces")})`);
     lines.push(`            (repeat     . ${repeat})))))))`);
     lines.push("");
 

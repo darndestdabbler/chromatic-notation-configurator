@@ -4,10 +4,13 @@
  * Canonical JSON config structure with defaults, validation, deep merge,
  * clone, notehead rule resolution, and color resolution.
  *
- * No external dependencies.
+ * Dependencies: cnb-scheme.js (the exporter's emitter predicates, so
+ * validation rejects exactly what export would refuse).
  *
  * Part of the Chromatic Notation Builder modular architecture.
  */
+
+import { CNBScheme } from "./cnb-scheme.js";
 
 // ─── Default 4-8 configuration (Architecture Plan Appendix A) ───────────────
 
@@ -740,6 +743,98 @@ export const CNBConfig = {
         if (!rule || !isPlainObject(rule.apply)) continue;
         if (rule.apply.xOffsetStaffSpaces !== undefined) {
           warnings.push(`Rule "${rule.name || "(unnamed)"}" sets apply.xOffsetStaffSpaces while pitchAxis is disabled or absent — the field is axis-gated and will be ignored`);
+        }
+      }
+    }
+
+    // 11. Export safety (audit 2026-11-02, H1/M5). Every value the LilyPond
+    //     exporter emits goes through a CNBScheme emitter; the same
+    //     predicates reject here what an emitter would refuse at export.
+    const present = v => v !== undefined && v !== null;
+    const numberError = (field, v) =>
+      errors.push(`${field} must be a finite number (got ${JSON.stringify(v)})`);
+
+    const engine = isPlainObject(config.engine) ? config.engine : {};
+    if (engine.lilypondVersion && !CNBScheme.isVersion(engine.lilypondVersion)) {
+      errors.push(`engine.lilypondVersion must be a version like "2.24.2" (got ${JSON.stringify(engine.lilypondVersion)})`);
+    }
+    if (engine.defaultMagnify !== undefined && !CNBScheme.parseRatio(engine.defaultMagnify)) {
+      errors.push(`engine.defaultMagnify must be a positive number or fraction like "7/4" (got ${JSON.stringify(engine.defaultMagnify)})`);
+    }
+    for (const key of ["multinotePadding", "indent", "collisionThreshold"]) {
+      if (engine[key] !== undefined && !CNBScheme.isNumber(engine[key])) numberError(`engine.${key}`, engine[key]);
+    }
+    if (present(engine.stemThickness) && !CNBScheme.isNumber(engine.stemThickness)) {
+      numberError("engine.stemThickness", engine.stemThickness);
+    }
+
+    const staffSec = isPlainObject(config.staff) ? config.staff : {};
+    if (!Array.isArray(staffPattern)) {
+      errors.push("staff.semitonePattern must be an array of numbers");
+    } else {
+      staffPattern.forEach((v, i) => {
+        if (!CNBScheme.isNumber(v)) numberError(`staff.semitonePattern[${i}]`, v);
+      });
+    }
+    for (const key of ["midpoint", "semitonesPerStaffSpace"]) {
+      if (present(staffSec[key]) && !CNBScheme.isNumber(staffSec[key])) numberError(`staff.${key}`, staffSec[key]);
+    }
+    const staffThickness = (staffSec.lineDefaults || {}).thicknessPct;
+    if (staffThickness !== undefined && !CNBScheme.isNumber(staffThickness)) {
+      numberError("staff.lineDefaults.thicknessPct", staffThickness);
+    }
+
+    const durationDefs = ((config.durations || {}).definitions) || [];
+    for (const def of Array.isArray(durationDefs) ? durationDefs : []) {
+      if (def && present(def.lilypondDuration) && !CNBScheme.isNumber(def.lilypondDuration)) {
+        numberError(`Duration "${def.name}" lilypondDuration`, def.lilypondDuration);
+      }
+    }
+
+    if (isPlainObject(palette.schemeSymbols)) {
+      for (const [hex, sym] of Object.entries(palette.schemeSymbols)) {
+        if (!CNBScheme.isSymbol(sym)) {
+          errors.push(`palette.schemeSymbols[${JSON.stringify(hex)}] must be a Scheme symbol matching ^[a-z][a-z0-9-]*$ (got ${JSON.stringify(sym)})`);
+        }
+      }
+    }
+
+    const shapeBySymbol = new Map();
+    for (const [name, shape] of Object.entries(shapes)) {
+      const sym = CNBScheme.slug(name);
+      if (!CNBScheme.isSymbol(sym)) {
+        errors.push(`Shape "${name}" has no usable LilyPond name: it becomes ${JSON.stringify(sym)}, which is not a Scheme symbol (use a name that starts with a Latin letter)`);
+      } else if (shapeBySymbol.has(sym)) {
+        errors.push(`Shapes "${shapeBySymbol.get(sym)}" and "${name}" both export as LilyPond name "${sym}" — rename one`);
+      } else {
+        shapeBySymbol.set(sym, name);
+      }
+      if (!isPlainObject(shape)) continue;
+      for (const key of ["lilypondPath", "lilypondHollowPath"]) {
+        if (shape[key] && !CNBScheme.parsePath(shape[key])) {
+          errors.push(`Shape "${name}" ${key} is not valid LilyPond path data (moveto/lineto/curveto/closepath with numbers only)`);
+        }
+      }
+      // The anchors the exporter converts: lilypondAnchors (missing
+      // coordinates count as 0), else the SVG-unit anchors scaled by the
+      // shape's natural and semitone heights.
+      const pointKeys = ["crotchetUp", "crotchetDown", "minimUp", "minimDown"];
+      if (isPlainObject(shape.lilypondAnchors)) {
+        for (const key of pointKeys) {
+          const pt = shape.lilypondAnchors[key];
+          for (const c of ["x", "y"]) {
+            if (pt && present(pt[c]) && !CNBScheme.isNumber(pt[c])) numberError(`Shape "${name}" lilypondAnchors.${key}.${c}`, pt[c]);
+          }
+        }
+      } else if (isPlainObject(shape.anchors)) {
+        for (const key of pointKeys) {
+          const pt = shape.anchors[key];
+          for (const c of ["x", "y"]) {
+            if (pt && !CNBScheme.isNumber(pt[c])) numberError(`Shape "${name}" anchors.${key}.${c}`, pt[c]);
+          }
+        }
+        for (const key of ["naturalHeight", "semitoneHeight"]) {
+          if (present(shape[key]) && !CNBScheme.isNumber(shape[key])) numberError(`Shape "${name}" ${key}`, shape[key]);
         }
       }
     }

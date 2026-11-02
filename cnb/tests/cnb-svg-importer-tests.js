@@ -7,6 +7,9 @@
  * File-picker/DOMParser wiring is exercised on the visual test page.
  */
 
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { CNBSvgImporter } from "../ui/svg-importer.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
@@ -254,8 +257,10 @@ export const tests = [
       approx(shape.semitoneHeight, 2.0, "semitoneHeight");
       approx(shape.naturalHeight, 200, "naturalHeight from viewBox");
       approx(shape.naturalWidth, 240, "naturalWidth from viewBox");
-      assert(shape.lilypondPath === LY_NOTEHEAD, "lilypondPath verbatim");
-      assert(shape.lilypondHollowPath === LY_HOLLOW, "lilypondHollowPath verbatim");
+      // Re-serialized from the parsed numbers ("1.0" → "1"), never stored as text.
+      assert(shape.lilypondPath === "'(\n    (moveto 1.2 0)\n    (curveto 1.2 0.55 0.66 1 0 1)\n    (closepath))",
+        "lilypondPath re-serialized: " + JSON.stringify(shape.lilypondPath));
+      assert(shape.lilypondHollowPath === LY_HOLLOW, "lilypondHollowPath re-serialized (already canonical)");
       approx(shape.anchors.crotchetUp.x, 108.8889, "anchor up.x");
       approx(shape.anchors.minimDown.x, -108.8889, "anchor minimDown.x");
       approx(shape.lilypondAnchors.crotchetUp.x, 1.0889, "lilypondAnchors up.x", 1e-4);
@@ -567,4 +572,71 @@ export const tests = [
       assert(r.shape === null, "no shape");
       assert(/Invalid SVG: unclosed tag/.test(r.error), "parse error surfaced");
     }},
+
+  // — Pre-baked data-lilypond-* paths are parsed, never passed through (audit H1) —
+  { name: "buildShape refuses the hostile fixture whose data-lilypond-notehead carries #(display …)", fn: () => {
+      const text = readFileSync(path.join(FIXTURES, "hostile", "injected-notehead.svg"), "utf8");
+      const payload = svgAttr(text, "notehead", "data-lilypond-notehead");
+      assert(payload.includes('#(display "INJECTED-VIA-SVG-NOTEHEAD")'), "fixture carries the payload");
+      const doc = toolkitDoc({
+        notehead: stubEl("path", { id: "notehead", d: ELLIPSE_D, "data-semitone-height": "2.0",
+          "data-lilypond-notehead": payload }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      assert(shape === null, "no shape is built");
+      assert(/data-lilypond-notehead is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
+    }},
+  { name: "buildShape refuses a data-lilypond-hollow that does not parse", fn: () => {
+      const doc = toolkitDoc({
+        hollow: stubEl("path", { id: "hollow", d: HOLLOW_D,
+          "data-lilypond-hollow": `'()) (system "calc") (define x '()` }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      assert(shape === null, "no shape is built");
+      assert(/data-lilypond-hollow is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
+    }},
+  { name: "buildClefGlyph refuses a clef data-lilypond-* path that does not parse", fn: () => {
+      const doc = stubDoc({ viewBox: "-50 -150 100 300" }, {
+        clef: stubEl("path", { id: "clef", d: "M 0 0 L 1 1", "data-semitone-height": "6",
+          "data-lilypond-clef": "'((moveto 0 0)) #(display \"X\")" }),
+      });
+      const { glyph, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "C");
+      assert(glyph === null, "no glyph is built");
+      assert(/data-lilypond-clef .* is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
+    }},
+  { name: "buildClefGlyph stores a valid clef path re-serialized", fn: () => {
+      const doc = stubDoc({ viewBox: "-50 -150 100 300" }, {
+        clef: stubEl("path", { id: "clef", d: "M 0 0 L 1 1", "data-semitone-height": "6",
+          "data-lilypond-clef": "'( (moveto 0 1.50) (closepath))" }),
+      });
+      const { glyph, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "C");
+      assert(error === null, "no error: " + error);
+      assert(glyph.lilypondPath === "'(\n    (moveto 0 1.5)\n    (closepath))", "re-serialized: " + JSON.stringify(glyph.lilypondPath));
+    }},
+  { name: "fixtures/kite-up.svg still imports with the Kite config's pre-baked paths", fn: () => {
+      const text = readFileSync(path.join(FIXTURES, "kite-up.svg"), "utf8");
+      const kite = JSON.parse(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).shapes["kite-up"];
+      const doc = toolkitDoc({
+        notehead: stubEl("path", { id: "notehead", d: svgAttr(text, "notehead", "d"), "data-semitone-height": "4",
+          "data-lilypond-notehead": svgAttr(text, "notehead", "data-lilypond-notehead") }),
+        hollow: stubEl("path", { id: "hollow", d: svgAttr(text, "hollow", "d"),
+          "data-lilypond-hollow": svgAttr(text, "hollow", "data-lilypond-hollow") }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "kite-up");
+      assert(error === null, "no error: " + error);
+      assert(shape.lilypondPath === kite.lilypondPath, "notehead path: " + JSON.stringify(shape.lilypondPath));
+      assert(shape.lilypondHollowPath === kite.lilypondHollowPath, "hollow path: " + JSON.stringify(shape.lilypondHollowPath));
+    }},
 ];
+
+// ─── Fixture helpers ─────────────────────────────────────────────────────────
+
+const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
+
+/** An attribute of the element with the given id in SVG text (XML-unescaped). */
+function svgAttr(text, id, attr) {
+  const m = new RegExp(`id="${id}"[^>]*?\\s${attr}="([^"]*)"`, "s").exec(text);
+  if (!m) throw new Error(`fixture has no ${attr} on #${id}`);
+  return m[1].replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
