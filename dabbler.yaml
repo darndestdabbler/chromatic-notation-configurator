@@ -1,0 +1,64 @@
+# dabbler.yaml -- what this repository declares about itself.
+#
+# Tracked, unlike local-overrides.yaml, because CI reads these facts and so
+# does the next machine to pick up a session. Precedence is the packaged
+# router-config.yaml, then this file, then local-overrides.yaml. Providers,
+# models, roles and transports are deliberately absent: those are
+# distribution facts, and a repository that restated them here would fork
+# the model registry in order to say how to run a test suite.
+schema_version: 1
+
+# The unit suite is the run of record. cnb/tests/run-tests.js runs every
+# cnb/tests/*-tests.js file plus the gallery gate (check-gallery-examples.js,
+# 18 tests), 758 tests in about a second on 2026-10-30. The runner takes no
+# file arguments, so it runs whole every time; `test_name` still lets a
+# change to cnb/src/cnb-grid.js name cnb/tests/cnb-grid-tests.js for the
+# reviewer.
+#
+# The browser UAT is the second suite (session 5). `npm run uat` runs every
+# cnb/uat/uat-*.mjs Playwright driver in turn and stops at the first failure;
+# 12 drivers in a minute or two on 2026-11-01. Its prerequisites are per
+# machine and not installed by the suite: `npm install` (playwright-core, the
+# only devDependency), `npx playwright install chromium firefox`, and an
+# installed Microsoft Edge (uat-hostile-input.mjs, session 6, runs in all
+# three browsers). Without them a driver exits 2 naming what is missing.
+# Results: docs/uat-status.md.
+#
+# A suite must use `command`: the run-of-record reader refuses an argv-only
+# suite (testEvidence.loadSuitesChecked in the router).
+testing:
+  suites:
+    - name: cnb-unit
+      command: node cnb/tests/run-tests.js
+      expensive: true
+      whole_at_close: true
+      runs_whole: true
+      covers: [cnb/src/, cnb/ui/, cnb/assets/, cnb/fixtures/, cnb/tests/, cnb/index.html]
+      test_roots: [cnb/tests]
+      test_glob: "*-tests.js"
+      test_name: "{name}-tests.js"
+    - name: cnb-uat
+      command: npm run uat
+      expensive: true
+      whole_at_close: true
+      runs_whole: true
+      covers: [cnb/]
+
+# Step (f) of the lifecycle: pack, then push to a feed. A session that
+# declared itself releasable publishes through these -- both argv, never
+# shell strings, and `push` naming the credential rather than holding it.
+# This repository declares none, and that is the declaration: it publishes
+# to no feed today. A feed that is a folder on disk -- a drive path, a UNC
+# path or file:// -- takes no credential: leave `secret` out, and the push
+# runs without one. `dabbler packaging --dry-run` rehearses the block and
+# exits 0 when it loads, in a session that may not publish too;
+# `dabbler packaging --rehearse` runs the pack and pushes nothing.
+#
+#   packaging:
+#     pack:
+#       argv: ["dotnet", "pack", "-c", "Release", "-o", "{output}"]
+#     push:
+#       argv: ["dotnet", "nuget", "push", "{artifact}",
+#              "--source", "{feed}", "--api-key", "{secret}"]
+#       feed: https://pkgs.dev.azure.com/<org>/_packaging/<feed>/nuget/v3/index.json
+#       secret: DABBLER_FEED_PAT
