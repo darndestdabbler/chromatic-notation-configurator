@@ -126,9 +126,9 @@
     {
       "number": 7,
       "title": "Retire `legacy/`, rewrite the README and the guidance",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-01T18:58:08.455000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-01T19:14:48.667000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
