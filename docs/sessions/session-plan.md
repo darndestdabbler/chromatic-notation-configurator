@@ -374,3 +374,130 @@ origin. A major version: this is the first release.
 - Feasibility-matrix records 32–40 re-tiered by dated amendment.
 - Operator UAT decision on record; all pre-existing baselines byte-identical
   throughout.
+
+### Session 10: No imported text can become Scheme
+
+**Why.** A whole-repository audit on 2026-11-02
+(`docs/planning/audit-2026-11-02.md`; finding IDs below refer to it)
+found that a shared config or SVG can put executable Scheme into the
+exported `.ly` (H1). LilyPond runs it at compile time, and `(system …)`
+would run commands. The affected fields include labels and names that
+land in `%%` comments (where a newline ends the comment),
+`lilypondVersion`, `schemeSymbols` values, `defaultMagnify`, duration
+names, and path data taken verbatim from `data-lilypond-*` attributes,
+which the toolkit audit (M11) reached independently. Validation called
+these configs valid. 1.0.0 is tagged, and nothing is public; this ships
+as 1.0.1.
+
+1. Register.
+2. Route every value that `cnb/src/cnb-lilypond.js` emits through a small
+   set of emitters, and never interpolate raw config text:
+   - **Comment text:** control characters and newlines become spaces (this
+     also covers L6).
+   - **Scheme strings:** escape `\` and `"`.
+   - **Symbols:** match `^[a-z][a-z0-9-]*$`, else the export fails with
+     the field's name.
+   - **Numbers:** finite JavaScript numbers, formatted by the exporter.
+   - **Versions:** match `^\d+\.\d+\.\d+$`.
+   - **Path data:** parsed into commands and numbers and re-emitted from
+     the numbers, including `data-lilypond-*` from imported SVGs. A path
+     that does not parse is an import error, never text passed through.
+
+   Validation rejects every value the emitters would reject, so an invalid
+   config never reaches export.
+3. M5: shape names whose slugs collide (`Kite Up` / `kite-up`), and names
+   whose slug is empty (non-ASCII), get a validation error naming both
+   shapes, or a deterministic disambiguating suffix. They never overwrite
+   silently.
+4. Hostile-input tests:
+   - Add the audit's payloads as fixtures: `shared-config.json` (newline
+     plus `#(display …)` in the notation label), and an SVG whose
+     `data-lilypond-notehead` carries `#(display …)`, plus one payload per
+     affected field.
+   - Unit tests assert that each payload is either rejected, or exports a
+     `.ly` in which no `#(` or `$(` appears outside the exporter's own
+     constant template.
+   - An engine-backed test, which skips with a reason when LilyPond is not
+     on `PATH`, compiles each export and asserts that the payload text is
+     never printed.
+
+   Run the cnb-unit suite.
+
+### Session 11: Path data in the units the engine reads
+
+1. Register.
+2. H2, H3:
+   - **Toolkit paths:** a toolkit SVG's `data-lilypond-*` paths are in
+     semitone units. The exporter divides them by the staff's semitones
+     per staff space, exactly as `semiToStaffSpace` already does for
+     anchors.
+   - **Fallback conversion:** `svgPathToLilypond`, the path for SVGs
+     without toolkit data, applies the toolkit's normalisation instead of
+     emitting raw coordinates: 100 units per semitone, centred, Y up. It
+     then applies the same division.
+   - **Shared code:** one conversion function serves both paths, with unit
+     tests at sps 1, 2 and 3.
+3. Regenerate fixtures from real data, never by hand:
+   - **Kite and twinline-compact:** rebuild them by importing
+     `cnb/fixtures/kite-up.svg` / `kite-down.svg` (and the twinline
+     shapes) through the importer, then export. The Kite export must still
+     match the engine's golden score. If it does not, find which side is
+     wrong and record it; do not hand-scale to make it pass.
+   - **Baselines:** re-baseline `default-export-baseline.ly` and the
+     gallery baselines.
+   - **Size test:** add an engine-backed test (skipping without LilyPond)
+     that renders the default config and asserts the notehead bounding box
+     is between 0.5 and 3 staff spaces.
+   - **Gallery check:** it must do more than prove `generate()` doesn't
+     throw. Each gallery export's noteheads must pass the same size check.
+4. Toolkit M5, M7, M8 (the importer side):
+   - accept `data-lilypond-glyph`, the toolkit's glyph-mode attribute, for
+     clefs, and import every path, not only the first;
+   - when an SVG carries attributes from both modes, prefer the one
+     matching the import target, and warn;
+   - apply a rect's `transform` before reading anchors.
+
+   Toolkit 1.0.1 bakes transforms out, but SVGs from 1.0.0 may still carry
+   them. Add a unit test for each.
+
+### Session 12: Export only what the engine engraves
+
+1. Register.
+2. M1: the exporter emits no `cnb:stem-thickness`, which the engine
+   doesn't define and which makes LilyPond fail. The stem thickness
+   control says it is preview-only. M2: staff line colour and thickness,
+   and ledger rules, are marked in the UI and in the export header as
+   preview-only until the engine supports them. Add them to README
+   "Known limitations". Low items L2 and L3 get the same treatment: the
+   CB-safe toggle and the edited repeat counts are either exported
+   faithfully or labelled preview-only, and the header never claims a
+   palette the export doesn't carry.
+3. M3: a notehead rule scoped to a key is either exported (Section C can
+   branch on `key`) with a test, or refused at export with a warning that
+   names the rule; it never vanishes silently. M4: editing the staff
+   (even a colour) never resets `staff.midpoint` or sps. Add a test that
+   edits twinline-compact (midpoint 7) and asserts the pitch-axis export
+   is byte-identical apart from the edited field.
+4. L1: fix the "derived LilyPond geometry" panel under a pitch axis.
+   L4: every `approx()` helper fails on NaN (`!(Math.abs(a - b) <= tol)`).
+   L5: the test runner counts a test file with no `tests` export as a
+   failure. Run the cnb-unit suite; it must still pass with no test
+   hiding behind the stricter checks.
+
+### Session 13: Documentation, archive and 1.0.1
+
+1. Register.
+2. M6: push the `legacy-monolith-final` tag to origin
+   (`git push origin legacy-monolith-final`). Check every README and
+   `CLAUDE.md` link to it resolves on GitHub. L7: the README describes
+   `cnb/assets/` as it is. README "Known limitations" lists what sessions
+   10–12 made preview-only.
+3. Release archive hygiene: add `.gitattributes` `export-ignore` for
+   `.vscode/`, `AGENTS.md`, `CLAUDE.md`, `docs/sessions/`,
+   `docs/transcripts/` and `docs/planning/`. Prove it with
+   `dabbler packaging --rehearse` (list the zip in the session notes).
+   Set `version.json` to `1.0.1`, and add a `CHANGELOG.md` with 1.0.0
+   and 1.0.1. The entry must say that exports from 1.0.0 with toolkit
+   shapes or fallback paths were mis-scaled and should be regenerated.
+
+### Session 14: Release 1.0.1 (release: 1.0.1)
