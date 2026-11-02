@@ -19,7 +19,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 5 | Browser UAT becomes reproducible | no | 2026-10-31 |
 | 6 | Hostile input, error paths and the browser matrix | no | 2026-11-01 |
 | 7 | Retire `legacy/`, rewrite the README and the guidance | no | 2026-11-01 |
-| 8 | Packaging | — | not declared |
+| 8 | Packaging | no | 2026-11-01 |
 | 9 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -67,3 +67,9 @@ Make the app report hostile input instead of failing in the console, prove it in
 **Releasable: no.**
 
 Retire the legacy monolith and bring the repository's front-door documentation up to a 1.0.0 product. Tag the current commit `legacy-monolith-final`, delete `legacy/`, and repoint every live reference to it at the tag: the architecture plan's file-structure section, `docs/planning/project-plan.md`, the port-origin comments in four `cnb/` files, and `cnb/tests/cnb-lilypond-tests.js`, which (contrary to the session plan's note) still requires `legacy/configurator-core.js` for three legacy-parity tests; those tests and their now-unused helpers go with the code they compared against. Rewrite the README for a complete 1.0.0 product: status complete, export spec v1.3, no `legacy/`, a "Known limitations" section summarizing and linking Part 2 of the notation-builder playbook (I1, I3, I4, I5 as hard limits; I2 relaxed by the optional `pitchAxis` section per the feasibility matrix §9), a "Running the tests and UAT" section matching `dabbler.yaml`, and LilyPond 2.24.x or 2.26.x for engraving. Update `CLAUDE.md` (spec v1.3, Module 24 `cnb-pitch-axis.js`, no legacy section or legacy test command). Replace the placeholder `docs/planning/lessons-learned.md` with real lessons harvested from the session-set change logs, delete the empty `lessons-archive.md` and the TODO-template `project-guidance.md`, leaving no v1 `ai_router` instructions, and add a root `version.json` reading `{ "version": "1.0.0" }`.
+
+### Session 8 — Packaging
+
+**Releasable: no.**
+
+Declare how this repository packages a release: add a `packaging:` block to dabbler.yaml with a `pack` and no `push`, whose argv makes a source archive of the trunk with `git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD`, and correct the comment above it that says the repository declares no packaging. The block is checked with `dabbler packaging --rehearse`.

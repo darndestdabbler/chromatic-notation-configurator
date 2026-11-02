@@ -47,18 +47,14 @@ testing:
 # Step (f) of the lifecycle: pack, then push to a feed. A session that
 # declared itself releasable publishes through these -- both argv, never
 # shell strings, and `push` naming the credential rather than holding it.
-# This repository declares none, and that is the declaration: it publishes
-# to no feed today. A feed that is a folder on disk -- a drive path, a UNC
-# path or file:// -- takes no credential: leave `secret` out, and the push
-# runs without one. `dabbler packaging --dry-run` rehearses the block and
-# exits 0 when it loads, in a session that may not publish too;
-# `dabbler packaging --rehearse` runs the pack and pushes nothing.
-#
-#   packaging:
-#     pack:
-#       argv: ["dotnet", "pack", "-c", "Release", "-o", "{output}"]
-#     push:
-#       argv: ["dotnet", "nuget", "push", "{artifact}",
-#              "--source", "{feed}", "--api-key", "{secret}"]
-#       feed: https://pkgs.dev.azure.com/<org>/_packaging/<feed>/nuget/v3/index.json
-#       secret: DABBLER_FEED_PAT
+# This repository declares a pack and no push: the artifact is a zip source
+# archive of the trunk (`git archive` of HEAD), and it publishes to no feed.
+# `release: tag` is not used: in Dabbler 3.27.0 it validates the
+# orchestration repository's own manifests and names a `vsix-v*` tag.
+# `dabbler packaging --dry-run` rehearses the block and exits 0 when it
+# loads, in a session that may not publish too; `dabbler packaging
+# --rehearse` runs the pack and pushes nothing.
+packaging:
+  pack:
+    argv: ["git", "archive", "--format=zip",
+           "--output={output}/chromatic-notation-configurator-1.0.0.zip", "HEAD"]
