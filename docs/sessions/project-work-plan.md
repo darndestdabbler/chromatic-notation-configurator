@@ -20,7 +20,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 6 | Hostile input, error paths and the browser matrix | no | 2026-11-01 |
 | 7 | Retire `legacy/`, rewrite the README and the guidance | no | 2026-11-01 |
 | 8 | Packaging | no | 2026-11-01 |
-| 9 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 9 | Release 1.0.0 (release: 1.0.0) | yes | 2026-11-02 |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -73,3 +73,9 @@ Retire the legacy monolith and bring the repository's front-door documentation u
 **Releasable: no.**
 
 Declare how this repository packages a release: add a `packaging:` block to dabbler.yaml with a `pack` and no `push`, whose argv makes a source archive of the trunk with `git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD`, and correct the comment above it that says the repository declares no packaging. The block is checked with `dabbler packaging --rehearse`.
+
+### Session 9 — Release 1.0.0 (release: 1.0.0)
+
+**Releasable: yes.**
+
+Release 1.0.0: the framework packs and publishes what is on the trunk.

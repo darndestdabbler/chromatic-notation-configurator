@@ -125,6 +125,13 @@
       "dateTime": "2026-11-01T19:20:06.788000-05:00",
       "task": "Declare how this repository packages a release: add a `packaging:` block to dabbler.yaml with a `pack` and no `push`, whose argv makes a source archive of the trunk with `git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD`, and correct the comment above it that says the repository declares no packaging. The block is checked with `dabbler packaging --rehearse`.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 9,
+      "dateTime": "2026-11-02T05:22:54.145000-05:00",
+      "task": "Release 1.0.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
