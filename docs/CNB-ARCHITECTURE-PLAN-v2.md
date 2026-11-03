@@ -177,8 +177,12 @@ shapes: {
     },
 
     // ── LilyPond data (for export) ──
-    // Pre-baked LilyPond path from data-lilypond-notehead attribute (preferred).
-    // If null, exporter will convert svgPath via svgPathToLilypond().
+    // Pre-baked LilyPond path from data-lilypond-notehead attribute (preferred),
+    // in SEMITONE units, Y up (toolkit: SVG units ÷ 100, Y negated); the
+    // exporter divides it by semitonesPerStaffSpace at export time, like
+    // lilypondAnchors (LY spec v1.3 §4.1b). If null, the exporter converts
+    // svgPath via svgPathToLilypond(): ÷ (naturalHeight / semitoneHeight),
+    // Y negated, ÷ semitonesPerStaffSpace.
     lilypondPath: null,
     lilypondHollowPath: null,
 
@@ -216,7 +220,7 @@ shapes: {
 - `anchors` is `null` for stemless shapes. The stem module handles this (no stem drawn).
 - The 4-point anchor model (crotchet-up/down, minim-up/down) accounts for the fact that stem width (~1/5 semitone) affects where the stem visually attaches to filled vs. hollow noteheads. Inkscape extension output provides these.
 - `hollowPath` overlay uses white fill. Known limitation: only works on white/solid backgrounds.
-- `lilypondPath` and `lilypondHollowPath` are the pre-baked LilyPond-format paths from `data-lilypond-notehead` / `data-lilypond-hollow` SVG attributes. When available, the exporter uses these verbatim. When null, it falls back to converting `svgPath`.
+- `lilypondPath` and `lilypondHollowPath` are the pre-baked LilyPond-format paths from `data-lilypond-notehead` / `data-lilypond-hollow` SVG attributes. They are stored in semitone units, Y up. When they are available, the exporter re-emits them from their parsed numbers, divided by the staff's semitones per staff space (or `axisUnitsPerStaffSpace` under a pitch axis). When null, it falls back to converting `svgPath` with the toolkit's normalisation: ÷ SVG units per semitone, Y negated, then the same division (LY spec v1.3 §4.1b; corrected in session 11 for audit 2026-11-02 H2/H3, because earlier exports used them verbatim and were mis-scaled).
 
 **↔ LY Spec mapping:**
 | Config field | LY Section | LY construct |

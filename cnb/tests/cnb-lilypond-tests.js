@@ -11,14 +11,16 @@
  * retired with the monolith (preserved at tag `legacy-monolith-final`).
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "fs";
-import { execFile, spawnSync } from "child_process";
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
+import { execFile } from "child_process";
+import { findEngine, measureNoteheads } from "./engine-probe.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
+import { CNBScheme } from "../src/cnb-scheme.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -99,37 +101,59 @@ function parseSectionCClauses(text) {
 
 export const tests = [
 
-  // ── svgPathToLilypond ──────────────────────────────────────────────────────
+  // ── pathToStaffSpace / svgPathToLilypond (audit H2/H3) ─────────────────────
 
-  { name: "svgPathToLilypond converts M/L/C/Z", fn: () => {
-      const out = CNBLilypond.svgPathToLilypond("M 0 1 L 2 3 C 4 5 6 7 8 9 Z");
-      eq(out, "'(\n    (moveto 0 1)\n    (lineto 2 3)\n    (curveto 4 5 6 7 8 9)\n    (closepath))");
+  // The toolkit writes kite-up.svg (4 semitones tall, 100 SVG units per
+  // semitone) as semitone-unit data: (moveto 0 2) (lineto 2 1) …
+  { name: "pathToStaffSpace: a toolkit (semitone-unit) path is divided by sps 1, 2 and 3", fn: () => {
+      const commands = [
+        { cmd: "moveto", args: [0, 2] }, { cmd: "lineto", args: [2, 1] },
+        { cmd: "curveto", args: [3, 3, -3, 3, 0, -2] }, { cmd: "closepath", args: [] },
+      ];
+      eq(CNBLilypond.pathToStaffSpace(commands, 1),
+        "'(\n    (moveto 0 2)\n    (lineto 2 1)\n    (curveto 3 3 -3 3 0 -2)\n    (closepath))", "sps 1");
+      eq(CNBLilypond.pathToStaffSpace(commands, 2),
+        "'(\n    (moveto 0 1)\n    (lineto 1 0.5)\n    (curveto 1.5 1.5 -1.5 1.5 0 -1)\n    (closepath))", "sps 2");
+      eq(CNBLilypond.pathToStaffSpace(commands, 3),
+        "'(\n    (moveto 0 0.6667)\n    (lineto 0.6667 0.3333)\n    (curveto 1 1 -1 1 0 -0.6667)\n    (closepath))", "sps 3");
+    }},
+
+  { name: "pathToStaffSpace: flipY negates Y only", fn: () => {
+      eq(CNBLilypond.pathToStaffSpace([{ cmd: "moveto", args: [4, 8] }], 2, true), "'(\n    (moveto 2 -4))");
+    }},
+
+  { name: "svgPathToLilypond normalises SVG units: ÷ units per semitone, Y up, ÷ sps 1, 2 and 3", fn: () => {
+      // kite-up.svg's notehead d, 100 SVG units per semitone: the same
+      // geometry as the toolkit path above, so the same output at each sps.
+      const d = "M 0 -200 L 200 -100 C 300 -300 -300 -300 0 200 Z";
+      for (const [sps, expected] of [
+        [1, "'(\n    (moveto 0 2)\n    (lineto 2 1)\n    (curveto 3 3 -3 3 0 -2)\n    (closepath))"],
+        [2, "'(\n    (moveto 0 1)\n    (lineto 1 0.5)\n    (curveto 1.5 1.5 -1.5 1.5 0 -1)\n    (closepath))"],
+        [3, "'(\n    (moveto 0 0.6667)\n    (lineto 0.6667 0.3333)\n    (curveto 1 1 -1 1 0 -0.6667)\n    (closepath))"],
+      ]) {
+        eq(CNBLilypond.svgPathToLilypond(d, 100, sps), expected, `sps ${sps}`);
+      }
+    }},
+
+  { name: "svgPathToLilypond uses the shape's own units per semitone (136.2 for the gallery shapes)", fn: () => {
+      // 136.2 SVG units = 1 semitone; sps 2 → 0.5 staff space
+      contains(CNBLilypond.svgPathToLilypond("M 136.2 -272.4", 136.2, 2), "(moveto 0.5 1)");
     }},
 
   { name: "svgPathToLilypond folds H/V into lineto with tracked position", fn: () => {
-      const out = CNBLilypond.svgPathToLilypond("M 0 0 H 5 V 6 Z");
+      const out = CNBLilypond.svgPathToLilypond("M 0 0 H 5 V 6 Z", 1, 1);
       contains(out, "(lineto 5 0)");
-      contains(out, "(lineto 5 6)");
+      contains(out, "(lineto 5 -6)");
     }},
 
-  { name: "svgPathToLilypond rounds to 4 decimals by default", fn: () => {
-      const out = CNBLilypond.svgPathToLilypond("M 0.123456 1.999999");
-      contains(out, "(moveto 0.1235 2)");
-    }},
-
-  { name: "svgPathToLilypond honors explicit precision", fn: () => {
-      const out = CNBLilypond.svgPathToLilypond("M 0.123456 1", 2);
-      contains(out, "(moveto 0.12 1)");
-    }},
-
-  { name: "svgPathToLilypond normalizes -0 to 0", fn: () => {
-      const out = CNBLilypond.svgPathToLilypond("M -0.00001 -0.00001");
-      contains(out, "(moveto 0 0)");
+  { name: "svgPathToLilypond rounds to 4 decimals and normalizes -0 to 0", fn: () => {
+      contains(CNBLilypond.svgPathToLilypond("M 0.123456 -1.999999", 1, 1), "(moveto 0.1235 2)");
+      contains(CNBLilypond.svgPathToLilypond("M -0.00001 0.00001", 1, 1), "(moveto 0 0)");
     }},
 
   { name: "svgPathToLilypond returns '() for empty/invalid input", fn: () => {
-      eq(CNBLilypond.svgPathToLilypond(""), "'()");
-      eq(CNBLilypond.svgPathToLilypond(null), "'()");
+      eq(CNBLilypond.svgPathToLilypond("", 100, 4), "'()");
+      eq(CNBLilypond.svgPathToLilypond(null, 100, 4), "'()");
     }},
 
   // ── toSchemeSymbol ─────────────────────────────────────────────────────────
@@ -187,20 +211,28 @@ export const tests = [
 
   // ── Section A: paths ───────────────────────────────────────────────────────
 
-  { name: "sectionA falls back to SVG path conversion when lilypondPath is null", fn: () => {
+  { name: "sectionA falls back to SVG path conversion in staff-space units when lilypondPath is null", fn: () => {
+      // Default crotchet-minim: 100 SVG units per semitone, sps 4 →
+      // M 163.578 -81.573 becomes (moveto 0.4089 0.2039), not raw SVG (H3).
       const out = CNBLilypond.sectionA(CNBConfig.createDefault());
-      contains(out, "#(define cnb:crotchet-minim-path '(");
-      contains(out, "(moveto 163.578 -81.573)");
+      contains(out, "#(define cnb:crotchet-minim-path '(\n    (moveto 0.4089 0.2039)");
+      lacks(out, "163.578");
     }},
 
-  { name: "sectionA prefers pre-baked lilypondPath, re-emitted from its numbers", fn: () => {
-      const cfg = CNBConfig.createDefault();
+  { name: "sectionA emits a pre-baked lilypondPath ÷ sps, re-emitted from its numbers (H2)", fn: () => {
+      const cfg = CNBConfig.createDefault(); // sps 4
       cfg.shapes["crotchet-minim"].lilypondPath = "'((moveto 0.80 -0.0) (closepath))";
-      cfg.shapes["crotchet-minim"].lilypondHollowPath = "'( (moveto .5 0)\n(closepath) )";
+      cfg.shapes["crotchet-minim"].lilypondHollowPath = "'( (moveto 2 0)\n(closepath) )";
       const out = CNBLilypond.sectionA(cfg);
-      contains(out, "#(define cnb:crotchet-minim-path '(\n    (moveto 0.8 0)\n    (closepath)))");
+      contains(out, "#(define cnb:crotchet-minim-path '(\n    (moveto 0.2 0)\n    (closepath)))");
       contains(out, "#(define cnb:crotchet-minim-cutout-path '(\n    (moveto 0.5 0)\n    (closepath)))");
       lacks(out, "curveto", "pre-baked paths should suppress fallback conversion");
+    }},
+
+  { name: "sectionA divides path data by axisUnitsPerStaffSpace under a pitch axis", fn: () => {
+      const cfg = spikeAxisConfig(); // axisUnitsPerStaffSpace 2, staff sps 4
+      cfg.shapes["crotchet-minim"].lilypondPath = "'((moveto 1 -1) (closepath))";
+      contains(CNBLilypond.sectionA(cfg), "#(define cnb:crotchet-minim-path '(\n    (moveto 0.5 -0.5)\n    (closepath)))");
     }},
 
   { name: "sectionA refuses a pre-baked path that does not parse, naming the field", fn: () => {
@@ -267,17 +299,33 @@ export const tests = [
       eq(normalize(CNBLilypond.generate(CNBConfig.createDefault())), normalize(baseline), "default export");
     }},
 
-  { name: "baselines: the Kite 4-369 export carries its pre-baked paths unchanged", fn: () => {
+  { name: "baselines: the Kite 4-369 export still exports byte-identically to kite-4-369-export-baseline.ly", fn: () => {
+      // Captured before session 11's path-unit change: the export set 007
+      // matched to the engine's golden score, which the rebuilt fixture must reproduce.
+      const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
+      const baseline = readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-export-baseline.ly"), "utf8");
+      const config = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"));
+      eq(normalize(CNBLilypond.generate(config)), normalize(baseline), "Kite export");
+    }},
+
+  { name: "baselines: the Kite 4-369 export carries its toolkit (semitone-unit) paths ÷ sps 3", fn: () => {
       const text = readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8");
       const { config } = CNBConfigIO.loadFromText(text);
       const out = CNBLilypond.generate(config);
+      const sps = config.staff.semitonesPerStaffSpace;
+      eq(sps, 3, "Kite staff");
       let count = 0;
       for (const [name, shape] of Object.entries(config.shapes)) {
         const sym = _internals.slug(name);
-        if (shape.lilypondPath) { contains(out, `#(define cnb:${sym}-path ${shape.lilypondPath})`, name); count++; }
-        if (shape.lilypondHollowPath) { contains(out, `#(define cnb:${sym}-cutout-path ${shape.lilypondHollowPath})`, name); count++; }
+        for (const [key, def] of [["lilypondPath", "path"], ["lilypondHollowPath", "cutout-path"]]) {
+          if (!shape[key]) continue;
+          const scaled = CNBLilypond.pathToStaffSpace(CNBScheme.parsePath(shape[key]), sps);
+          contains(out, `#(define cnb:${sym}-${def} ${scaled})`, `${name} ${key}`);
+          count++;
+        }
       }
       assert(count >= 2, `expected pre-baked Kite paths, found ${count}`);
+      contains(out, "(moveto 0 0.6667)", "kite-up's toolkit (moveto 0 2) at sps 3");
     }},
 
   { name: "sectionA registers paths and hollow cutouts", fn: () => {
@@ -927,6 +975,20 @@ export const tests = [
       }
     }},
 
+  { name: "size (engine): the default config engraves noteheads 0.5–3 staff spaces wide and tall", fn: async () => {
+      // Audit H3: the fallback once emitted raw SVG units, so one notehead
+      // filled the page. Measured from a real engine render.
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const { noteheads, error } = await measureNoteheads(engine, CNBLilypond.generate(CNBConfig.createDefault()));
+      assert(!error, `the default export must compile and engrave: ${error}`);
+      eq(noteheads.length, 12, "one notehead per pitch class");
+      for (const { pc, width, height } of noteheads) {
+        assert(width >= 0.5 && width <= 3, `pc ${pc}: width ${width} staff spaces is outside 0.5–3`);
+        assert(height >= 0.5 && height <= 3, `pc ${pc}: height ${height} staff spaces is outside 0.5–3`);
+      }
+    }},
+
   { name: "hostile (engine): LilyPond never prints a payload from an accepted export", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
@@ -1038,17 +1100,6 @@ function assertNoLiveScheme(out, baseOut, marker, label = marker) {
   const count = (text) => (liveCode(text).match(/[#$]\(/g) || []).length;
   eq(count(out), count(baseOut), `${label}: #( / $( count in live code`);
   lacks(liveCode(out), marker, `${label}: the marker must not reach live code`);
-}
-
-/** The LilyPond binary and engine directory for the engine-backed test, or { skip }. */
-function findEngine() {
-  const probe = spawnSync("lilypond", ["--version"], { timeout: 60000, windowsHide: true });
-  if (probe.error || probe.status !== 0) return { skip: "lilypond is not on PATH" };
-  const dir = process.env.CNB_ENGINE_DIR || path.resolve(CNB_DIR, "..", "..", "lilypond-chromatic-notation-base");
-  if (!existsSync(path.join(dir, "ChromaticNotationBase.ly"))) {
-    return { skip: `engine not found at ${dir} (set CNB_ENGINE_DIR)` };
-  }
-  return { lilypond: "lilypond", dir };
 }
 
 // ── Pitch-axis test helper (set 014) ─────────────────────────────────────────

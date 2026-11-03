@@ -14,6 +14,8 @@ import { CNBSvgImporter } from "../ui/svg-importer.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBScheme } from "../src/cnb-scheme.js";
+import { parseSvgDocument } from "./svg-stub.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -158,6 +160,62 @@ export const tests = [
       const upOnly = CNBSvgImporter.anchorsFromStemRects({ x: 10, y: -100, width: 20, height: 100 }, null);
       approx(upOnly.crotchetUp.x, 20, "up present");
       assert(upOnly.crotchetDown.x === 0 && upOnly.crotchetDown.y === 0, "missing down → (0,0)");
+    }},
+
+  // — stem rect transforms (toolkit audit M8) —
+  { name: "transformRect: Inkscape's flip scale(-1) reads where the rect is drawn", fn: () => {
+      const r = CNBSvgImporter.transformRect({ x: -70, y: 10, width: 20, height: 80 }, "scale(-1)");
+      assert(r.x === 50 && r.width === 20, `x 50..70, got ${r.x}..${r.x + r.width}`);
+      assert(r.y === -90 && r.height === 80, `y -90..-10, got ${r.y}..${r.y + r.height}`);
+    }},
+  { name: "transformRect: no transform returns the rect unchanged", fn: () => {
+      const rect = { x: 1, y: 2, width: 3, height: 4 };
+      assert(CNBSvgImporter.transformRect(rect, null) === rect, "null");
+      assert(CNBSvgImporter.transformRect(rect, "  ") === rect, "blank");
+    }},
+  { name: "transformRect: translate, scale(sx sy), matrix and a list compose right-to-left", fn: () => {
+      const rect = { x: 0, y: 0, width: 10, height: 20 };
+      const t = CNBSvgImporter.transformRect(rect, "translate(5)");
+      assert(t.x === 5 && t.y === 0 && t.width === 10 && t.height === 20, "translate(tx): " + JSON.stringify(t));
+      const s = CNBSvgImporter.transformRect(rect, "scale(2, 0.5)");
+      assert(s.width === 20 && s.height === 10, "scale(sx, sy): " + JSON.stringify(s));
+      const m = CNBSvgImporter.transformRect(rect, "matrix(1 0 0 -1 0 0)");
+      assert(m.y === -20 && m.height === 20, "matrix vertical flip: " + JSON.stringify(m));
+      // translate applies after scale: x = 2·0 + 100
+      const list = CNBSvgImporter.transformRect(rect, "translate(100,0) scale(2)");
+      assert(list.x === 100 && list.width === 20, "list order: " + JSON.stringify(list));
+    }},
+  { name: "transformRect: rotate(deg) and rotate(deg cx cy) give the rotated bounding box", fn: () => {
+      const rect = { x: 0, y: 0, width: 10, height: 20 };
+      const r = CNBSvgImporter.transformRect(rect, "rotate(90)");
+      assert(r.x === -20 && r.y === 0 && r.width === 20 && r.height === 10, "rotate(90): " + JSON.stringify(r));
+      const c = CNBSvgImporter.transformRect(rect, "rotate(180 5 10)");
+      assert(c.x === 0 && c.y === 0 && c.width === 10 && c.height === 20, "rotate about centre: " + JSON.stringify(c));
+    }},
+  { name: "transformRect: an unreadable transform returns null", fn: () => {
+      const rect = { x: 0, y: 0, width: 1, height: 1 };
+      for (const bad of ["skewX(10)", "scale()", "translate(1 2 3)", "rotate(1 2)", "matrix(1 0 0 1)", "scale(a)", "scale(2) junk"]) {
+        assert(CNBSvgImporter.transformRect(rect, bad) === null, `${bad} must not parse`);
+      }
+    }},
+  { name: "extract reads stem anchors through a flipped rect's transform (M8)", fn: () => {
+      // stem-down drawn by flipping a copy of stem-up: raw x=-70 y=10 sits on
+      // the wrong side; visually it is at x 50..70, y -90..-10.
+      const doc = toolkitDoc({
+        "stem-down": stubEl("rect", { id: "stem-down", x: "-70", y: "10", width: "20", height: "80", transform: "scale(-1)" }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "flip");
+      assert(error === null, "no error: " + error);
+      assertSame(shape.anchors.crotchetDown, { x: 60, y: -90 }, "down anchor = top-centre of the visible rect");
+    }},
+  { name: "extract refuses a stem rect whose transform it cannot read, naming the rect", fn: () => {
+      const doc = toolkitDoc({
+        "stem-up": stubEl("rect", { id: "stem-up", x: "0", y: "0", width: "20", height: "350", transform: "skewX(30)" }),
+      });
+      const extracted = CNBSvgImporter.extract(doc);
+      assert(/"stem-up" rect has a transform/.test(extracted.error || ""), "error names the rect: " + extracted.error);
+      const { shape } = CNBSvgImporter.buildShape(extracted, "bad");
+      assert(shape === null, "no shape is built");
     }},
 
   // — LilyPond anchor conversion —
@@ -602,7 +660,7 @@ export const tests = [
       });
       const { glyph, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "C");
       assert(glyph === null, "no glyph is built");
-      assert(/data-lilypond-clef .* is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
+      assert(/data-lilypond-clef is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
     }},
   { name: "buildClefGlyph stores a valid clef path re-serialized", fn: () => {
       const doc = stubDoc({ viewBox: "-50 -150 100 300" }, {
@@ -613,19 +671,93 @@ export const tests = [
       assert(error === null, "no error: " + error);
       assert(glyph.lilypondPath === "'(\n    (moveto 0 1.5)\n    (closepath))", "re-serialized: " + JSON.stringify(glyph.lilypondPath));
     }},
-  { name: "fixtures/kite-up.svg still imports with the Kite config's pre-baked paths", fn: () => {
-      const text = readFileSync(path.join(FIXTURES, "kite-up.svg"), "utf8");
-      const kite = JSON.parse(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).shapes["kite-up"];
-      const doc = toolkitDoc({
-        notehead: stubEl("path", { id: "notehead", d: svgAttr(text, "notehead", "d"), "data-semitone-height": "4",
-          "data-lilypond-notehead": svgAttr(text, "notehead", "data-lilypond-notehead") }),
-        hollow: stubEl("path", { id: "hollow", d: svgAttr(text, "hollow", "d"),
-          "data-lilypond-hollow": svgAttr(text, "hollow", "data-lilypond-hollow") }),
-      });
-      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "kite-up");
+
+  // — glyph-mode import (toolkit audit M5, M7) —
+  { name: "extractClef imports every data-lilypond-glyph path and buildClefGlyph merges them (M5)", fn: () => {
+      // Toolkit glyph mode on glyph_multipath.svg: three paths, one
+      // data-lilypond-glyph each, no id="clef".
+      const paths = [
+        stubEl("path", { d: "M 0 -100 L 10 -90 Z", "data-semitone-height": "6", "data-lilypond-glyph": "'((moveto 0 1) (lineto 0.1 0.9) (closepath))" }),
+        stubEl("path", { d: "M 0 0 L 10 10 Z", "data-lilypond-glyph": "'((moveto 0 0) (lineto 0.1 -0.1) (closepath))" }),
+        stubEl("path", { d: "M 0 100 L 10 90 Z", "data-lilypond-glyph": "'((moveto 0 -1) (lineto 0.1 -0.9) (closepath))" }),
+      ];
+      const doc = { ...stubDoc({ viewBox: "-50 -150 100 300" }), querySelectorAll: (sel) => sel === "path" ? paths : [] };
+      const ex = CNBSvgImporter.extractClef(doc);
+      assert(ex.error === null, "no error: " + ex.error);
+      assert(ex.svgPath === "M 0 -100 L 10 -90 Z M 0 0 L 10 10 Z M 0 100 L 10 90 Z", "all three d joined: " + ex.svgPath);
+      const { glyph, warnings, error } = CNBSvgImporter.buildClefGlyph(ex, "Multi");
       assert(error === null, "no error: " + error);
-      assert(shape.lilypondPath === kite.lilypondPath, "notehead path: " + JSON.stringify(shape.lilypondPath));
-      assert(shape.lilypondHollowPath === kite.lilypondHollowPath, "hollow path: " + JSON.stringify(shape.lilypondHollowPath));
+      assert(glyph.semitoneHeight === 6, "semitone height read from the path carrying it");
+      assert(glyph.lilypondPath === "'(\n    (moveto 0 1)\n    (lineto 0.1 0.9)\n    (closepath)\n" +
+        "    (moveto 0 0)\n    (lineto 0.1 -0.1)\n    (closepath)\n" +
+        "    (moveto 0 -1)\n    (lineto 0.1 -0.9)\n    (closepath))", "merged path: " + JSON.stringify(glyph.lilypondPath));
+      assert(!warnings.some(w => /data-lilypond/.test(w)), "no missing-data warning: " + warnings.join("; "));
+    }},
+  { name: "buildClefGlyph: a glyph path without pre-baked data leaves lilypondPath null with a warning", fn: () => {
+      const paths = [
+        stubEl("path", { d: "M 0 0 Z", "data-lilypond-glyph": "'((moveto 0 0) (closepath))" }),
+        stubEl("path", { d: "M 1 1 Z" }),
+      ];
+      // Only the first carries data-lilypond-glyph, so only it is a glyph path.
+      const doc = { ...stubDoc({ viewBox: "0 0 100 300" }), querySelectorAll: () => paths };
+      const ex = CNBSvgImporter.extractClef(doc);
+      assert(ex.svgPath === "M 0 0 Z", "only glyph-mode paths are taken when any exists");
+      const none = { ...stubDoc({ viewBox: "0 0 100 300" }), querySelectorAll: () => [stubEl("path", { d: "M 0 0 Z", "data-lilypond-clef": "'((moveto 0 0))" }), stubEl("path", { d: "M 1 1 Z" })] };
+      const { glyph, warnings } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(none), "X");
+      assert(glyph.svgPath === "M 0 0 Z M 1 1 Z", "every <path> taken when nothing names the glyph");
+      assert(glyph.lilypondPath === null, "incomplete pre-baked data → null");
+      assert(warnings.some(w => /Not every glyph path has/.test(w)), "warned: " + warnings.join("; "));
+    }},
+  { name: "buildClefGlyph refuses a glyph path whose data-lilypond-glyph does not parse, naming the path", fn: () => {
+      const paths = [
+        stubEl("path", { d: "M 0 0 Z", "data-lilypond-glyph": "'((moveto 0 0))" }),
+        stubEl("path", { d: "M 1 1 Z", "data-lilypond-glyph": `'()) (system "calc") (define x '()` }),
+      ];
+      const doc = { ...stubDoc({ viewBox: "0 0 100 300" }), querySelectorAll: () => paths };
+      const { glyph, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "X");
+      assert(glyph === null, "no glyph is built");
+      assert(/data-lilypond-glyph on glyph path 2 is not valid LilyPond path data/.test(error), "error names the path: " + error);
+    }},
+  { name: "clef import prefers glyph-mode data over stale notehead-mode data, and warns (M7)", fn: () => {
+      // A notehead-mode file reprocessed in glyph mode: d and data-lilypond-glyph
+      // are current, data-lilypond-notehead is stale.
+      const doc = stubDoc({ viewBox: "-50 -150 100 300" }, {
+        notehead: stubEl("path", { id: "notehead", d: "M 160 0 Z", "data-semitone-height": "4",
+          "data-lilypond-glyph": "'((moveto 1.6 0) (closepath))",
+          "data-lilypond-notehead": "'((moveto 0.8 0) (closepath))" }),
+      });
+      const { glyph, warnings, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "C");
+      assert(error === null, "no error: " + error);
+      assert(glyph.lilypondPath === "'(\n    (moveto 1.6 0)\n    (closepath))", "glyph-mode data used: " + JSON.stringify(glyph.lilypondPath));
+      assert(warnings.some(w => /data-lilypond-notehead ignored: the path also carries data-lilypond-glyph/.test(w)),
+        "warned: " + warnings.join("; "));
+    }},
+  { name: "shape import prefers notehead-mode data over data-lilypond-glyph, and warns (M7)", fn: () => {
+      const doc = toolkitDoc({
+        notehead: stubEl("path", { id: "notehead", d: ELLIPSE_D, "data-semitone-height": "2.0",
+          "data-lilypond-notehead": LY_NOTEHEAD, "data-lilypond-glyph": "'((moveto 9 9) (closepath))" }),
+      });
+      const { shape, warnings, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      assert(error === null, "no error: " + error);
+      assert(shape.lilypondPath === CNBScheme.path(LY_NOTEHEAD, "t"), "notehead-mode data used: " + JSON.stringify(shape.lilypondPath));
+      assert(warnings.some(w => /data-lilypond-glyph on #notehead ignored/.test(w)), "warned: " + warnings.join("; "));
+    }},
+  { name: "fixtures/kite-*.svg import to exactly the Kite config's shapes (rebuilt from them, session 11)", fn: () => {
+      const shapes = JSON.parse(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).shapes;
+      for (const name of ["kite-up", "kite-down"]) {
+        const doc = parseSvgDocument(readFileSync(path.join(FIXTURES, `${name}.svg`), "utf8"));
+        const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), shapes[name].displayName);
+        assert(error === null, `${name}: no error: ${error}`);
+        assert(JSON.stringify(shape) === JSON.stringify(shapes[name]),
+          `${name}: imported shape ${JSON.stringify(shape)} differs from the config's ${JSON.stringify(shapes[name])}`);
+      }
+    }},
+  { name: "fixtures/kite-up.svg carries toolkit (semitone-unit) path data: SVG units ÷ 100, Y up", fn: () => {
+      const doc = parseSvgDocument(readFileSync(path.join(FIXTURES, "kite-up.svg"), "utf8"));
+      const { shape } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "kite-up");
+      // d="M 0 -200 L 200 -100 …" → (moveto 0 2) (lineto 2 1) …, as the toolkit writes it
+      assert(shape.lilypondPath.startsWith("'(\n    (moveto 0 2)\n    (lineto 2 1)"), JSON.stringify(shape.lilypondPath));
+      assertSame(shape.lilypondAnchors.minimUp, { x: -1.095, y: 2.7 }, "minim rect carries the engine reference's minim anchor");
     }},
 ];
 

@@ -22,6 +22,10 @@
  *     `<rect id="stem-minim-down">`, user-drawn, read with the same rule into
  *     anchors.minimUp/minimDown. Absent (or only half present, with a
  *     warning) → the minim anchors copy the crotchet anchors.
+ *   - A stem rect's own `transform` attribute (matrix/translate/scale/rotate)
+ *     is applied before its anchor is read (toolkit audit M8: Inkscape stores
+ *     a flipped rect as raw geometry plus scale(-1)); one the importer cannot
+ *     read is an import error. Ancestor (group/layer) transforms are not read.
  *   - The toolkit normalizes shapes to 100 SVG units per semitone, centered
  *     on the origin, and sets the root viewBox to the exact notehead bounds.
  *     Pre-baked LilyPond paths are SVG coordinates ÷ 100 with Y negated.
@@ -152,6 +156,86 @@ export const CNBSvgImporter = {
   },
 
   /**
+   * Apply an SVG `transform` attribute to a rect, returning the axis-aligned
+   * bounding box of its four transformed corners (toolkit audit M8: Inkscape
+   * stores a flipped placemarker as e.g. `x="-70" y="10" transform="scale(-1)"`,
+   * so the raw geometry sits on the opposite side of the notehead).
+   *
+   * Accepts a transform list of matrix(a b c d e f), translate(tx [ty]),
+   * scale(sx [sy]) and rotate(deg [cx cy]), composed in order (the rightmost
+   * function applies first, per SVG). Only the rect's own attribute is read.
+   *
+   * @param {{x:number,y:number,width:number,height:number}} rect
+   * @param {string|null} transform
+   * @returns {{x:number,y:number,width:number,height:number}|null} the
+   *          transformed bounding box; the rect itself when there is no
+   *          transform; null when the transform does not parse
+   */
+  transformRect(rect, transform) {
+    if (transform === null || transform === undefined || String(transform).trim() === "") return rect;
+    const text = String(transform);
+    // [a, b, c, d, e, f]: x' = a·x + c·y + e, y' = b·x + d·y + f
+    const mul = (m, n) => [
+      m[0] * n[0] + m[2] * n[1],        m[1] * n[0] + m[3] * n[1],
+      m[0] * n[2] + m[2] * n[3],        m[1] * n[2] + m[3] * n[3],
+      m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5],
+    ];
+    let m = [1, 0, 0, 1, 0, 0];
+    const re = /\s*(matrix|translate|scale|rotate)\s*\(([^()]*)\)\s*,?/gy;
+    let pos = 0;
+    let match;
+    while (pos < text.length && (match = re.exec(text)) !== null) {
+      pos = re.lastIndex;
+      const argText = match[2].trim();
+      const args = argText === "" ? [] : argText.split(/[\s,]+/).map(Number);
+      if (args.some(n => !Number.isFinite(n))) return null;
+      const n = args.length;
+      let t;
+      switch (match[1]) {
+        case "matrix":
+          if (n !== 6) return null;
+          t = args;
+          break;
+        case "translate":
+          if (n !== 1 && n !== 2) return null;
+          t = [1, 0, 0, 1, args[0], n === 2 ? args[1] : 0];
+          break;
+        case "scale":
+          if (n !== 1 && n !== 2) return null;
+          t = [args[0], 0, 0, n === 2 ? args[1] : args[0], 0, 0];
+          break;
+        case "rotate": {
+          if (n !== 1 && n !== 3) return null;
+          const rad = args[0] * Math.PI / 180;
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          t = [cos, sin, -sin, cos, 0, 0];
+          if (n === 3) {
+            t = mul(mul([1, 0, 0, 1, args[1], args[2]], t), [1, 0, 0, 1, -args[1], -args[2]]);
+          }
+          break;
+        }
+      }
+      m = mul(m, t);
+    }
+    if (text.slice(pos).trim() !== "") return null;
+
+    const corners = [
+      [rect.x, rect.y], [rect.x + rect.width, rect.y],
+      [rect.x, rect.y + rect.height], [rect.x + rect.width, rect.y + rect.height],
+    ].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+    const xs = corners.map(c => c[0]);
+    const ys = corners.map(c => c[1]);
+    const clean = v => roundTo(v, 9) + 0; // drop float noise (cos 90°) and -0
+    const minX = clean(Math.min(...xs)), minY = clean(Math.min(...ys));
+    return {
+      x: minX,
+      y: minY,
+      width: clean(Math.max(...xs) - minX),
+      height: clean(Math.max(...ys) - minY),
+    };
+  },
+
+  /**
    * Derive the 4-point anchor model from explicit attachment points, e.g.
    * the LY spec §7.1 `data-stem-up-x/y` / `data-stem-down-x/y` attributes
    * (fallback contract — current toolkit output uses stem rects instead).
@@ -272,25 +356,33 @@ export const CNBSvgImporter = {
     const hollowEl = byId(doc, "hollow") || byId(doc, "false-hollow");
     const isFalseHollow = !!hollowEl && hollowEl.getAttribute("id") === "false-hollow";
 
-    // Stem placemarker rects (current toolkit contract — see module header)
+    // Stem placemarker rects (current toolkit contract — see module header),
+    // read through the rect's own transform attribute (toolkit audit M8).
     const readStemRect = (id) => {
       const el = byId(doc, id);
       if (!el) return { rect: null, nonRect: false };
       if (localTag(el) !== "rect") return { rect: null, nonRect: true };
-      return {
-        rect: CNBSvgImporter.parseRectAttrs({
-          x: el.getAttribute("x"),
-          y: el.getAttribute("y"),
-          width: el.getAttribute("width"),
-          height: el.getAttribute("height"),
-        }),
-        nonRect: false,
-      };
+      const transform = el.getAttribute("transform");
+      const rect = CNBSvgImporter.transformRect(CNBSvgImporter.parseRectAttrs({
+        x: el.getAttribute("x"),
+        y: el.getAttribute("y"),
+        width: el.getAttribute("width"),
+        height: el.getAttribute("height"),
+      }), transform);
+      if (!rect) {
+        return {
+          error: `The "${id}" rect has a transform the importer cannot read ` +
+            `(${JSON.stringify(transform)}) — only matrix, translate, scale and rotate are accepted`,
+        };
+      }
+      return { rect, nonRect: false };
     };
     const up = readStemRect("stem-up");
     const down = readStemRect("stem-down");
     const minimUp = readStemRect("stem-minim-up");
     const minimDown = readStemRect("stem-minim-down");
+    const rectError = [up, down, minimUp, minimDown].find(r => r.error);
+    if (rectError) return { error: rectError.error };
 
     const semitoneHeightStr = noteheadEl.getAttribute("data-semitone-height");
     const semitoneHeight = semitoneHeightStr !== null && semitoneHeightStr !== ""
@@ -313,8 +405,20 @@ export const CNBSvgImporter = {
 
     const viewBox = CNBSvgImporter.parseViewBox(root.getAttribute("viewBox"));
 
+    // A shape import reads notehead mode's attributes; glyph mode's
+    // data-lilypond-glyph on the same element is stale or foreign (toolkit
+    // audit M7) and is ignored with a warning.
+    const warnings = [];
+    for (const [el, label] of [[noteheadEl, "notehead"], [hollowEl, "hollow"]]) {
+      if (el && el.getAttribute("data-lilypond-glyph")) {
+        warnings.push(`data-lilypond-glyph on #${label} ignored: a shape import reads ` +
+          "notehead-mode data (the file was processed in the toolkit's glyph mode)");
+      }
+    }
+
     return {
       svgPath,
+      warnings,
       svgHollowPath: hollowEl ? (hollowEl.getAttribute("d") || null) : null,
       isFalseHollow,
       lilypondNotehead: noteheadEl.getAttribute("data-lilypond-notehead") || null,
@@ -347,7 +451,7 @@ export const CNBSvgImporter = {
    * @returns {{shape:object|null, warnings:string[], error:string|null}}
    */
   buildShape(extracted, displayName) {
-    const warnings = [];
+    const warnings = [...(extracted.warnings || [])];
     if (extracted.error) return { shape: null, warnings, error: extracted.error };
 
     const notehead = prebakedPath(extracted.lilypondNotehead, "data-lilypond-notehead");
@@ -467,9 +571,21 @@ export const CNBSvgImporter = {
   /**
    * Extract raw clef glyph data from a parsed SVG document (set 009).
    * Reuses the toolkit data-* contract; stem/anchor placemarkers and hollow
-   * cutouts are not part of the clef contract and are ignored. The glyph
-   * element is id="clef" when present, falling back to id="notehead"
-   * (toolkit-authored files) and then to the first <path> in the document.
+   * cutouts are not part of the clef contract and are ignored.
+   *
+   * The glyph paths are id="clef" when present; otherwise every <path>
+   * carrying the toolkit's glyph-mode data-lilypond-glyph attribute (toolkit
+   * audit M5: glyph mode writes one per path); otherwise id="notehead"
+   * (toolkit notehead-mode files); otherwise every <path> in the document.
+   * All of them are imported: their d attributes are joined into svgPath,
+   * and each one's pre-baked path is returned in lilypondPieces for
+   * buildClefGlyph to parse and merge.
+   *
+   * Per path, the clef target's own attributes (data-lilypond-clef, then
+   * data-lilypond-glyph) win over notehead mode's data-lilypond-notehead;
+   * a path carrying both modes' attributes gets a warning naming the one
+   * ignored (toolkit audit M7: a file reprocessed in the other mode keeps
+   * stale attributes).
    *
    * @param {Document|object} doc
    * @returns {object} extracted fields, or { error }
@@ -480,14 +596,48 @@ export const CNBSvgImporter = {
       : (typeof doc.querySelector === "function" ? doc.querySelector("svg") : null);
     if (!root) return { error: "No <svg> root element found" };
 
-    const glyphEl = byId(doc, "clef") || byId(doc, "notehead") ||
-      (typeof doc.querySelector === "function" ? doc.querySelector("path") : null);
-    if (!glyphEl) return { error: 'No clef glyph element found (id="clef", id="notehead", or any <path>)' };
+    const allPaths = typeof doc.querySelectorAll === "function"
+      ? Array.from(doc.querySelectorAll("path"))
+      : (typeof doc.querySelector === "function" && doc.querySelector("path") ? [doc.querySelector("path")] : []);
+    const clefEl = byId(doc, "clef");
+    const glyphModePaths = allPaths.filter(el => el.getAttribute("data-lilypond-glyph") !== null);
+    const noteheadEl = byId(doc, "notehead");
+    const glyphEls = clefEl ? [clefEl]
+      : glyphModePaths.length > 0 ? glyphModePaths
+      : noteheadEl ? [noteheadEl]
+      : allPaths;
+    if (glyphEls.length === 0) {
+      return { error: 'No clef glyph element found (id="clef", data-lilypond-glyph paths, id="notehead", or any <path>)' };
+    }
 
-    const svgPath = glyphEl.getAttribute("d") || "";
-    if (!svgPath) return { error: "The clef glyph element has no path data (d attribute)" };
+    const svgPaths = glyphEls.map(el => el.getAttribute("d") || "");
+    if (svgPaths.some(d => !d)) {
+      return {
+        error: glyphEls.length === 1
+          ? "The clef glyph element has no path data (d attribute)"
+          : "A clef glyph path has no path data (d attribute)",
+      };
+    }
+    const svgPath = svgPaths.join(" ");
 
-    const semitoneHeightStr = glyphEl.getAttribute("data-semitone-height");
+    const warnings = [];
+    const lilypondPieces = glyphEls.map((el, i) => {
+      const where = glyphEls.length > 1 ? ` on glyph path ${i + 1}` : "";
+      const attr = ["data-lilypond-clef", "data-lilypond-glyph", "data-lilypond-notehead"]
+        .find(a => el.getAttribute(a));
+      if (attr && attr !== "data-lilypond-notehead") {
+        for (const stale of ["data-lilypond-notehead", "data-lilypond-hollow"]) {
+          if (el.getAttribute(stale)) {
+            warnings.push(`${stale}${where} ignored: the path also carries ${attr}, ` +
+              "which matches a clef import (the file was processed in both toolkit modes)");
+          }
+        }
+      }
+      return attr ? { attr: attr + where, text: el.getAttribute(attr) } : null;
+    });
+
+    const heightEl = glyphEls.find(el => el.getAttribute("data-semitone-height")) || glyphEls[0];
+    const semitoneHeightStr = heightEl.getAttribute("data-semitone-height");
     const semitoneHeight = semitoneHeightStr !== null && semitoneHeightStr !== ""
       ? parseFloat(semitoneHeightStr)
       : null;
@@ -503,8 +653,8 @@ export const CNBSvgImporter = {
 
     return {
       svgPath,
-      lilypondPath: glyphEl.getAttribute("data-lilypond-clef")
-        || glyphEl.getAttribute("data-lilypond-notehead") || null,
+      lilypondPieces,
+      warnings,
       semitoneHeight: Number.isFinite(semitoneHeight) ? semitoneHeight : null,
       viewBoxMinX: viewBox ? viewBox.minX : null,
       viewBoxMinY: viewBox ? viewBox.minY : null,
@@ -530,11 +680,28 @@ export const CNBSvgImporter = {
    * @returns {{glyph:object|null, warnings:string[], error:string|null}}
    */
   buildClefGlyph(extracted, displayName, opts = {}) {
-    const warnings = [];
+    const warnings = [...(extracted.warnings || [])];
     if (extracted.error) return { glyph: null, warnings, error: extracted.error };
 
-    const baked = prebakedPath(extracted.lilypondPath, "data-lilypond-clef / data-lilypond-notehead");
-    if (baked.error) return { glyph: null, warnings, error: baked.error };
+    // Each glyph path's pre-baked data is parsed on its own (a piece that
+    // does not parse is an import error) and the commands are merged into
+    // one path. Any path without pre-baked data → no lilypondPath at all.
+    const pieces = extracted.lilypondPieces || [];
+    const commands = [];
+    for (const piece of pieces) {
+      if (!piece) continue;
+      const parsed = CNBScheme.parsePath(piece.text);
+      if (!parsed) {
+        return {
+          glyph: null, warnings,
+          error: `${piece.attr} is not valid LilyPond path data (only moveto, lineto, ` +
+            "curveto and closepath with numbers are accepted) — not imported",
+        };
+      }
+      commands.push(...parsed);
+    }
+    const complete = pieces.length > 0 && pieces.every(Boolean);
+    const lilypondPath = complete ? CNBScheme.path(commands, "clef path") : null;
 
     let semitoneHeight = extracted.semitoneHeight;
     if (semitoneHeight === null) {
@@ -565,9 +732,10 @@ export const CNBSvgImporter = {
         ? "Missing viewBox — natural dimensions read from root width/height attributes"
         : "Missing viewBox — natural height assumed from semitone height");
     }
-    if (!extracted.lilypondPath) {
+    if (!lilypondPath) {
       warnings.push(
-        "No data-lilypond-clef / data-lilypond-notehead attribute — export of " +
+        (pieces.length > 1 ? "Not every glyph path has a " : "No ") +
+        "data-lilypond-clef / data-lilypond-glyph / data-lilypond-notehead attribute — export of " +
         "this glyph will need a fallback conversion if the engine gains clef support");
     }
 
@@ -581,7 +749,7 @@ export const CNBSvgImporter = {
       semitoneHeight,
       viewBoxMinX: extracted.viewBoxMinX ?? 0,
       viewBoxMinY: extracted.viewBoxMinY ?? 0,
-      lilypondPath: baked.path,
+      lilypondPath,
       anchorSemi: roundTo(midpoint + semitoneHeight / 2, 4),
     };
     return { glyph, warnings, error: null };

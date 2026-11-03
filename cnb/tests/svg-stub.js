@@ -54,3 +54,34 @@ export function withDomStub(fn) {
     else delete globalThis.document;
   }
 }
+
+/**
+ * Parse SVG text into a minimal read-only Document stub for the SVG
+ * importer in Node (no DOMParser there): documentElement, getElementById,
+ * querySelector / querySelectorAll by tag name. Reads start tags and their
+ * attributes only (entity references in values decoded), which is all
+ * CNBSvgImporter.extract / extractClef consult. Comments are skipped.
+ */
+export function parseSvgDocument(text) {
+  const decode = (v) => v
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  const elements = [];
+  const source = String(text).replace(/<!--[\s\S]*?-->/g, "");
+  for (const [, tagName, attrText] of source.matchAll(/<([A-Za-z][\w:.-]*)((?:\s+[^\s=>/]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>/g)) {
+    const attrs = {};
+    for (const [, name, dq, sq] of attrText.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      attrs[name] = decode(dq ?? sq);
+    }
+    elements.push({ tagName, getAttribute: (k) => (k in attrs ? attrs[k] : null) });
+  }
+  const byTag = (sel) => elements.filter(el => el.tagName.replace(/^.*:/, "").toLowerCase() === sel);
+  return {
+    documentElement: elements[0] || null,
+    getElementById: (id) => elements.find(el => el.getAttribute("id") === id) || null,
+    querySelector: (sel) => byTag(sel)[0] || null,
+    querySelectorAll: (sel) => byTag(sel),
+  };
+}

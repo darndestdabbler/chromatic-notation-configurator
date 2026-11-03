@@ -20,8 +20,9 @@
  *       export: identical staff geometry, whitespace-normalized-identical
  *       path definitions, identical Section C (shape, hollow, attachment,
  *       color hex) mapping for all 12 PCs — with the remaining known,
- *       documented import-pipeline divergences pinned literally (one-pair
- *       minim anchors D6, no engine-settings/meta editors). The session-1
+ *       documented import-pipeline divergences pinned literally (no
+ *       engine-settings/meta editors; the one-pair minim anchors D6 closed
+ *       in session 11, when the kite SVGs gained stem-minim rects). The session-1
  *       anchor unit bug D5 is FIXED in session 2: lilypondAnchors are
  *       canonically semitone units and the exporter converts to
  *       staff-space units (÷ sps) at export time.
@@ -231,15 +232,18 @@ check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0,
   cfg.shapes["kite-up"].anchors.crotchetUp.y === -270 &&
   cfg.shapes["kite-up"].anchors.crotchetDown.y === 270,
   JSON.stringify(cfg.shapes["kite-up"].anchors));
-// D6 pin (documented importer contract, module header: "One up/down pair,
-// so crotchet and minim anchors are identical at import time"): the fixture
-// carries the engine reference's distinct minim offsets; import cannot.
-// (Fixture values are semitone units per the D5 fix: ∓1.095 semitones =
-// the reference's ∓0.365 staff-spaces at sps 3.)
-check("AUTHOR/import PIN(D6): imported minim anchors equal crotchet anchors (one-pair toolkit contract), while the fixture carries the reference's distinct minim x-offsets -1.095/1.095 semitones",
-  cfg.shapes["kite-up"].anchors.minimUp.x === cfg.shapes["kite-up"].anchors.crotchetUp.x &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.minimUp.x === -1.095 &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.minimDown.x === 1.095);
+// D6 closed (session 11): the kite SVGs now carry stem-minim-up/-down
+// placemarker rects (the toolkit's optional minim pair) at the engine
+// reference's minim attachment, and the fixture's shapes are rebuilt from
+// these SVGs by cnb/fixtures/rebuild-kite-shapes.mjs — so import reproduces
+// the reference's distinct minim offsets. (Semitone units per the D5 fix:
+// ∓1.095 semitones = the reference's ∓0.365 staff-spaces at sps 3.)
+check("AUTHOR/import (D6 closed): imported minim anchors equal the fixture's distinct minim x-offsets -1.095/1.095 semitones",
+  cfg.shapes["kite-up"].lilypondAnchors.minimUp.x === -1.095 &&
+  cfg.shapes["kite-up"].lilypondAnchors.minimDown.x === 1.095 &&
+  JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-up"].lilypondAnchors) &&
+  JSON.stringify(cfg.shapes["kite-down"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-down"].lilypondAnchors),
+  JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
 // D5 FIXED (session 2): lilypondAnchors are canonically SEMITONE units —
 // 270 native SVG units ÷ 100 units-per-semitone = 2.7 — and the imported
 // shape now agrees with the fixture exactly. The staff-space conversion
@@ -373,9 +377,9 @@ check("AUTHOR/export: authored colors registered with the exact Kite hexes (symb
   /\(cnb:register-color! '[\w-]*50b4e9 "#50b4e9"\)/.test(authored) &&
   /\(cnb:register-color! '[\w-]*cc79a7 "#cc79a7"\)/.test(authored) &&
   authored.includes(`#(cnb:register-color! 'black-000000 "#000000")`));
-check("AUTHOR/export PIN(D6, D5 fixed): authored attachments now emit the engine-reference staff-space units ('(0 . 0.9) at sps 3) but remain one-pair (minim x = 0, D6), while the fixture export carries the reference's distinct minim x-offsets ('(-0.365 . 0.9))",
+check("AUTHOR/export (D5, D6 closed): authored attachments emit the engine-reference staff-space units ('(0 . 0.9) at sps 3) and the reference's distinct minim x-offsets ('(-0.365 . 0.9)), as the fixture export does",
   authored.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
-  authored.includes("(cons 'minim-up      '(0 . 0.9))") &&
+  authored.includes("(cons 'minim-up      '(-0.365 . 0.9))") &&
   fixtureExport.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
   fixtureExport.includes("(cons 'minim-up      '(-0.365 . 0.9))"));
 check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:false-hollow (engine default #f) and keeps the default config's meta (no meta editor exists to change it); the fixture export sets the Kite values for all three",

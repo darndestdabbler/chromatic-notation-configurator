@@ -365,54 +365,79 @@ function pcCondition(pcs, varName) {
 export const CNBLilypond = {
 
   /**
-   * Convert an SVG path `d` string to LilyPond nested-list format.
-   * Absolute M/L/C/Z (H/V folded into lineto). Ported from legacy
-   * svgPathToLilypond(). No scaling or Y-inversion is applied — pre-baked
-   * lilypondPath data is the preferred source (LY spec §4.1); this fallback
-   * assumes coordinates already normalized for LilyPond by the toolkit.
+   * Convert path commands to the staff-space units the engine draws
+   * registered paths in (audit 2026-11-02, H2/H3). The one conversion both
+   * path sources go through: every coordinate is divided by
+   * unitsPerStaffSpace, Y is negated when flipY is set, and the result is
+   * re-emitted from its numbers through CNBScheme.path.
    *
-   * @param {string} svgPath  SVG path d attribute
-   * @param {number} [precision=4]  Decimal places for coordinates
+   *   - Pre-baked data-lilypond-* paths are semitone units, Y up (toolkit
+   *     output: SVG units ÷ 100, Y negated) → (commands, sps, false).
+   *   - The svgPathToLilypond fallback passes native SVG units, Y down →
+   *     (commands, unitsPerSemitone × sps, true).
+   *
+   * sps is staff.semitonesPerStaffSpace, or pitchAxis.axisUnitsPerStaffSpace
+   * under a pitch axis — the same divisor attachmentPoints() uses.
+   *
+   * @param {{cmd:string, args:number[]}[]} commands  moveto/lineto/curveto/closepath
+   * @param {number} unitsPerStaffSpace
+   * @param {boolean} [flipY=false]
+   * @param {string} [field]  named in the error when the data is invalid
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
-  svgPathToLilypond(svgPath, precision) {
-    if (precision === undefined) precision = 4;
-    const cmds = parseSvgPath(svgPath);
-    if (cmds.length === 0) return "'()";
+  pathToStaffSpace(commands, unitsPerStaffSpace, flipY = false, field = "path data") {
+    const div = unitsPerStaffSpace || 1;
+    const ySign = flipY ? -1 : 1;
+    const scaled = commands.map(({ cmd, args }) => ({
+      cmd,
+      args: args.map((v, i) => (i % 2 === 0 ? v : ySign * v) / div),
+    }));
+    return CNBScheme.path(scaled, field);
+  },
 
-    const fmt = (n) => {
-      const rounded = parseFloat(n.toFixed(precision));
-      return Object.is(rounded, -0) ? "0" : String(rounded);
-    };
-
-    const parts = [];
+  /**
+   * Fallback for shapes without pre-baked LilyPond data: convert an SVG path
+   * `d` string (absolute M/L/H/V/C/Z, H/V folded into lineto) to staff-space
+   * LilyPond path data with the toolkit's normalisation — ÷ SVG units per
+   * semitone (naturalHeight / semitoneHeight; 100 for toolkit output), Y
+   * negated (SVG Y-down → LilyPond Y-up), then ÷ sps via pathToStaffSpace.
+   * The shape's coordinate origin is its centre, as in the preview and the
+   * stored stem anchors.
+   *
+   * @param {string} svgPath  SVG path d attribute
+   * @param {number} unitsPerSemitone  SVG units per semitone of the shape
+   * @param {number} sps  staff semitones (or axis units) per staff space
+   * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
+   */
+  svgPathToLilypond(svgPath, unitsPerSemitone, sps) {
+    const commands = [];
     let curX = 0, curY = 0;
 
-    for (const { cmd, args } of cmds) {
+    for (const { cmd, args } of parseSvgPath(svgPath)) {
       switch (cmd) {
         case "M":
-          parts.push(`(moveto ${fmt(args[0])} ${fmt(args[1])})`);
+          commands.push({ cmd: "moveto", args: [args[0], args[1]] });
           curX = args[0]; curY = args[1];
           break;
         case "L":
-          parts.push(`(lineto ${fmt(args[0])} ${fmt(args[1])})`);
+          commands.push({ cmd: "lineto", args: [args[0], args[1]] });
           curX = args[0]; curY = args[1];
           break;
         case "H":
-          parts.push(`(lineto ${fmt(args[0])} ${fmt(curY)})`);
+          commands.push({ cmd: "lineto", args: [args[0], curY] });
           curX = args[0];
           break;
         case "V":
-          parts.push(`(lineto ${fmt(curX)} ${fmt(args[0])})`);
+          commands.push({ cmd: "lineto", args: [curX, args[0]] });
           curY = args[0];
           break;
         case "C":
-          parts.push(`(curveto ${fmt(args[0])} ${fmt(args[1])} ${fmt(args[2])} ${fmt(args[3])} ${fmt(args[4])} ${fmt(args[5])})`);
+          commands.push({ cmd: "curveto", args: args.slice(0, 6) });
           curX = args[4]; curY = args[5];
           break;
         case "Z":
         case "z":
-          parts.push(`(closepath)`);
+          commands.push({ cmd: "closepath", args: [] });
           break;
         default:
           // Skip unsupported commands (S, Q, T, A, relatives) — the toolkit
@@ -421,7 +446,7 @@ export const CNBLilypond = {
       }
     }
 
-    return "'(\n    " + parts.join("\n    ") + ")";
+    return CNBLilypond.pathToStaffSpace(commands, (unitsPerSemitone || 1) * (sps || 1), true, "svgPath");
   },
 
   /**
@@ -539,25 +564,40 @@ export const CNBLilypond = {
     lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     lines.push("");
 
+    // Staff-space divisor for path data and attachments alike: ÷ sps, or
+    // ÷ axisUnitsPerStaffSpace under a pitch axis (v1.3 §4.4a, §4.1b).
+    const axis = CNBPitchAxis.create(config);
+    const attachSps = axis.enabled
+      ? axis.unitsPerStaffSpace
+      : (config.staff || {}).semitonesPerStaffSpace || 1;
+
     // A1. Path variable definitions
     lines.push("%% --- Path variables ---");
     for (const name of shapeNames) {
       const shape = shapes[name];
       const sym = shapeSymbol(name);
       const field = (key) => `shapes[${JSON.stringify(name)}].${key}`;
+      const natH = shape.naturalHeight || 1;
+      const unitsPerSemitone = natH / (shape.semitoneHeight || natH); // as attachmentPoints()
 
-      // Prefer the pre-baked LilyPond path from data-lilypond-notehead,
-      // re-emitted from its parsed numbers (never as text).
+      // Prefer the pre-baked LilyPond path from data-lilypond-notehead
+      // (semitone units), re-emitted from its parsed numbers in staff-space
+      // units (never as text); else convert the SVG path.
+      const toStaffSpace = (text, key) => {
+        const commands = CNBScheme.parsePath(text);
+        if (!commands) throw new Error(`${field(key)}: not valid LilyPond path data`);
+        return CNBLilypond.pathToStaffSpace(commands, attachSps, false, field(key));
+      };
       const pathDef = shape.lilypondPath
-        ? CNBScheme.path(shape.lilypondPath, field("lilypondPath"))
-        : CNBLilypond.svgPathToLilypond(shape.svgPath);
+        ? toStaffSpace(shape.lilypondPath, "lilypondPath")
+        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, attachSps);
       lines.push(`#(define cnb:${sym}-path ${pathDef})`);
       lines.push("");
 
       if (shape.lilypondHollowPath || shape.svgHollowPath) {
         const hollowDef = shape.lilypondHollowPath
-          ? CNBScheme.path(shape.lilypondHollowPath, field("lilypondHollowPath"))
-          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath);
+          ? toStaffSpace(shape.lilypondHollowPath, "lilypondHollowPath")
+          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, attachSps);
         lines.push(`#(define cnb:${sym}-cutout-path ${hollowDef})`);
         lines.push("");
       }
@@ -585,10 +625,6 @@ export const CNBLilypond = {
     // A4. Stem attachment registrations (4-point model), converted to
     // staff-space units against the current staff config (D5) — under a
     // pitch axis, ÷ axisUnitsPerStaffSpace instead (v1.3 §4.4a).
-    const axis = CNBPitchAxis.create(config);
-    const attachSps = axis.enabled
-      ? axis.unitsPerStaffSpace
-      : (config.staff || {}).semitonesPerStaffSpace || 1;
     lines.push("%% --- Register stem attachments ---");
     for (const name of shapeNames) {
       const sym = shapeSymbol(name);

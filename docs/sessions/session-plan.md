@@ -449,7 +449,15 @@ as 1.0.1.
      that renders the default config and asserts the notehead bounding box
      is between 0.5 and 3 staff spaces.
    - **Gallery check:** it must do more than prove `generate()` doesn't
-     throw. Each gallery export's noteheads must pass the same size check.
+     throw. Each gallery export's noteheads must engrave, in the same
+     engine-backed measurement, at the size the preview draws them,
+     within 5% in width and height. The 0.5–3 staff-space bound applies
+     to the default config only. *(Amended 2026-11-03 by operator
+     decision during session 11: the Express Stave fixtures draw
+     2-semitone noteheads at 6 semitones per staff space, so a correctly
+     scaled export engraves them at about 0.33 staff spaces, exactly
+     their preview size. A fixed 0.5 lower bound would fail them unless
+     the export were mis-scaled or their preview changed.)*
 4. Toolkit M5, M7, M8 (the importer side):
    - accept `data-lilypond-glyph`, the toolkit's glyph-mode attribute, for
      clefs, and import every path, not only the first;

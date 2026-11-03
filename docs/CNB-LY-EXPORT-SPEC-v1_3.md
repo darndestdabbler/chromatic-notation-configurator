@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.1 (Pitch axis / I2 relaxation; engine-handoff reconciliation)
-**Date:** October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.2 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units)
+**Date:** November 3, 2026 (1.3.2); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -44,7 +44,8 @@ output** — no new lines, no reordered lines, no changed values. Every v1.3
 emission below is gated on `pitchAxis.enabled`, and the disabled code path
 in `cnb/src/cnb-lilypond.js` is the literal v1.2.1 code, not an equivalent
 re-derivation (design §1.3). The Kite 4-369 round-trip and export-baseline
-pins enforce this.
+pins enforce this. *(1.3.2 exception: path data, for linear and axis configs
+alike — §4.1b.)*
 
 Summary of additions:
 
@@ -59,6 +60,45 @@ Summary of additions:
 ---
 
 ## 4. SECTION A — ADDITIONS
+
+### 4.1b Path data units (new in 1.3.2 — linear and axis configs alike)
+
+Amends v1.2.1 §4.1, which said a pre-baked `data-lilypond-notehead` path is
+"emitted verbatim" (audit 2026-11-02, H2 and H3). The engine draws
+registered paths in **staff-space units** and does no division of its own
+(`cnb/stencils.ly`). The exporter therefore converts every path, from
+either source, through one conversion:
+
+- **Pre-baked paths** (`lilypondPath` / `lilypondHollowPath`, read from the
+  toolkit's `data-lilypond-*` attributes): the toolkit writes them in
+  **semitone units, Y up**: SVG coordinates ÷ 100 (its 100 units per
+  semitone), Y negated. The exporter parses them, divides every coordinate
+  by `staff.semitonesPerStaffSpace` (`pitchAxis.axisUnitsPerStaffSpace`
+  under an axis, the same divisor as the §4.4 / §4.4a attachments), and
+  re-emits them from their numbers.
+- **Fallback** (`svgPathToLilypond`, for a shape without pre-baked data): the
+  SVG `d` path, in the shape's native units with Y down, is converted with
+  the toolkit's normalisation. Every coordinate is divided by the shape's
+  SVG units per semitone (`naturalHeight / semitoneHeight`, which is 100 for
+  toolkit output), Y is negated, and then the same division as above is
+  applied. The shape's coordinate origin is its centre, as in the toolkit's
+  output, the preview and the stored stem anchors.
+
+```
+staff-space coordinate = semitone coordinate / sps            (pre-baked)
+staff-space coordinate = (x, −y) / (naturalHeight / semitoneHeight) / sps   (fallback)
+```
+
+Worked check: the Kite (up) notehead, 4 semitones tall at sps 3. The toolkit
+writes `(moveto 0 2)`, and the export emits `(moveto 0 0.6667)`, the size
+the engine's golden Kite score draws.
+
+Before 1.3.2 the pre-baked path was emitted sps× too large and the fallback
+emitted raw SVG coordinates (about 100 × sps too large, and mirrored), so
+**1.0.0 exports of shapes with toolkit or fallback paths were mis-scaled and
+should be regenerated.** Configs whose stored pre-baked paths had been
+hand-divided by sps to compensate (the old Kite and Twinline fixtures) must
+store semitone-unit paths instead.
 
 ### 4.4a Stem Attachment Registrations under a pitch axis
 
@@ -345,7 +385,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.1** | **Oct 31, 2026** | **Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged.** |
+| **1.3.2** | **Nov 3, 2026** | **Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled.** |
+| 1.3.1 | Oct 31, 2026 | Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged. |
 | 1.3 | Jul 12, 2026 | Adopted as canonical by set 014 (pitch-axis implementation) session 1: the 1.3-draft renamed from `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` into `docs/`, content unchanged except this status/adoption header. The §8a fail-loud gate is in effect until set 014 session 3 verifies E13-1/E13-2 from the engine repo's handoff record. |
 | 1.3-draft | Jul 10, 2026 | Pitch-axis export surface (set 013 design, DRAFT): compiled `cnb:get-pitch-staff-position` procedure (half-staff-spaces, midpoint anchored at staff position 0) and axis-formula `cnb:staff-line-positions` with collapse dedup (§5.4); `axisUnitsPerStaffSpace` substitution in attachment (§4.4a) and thickness (§5.3a) conversions; optional Section C `(x-offset . N)` field, axis-gated, nonzero-only, in the grouping key (§6.3); pitch-axis validation and the fail-loud interim gate (§8/§8a). All emissions gated on `pitchAxis.enabled`; disabled output byte-identical to v1.2.1. |
 | 1.2.1 | Jul 5, 2026 | (canonical for the base format — see `CNB-LY-EXPORT-SPEC-v1_2.md`) |
