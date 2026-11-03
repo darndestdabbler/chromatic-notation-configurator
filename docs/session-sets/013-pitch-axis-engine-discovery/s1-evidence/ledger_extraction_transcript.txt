@@ -1,0 +1,10 @@
+$ python extract_ledgers.py pitch-axis-spike.svg
+ledger rect 1: x=68.066 w=1.5001 y_top=11.745 h=0.200 y_center=11.845 staff_position=-4.991
+ledger rect 2: x=68.066 w=1.5001 y_top=12.745 h=0.200 y_center=12.845 staff_position=-6.991
+ledger rect 3: x=65.868 w=1.5001 y_top=11.745 h=0.200 y_center=11.845 staff_position=-4.991
+ledger rect 4: x=63.669 w=1.5002 y_top=11.745 h=0.200 y_center=11.845 staff_position=-4.991
+ledger rect 5: x=60.621 w=1.5002 y_top=11.745 h=0.200 y_center=11.845 staff_position=-4.991
+ledger rect 6: x=56.662 w=1.5002 y_top=4.245 h=0.200 y_center=4.345 staff_position=+10.009
+ledger rect 7: x=54.464 w=1.5002 y_top=4.245 h=0.200 y_center=4.345 staff_position=+10.009
+total ledger rects: 7
+exit: 0
