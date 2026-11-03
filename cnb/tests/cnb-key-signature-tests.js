@@ -48,7 +48,7 @@ function deepEq(a, b, msg) {
 }
 
 function approx(a, b, msg, tol = 1e-6) {
-  if (Math.abs(a - b) > tol) throw new Error(`${msg || "approx"}: expected ${b}, got ${a}`);
+  if (!(Math.abs(a - b) <= tol)) throw new Error(`${msg || "approx"}: expected ${b}, got ${a}`);
 }
 
 /** Normalize an export for comparison: date line + line endings. */

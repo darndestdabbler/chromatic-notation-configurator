@@ -21,8 +21,10 @@
  *   - Legacy `noteheadPalette.mode` conflated two things: which preset family
  *     is listed, and which colors render. Here they are separate: the editor
  *     has a preset *family* tab (standard Dark2 sets vs. curated CB-safe
- *     sets), and `palette.useCBSafe` is the render/export toggle mirroring
- *     the engine's `cnb:use-accessible-colors` flag (LY spec §4.5).
+ *     sets), and `palette.useCBSafe` is the preview toggle mirroring the
+ *     engine's `cnb:use-accessible-colors` flag (LY spec §4.5). It is
+ *     preview-only: the export always carries both branches, and the score
+ *     selects one with that flag (audit 2026-11-02, L2).
  *   - Module A `palette.colors` is per pitch class, but the curated palettes
  *     have 2/3/4/6/7/11 colors. The editor assigns colors by cycling the
  *     pool: PC p gets pool[p % N]. This is deterministic, covers all 12 PCs,
@@ -899,6 +901,12 @@ export const CNBPaletteEditor = {
       label.appendChild(checkbox);
       label.appendChild(el("span", "cnb-pal-cb-toggle-text",
         "Use colorblind-safe alternative colors (cnb:use-accessible-colors)"));
+      // Preview-only (audit 2026-11-02, L2): the export carries both
+      // branches whatever this toggle says; the score picks one.
+      label.appendChild(el("span", "cnb-pal-preview-only",
+        "Preview-only: the export carries both palettes, and a score uses the " +
+        "colorblind-safe one when it sets cnb:use-accessible-colors to #t " +
+        "before \\include."));
       return label;
     }
 

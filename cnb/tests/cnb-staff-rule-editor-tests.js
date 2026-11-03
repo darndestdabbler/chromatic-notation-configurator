@@ -15,6 +15,16 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { readFileSync } from "node:fs";
+
+/** The twinline-compact gallery config (pitch axis on, staff midpoint 7). */
+function loadTwinlineCompact() {
+  const text = readFileSync(new URL("../assets/examples/gallery/twinline-compact.json", import.meta.url), "utf8");
+  const { config, validation } = CNBConfigIO.loadFromText(text);
+  if (!validation.valid) throw new Error("fixture invalid: " + validation.errors.join("; "));
+  return config;
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -221,6 +231,35 @@ export const tests = [
       assertThrows(() => E.buildStaff(state), "unknown preset key");
     },
   },
+  {
+    name: "M4: editing twinline-compact's staff colour keeps midpoint 7 and sps; the pitch-axis export is byte-identical",
+    fn: () => {
+      const config = loadTwinlineCompact();
+      const state = E.stateFromConfig(config);
+      state.lineDefaults.color = "#ff0000";
+      const edited = E.applyToConfig(config, state);
+      // The staff slice differs only in the edited field.
+      const expected = CNBConfig.clone(config.staff);
+      expected.lineDefaults.color = "#ff0000";
+      assert(JSON.stringify(edited.staff) === JSON.stringify(expected),
+        "staff slice changed only in lineDefaults.color: " + JSON.stringify(edited.staff));
+      assert(edited.staff.midpoint === 7 && edited.staff.semitonesPerStaffSpace === 4, "geometry kept");
+      // Staff colour is preview-only, so the export does not change at all.
+      assert(CNBLilypond.generate(edited) === CNBLilypond.generate(config), "pitch-axis export byte-identical");
+    },
+  },
+  {
+    name: "M4: changing the pattern re-derives midpoint and sps; switching back restores the loaded values",
+    fn: () => {
+      const state = E.stateFromConfig(loadTwinlineCompact());
+      state.patternKey = "3-6-9";
+      const derived = E.buildStaff(state);
+      assert(derived.midpoint === 12 && derived.semitonesPerStaffSpace === 3, "derived for the new pattern");
+      state.patternKey = "custom";   // customPattern still holds the loaded [2, 5, 6, 8, 9]
+      const back = E.buildStaff(state);
+      assert(back.midpoint === 7 && back.semitonesPerStaffSpace === 4, "loaded geometry restored");
+    },
+  },
 
   // ── buildLedgers ──
   {
@@ -402,6 +441,32 @@ export const tests = [
       assert(findAll(handle.root, "cnb-sre-override-row").length === 2, "one row per pattern line");
       assert(findAll(handle.root, "cnb-sre-template-row").length === 3, "default templates");
       assert(findAll(handle.root, "cnb-sre-valid").length === 1, "validation OK banner");
+    }),
+  },
+  {
+    name: "render L1: under a pitch axis the derived panel shows the exporter's axis geometry (twinline-compact)",
+    fn: () => withDomStub((container) => {
+      const config = loadTwinlineCompact();
+      const handle = E.render(container, { config });
+      const rows = findAll(handle.root, "cnb-sre-derived-row").map(d => d.textContent);
+      const exported = CNBLilypond.sectionB(config);
+      assert(exported.includes("#(set! cnb:staff-line-positions '(-3 -1 1 4 6 8))"), "the export emits the axis staff");
+      assert(rows.includes("LilyPond staff-line-positions: (-3 -1 1 4 6 8)"), "panel matches the export: " + JSON.stringify(rows));
+      assert(rows.includes("Axis units per staff space: 2 (pitch axis)"), "axis unit shown");
+      assert(rows.includes("Staff midpoint: 7"), "loaded midpoint shown");
+    }),
+  },
+  {
+    name: "render: staff line styling and ledger sections are labelled preview-only (M2)",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container, {});
+      for (const section of ["cnb-sre-staff-defaults", "cnb-sre-overrides", "cnb-sre-ledgers", "cnb-sre-ledger-defaults"]) {
+        const notes = findAll(findAll(handle.root, section)[0], "cnb-sre-preview-only");
+        assert(notes.length === 1 && notes[0].textContent.startsWith("Preview-only:") &&
+          notes[0].textContent.includes("not exported"), `${section} carries the preview-only note`);
+      }
+      const ledgerNote = findAll(findAll(handle.root, "cnb-sre-ledgers")[0], "cnb-sre-preview-only")[0].textContent;
+      assert(ledgerNote.includes("proximity rule"), "the ledger note names the proximity rule");
     }),
   },
   {

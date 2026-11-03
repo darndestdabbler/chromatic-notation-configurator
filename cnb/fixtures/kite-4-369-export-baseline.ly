@@ -10,9 +10,14 @@
 %% DO NOT EDIT BY HAND — regenerate from the Configurator.
 %% Source: Kite 4-369 (Configurator).json
 %%
-%% Color palette: Kite CB-safe (skyblue/rose/black) (standard)
+%% Color palette: Kite CB-safe (skyblue/rose/black)
 %% Set cnb:use-accessible-colors to #t before \include to use
 %% the colorblind-safe alternative palette.
+%%
+%% Preview-only (the engine does not engrave these, so they are not
+%% exported): staff line colour and thickness, ledger rules, stem
+%% thickness, repeat counts, the CB-safe preview toggle, and notehead
+%% rules scoped to a key.
 %%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -75,7 +80,7 @@
      (cons 'minim-down    '(0.365 . -0.9))))
 
 %% Color registrations
-%% Primary palette: Kite CB-safe (skyblue/rose/black) (standard)
+%% Primary palette: Kite CB-safe (skyblue/rose/black)
 %% Accessible palette: CB-safe alternative from the palette
 %%
 %% Usage: Set cnb:use-accessible-colors to #t before \include

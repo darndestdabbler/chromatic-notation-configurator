@@ -27,11 +27,17 @@
  *     2 × (S - midpoint) / semitonesPerStaffSpace over octaves 0–1
  *     (half-staff-space units, LY spec §5.1 — the ×2 is the 007-s2 D2 fix;
  *     plan §4.3 originally omitted it), which is exactly Module 11's
- *     computeStaffLinePositions(), so the panel always agrees with the
- *     exporter (parity is unit-tested).
+ *     linear computeStaffLinePositions() (parity is unit-tested). The
+ *     derived PANEL calls computeStaffLinePositions() on the full config
+ *     the editor produces, so under a pitch axis it shows the axis formula
+ *     the export emits (audit 2026-11-02, L1).
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
  *     range (semis 0–24), i.e. 12, for every pattern — both plan examples
- *     (4-8 and 3-6-9) use it and the card/stem modules assume it.
+ *     (4-8 and 3-6-9) use it and the card/stem modules assume it. That
+ *     derived value (and the GCD sps) applies only when the pattern changes:
+ *     while the pattern is the one loaded, the loaded midpoint and sps are
+ *     kept, so a pitch-axis config (midpoint 7 for twinline-compact) is not
+ *     moved by an unrelated edit (audit 2026-11-02, M4).
  *   - Legacy line styling lived in a shared named-styles table (App.styles);
  *     Module A replaces that with staff/ledger lineDefaults plus sparse
  *     per-position lineOverrides, which this editor edits directly.
@@ -43,7 +49,9 @@
  *   {
  *     patternKey:     "4-8" | "3-6-9" | "custom",
  *     customPattern:  number[],            // active when patternKey==="custom"
- *     lineDefaults:   { thicknessPct, style, color },          // staff
+ *     loadedGeometry: { semitonePattern, midpoint, semitonesPerStaffSpace } | null,
+ *                                          // kept while the pattern is unchanged
+ *     lineDefaults:  { thicknessPct, style, color },          // staff
  *     lineOverrides:  { [semiWithinOctave]: {thicknessPct?, style?, color?} },
  *     templates:      [{ semiWithinOctave, triggerPCs, triggerMode }],
  *     proximityRule:  boolean,
@@ -59,7 +67,8 @@
  * `config.staff` / `config.ledgers` objects. Hosts own layout and styling via
  * the .cnb-sre-* class hooks.
  *
- * Dependencies: Module A (validation pass-through and config plumbing).
+ * Dependencies: Module A (validation pass-through and config plumbing);
+ * Module 11 and Module 24 for the derived panel's export geometry.
  * renderPreview() additionally composes Module 1 (grid), Module 3 (staff) and
  * Module 5 (ledger set) — the spec's step 3 live-preview wiring ships in the
  * module so hosts (test page now, Module 19 later) only place it. The preview
@@ -71,12 +80,23 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
+import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 
 // Pitch-class labels (kept inline like Module 12 so the editor core adds no
 // dependency beyond Module A).
 const PC_LABELS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 
 const LINE_STYLES = ["solid", "dashed", "dotted"];
+
+// Preview-only notes (audit 2026-11-02, M2): the engine draws its own staff
+// and ledger lines, so none of these settings reaches the export.
+const STAFF_STYLE_PREVIEW_ONLY =
+  "Preview-only: the engine draws staff lines in its own colour and " +
+  "thickness, so these settings are not exported.";
+const LEDGER_PREVIEW_ONLY =
+  "Preview-only: the engine places and draws its own ledger lines, so " +
+  "ledger templates, the proximity rule and ledger styling are not exported.";
 
 /**
  * Staff pattern presets. "4-8" is the default config's system; "3-6-9" is
@@ -193,6 +213,15 @@ export const CNBStaffRuleEditor = {
    */
   buildStaff(state) {
     const geo = CNBStaffRuleEditor.derivedGeometry(patternOf(state));
+    // Keep the loaded midpoint and sps while the pattern is the one they were
+    // loaded with: an edit to anything else (even a colour) must not move the
+    // staff. A pitch axis anchors on the midpoint (audit 2026-11-02, M4).
+    const loaded = state.loadedGeometry;
+    if (loaded && loaded.semitonePattern.length === geo.semitonePattern.length &&
+        loaded.semitonePattern.every((p, i) => p === geo.semitonePattern[i])) {
+      geo.midpoint = loaded.midpoint;
+      geo.semitonesPerStaffSpace = loaded.semitonesPerStaffSpace;
+    }
     const activeKeys = new Set(geo.semitonePattern.map(String));
     const overrides = {};
     for (const [key, val] of Object.entries(pruneOverrides(state.lineOverrides))) {
@@ -272,9 +301,17 @@ export const CNBStaffRuleEditor = {
       }
     }
 
+    // The loaded staff geometry, kept by buildStaff while the pattern is
+    // unchanged (M4). Absent when the config does not carry both values.
+    const loadedGeometry = Number.isFinite(staff.midpoint) && Number.isFinite(staff.semitonesPerStaffSpace)
+      ? { semitonePattern: pattern.slice(), midpoint: staff.midpoint,
+          semitonesPerStaffSpace: staff.semitonesPerStaffSpace }
+      : null;
+
     return {
       patternKey,
       customPattern: pattern.slice(),
+      loadedGeometry,
       lineDefaults: {
         thicknessPct: 20, style: "solid", color: "#000000",
         ...deepClone(staff.lineDefaults || {}),
@@ -412,15 +449,26 @@ export const CNBStaffRuleEditor = {
           "Need at least 2 staff lines per octave."));
         return wrap;
       }
-      const geo = CNBStaffRuleEditor.derivedGeometry(pattern);
+      // The geometry the export will carry: the full config this editor
+      // produces, through the exporter's own formula, so the panel is right
+      // under a pitch axis too (audit 2026-11-02, L1).
+      let cfg;
+      try {
+        cfg = CNBStaffRuleEditor.applyToConfig(baseConfig, state);
+      } catch (err) {
+        wrap.appendChild(el("div", "cnb-sre-derived-error", "Editor state error: " + err.message));
+        return wrap;
+      }
+      const axis = CNBPitchAxis.create(cfg);
+      wrap.appendChild(el("div", "cnb-sre-derived-row", axis.enabled
+        ? "Axis units per staff space: " + axis.unitsPerStaffSpace + " (pitch axis)"
+        : "Semitones per staff space: " + cfg.staff.semitonesPerStaffSpace));
       wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "Semitones per staff space: " + geo.semitonesPerStaffSpace));
+        "Staff midpoint: " + cfg.staff.midpoint));
       wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "Staff midpoint: " + geo.midpoint));
+        "LilyPond staff-line-positions: (" + CNBLilypond.computeStaffLinePositions(cfg).join(" ") + ")"));
       wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "LilyPond staff-line-positions: (" + geo.lyPositions.join(" ") + ")"));
-      wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "Staff lines per octave: " + geo.semitonePattern.length));
+        "Staff lines per octave: " + cfg.staff.semitonePattern.length));
       return wrap;
     }
 
@@ -465,6 +513,7 @@ export const CNBStaffRuleEditor = {
       const wrap = el("div", "cnb-sre-section cnb-sre-staff-defaults");
       wrap.appendChild(el("div", "cnb-sre-title", "Staff line defaults"));
       wrap.appendChild(el("div", "cnb-sre-hint", "Thickness (% of semitone) · style · color"));
+      wrap.appendChild(el("div", "cnb-sre-preview-only", STAFF_STYLE_PREVIEW_ONLY));
       wrap.appendChild(lineStyleFields(state.lineDefaults, "cnb-sre-staff-defaults", changed));
       return wrap;
     }
@@ -473,6 +522,7 @@ export const CNBStaffRuleEditor = {
     function drawOverrides() {
       const wrap = el("div", "cnb-sre-section cnb-sre-overrides");
       wrap.appendChild(el("div", "cnb-sre-title", "Per-line overrides"));
+      wrap.appendChild(el("div", "cnb-sre-preview-only", STAFF_STYLE_PREVIEW_ONLY));
 
       const pattern = patternOf(state);
       if (pattern.length === 0) {
@@ -521,6 +571,7 @@ export const CNBStaffRuleEditor = {
         "Where ledger lines CAN appear (per octave) and which nearby pitch " +
         "classes trigger them. Proximity mode shows the ledger for any note " +
         "closer to it than to a staff line."));
+      wrap.appendChild(el("div", "cnb-sre-preview-only", LEDGER_PREVIEW_ONLY));
 
       (state.templates || []).forEach((t, idx) => {
         const row = el("div", "cnb-sre-template-row");
@@ -609,6 +660,7 @@ export const CNBStaffRuleEditor = {
       wrap.appendChild(el("div", "cnb-sre-title", "Ledger line defaults"));
       wrap.appendChild(el("div", "cnb-sre-hint",
         "Thickness (% of semitone) · style · color · width (× notehead) · rounded ends"));
+      wrap.appendChild(el("div", "cnb-sre-preview-only", LEDGER_PREVIEW_ONLY));
       wrap.appendChild(lineStyleFields(state.ledgerDefaults, "cnb-sre-ledger-defaults", changed));
 
       const extras = el("div", "cnb-sre-fields cnb-sre-ledger-extras");

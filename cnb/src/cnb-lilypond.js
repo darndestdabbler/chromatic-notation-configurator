@@ -30,12 +30,6 @@ const ENGINE_DEFAULTS = {
   defaultMagnify: "7/4",
   indent: 0,
   collisionThreshold: 2,
-  stemThickness: null,          // null = engine auto-computes
-  staffLineColor: "#000000",
-  // Canonical thickness unit is % of semitone height (LY spec §5.3, default
-  // 20% for staff lines). Emit-if-changed is evaluated at the pct level; the
-  // emitted value is the converted absolute (staff-space) thickness.
-  staffLineThicknessPct: 20,
 };
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
@@ -252,14 +246,35 @@ function attachmentPoints(shape, sps) {
   };
 }
 
-/** Palette display label + mode for header/Section A comments. */
-function paletteLabel(config) {
+/**
+ * The palette name for header/Section A comments, or null when the export
+ * registers no color taken from the palette (audit 2026-11-02, L2: the
+ * header never claims a palette the export does not carry). A palette color
+ * is carried when some pitch class resolves to no explicit rule color and
+ * the palette gives it a non-black hex. palette.useCBSafe is a preview
+ * toggle and does not enter: the score selects the accessible branch with
+ * cnb:use-accessible-colors.
+ */
+function carriedPaletteName(config) {
   const palette = config.palette || {};
-  return {
-    name: palette.name || "None",
-    mode: palette.useCBSafe ? "cb-safe" : "standard",
-  };
+  const carried = resolveAll(config).some(r => {
+    if (r.color !== null) return false;
+    const hex = paletteHexFor(palette.colors, r.pc);
+    return !!hex && hex.toLowerCase() !== "#000000";
+  });
+  return carried ? (palette.name || "Unnamed palette") : null;
 }
+
+/**
+ * Header comment lines naming what the preview shows but the engine does
+ * not engrave, so the export leaves out (audit 2026-11-02, M1-M3, L2, L3).
+ */
+const PREVIEW_ONLY_COMMENT = [
+  "%% Preview-only (the engine does not engrave these, so they are not",
+  "%% exported): staff line colour and thickness, ledger rules, stem",
+  "%% thickness, repeat counts, the CB-safe preview toggle, and notehead",
+  "%% rules scoped to a key.",
+];
 
 /** LilyPond duration number for a named duration, or null when unknown. */
 function durationLyNumber(config, name) {
@@ -518,7 +533,7 @@ export const CNBLilypond = {
   header(config) {
     const meta = config.meta || {};
     const engine = config.engine || {};
-    const pal = paletteLabel(config);
+    const paletteName = carriedPaletteName(config);
     const rule = "%% " + "%".repeat(76);
 
     const lines = [];
@@ -536,9 +551,15 @@ export const CNBLilypond = {
       lines.push(`%% Source: ${CNBScheme.comment(meta.configName)}.json`);
     }
     lines.push("%%");
-    lines.push(`%% Color palette: ${CNBScheme.comment(pal.name)} (${pal.mode})`);
-    lines.push("%% Set cnb:use-accessible-colors to #t before \\include to use");
-    lines.push("%% the colorblind-safe alternative palette.");
+    if (paletteName !== null) {
+      lines.push(`%% Color palette: ${CNBScheme.comment(paletteName)}`);
+      lines.push("%% Set cnb:use-accessible-colors to #t before \\include to use");
+      lines.push("%% the colorblind-safe alternative palette.");
+    } else {
+      lines.push("%% Color palette: none (no palette colors are exported)");
+    }
+    lines.push("%%");
+    lines.push(...PREVIEW_ONLY_COMMENT);
     lines.push("%%");
     lines.push(rule);
     lines.push("");
@@ -647,9 +668,9 @@ export const CNBLilypond = {
     // A5. Color registrations — with accessible color switching (LY spec §4.5)
     const { colors, hasBlack } = usedColors(config);
     if (colors.length > 0) {
-      const pal = paletteLabel(config);
+      const paletteName = carriedPaletteName(config);
       lines.push("%% Color registrations");
-      lines.push(`%% Primary palette: ${CNBScheme.comment(pal.name)} (${pal.mode})`);
+      lines.push(`%% Primary palette: ${paletteName !== null ? CNBScheme.comment(paletteName) : "none (rule colors only)"}`);
       lines.push("%% Accessible palette: CB-safe alternative from the palette");
       lines.push("%%");
       lines.push("%% Usage: Set cnb:use-accessible-colors to #t before \\include");
@@ -746,27 +767,13 @@ export const CNBLilypond = {
       changed.push(`#(set! cnb:collision-threshold ${fmtNum(engine.collisionThreshold, "engine.collisionThreshold")})`);
     }
 
-    // Staff-line styling (LY spec §5.3): thickness is canonical as % of
-    // semitone height; the emitted absolute value is
-    //   (pct / 100) × (1 / semitonesPerStaffSpace)   [staff-space units]
-    // (÷ axisUnitsPerStaffSpace under a pitch axis — v1.3 §5.3a; see sps).
-    // Emit-if-changed is judged against the canonical default (20%), not the
-    // engine's absolute default — the converted value and the engine default
-    // live on different scales.
-    const lineDefaults = staff.lineDefaults || {};
-    const thicknessPct = lineDefaults.thicknessPct !== undefined ? lineDefaults.thicknessPct : d.staffLineThicknessPct;
-    if (thicknessPct !== d.staffLineThicknessPct) {
-      const absolute = (thicknessPct / 100) * (1 / sps);
-      changed.push(`#(set! cnb:default-staff-line-thickness ${fmtNum(absolute, "staff.lineDefaults.thicknessPct")})`);
-    }
-    const staffColor = String(lineDefaults.color || d.staffLineColor);
-    if (staffColor.toLowerCase() !== d.staffLineColor) {
-      changed.push(`#(set! cnb:default-staff-line-color ${CNBScheme.string(staffColor)})`);
-    }
-
-    if (engine.stemThickness !== null && engine.stemThickness !== undefined) {
-      changed.push(`#(set! cnb:stem-thickness ${fmtNum(engine.stemThickness, "engine.stemThickness")})`);
-    }
+    // Staff-line colour and thickness are never emitted: the engine reads
+    // cnb:default-staff-line-thickness / -color only in advanced mode
+    // (cnb:staff-and-ledger-lines), which the Configurator does not emit, so
+    // they are preview-only (LY spec 1.3.3; audit 2026-11-02, M2).
+    // engine.stemThickness is never emitted: the engine defines no
+    // cnb:stem-thickness, and setting it is an "Unbound variable" error
+    // that stops LilyPond (audit 2026-11-02, M1). The setting is preview-only.
 
     if (changed.length > 0) {
       lines.push("%% Engine settings (non-default)");

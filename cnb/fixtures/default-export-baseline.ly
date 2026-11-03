@@ -10,9 +10,12 @@
 %% DO NOT EDIT BY HAND — regenerate from the Configurator.
 %% Source: Default 4-8 System.json
 %%
-%% Color palette: None (standard)
-%% Set cnb:use-accessible-colors to #t before \include to use
-%% the colorblind-safe alternative palette.
+%% Color palette: none (no palette colors are exported)
+%%
+%% Preview-only (the engine does not engrave these, so they are not
+%% exported): staff line colour and thickness, ledger rules, stem
+%% thickness, repeat counts, the CB-safe preview toggle, and notehead
+%% rules scoped to a key.
 %%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

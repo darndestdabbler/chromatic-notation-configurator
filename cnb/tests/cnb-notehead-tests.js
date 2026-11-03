@@ -10,7 +10,7 @@ function assert(condition, message) {
 }
 
 function approx(a, b, msg, epsilon = 1e-9) {
-  if (Math.abs(a - b) > epsilon)
+  if (!(Math.abs(a - b) <= epsilon))
     throw new Error(`${msg || "approx"}: expected ~${b}, got ${a}`);
 }
 

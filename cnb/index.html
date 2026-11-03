@@ -623,7 +623,6 @@
     // immediately via onChange, so re-mounting never loses edits.
     function mountEditors() {
       byId("palette-editor-host").textContent = "";
-      byId("staff-editor-host").textContent = "";
       byId("notehead-editor-host").textContent = "";
       byId("props-editor-host").textContent = "";
       byId("clef-editor-host").textContent = "";
@@ -637,15 +636,7 @@
         },
       });
 
-      CNBStaffRuleEditor.render(byId("staff-editor-host"), {
-        config: appConfig,
-        onChange: (slices) => {
-          appConfig.staff = slices.staff;
-          appConfig.ledgers = slices.ledgers;
-          mountPitchAxisEditor();
-          refreshShared();
-        },
-      });
+      mountStaffEditor();
 
       mountNoteheadEditor();
 
@@ -703,6 +694,24 @@
           else delete appConfig.pitchAxis;
           if (slices.noteheadRules) appConfig.noteheadRules = slices.noteheadRules;
           mountNoteheadEditor();
+          mountStaffEditor();
+          refreshShared();
+        },
+      });
+    }
+
+    /** The staff editor's derived panel shows the export's staff geometry,
+     *  which depends on the pitch axis, so it re-seeds after every axis
+     *  change (audit 2026-11-02, L1). Its own edits commit to appConfig
+     *  immediately, so re-mounting loses nothing. */
+    function mountStaffEditor() {
+      byId("staff-editor-host").textContent = "";
+      CNBStaffRuleEditor.render(byId("staff-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.staff = slices.staff;
+          appConfig.ledgers = slices.ledgers;
+          mountPitchAxisEditor();
           refreshShared();
         },
       });

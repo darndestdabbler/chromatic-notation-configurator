@@ -234,6 +234,24 @@ export const tests = [
     },
   },
   {
+    name: "key-scoped rules (M3): validateForExport surfaces a warning naming the rule; the export proceeds without it",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules.push({
+        name: "F♯ red in G major",
+        priority: 5,
+        match: { pitchClasses: [6], durations: "all", keys: ["G major"] },
+        apply: { color: "#FF0000" },
+      });
+      const v = EX.validateForExport(cfg);
+      assert(v.valid === true, "a warning does not block export");
+      assert(v.warnings.some(w => w.includes('Rule "F♯ red in G major"') && w.includes("not exported")),
+        "the export panel's warnings name the rule: " + JSON.stringify(v.warnings));
+      const ly = CNBLilypond.generate(cfg);
+      assert(!ly.toLowerCase().includes("#ff0000"), "the rule's color is not in the export");
+    },
+  },
+  {
     name: "validateForExport: an underivable filename is a blocking error",
     fn: () => {
       const cfg = CNBConfig.createDefault();

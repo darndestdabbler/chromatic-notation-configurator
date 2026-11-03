@@ -262,15 +262,16 @@ check('MAGNIFY "3/2": JSON follows; Section B emits #(set! cnb:default-magnify 3
   (await sectionB()).includes("#(set! cnb:default-magnify 3/2)"));
 
 await page.click(".cnb-cpe-stem-auto");
-check("STEM AUTO off: number input appears seeded with 2; Section B emits cnb:stem-thickness 2",
+check("STEM AUTO off: number input appears seeded with 2; Section B still omits cnb:stem-thickness (preview-only, M1)",
   await page.evaluate(() => {
     const inp = document.querySelector(".cnb-cpe-stem-thickness");
     return inp !== null && inp.value === "2" && inp.offsetHeight > 0;
-  }) && (await sectionB()).includes("#(set! cnb:stem-thickness 2)"));
+  }) && !(await sectionB()).includes("cnb:stem-thickness"));
 await setTextInput(".cnb-cpe-stem-thickness", "1.5");
 j = await readJson();
-check("STEM 1.5: JSON and Section B follow",
-  j.engine.stemThickness === 1.5 && (await sectionB()).includes("#(set! cnb:stem-thickness 1.5)"));
+check("STEM 1.5: JSON follows; Section B omits it; badge says preview-only",
+  j.engine.stemThickness === 1.5 && !(await sectionB()).includes("cnb:stem-thickness") &&
+  (await badgeText("cnb-cpe-row-stem")).startsWith("preview-only"));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-engine.png"), fullPage: true });
 
 await page.click(".cnb-cpe-stem-auto");

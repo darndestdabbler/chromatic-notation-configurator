@@ -389,7 +389,7 @@ export const tests = [
       const b = CNBLilypond.sectionB(E.applyToConfig(CNBConfig.createDefault(), s));
       assert(b.includes("#(set! cnb:false-hollow #t)"), "falseHollow emitted");
       assert(b.includes("#(set! cnb:default-magnify 3/2)"), "magnify emitted");
-      assert(b.includes("#(set! cnb:stem-thickness 1.5)"), "stemThickness emitted");
+      assert(!b.includes("cnb:stem-thickness"), "stemThickness is preview-only, never emitted (M1)");
     },
   },
 
@@ -431,6 +431,17 @@ export const tests = [
         "shape deselected");
       assert(!findAll(handle.root, "cnb-cpe-repeats")[0].className.includes("inactive"),
         "repeats active in repeat mode");
+    }),
+  },
+  {
+    name: "render: repeat counts are labelled preview-only with the engine's fixed counts (L3)",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container);
+      const note = () => findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-preview-only");
+      assert(note().length === 1 && note()[0].textContent.startsWith("Preview-only:") &&
+        note()[0].textContent.includes("minim ×2, semibreve ×4, breve ×4"), "shape mode note");
+      findAll(handle.root, "cnb-cpe-mode-option").find(o => o.attrs["data-mode"] === "repeat").onclick();
+      assert(note().length === 1, "the note stays in repeat mode");
     }),
   },
   {
@@ -515,6 +526,18 @@ export const tests = [
         "auto restores null and removes input");
       autoBox().onchange({ target: { checked: false } });
       assert(handle.getEngine().stemThickness === 1.2, "prior value restored");
+    }),
+  },
+  {
+    name: "render: the stem thickness badge says preview-only, not exported, whether auto or set (M1)",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container);
+      const badge = () => findAll(
+        findAll(handle.root, "cnb-cpe-row-stem")[0], "cnb-cpe-badge")[0].textContent;
+      const expected = "preview-only — not exported (the engine has no cnb:stem-thickness)";
+      assert(badge() === expected, "auto badge");
+      findAll(handle.root, "cnb-cpe-stem-auto")[0].onchange({ target: { checked: false } });
+      assert(handle.getEngine().stemThickness === 2 && badge() === expected, "set badge");
     }),
   },
   {

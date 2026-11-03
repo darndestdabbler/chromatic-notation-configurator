@@ -256,6 +256,25 @@ is recorded in
 [§9 of the feasibility matrix](docs/research/gallery-survey/feasibility-matrix.md#9-amendment-2026-10-31-set-014-twinline-family-re-tiered);
 the playbook's Part 2 text predates it.
 
+### Preview-only settings
+
+Some settings change the preview, but the engine does not engrave them, so the
+LilyPond export leaves them out. Each control says so, and the export header
+lists them:
+
+- **Staff line colour and thickness.** The engine draws staff lines in its
+  own style.
+- **Ledger rules.** This covers ledger templates, the proximity rule and
+  ledger styling. The engine places its own ledger lines from the staff
+  spacing.
+- **Stem thickness.** The engine has no setting for it.
+- **Repeat counts.** The engine engraves fixed counts: minim ×2, semibreve ×4
+  and breve ×4.
+- **The CB-safe toggle.** The export carries both palettes. A score selects
+  the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
+  before `\include`.
+- **Notehead rules scoped to a key.** Validation warns and names each one.
+
 ## Architecture
 
 The Configurator is a set of independent JavaScript modules (ES modules, no

@@ -70,7 +70,12 @@ for (const file of TEST_FILES) {
 
   const tests = mod.tests;
   if (!Array.isArray(tests)) {
+    // A failure, not a skip: a file whose export was renamed or broken must
+    // not drop out of the run while the suite reports success (audit
+    // 2026-11-02, L5).
     console.error(`\n${file}: no exported 'tests' array found`);
+    totalFail++;
+    failures.push({ file, name: "(no tests export)", error: "no exported 'tests' array" });
     continue;
   }
 

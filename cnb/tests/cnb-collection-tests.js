@@ -112,7 +112,7 @@ function eq(a, b, msg) {
 }
 
 function approx(a, b, msg, tol = 1e-9) {
-  if (Math.abs(a - b) > tol) throw new Error(`${msg || "approx"}: expected ${b}, got ${a}`);
+  if (!(Math.abs(a - b) <= tol)) throw new Error(`${msg || "approx"}: expected ${b}, got ${a}`);
 }
 
 /** Pick apart one duration row. */

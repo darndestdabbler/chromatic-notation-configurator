@@ -18,7 +18,7 @@ function deepEq(a, b, msg) {
 }
 
 function approx(a, b, msg, epsilon = 1e-9) {
-  if (Math.abs(a - b) > epsilon) throw new Error(`${msg || "approx"}: expected ~${b}, got ${a}`);
+  if (!(Math.abs(a - b) <= epsilon)) throw new Error(`${msg || "approx"}: expected ~${b}, got ${a}`);
 }
 
 export const tests = [
@@ -915,6 +915,18 @@ export const tests = [
       assert(!valid, `${name}: must be invalid`);
       assert(errors.some(e => e.includes(`Shape "${name}"`)), `${name}: error names the shape: ${JSON.stringify(errors)}`);
     }
+  }},
+  { name: "validate() M3: a key-scoped notehead rule warns, naming the rule and its keys", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    const keyWarnings = (c) => CNBConfig.validate(c).warnings.filter(w => w.includes("scoped to keys"));
+    deepEq(keyWarnings(cfg), [], "no warning when every rule matches all keys");
+    cfg.noteheadRules.push({ name: "F♯ red in G major", priority: 5,
+      match: { pitchClasses: [6], durations: "all", keys: ["G major"] }, apply: { color: "#FF0000" } });
+    const { valid } = CNBConfig.validate(cfg);
+    assert(valid, "a warning, not an error");
+    const w = keyWarnings(cfg);
+    assert(w.length === 1 && w[0].includes('Rule "F♯ red in G major"') && w[0].includes("G major") &&
+      w[0].includes("not exported"), `warning names the rule: ${JSON.stringify(w)}`);
   }},
 
 ];

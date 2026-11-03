@@ -17,7 +17,7 @@ function assert(condition, message) {
 }
 
 function approx(a, b, msg, epsilon = 1e-6) {
-  if (Math.abs(a - b) > epsilon)
+  if (!(Math.abs(a - b) <= epsilon))
     throw new Error(`${msg || "approx"}: expected ~${b}, got ${a}`);
 }
 
@@ -450,6 +450,9 @@ export const tests = [
       assert(findAll(root, "cnb-pal-custom").length === 1, "custom section");
       assert(findAll(root, "cnb-pal-cb-match").length === 1, "CB match panel");
       assert(findAll(root, "cnb-pal-cb-toggle-input").length === 1, "CB toggle");
+      const cbNote = findAll(findAll(root, "cnb-pal-cb-toggle")[0], "cnb-pal-preview-only");
+      assert(cbNote.length === 1 && cbNote[0].textContent.startsWith("Preview-only:") &&
+        cbNote[0].textContent.includes("cnb:use-accessible-colors"), "CB toggle labelled preview-only (L2)");
       assert(findAll(root, "cnb-pal-preview-cell").length === 12, "12 preview cells");
       assert(findAll(root, "cnb-pal-attribution").length === 1, "attribution note");
       const selected = findAll(root, "cnb-pal-option").filter(o => o.className.includes("selected"));

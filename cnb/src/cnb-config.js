@@ -887,6 +887,17 @@ export const CNBConfig = {
       }
     }
 
+    // W6. Key-scoped notehead rules (audit 2026-11-02, M3). The exporter
+    //     resolves Section C with no key, so a rule whose match.keys is not
+    //     "all" never reaches the .ly; the preview still applies it.
+    for (const rule of rules) {
+      if (!rule || !isPlainObject(rule.match)) continue;
+      const keys = rule.match.keys;
+      if (keys === undefined || keys === "all") continue;
+      const scope = Array.isArray(keys) ? keys.join(", ") : JSON.stringify(keys);
+      warnings.push(`Rule "${rule.name || "(unnamed)"}" is scoped to keys (${scope}) and is not exported: the engraving ignores key-scoped notehead rules, so it shows in the preview only`);
+    }
+
     // W5. CB-safe palette has fewer entries than primary palette
     const primaryCount  = (palette.colors || []).length;
     const cbSafeCount   = (palette.cbSafeColors || []).length;

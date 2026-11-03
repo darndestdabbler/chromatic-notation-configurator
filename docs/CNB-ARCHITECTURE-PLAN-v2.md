@@ -271,8 +271,8 @@ staff: {
 |---|---|---|
 | `staff.semitonesPerStaffSpace` | B1 | `#(set! cnb:semitones-per-staff-space N)` |
 | `staff.semitonePattern` → positions | B1 | `#(set! cnb:staff-line-positions '(...))` |
-| `staff.lineDefaults.thicknessPct` → absolute | B2 | `#(set! cnb:default-staff-line-thickness N)` |
-| `staff.lineDefaults.color` | B2 | `#(set! cnb:default-staff-line-color "...")` |
+| `staff.lineDefaults.thicknessPct` | — | preview-only, not emitted (LY spec 1.3.3 §5.2a) |
+| `staff.lineDefaults.color` | — | preview-only, not emitted (LY spec 1.3.3 §5.2a) |
 
 **LilyPond staff-line-positions conversion:**
 The LY engine uses positions relative to center, in HALF-staff-space units
@@ -646,7 +646,7 @@ engine: {
   defaultMagnify: "7/4",             // cnb:default-magnify (string to preserve fraction)
   indent: 0,                         // cnb:indent
   collisionThreshold: 2,             // cnb:collision-threshold
-  stemThickness: null,               // cnb:stem-thickness (null = engine auto)
+  stemThickness: null,               // preview-only: the engine has no cnb:stem-thickness (LY spec 1.3.3)
   useAccessibleColors: false         // cnb:use-accessible-colors (runtime flag)
 }
 ```
@@ -1690,9 +1690,9 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:default-magnify` | `7/4` | `engine.defaultMagnify` | If changed |
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |
-| `cnb:default-staff-line-thickness` | `2` | Computed from `staff.lineDefaults.thicknessPct` | If changed |
-| `cnb:default-staff-line-color` | `"#000000"` | `staff.lineDefaults.color` | If changed |
-| `cnb:stem-thickness` | auto | `engine.stemThickness` | If set |
+| `cnb:default-staff-line-thickness` | `2` | `staff.lineDefaults.thicknessPct` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
+| `cnb:default-staff-line-color` | `"#000000"` | `staff.lineDefaults.color` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
+| `cnb:stem-thickness` | — (not defined by the engine) | `engine.stemThickness` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
 | `cnb:file-suffix` | `""` | `meta.fileSuffix` | Always |
 | `cnb:notation-label` | `""` | `meta.notationLabel` | Always |
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |

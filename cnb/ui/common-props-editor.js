@@ -33,7 +33,8 @@
  *     denominator ("7/4"). `stemThickness` is null (= engine auto, the
  *     checkbox) or a finite number > 0; the number input only exists in the
  *     DOM while auto is off (state toggles DOM presence — nothing is hidden
- *     with CSS).
+ *     with CSS). It is preview-only: the exporter never emits it, because
+ *     the engine defines no cnb:stem-thickness (audit 2026-11-02, M1).
  *
  * Exporter effect of `representationMode` (LY spec §6.1, wired in Module 11
  * `CNBLilypond.sectionC`): "repeat" → every Section C clause carries
@@ -360,7 +361,11 @@ export const CNBCommonPropsEditor = {
       wrap.appendChild(el("div", "cnb-cpe-title", "Repeat counts"));
       wrap.appendChild(el("div", "cnb-cpe-hint", inactive
         ? "Used only in repeat mode (kept while editing in shape mode)."
-        : "How many base noteheads each longer duration engraves."));
+        : "How many base noteheads each longer duration shows in the preview."));
+      // Preview-only (audit 2026-11-02, L3): repeatCounts is never exported.
+      wrap.appendChild(el("div", "cnb-cpe-preview-only",
+        "Preview-only: the engine engraves fixed counts (minim ×2, " +
+        "semibreve ×4, breve ×4), so these counts are not exported."));
       for (const def of state.definitions) {
         const row = el("div", "cnb-cpe-repeat-row");
         row.setAttribute("data-duration", def.name);
@@ -397,9 +402,9 @@ export const CNBCommonPropsEditor = {
     function emitBadge(field) {
       const same = JSON.stringify(state.engine[field]) === JSON.stringify(ENGINE_DEFAULTS[field]);
       if (field === "stemThickness") {
-        return state.engine.stemThickness === null
-          ? "engine auto — omitted at export"
-          : "non-default — will be emitted";
+        // Never exported, set or not: the engine defines no
+        // cnb:stem-thickness (audit 2026-11-02, M1).
+        return "preview-only — not exported (the engine has no cnb:stem-thickness)";
       }
       return same ? "engine default — omitted at export" : "non-default — will be emitted";
     }
@@ -488,10 +493,9 @@ export const CNBCommonPropsEditor = {
       // Stem thickness: checkbox = engine auto (null); the number input only
       // exists in the DOM while auto is off. Turning auto off restores the
       // last value this editor held (retain-in-state); with no prior value it
-      // seeds 2 — the engine gives no numeric default for cnb:stem-thickness
-      // ("auto", LY spec §5.2), so the seed is not a hidden fallback but an
-      // immediately visible, editable starting point (the badge flips to
-      // "will be emitted" and the input shows the value the moment it exists).
+      // seeds 2, an immediately visible, editable starting point. The value
+      // is never exported: the engine has no cnb:stem-thickness (M1), and
+      // the badge says so.
       const stemControl = el("span", "cnb-cpe-stem-control");
       const auto = boolInput("cnb-cpe-stem-auto", state.engine.stemThickness === null, (v) => {
         state.engine.stemThickness = v ? null : lastStemThickness;

@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.2 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units)
-**Date:** November 3, 2026 (1.3.2); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.3 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings)
+**Date:** November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -118,7 +118,35 @@ Format and 4-point model are unchanged.
 
 ## 5. SECTION B — ADDITIONS
 
+### 5.2a Settings not emitted (new in 1.3.3, linear and axis configs alike)
+
+This amends the v1.2.1 §5.2/§5.3 emit-if-changed tables (audit 2026-11-02,
+M1 and M2). The exporter emits only what the engine engraves. These settings
+are never emitted:
+
+- **`cnb:stem-thickness`** (from `engine.stemThickness`). The engine defines
+  no such variable, so setting it is an "Unbound variable" error that stops
+  LilyPond.
+- **`cnb:default-staff-line-thickness` and `cnb:default-staff-line-color`**
+  (from `staff.lineDefaults`). The engine reads them only in advanced mode
+  (`cnb:staff-and-ledger-lines`), which the Configurator does not emit, so
+  they were no-ops. §5.3a below therefore describes a conversion that is no
+  longer emitted.
+
+These config fields, along with ledger rules, `durations.repeatCounts` and
+`palette.useCBSafe`, are **preview-only**. Key-scoped notehead rules are
+also preview-only: Section C resolves with no key, and validation warns and
+names each such rule. The header lists all of them in a comment.
+
+The header's color-palette line names the palette only when Section A
+registers colors taken from it. Otherwise it reads
+`none (no palette colors are exported)`. Neither the header nor the A5
+comment states a cb-safe mode. The score selects the accessible branch with
+`cnb:use-accessible-colors`.
+
 ### 5.3a Staff/Ledger Line Thickness under a pitch axis
+
+*(Not emitted since 1.3.3; see §5.2a.)*
 
 The v1.2.1 §5.3 conversion
 
@@ -385,7 +413,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.2** | **Nov 3, 2026** | **Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled.** |
+| **1.3.3** | **Nov 3, 2026** | **Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set.** |
+| 1.3.2 | Nov 3, 2026 | Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled. |
 | 1.3.1 | Oct 31, 2026 | Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged. |
 | 1.3 | Jul 12, 2026 | Adopted as canonical by set 014 (pitch-axis implementation) session 1: the 1.3-draft renamed from `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` into `docs/`, content unchanged except this status/adoption header. The §8a fail-loud gate is in effect until set 014 session 3 verifies E13-1/E13-2 from the engine repo's handoff record. |
 | 1.3-draft | Jul 10, 2026 | Pitch-axis export surface (set 013 design, DRAFT): compiled `cnb:get-pitch-staff-position` procedure (half-staff-spaces, midpoint anchored at staff position 0) and axis-formula `cnb:staff-line-positions` with collapse dedup (§5.4); `axisUnitsPerStaffSpace` substitution in attachment (§4.4a) and thickness (§5.3a) conversions; optional Section C `(x-offset . N)` field, axis-gated, nonzero-only, in the grouping key (§6.3); pitch-axis validation and the fail-loud interim gate (§8/§8a). All emissions gated on `pitchAxis.enabled`; disabled output byte-identical to v1.2.1. |
