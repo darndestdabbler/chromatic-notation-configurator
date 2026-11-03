@@ -53,8 +53,10 @@ testing:
 # orchestration repository's own manifests and names a `vsix-v*` tag.
 # `dabbler packaging --dry-run` rehearses the block and exits 0 when it
 # loads, in a session that may not publish too; `dabbler packaging
-# --rehearse` runs the pack and pushes nothing.
+# --rehearse` runs the pack and pushes nothing. `.gitattributes` lists what
+# the archive leaves out; `--worktree-attributes` makes a rehearsal honour an
+# uncommitted change to it (on the release trunk the result is the same).
 packaging:
   pack:
-    argv: ["git", "archive", "--format=zip",
-           "--output={output}/chromatic-notation-configurator-1.0.0.zip", "HEAD"]
+    argv: ["git", "archive", "--format=zip", "--worktree-attributes",
+           "--output={output}/chromatic-notation-configurator-{version}.zip", "HEAD"]

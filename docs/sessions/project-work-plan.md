@@ -24,7 +24,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 10 | No imported text can become Scheme | no | 2026-11-02 |
 | 11 | Path data in the units the engine reads | no | 2026-11-03 |
 | 12 | Export only what the engine engraves | no | 2026-11-03 |
-| 13 | Documentation, archive and 1.0.1 | — | not declared |
+| 13 | Documentation, archive and 1.0.1 | no | 2026-11-03 |
 | 14 | Release 1.0.1 (release: 1.0.1) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -106,3 +106,9 @@ Make the LilyPond export carry only what the engine engraves, and say so whereve
 **Rolled back:**
 
 - 2026-11-03 — session 12 — Rollback to Start of This Session from the Work Explorer (operator)
+
+### Session 13 — Documentation, archive and 1.0.1
+
+**Releasable: no.**
+
+Finish the documentation and archive work for 1.0.1. Push the local `legacy-monolith-final` tag to origin (audit M6) and confirm that every README and CLAUDE.md mention of it now resolves on GitHub. The README names it in plain text, and CLAUDE.md does not mention it. Fix the README's description of `cnb/assets/` to say gallery example configs (L7). Confirm that README "Known limitations" lists everything sessions 10–12 made preview-only, and set its status line to 1.0.1. Add a `.gitattributes` that export-ignores `.vscode/`, `AGENTS.md`, `CLAUDE.md`, `docs/sessions/`, `docs/transcripts/` and `docs/planning/`. Make the declared pack read the working-tree attributes and name the zip by `{version}`, so that `dabbler packaging --rehearse` shows the exclusion before the commit and session 14 packs a 1.0.1 zip. List the rehearsed zip in `docs/sessions/session-013/notes.md`. Set `version.json` to 1.0.1 and add a `CHANGELOG.md` with 1.0.0 and 1.0.1. The 1.0.1 entry says that 1.0.0 exports with toolkit shapes or fallback paths were mis-scaled and should be regenerated.

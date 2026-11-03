@@ -368,7 +368,7 @@ The same JSON config drives both the live preview and the LilyPond export.
 │   │   ├── cnb-key-signature.js     Key signature renderer
 │   │   └── cnb-lilypond.js          LilyPond exporter
 │   ├── ui/                          UI components (editors, importer, config IO, preview)
-│   ├── assets/                      Built-in shapes and palettes
+│   ├── assets/                      Gallery example configs (examples/gallery/*.json)
 │   ├── tests/
 │   │   ├── run-tests.js             Test runner
 │   │   └── cnb-*-tests.js           Per-module test files
@@ -389,12 +389,13 @@ The same JSON config drives both the live preview and the LilyPond export.
 
 ## Current Status
 
-Version 1.0.0 — complete. All rendering, export and UI modules are built and
+Version 1.0.1. All rendering, export and UI modules are built and
 covered by the unit suite and the browser UAT, and a Configurator-designed
 system (Kite 4-369) exported through the UI renders through the engine
-pixel-identical to the engine repo's golden baseline. The monolithic
-predecessor the modules replaced is no longer in the tree; it is preserved at
-git tag `legacy-monolith-final`.
+pixel-identical to the engine repo's golden baseline. What changed in each
+release is in [`CHANGELOG.md`](CHANGELOG.md). The monolithic predecessor the
+modules replaced is no longer in the tree; it is preserved at git tag
+`legacy-monolith-final`.
 
 Development runs as numbered Dabbler sessions under `docs/sessions/` (the plan
 is `docs/sessions/session-plan.md`). `docs/session-sets/`, `docs/batons/` and
