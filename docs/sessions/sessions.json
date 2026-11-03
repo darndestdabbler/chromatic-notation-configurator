@@ -228,9 +228,9 @@
     {
       "number": 12,
       "title": "Export only what the engine engraves",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-03T04:39:30.121000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-03T04:54:03.778000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
