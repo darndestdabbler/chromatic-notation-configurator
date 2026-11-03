@@ -168,6 +168,13 @@
       "dateTime": "2026-11-03T04:57:31.280000-05:00",
       "task": "Finish the documentation and archive work for 1.0.1. Push the local `legacy-monolith-final` tag to origin (audit M6) and confirm that every README and CLAUDE.md mention of it now resolves on GitHub. The README names it in plain text, and CLAUDE.md does not mention it. Fix the README's description of `cnb/assets/` to say gallery example configs (L7). Confirm that README \"Known limitations\" lists everything sessions 10\u201312 made preview-only, and set its status line to 1.0.1. Add a `.gitattributes` that export-ignores `.vscode/`, `AGENTS.md`, `CLAUDE.md`, `docs/sessions/`, `docs/transcripts/` and `docs/planning/`. Make the declared pack read the working-tree attributes and name the zip by `{version}`, so that `dabbler packaging --rehearse` shows the exclusion before the commit and session 14 packs a 1.0.1 zip. List the rehearsed zip in `docs/sessions/session-013/notes.md`. Set `version.json` to 1.0.1 and add a `CHANGELOG.md` with 1.0.0 and 1.0.1. The 1.0.1 entry says that 1.0.0 exports with toolkit shapes or fallback paths were mis-scaled and should be regenerated.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 14,
+      "dateTime": "2026-11-03T05:01:02.488000-05:00",
+      "task": "Release 1.0.1: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
