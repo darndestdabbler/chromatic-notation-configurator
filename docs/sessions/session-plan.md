@@ -509,3 +509,40 @@ as 1.0.1.
    shapes or fallback paths were mis-scaled and should be regenerated.
 
 ### Session 14: Release 1.0.1 (release: 1.0.1)
+
+### Session 15: A second reference notation, 45deg-369
+
+**Why.** Kite 4-369 reads as radical. The operator designed 45deg-369 as
+the gentler alternative: the same 3-6-9 staff and 3 semitones per space,
+4-semitone ellipses tilted 45°, the same three-colour cycle over a
+solid/hollow alternation (period 6), and stems attached at the notehead
+centre. The operator authors the shapes and the design by hand
+(`D:\projects\chromatic-notation-musicxml-and-45deg-plan.md`, §3) and
+hands over, uncommitted in `cnb/fixtures/`: `45deg-solid.svg`,
+`45deg-hollow.svg` (toolkit output, centre anchors),
+`45deg-369-config.json` and `45deg-369-from-configurator.ly`. This
+session makes them a checked-in, test-gated fixture like Kite's. It
+needs engine session 17 (centre stems) on the engine's trunk for step 3.
+
+1. Register.
+2. Commit the SVGs and the JSON. Replace the one-fixture driver with
+   `cnb/fixtures/export-config.mjs <config.json> [out.ly]` (the same
+   `CNBLilypond.generate()` call), and keep `export-kite-4-369.mjs` as a
+   wrapper that calls it, because the umbrella's pipeline names it.
+   Export `45deg-369-export-baseline.ly`. In `cnb-lilypond-tests.js`,
+   mirror the Kite byte-identical baseline test for 45deg-369; in
+   `cnb-collection-tests.js`, add the config to the collection. In
+   `cnb-svg-importer-tests.js`, prove that a toolkit SVG whose stem
+   anchors are `(0, 0)` imports with those anchors, and that the export
+   writes `(0 . 0)` for all four points after the staff-space scaling.
+3. Round trip: `cnb/fixtures/joy-to-the-world-45deg.ly` (the Kite
+   round-trip score with the include changed) engraves through the
+   engine at 1.2.0 or later with exit 0 and no `error:` line, as a test
+   that runs when `lilypond` is on `PATH` and skips with a reason
+   otherwise. README "A worked example, checked in" lists both fixtures
+   and says Kite is the golden one and 45deg-369 the reference
+   alternative. If the preview cannot draw a stem from the centre, say
+   so under "Preview-only settings". `CHANGELOG.md` 1.0.2 and
+   `version.json` `1.0.2`.
+
+### Session 16: Release 1.0.2 (release: 1.0.2)
