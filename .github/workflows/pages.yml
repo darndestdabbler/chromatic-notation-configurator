@@ -1,0 +1,34 @@
+# Publishes the configurator to GitHub Pages
+# (https://configurator.darndestdabbler.org/) from a release tag, so the live
+# site is always a release. To redeploy, run this workflow by hand from a
+# chosen tag. It runs no tests: a release only tags what the session gates
+# already passed.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - run: node cnb/site/assemble-site.mjs _site
+      - uses: actions/upload-pages-artifact@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
