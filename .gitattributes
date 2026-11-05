@@ -1,0 +1,10 @@
+# Release archive hygiene: `git archive` (the dabbler.yaml pack) leaves out
+# the Pages workflow, editor settings, AI-engine instructions and the
+# session records.
+/.github export-ignore
+/.vscode export-ignore
+/AGENTS.md export-ignore
+/CLAUDE.md export-ignore
+/docs/sessions export-ignore
+/docs/transcripts export-ignore
+/docs/planning export-ignore
