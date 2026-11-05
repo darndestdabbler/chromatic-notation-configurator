@@ -26,6 +26,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 12 | Export only what the engine engraves | no | 2026-11-03 |
 | 13 | Documentation, archive and 1.0.1 | no | 2026-11-03 |
 | 14 | Release 1.0.1 (release: 1.0.1) | yes | 2026-11-03 |
+| 15 | Session 15 | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -118,3 +119,9 @@ Finish the documentation and archive work for 1.0.1. Push the local `legacy-mono
 **Releasable: yes.**
 
 Release 1.0.1: the framework packs and publishes what is on the trunk.
+
+### Session 15 — Session 15
+
+**Rolled back:**
+
+- 2026-11-05 — session 15 — Rollback to Start of This Session from the Work Explorer (operator)
