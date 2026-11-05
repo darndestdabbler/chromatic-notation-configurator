@@ -518,14 +518,18 @@ the gentler alternative: the same 3-6-9 staff and 3 semitones per space,
 solid/hollow alternation (period 6), and stems attached at the notehead
 centre. The operator authors the shapes and the design by hand
 (`D:\projects\chromatic-notation-musicxml-and-45deg-plan.md`, §3) and
-hands over, uncommitted in `cnb/fixtures/`: `45deg-solid.svg`,
-`45deg-hollow.svg` (toolkit output, centre anchors),
-`45deg-369-config.json` and `45deg-369-from-configurator.ly`. This
+hands over, uncommitted in `cnb/fixtures/`: `45deg.svg` (one toolkit
+SVG carrying both the `notehead` and the `hollow` path, centre anchors;
+solid or hollow is the rules' choice per pitch class, as with Kite),
+`45deg-369-config.json` and `45deg-369-from-configurator.ly`. The
+operator's step-by-step guide is
+`D:\Projects\chromatic-notation-45deg-walkthrough.md`; a headless
+reference copy of the SVG is in `D:\Projects%deg-reference\`. This
 session makes them a checked-in, test-gated fixture like Kite's. It
 needs engine session 17 (centre stems) on the engine's trunk for step 3.
 
 1. Register.
-2. Commit the SVGs and the JSON. Replace the one-fixture driver with
+2. Commit the SVG and the JSON. Replace the one-fixture driver with
    `cnb/fixtures/export-config.mjs <config.json> [out.ly]` (the same
    `CNBLilypond.generate()` call), and keep `export-kite-4-369.mjs` as a
    wrapper that calls it, because the umbrella's pipeline names it.
