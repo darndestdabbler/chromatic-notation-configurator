@@ -17,7 +17,7 @@ schema_version: 1
 #
 # The browser UAT is the second suite (session 5). `npm run uat` runs every
 # cnb/uat/uat-*.mjs Playwright driver in turn and stops at the first failure;
-# 12 drivers in a minute or two on 2026-11-01. Its prerequisites are per
+# 13 drivers in a minute or two on 2026-11-05. Its prerequisites are per
 # machine and not installed by the suite: `npm install` (playwright-core, the
 # only devDependency), `npx playwright install chromium firefox`, and an
 # installed Microsoft Edge (uat-hostile-input.mjs, session 6, runs in all

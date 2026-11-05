@@ -27,17 +27,22 @@ export function findEngine() {
 }
 
 // One chromatic octave of quarter notes; each NoteHead prints its pitch
-// class and its stencil's X and Y extents (staff spaces) once laid out.
+// class and its stencil's X and Y extents once laid out, in its own staff's
+// staff spaces. The engine magnifies every staff by cnb:default-magnify
+// (engine cnb/score-defaults.ly, its session 18), which scales the staff
+// space and the notehead alike; dividing by the staff space measures the
+// size relative to the staff, the unit the preview is drawn in.
 const PROBE_SCORE = `\\version "2.24.2"
 \\include "config.ly"
 {
   \\override NoteHead.after-line-breaking = #(lambda (grob)
     (let ((stil (ly:grob-property grob 'stencil))
-          (pitch (ly:event-property (event-cause grob) 'pitch)))
+          (pitch (ly:event-property (event-cause grob) 'pitch))
+          (space (ly:staff-symbol-staff-space grob)))
       (format #t "CNB-NOTEHEAD ~a ~a ~a\\n"
         (modulo (ly:pitch-semitones pitch) 12)
-        (interval-length (ly:stencil-extent stil X))
-        (interval-length (ly:stencil-extent stil Y)))))
+        (/ (interval-length (ly:stencil-extent stil X)) space)
+        (/ (interval-length (ly:stencil-extent stil Y)) space))))
   c'4 cis'4 d'4 dis'4 e'4 f'4 fis'4 g'4 gis'4 a'4 ais'4 b'4
 }
 `;

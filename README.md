@@ -44,8 +44,13 @@ PDF / SVG / PNG output
 
 ### Usage
 
-The application is `cnb/index.html`. It uses ES modules, so serve the
-repository over HTTP rather than opening the file directly:
+Use the configurator online at
+**<https://configurator.darndestdabbler.org/>**. Nothing to install. The
+site is updated at each release.
+
+To run it locally, for development: the application is `cnb/index.html`.
+It uses ES modules, so serve the repository over HTTP rather than opening
+the file directly:
 
 ```bash
 # from the repository root — either of:
@@ -54,7 +59,13 @@ python -m http.server 8000
 ```
 
 then open `http://localhost:8000/cnb/index.html` (port per your server).
-No build step required.
+No build step required. Opened from disk (`file://`), the browser blocks
+the modules, and the page shows a notice saying so, with a link to the
+live site and these commands.
+
+The site is published by `.github/workflows/pages.yml` on each `v*` release
+tag. It copies the app with `node cnb/site/assemble-site.mjs <outDir>`
+(`index.html`, `src/`, `ui/`, `assets/`; no build).
 
 ### Supported browsers
 
@@ -375,7 +386,9 @@ The same JSON config drives both the live preview and the LilyPond export.
 │   ├── test-pages/
 │   │   └── test-*.html              Visual test pages per module
 │   ├── fixtures/                    Release-gate fixtures and export baselines
+│   ├── site/assemble-site.mjs       Copies the app into the GitHub Pages site
 │   └── uat/                         Browser UAT drivers (Playwright)
+├── .github/workflows/pages.yml      Deploys the site on each release tag
 ├── dabbler.yaml                     Test suites of record
 ├── version.json                     Product version
 └── docs/

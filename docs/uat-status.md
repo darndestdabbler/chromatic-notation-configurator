@@ -17,7 +17,33 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
-## Last run — 2026-11-01 (session 6)
+## Last run — 2026-11-05 (session 15)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`, Firefox and Edge as in
+  session 6
+- Windows 11, Node 25.8.1
+- `npm run uat`: 13 of 13 drivers pass. The twelve earlier drivers are
+  unchanged and pass as in session 6.
+
+`uat-site.mjs` (new) checks the site GitHub Pages publishes, in Chromium.
+It assembles the site with `cnb/site/assemble-site.mjs` into a temp
+directory, serves it over HTTP and loads `/`. The preview renders staff
+lines and noteheads, every editor mounts, there is no `file://` notice, and
+no page error, console error or failed request is logged. It then opens the
+working tree's `cnb/index.html` over `file://` and checks that the notice is
+visible, links to `https://configurator.darndestdabbler.org/` and gives the
+two local commands.
+
+| Driver | Page under test | Result |
+|---|---|---|
+| `uat-site.mjs` | the assembled site at `/`, and `cnb/index.html` over `file://` | pass, 8/8 checks |
+
+**Fixed:** a served page logged one console error, a 404 for
+`/favicon.ico`, which the browser requests on its own. `cnb/index.html` now
+declares an empty inline icon (`<link rel="icon" href="data:,">`), so the
+request is never made.
+
+## Earlier run — 2026-11-01 (session 6)
 
 - playwright-core 1.64.1; Chromium `chromium-1248` (156.0.8078.4); Firefox
   `firefox-1555` (157.0), installed by `npx playwright install firefox`;

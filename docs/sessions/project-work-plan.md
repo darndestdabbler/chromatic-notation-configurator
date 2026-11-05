@@ -26,7 +26,9 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 12 | Export only what the engine engraves | no | 2026-11-03 |
 | 13 | Documentation, archive and 1.0.1 | no | 2026-11-03 |
 | 14 | Release 1.0.1 (release: 1.0.1) | yes | 2026-11-03 |
-| 15 | Session 15 | — | not declared |
+| 15 | The app online, and a page that says why it is blank | no | 2026-11-05 |
+| 16 | A second reference notation, 45deg-369 | — | not declared |
+| 17 | Release 1.0.2 (release: 1.0.2) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -120,7 +122,15 @@ Finish the documentation and archive work for 1.0.1. Push the local `legacy-mono
 
 Release 1.0.1: the framework packs and publishes what is on the trunk.
 
-### Session 15 — Session 15
+### Session 15 — The app online, and a page that says why it is blank
+
+**Releasable: no.**
+
+Put the configurator online and make a file:// open explain itself. cnb/index.html gains a small classic inline script, run before the module script, that shows a visible notice at the top of the page when location.protocol is "file:": the app must be served over HTTP, a link to https://configurator.darndestdabbler.org/, and the README's two local commands (npx serve . / python -m http.server 8000, then open /cnb/index.html); the page also gets an inline <link rel="icon"> so a served page logs no favicon 404. A dependency-free Node script, cnb/site/assemble-site.mjs <outDir>, copies cnb/index.html, cnb/src/, cnb/ui/ and cnb/assets/ into <outDir> so the app sits at the site root, with no transform. A GitHub Actions workflow, .github/workflows/pages.yml, runs on push of v* tags and on workflow_dispatch, assembles the site into _site and deploys it with actions/configure-pages, actions/upload-pages-artifact and actions/deploy-pages (pinned to major versions, pages/id-token write and contents read permissions, a pages concurrency group, no tests); .gitattributes export-ignores /.github. A Chromium UAT driver, cnb/uat/uat-site.mjs, on the existing driver pattern, assembles the site into a temp directory, serves it over HTTP and checks that / renders the preview and mounts the editors with no notice and no page or console errors, then opens the working tree's cnb/index.html over file:// and checks the notice is visible and names the live URL. The README's Usage leads with the live site, keeps the local-server instructions for development and mentions the notice; CHANGELOG.md opens a 1.0.2 entry; docs/uat-status.md records the new driver's result and the dabbler.yaml comment's driver count goes to 13. The operator prerequisites (public repository, Pages source GitHub Actions, the custom domain, DNS and HTTPS) are checked read-only with gh api and recorded in the notes.
+
+**Amended after acceptance:**
+
+- 2026-11-05 — step 'file-protocol-notice': its checks: node cnb/tests/run-tests.js fails identically on the unchanged tree: its engine-backed gallery size check (check-gallery-examples) measures noteheads at 7/4 the preview size against the sibling engine repo, which changed on 2026-11-05 (its sessions 22-23). That failure does not describe this step; the markup check does, and the whole suite still runs as the run of record. (claude-code (anthropic, claude-opus-5-5))
 
 **Rolled back:**
 

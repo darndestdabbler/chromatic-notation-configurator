@@ -183,6 +183,21 @@
       "dateTime": "2026-11-05T04:51:56.180000-05:00",
       "reason": "Rollback to Start of This Session from the Work Explorer",
       "by": "operator"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 15,
+      "dateTime": "2026-11-05T05:54:53.376000-05:00",
+      "task": "Put the configurator online and make a file:// open explain itself. cnb/index.html gains a small classic inline script, run before the module script, that shows a visible notice at the top of the page when location.protocol is \"file:\": the app must be served over HTTP, a link to https://configurator.darndestdabbler.org/, and the README's two local commands (npx serve . / python -m http.server 8000, then open /cnb/index.html); the page also gets an inline <link rel=\"icon\"> so a served page logs no favicon 404. A dependency-free Node script, cnb/site/assemble-site.mjs <outDir>, copies cnb/index.html, cnb/src/, cnb/ui/ and cnb/assets/ into <outDir> so the app sits at the site root, with no transform. A GitHub Actions workflow, .github/workflows/pages.yml, runs on push of v* tags and on workflow_dispatch, assembles the site into _site and deploys it with actions/configure-pages, actions/upload-pages-artifact and actions/deploy-pages (pinned to major versions, pages/id-token write and contents read permissions, a pages concurrency group, no tests); .gitattributes export-ignores /.github. A Chromium UAT driver, cnb/uat/uat-site.mjs, on the existing driver pattern, assembles the site into a temp directory, serves it over HTTP and checks that / renders the preview and mounts the editors with no notice and no page or console errors, then opens the working tree's cnb/index.html over file:// and checks the notice is visible and names the live URL. The README's Usage leads with the live site, keeps the local-server instructions for development and mentions the notice; CHANGELOG.md opens a 1.0.2 entry; docs/uat-status.md records the new driver's result and the dabbler.yaml comment's driver count goes to 13. The operator prerequisites (public repository, Pages source GitHub Actions, the custom domain, DNS and HTTPS) are checked read-only with gh api and recorded in the notes.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 15,
+      "dateTime": "2026-11-05T05:56:59.011000-05:00",
+      "what": "step 'file-protocol-notice': its checks",
+      "reason": "node cnb/tests/run-tests.js fails identically on the unchanged tree: its engine-backed gallery size check (check-gallery-examples) measures noteheads at 7/4 the preview size against the sibling engine repo, which changed on 2026-11-05 (its sessions 22-23). That failure does not describe this step; the markup check does, and the whole suite still runs as the run of record.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

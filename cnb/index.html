@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Chromatic Notation Configurator</title>
+  <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
@@ -464,9 +465,32 @@
     .cnb-pae-valid { color: #2e7d32; }
     .cnb-pae-error { color: #c62828; }
     .cnb-pae-warning { color: #b45309; }
+
+    /* ── Shown only when the page is opened from disk (file://) ── */
+    #file-notice {
+      background: #fff4e5; border: 1px solid #b45309; border-radius: 8px;
+      padding: 14px 18px; margin: 0 0 20px; max-width: 860px;
+      font-size: 14px; line-height: 1.5; color: #333;
+    }
+    #file-notice code { background: #f7f7f7; padding: 1px 4px; border-radius: 3px; }
   </style>
 </head>
 <body>
+  <script>
+    // Over file:// the browser blocks the ES module imports below (CORS), so
+    // the editors and preview never load. Say so instead of showing empty panels.
+    if (location.protocol === "file:") {
+      document.body.insertAdjacentHTML("afterbegin",
+        '<div id="file-notice" role="alert">' +
+        '<strong>This page must be served over HTTP.</strong> Opened from disk, ' +
+        'the browser blocks its JavaScript modules, so the panels below stay empty. ' +
+        'Use the configurator online at ' +
+        '<a href="https://configurator.darndestdabbler.org/">https://configurator.darndestdabbler.org/</a>, ' +
+        'or serve the repository locally from its root with ' +
+        '<code>npx serve .</code> or <code>python -m http.server 8000</code> ' +
+        'and open <code>/cnb/index.html</code> on that server.</div>');
+    }
+  </script>
   <h1>Chromatic Notation Configurator</h1>
   <p class="intro">
     Design a chromatic notation system and export it for the CNB LilyPond

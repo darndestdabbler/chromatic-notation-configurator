@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.2
+
+### The configurator online
+
+- The app is published at <https://configurator.darndestdabbler.org/>,
+  deployed by GitHub Pages from each release tag, so the live site is
+  always a release. No install and no local server are needed.
+
+### A page that says why it is blank
+
+- Opened from disk (`file://`), the browser blocks the app's modules and the
+  panels stay empty. The page now shows a notice at the top saying it must
+  be served over HTTP. The notice links to the live site and gives the two
+  local commands (`npx serve .` or `python -m http.server 8000`, then open
+  `/cnb/index.html`).
+- A served page no longer logs a 404 for `/favicon.ico`.
+
 ## 1.0.1
 
 **Regenerate your 1.0.0 exports.** A `.ly` file exported by 1.0.0 from a
