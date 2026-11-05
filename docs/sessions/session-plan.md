@@ -515,18 +515,24 @@ as 1.0.1.
 **Why.** Kite 4-369 reads as radical. The operator designed 45deg-369 as
 the gentler alternative: the same 3-6-9 staff and 3 semitones per space,
 4-semitone ellipses tilted 45°, the same three-colour cycle over a
-solid/hollow alternation (period 6), and stems attached at the notehead
-centre. The operator authors the shapes and the design by hand
+solid/hollow alternation (period 6), and stems attached on the head's
+vertical centre line at the edge of the hole, 1.65 semitones above the
+centre for up stems and below it for down stems (toolkit export
+`(0.0 . 1.6491)` / `(0.0 . -1.6495)`, semitone units), so a stem never
+crosses the hollow. Decided 2026-11-05; the earlier centre anchor
+`(0 . 0)` was dropped. The operator authors the shapes and the design by hand
 (`D:\projects\chromatic-notation-musicxml-and-45deg-plan.md`, §3) and
 hands over, uncommitted in `cnb/fixtures/`: `45deg.svg` (one toolkit
-SVG carrying both the `notehead` and the `hollow` path, centre anchors;
+SVG carrying both the `notehead` and the `hollow` path, anchors as above,
+no minim pair so minims use the crotchet anchors;
 solid or hollow is the rules' choice per pitch class, as with Kite),
 `45deg-369-config.json` and `45deg-369-from-configurator.ly`. The
 operator's step-by-step guide is
 `D:\Projects\chromatic-notation-45deg-walkthrough.md`; a headless
 reference copy of the SVG is in `D:\Projects%deg-reference\`. This
 session makes them a checked-in, test-gated fixture like Kite's. It
-needs engine session 17 (centre stems) on the engine's trunk for step 3.
+needs engine session 17 (anchors anywhere inside the head) on the engine's
+trunk for step 3.
 
 1. Register.
 2. Commit the SVG and the JSON. Replace the one-fixture driver with
@@ -536,16 +542,21 @@ needs engine session 17 (centre stems) on the engine's trunk for step 3.
    Export `45deg-369-export-baseline.ly`. In `cnb-lilypond-tests.js`,
    mirror the Kite byte-identical baseline test for 45deg-369; in
    `cnb-collection-tests.js`, add the config to the collection. In
-   `cnb-svg-importer-tests.js`, prove that a toolkit SVG whose stem
-   anchors are `(0, 0)` imports with those anchors, and that the export
-   writes `(0 . 0)` for all four points after the staff-space scaling.
+   `cnb-svg-importer-tests.js`, prove that the fixture imports with the
+   anchors the toolkit wrote into it, up `(0, 1.649)` and down
+   `(0, -1.650)` in semitone units with the minim pair equal to the
+   crotchet pair, and that the export writes each divided by the staff's 3
+   semitones per space (`0.5497` and `-0.5498`, to the exporter's
+   rounding). Read the expected numbers from the fixture's rects in the
+   test rather than hard-coding them twice.
 3. Round trip: `cnb/fixtures/joy-to-the-world-45deg.ly` (the Kite
    round-trip score with the include changed) engraves through the
    engine at 1.2.0 or later with exit 0 and no `error:` line, as a test
    that runs when `lilypond` is on `PATH` and skips with a reason
    otherwise. README "A worked example, checked in" lists both fixtures
    and says Kite is the golden one and 45deg-369 the reference
-   alternative. If the preview cannot draw a stem from the centre, say
+   alternative. If the preview cannot draw a stem from an anchor inside
+   the head, say
    so under "Preview-only settings". `CHANGELOG.md` 1.0.2 and
    `version.json` `1.0.2`.
 
