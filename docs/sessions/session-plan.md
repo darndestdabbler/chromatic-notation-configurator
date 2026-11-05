@@ -510,7 +510,100 @@ as 1.0.1.
 
 ### Session 14: Release 1.0.1 (release: 1.0.1)
 
-### Session 15: A second reference notation, 45deg-369
+### Session 15: The app online, and a page that says why it is blank
+
+Scope: `.github/workflows/pages.yml`, `cnb/site/`, `cnb/index.html`,
+`cnb/uat/`, `.gitattributes`, `README.md`, `CHANGELOG.md`,
+`docs/uat-status.md`, `dabbler.yaml` (comments only).
+
+**Why.** On 2026-11-05 the operator opened `cnb/index.html` from disk and
+got a page of empty panels: over `file://` the browser blocks every ES
+module import (CORS), so only the static HTML and CSS render, with no
+message saying why. The README does say to serve the app over HTTP, but
+nobody should have to read it to find out, and most users should not have
+to run a server at all. Decided 2026-11-05: the app is published on GitHub
+Pages at **`https://configurator.darndestdabbler.org/`**, deployed by a
+GitHub Actions workflow **on release tags only**, so the live site is
+always a release. The repository is being made public for this. 1.0.2
+(session 17) is the first deploy.
+
+**Operator prerequisites** (settings, not files; the session checks them
+read-only with `gh api repos/darndestdabbler/chromatic-notation-configurator`
+and `…/pages`, records what it finds in the notes, and does not change
+them):
+- the repository is public;
+- Settings → Pages → Source is "GitHub Actions";
+- the custom domain `configurator.darndestdabbler.org` is set in Settings →
+  Pages (a `CNAME` file is ignored by an Actions deploy), with a DNS CNAME
+  record from `configurator` to `darndestdabbler.github.io`, and "Enforce
+  HTTPS" ticked once the certificate is issued.
+
+If any of these is missing, the session still lands its files and says so
+in the notes. The first deploy (session 17) cannot reach the domain until
+they are in place.
+
+**What.**
+
+1. Register.
+2. The `file://` notice. `cnb/index.html` gains a small classic (non-module)
+   inline script that runs before the module script. When
+   `location.protocol === "file:"` it shows a visible notice at the top of
+   the page. The notice says the configurator must be served over HTTP,
+   links to the live site, and gives the two local commands the README
+   gives (`npx serve .` / `python -m http.server 8000`, then open
+   `/cnb/index.html`). Over HTTP the notice never appears and nothing else
+   changes. Also find the one 404 the page logs when served over HTTP
+   (probably `/favicon.ico`) and remove it, for example with an inline
+   `<link rel="icon">`, so a served page logs no console errors at all.
+3. The published site. The app is self-contained in `cnb/`: `index.html`
+   imports only `./src/` and `./ui/`, those import only each other, and
+   nothing is fetched at run time. A small Node script,
+   `cnb/site/assemble-site.mjs <outDir>`, copies `cnb/index.html`,
+   `cnb/src/`, `cnb/ui/` and `cnb/assets/` into `<outDir>` so the app sits
+   at the site root (`/`, with no redirect). Tests, UAT drivers, test pages,
+   fixtures and docs are not published. It is a copy, not a build: no
+   transform, no bundling, no dependency.
+4. The workflow, `.github/workflows/pages.yml`. It runs on `push` of tags
+   matching `v*` and on `workflow_dispatch`, so the operator can redeploy
+   by running it from a chosen tag. It checks out the tag, runs
+   `node cnb/site/assemble-site.mjs _site`, and deploys with
+   `actions/configure-pages`, `actions/upload-pages-artifact` and
+   `actions/deploy-pages`, with `permissions: { pages: write, id-token:
+   write, contents: read }` and a `pages` concurrency group. Pin each
+   action to a major version. It runs no tests: the release only tags
+   what the session gates already passed. `.gitattributes` export-ignores
+   `/.github` so the release zip stays as it is.
+5. A UAT driver, `cnb/uat/uat-site.mjs`, on the existing driver pattern
+   (Chromium):
+   - it assembles the site into a temp directory, serves it over HTTP, and
+     loads `/`: the preview renders (staff lines and noteheads present),
+     the editors mount, the `file://` notice is absent, and there are no
+     page or console errors;
+   - it loads `cnb/index.html` from the working tree over `file://`: the
+     notice is visible and names the live URL.
+   Record its result in `docs/uat-status.md`, and update the driver count
+   in the `dabbler.yaml` comment.
+6. Documentation. README "Usage" leads with the live site
+   (`https://configurator.darndestdabbler.org/`, updated at each release),
+   keeps the local-server instructions for development, and mentions the
+   `file://` notice. Open a `CHANGELOG.md` 1.0.2 entry with the live site
+   and the notice. Session 16 adds its fixture to that entry and sets
+   `version.json`.
+
+**Non-goals.** No visual redesign of the app. No build step, bundler or
+new dependency. No change to how the app behaves over HTTP beyond the
+removed 404. No deploy during this session, and no change to repository
+settings, Pages settings or DNS: those are the operator's.
+
+**Tests.** The cnb-unit suite (unchanged behaviour; `cnb/index.html` is in
+its `covers`) and the cnb-uat suite with the new `uat-site.mjs`. The
+workflow itself first runs at the 1.0.2 tag. After session 17, the operator
+checks that `https://configurator.darndestdabbler.org/` loads the
+configurator.
+
+**Releasable.** No. The first deploy is the 1.0.2 release, session 17.
+
+### Session 16: A second reference notation, 45deg-369
 
 **Why.** Kite 4-369 reads as radical. The operator designed 45deg-369 as
 the gentler alternative: the same 3-6-9 staff and 3 semitones per space,
@@ -557,7 +650,13 @@ trunk for step 3.
    and says Kite is the golden one and 45deg-369 the reference
    alternative. If the preview cannot draw a stem from an anchor inside
    the head, say
-   so under "Preview-only settings". `CHANGELOG.md` 1.0.2 and
-   `version.json` `1.0.2`.
+   so under "Preview-only settings". Add the fixture to the
+   `CHANGELOG.md` 1.0.2 entry session 15 opened, and set `version.json`
+   to `1.0.2`.
 
-### Session 16: Release 1.0.2 (release: 1.0.2)
+### Session 17: Release 1.0.2 (release: 1.0.2)
+
+The framework publishes sessions 15–16 as 1.0.2 and pushes the `v1.0.2`
+tag, which triggers the session-15 Pages workflow: this is the first
+deploy of `https://configurator.darndestdabbler.org/`. A patch version:
+the live site, the `file://` notice and a new fixture change no export.
