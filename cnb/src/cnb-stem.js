@@ -41,9 +41,14 @@ export const CNBStem = {
    * @param {number[]} opts.noteYPositions   Array of Y coordinates for each notehead in the chord
    * @param {"up"|"down"} opts.direction
    * @param {string} opts.duration          Duration name ("crotchet", "minim", etc.)
+   * @param {number} [opts.widthScale=1]    Notehead group width ÷ one head's width.
+   *        Repeat mode (session 18) draws a group of heads; the anchor's x
+   *        offset scales with it, so the stem attaches at the anchor's
+   *        relative position across the group, as LilyPond's
+   *        stem-attachment (relative to the notehead extent) does.
    * @returns {{x:number,y1:number,y2:number,thickness:number}|null}
    */
-  geometry(config, { shape, scaleFactor, centerX, noteYPositions, direction, duration }) {
+  geometry(config, { shape, scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
     if (!shape.anchors) return null;
     // only crotchet/minim have stems
     if (duration !== "crotchet" && duration !== "minim") return null;
@@ -54,7 +59,7 @@ export const CNBStem = {
     const anchor = shape.anchors[key];
     if (!anchor) return null;
 
-    const anchorXpx = anchor.x * scaleFactor;
+    const anchorXpx = anchor.x * scaleFactor * widthScale;
     const anchorYpx = anchor.y * scaleFactor;
 
     const stemX = centerX + anchorXpx;

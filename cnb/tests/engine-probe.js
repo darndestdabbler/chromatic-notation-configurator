@@ -26,13 +26,15 @@ export function findEngine() {
   return { lilypond: "lilypond", dir };
 }
 
-// One chromatic octave of quarter notes; each NoteHead prints its pitch
+// One chromatic octave of notes (quarter notes unless a duration is given;
+// in repeat mode a longer note's stencil is the engine's repeated heads);
+// each NoteHead prints its pitch
 // class and its stencil's X and Y extents once laid out, in its own staff's
 // staff spaces. The engine magnifies every staff by cnb:default-magnify
 // (engine cnb/score-defaults.ly, its session 18), which scales the staff
 // space and the notehead alike; dividing by the staff space measures the
 // size relative to the staff, the unit the preview is drawn in.
-const PROBE_SCORE = `\\version "2.24.2"
+const probeScore = (duration) => `\\version "2.24.2"
 \\include "config.ly"
 {
   \\override NoteHead.after-line-breaking = #(lambda (grob)
@@ -43,24 +45,27 @@ const PROBE_SCORE = `\\version "2.24.2"
         (modulo (ly:pitch-semitones pitch) 12)
         (/ (interval-length (ly:stencil-extent stil X)) space)
         (/ (interval-length (ly:stencil-extent stil Y)) space))))
-  c'4 cis'4 d'4 dis'4 e'4 f'4 fis'4 g'4 gis'4 a'4 ais'4 b'4
+  ${["c'", "cis'", "d'", "dis'", "e'", "f'", "fis'", "g'", "gis'", "a'", "ais'", "b'"]
+    .map(p => p + duration).join(" ")}
 }
 `;
 
 /**
  * Compile an exported config (.ly text) with the engine under a score of
- * the twelve pitch classes as quarter notes, and return each engraved
+ * the twelve pitch classes (quarter notes by default), and return each engraved
  * notehead's size: { noteheads: [{ pc, width, height }] } in staff spaces,
  * or { error } with LilyPond's output when it fails or prints no notehead.
  *
  * @param {{lilypond:string, dir:string}} engine  from findEngine()
  * @param {string} ly  the exported config
+ * @param {string} [duration="4"]  LilyPond duration token for every note
+ *        ("2", "1", "\breve", …)
  * @returns {Promise<{noteheads?:{pc:number,width:number,height:number}[], error?:string}>}
  */
-export function measureNoteheads(engine, ly) {
+export function measureNoteheads(engine, ly, duration = "4") {
   const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-probe-"));
   writeFileSync(path.join(dir, "config.ly"), ly, "utf8");
-  writeFileSync(path.join(dir, "score.ly"), PROBE_SCORE, "utf8");
+  writeFileSync(path.join(dir, "score.ly"), probeScore(duration), "utf8");
   return new Promise((resolve) => {
     execFile(engine.lilypond, ["-I", engine.dir, "-o", path.join(dir, "out"), "score.ly"],
       { cwd: dir, timeout: 120000, windowsHide: true },

@@ -451,6 +451,31 @@ export const tests = [
     },
   },
   {
+    name: "render: key signature enabled — the key note says no signature draws with no key defined, or with (none) selected",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.keySignature = { enabled: true };
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        const none = findOne(api.root, "cnb-pvd-key-none");
+        assert(none.textContent.includes("No key is selected, so no key signature draws"), "(none) note visible");
+        findOne(api.root, "cnb-pvd-key-select").onchange({ target: { value: "C" } });
+        assertEqual(findAll(api.root, "cnb-pvd-key-none").length, 0, "note gone once a key is selected");
+      });
+      cfg.keys.definitions = [];
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        const note = findOne(api.root, "cnb-pvd-key-note");
+        assert(note.textContent.includes("No key is defined, so no key signature draws"), "no-definition note visible");
+      });
+      cfg.keys.keySignature.enabled = false;
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        assert(!findOne(api.root, "cnb-pvd-key-note").textContent.includes("key signature"), "silent while the signature is off");
+      });
+    },
+  },
+  {
     name: "render: a selected key survives the config disabling keys (section hidden, keys null) and returns when re-enabled",
     fn: () => {
       const cfg = keyedConfig();

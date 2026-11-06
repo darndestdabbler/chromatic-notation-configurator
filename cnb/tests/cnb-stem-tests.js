@@ -141,6 +141,18 @@ export const tests = [
       eq(axis.enabled, false, "inactive axis");
       eq(CNBStem.direction([8], 9, axis), "up", "linear result");
     }},
+  { name: "geometry widthScale: default 1 is unchanged; 2 doubles the anchor's x offset only", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { anchors: { crotchetUp:{x:10,y:-4}, crotchetDown:{x:-10,y:4}, minimUp:{x:6,y:-4}, minimDown:{x:-6,y:4} }, semitoneHeight:2 };
+      const opts = { shape:s, scaleFactor:1.5, centerX:50, noteYPositions:[100, 40], direction:"up", duration:"minim" };
+      const plain = CNBStem.geometry(cfg, opts);
+      eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, widthScale: 1 })), JSON.stringify(plain), "explicit 1 = default");
+      eq(plain.x, 50 + 6 * 1.5, "default x");
+      const doubled = CNBStem.geometry(cfg, { ...opts, widthScale: 2 });
+      eq(doubled.x, 50 + 2 * 6 * 1.5, "x offset doubled");
+      eq(doubled.y1, plain.y1, "y1 unchanged");
+      eq(doubled.y2, plain.y2, "y2 unchanged");
+    }},
 ];
 
 function twinlineAxis() {

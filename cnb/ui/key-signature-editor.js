@@ -492,6 +492,15 @@ export const CNBKeySignatureEditor = {
         "Enable key signature (renders in a gutter after the clef)"));
       wrap.appendChild(enable);
 
+      // Why nothing draws (session 18): the signature needs a defined key,
+      // and the preview draws the one its Key control selects.
+      if (state.enabled && state.keySignature.enabled) {
+        wrap.appendChild(el("div", "cnb-kse-sig-status", state.definitions.length === 0
+          ? "No key is defined, so no key signature draws. Add a key definition above."
+          : "The signature draws for the key selected in the preview's Key control. " +
+            "With (none) selected, no signature draws."));
+      }
+
       wrap.appendChild(drawStyle());
       wrap.appendChild(drawPlacement());
       wrap.appendChild(drawSeparator());

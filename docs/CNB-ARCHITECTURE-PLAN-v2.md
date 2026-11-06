@@ -1753,7 +1753,14 @@ Build Module X: [one-line description]
 
 1. **UI framework:** Vanilla JS vs. Preact vs. Lit for Phase 5. Deferred.
 2. **Module bundling:** ES module imports in dev, potential bundler for production. Deferred.
-3. **Quad noteheads:** Layout rules for duration-repeat mode. TBD when built.
+3. **Quad noteheads:** *Resolved in session 18.* In repeat mode the card
+   follows the engine's `cnb:build-duration-stencil`: minim ×2, semibreve
+   and breve ×4 (fixed; `durations.repeatCounts` is not read), each copy
+   edge to edge with `engine.multinotePadding` staff spaces between them,
+   the group centred on the head position. The stem attaches at the
+   anchor's relative position across the group, as LilyPond's
+   stem-attachment does, and the ledgers widen with the group
+   (`CNBCard.repeatCount` / `CNBCard.repeatLayout`).
 4. **Off-key marking:** Visual treatment. Deferred.
 5. **Accidentals and clefs:** Deferred. Grid module designed to support positioning.
 6. **Responsive scaling:** Scroll vs. scale on narrow screens. Deferred.

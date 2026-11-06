@@ -1,5 +1,5 @@
 {
-  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved.",
+  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads.",
   "capturedAt": "8b6013a",
   "probes": [
     {
@@ -19,13 +19,13 @@
     },
     {
       "id": "kite-4-369",
-      "sha256": "ec4271a65f20dab04d61d87b8364010710170ae751f2a6e6cbc90408b4225256",
-      "length": 64492
+      "sha256": "eaedcacd2a20bdba1ae65bc5d79ad7d4991e48ec69157def8626653bc73e3d10",
+      "length": 71945
     },
     {
       "id": "45deg-369",
-      "sha256": "fabcbe3578563794dfc7229d98e6686355d265cd97d5e4d4d8d5eb1aa0c0d59a",
-      "length": 81320
+      "sha256": "da4940dc0fc79fc5bfb4377842778441006f1ac5f837a38c45df3e045a2a6213",
+      "length": 98899
     },
     {
       "id": "gallery/0-5-7-notation.json",

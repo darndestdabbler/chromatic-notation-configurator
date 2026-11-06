@@ -434,12 +434,13 @@ export const tests = [
     }),
   },
   {
-    name: "render: repeat counts are labelled preview-only with the engine's fixed counts (L3)",
+    name: "render: repeat counts are labelled unused — preview and engine draw fixed counts (L3, session 18)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container);
       const note = () => findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-preview-only");
-      assert(note().length === 1 && note()[0].textContent.startsWith("Preview-only:") &&
-        note()[0].textContent.includes("minim ×2, semibreve ×4, breve ×4"), "shape mode note");
+      assert(note().length === 1 && note()[0].textContent.startsWith("Not used:") &&
+        note()[0].textContent.includes("minim ×2, semibreve ×4, breve ×4") &&
+        note()[0].textContent.includes("neither the preview nor the export"), "shape mode note");
       findAll(handle.root, "cnb-cpe-mode-option").find(o => o.attrs["data-mode"] === "repeat").onclick();
       assert(note().length === 1, "the note stays in repeat mode");
     }),
@@ -607,36 +608,23 @@ export const tests = [
     }),
   },
   {
-    name: "renderPreview: repeat mode — single base row plus repeat legend with counts",
+    name: "renderPreview: repeat mode — one row per duration plus a legend of the engine's counts (repeatCounts ignored)",
     fn: () => withDomStub((container) => {
       const cfg = CNBConfig.createDefault();
       cfg.durations.representationMode = "repeat";
       cfg.durations.repeatCounts.minim = 3;
       const out = E.renderPreview(container, cfg, { pitchClasses: [0, 4, 7] });
       assert(out.mode === "repeat", "mode");
-      assertEqual(out.durationsShown, ["crotchet"], "base row only");
-      assert(findAll(out.root, "cnb-duration-row").length === 1, "1 duration row");
+      assertEqual(out.durationsShown, ["crotchet", "minim", "semibreve", "breve"], "all rows");
+      assert(findAll(out.root, "cnb-duration-row").length === 4, "4 duration rows");
       const items = findAll(out.root, "cnb-cpe-repeat-item");
       assert(items.length === 3, "3 legend items");
       assertEqual(out.legendItems,
-        [{ name: "minim", count: 3 }, { name: "semibreve", count: 4 }, { name: "breve", count: 8 }],
-        "legend items");
-      assert(items[0].textContent === "Minim (Half): 3 × Crotchet (Quarter) notehead",
-        "legend text");
+        [{ name: "minim", count: 2 }, { name: "semibreve", count: 4 }, { name: "breve", count: 4 }],
+        "legend items are the engine's counts");
+      assert(items[0].textContent === "Minim (Half): 2 heads", "legend text");
       assert(findAll(out.root, "cnb-cpe-preview-note")[0].textContent.includes("(repeat . #t)"),
         "note names the exporter field");
-    }),
-  },
-  {
-    name: "renderPreview: base duration is the first definition without a repeat count",
-    fn: () => withDomStub((container) => {
-      const cfg = CNBConfig.createDefault();
-      cfg.durations.representationMode = "repeat";
-      // Give crotchet a count too — base falls back to the first definition.
-      cfg.durations.repeatCounts.crotchet = 1;
-      const out = E.renderPreview(container, cfg, { pitchClasses: [0] });
-      assertEqual(out.durationsShown, ["crotchet"], "falls back to first definition");
-      assert(out.legendItems.length === 4, "all four durations in the legend");
     }),
   },
   {

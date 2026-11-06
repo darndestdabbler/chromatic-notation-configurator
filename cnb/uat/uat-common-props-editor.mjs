@@ -164,6 +164,12 @@ const captionCount = async () => page.evaluate(() =>
   document.querySelectorAll("#preview-host .cnb-duration-caption").length);
 const legendTexts = async () => page.evaluate(() =>
   [...document.querySelectorAll("#preview-host .cnb-cpe-repeat-item")].map(i => i.textContent));
+// Notehead groups in the first card of the duration row at `rowIndex`.
+const headsInFirstCard = async (rowIndex) => page.evaluate((rowIndex) => {
+  const row = document.querySelectorAll("#preview-host .cnb-duration-row")[rowIndex];
+  const svg = row.querySelector(".pc-col .note-slice");
+  return [...svg.children].filter(c => c.tagName === "g" && c.getAttribute("class") !== "cnb-ledger-set").length;
+}, rowIndex);
 const badgeText = async (rowClass) => page.evaluate((rowClass) =>
   document.querySelector(`.${rowClass} .cnb-cpe-badge`).textContent, rowClass);
 const setTextInput = async (selector, value) => page.evaluate(({ selector, value }) => {
@@ -225,13 +231,15 @@ check('TOGGLE REPEAT: option selected; help text names (repeat . #t)',
   await page.evaluate(() =>
     document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected") &&
     document.querySelector(".cnb-cpe-mode-help").textContent.includes("(repeat . #t)")));
-check("TOGGLE REPEAT: preview collapses to the single base row, captions gone",
-  (await rowCount()) === 1 && (await captionCount()) === 0);
-check("TOGGLE REPEAT: legend lists minim ×2, semibreve ×4, breve ×8 of the crotchet notehead",
+check("TOGGLE REPEAT: 4 captioned rows; each card draws the engine's repeated heads (crotchet 1, minim 2, semibreve 4, breve 4 octave pairs)",
+  (await rowCount()) === 4 && (await captionCount()) === 4 &&
+  JSON.stringify([await headsInFirstCard(0), await headsInFirstCard(1), await headsInFirstCard(2), await headsInFirstCard(3)]) ===
+    JSON.stringify([2, 4, 8, 8]));
+check("TOGGLE REPEAT: legend lists the engine's counts — minim 2, semibreve 4, breve 4 heads",
   await legendTexts().then(t => JSON.stringify(t) === JSON.stringify([
-    "Minim (Half): 2 × Crotchet (Quarter) notehead",
-    "Semibreve (Whole): 4 × Crotchet (Quarter) notehead",
-    "Breve (Double Whole): 8 × Crotchet (Quarter) notehead",
+    "Minim (Half): 2 heads",
+    "Semibreve (Whole): 4 heads",
+    "Breve (Double Whole): 4 heads",
   ])));
 j = await readJson();
 check('TOGGLE REPEAT: JSON representationMode "repeat"; Section C repeat field flips to #t',
@@ -243,9 +251,9 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-repeat-mode.png"), ful
 // ── Edit a repeat count ──────────────────────────────────────────────────────
 await setTextInput('.cnb-cpe-repeat-count[data-duration="minim"]', "3");
 j = await readJson();
-check("EDIT MINIM COUNT to 3: JSON and legend both follow",
+check("EDIT MINIM COUNT to 3: JSON follows; legend and preview keep the engine's count (repeatCounts is unused)",
   j.durations.repeatCounts.minim === 3 &&
-  (await legendTexts())[0] === "Minim (Half): 3 × Crotchet (Quarter) notehead");
+  (await legendTexts())[0] === "Minim (Half): 2 heads" && (await headsInFirstCard(1)) === 4);
 
 // ── Engine settings ──────────────────────────────────────────────────────────
 await page.click(".cnb-cpe-false-hollow");

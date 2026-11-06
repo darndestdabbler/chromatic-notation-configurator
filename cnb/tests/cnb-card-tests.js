@@ -3,7 +3,9 @@
  *
  * Tests resolveNotehead / columnWidth pure logic plus the render() DOM
  * structure via the stub document; visual correctness is verified on
- * test-card.html / test-collection.html.
+ * test-card.html / test-collection.html. One engine-backed test (session 18)
+ * checks repeat mode's spacing against a LilyPond render, skipping without
+ * the engine.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
@@ -11,7 +13,15 @@ import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBStem } from "../src/cnb-stem.js";
 import { CNBCard } from "../src/cnb-card.js";
+import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
+import { findEngine, measureNoteheads } from "./engine-probe.js";
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -330,7 +340,132 @@ export const tests = [
       }
     }},
 
+  // ── Repeat mode (session 18: the engine's cnb:build-duration-stencil) ─────
+
+  { name: "repeatCount: 1 in shape mode; engine counts in repeat mode (minim 2, semibreve 4, breve 4)", fn: () => {
+      const { config } = fixture();
+      for (const d of ["crotchet", "minim", "semibreve", "breve"]) eq(CNBCard.repeatCount(config, d), 1, `shape ${d}`);
+      const rep = repeatFixture().config;
+      eq(CNBCard.repeatCount(rep, "crotchet"), 1, "crotchet");
+      eq(CNBCard.repeatCount(rep, "minim"), 2, "minim");
+      eq(CNBCard.repeatCount(rep, "semibreve"), 4, "semibreve");
+      eq(CNBCard.repeatCount(rep, "breve"), 4, "breve");
+      eq(CNBCard.repeatCount(rep, "no-such-duration"), 1, "unknown duration");
+      rep.durations.repeatCounts = { minim: 3, semibreve: 8, breve: 8 };
+      eq(CNBCard.repeatCount(rep, "breve"), 4, "repeatCounts is not read");
+    }},
+
+  { name: "repeatLayout: copies edge to edge, default padding -0.5 staff space (linear, sps 4)", fn: () => {
+      const { config, grid, shape } = repeatFixture();
+      const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      const step = w - 0.5 * 4 * 16;
+      const crotchet = CNBCard.repeatLayout(config, grid, shape, "crotchet");
+      eq(crotchet.count, 1, "crotchet count");
+      eq(crotchet.offsets.length, 1, "crotchet one offset");
+      approx(crotchet.groupWidth, w, "crotchet width");
+      const minim = CNBCard.repeatLayout(config, grid, shape, "minim");
+      eq(minim.count, 2, "minim count");
+      approx(minim.offsets[0], -step / 2, "minim left");
+      approx(minim.offsets[1], step / 2, "minim right");
+      approx(minim.groupWidth, 2 * w - 32, "minim group width");
+      const semibreve = CNBCard.repeatLayout(config, grid, shape, "semibreve");
+      [-1.5, -0.5, 0.5, 1.5].forEach((k, i) => approx(semibreve.offsets[i], k * step, `semibreve ${i}`));
+      approx(semibreve.groupWidth, 4 * w - 3 * 32, "semibreve group width");
+    }},
+
+  { name: "repeatLayout: engine.multinotePadding changes the step", fn: () => {
+      const { config, grid, shape } = repeatFixture();
+      config.engine.multinotePadding = 0.25;
+      const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      const minim = CNBCard.repeatLayout(config, grid, shape, "minim");
+      approx(minim.offsets[1] - minim.offsets[0], w + 0.25 * 4 * 16, "step");
+      approx(minim.groupWidth, 2 * w + 16, "group width");
+    }},
+
+  { name: "repeatLayout (axis): a staff space is axis.unitsPerStaffSpace axis units", fn: () => {
+      const { config, grid, shape } = axisFixture();
+      config.durations.representationMode = "repeat";
+      const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      const minim = CNBCard.repeatLayout(config, grid, shape, "minim");
+      approx(minim.offsets[1] - minim.offsets[0], w - 0.5 * 2 * 16, "step at 2 units per staff space");
+    }},
+
+  { name: "render (repeat): minim draws 2 octave pairs, semibreve 4; heads, stem and ledgers follow the group", fn: () => {
+      const { config, grid, shape } = repeatFixture();
+      const { pixelWidth: w, scaleFactor } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      withDomStub(container => {
+        const col = CNBCard.render(container, grid, config, { pc: 0, duration: "minim" });
+        const { svg, ledgerG, stem, noteheads } = dissect(col);
+        eq(noteheads.length, 4, "minim: 2 pairs");
+        const layout = CNBCard.repeatLayout(config, grid, shape, "minim");
+        const centerX = Number(svg.getAttribute("width")) / 2;
+        noteheads.forEach((g, i) => approx(Number(/translate\(([^,]+),/.exec(g.getAttribute("transform"))[1]),
+          centerX + layout.offsets[Math.floor(i / 2)], `head ${i} x`));
+        approx(Number(stem.getAttribute("x1")),
+          centerX + shape.anchors.minimUp.x * scaleFactor * (layout.groupWidth / w), "stem at the anchor's relative position across the group");
+        const ledger = ledgerG.children[0];
+        approx(Number(ledger.getAttribute("width")), w * 2.0 + layout.groupWidth - w, "ledger widened by the group");
+        approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "minim" }),
+          CNBCard.columnWidth(fixture().config, grid, { pc: 0, duration: "minim" }) + layout.groupWidth - w, "column widened by the group");
+      });
+      withDomStub(container => {
+        const { noteheads, stem } = dissect(CNBCard.render(container, grid, config, { pc: 0, duration: "semibreve" }));
+        eq(noteheads.length, 8, "semibreve: 4 pairs");
+        assert(stem === undefined, "semibreve: no stem");
+      });
+    }},
+
+  { name: "render: shape mode draws one pair per duration; repeat-mode crotchet is identical to shape mode", fn: () => {
+      const { config, grid } = fixture();
+      withDomStub(container => {
+        eq(dissect(CNBCard.render(container, grid, config, { pc: 0, duration: "minim" })).noteheads.length, 2, "shape minim");
+      });
+      const rep = repeatFixture().config;
+      for (const pc of [0, 1, 4]) {
+        const a = withDomStub(c => JSON.stringify(CNBCard.render(c, grid, config, { pc, duration: "crotchet" })));
+        const b = withDomStub(c => JSON.stringify(CNBCard.render(c, grid, rep, { pc, duration: "crotchet" })));
+        eq(b, a, `pc ${pc} crotchet DOM`);
+      }
+    }},
+
+  // Engine-backed (session 18): the Kite and 45deg-369 fixtures are in repeat
+  // mode; each engraved minim, semibreve and breve stencil (the engine's
+  // repeated heads, cnb:build-duration-stencil) is as wide, in staff spaces,
+  // as the preview's repeated group. Measured at session 18: Kite 2.1670 /
+  // 3.8340 engraved vs 2.1667 / 3.8333 previewed, 45deg-369 the same to
+  // 0.0003. Skips with the reason logged without LilyPond or the engine.
+  { name: "repeatLayout (engine): Kite and 45deg-369 repeated heads engrave at the preview's group width (±5%)", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const failures = [];
+      for (const file of ["kite-4-369-config.json", "45deg-369-config.json"]) {
+        const config = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, file), "utf8")).config;
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const unitsPerStaffSpace = grid.axis?.enabled ? grid.axis.unitsPerStaffSpace : config.staff.semitonesPerStaffSpace;
+        const ly = CNBLilypond.generate(config);
+        for (const [duration, token] of [["minim", "2"], ["semibreve", "1"], ["breve", "\\breve"]]) {
+          const { noteheads, error } = await measureNoteheads(engine, ly, token);
+          if (error) { failures.push(`${file} ${duration}: ${error}`); continue; }
+          for (const { pc, width } of noteheads) {
+            const shape = config.shapes[CNBCard.resolveNotehead(config, pc, duration, null).shape];
+            const preview = CNBCard.repeatLayout(config, grid, shape, duration).groupWidth / (grid.pxPerSemi * unitsPerStaffSpace);
+            if (!(Math.abs(width - preview) <= 0.05 * preview)) {
+              failures.push(`${file} ${duration} pc ${pc}: engraved ${width} staff spaces, preview ${preview}`);
+            }
+          }
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
 ];
+
+/** Default config in repeat mode. */
+function repeatFixture() {
+  const f = fixture();
+  f.config.durations.representationMode = "repeat";
+  return f;
+}
 
 const OFFSET_RULE = {
   name: "shared-position sharps sit right",

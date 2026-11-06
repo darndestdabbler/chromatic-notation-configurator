@@ -305,6 +305,7 @@ export const CNBPreviewDisplay = {
       const config = getConfig();
       if (!(((config || {}).keys || {}).enabled)) return null;
       const names = CNBPreviewDisplay.keyNames(config);
+      const signatureOn = !!((config.keys.keySignature || {}).enabled);
       const wrap = el("div", "cnb-pvd-key");
       wrap.appendChild(el("span", "cnb-pvd-key-label", "Key"));
       const select = el("select", "cnb-pvd-key-select");
@@ -325,7 +326,8 @@ export const CNBPreviewDisplay = {
         wrap.appendChild(select);
         wrap.appendChild(el("span", "cnb-pvd-key-note",
           "Keys are enabled but config.keys.definitions is empty — " +
-          "nothing to select yet."));
+          "nothing to select yet." +
+          (signatureOn ? " No key is defined, so no key signature draws." : "")));
         return wrap;
       }
       select.onchange = (e) => {
@@ -334,6 +336,10 @@ export const CNBPreviewDisplay = {
         changed();
       };
       wrap.appendChild(select);
+      if (signatureOn && !names.includes(state.key)) {
+        wrap.appendChild(el("span", "cnb-pvd-key-note cnb-pvd-key-none",
+          "No key is selected, so no key signature draws."));
+      }
       wrap.appendChild(el("span", "cnb-pvd-key-note",
         "Key rows are deferred in the card collection (plan §5 Module 10) — " +
         "the selection is passed through but cards render key-neutral."));

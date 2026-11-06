@@ -21,7 +21,10 @@
  *     editable duration settings. A repeat-count input is rendered for each
  *     definition that has an entry in `repeatCounts` (default: minim,
  *     semibreve, breve); definitions without an entry are the base notehead
- *     (×1). Counts must be integers ≥ 1.
+ *     (×1). Counts must be integers ≥ 1. Neither the preview nor the export
+ *     reads them (session 18): both draw the engine's fixed counts
+ *     (CNBCard.repeatCount — minim ×2, semibreve ×4, breve ×4), and the
+ *     section says so.
  *   - Emit at build follows the set-005 s1 retain-in-state/prune-at-emit
  *     rule: buildDurations() prunes repeatCounts entries whose key is not a
  *     current definition name (possible only in seeded configs — the
@@ -39,7 +42,7 @@
  * Exporter effect of `representationMode` (LY spec §6.1, wired in Module 11
  * `CNBLilypond.sectionC`): "repeat" → every Section C clause carries
  * `(repeat . #t)` (longer durations are engraved by repeating the same
- * notehead, `repeatCounts` times); "shape" → `(repeat . #f)` (each duration
+ * notehead, the engine's fixed counts); "shape" → `(repeat . #f)` (each duration
  * uses its own notehead shape). The engine settings feed Section B's
  * emit-if-changed block (LY spec §5.2): values equal to the engine defaults
  * are omitted from the export; `lilypondVersion` is always emitted as the
@@ -82,15 +85,14 @@
  * renderPreview() additionally composes Module 10 (Card Collection) — the
  * spec's step 2 preview wiring ships in the module so hosts (test page now,
  * Module 19 later) only place it. In "shape" mode the collection renders
- * one captioned row per duration definition; in "repeat" mode it renders
- * the single base-duration row plus a textual repeat legend — the
- * quad-notehead card layout for repeat mode is deferred (plan §11 open
- * question 3), so the legend states the repeat counts the exporter will
- * use.
+ * one captioned row per duration definition in both modes; in "repeat"
+ * mode the cards draw each duration's repeated heads (session 18) and a
+ * legend lists the engine's count per repeated duration.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBCard } from "../src/cnb-card.js";
 
 /**
  * Engine defaults per plan §4.10 / LY spec §5.2 — the same table Module 11
@@ -117,7 +119,7 @@ const REPRESENTATION_MODES = {
   repeat: {
     label: "Repeat the base notehead",
     help: "Longer durations are engraved by repeating the base-duration notehead " +
-      "(the counts below). The exporter's Section C emits (repeat . #t) on every " +
+      "(minim ×2, semibreve ×4, breve ×4), as the preview shows. The exporter's Section C emits (repeat . #t) on every " +
       "clause (LY spec §6.1).",
   },
 };
@@ -138,15 +140,6 @@ function isValidMagnify(str) {
 
 function isValidRepeatCount(v) {
   return Number.isInteger(v) && v >= 1;
-}
-
-/**
- * The base duration for repeat mode: the first definition (in array order)
- * with no repeatCounts entry — it is the notehead that gets repeated. Falls
- * back to the first definition when every definition has a count.
- */
-function baseDefinition(definitions, repeatCounts) {
-  return definitions.find(d => !(d.name in (repeatCounts || {}))) || definitions[0];
 }
 
 export const CNBCommonPropsEditor = {
@@ -361,11 +354,13 @@ export const CNBCommonPropsEditor = {
       wrap.appendChild(el("div", "cnb-cpe-title", "Repeat counts"));
       wrap.appendChild(el("div", "cnb-cpe-hint", inactive
         ? "Used only in repeat mode (kept while editing in shape mode)."
-        : "How many base noteheads each longer duration shows in the preview."));
-      // Preview-only (audit 2026-11-02, L3): repeatCounts is never exported.
+        : "Longer durations draw repeated heads in the preview and the engraving."));
+      // Unused (session 18; audit 2026-11-02, L3): the preview and the export
+      // both follow the engine's fixed counts, so repeatCounts changes nothing.
       wrap.appendChild(el("div", "cnb-cpe-preview-only",
-        "Preview-only: the engine engraves fixed counts (minim ×2, " +
-        "semibreve ×4, breve ×4), so these counts are not exported."));
+        "Not used: the preview and the engine both draw fixed counts " +
+        "(minim ×2, semibreve ×4, breve ×4, spaced by the multinote padding), " +
+        "so these counts change neither the preview nor the export."));
       for (const def of state.definitions) {
         const row = el("div", "cnb-cpe-repeat-row");
         row.setAttribute("data-duration", def.name);
@@ -575,12 +570,10 @@ export const CNBCommonPropsEditor = {
    *   - representationMode "shape": one captioned collection row per
    *     duration definition — distinct notehead treatment (shape rules,
    *     hollowness, stems) per duration is directly visible.
-   *   - representationMode "repeat": the single base-duration row (the
-   *     notehead that gets repeated) plus a textual repeat legend, one item
-   *     per repeated duration ("Minim (Half): 2 × Crotchet (Quarter)
-   *     notehead"). The quad-notehead card layout for repeat mode is
-   *     deferred (plan §11 open question 3), so the legend carries the
-   *     counts the exporter will emit alongside (repeat . #t).
+   *   - representationMode "repeat": the same rows, whose cards draw each
+   *     duration's repeated heads as the engine engraves them (session 18),
+   *     plus a legend with one item per repeated duration ("Minim (Half):
+   *     2 heads"), the count from CNBCard.repeatCount.
    *
    * Throws on a config with no duration definitions or an invalid
    * representationMode — a preview of a guessed mode helps nobody.
@@ -603,8 +596,6 @@ export const CNBCommonPropsEditor = {
     if (mode !== "shape" && mode !== "repeat") {
       throw new Error(`Cannot preview: invalid representationMode ${JSON.stringify(mode)}`);
     }
-    const counts = durations.repeatCounts || {};
-    const base = baseDefinition(defs, counts);
 
     const root = doc.createElement("div");
     root.className = "cnb-cpe-preview";
@@ -613,8 +604,8 @@ export const CNBCommonPropsEditor = {
     note.className = "cnb-cpe-preview-note";
     note.textContent = mode === "shape"
       ? "Mode \"shape\": one row per duration — export emits (repeat . #f)."
-      : "Mode \"repeat\": the " + base.displayName + " notehead row below is " +
-        "repeated per the legend — export emits (repeat . #t).";
+      : "Mode \"repeat\": each longer duration draws the heads the engine " +
+        "engraves (legend) — export emits (repeat . #t).";
     root.appendChild(note);
 
     const legendItems = [];
@@ -622,19 +613,19 @@ export const CNBCommonPropsEditor = {
       const legend = doc.createElement("div");
       legend.className = "cnb-cpe-repeat-legend";
       for (const def of defs) {
-        if (!(def.name in counts)) continue;
+        const count = CNBCard.repeatCount(config, def.name);
+        if (count === 1) continue;
         const item = doc.createElement("div");
         item.className = "cnb-cpe-repeat-item";
         item.setAttribute("data-duration", def.name);
-        item.textContent = def.displayName + ": " + counts[def.name] +
-          " × " + base.displayName + " notehead";
+        item.textContent = def.displayName + ": " + count + " heads";
         legend.appendChild(item);
-        legendItems.push({ name: def.name, count: counts[def.name] });
+        legendItems.push({ name: def.name, count });
       }
       root.appendChild(legend);
     }
 
-    const durationsShown = mode === "shape" ? defs.map(d => d.name) : [base.name];
+    const durationsShown = defs.map(d => d.name);
     const collectionOpts = { durations: durationsShown };
     if (opts.pitchClasses) collectionOpts.pitchClasses = opts.pitchClasses;
     const collectionRoot = CNBCollection.render(root, config, collectionOpts);

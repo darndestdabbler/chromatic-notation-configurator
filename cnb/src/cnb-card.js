@@ -23,6 +23,16 @@
  * widens by that |offset|, and stem direction reads the axis (design
  * §2.3/§3.3). On a linear grid the offset is ignored (axis-gated, §3.2).
  *
+ * Session 18 (repeat mode): with durations.representationMode "repeat" the
+ * card draws each duration's notehead as the engine engraves it
+ * (cnb:build-duration-stencil, engine cnb/stencils.ly): minim ×2, semibreve
+ * and breve ×4, each copy edge to edge with engine.multinotePadding staff
+ * spaces between them, the group centred on the head position. The stem
+ * attaches at the anchor's relative position across the whole group (as
+ * LilyPond's stem-attachment does), and the ledgers and the column widen
+ * by the group's extra width. One head (shape mode, crotchets) takes the
+ * existing code path unchanged.
+ *
  * Dependencies: Modules A, B, 1 (grid context passed in), 5, 6, 7, 8.
  */
 
@@ -95,7 +105,54 @@ function axisOffsetPx(gridContext, resolved) {
   return (resolved.xOffsetStaffSpaces || 0) * axis.unitsPerStaffSpace * gridContext.pxPerSemi;
 }
 
+/** Engine default for cnb:multinote-padding (engine cnb/config.ly). */
+const DEFAULT_MULTINOTE_PADDING = -0.5;
+
 export const CNBCard = {
+
+  /**
+   * How many heads the engine engraves for a duration: 1 unless
+   * durations.representationMode is "repeat"; then by the duration
+   * definition's lilypondDuration (the engine's duration category): 3 or
+   * more → 1, 2 (minim) → 2, 1 or 0 (semibreve, breve) → 4. The engine's
+   * counts are fixed; durations.repeatCounts is not read.
+   *
+   * @param {object} config
+   * @param {string} duration  duration name
+   * @returns {number}
+   */
+  repeatCount(config, duration) {
+    if (config.durations?.representationMode !== "repeat") return 1;
+    const def = (config.durations.definitions || []).find(d => d.name === duration);
+    const category = def?.lilypondDuration ?? 3;
+    if (category >= 3) return 1;
+    return category === 2 ? 2 : 4;
+  },
+
+  /**
+   * Horizontal layout of a duration's repeated heads (pure). Copies sit
+   * edge to edge with engine.multinotePadding staff spaces between them;
+   * offsets are each copy's centre relative to the group centre.
+   *
+   * @param {object} config
+   * @param {object} gridContext
+   * @param {object} shape     shape config object
+   * @param {string} duration  duration name
+   * @returns {{count:number, offsets:number[], groupWidth:number}} px
+   */
+  repeatLayout(config, gridContext, shape, duration) {
+    const count = CNBCard.repeatCount(config, duration);
+    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+    if (count === 1) return { count, offsets: [0], groupWidth: pixelWidth };
+    const axis = gridContext.axis;
+    const unitsPerStaffSpace = axis && axis.enabled
+      ? axis.unitsPerStaffSpace
+      : (config.staff?.semitonesPerStaffSpace ?? 4);
+    const padding = config.engine?.multinotePadding ?? DEFAULT_MULTINOTE_PADDING;
+    const step = pixelWidth + padding * unitsPerStaffSpace * gridContext.pxPerSemi;
+    const offsets = Array.from({ length: count }, (_, i) => (i - (count - 1) / 2) * step);
+    return { count, offsets, groupWidth: pixelWidth + (count - 1) * step };
+  },
 
   /**
    * Resolve the effective notehead render config for (pc, duration, key).
@@ -137,10 +194,13 @@ export const CNBCard = {
     const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const paddingH = config.display?.column?.paddingH ?? 16;
+    // Repeat mode: the column widens by the repeated group's extra width.
+    const { groupWidth } = CNBCard.repeatLayout(config, gridContext, shape, duration);
+    const ledgerWidth = pixelWidth * multiplier + (groupWidth - pixelWidth);
     if (gridContext.axis && gridContext.axis.enabled) {
-      return pixelWidth * multiplier + 2 * paddingH + Math.abs(axisOffsetPx(gridContext, resolved));
+      return ledgerWidth + 2 * paddingH + Math.abs(axisOffsetPx(gridContext, resolved));
     }
-    return pixelWidth * multiplier + 2 * paddingH;
+    return ledgerWidth + 2 * paddingH;
   },
 
   /**
@@ -183,12 +243,13 @@ export const CNBCard = {
     svg.setAttribute("height", String(gridContext.svgHeight));
     svg.style.display = "block";
 
-    // 1. Ledger lines (bottom layer)
+    // 1. Ledger lines (bottom layer), widened by a repeated group's extra width
     const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
+    const repeat = CNBCard.repeatLayout(config, gridContext, shape, duration);
     CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
       centerX: headX,
-      width: pixelWidth * multiplier,
+      width: pixelWidth * multiplier + (repeat.groupWidth - pixelWidth),
     });
 
     // 2. Stem (under the noteheads)
@@ -207,21 +268,24 @@ export const CNBCard = {
         noteYPositions: [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)],
         direction,
         duration,
+        widthScale: repeat.groupWidth / pixelWidth,
       });
       CNBStem.render(svg, geometry);
     }
 
-    // 3. Octave pair of noteheads (top layer)
-    CNBDoubleNotehead.render(svg, gridContext, {
-      lowerSemi,
-      upperSemi,
-      lowerNote: { shape, hollow: resolved.hollow, color: resolved.color },
-      upperNote: { shape, hollow: resolved.hollow, color: resolved.color },
-      centerX: baseX,
-      offsetPercent: 0,
-      lowerOffsetPx: offsetPx,
-      upperOffsetPx: offsetPx,
-    });
+    // 3. Octave pair of noteheads (top layer), once per repeated copy
+    for (const dx of repeat.offsets) {
+      CNBDoubleNotehead.render(svg, gridContext, {
+        lowerSemi,
+        upperSemi,
+        lowerNote: { shape, hollow: resolved.hollow, color: resolved.color },
+        upperNote: { shape, hollow: resolved.hollow, color: resolved.color },
+        centerX: baseX,
+        offsetPercent: 0,
+        lowerOffsetPx: offsetPx + dx,
+        upperOffsetPx: offsetPx + dx,
+      });
+    }
 
     col.appendChild(svg);
     col.appendChild(buildLabel(config, gridContext.bottomLabelHeight, labelInfo, "bottom"));

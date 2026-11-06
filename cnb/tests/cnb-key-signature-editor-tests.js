@@ -332,6 +332,27 @@ export const tests = [
       });
   } },
 
+  { name: "render: signature status note — no key defined, else the preview's Key control picks it; absent when off", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.definitions = [];
+        const api = E.render(container, { config });
+        let status = findAll(api.root, "cnb-kse-sig-status");
+        eq(status.length, 1, "status shown");
+        assert(status[0].textContent.includes("No key is defined, so no key signature draws"), "no-definition text");
+
+        findAll(api.root, "cnb-kse-def-add")[0].onclick();
+        status = findAll(api.root, "cnb-kse-sig-status");
+        eq(status.length, 1, "status still shown");
+        assert(status[0].textContent.includes("preview's Key control"), "selector text");
+
+        api.setState({ keySignature: { ...api.getState().keySignature, enabled: false } });
+        eq(findAll(api.root, "cnb-kse-sig-status").length, 0, "no status while the signature is off");
+        api.setState({ keySignature: { ...api.getState().keySignature, enabled: true }, enabled: false });
+        eq(findAll(api.root, "cnb-kse-sig-status").length, 0, "no status while keys are off");
+      });
+  } },
+
   { name: "render: definition name input, pitch-class pills, and remove button edit the definition", fn: () => {
       withDomStub((container) => {
         let last = null;

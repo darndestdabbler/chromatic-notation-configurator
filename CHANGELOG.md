@@ -28,6 +28,19 @@
 - `cnb/fixtures/export-config.mjs <config.json> [out.ly]` exports any
   config headlessly. `export-kite-4-369.mjs` still works and now calls it.
 
+### The preview shows repeat mode
+
+- In repeat mode the preview now draws what the engine engraves: a minim as
+  two heads, a semibreve and a breve as four, spaced by the multinote
+  padding, with the stem and ledgers following. Changing the multinote
+  padding changes the preview. A test engraves the Kite and 45deg-369
+  fixtures and checks that the preview's spacing matches.
+- The repeat-count inputs say they are not used: the engine's counts are
+  fixed.
+- With keys and the key signature enabled, the key-signature panel and the
+  preview's key selector say when no key is defined or none is selected, so
+  no signature draws.
+
 ## 1.0.1
 
 **Regenerate your 1.0.0 exports.** A `.ly` file exported by 1.0.0 from a

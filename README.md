@@ -298,8 +298,11 @@ lists them:
   ledger styling. The engine places its own ledger lines from the staff
   spacing.
 - **Stem thickness.** The engine has no setting for it.
-- **Repeat counts.** The engine engraves fixed counts: minim ×2, semibreve ×4
-  and breve ×4.
+- **Repeat counts.** In repeat mode the preview draws what the engine
+  engraves: minim ×2, semibreve ×4 and breve ×4, each head edge to edge with
+  the multinote padding (`engine.multinotePadding`, in staff spaces) between
+  them. These counts are fixed, so the `durations.repeatCounts` field is used
+  by neither the preview nor the export.
 - **The CB-safe toggle.** The export carries both palettes. A score selects
   the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
   before `\include`.

@@ -29,8 +29,10 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 15 | The app online, and a page that says why it is blank | no | 2026-11-05 |
 | 16 | A second reference notation, 45deg-369 | no | 2026-11-05 |
 | 17 | The preview draws an imported notehead at its own height at once | no | 2026-11-06 |
-| 18 | The preview shows what repeat mode engraves | — | not declared |
+| 18 | The preview shows what repeat mode engraves | no | 2026-11-06 |
 | 19 | Design: a notehead-first editor | — | not declared |
+| 20 | The colour picker stays open | — | not declared |
+| 21 | Each notehead has its own height and width | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -158,3 +160,13 @@ Find and fix why the app's preview drew a freshly imported 4-semitone notehead t
 **Amended after acceptance:**
 
 - 2026-11-06 — step 'fix': its files: The driver did not reproduce the stale height on any route and found no cause, so no source file changes; the step adds a regression unit test pinning the imported 45deg shape's preview size (4 x pxPerSemi) in the importer's test file (claude-code (anthropic, claude-opus-5-5))
+
+### Session 18 — The preview shows what repeat mode engraves
+
+**Releasable: no.**
+
+Make the preview show what repeat mode engraves, and say why no key signature draws. In representationMode "repeat", each card draws a duration's notehead as the engine's cnb:build-duration-stencil lays it out: the engine's fixed counts (lilypondDuration 3 or more: 1 head; 2 (minim): 2; 1 or 0 (semibreve, breve): 4), each copy placed edge to edge with engine.multinotePadding staff spaces between them (staff space = staff.semitonesPerStaffSpace semitones, or axis.unitsPerStaffSpace axis units under a pitch axis), the group centred on the head position. The stem attaches as LilyPond's relative stem-attachment does, at the anchor's relative position across the whole group's width, and the ledgers and column widen by the group's extra width. Shape mode is unchanged and byte-identical: the shape-mode preview-baseline probes stay pinned, and only the two repeat-mode probes (kite-4-369, 45deg-369, which render minims) are re-captured. An engine-backed test (skipping without LilyPond) engraves the Kite and 45deg-369 exports at minim, semibreve and breve and checks that the engraved notehead group's width matches the preview's group width within 5%. The key-signature panel and the preview's key selector each say when keys and the signature are enabled but no key is defined or none is selected, so nothing draws. The common-props editor's repeat-count text and its renderPreview legend state the counts the preview and engine actually use, and README "Preview-only settings", the architecture plan's open question 3 and the CHANGELOG 1.0.2 entry are updated.
+
+**Amended after acceptance:**
+
+- 2026-11-06 — step 'repeat-counts-text': its files: The common-props test page's intro describes the old repeat-mode preview (single base row); it changes with renderPreview (claude-code (anthropic, claude-opus-5-5))
