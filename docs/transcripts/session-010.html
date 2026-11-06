@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 010 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 010 transcript</h1>
+<p class="stamp">Rendered 2026-11-02T12:21:35.538Z by dabbler-ai-router 3.27.0 at 80e3393a097f512ebdb33cd7f2390cb3119fdb37.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-02T06:25:14.178-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 10: No imported text can become Scheme</h3>
+<p><strong>Why.</strong> A whole-repository audit on 2026-11-02 (<code>docs/planning/audit-2026-11-02.md</code>; finding IDs below refer to it) found that a shared config or SVG can put executable Scheme into the exported <code>.ly</code> (H1). LilyPond runs it at compile time, and <code>(system …)</code> would run commands. The affected fields include labels and names that land in <code>%%</code> comments (where a newline ends the comment), <code>lilypondVersion</code>, <code>schemeSymbols</code> values, <code>defaultMagnify</code>, duration names, and path data taken verbatim from <code>data-lilypond-*</code> attributes, which the toolkit audit (M11) reached independently. Validation called these configs valid. 1.0.0 is tagged, and nothing is public; this ships as 1.0.1.</p>
+<ol><li>Register.</li><li>Route every value that <code>cnb/src/cnb-lilypond.js</code> emits through a small set of emitters, and never interpolate raw config text:</li></ol>
+<ul><li><strong>Comment text:</strong> control characters and newlines become spaces (this also covers L6).</li><li><strong>Scheme strings:</strong> escape <code>\</code> and <code>&quot;</code>.</li><li><strong>Symbols:</strong> match <code>^[a-z][a-z0-9-]*$</code>, else the export fails with the field's name.</li><li><strong>Numbers:</strong> finite JavaScript numbers, formatted by the exporter.</li><li><strong>Versions:</strong> match <code>^\d+\.\d+\.\d+$</code>.</li><li><strong>Path data:</strong> parsed into commands and numbers and re-emitted from the numbers, including <code>data-lilypond-*</code> from imported SVGs. A path that does not parse is an import error, never text passed through.</li></ul>
+<p>Validation rejects every value the emitters would reject, so an invalid config never reaches export.</p>
+<ol><li>M5: shape names whose slugs collide (<code>Kite Up</code> / <code>kite-up</code>), and names whose slug is empty (non-ASCII), get a validation error naming both shapes, or a deterministic disambiguating suffix. They never overwrite silently.</li><li>Hostile-input tests:</li></ol>
+<ul><li>Add the audit's payloads as fixtures: <code>shared-config.json</code> (newline plus <code>#(display …)</code> in the notation label), and an SVG whose <code>data-lilypond-notehead</code> carries <code>#(display …)</code>, plus one payload per affected field.</li><li>Unit tests assert that each payload is either rejected, or exports a <code>.ly</code> in which no <code>#(</code> or <code>$(</code> appears outside the exporter's own constant template.</li><li>An engine-backed test, which skips with a reason when LilyPond is not on <code>PATH</code>, compiles each export and asserts that the payload text is never printed.</li></ul>
+<p>Run the cnb-unit suite.</p>
+<h2>Work Plan</h2>
+<p>Close audit findings H1, L6 and M5 (docs/planning/audit-2026-11-02.md) so that no text from an imported config or SVG can become Scheme in the exported .ly. A new pure module, cnb/src/cnb-scheme.js (CNBScheme), holds the only emitters the exporter may use: comment text (control characters and newlines become spaces), Scheme strings (escape backslash and double quote), symbols (must match ^[a-z][a-z0-9-]*$, else throw naming the field), numbers (finite JavaScript numbers formatted by the exporter; engine.defaultMagnify's fraction string is parsed into two finite numbers and re-emitted from them), versions (^\d+\.\d+\.\d+$), and LilyPond path data (strictly parsed into moveto/lineto/curveto/closepath commands with numeric arguments and re-emitted from the numbers in the exporter's existing layout), plus the slug function shape symbols come from. cnb/src/cnb-lilypond.js routes every emitted value through these emitters and never interpolates raw config text. CNBConfig.validate uses the same predicates so it rejects every value an emitter would reject (version, magnify, schemeSymbols values, unparseable lilypondPath/lilypondHollowPath, non-finite numeric fields the exporter emits), and adds the M5 errors: a shape whose slug is empty or not a valid symbol, and two shapes whose slugs collide, each error naming the shapes. The SVG importer parses data-lilypond-* paths (notehead, hollow and clef) and turns a path that does not parse into an import error, storing the re-serialized form otherwise. Hostile-input fixtures (the audit's shared-config.json label payload, an SVG whose data-lilypond-notehead carries #(display ...), and one payload per affected field) drive unit tests asserting each payload is rejected by validation and export alike or exports a .ly whose #( and $( occurrences are exactly those of the same config without the payload, and an engine-backed test that compiles each accepted export with LilyPond (skipping with a logged reason when lilypond is not on PATH or the engine repository is not found) and asserts the payload text is never printed. Output for every valid existing config, including the default, Kite and twinline-compact baselines and the gallery, stays byte-identical.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/a354b664104fecdc95ab6940107d3ae9ba7751f8"><code>a354b664104fecdc95ab6940107d3ae9ba7751f8</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Scheme emitters</td><td><p>Create cnb/src/cnb-scheme.js exporting CNBScheme with: slug(name) (moved from cnb-lilypond.js, same behaviour); comment(text) replacing every control character (including CR/LF/tab) with a space; string(text) returning a double-quoted Scheme string literal with backslash and double quote escaped; isSymbol(v) / symbol(v, field) for ^[a-z][a-z0-9-]*$ (symbol throws an Error naming the field otherwise); isNumber(v) / number(v, field) for finite JavaScript numbers, formatted as the exporter's fmtNum does today (integers bare, else at most 4 decimals, -0 as 0); parseRatio(v) / ratio(v, field) accepting a finite positive number or a string matching ^\d+(\.\d+)?(/\d+(\.\d+)?)?$ and re-emitting it from the parsed numbers; isVersion(v) / version(v, field) for ^\d+\.\d+\.\d+$; parsePath(text) returning [{cmd, args}] for a strict optionally-quoted list of (moveto x y), (lineto x y), (curveto x1 y1 x2 y2 x3 y3), (closepath) with finite numeric literals and nothing else, or null when it does not parse; and path(commandsOrText, field) emitting the existing layout &quot;'(\n    (cmd a b)\n    ...)&quot; from the numbers (throws naming the field when the text does not parse). Add cnb/tests/cnb-scheme-tests.js with a test per public function, including hostile inputs (newline + #(display ...) in comments, quotes/backslashes in strings, symbols with spaces/parens/leading digits/empty, NaN/Infinity/strings as numbers, paths carrying (system ...), unbalanced parens, unknown commands, wrong argument counts, and toolkit single-line and exporter multi-line paths re-emitting identically), and register it in cnb/tests/run-tests.js.</p></td><td><span class="mono">cnb/src/cnb-scheme.js</span><br><span class="mono">cnb/tests/cnb-scheme-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Exporter emitters</td><td><p>In cnb/src/cnb-lilypond.js, import CNBScheme and route every emitted config value through it: \version through version(); every %% and ;; comment interpolation (notationLabel, configName, palette name in the header and A5, shape symbols, duration names, pitch-axis kind) through comment(); every Scheme string (staff-line color, palette hex values in A5, the B3 metadata strings) through string(); every symbol (shape slugs and the derived -path/-cutout/-attach names, palette.schemeSymbols values, color fallback symbols) through symbol() with the field named; every number (staff positions, sps, engine numeric settings, thickness, attachment points, pitch-axis vector/anchor/stride/units, tonic octave, lilypondDuration, x-offset) through number(); engine.defaultMagnify through ratio(); and lilypondPath/lilypondHollowPath through path() (the svgPathToLilypond fallback keeps its numeric parse and its output unchanged). Keep slug/fmtNum/escSchemeString in _internals as aliases of the CNBScheme functions so existing tests keep their meaning. Update cnb/tests/cnb-lilypond-tests.js where needed and add tests that a pre-baked path is re-emitted from its numbers and that the default, Kite and twinline-compact baseline exports are unchanged.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Validation</td><td><p>In cnb/src/cnb-config.js, import CNBScheme and add blocking validate() errors for every value the emitters would reject: engine.lilypondVersion not a version (when present); engine.defaultMagnify not a ratio (when present); any palette.schemeSymbols value not a symbol; any shape lilypondPath/lilypondHollowPath that does not parse; non-finite numbers in the numeric fields the exporter emits when present (staff.semitonePattern entries, staff.midpoint, staff.semitonesPerStaffSpace, staff.lineDefaults.thicknessPct, engine.multinotePadding/indent/collisionThreshold/stemThickness, durations.definitions[].lilypondDuration, shape lilypondAnchors/anchors coordinates and naturalHeight/semitoneHeight); and M5: a shape whose slug is empty or not a symbol, and every pair of shapes whose slugs collide (e.g. &quot;Kite Up&quot; and &quot;kite-up&quot;), each error naming the shapes involved. Add tests to cnb/tests/cnb-config-tests.js for each new error, and confirm the default config and all gallery examples still validate with no new errors.</p></td><td><span class="mono">cnb/src/cnb-config.js</span><br><span class="mono">cnb/tests/cnb-config-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Importer path parse</td><td><p>In cnb/ui/svg-importer.js, parse data-lilypond-notehead, data-lilypond-hollow and the clef's data-lilypond-clef/data-lilypond-notehead with CNBScheme.parsePath: a present attribute that does not parse makes the import fail with an error naming the attribute (never passed through as text); one that parses is stored in its re-serialized form. Add cnb/fixtures/hostile/injected-notehead.svg, a toolkit-style notehead SVG whose data-lilypond-notehead carries the audit payload ('()) (system &quot;...&quot;) (define x '() style with #(display ...)), and tests in cnb/tests/cnb-svg-importer-tests.js that this fixture is rejected, that a bad hollow and a bad clef attribute are rejected, and that cnb/fixtures/kite-up.svg still imports with the expected path.</p></td><td><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/fixtures/hostile/injected-notehead.svg</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Hostile tests</td><td><p>Add cnb/fixtures/hostile/shared-config.json (the audit's config whose meta.notationLabel is a newline plus #(display &quot;INJECTED-VIA-NOTATION-LABEL&quot;) plus %%) and cnb/fixtures/hostile/field-payloads.json listing one payload per affected field (notationLabel, configName, notationFootnote, fileSuffix, palette.name, engine.lilypondVersion, engine.defaultMagnify, a palette.schemeSymbols value, a duration name, a shape lilypondPath, a shape lilypondHollowPath, a numeric engine field, and a shape name), each with a distinctive INJECTED-... marker. In cnb/tests/cnb-lilypond-tests.js add tests that, for every payload applied to the default config through CNBConfigIO.loadFromText or a direct field write: either CNBConfig.validate reports an error and CNBLilypond.generate throws, or both accept it and the exported .ly contains exactly as many #( and $( occurrences as the export of the same config without the payload and no line that begins with the payload's Scheme. Add an engine-backed test in the same file that, when lilypond is on PATH and the engine repository is found (CNB_ENGINE_DIR, else the sibling ../lilypond-chromatic-notation-base), compiles each accepted export with a minimal score into a scratch temp directory and asserts no INJECTED marker appears in LilyPond's output; otherwise it logs the reason it skipped and passes.</p></td><td><span class="mono">cnb/fixtures/hostile/shared-config.json</span><br><span class="mono">cnb/fixtures/hostile/field-payloads.json</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the units or scaling of path data (toolkit semitone-unit paths, the svgPathToLilypond fallback's raw coordinates, re-baselining fixtures): that is H2/H3, session 11.</li><li>No importer changes beyond parsing data-lilypond-* paths: data-lilypond-glyph, multi-path clefs, mixed-mode attributes and rect transforms (toolkit M5/M7/M8) are session 11.</li><li>No change to what the exporter emits for valid configs or to which engine settings it emits (cnb:stem-thickness, preview-only staff/ledger styling, key-scoped rules, CB-safe/repeat-count labelling are M1-M4/L2/L3, session 12).</li><li>No disambiguating-suffix scheme for colliding shape slugs: collisions and empty slugs are validation errors; clef names are not checked because the exporter emits nothing for clefs.</li><li>No preview/HTML-side hardening (the audit found it clean), no LY export spec or README edits, and no version bump or changelog (session 13).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[11:25:14]</span> <span class="muted">run-started</span> session=010 mode=pull</div>
+<div class="line"><span class="at">[11:25:14]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[11:32:54]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[11:32:54]</span> <span class="muted">plan-accepted</span> steps=[&quot;scheme-emitters&quot;,&quot;exporter-emitters&quot;,&quot;validation&quot;,&quot;importer-path-parse&quot;,&quot;hostile-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[11:33:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[11:33:09]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=scheme-emitters</div>
+<div class="line"><span class="at">[11:42:18]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:42:35]</span> <span class="muted">check-passed</span> step=scheme-emitters argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:42:42]</span> <span class="muted">report-accepted</span> seq=2 step=scheme-emitters files=[&quot;cnb/src/cnb-scheme.js&quot;,&quot;cnb/tests/cnb-scheme-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=Added CNBScheme (slug, comment, string, symbol, number, ratio, version, parsePath, path) with 31 tests incl. hostile inputs; registered in run-tests.js</div>
+<div class="line"><span class="at">[11:42:42]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=exporter-emitters</div>
+<div class="line"><span class="at">[11:49:55]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:50:04]</span> <span class="muted">check-passed</span> step=exporter-emitters argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:50:10]</span> <span class="muted">report-accepted</span> seq=3 step=exporter-emitters files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=Exporter routes every config value through CNBScheme; default, Kite, twinline and all 18 gallery exports byte-identical to pre-change snapshots; 8 new/updated tests</div>
+<div class="line"><span class="at">[11:50:10]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=validation</div>
+<div class="line"><span class="at">[11:54:24]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:54:39]</span> <span class="muted">check-passed</span> step=validation argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:54:48]</span> <span class="muted">report-accepted</span> seq=4 step=validation files=[&quot;cnb/src/cnb-config.js&quot;,&quot;cnb/tests/cnb-config-tests.js&quot;] notes=validate() check 11: version, magnify, schemeSymbols, path parse, emitted numeric fields, and M5 empty/colliding shape slugs, all via CNBScheme predicates; default + 18 gallery configs still valid; 5 new tests</div>
+<div class="line"><span class="at">[11:54:48]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=importer-path-parse</div>
+<div class="line"><span class="at">[11:59:52]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:00:07]</span> <span class="muted">check-passed</span> step=importer-path-parse argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[12:00:12]</span> <span class="muted">report-accepted</span> seq=5 step=importer-path-parse files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/fixtures/hostile/injected-notehead.svg&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=Importer parses data-lilypond-notehead/hollow/clef via CNBScheme; unparseable = import error naming the attribute, valid = stored re-serialized; hostile SVG fixture + 5 tests; UAT kite/golden-path checks unaffected (normalized/type compares)</div>
+<div class="line"><span class="at">[12:00:12]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=hostile-tests</div>
+<div class="line"><span class="at">[12:08:08]</span> <span class="muted">run-resumed</span> session=010 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:09:08]</span> <span class="muted">check-passed</span> step=hostile-tests argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[12:09:23]</span> <span class="muted">report-accepted</span> seq=6 step=hostile-tests files=[&quot;cnb/fixtures/hostile/shared-config.json&quot;,&quot;cnb/fixtures/hostile/field-payloads.json&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=Audit shared-config + 13 per-field payloads (7 exported inert, 6 rejected by validate and by the emitters); live-code #(/$( count check; engine-backed test compiled all 8 accepted exports with LilyPond 2.24.2 here, skips with reason without engine; probe confirmed a live payload is detected</div>
+<div class="line"><span class="at">[12:09:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:09:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:09:44]</span> <span class="muted">job-started</span> name=verification pid=70120 log=.dabbler/runs/s10/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:13:06]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s10/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:13:06]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:13:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:13:16]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[12:13:18]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=79960 log=.dabbler/runs/s10/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[12:14:14]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s10/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[12:14:24]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[12:14:27]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=76888 log=.dabbler/runs/s10/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[12:18:25]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s10/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[12:18:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:19:35]</span> <span class="muted">landed</span> commit=a354b664104fecdc95ab6940107d3ae9ba7751f8</div>
+<div class="line"><span class="at">[12:19:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:19:42]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:19:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:19:47]</span> <span class="muted">job-started</span> name=close pid=65532 log=.dabbler/runs/s10/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:21:35]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s10/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:21:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `CNBScheme.parseRatio()` and `CNBScheme.parsePath()` do not actually enforce that parsed decimal-string numbers are finite. A decimal with hundreds of digits becomes `Infinity`; `parseRatio()` accepts it because `Infinity &gt; 0`, and `parsePath()` returns it as a parsed argument. Later `CNBScheme.number()` rejects it during export, so validation no longer rejects every value the emitter rejects; the SVG importer may also throw rather than return its documented import-error result.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `cnb/src/cnb-scheme.js`, `cnb/src/cnb-config.js`, `cnb/ui/svg-importer.js`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Test case:** Starting from `CNBConfig.createDefault()`, set `engine.defaultMagnify` to `&quot;1&quot;` followed by 400 zeroes. Expect `CNBConfig.validate()` to reject `engine.defaultMagnify`; today validation accepts it and export later throws. Similarly, set a `lilypondPath` numeric argument to a 400-digit decimal and expect validation/import to return a field-specific invalid-path error rather than accepting it and later throwing on `Infinity`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>28s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>211s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

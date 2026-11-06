@@ -1,0 +1,116 @@
+{
+  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads.",
+  "capturedAt": "8b6013a",
+  "probes": [
+    {
+      "id": "default",
+      "sha256": "ea32810a795ac4d27cac27263afe37ab002332d221d3dab5a902d2dd16b262b0",
+      "length": 85276
+    },
+    {
+      "id": "default-debug-grid",
+      "sha256": "b573eda84bc88cc6a85707dad20e48ef686bc3b5949ae0fe59828321fec8d964",
+      "length": 52757
+    },
+    {
+      "id": "default-key-signature",
+      "sha256": "51a53c2ad0143e91bace01ee4049541d85283c646b861bfa7eaddee64a7fab77",
+      "length": 96496
+    },
+    {
+      "id": "kite-4-369",
+      "sha256": "eaedcacd2a20bdba1ae65bc5d79ad7d4991e48ec69157def8626653bc73e3d10",
+      "length": 71945
+    },
+    {
+      "id": "45deg-369",
+      "sha256": "da4940dc0fc79fc5bfb4377842778441006f1ac5f837a38c45df3e045a2a6213",
+      "length": 98899
+    },
+    {
+      "id": "gallery/0-5-7-notation.json",
+      "sha256": "9c987119ff0fd57ec44416071673273a67807790681d3031265d95bdc90e78ad",
+      "length": 78800
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json",
+      "sha256": "179a6fa39eea24e25bf6622aa818e65f50eb9f7e0de69b08e54f4a69d3b06b1a",
+      "length": 87654
+    },
+    {
+      "id": "gallery/ambros-system.json",
+      "sha256": "ec4c552a3bf5661a66ad163c6100baa2214e459810893fb0092ddf91e2d709f0",
+      "length": 79586
+    },
+    {
+      "id": "gallery/avique-notation.json",
+      "sha256": "8c995c7c067e583855222358e128d1eb083f0ba516a46ebd20173ed2bd1f248b",
+      "length": 79606
+    },
+    {
+      "id": "gallery/axlomafi.json",
+      "sha256": "f08e3326d9d6a53f728db16cc66def4ef57e2f184c322d292f6afaacbb478a48",
+      "length": 77846
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json",
+      "sha256": "49b2da94a5a002e78f3fdf5e97de7f5ee0a4da0c75beac24227ff65017a18cfd",
+      "length": 88314
+    },
+    {
+      "id": "gallery/clairnote-dn.json",
+      "sha256": "b5846d4e7e06d0c5f4406adc36ff7545b5d7f9ba4f84eea3c7f7aeb45dd102ec",
+      "length": 98824
+    },
+    {
+      "id": "gallery/clairnote-sn.json",
+      "sha256": "7b5e25ac950a8a60aa2af86048af54d0adaa50829651dd2239d206f019c20b92",
+      "length": 91780
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json",
+      "sha256": "2035859874a00559a952f90dca765148d51d36b49776e4339bec66ea2ab34388",
+      "length": 78364
+    },
+    {
+      "id": "gallery/express-stave-original.json",
+      "sha256": "fe12558c16b469a393c4d558a062a9d19816c98194d5fe65af205af0624eb87a",
+      "length": 87802
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json",
+      "sha256": "52a96fa1a8dcccf14a37ba05b9a90ac953f4aeb92fb3452223294b3c2e27a089",
+      "length": 83866
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json",
+      "sha256": "e6eb4dedb8a768872b125a10ef8c985d4252f6c043b32c9c29d158dfea2a70b7",
+      "length": 67992
+    },
+    {
+      "id": "gallery/lautus-notation.json",
+      "sha256": "62d2d0cc320ae1c2f229cbebbf69414d8d4ef416c1d48acd480f13d0b8a42b8d",
+      "length": 78772
+    },
+    {
+      "id": "gallery/notagraph.json",
+      "sha256": "406522f20a41ca89f68cd6b655913eb84b4129684f23585124eed53a9da1dc8d",
+      "length": 79386
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json",
+      "sha256": "16489d0ddf16923659955ce2aaa6871a2b3d3522f62b9f2ac69b38c86d112c08",
+      "length": 79086
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json",
+      "sha256": "3d8bfb7018668f6dde61d8add1842604ddab115c8d67ca4e6749522444ef5da1",
+      "length": 77514
+    },
+    {
+      "id": "gallery/trilinear-notation.json",
+      "sha256": "75669adb43627187be9a4b800ffe32c13971b13702aec4770fbf35dd7f0d6df5",
+      "length": 67708
+    }
+  ]
+}
