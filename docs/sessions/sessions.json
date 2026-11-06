@@ -418,9 +418,9 @@
     {
       "number": 21,
       "title": "The colour picker stays open",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-06T17:07:07.395000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-06T17:18:52.585000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
