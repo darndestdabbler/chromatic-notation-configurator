@@ -898,4 +898,114 @@ export const tests = [
       assert(!("xOffsetStaffSpaces" in last.noteheadRules[0].apply), "removed");
     }),
   },
+
+  // ── session 22: notehead size ──────────────────────────────────────────────
+  {
+    name: "size: buildRules / stateFromConfig round-trip heightSemis and widthSemis; invalid values throw",
+    fn: () => {
+      const config = CNBConfig.createDefault();
+      config.noteheadRules[1].apply.heightSemis = 1.5;
+      config.noteheadRules[1].apply.widthSemis = 3;
+      const rules = E.buildRules(E.stateFromConfig(config));
+      assert(rules[1].apply.heightSemis === 1.5 && rules[1].apply.widthSemis === 3, "round-trip");
+      assert(!("heightSemis" in rules[0].apply), "absent stays absent");
+      const rule = (field, v) => ({ rules: [{ name: "r", match: { pitchClasses: "all" }, apply: { [field]: v } }] });
+      for (const field of ["heightSemis", "widthSemis"]) {
+        for (const bad of [0, -1, NaN, Infinity, "2", null]) assertThrows(() => E.buildRules(rule(field, bad)), `${field} ${bad}`);
+        assert(E.buildRules(rule(field, 0.25))[0].apply[field] === 0.25, `${field} accepted`);
+      }
+    },
+  },
+  {
+    name: "size: toggling the row on seeds the shape's own size; off removes both fields",
+    fn: () => withDomStub((container) => {
+      let last = null;
+      const config = CNBConfig.createDefault();
+      const shape = config.shapes["crotchet-minim"];
+      const api = E.render(container, { config, onChange: (s) => { last = s; } });
+      const row = () => findAll(api.root, "cnb-nre-apply-size")[1];
+      assert(findAll(api.root, "cnb-nre-apply-size").length === config.noteheadRules.length, "one size row per rule");
+      findAll(row(), "cnb-nre-apply-check")[0].onchange({ target: { checked: true } });
+      const a = last.noteheadRules[1].apply;
+      assert(a.heightSemis === shape.semitoneHeight, "seeded own height");
+      const ownW = Math.round(shape.semitoneHeight * shape.naturalWidth / shape.naturalHeight * 10000) / 10000;
+      assert(a.widthSemis === ownW, `seeded natural width ${a.widthSemis}`);
+      findAll(row(), "cnb-nre-apply-check")[0].onchange({ target: { checked: false } });
+      assert(!("heightSemis" in last.noteheadRules[1].apply) && !("widthSemis" in last.noteheadRules[1].apply), "both removed");
+    }),
+  },
+  {
+    name: "size: with the lock on (default) editing the height rewrites the width at the natural ratio; off, the width is free",
+    fn: () => withDomStub((container) => {
+      let last = null;
+      const config = CNBConfig.createDefault();
+      const shape = config.shapes["crotchet-minim"];
+      const ratio = shape.naturalWidth / shape.naturalHeight;
+      config.noteheadRules[1].apply.heightSemis = 2;
+      config.noteheadRules[1].apply.widthSemis = 2;
+      const api = E.render(container, { config, onChange: (s) => { last = s; } });
+      const row = () => findAll(api.root, "cnb-nre-apply-size")[1];
+      assert(findAll(row(), "cnb-nre-size-lock")[0].checked === true, "lock on by default");
+      assert(findAll(row(), "cnb-nre-size-width")[0].disabled === true, "width follows the height while locked");
+      findAll(row(), "cnb-nre-size-height")[0].onchange({ target: { value: "3" } });
+      assert(last.noteheadRules[1].apply.heightSemis === 3, "height edited");
+      assert(Math.abs(last.noteheadRules[1].apply.widthSemis - 3 * ratio) < 1e-4, "width at the natural ratio");
+      // Unlock: the width is free and the height no longer moves it.
+      findAll(row(), "cnb-nre-size-lock")[0].onchange({ target: { checked: false } });
+      assert(findAll(row(), "cnb-nre-size-width")[0].disabled === false, "width editable when unlocked");
+      findAll(row(), "cnb-nre-size-width")[0].onchange({ target: { value: "1.2" } });
+      assert(last.noteheadRules[1].apply.widthSemis === 1.2, "width set freely");
+      findAll(row(), "cnb-nre-size-height")[0].onchange({ target: { value: "2.5" } });
+      assert(last.noteheadRules[1].apply.widthSemis === 1.2, "width untouched by the height while unlocked");
+      // Relock: the width returns to the ratio.
+      findAll(row(), "cnb-nre-size-lock")[0].onchange({ target: { checked: true } });
+      assert(Math.abs(last.noteheadRules[1].apply.widthSemis - 2.5 * ratio) < 1e-4, "relocking restores the ratio");
+      last = null;
+      findAll(row(), "cnb-nre-size-height")[0].onchange({ target: { value: "" } });
+      assert(last === null, "empty input ignored");
+    }),
+  },
+  {
+    name: "size: a size-only rule takes its ratio and hint from the shape an earlier rule chose, not the first shape",
+    fn: () => withDomStub((container) => {
+      let last = null;
+      const config = CNBConfig.createDefault();
+      const a = config.shapes["crotchet-minim"];               // first shape, ratio ≈ 1.266
+      config.shapes["square-b"] = { ...a, displayName: "Square B", naturalWidth: 100, naturalHeight: 100, semitoneHeight: 2 };
+      config.noteheadRules = [
+        { name: "Use B", priority: 0, match: { pitchClasses: "all", durations: "all", keys: "all" },
+          apply: { shape: "square-b", hollow: false } },
+        { name: "Size only", priority: 1, match: { pitchClasses: "all", durations: "all", keys: "all" }, apply: {} },
+      ];
+      const api = E.render(container, { config, onChange: (s) => { last = s; } });
+      const row = () => findAll(api.root, "cnb-nre-apply-size")[1];
+      findAll(row(), "cnb-nre-apply-check")[0].onchange({ target: { checked: true } });
+      assert(last.noteheadRules[1].apply.heightSemis === 2, `seeded B's height: ${last.noteheadRules[1].apply.heightSemis}`);
+      assert(last.noteheadRules[1].apply.widthSemis === 2, `seeded B's natural width: ${last.noteheadRules[1].apply.widthSemis}`);
+      const hint = findAll(row(), "cnb-nre-size-hint")[0].textContent;
+      assert(hint === "natural width 2 at height 2", `hint from B: ${hint}`);
+      findAll(row(), "cnb-nre-size-height")[0].onchange({ target: { value: "3" } });
+      assert(last.noteheadRules[1].apply.widthSemis === 3, `locked width at B's 1:1 ratio: ${last.noteheadRules[1].apply.widthSemis}`);
+    }),
+  },
+  {
+    name: "size: the hint shows the shape's natural width; the preview cell draws the resolved size",
+    fn: () => withDomStub((container) => {
+      const config = CNBConfig.createDefault();
+      const shape = config.shapes["crotchet-minim"];
+      config.noteheadRules[1].apply.heightSemis = 1;
+      config.noteheadRules[1].apply.widthSemis = 3;
+      const api = E.render(container, { config });
+      const hint = findAll(findAll(api.root, "cnb-nre-apply-size")[1], "cnb-nre-size-hint")[0];
+      const ownW = Math.round(shape.semitoneHeight * shape.naturalWidth / shape.naturalHeight * 10000) / 10000;
+      assert(hint.textContent === `natural width ${ownW} at height ${shape.semitoneHeight}`, `hint: ${hint.textContent}`);
+      const host = makeHtmlStubElement("div");
+      const { cells } = E.renderResolvedPreview(host, config, { pxPerSemi: 16 });
+      const sx = 3 * 16 / shape.naturalWidth, sy = 1 * 16 / shape.naturalHeight;
+      const sharpPath = cells[1].svg.children[0].children[0];
+      assert(sharpPath.getAttribute("transform") === `scale(${sx},${sy})`, `sized cell: ${sharpPath.getAttribute("transform")}`);
+      const plainPath = cells[0].svg.children[0].children[0];
+      assert(plainPath.getAttribute("transform") === `scale(${shape.semitoneHeight * 16 / shape.naturalHeight})`, "unsized cell unchanged");
+    }),
+  },
 ];

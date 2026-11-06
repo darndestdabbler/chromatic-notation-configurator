@@ -1029,6 +1029,112 @@ export const tests = [
       }
     }},
 
+  // ── session 22: sized shape variants (LY spec §4.1c) ───────────────────────
+
+  { name: "registrationFor: the shape's own size is the shape; another size is a named, scaled variant", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const shape = cfg.shapes["crotchet-minim"];
+      const ownW = shape.naturalWidth * shape.semitoneHeight / shape.naturalHeight;
+      const plain = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: null, widthSemis: null });
+      eq(plain.sym, "crotchet-minim", "unsized symbol"); eq(plain.scale, null, "unsized scale");
+      const same = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: shape.semitoneHeight, widthSemis: ownW });
+      eq(same.scale, null, "explicitly own size is the shape");
+      const sized = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: 1.5, widthSemis: 3 });
+      eq(sized.sym, "crotchet-minim-h1p5-w3", "variant symbol");
+      assert(Math.abs(sized.scale.y - 1.5 / shape.semitoneHeight) < 1e-12, "scale.y = height / semitoneHeight");
+      assert(Math.abs(sized.scale.x - 3 / ownW) < 1e-12, "scale.x = width / natural width");
+      const hOnly = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: 2, widthSemis: null });
+      eq(hOnly.sym, `crotchet-minim-h2-w${_internals.fmtNum(ownW).replace(".", "p")}`, "height only keeps the natural width");
+      eq(hOnly.scale.x, 1, "height only: x unscaled");
+    }},
+
+  { name: "sized variants: Section A scales the path, cutout and attachments of each variant", fn: () => {
+      const cfg = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
+      const a = CNBLilypond.sectionA(cfg);
+      const shape = cfg.shapes["crotchet-minim"];
+      const sps = cfg.staff.semitonesPerStaffSpace;
+      const ups = shape.naturalHeight / shape.semitoneHeight;
+      for (const r of [{ heightSemis: 1.5, widthSemis: 3 }, { heightSemis: null, widthSemis: 4 }]) {
+        const reg = _internals.registrationFor(cfg, { shape: "crotchet-minim", ...r });
+        contains(a, `#(define cnb:${reg.sym}-path ${CNBLilypond.svgPathToLilypond(shape.svgPath, ups, sps, reg.scale)})`, `${reg.sym} path`);
+        contains(a, `#(define cnb:${reg.sym}-cutout-path ${CNBLilypond.svgPathToLilypond(shape.svgHollowPath, ups, sps, reg.scale)})`, `${reg.sym} cutout`);
+        contains(a, `#(cnb:register-path! '${reg.sym} cnb:${reg.sym}-path)`, `${reg.sym} registered`);
+        contains(a, `#(cnb:register-hollow! '${reg.sym}-cutout cnb:${reg.sym}-cutout-path)`, `${reg.sym} cutout registered`);
+        const pts = _internals.attachmentPoints(shape, sps, reg.scale);
+        const plain = _internals.attachmentPoints(shape, sps);
+        assert(Math.abs(pts.crotchetUp.x - plain.crotchetUp.x * reg.scale.x) < 2e-4, "attachment x scaled");
+        assert(Math.abs(pts.crotchetUp.y - plain.crotchetUp.y * reg.scale.y) < 2e-4, "attachment y scaled");
+        contains(a, `#(cnb:register-attachment! '${reg.sym}-attach`, `${reg.sym} attachment`);
+        contains(a, `(cons 'crotchet-up   '(${_internals.fmtPair(pts.crotchetUp)}))`, `${reg.sym} attachment value`);
+      }
+      contains(a, "#(cnb:register-path! 'crotchet-minim cnb:crotchet-minim-path)", "the unsized shape is still used (D, E, F, G, A, B)");
+    }},
+
+  { name: "sized variants: the path is the unsized path with x × scale.x and y × scale.y", fn: () => {
+      const cmds = [{ cmd: "moveto", args: [2, 4] }, { cmd: "closepath", args: [] }];
+      eq(CNBLilypond.pathToStaffSpace(cmds, 2, false, "t", { x: 3, y: 0.5 }), "'(\n    (moveto 3 1)\n    (closepath))", "pre-baked");
+      eq(CNBLilypond.pathToStaffSpace(cmds, 2, false, "t"), "'(\n    (moveto 1 2)\n    (closepath))", "no scale unchanged");
+      eq(CNBLilypond.svgPathToLilypond("M 100 200 Z", 100, 1, { x: 2, y: 3 }), "'(\n    (moveto 2 -6)\n    (closepath))", "fallback");
+    }},
+
+  { name: "sized variants: Section C points pitch classes at their variant, and size joins the grouping key", fn: () => {
+      const cfg = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
+      const clauses = parseSectionCClauses(CNBLilypond.sectionC(cfg));
+      for (const pc of [1, 3, 6, 8, 10]) {
+        eq(clauses[pc].shape, "crotchet-minim-h1p5-w3", `pc ${pc} shape`);
+        eq(clauses[pc].hollow, "crotchet-minim-h1p5-w3-cutout", `pc ${pc} hollow`);
+        eq(clauses[pc].attachment, "crotchet-minim-h1p5-w3-attach", `pc ${pc} attachment`);
+      }
+      eq(clauses[0].shape, "crotchet-minim-h2p724-w4", "C: own height, width 4");
+      for (const pc of [2, 4, 5, 7, 9, 11]) eq(clauses[pc].shape, "crotchet-minim", `pc ${pc} unsized`);
+      // Same shape, colour and hollow, different sizes → separate clauses.
+      const two = CNBConfig.createDefault();
+      two.noteheadRules.push(
+        { name: "D", priority: 2, match: { pitchClasses: [2], durations: "all", keys: "all" }, apply: { heightSemis: 2 } },
+        { name: "E", priority: 2, match: { pitchClasses: [4], durations: "all", keys: "all" }, apply: { heightSemis: 3 } },
+      );
+      const c2 = parseSectionCClauses(CNBLilypond.sectionC(two));
+      assert(c2[2].condition !== c2[4].condition, "D and E are not grouped");
+      eq(c2[0].condition, c2[5].condition, "unsized naturals still grouped");
+    }},
+
+  { name: "sized variants: a shape every pitch class resizes is not registered at its own size", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules[0].apply.heightSemis = 2;
+      const a = CNBLilypond.sectionA(cfg);
+      lacks(a, "#(cnb:register-path! 'crotchet-minim cnb:", "no unsized registration");
+      eq(_internals.usedRegistrations(cfg).length, 1, "one variant");
+    }},
+
+  { name: "baselines: the sized fixture exports byte-identically to sized-export-baseline.ly", fn: () => {
+      // Exported by cnb/fixtures/export-config.mjs in session 22.
+      const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
+      const baseline = readFileSync(path.join(CNB_DIR, "fixtures", "sized-export-baseline.ly"), "utf8");
+      const config = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
+      eq(normalize(CNBLilypond.generate(config)), normalize(baseline), "sized export");
+    }},
+
+  { name: "size (engine): the sized fixture engraves each pitch class at its resolved height and width (±5%)", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const cfg = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
+      const { noteheads, error } = await measureNoteheads(engine, CNBLilypond.generate(cfg));
+      assert(!error, `the sized export must compile and engrave: ${error}`);
+      eq(noteheads.length, 12, "one notehead per pitch class");
+      const shape = cfg.shapes["crotchet-minim"];
+      const sps = cfg.staff.semitonesPerStaffSpace;
+      const ownW = shape.naturalWidth * shape.semitoneHeight / shape.naturalHeight;
+      const failures = [];
+      for (const { pc, width, height } of noteheads) {
+        const r = CNBConfig.resolveNotehead(cfg, pc, "crotchet", null);
+        const wantH = (r.heightSemis ?? shape.semitoneHeight) / sps;
+        const wantW = (r.widthSemis ?? ownW) / sps;
+        if (!(Math.abs(height - wantH) <= 0.05 * wantH)) failures.push(`pc ${pc}: height ${height}, want ${wantH}`);
+        if (!(Math.abs(width - wantW) <= 0.05 * wantW)) failures.push(`pc ${pc}: width ${width}, want ${wantW}`);
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
   { name: "hostile (engine): LilyPond never prints a payload from an accepted export", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }

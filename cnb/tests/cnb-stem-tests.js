@@ -153,6 +153,19 @@ export const tests = [
       eq(doubled.y1, plain.y1, "y1 unchanged");
       eq(doubled.y2, plain.y2, "y2 unchanged");
     }},
+  { name: "geometry scaleX (session 22): default scaleFactor is unchanged; a sized notehead's scaleX moves the anchor x only", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { anchors: { crotchetUp:{x:10,y:-4}, crotchetDown:{x:-10,y:4}, minimUp:{x:6,y:-4}, minimDown:{x:-6,y:4} }, semitoneHeight:2 };
+      const opts = { shape:s, scaleFactor:1.5, centerX:50, noteYPositions:[100, 40], direction:"up", duration:"crotchet" };
+      const plain = CNBStem.geometry(cfg, opts);
+      eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, scaleX: 1.5 })), JSON.stringify(plain), "scaleX = scaleFactor is the default");
+      const wide = CNBStem.geometry(cfg, { ...opts, scaleX: 3 });
+      eq(wide.x, 50 + 10 * 3, "anchor x follows scaleX");
+      eq(wide.y1, plain.y1, "anchor y follows scaleFactor");
+      eq(wide.y2, plain.y2, "y2 unchanged");
+      const down = CNBStem.geometry(cfg, { ...opts, direction: "down", scaleX: 3, widthScale: 2 });
+      eq(down.x, 50 - 10 * 3 * 2, "scaleX composes with widthScale");
+    }},
 ];
 
 function twinlineAxis() {

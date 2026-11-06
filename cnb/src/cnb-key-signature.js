@@ -235,13 +235,14 @@ export const CNBKeySignature = {
     const shapes = config.shapes || {};
     const columns = 2;
 
-    // The widest resolved notehead sets the column width.
+    // The widest resolved notehead (at its resolved size, session 22) sets
+    // the column width.
     let markWidth = 0;
     for (const semi of semis) {
       const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
       const shape = shapes[mark.shape];
       if (!shape) continue;
-      const { pixelWidth } = CNBNotehead.measure(shape, pxPerSemi);
+      const { pixelWidth } = CNBNotehead.measure(shape, pxPerSemi, mark);
       if (pixelWidth > markWidth) markWidth = pixelWidth;
     }
     if (!(markWidth > 0)) return null;
@@ -376,7 +377,7 @@ export const CNBKeySignature = {
       const mark = resolveMark(config, CNBMusic.pitchClass(semi), keyName);
       const shape = shapes[mark.shape];
       if (!shape) return;
-      const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+      const { scaleFactor, scaleX, scaleY } = CNBNotehead.measure(shape, gridContext.pxPerSemi, mark);
       CNBNotehead.render(g, {
         shape,
         x: m.offsets
@@ -384,6 +385,8 @@ export const CNBKeySignature = {
           : i % 2 === 0 ? leftX : rightX,
         y: gridContext.semiToY(semi),
         scaleFactor,
+        scaleX,
+        scaleY,
         hollow: mark.hollow,
         color: mark.color,
       });

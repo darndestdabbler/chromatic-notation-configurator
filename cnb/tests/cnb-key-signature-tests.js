@@ -491,6 +491,36 @@ export const tests = [
       });
     }},
 
+  // ── session 22: resolved notehead size ─────────────────────────────────────
+
+  { name: "size: the widest resolved mark sets markWidth; marks draw at their resolved size", fn: () => {
+      const config = keysigConfig();
+      config.noteheadRules.push({
+        name: "wide G", priority: 2, match: { pitchClasses: [7], durations: "all", keys: "all" },
+        apply: { heightSemis: 2, widthSemis: 5 },
+      });
+      const m = CNBKeySignature.measure(config, PX_PER_SEMI, "C");
+      approx(m.markWidth, 5 * PX_PER_SEMI, "markWidth = the sized G's width");
+      approx(m.contentWidth, 2 * 5 * PX_PER_SEMI, "content width follows");
+      const grid = CNBGrid.create(config, GRID_RANGE);
+      const shape = config.shapes["crotchet-minim"];
+      const sized = CNBNotehead.measure(shape, PX_PER_SEMI, { heightSemis: 2, widthSemis: 5 });
+      const plainScale = CNBNotehead.measure(shape, PX_PER_SEMI).scaleFactor;
+      withSvgStub(svg => {
+        const g = CNBKeySignature.render(svg, grid, config, "C");
+        const heads = g.children.filter(c => c.tag === "g" && c.getAttribute("class") !== "cnb-ledger-set");
+        m.semis.forEach((semi, i) => {
+          const t = heads[i].children[0].getAttribute("transform");
+          eq(t, semi % 12 === 7 ? `scale(${sized.scaleX},${sized.scaleY})` : `scale(${plainScale})`, `mark ${semi} scale`);
+        });
+      });
+    }},
+
+  { name: "size: an unsized key signature measures as before", fn: () => {
+      const m = CNBKeySignature.measure(keysigConfig(), PX_PER_SEMI, "C");
+      approx(m.markWidth, MARK_W, "markWidth unchanged");
+    }},
+
 ];
 
 /** C-major key signature on the 013 Twinline axis with the 0.85 offset rule. */

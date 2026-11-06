@@ -33,6 +33,10 @@
  * by the group's extra width. One head (shape mode, crotchets) takes the
  * existing code path unchanged.
  *
+ * Session 22 (notehead size): the resolved heightSemis / widthSemis set the
+ * notehead measurement, and the ledger width, column width, repeated group,
+ * stem anchor (scaleX) and octave pair follow it. Unsized, nothing changes.
+ *
  * Dependencies: Modules A, B, 1 (grid context passed in), 5, 6, 7, 8.
  */
 
@@ -138,11 +142,13 @@ export const CNBCard = {
    * @param {object} gridContext
    * @param {object} shape     shape config object
    * @param {string} duration  duration name
+   * @param {{heightSemis?:number|null, widthSemis?:number|null}} [size]
+   *        the resolved notehead size (session 22); absent = the shape's own
    * @returns {{count:number, offsets:number[], groupWidth:number}} px
    */
-  repeatLayout(config, gridContext, shape, duration) {
+  repeatLayout(config, gridContext, shape, duration, size) {
     const count = CNBCard.repeatCount(config, duration);
-    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
     if (count === 1) return { count, offsets: [0], groupWidth: pixelWidth };
     const axis = gridContext.axis;
     const unitsPerStaffSpace = axis && axis.enabled
@@ -191,11 +197,11 @@ export const CNBCard = {
   columnWidth(config, gridContext, { pc, duration, key = null }) {
     const resolved = CNBCard.resolveNotehead(config, pc, duration, key);
     const shape = config.shapes[resolved.shape];
-    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi, resolved);
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const paddingH = config.display?.column?.paddingH ?? 16;
     // Repeat mode: the column widens by the repeated group's extra width.
-    const { groupWidth } = CNBCard.repeatLayout(config, gridContext, shape, duration);
+    const { groupWidth } = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
     const ledgerWidth = pixelWidth * multiplier + (groupWidth - pixelWidth);
     if (gridContext.axis && gridContext.axis.enabled) {
       return ledgerWidth + 2 * paddingH + Math.abs(axisOffsetPx(gridContext, resolved));
@@ -244,9 +250,12 @@ export const CNBCard = {
     svg.style.display = "block";
 
     // 1. Ledger lines (bottom layer), widened by a repeated group's extra width
-    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
+    // The resolved size (session 22) sets the notehead measurement that the
+    // ledger width, stem anchor and noteheads all follow.
+    const measured = CNBNotehead.measure(shape, gridContext.pxPerSemi, resolved);
+    const { pixelWidth } = measured;
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
-    const repeat = CNBCard.repeatLayout(config, gridContext, shape, duration);
+    const repeat = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
     CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
       centerX: headX,
       width: pixelWidth * multiplier + (repeat.groupWidth - pixelWidth),
@@ -260,10 +269,10 @@ export const CNBCard = {
         config.staff?.midpoint ?? 12,
         gridContext.axis
       );
-      const { scaleFactor } = CNBNotehead.measure(shape, gridContext.pxPerSemi);
       const geometry = CNBStem.geometry(config, {
         shape,
-        scaleFactor,
+        scaleFactor: measured.scaleFactor,
+        scaleX: measured.scaleX,
         centerX: headX,
         noteYPositions: [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)],
         direction,
@@ -274,12 +283,13 @@ export const CNBCard = {
     }
 
     // 3. Octave pair of noteheads (top layer), once per repeated copy
+    const size = { heightSemis: resolved.heightSemis, widthSemis: resolved.widthSemis };
     for (const dx of repeat.offsets) {
       CNBDoubleNotehead.render(svg, gridContext, {
         lowerSemi,
         upperSemi,
-        lowerNote: { shape, hollow: resolved.hollow, color: resolved.color },
-        upperNote: { shape, hollow: resolved.hollow, color: resolved.color },
+        lowerNote: { shape, hollow: resolved.hollow, color: resolved.color, size },
+        upperNote: { shape, hollow: resolved.hollow, color: resolved.color, size },
         centerX: baseX,
         offsetPercent: 0,
         lowerOffsetPx: offsetPx + dx,

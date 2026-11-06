@@ -344,6 +344,22 @@ export const CNBConfig = {
         }
       }
     }
+    // 3a. Notehead size (session 22): apply.heightSemis / apply.widthSemis,
+    //     absolute sizes in semitones, must be finite and positive; outside
+    //     0.25–4 semitones they warn (allowed, but unlikely to look right).
+    for (const rule of rules) {
+      if (!rule || !rule.apply || typeof rule.apply !== "object") continue;
+      for (const field of ["heightSemis", "widthSemis"]) {
+        const v = rule.apply[field];
+        if (v === undefined) continue;
+        if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+          errors.push(`Rule "${rule.name || "(unnamed)"}" apply.${field} must be a finite number greater than 0 (got ${JSON.stringify(v)})`);
+        } else if (v < 0.25 || v > 4) {
+          warnings.push(`Rule "${rule.name || "(unnamed)"}" apply.${field} is ${v} semitones, outside the usual 0.25–4`);
+        }
+      }
+    }
+
     const palette = config.palette || {};
     for (const entry of (palette.colors || [])) {
       if (!isValidHex(entry.hex)) {
@@ -945,11 +961,16 @@ export const CNBConfig = {
    * meaningful only while pitchAxis is enabled (design §3.2) — nothing
    * reads it on the linear path, and export emission is axis-gated.
    *
+   * heightSemis / widthSemis (session 22): the notehead's absolute size in
+   * semitones. null (the default) means the shape's own semitoneHeight and
+   * natural width, each independently.
+   *
    * @param {object} config
    * @param {number} pc       0–11
    * @param {string} duration e.g. "crotchet"
    * @param {string|null} key e.g. "C" or null
-   * @returns {{ shape: string, hollow: boolean, color: string|null, offKeyMark: boolean|string, xOffsetStaffSpaces: number }}
+   * @returns {{ shape: string, hollow: boolean, color: string|null, offKeyMark: boolean|string, xOffsetStaffSpaces: number,
+   *            heightSemis: number|null, widthSemis: number|null }}
    */
   resolveNotehead(config, pc, duration, key) {
     const first = firstShapeName(config);
@@ -961,6 +982,8 @@ export const CNBConfig = {
       color:       null,
       offKeyMark:  false,
       xOffsetStaffSpaces: 0,
+      heightSemis: null,
+      widthSemis:  null,
     };
 
     const rules = (config.noteheadRules || []).slice().sort((a, b) => (a.priority || 0) - (b.priority || 0));
@@ -973,6 +996,8 @@ export const CNBConfig = {
         if (apply.color      !== undefined) result.color      = apply.color;
         if (apply.offKeyMark !== undefined) result.offKeyMark = apply.offKeyMark;
         if (apply.xOffsetStaffSpaces !== undefined) result.xOffsetStaffSpaces = apply.xOffsetStaffSpaces;
+        if (apply.heightSemis !== undefined) result.heightSemis = apply.heightSemis;
+        if (apply.widthSemis  !== undefined) result.widthSemis  = apply.widthSemis;
       }
     }
 

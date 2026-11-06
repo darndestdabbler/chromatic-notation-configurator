@@ -59,7 +59,8 @@
  *                  keys: "all"|string[] },
  *         apply: { shape?: string, hollow?: boolean,
  *                  color?: string|null, offKeyMark?: false|string,
- *                  xOffsetStaffSpaces?: number }   // axis-gated (set 014)
+ *                  xOffsetStaffSpaces?: number,    // axis-gated (set 014)
+ *                  heightSemis?: number, widthSemis?: number }  // size (session 22)
  *       }, ...
  *     ],
  *     previewDuration: string,       // display-only: duration the resolved
@@ -204,6 +205,15 @@ export const CNBNoteheadRuleEditor = {
         }
         out.apply.xOffsetStaffSpaces = x;
       }
+      for (const field of ["heightSemis", "widthSemis"]) {
+        if (apply[field] === undefined) continue;
+        const v = apply[field];
+        if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+          throw new Error(
+            `Rule ${i + 1} has invalid apply.${field} ${JSON.stringify(v)} — must be a number of semitones greater than 0`);
+        }
+        out.apply[field] = v;
+      }
       return out;
     });
   },
@@ -252,6 +262,8 @@ export const CNBNoteheadRuleEditor = {
       if (apply.color !== undefined) rule.apply.color = apply.color;
       if (apply.offKeyMark !== undefined) rule.apply.offKeyMark = deepClone(apply.offKeyMark);
       if (apply.xOffsetStaffSpaces !== undefined) rule.apply.xOffsetStaffSpaces = apply.xOffsetStaffSpaces;
+      if (apply.heightSemis !== undefined) rule.apply.heightSemis = apply.heightSemis;
+      if (apply.widthSemis !== undefined) rule.apply.widthSemis = apply.widthSemis;
       return rule;
     });
 
@@ -323,6 +335,26 @@ export const CNBNoteheadRuleEditor = {
     // only while the pitch axis is enabled, or to a rule that already sets
     // it (so a loaded value stays visible and removable).
     const axisEnabled = !!(baseConfig.pitchAxis && baseConfig.pitchAxis.enabled);
+    // Per-rule "Keep aspect ratio" lock (session 22): editor-only, not
+    // config data; a rule with no entry is locked.
+    const sizeLocks = new WeakMap();
+
+    // The shape a rule's noteheads resolve to (session 22): the full rule
+    // set resolved for the rule's first matched pitch class, duration and
+    // key, so a size-only rule takes the shape an earlier rule chose (or a
+    // later rule overrides). null when the state cannot be built.
+    const resolvedShapeName = (rule) => {
+      try {
+        const m = rule.match || {};
+        const pc = m.pitchClasses === "all" ? 0 : (m.pitchClasses[0] ?? 0);
+        const duration = m.durations === "all" || !m.durations?.length ? state.previewDuration : m.durations[0];
+        const key = m.keys === "all" || !m.keys?.length ? null : m.keys[0];
+        return CNBConfig.resolveNotehead(
+          CNBNoteheadRuleEditor.applyToConfig(baseConfig, state), pc, duration, key).shape;
+      } catch (_) {
+        return null;
+      }
+    };
 
     // Pill vocabulary for a name-list dimension: the config's definitions
     // plus any names already selected on the rule (union), so names loaded
@@ -646,6 +678,82 @@ export const CNBNoteheadRuleEditor = {
           }));
       }
 
+      // Size (session 22): height and width in semitones. "Keep aspect
+      // ratio" (editor-only, on by default) makes the width follow the
+      // height at the shape's natural ratio; off, the width is free. The
+      // ratio and hint come from the shape this rule's noteheads resolve to.
+      const sizeShape = baseConfig.shapes?.[resolvedShapeName(rule)] ||
+        baseConfig.shapes?.[rule.apply.shape] || baseConfig.shapes?.[shapeNames[0]];
+      const ratio = sizeShape ? sizeShape.naturalWidth / sizeShape.naturalHeight : 1;
+      const ownHeight = sizeShape ? sizeShape.semitoneHeight : 1;
+      const round4 = (v) => Math.round(v * 10000) / 10000;
+      apply.appendChild(applyRow("cnb-nre-apply-size", "Size (semitones)",
+        rule.apply.heightSemis !== undefined || rule.apply.widthSemis !== undefined,
+        (on) => {
+          if (on) {
+            rule.apply.heightSemis = ownHeight;
+            rule.apply.widthSemis = round4(ownHeight * ratio);
+          } else {
+            delete rule.apply.heightSemis;
+            delete rule.apply.widthSemis;
+          }
+        },
+        () => {
+          const wrap = el("span", "cnb-nre-size");
+          const locked = sizeLocks.get(rule) ?? true;
+          const sizeInput = (cls, label, value) => {
+            const input = el("input", cls);
+            input.type = "number";
+            input.min = "0.25";
+            input.max = "4";
+            input.step = "0.05";
+            input.value = value === undefined ? "" : String(value);
+            input.title = `${label} in semitones (0.25–4)`;
+            return input;
+          };
+          const height = sizeInput("cnb-nre-size-height", "Height", rule.apply.heightSemis);
+          height.placeholder = String(round4(ownHeight));
+          height.onchange = (e) => {
+            const v = parseFloat(valueFrom(e, height));
+            if (!(Number.isFinite(v) && v > 0)) return;
+            rule.apply.heightSemis = v;
+            if (sizeLocks.get(rule) ?? true) rule.apply.widthSemis = round4(v * ratio);
+            changed();
+          };
+          const width = sizeInput("cnb-nre-size-width", "Width", rule.apply.widthSemis);
+          width.placeholder = String(round4(ownHeight * ratio));
+          width.disabled = locked;
+          width.onchange = (e) => {
+            const v = parseFloat(valueFrom(e, width));
+            if (Number.isFinite(v) && v > 0) { rule.apply.widthSemis = v; changed(); }
+          };
+          const lockLabel = el("label", "cnb-nre-size-lock-label");
+          const lock = el("input", "cnb-nre-size-lock");
+          lock.type = "checkbox";
+          lock.checked = locked;
+          lock.onchange = (e) => {
+            const on = checkedFrom(e, lock);
+            sizeLocks.set(rule, on);
+            // Turning the lock back on puts the width back on the ratio.
+            if (on && rule.apply.heightSemis !== undefined) {
+              rule.apply.widthSemis = round4(rule.apply.heightSemis * ratio);
+              changed();
+            } else {
+              redraw();
+            }
+          };
+          lockLabel.appendChild(lock);
+          lockLabel.appendChild(el("span", null, "Keep aspect ratio"));
+          wrap.appendChild(el("span", "cnb-nre-size-label", "Height"));
+          wrap.appendChild(height);
+          wrap.appendChild(el("span", "cnb-nre-size-label", "Width"));
+          wrap.appendChild(width);
+          wrap.appendChild(el("span", "cnb-nre-size-hint",
+            `natural width ${round4(ownHeight * ratio)} at height ${round4(ownHeight)}`));
+          wrap.appendChild(lockLabel);
+          return wrap;
+        }));
+
       card.appendChild(apply);
       return card;
     }
@@ -832,12 +940,15 @@ export const CNBNoteheadRuleEditor = {
         svg.setAttribute("class", "cnb-nre-preview-notehead");
         svg.setAttribute("width", String(cellWidth));
         svg.setAttribute("height", String(cellHeight));
-        const { scaleFactor } = CNBNotehead.measure(shape, pxPerSemi);
+        // Drawn at the resolved size (session 22).
+        const { scaleFactor, scaleX, scaleY } = CNBNotehead.measure(shape, pxPerSemi, r);
         CNBNotehead.render(svg, {
           shape,
           x: cellWidth / 2,
           y: cellHeight / 2,
           scaleFactor,
+          scaleX,
+          scaleY,
           hollow: r.hollow,
           color: r.effectiveColor,
         });

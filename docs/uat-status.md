@@ -17,6 +17,45 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Notehead size check — 2026-11-06 (session 22)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- A one-off scratch script outside the tree, not a driver: 14 of 14 checks
+  pass.
+- `cnb/test-pages/test-notehead.html`, the new "Resolved sizes" section,
+  checked by eye from a screenshot. All seven noteheads fill their dashed
+  boxes: four at the natural aspect ratio (0.25, 1, 2.724 and 4 semitones
+  high) and three stretched (1 × 4, 4 × 1.5, 2 × 6).
+
+Session 22 gave each notehead a height and a width (`apply.heightSemis`,
+`apply.widthSemis`). The script opens `cnb/index.html`, uses the size row
+on the default config's second rule ("Sharps are hollow"), and checks that:
+
+- turning the row on sets the shape's own height (2.724) and natural width
+  (3.4485). The "Keep aspect ratio" lock starts on, which disables the width
+  field. The hint reads "natural width 3.4485 at height 2.724".
+- with the lock on, a height of 1.5 sets the width to 1.899 (1.5 × the
+  natural ratio). In the preview the C♯ head shrinks to 24 px tall and keeps
+  its aspect ratio, its ledger shrinks in proportion, and C (unsized) does
+  not change.
+- with the lock off, a width of 3 leaves the height at 1.5. The C♯ head is
+  drawn with `scale(sx,sy)` at 48 × 24 px, its ledger is 96 px (2 × the
+  width), and its column is 128 px (96 + 2 × 16 padding). In the
+  screenshot, stems attach at the edge of the narrower heads.
+- the real export download registers `crotchet-minim-h1p5-w3` (path, hollow
+  cutout, attachment), and Section C points C♯, D♯, F♯, G♯ and A♯ at it.
+
+The first screenshot showed the size row unstyled in the app: default font
+size and no spacing between the fields. `cnb/index.html` now styles the
+`.cnb-nre-size*` hooks like the neighbouring controls. The rerun passes 14
+of 14 checks and looks right.
+
+What the script does not cover: it does not render the engraving. That
+check is the engine-backed test in `cnb/tests/cnb-lilypond-tests.js`, which
+finds every pitch class of the sized fixture engraved at its resolved
+height and width, within 5%.
+
 ## Colour picker check — 2026-11-06 (session 21)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

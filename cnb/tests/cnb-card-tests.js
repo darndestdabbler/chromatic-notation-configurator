@@ -458,7 +458,60 @@ export const tests = [
       if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
+  // ── session 22: resolved notehead size ─────────────────────────────────────
+
+  { name: "size: columnWidth, ledger width, stem anchor and noteheads follow the resolved size", fn: () => {
+      const { config, grid, shape } = fixture();
+      config.noteheadRules.push({
+        name: "big C", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" },
+        apply: { heightSemis: 4, widthSemis: 6 },
+      });
+      const m = CNBNotehead.measure(shape, grid.pxPerSemi, { heightSemis: 4, widthSemis: 6 });
+      approx(m.pixelWidth, 6 * 16, "sized width 6 semitones");
+      const colWidth = CNBCard.columnWidth(config, grid, { pc: 0, duration: "crotchet" });
+      approx(colWidth, 6 * 16 * 2.0 + 2 * 16, "column width from the sized notehead");
+      withDomStub(container => {
+        const col = CNBCard.render(container, grid, config, { pc: 0, duration: "crotchet" });
+        const { ledgerG, stem, noteheads } = dissect(col);
+        assert(ledgerG.children.length > 0, "C draws its ledger");
+        approx(Number(ledgerG.children[0].getAttribute("width")), 6 * 16 * 2.0, "ledger width from the sized notehead");
+        approx(Number(stem.getAttribute("x1")), colWidth / 2 + shape.anchors.crotchetUp.x * m.scaleX, "stem anchor x follows scaleX");
+        const geo = CNBStem.geometry(config, {
+          shape, scaleFactor: m.scaleFactor, scaleX: m.scaleX, centerX: colWidth / 2,
+          noteYPositions: [grid.semiToY(0), grid.semiToY(12)], direction: "up", duration: "crotchet",
+        });
+        eq(stem.getAttribute("y1"), String(geo.y1), "stem anchor y follows scaleY");
+        for (const g of noteheads) eq(g.children[0].getAttribute("transform"), `scale(${m.scaleX},${m.scaleY})`, "sized head");
+      });
+    }},
+
+  { name: "size: unsized pitch classes are untouched by another pc's size rule", fn: () => {
+      const { config, grid } = fixture();
+      const before = CNBCard.columnWidth(config, grid, { pc: 2, duration: "crotchet" });
+      config.noteheadRules.push({
+        name: "big C", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" },
+        apply: { heightSemis: 4, widthSemis: 6 },
+      });
+      eq(CNBCard.columnWidth(config, grid, { pc: 2, duration: "crotchet" }), before, "pc 2 column unchanged");
+    }},
+
+  { name: "size: repeat mode spaces the copies by the resolved width", fn: () => {
+      const { config, grid, shape } = fixture();
+      config.durations.representationMode = "repeat";
+      const size = { heightSemis: 2, widthSemis: 2 };
+      const sized = CNBCard.repeatLayout(config, grid, shape, "minim", size);
+      const w = 2 * 16;
+      const step = w + (config.engine.multinotePadding) * config.staff.semitonesPerStaffSpace * 16;
+      approx(sized.groupWidth, w + step, "group width from the sized notehead");
+      deepEqOffsets(sized.offsets, [-step / 2, step / 2]);
+    }},
+
 ];
+
+function deepEqOffsets(a, b) {
+  eq(a.length, b.length, "offset count");
+  a.forEach((v, i) => approx(v, b[i], `offset ${i}`));
+}
 
 /** Default config in repeat mode. */
 function repeatFixture() {

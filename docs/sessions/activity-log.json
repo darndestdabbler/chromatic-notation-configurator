@@ -272,6 +272,21 @@
       "dateTime": "2026-11-06T17:08:19.768000-05:00",
       "task": "Stop the colour picker closing on every change. In the four editors that own colour inputs -- cnb/ui/palette-editor.js (custom palette cells), cnb/ui/notehead-rule-editor.js (a rule's explicit colour), cnb/ui/key-signature-editor.js (the separator colour) and cnb/ui/staff-rule-editor.js (staff and ledger line colour) -- split the colour input's wiring: its `input` handler updates the state and calls onChange with the built config slice so the preview follows the drag live, without redrawing the panel; its `change` handler, which fires when the picker closes, does the full changed() redraw so derived text such as the palette's nearest-colour names catches up. Each editor gets a small emit() (the onChange half of changed(), which becomes redraw() + emit()). Every other control keeps its wiring. The behaviour is pinned in each editor's own test file (an input event on the colour control leaves that same element in the DOM and emits onChange; a change event redraws), the four editors are exercised in the browser, and the check is recorded in docs/uat-status.md.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 22,
+      "dateTime": "2026-11-06T18:00:20.376000-05:00",
+      "task": "Give each notehead its own height and width. A notehead rule's apply block gains optional heightSemis and widthSemis (absolute sizes in semitones), resolved through CNBConfig.resolveNotehead's cumulative pipeline like hollow and xOffsetStaffSpaces (null when no matching rule sets it, meaning the shape's own semitoneHeight and natural width, each independently). Validation errors on a present value that is not a finite positive number and warns outside 0.25-4 semitones. In the preview, CNBNotehead.measure takes the resolved size and returns separate x and y scale factors; render draws scale(sx, sy) only when they differ, so an unsized config renders byte-identically (the preview and export baselines stay pinned unchanged). The card's stem anchors, ledger width (CNBCard passes the resolved width to CNBLedgerSet, which takes its width from the caller), column width and repeat-mode group, the octave pair (cnb-double-notehead.js) and the key-signature marks all follow the resolved measurement. The exporter registers, for each distinct resolved (shape, height, width) that differs from the shape's own size, a Section A variant named after the shape with a size suffix (-h<height>-w<width>, decimal point written as p), whose path, hollow cutout and attachment points are scaled by the same x and y factors; Section C points the pitch classes at the variant, and the size joins the grouping key. A sized fixture config is pinned against a new export baseline, and an engine-backed test (skipping without LilyPond, via cnb/tests/engine-probe.js) checks the engraved sizes. The notehead rule editor gets height and width controls with a keep-aspect-ratio lock, on by default, and a natural-width hint; the browser check goes in docs/uat-status.md. The architecture plan \u00a74.5, the LY export spec (1.3.4, a section on variant naming and scaling) and the README's Preview-only settings section document that size exports.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 22,
+      "dateTime": "2026-11-06T18:19:29.367000-05:00",
+      "what": "step 'browser-check-record': its files",
+      "reason": "The browser check found the new size row unstyled in the app (default font size, no spacing); cnb/index.html needs CSS for the .cnb-nre-size* hooks, matching the neighbouring apply-row controls",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

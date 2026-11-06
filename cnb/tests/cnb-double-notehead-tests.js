@@ -208,4 +208,45 @@ export const tests = [
       });
     }},
 
+  // ── session 22: resolved size ──────────────────────────────────────────────
+  { name: "layout: unsized notes give equal x and y scales (unchanged)", fn: () => {
+      const { grid, shape } = fixture();
+      const l = CNBDoubleNotehead.layout(grid, {
+        lowerSemi: 0, upperSemi: 12, lowerNote: { shape }, upperNote: { shape }, centerX: 100,
+      });
+      const m = CNBNotehead.measure(shape, grid.pxPerSemi);
+      eq(l.lowerScale, m.scaleFactor, "lowerScale");
+      eq(l.lowerScaleX, m.scaleFactor, "lowerScaleX"); eq(l.lowerScaleY, m.scaleFactor, "lowerScaleY");
+      eq(l.upperScaleX, m.scaleFactor, "upperScaleX"); eq(l.upperScaleY, m.scaleFactor, "upperScaleY");
+    }},
+  { name: "layout: each note's size sets its scales; the offset uses the wider resolved width", fn: () => {
+      const { grid, shape } = fixture();
+      const size = { heightSemis: 2, widthSemis: 6 };
+      const l = CNBDoubleNotehead.layout(grid, {
+        lowerSemi: 0, upperSemi: 12,
+        lowerNote: { shape, size }, upperNote: { shape },
+        centerX: 100, offsetPercent: 50,
+      });
+      const sized = CNBNotehead.measure(shape, grid.pxPerSemi, size);
+      approx(l.lowerScaleX, sized.scaleX, "lower scaleX"); approx(l.lowerScaleY, sized.scaleY, "lower scaleY");
+      approx(l.lowerScale, sized.scaleY, "lower scaleFactor = scaleY");
+      approx(sized.pixelWidth, 6 * grid.pxPerSemi, "sized width 6 semis");
+      const offset = 0.5 * sized.pixelWidth;   // sized is wider than the natural one
+      approx(l.upperX - l.lowerX, offset, "offset from resolved width");
+    }},
+  { name: "render: a sized note is drawn with scale(sx,sy)", fn: () => {
+      const { grid, shape } = fixture();
+      const size = { heightSemis: 2, widthSemis: 6 };
+      withSvgStub(() => {
+        const parent = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const r = CNBDoubleNotehead.render(parent, grid, {
+          lowerSemi: 0, upperSemi: 12,
+          lowerNote: { shape, size }, upperNote: { shape }, centerX: 100,
+        });
+        const m = CNBNotehead.measure(shape, grid.pxPerSemi, size);
+        eq(r.lowerG.children[0].getAttribute("transform"), `scale(${m.scaleX},${m.scaleY})`, "lower stretched");
+        eq(r.upperG.children[0].getAttribute("transform"), `scale(${CNBNotehead.measure(shape, grid.pxPerSemi).scaleFactor})`, "upper unchanged");
+      });
+    }},
+
 ];

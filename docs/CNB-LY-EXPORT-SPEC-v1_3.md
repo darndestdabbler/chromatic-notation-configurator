@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.3 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings)
-**Date:** November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.4 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants)
+**Date:** November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -45,7 +45,9 @@ emission below is gated on `pitchAxis.enabled`, and the disabled code path
 in `cnb/src/cnb-lilypond.js` is the literal v1.2.1 code, not an equivalent
 re-derivation (design §1.3). The Kite 4-369 round-trip and export-baseline
 pins enforce this. *(1.3.2 exception: path data, for linear and axis configs
-alike — §4.1b.)*
+alike — §4.1b. 1.3.4 addition, also for both: sized shape variants for
+rules that set `heightSemis` / `widthSemis`, §4.1c. A config that sets no
+size is unaffected.)*
 
 Summary of additions:
 
@@ -99,6 +101,55 @@ emitted raw SVG coordinates (about 100 × sps too large, and mirrored), so
 should be regenerated.** Configs whose stored pre-baked paths had been
 hand-divided by sps to compensate (the old Kite and Twinline fixtures) must
 store semitone-unit paths instead.
+
+### 4.1c Sized shape variants (new in 1.3.4 — linear and axis configs alike)
+
+A notehead rule's `apply` block may set `heightSemis` and `widthSemis`,
+the notehead's absolute size in semitones (architecture plan §4.5). The
+engine has no size field. It builds each stencil from the registered path's
+numbers, so the exporter carries a size by registering a scaled copy of the
+shape.
+
+**When a variant is registered.** The exporter resolves every pitch class
+× duration. A size that no matching rule sets takes the shape's own value:
+`semitoneHeight` for the height, and the natural width
+`naturalWidth × semitoneHeight / naturalHeight` for the width. Each
+distinct resolved (shape, height, width) that differs from the shape's own
+size gets one variant. Section A registers the shape itself only when some
+notehead uses it at its own size.
+
+**Naming.** `<shape>-h<height>-w<width>`. The sizes are in semitones,
+formatted with the exporter's standard number formatting (integers bare,
+otherwise up to 4 decimals), with the decimal point written `p`. Examples:
+`crotchet-minim-h1p5-w3`, and `crotchet-minim-h2p724-w4` for a width-only
+rule, where the height is the shape's own 2.724. The cutout and attachment
+follow the usual pattern: `<variant>-cutout`, `<variant>-attach`.
+
+**Scaling.** With
+
+```
+scale.x = width  / natural width
+scale.y = height / semitoneHeight
+```
+
+the variant's path, its hollow cutout and its four attachment points are
+the shape's, with every x multiplied by `scale.x` and every y by `scale.y`.
+Everything else stays the same: the §4.1b path conversion (pre-baked or
+fallback, ÷ `semitonesPerStaffSpace` or ÷ `axisUnitsPerStaffSpace`) and the
+§4.4 / §4.4a attachment conversion. In Section A a comment line names each
+variant's size, and its definitions follow the shape's in A1–A4.
+
+**Section C.** A pitch class resolved to a sized variant names the variant
+in `shape`, `hollow` and `attachment`. Grouping runs on those symbols, so
+the size joins the grouping key beside shape, colour, hollow, attachment
+and x-offset. Two pitch classes that differ only in size get separate
+clauses.
+
+**Compatibility.** Configs that set no size export byte-identically to
+1.3.3. The default, Kite 4-369, 45deg-369 and Twinline compact baselines
+are unchanged. `cnb/fixtures/sized-export-baseline.ly` pins a sized export.
+An engine render of that fixture measures every pitch class at its resolved
+height and width, within 5% (`cnb/tests/cnb-lilypond-tests.js`).
 
 ### 4.4a Stem Attachment Registrations under a pitch axis
 
@@ -316,7 +367,9 @@ When `pitchAxis.enabled` **and** a clause's resolved
   axis-gated; design §3.2, deviation D2).
 - The resolved offset joins the Section C grouping key: pitch classes are
   grouped into one `memv` clause only when shape, color, hollow,
-  attachment, **and x-offset** all match.
+  attachment, **and x-offset** all match. (Since 1.3.4 a resolved size
+  enters through the shape, hollow and attachment symbols, which name a
+  sized variant: see §4.1c.)
 - Value formatting: the exporter's standard number formatting.
 - Engine semantics (E13-2): "offset this notehead by N staff spaces
   horizontally." **As landed (1.3.1, engine handoff 008 §3):** neither
@@ -413,7 +466,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.3** | **Nov 3, 2026** | **Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set.** |
+| **1.3.4** | **Nov 6, 2026** | **Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size.** |
+| 1.3.3 | Nov 3, 2026 | Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set. |
 | 1.3.2 | Nov 3, 2026 | Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled. |
 | 1.3.1 | Oct 31, 2026 | Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged. |
 | 1.3 | Jul 12, 2026 | Adopted as canonical by set 014 (pitch-axis implementation) session 1: the 1.3-draft renamed from `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` into `docs/`, content unchanged except this status/adoption header. The §8a fail-loud gate is in effect until set 014 session 3 verifies E13-1/E13-2 from the engine repo's handoff record. |

@@ -46,9 +46,12 @@ export const CNBStem = {
    *        offset scales with it, so the stem attaches at the anchor's
    *        relative position across the group, as LilyPond's
    *        stem-attachment (relative to the notehead extent) does.
+   * @param {number} [opts.scaleX=scaleFactor]  Horizontal scale of a sized
+   *        notehead (session 22, CNBNotehead.measure's scaleX); the anchor's
+   *        x offset uses it, its y offset uses scaleFactor (= scaleY).
    * @returns {{x:number,y1:number,y2:number,thickness:number}|null}
    */
-  geometry(config, { shape, scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
+  geometry(config, { shape, scaleFactor, scaleX = scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
     if (!shape.anchors) return null;
     // only crotchet/minim have stems
     if (duration !== "crotchet" && duration !== "minim") return null;
@@ -59,7 +62,7 @@ export const CNBStem = {
     const anchor = shape.anchors[key];
     if (!anchor) return null;
 
-    const anchorXpx = anchor.x * scaleFactor * widthScale;
+    const anchorXpx = anchor.x * scaleX * widthScale;
     const anchorYpx = anchor.y * scaleFactor;
 
     const stemX = centerX + anchorXpx;

@@ -308,6 +308,13 @@ lists them:
   before `\include`.
 - **Notehead rules scoped to a key.** Validation warns and names each one.
 
+Notehead height and width are not on this list: they do export. A rule's
+size (`apply.heightSemis` / `apply.widthSemis`, in semitones; the rule
+editor's Size row) is engraved as a scaled copy of the shape, registered
+under a name such as `crotchet-minim-h1p5-w3` (LY export spec 1.3.4
+§4.1c). The gallery configs set no size, so they draw every notehead at its
+shape's own size.
+
 ## Architecture
 
 The Configurator is a set of independent JavaScript modules (ES modules, no

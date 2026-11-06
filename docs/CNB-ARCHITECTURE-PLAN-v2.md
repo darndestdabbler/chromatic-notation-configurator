@@ -360,6 +360,8 @@ noteheadRules: [
       hollow: false,
       color: null,                      // null = use palette; explicit hex overrides
       offKeyMark: false                 // false | mark identifier (future)
+      // heightSemis: 2.724,            // OPTIONAL notehead size in semitones (session 22)
+      // widthSemis: 3.4485             // OPTIONAL — see "Notehead size" below
     }
   },
   {
@@ -381,9 +383,37 @@ noteheadRules: [
 **Resolution algorithm:**
 For a given (pitchClass, duration, key), walk rules in priority order. Start with built-in defaults:
 ```
-{ shape: first shape, hollow: false, color: null, offKeyMark: false }
+{ shape: first shape, hollow: false, color: null, offKeyMark: false,
+  xOffsetStaffSpaces: 0, heightSemis: null, widthSemis: null }
 ```
 For each matching rule, merge its `apply` block over the current state (only specified fields overwrite). The final state is the resolved notehead config.
+
+**Notehead size (added session 22).** `apply.heightSemis` and
+`apply.widthSemis` are optional absolute sizes in semitones. They resolve
+through the same cumulative merge as `hollow`, each on its own. A size that
+no matching rule sets resolves to `null`, which means the shape's own
+`semitoneHeight` for the height and its natural width
+(`naturalWidth × semitoneHeight / naturalHeight`) for the width. Every
+config written before session 22 therefore resolves, previews and exports
+exactly as before.
+
+- **Validation:** a present value that is not a finite number greater than
+  0 is an error naming the rule. A value outside 0.25–4 semitones is a
+  warning: it is allowed, but it is unlikely to look right.
+- **Preview:** `CNBNotehead.measure(shape, pxPerSemi, size)` returns
+  separate `scaleX` (from the width) and `scaleY` (from the height), with
+  `scaleFactor = scaleY`. The notehead is drawn with `scale(sx,sy)` only
+  when the two differ. The stem anchor's x offset uses `scaleX`, and the
+  octave pair, the ledger width (notehead width × `widthMultiplier`), the
+  card column, repeat-mode groups and key-signature marks all follow the
+  resolved measurement. Stem length and thickness do not change.
+- **Export:** sizes are exported. Each distinct resolved size other than
+  the shape's own is registered as a scaled variant of the shape, and
+  Section C names that variant (LY spec 1.3.4 §4.1c).
+- **Editor:** a rule's apply block has a Size row with height and width
+  fields and a "Keep aspect ratio" lock, which is on by default and is
+  editor state only. While it is on, the width follows the height at the
+  shape's natural ratio.
 
 **↔ LY Spec mapping:**
 The exporter resolves all 12 pitch classes (× durations if duration-aware), groups PCs with identical resolved configs, and emits `cond` clauses:
@@ -395,6 +425,7 @@ The exporter resolves all 12 pitch classes (× durations if duration-aware), gro
 | `color` → palette color symbol | `(color . {symbol})` |
 | `shape` → shape's attachment name | `(attachment . {name}-attach)` |
 | `offKeyMark` | `(off-key-mark . #f)` or `(off-key-mark . {symbol})` |
+| `heightSemis` / `widthSemis` other than the shape's own | `{name}` above becomes the sized variant `{shape}-h{H}-w{W}` (LY spec §4.1c) |
 
 **The `repeat` field** in LilyPond output is derived from `config.durations`:
 - If `representationMode == "repeat"` → emit `(repeat . #t)` (or omit, since #t is default)
@@ -871,7 +902,7 @@ CNBConfig.VERSION → string
 
 // Resolve a notehead config for a given pitch class, duration, and key
 // (Walks noteheadRules in priority order, merges apply blocks)
-CNBConfig.resolveNotehead(config, pc, duration, key) → { shape, hollow, color, offKeyMark }
+CNBConfig.resolveNotehead(config, pc, duration, key) → { shape, hollow, color, offKeyMark, xOffsetStaffSpaces, heightSemis, widthSemis }
 
 // Get the effective color for a pitch class (respects palette + CB-safe toggle)
 CNBConfig.resolveColor(config, pc) → string  // hex color

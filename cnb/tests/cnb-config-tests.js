@@ -261,6 +261,59 @@ export const tests = [
     eq(r.hollow, false, "hollow inherited");
     eq(r.color, "#FF0000", "color from new rule");
   }},
+
+  // ── notehead size (session 22) ────────────────────────────────────────────
+  { name: "resolveNotehead: heightSemis / widthSemis default to null (the shape's own size)", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    for (let pc = 0; pc < 12; pc++) {
+      const r = CNBConfig.resolveNotehead(cfg, pc, "crotchet", null);
+      eq(r.heightSemis, null, `pc ${pc} height`);
+      eq(r.widthSemis, null, `pc ${pc} width`);
+    }
+  }},
+  { name: "resolveNotehead: heightSemis / widthSemis merge cumulatively and inherit", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.noteheadRules.push(
+      { name: "big sharps", priority: 2, match: { pitchClasses: [1, 3], durations: "all", keys: "all" },
+        apply: { heightSemis: 3, widthSemis: 4 } },
+      { name: "narrow D#", priority: 3, match: { pitchClasses: [3], durations: "all", keys: "all" },
+        apply: { widthSemis: 2 } },
+    );
+    const cs = CNBConfig.resolveNotehead(cfg, 1, "crotchet", null);
+    eq(cs.heightSemis, 3, "C# height"); eq(cs.widthSemis, 4, "C# width");
+    const ds = CNBConfig.resolveNotehead(cfg, 3, "crotchet", null);
+    eq(ds.heightSemis, 3, "D# height inherited"); eq(ds.widthSemis, 2, "D# width overridden");
+    eq(ds.hollow, true, "other fields unaffected");
+    const c = CNBConfig.resolveNotehead(cfg, 0, "crotchet", null);
+    eq(c.heightSemis, null, "C unsized"); eq(c.widthSemis, null, "C unsized");
+  }},
+  { name: "validate: a non-finite or non-positive heightSemis / widthSemis is an error naming the rule", fn: () => {
+    for (const bad of [0, -1, NaN, Infinity, "2", null]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.noteheadRules[1].apply.heightSemis = bad;
+      cfg.noteheadRules[1].apply.widthSemis = bad;
+      const v = CNBConfig.validate(cfg);
+      eq(v.valid, false, `${JSON.stringify(bad)} invalid`);
+      assert(v.errors.some(e => e.includes('"Sharps are hollow"') && e.includes("apply.heightSemis")), `height error for ${bad}: ${v.errors}`);
+      assert(v.errors.some(e => e.includes('"Sharps are hollow"') && e.includes("apply.widthSemis")), `width error for ${bad}: ${v.errors}`);
+    }
+  }},
+  { name: "validate: heightSemis / widthSemis outside 0.25–4 warn; inside, no warning", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.noteheadRules[1].apply.heightSemis = 0.2;
+    cfg.noteheadRules[1].apply.widthSemis = 5;
+    const v = CNBConfig.validate(cfg);
+    eq(v.valid, true, "out-of-range sizes still valid");
+    assert(v.warnings.some(w => w.includes('"Sharps are hollow"') && w.includes("apply.heightSemis")), "height warning");
+    assert(v.warnings.some(w => w.includes('"Sharps are hollow"') && w.includes("apply.widthSemis")), "width warning");
+    const ok = CNBConfig.createDefault();
+    ok.noteheadRules[1].apply.heightSemis = 0.25;
+    ok.noteheadRules[1].apply.widthSemis = 4;
+    const w = CNBConfig.validate(ok);
+    eq(w.valid, true, "in range valid");
+    assert(!w.warnings.some(x => x.includes("Semis")), `no size warning: ${w.warnings}`);
+  }},
+
   { name: "resolveNotehead: duration matching (rule for crotchet only)", fn: () => {
     const cfg = CNBConfig.createDefault();
     cfg.noteheadRules.push({

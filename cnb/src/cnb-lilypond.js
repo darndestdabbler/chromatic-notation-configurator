@@ -101,18 +101,75 @@ function durationNames(config) {
 
 /**
  * Resolve every (pc × duration) combination through the notehead rules.
- * Returns a flat array of { pc, duration, shape, hollow, color } where color
- * is the rule's explicit hex or null (= use palette / default black).
+ * Returns a flat array of { pc, duration, shape, hollow, color, heightSemis,
+ * widthSemis } where color is the rule's explicit hex or null (= use palette
+ * / default black) and the sizes are null unless a rule sets them.
  */
 function resolveAll(config) {
   const results = [];
   for (const duration of durationNames(config)) {
     for (let pc = 0; pc < 12; pc++) {
       const r = CNBConfig.resolveNotehead(config, pc, duration, null);
-      results.push({ pc, duration, shape: r.shape, hollow: r.hollow, color: r.color });
+      results.push({
+        pc, duration, shape: r.shape, hollow: r.hollow, color: r.color,
+        heightSemis: r.heightSemis, widthSemis: r.widthSemis,
+      });
     }
   }
   return results;
+}
+
+/**
+ * The registration a resolved notehead draws with (session 22, LY spec
+ * §4.1c). At the shape's own size it is the shape itself: { name, sym,
+ * scale: null }. At any other resolved size it is a sized variant of the
+ * shape, named "<shape>-h<height>-w<width>" (sizes in semitones, formatted
+ * like every exported number, "." written "p"), whose path, cutout and
+ * attachments are the shape's scaled by scale.x = width / natural width and
+ * scale.y = height / semitoneHeight. A size left unset takes the shape's own.
+ *
+ * @param {object} config
+ * @param {{shape:string, heightSemis?:number|null, widthSemis?:number|null}} r
+ * @returns {{name:string, sym:string, scale:{x:number,y:number}|null,
+ *            heightSemis?:number, widthSemis?:number}}
+ */
+function registrationFor(config, r) {
+  const name = r.shape || "";
+  const sym = shapeSymbol(name);
+  const shape = (config.shapes || {})[name];
+  if (!shape || (r.heightSemis == null && r.widthSemis == null)) return { name, sym, scale: null };
+  const ownH = shape.semitoneHeight;
+  const ownW = shape.naturalWidth * shape.semitoneHeight / shape.naturalHeight;
+  const h = r.heightSemis ?? ownH;
+  const w = r.widthSemis ?? ownW;
+  if (h === ownH && w === ownW) return { name, sym, scale: null };
+  const part = (v, field) => fmtNum(v, field).replace(".", "p");
+  return {
+    name,
+    sym: CNBScheme.symbol(`${sym}-h${part(h, "apply.heightSemis")}-w${part(w, "apply.widthSemis")}`, `Sized shape ${JSON.stringify(name)}`),
+    scale: { x: w / ownW, y: h / ownH },
+    heightSemis: h,
+    widthSemis: w,
+  };
+}
+
+/**
+ * Every registration Section A must emit: per used shape (sorted), the shape
+ * itself when some notehead uses it at its own size, then its sized variants
+ * sorted by symbol. Variants that format to the same symbol are one.
+ */
+function usedRegistrations(config) {
+  const shapes = config.shapes || {};
+  const bySym = new Map();
+  for (const r of resolveAll(config)) {
+    if (!r.shape || !shapes[r.shape]) continue;
+    const reg = registrationFor(config, r);
+    if (!bySym.has(reg.sym)) bySym.set(reg.sym, reg);
+  }
+  return [...bySym.values()].sort((a, b) =>
+    a.name !== b.name ? (a.name < b.name ? -1 : 1)
+      : (a.scale === null) !== (b.scale === null) ? (a.scale === null ? -1 : 1)
+        : (a.sym < b.sym ? -1 : a.sym > b.sym ? 1 : 0));
 }
 
 /**
@@ -208,17 +265,23 @@ function usedColors(config) {
  * Both paths therefore emit identical values for the same shape.
  * Returns null for stemless shapes (both anchor sets null).
  *
+ * A sized variant (session 22) passes its scale: x and y are multiplied by
+ * scale.x and scale.y before rounding.
+ *
  * @param {object} shape  config.shapes entry
  * @param {number} sps    staff.semitonesPerStaffSpace
+ * @param {{x:number,y:number}|null} [scale]  sized-variant scale
  */
-function attachmentPoints(shape, sps) {
+function attachmentPoints(shape, sps, scale = null) {
   const spsDiv = sps || 1;
+  const sx = scale ? scale.x : 1;
+  const sy = scale ? scale.y : 1;
   const round4 = (v) => Math.round(v * 10000) / 10000;
 
   if (shape.lilypondAnchors) {
     const semiToStaffSpace = (pt) => ({
-      x: round4((pt.x || 0) / spsDiv),
-      y: round4((pt.y || 0) / spsDiv),
+      x: round4((pt.x || 0) * sx / spsDiv),
+      y: round4((pt.y || 0) * sy / spsDiv),
     });
     return {
       crotchetUp:   semiToStaffSpace(shape.lilypondAnchors.crotchetUp   || { x: 0, y: 0 }),
@@ -234,8 +297,8 @@ function attachmentPoints(shape, sps) {
   const coordScale = natH / semiH;
 
   const toLy = (pt) => ({
-    x: round4(pt.x / coordScale / spsDiv),
-    y: round4(-pt.y / coordScale / spsDiv),
+    x: round4(pt.x * sx / coordScale / spsDiv),
+    y: round4(-pt.y * sy / coordScale / spsDiv),
   });
 
   return {
@@ -289,11 +352,14 @@ function durationLyNumber(config, name) {
  *   hollow  → "<shape>-cutout" only when the shape actually has hollow path data
  *   attach  → "<shape>-attach" only when the shape has stem anchors
  *   color   → explicit rule hex, else palette primary for the pc, else black
+ * A notehead resolved to a size other than its shape's own names the sized
+ * variant (registrationFor) in shape, hollow and attachment, so the size is
+ * part of the grouping key through those symbols (session 22).
  */
 function sectionCFields(config, r) {
   const shapes = config.shapes || {};
   const shape = shapes[r.shape];
-  const shapeSym = shapeSymbol(r.shape || "");
+  const shapeSym = registrationFor(config, r).sym;
 
   const hasHollowPath = !!(shape && (shape.lilypondHollowPath || shape.svgHollowPath));
   const hollowSym = (r.hollow && hasHollowPath) ? `${shapeSym}-cutout` : "#f";
@@ -394,18 +460,24 @@ export const CNBLilypond = {
    * sps is staff.semitonesPerStaffSpace, or pitchAxis.axisUnitsPerStaffSpace
    * under a pitch axis — the same divisor attachmentPoints() uses.
    *
+   * A sized variant (session 22, LY spec §4.1c) passes scale: x coordinates
+   * are multiplied by scale.x and y by scale.y as well.
+   *
    * @param {{cmd:string, args:number[]}[]} commands  moveto/lineto/curveto/closepath
    * @param {number} unitsPerStaffSpace
    * @param {boolean} [flipY=false]
    * @param {string} [field]  named in the error when the data is invalid
+   * @param {{x:number,y:number}|null} [scale]  sized-variant scale
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
-  pathToStaffSpace(commands, unitsPerStaffSpace, flipY = false, field = "path data") {
+  pathToStaffSpace(commands, unitsPerStaffSpace, flipY = false, field = "path data", scale = null) {
     const div = unitsPerStaffSpace || 1;
     const ySign = flipY ? -1 : 1;
+    const sx = scale ? scale.x : 1;
+    const sy = scale ? scale.y : 1;
     const scaled = commands.map(({ cmd, args }) => ({
       cmd,
-      args: args.map((v, i) => (i % 2 === 0 ? v : ySign * v) / div),
+      args: args.map((v, i) => (i % 2 === 0 ? v * sx : ySign * v * sy) / div),
     }));
     return CNBScheme.path(scaled, field);
   },
@@ -422,9 +494,10 @@ export const CNBLilypond = {
    * @param {string} svgPath  SVG path d attribute
    * @param {number} unitsPerSemitone  SVG units per semitone of the shape
    * @param {number} sps  staff semitones (or axis units) per staff space
+   * @param {{x:number,y:number}|null} [scale]  sized-variant scale (§4.1c)
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
-  svgPathToLilypond(svgPath, unitsPerSemitone, sps) {
+  svgPathToLilypond(svgPath, unitsPerSemitone, sps, scale = null) {
     const commands = [];
     let curX = 0, curY = 0;
 
@@ -461,7 +534,7 @@ export const CNBLilypond = {
       }
     }
 
-    return CNBLilypond.pathToStaffSpace(commands, (unitsPerSemitone || 1) * (sps || 1), true, "svgPath");
+    return CNBLilypond.pathToStaffSpace(commands, (unitsPerSemitone || 1) * (sps || 1), true, "svgPath", scale);
   },
 
   /**
@@ -572,12 +645,15 @@ export const CNBLilypond = {
    * A1 path definitions, A2 path registrations, A3 hollow cutout
    * registrations, A4 stem attachment registrations (4-point model),
    * A5 color registrations with the cnb:use-accessible-colors conditional.
+   * A1–A4 run over the used registrations: each used shape at its own size,
+   * and each sized variant (session 22, LY spec §4.1c) with its path, cutout
+   * and attachments scaled.
    * @param {object} config
    * @returns {string}
    */
   sectionA(config) {
     const shapes = config.shapes || {};
-    const shapeNames = usedShapes(config);
+    const registrations = usedRegistrations(config);
 
     const lines = [];
     lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
@@ -594,10 +670,12 @@ export const CNBLilypond = {
 
     // A1. Path variable definitions
     lines.push("%% --- Path variables ---");
-    for (const name of shapeNames) {
+    for (const { name, sym, scale, heightSemis, widthSemis } of registrations) {
       const shape = shapes[name];
-      const sym = shapeSymbol(name);
       const field = (key) => `shapes[${JSON.stringify(name)}].${key}`;
+      if (scale) {
+        lines.push(`%% ${sym}: ${CNBScheme.comment(name)} sized to ${fmtNum(heightSemis, "apply.heightSemis")} × ${fmtNum(widthSemis, "apply.widthSemis")} semitones (height × width)`);
+      }
       const natH = shape.naturalHeight || 1;
       const unitsPerSemitone = natH / (shape.semitoneHeight || natH); // as attachmentPoints()
 
@@ -607,18 +685,18 @@ export const CNBLilypond = {
       const toStaffSpace = (text, key) => {
         const commands = CNBScheme.parsePath(text);
         if (!commands) throw new Error(`${field(key)}: not valid LilyPond path data`);
-        return CNBLilypond.pathToStaffSpace(commands, attachSps, false, field(key));
+        return CNBLilypond.pathToStaffSpace(commands, attachSps, false, field(key), scale);
       };
       const pathDef = shape.lilypondPath
         ? toStaffSpace(shape.lilypondPath, "lilypondPath")
-        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, attachSps);
+        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, attachSps, scale);
       lines.push(`#(define cnb:${sym}-path ${pathDef})`);
       lines.push("");
 
       if (shape.lilypondHollowPath || shape.svgHollowPath) {
         const hollowDef = shape.lilypondHollowPath
           ? toStaffSpace(shape.lilypondHollowPath, "lilypondHollowPath")
-          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, attachSps);
+          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, attachSps, scale);
         lines.push(`#(define cnb:${sym}-cutout-path ${hollowDef})`);
         lines.push("");
       }
@@ -626,18 +704,16 @@ export const CNBLilypond = {
 
     // A2. Path registrations
     lines.push("%% --- Register paths ---");
-    for (const name of shapeNames) {
-      const sym = shapeSymbol(name);
+    for (const { sym } of registrations) {
       lines.push(`#(cnb:register-path! '${sym} cnb:${sym}-path)`);
     }
     lines.push("");
 
     // A3. Hollow cutout registrations
-    const hollowShapes = shapeNames.filter(n => shapes[n].lilypondHollowPath || shapes[n].svgHollowPath);
-    if (hollowShapes.length > 0) {
+    const hollowRegs = registrations.filter(({ name }) => shapes[name].lilypondHollowPath || shapes[name].svgHollowPath);
+    if (hollowRegs.length > 0) {
       lines.push("%% --- Register hollow cutouts ---");
-      for (const name of hollowShapes) {
-        const sym = shapeSymbol(name);
+      for (const { sym } of hollowRegs) {
         lines.push(`#(cnb:register-hollow! '${sym}-cutout cnb:${sym}-cutout-path)`);
       }
       lines.push("");
@@ -647,9 +723,8 @@ export const CNBLilypond = {
     // staff-space units against the current staff config (D5) — under a
     // pitch axis, ÷ axisUnitsPerStaffSpace instead (v1.3 §4.4a).
     lines.push("%% --- Register stem attachments ---");
-    for (const name of shapeNames) {
-      const sym = shapeSymbol(name);
-      const pts = attachmentPoints(shapes[name], attachSps);
+    for (const { name, sym, scale } of registrations) {
+      const pts = attachmentPoints(shapes[name], attachSps, scale);
       if (!pts) {
         lines.push(`%% ${sym}: stemless — no attachment registered`);
         lines.push("");
@@ -993,6 +1068,8 @@ export const _internals = {
   durationNames,
   resolveAll,
   usedShapes,
+  usedRegistrations,
+  registrationFor,
   usedColors,
   attachmentPoints,
   durationLyNumber,

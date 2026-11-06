@@ -26,20 +26,25 @@ export const CNBDoubleNotehead = {
    * horizontal shifts in px, ADDED to the symmetric offsetPercent result
    * (the pitch-axis xOffsetStaffSpaces disambiguation; default 0).
    *
+   * lowerNote.size / upperNote.size (session 22) are each note's resolved
+   * { heightSemis, widthSemis } (absent = the shape's own size); the
+   * offset reference width is the resolved width.
+   *
    * @param {object} gridContext  From CNBGrid.create()
    * @param {{lowerSemi:number, upperSemi:number,
-   *          lowerNote:{shape:object}, upperNote:{shape:object},
+   *          lowerNote:{shape:object, size?:object}, upperNote:{shape:object, size?:object},
    *          centerX:number, offsetPercent?:number,
    *          lowerOffsetPx?:number, upperOffsetPx?:number}} opts
    * @returns {{lowerX:number, upperX:number, lowerY:number, upperY:number,
-   *            lowerScale:number, upperScale:number}}
+   *            lowerScale:number, upperScale:number,
+   *            lowerScaleX:number, lowerScaleY:number, upperScaleX:number, upperScaleY:number}}
    */
   layout(gridContext, {
     lowerSemi, upperSemi, lowerNote, upperNote, centerX, offsetPercent = 0,
     lowerOffsetPx = 0, upperOffsetPx = 0,
   }) {
-    const lowerM = CNBNotehead.measure(lowerNote.shape, gridContext.pxPerSemi);
-    const upperM = CNBNotehead.measure(upperNote.shape, gridContext.pxPerSemi);
+    const lowerM = CNBNotehead.measure(lowerNote.shape, gridContext.pxPerSemi, lowerNote.size);
+    const upperM = CNBNotehead.measure(upperNote.shape, gridContext.pxPerSemi, upperNote.size);
     const refWidth = Math.max(lowerM.pixelWidth, upperM.pixelWidth);
     const offset = (offsetPercent / 100) * refWidth;
     return {
@@ -49,6 +54,10 @@ export const CNBDoubleNotehead = {
       upperY: gridContext.semiToY(upperSemi),
       lowerScale: lowerM.scaleFactor,
       upperScale: upperM.scaleFactor,
+      lowerScaleX: lowerM.scaleX,
+      lowerScaleY: lowerM.scaleY,
+      upperScaleX: upperM.scaleX,
+      upperScaleY: upperM.scaleY,
     };
   },
 
@@ -59,8 +68,8 @@ export const CNBDoubleNotehead = {
    * @param {SVGElement} svgParent
    * @param {object} gridContext
    * @param {{lowerSemi:number, upperSemi:number,
-   *          lowerNote:{shape:object, hollow?:boolean, color?:string},
-   *          upperNote:{shape:object, hollow?:boolean, color?:string},
+   *          lowerNote:{shape:object, hollow?:boolean, color?:string, size?:object},
+   *          upperNote:{shape:object, hollow?:boolean, color?:string, size?:object},
    *          centerX:number, offsetPercent?:number}} opts
    * @returns {{lowerG:SVGGElement, upperG:SVGGElement, lowerY:number, upperY:number}}
    */
@@ -72,6 +81,8 @@ export const CNBDoubleNotehead = {
       x: l.lowerX,
       y: l.lowerY,
       scaleFactor: l.lowerScale,
+      scaleX: l.lowerScaleX,
+      scaleY: l.lowerScaleY,
       hollow: !!opts.lowerNote.hollow,
       color: opts.lowerNote.color || "#000000",
     });
@@ -81,6 +92,8 @@ export const CNBDoubleNotehead = {
       x: l.upperX,
       y: l.upperY,
       scaleFactor: l.upperScale,
+      scaleX: l.upperScaleX,
+      scaleY: l.upperScaleY,
       hollow: !!opts.upperNote.hollow,
       color: opts.upperNote.color || "#000000",
     });

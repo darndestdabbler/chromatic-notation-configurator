@@ -39,6 +39,16 @@
   <svg id="nh-svg" width="560" style="display:block;"></svg>
 </div>
 
+<div class="card">
+  <h2>Resolved sizes (session 22): heightSemis × widthSemis</h2>
+  <p style="margin:0 0 10px;">
+    All at semitone 12. Left four keep the natural aspect ratio (0.25, 1, 2.724, 4
+    semitones high); right three are stretched. Each should span exactly its height
+    in grid lines and its width in px = widthSemis × 16, shown by the grey box.
+  </p>
+  <svg id="size-svg" width="760" style="display:block;"></svg>
+</div>
+
 <script type="module">
   import { CNBConfig }   from "../src/cnb-config.js";
   import { CNBGrid }     from "../src/cnb-grid.js";
@@ -79,6 +89,41 @@
       hollow: c.hollow,
       color: c.color,
     });
+  });
+
+  // Resolved sizes: measure with { heightSemis, widthSemis }, render with
+  // scaleX / scaleY, and outline the box the size should fill.
+  const sizeSvg = document.getElementById("size-svg");
+  sizeSvg.setAttribute("height", String(grid.svgHeight));
+  CNBGrid.renderDebugOverlay(sizeSvg, grid, staffPositions);
+  const ratio = shape.naturalWidth / shape.naturalHeight;
+  const sizes = [
+    ...[0.25, 1, 2.724, 4].map(h => ({ heightSemis: h, widthSemis: h * ratio })),
+    { heightSemis: 1, widthSemis: 4 },
+    { heightSemis: 4, widthSemis: 1.5 },
+    { heightSemis: 2, widthSemis: 6 },
+  ];
+  let x = 40;
+  sizes.forEach((size, i) => {
+    const m = CNBNotehead.measure(shape, grid.pxPerSemi, size);
+    x += m.pixelWidth / 2 + 12;
+    const y = grid.semiToY(12);
+    const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    box.setAttribute("x", String(x - m.pixelWidth / 2));
+    box.setAttribute("y", String(y - m.pixelHeight / 2));
+    box.setAttribute("width", String(m.pixelWidth));
+    box.setAttribute("height", String(m.pixelHeight));
+    box.setAttribute("fill", "none");
+    box.setAttribute("stroke", "#999");
+    box.setAttribute("stroke-dasharray", "3 2");
+    sizeSvg.appendChild(box);
+    CNBNotehead.render(sizeSvg, {
+      shape, x, y,
+      scaleFactor: m.scaleFactor, scaleX: m.scaleX, scaleY: m.scaleY,
+      hollow: i % 2 === 1,
+      color: "#000",
+    });
+    x += m.pixelWidth / 2 + 12;
   });
 </script>
 
