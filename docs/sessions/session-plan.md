@@ -723,10 +723,37 @@ sessions are planned once the design is approved.
      ledgers show.
    - **Clicking a notehead** sets its colour (an earlier colour or a new
      one), solid or hollow, shape (the imported shapes plus some defaults),
-     pitch class, and pitch-axis position. Changing the pitch class says
-     where that pitch class sits relative to the other positions: making the
-     F♯ notehead a C relabels every other notehead by its relative vertical
-     position.
+     size, pitch class, and pitch-axis nudge.
+   - **Pitch and pitch axis are two independent variables** (operator,
+     2026-11-06): a central tendency and a variance.
+     - *Pitch* is one number: which pitch class sits at the middle of the
+       staff (`staff.midpoint`), snapped to semitones.
+     - *Pitch axis* is a nudge per pitch class, from −1 to +1 semitone, with
+       0 meaning the notehead is centred on its own semitone. The position is
+       pitch class + nudge. This replaces editing the axis map directly. It
+       exports through today's pitch-axis machinery (octave stride 12,
+       fractional positions, axis units per staff space = the staff's
+       semitones per staff space), so the engine needs no change.
+     - Nudges may make neighbours share a spot but may never reorder notes;
+       the control stops there. The Twinline fixture fits in ±1 (its largest
+       nudge is −1, C♯ onto C); its compactness becomes a staff-spacing
+       setting. Say what happens to a config whose map needs more than ±1.
+   - **Assigning a pitch class is two assignments at once** (operator,
+     2026-11-06): pitch class → staff position (does middle C sit at the
+     centre?), and this notehead's current look (shape, colour, hollowness,
+     size) → that pitch class. Two ways to make them:
+     - *Clicking a notehead and naming it* ("make this C") makes both: the
+       spot becomes C, and so does the look drawn there. Every other
+       notehead relabels by its vertical position relative to it.
+     - *A label strip on the left of the staff* makes the first alone. The
+       user drags the pitch-class labels up or down, snapping to semitones;
+       each look stays with its pitch class and moves with its label.
+     - The labels sit one semitone apart, so they stagger in two columns
+       (even pitch classes left, odd right, or the reverse) to stay
+       readable. Staggering also sets apart labels that share a spot under
+       a nudge.
+     - Say whether a nudge travels with its pitch class or stays with its
+       spot under each of the two ways.
    - **Rule inference.** An algorithm turns the per-notehead choices into
      notehead rules: a period of 1, 2, 3, 4, 6 or 12 semitones, the
      accidentals, or else explicit pitch classes, for each of colour,
@@ -738,5 +765,26 @@ sessions are planned once the design is approved.
      hides behind an advanced view, or keeps, and what happens to configs
      whose rules the inference cannot reproduce. The config schema and the
      export stay as they are unless the document argues otherwise.
-3. The document ends with a proposed program of implementation sessions and
-   their release versions, for the operator to approve.
+   - **It has to look good** (operator, 2026-11-06: today it "looks like
+     somebody's experiment"). A screenshot review of the current app found:
+     - a single 7,200 px column of 11 panels of different widths;
+     - developer language on the page (the intro's "shared `config` object"
+       and "change callbacks", "(Module 17)" and "(set 009)" in titles);
+     - one validation warning repeated under nearly every panel;
+     - repeated "Preview-only" paragraphs;
+     - raw config JSON on the page;
+     - a preview cut off at 1440 px with no sign of the missing columns;
+     - 11 px grey labels on unstyled browser controls.
+     The design sets the layout, the type, design tokens (colour, spacing,
+     radius) and the wording, so the page speaks to a notation designer.
+     Validation speaks once, in one place. The JSON and the advanced
+     settings move out of the way.
+3. Build mock-ups of the main screens: static HTML under
+   `docs/planning/notehead-first-mockups/`, using the real preview modules
+   where it can. Screenshot them at 1440 and 1280 px wide, judge them
+   against the design, and revise them until they hold up. The operator
+   approves pictures, not a description.
+4. The document ends with a proposed program of implementation sessions and
+   their release versions, for the operator to approve. Every UI session in
+   that program ends with screenshot checks at 1440 and 1280 px, judged
+   against the approved mock-ups.
