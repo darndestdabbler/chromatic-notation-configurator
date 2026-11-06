@@ -17,6 +17,51 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Colour picker check — 2026-11-06 (session 21)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- A one-off scratch script outside the tree, not a driver: 43 of 43 checks
+  pass against the fixed code. The same script fails 12 checks against the
+  pre-fix code (HEAD before session 21).
+- `npm run uat`: 14 of 14 drivers pass. `uat-notehead-rule-editor.mjs` now
+  sends `change` after `input` when it sets a rule's custom colour, as a
+  closing picker does, because the editor's resolved strip redraws on
+  `change`.
+
+On 2026-11-05 the operator found that the colour picker closed on every
+change, so a hex value had to be typed one digit at a time. Each colour
+input redrew its whole panel on `input`, which destroyed the element that
+owned the open picker. Session 21 made `input` update the config and the
+preview without a redraw, and `change` (fired when the picker closes) do the
+full redraw.
+
+The script opens `cnb/index.html` and covers all five colour inputs in the
+four editors: the palette's custom cell, a notehead rule's custom colour,
+the key-signature separator, and the staff and ledger line defaults. For
+each input it runs two sequences of `input` events. One is a drag (4
+values). The other is a typed hex value, one digit at a time (`#100000` to
+`#123456`, 6 values). It checks that:
+
+- the same element stays in the DOM through every `input` event. This is
+  the check that fails before the fix, on the first event, for all five
+  inputs.
+- the shared config (`#state-json`) follows every `input` event, and so
+  does the preview for the four colours the default config draws: the
+  palette cell, the rule colour, the staff lines and the ledger lines. The
+  separator is not checked in the preview, because the default preview has
+  no key selected and so draws no key signature.
+- the palette's nearest-colour names stay unchanged until `change`, and
+  catch up on it.
+- `change` redraws the panel, and the new element holds the final value.
+- the page logs no errors.
+
+What it cannot cover: Playwright dispatches the events directly, so it
+never opens the browser's native picker window. That the picker stays open
+while you drag or type is inferred from the element surviving. A person
+has to watch it happen, so the operator's hands-on check of the four
+editors is still owed.
+
 ## Last run — 2026-11-06 (session 17)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

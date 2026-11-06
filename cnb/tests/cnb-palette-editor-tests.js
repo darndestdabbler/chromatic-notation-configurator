@@ -522,6 +522,28 @@ export const tests = [
     }),
   },
   {
+    name: "render: custom color input — `input` emits without redrawing (the picker stays open); `change` redraws",
+    fn: () => withHtmlStub((container) => {
+      let got = null;
+      let emits = 0;
+      const handle = P.render(container, {
+        selection: customSel(["#FF0000"]),
+        onChange: (pal, sel) => { got = { pal, sel }; emits++; },
+      });
+      const before = findAll(handle.root, "cnb-pal-custom-input")[0];
+      const names = () => findAll(handle.root, "cnb-pal-custom-names")[0].textContent;
+      const namesBefore = names();
+      before.oninput({ target: { value: "#00ff00" } });
+      assert(emits === 1 && got.sel.customColors[0] === "#00ff00", "input emits the new color");
+      assert(findAll(handle.root, "cnb-pal-custom-input")[0] === before, "input leaves the same element in the DOM");
+      assert(names() === namesBefore, "derived names wait for the picker to close");
+      before.onchange({ target: { value: "#00ff00" } });
+      assert(emits === 2 && got.sel.customColors[0] === "#00ff00", "change emits");
+      assert(findAll(handle.root, "cnb-pal-custom-input")[0] !== before, "change redraws");
+      assert(names() !== namesBefore, "nearest-color names catch up on change");
+    }),
+  },
+  {
     name: "render: CB-safe toggle flips useCBSafe and the preview swatches",
     fn: () => withHtmlStub((container) => {
       let last = null;

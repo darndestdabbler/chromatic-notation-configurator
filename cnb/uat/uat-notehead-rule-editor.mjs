@@ -258,6 +258,9 @@ await page.evaluate(() => {
   const inp = document.querySelector('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-color-input');
   inp.value = "#cc0000";
   inp.dispatchEvent(new Event("input", { bubbles: true }));
+  // Closing the picker fires `change`, which redraws the panel and its
+  // resolved strip (`input` alone keeps the picker open; session 21).
+  inp.dispatchEvent(new Event("change", { bubbles: true }));
 });
 j = await readJson();
 check('CUSTOM COLOR #cc0000: JSON apply.color set; strip swatch and preview fill follow',

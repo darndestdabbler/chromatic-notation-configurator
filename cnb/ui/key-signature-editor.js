@@ -354,9 +354,13 @@ export const CNBKeySignatureEditor = {
     const valueFrom = (e, input) =>
       (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
 
+    const emit = () => {
+      onChange({ keys: CNBKeySignatureEditor.buildKeys(state) }, deepClone(state));
+    };
+
     const changed = () => {
       redraw();
-      onChange({ keys: CNBKeySignatureEditor.buildKeys(state) }, deepClone(state));
+      emit();
     };
 
     /** Everything below the master toggle is disabled while keys.enabled
@@ -637,10 +641,14 @@ export const CNBKeySignatureEditor = {
       color.type = "color";
       color.value = state.keySignature.separator.color;
       color.title = "Separator color";
-      color.oninput = (e) => {
+      // `input` only emits: a redraw would close the open picker. Closing
+      // it (`change`) redraws (session 21).
+      const setColor = (e, then) => {
         const v = String(valueFrom(e, color));
-        if (isValidHex(v)) { state.keySignature.separator.color = v; changed(); }
+        if (isValidHex(v)) { state.keySignature.separator.color = v; then(); }
       };
+      color.oninput = (e) => setColor(e, emit);
+      color.onchange = (e) => setColor(e, changed);
       row.appendChild(control(color));
 
       const thickness = el("input", "cnb-kse-sep-thickness");

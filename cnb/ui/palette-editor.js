@@ -715,9 +715,13 @@ export const CNBPaletteEditor = {
       return e;
     };
 
+    const emit = () => {
+      onChange(CNBPaletteEditor.buildPalette(state), { ...state, customColors: [...state.customColors] });
+    };
+
     const changed = () => {
       redraw();
-      onChange(CNBPaletteEditor.buildPalette(state), { ...state, customColors: [...state.customColors] });
+      emit();
     };
 
     const selectFamily = (family) => {
@@ -819,11 +823,15 @@ export const CNBPaletteEditor = {
         const input = el("input", "cnb-pal-custom-input");
         input.type = "color";
         input.value = hex;
-        input.oninput = (e) => {
+        // A redraw would destroy the input that owns the open picker and
+        // close it, so a drag step or typed digit (`input`) only emits;
+        // closing the picker (`change`) redraws (session 21).
+        const setColor = (e) => {
           state.customColors[idx] = (e && e.target && e.target.value) || input.value;
           state.source = "custom";
-          changed();
         };
+        input.oninput = (e) => { setColor(e); emit(); };
+        input.onchange = (e) => { setColor(e); changed(); };
         cell.appendChild(input);
 
         const remove = el("button", "cnb-pal-custom-remove", "×");

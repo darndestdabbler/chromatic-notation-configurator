@@ -428,6 +428,23 @@ export const tests = [
       });
   } },
 
+  { name: "render: separator color — `input` emits without redrawing (the picker stays open); `change` redraws", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        let emits = 0;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; emits++; } });
+        const before = findAll(api.root, "cnb-kse-sep-color")[0];
+        before.oninput({ target: { value: "#112233" } });
+        eq(emits, 1, "input emits");
+        eq(last.keys.keySignature.separator.color, "#112233", "input writes the color");
+        assert(findAll(api.root, "cnb-kse-sep-color")[0] === before, "input leaves the same element in the DOM");
+        before.onchange({ target: { value: "#445566" } });
+        eq(emits, 2, "change emits");
+        eq(last.keys.keySignature.separator.color, "#445566", "change writes the color");
+        assert(findAll(api.root, "cnb-kse-sep-color")[0] !== before, "change redraws");
+      });
+  } },
+
   { name: "render: style options — the single notehead-chords style, selected, with engine attribution", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });

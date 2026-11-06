@@ -519,6 +519,26 @@ export const tests = [
     }),
   },
   {
+    name: "render: line color input — `input` emits without redrawing (the picker stays open); `change` redraws",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      let emits = 0;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; emits++; } });
+      const colorIn = (token) => findAll(findAll(handle.root, token)
+        .find(s => String(s.className).includes("cnb-sre-section")), "cnb-sre-color")[0];
+      for (const [token, slice] of [["cnb-sre-staff-defaults", "staff"], ["cnb-sre-ledger-defaults", "ledgers"]]) {
+        const before = colorIn(token);
+        const n = emits;
+        before.oninput({ target: { value: "#123456" } });
+        assert(emits === n + 1 && lastSlices[slice].lineDefaults.color === "#123456", `${token}: input emits`);
+        assert(colorIn(token) === before, `${token}: input leaves the same element in the DOM`);
+        before.onchange({ target: { value: "#654321" } });
+        assert(emits === n + 2 && lastSlices[slice].lineDefaults.color === "#654321", `${token}: change emits`);
+        assert(colorIn(token) !== before, `${token}: change redraws`);
+      }
+    }),
+  },
+  {
     name: "render: non-numeric thickness input is ignored (no NaN in state)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container, {});

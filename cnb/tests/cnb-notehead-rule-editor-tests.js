@@ -591,12 +591,32 @@ export const tests = [
       const card1c = findByAttr(handle.root, "data-rule-index", "1")[0];
       findAll(card1c, "cnb-nre-color-input")[0].oninput({ target: { value: "#cc0000" } });
       assert(lastSlices.noteheadRules[1].apply.color === "#cc0000", "hex edited");
+      // The panel (and its resolved strip) redraws when the picker closes.
+      findAll(card1c, "cnb-nre-color-input")[0].onchange({ target: { value: "#cc0000" } });
       swatch = findAll(findAll(handle.root, "cnb-nre-resolved-cell")[1], "cnb-nre-resolved-swatch")[0];
       assert(swatch.getAttribute("data-color") === "#cc0000", "strip shows the rule hex");
 
       const card1d = findByAttr(handle.root, "data-rule-index", "1")[0];
       findAll(card1d, "cnb-nre-color-mode")[0].onchange({ target: { value: "palette" } });
       assert(lastSlices.noteheadRules[1].apply.color === null, "back to palette mode");
+    }),
+  },
+  {
+    name: "render: color input — `input` emits without redrawing (the picker stays open); `change` redraws",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      let emits = 0;
+      const config = richConfig();
+      config.noteheadRules[1].apply.color = "#000000";
+      const handle = E.render(container, { config, onChange: (slices) => { lastSlices = slices; emits++; } });
+      const input = () => findAll(findByAttr(handle.root, "data-rule-index", "1")[0], "cnb-nre-color-input")[0];
+      const before = input();
+      before.oninput({ target: { value: "#00ff00" } });
+      assert(emits === 1 && lastSlices.noteheadRules[1].apply.color === "#00ff00", "input emits the new color");
+      assert(input() === before, "input leaves the same element in the DOM");
+      before.onchange({ target: { value: "#0000ff" } });
+      assert(emits === 2 && lastSlices.noteheadRules[1].apply.color === "#0000ff", "change emits");
+      assert(input() !== before, "change redraws");
     }),
   },
   {

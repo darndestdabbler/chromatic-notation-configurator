@@ -385,12 +385,16 @@ export const CNBStaffRuleEditor = {
     const valueFrom = (e, input) =>
       (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
 
-    const changed = () => {
-      redraw();
+    const emit = () => {
       onChange(
         { staff: CNBStaffRuleEditor.buildStaff(state), ledgers: CNBStaffRuleEditor.buildLedgers(state) },
         deepClone(state)
       );
+    };
+
+    const changed = () => {
+      redraw();
+      emit();
     };
 
     // ── Pattern section ──────────────────────────────────────────────────
@@ -503,7 +507,10 @@ export const CNBStaffRuleEditor = {
       const color = el("input", "cnb-sre-color");
       color.type = "color";
       color.value = target.color;
-      color.oninput = (e) => { target.color = valueFrom(e, color); onEdit(); };
+      // `input` only emits: a redraw would close the open picker. Closing
+      // it (`change`) redraws (session 21).
+      color.oninput = (e) => { target.color = valueFrom(e, color); emit(); };
+      color.onchange = (e) => { target.color = valueFrom(e, color); changed(); };
       row.appendChild(color);
 
       return row;

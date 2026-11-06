@@ -346,9 +346,13 @@ export const CNBNoteheadRuleEditor = {
     const valueFrom = (e, input) =>
       (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
 
+    const emit = () => {
+      onChange({ noteheadRules: CNBNoteheadRuleEditor.buildRules(state) }, deepClone(state));
+    };
+
     const changed = () => {
       redraw();
-      onChange({ noteheadRules: CNBNoteheadRuleEditor.buildRules(state) }, deepClone(state));
+      emit();
     };
 
     // ── Match pills (shared between PC and duration dimensions) ──────────
@@ -564,7 +568,10 @@ export const CNBNoteheadRuleEditor = {
             const color = el("input", "cnb-nre-color-input");
             color.type = "color";
             color.value = rule.apply.color;
-            color.oninput = (e) => { rule.apply.color = valueFrom(e, color); changed(); };
+            // `input` only emits: a redraw would close the open picker.
+            // Closing it (`change`) redraws (session 21).
+            color.oninput = (e) => { rule.apply.color = valueFrom(e, color); emit(); };
+            color.onchange = (e) => { rule.apply.color = valueFrom(e, color); changed(); };
             wrap.appendChild(color);
           }
           return wrap;
