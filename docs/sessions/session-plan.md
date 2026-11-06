@@ -795,7 +795,55 @@ sessions are planned once the design is approved.
    that program ends with screenshot checks at 1440 and 1280 px, judged
    against the approved mock-ups.
 
-### Session 20: The colour picker stays open
+### Session 20: Design revision: the canvas reflows instead of scaling
+
+**Why.** Reviewing the session 19 design on 2026-11-06, the operator asked
+that the staff canvas never scroll sideways to show the octave, and that
+the noteheads not change size as the window is resized. Session 19's §6
+did the opposite: it scaled `display.pxPerSemi` to fit the width. The
+operator proposed a table of 13 (or 14) columns, with the staff cut into
+vertical slices centred in each column, so the spacing between notes
+adjusts on its own, and asked that it look better. The preview already
+draws each column's noteheads, stems and ledgers in its own SVG. Only the
+staff lines share one background SVG, sized to the columns' fixed total,
+so the change is to the column widths and the staff background, not a new
+renderer. This session revises the design and its mock-ups. It changes no
+application code.
+
+1. Register.
+2. Revise `docs/planning/notehead-first-editor-design.md` (§6, §7, and
+   wherever else it touches):
+   - **Fixed size.** Noteheads are drawn at a fixed px per semitone,
+     whatever the window width. Choose the editor's default and say why.
+   - **A table of columns.** 13 equal pitch columns, each at least as wide
+     as the widest column the config needs, sharing any spare width
+     equally, with each column's drawing centred. The label strip and the
+     clef and key-signature gutters form a fixed 14th column on the left.
+   - **The staff lines.** Weigh one staff SVG per row, stretched to the
+     row's width (lines drawn to 100%), against per-column staff slices,
+     including the seam where two slices meet at a fractional pixel. Pick
+     one and say why.
+   - **One row or two.** When one row does not fit, the canvas shows two:
+     C to F♯ and G to C′, each starting with its own label strip and
+     gutters. Page code picks the row count from the space available. The
+     rendering modules stay pure: the collection takes a `rows` option and
+     reports its minimum width. Say what happens below the two-row minimum.
+   - **Looks better.** Equal columns, plain pitch labels instead of boxed
+     chips, full-height selection and hover marks, a quiet gutter for the
+     label strip, and space between the two rows, each judged in
+     screenshots.
+   - Renumber the proposed program for this session's insertion (sessions
+     23–30, release last). Update its session 24 equivalent (the new page)
+     to build this canvas, and say which `cnb/src` modules change (at least
+     `cnb-collection.js`) and how the preview baseline is kept.
+3. Revise the mock-ups under `docs/planning/notehead-first-mockups/` to
+   draw the canvas this way with the real preview modules. Screenshot each
+   at 1440 and 1280 px, showing one row and two rows, for the default
+   config and for Kite 4-369. Judge them against the design, revise until
+   they hold up, and replace the screenshots in the design's §10. Remove
+   the mock-up stylesheet's unused side-panel styles.
+
+### Session 21: The colour picker stays open
 
 **Why.** On 2026-11-05, while defining the 45deg-369 colours, the operator
 found that the colour picker closed on every change: a drag in the colour
@@ -822,7 +870,7 @@ cells), `cnb/ui/notehead-rule-editor.js` (a rule's explicit colour),
    (drag in the field, type a full hex value) and record the check in
    `docs/uat-status.md`.
 
-### Session 21: Each notehead has its own height and width
+### Session 22: Each notehead has its own height and width
 
 **Why.** Every notehead is drawn at its shape's `semitoneHeight`, at the
 shape's natural aspect ratio. A palette of very different shapes may need
