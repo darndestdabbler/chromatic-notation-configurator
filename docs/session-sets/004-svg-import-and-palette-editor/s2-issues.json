@@ -1,0 +1,27 @@
+{
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Duplicate custom colors can produce an exporter-ambiguous config.palette",
+      "location": "cnb/ui/palette-editor.js buildPalette()",
+      "resolution": "matchToCBSafe() now runs on the UNIQUE primary hexes; the CB-safe pool is built through a hex->cbSafe lookup so a repeated primary hex always maps to the same CB-safe color, keeping cbSafeColors consistent with the hex-keyed schemeSymbols map. Unit test added: a custom palette with a duplicated hex gets one CB-safe mapping per unique hex and one scheme symbol per unique hex.",
+      "status": "fixed"
+    },
+    {
+      "id": 2,
+      "title": "Saved CB-safe custom palettes do not round-trip correctly",
+      "location": "cnb/ui/palette-editor.js selectionFromPalette()",
+      "resolution": "The custom fallback now recovers family from the saved data: when cbSafeColors is identity-equal to colors per pitch class (the LY spec 4.5 CB-safe-as-primary encoding), family is restored as 'cbsafe', so re-editing keeps the identity branch. Unit test added: a CB-safe custom palette round-trips with family 'cbsafe' and rebuilds with the identity branch intact; a standard custom palette still recovers as 'standard'.",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "title": "Work touched docs/session-sets/ despite 'Touches: none outside cnb/'",
+      "location": "docs/session-sets/004-svg-import-and-palette-editor/*",
+      "resolution": "Adjudicated not-a-defect: the spec's 'Touches' line scopes the code/deliverable surface. The session-set directory writes (session-state.json, session-events.jsonl, activity-log.json, s2-uat.md) are the Dabbler orchestration lifecycle the same spec mandates: tier 'full' requires start_session/close_session state flips, the close gate requires activity-log entries and the progress keys the spec itself defines (session-002/*), and requiresUAT/uatScope per-session requires the UAT record in the set directory. Session 1 of this set wrote the identical file kinds and was VERIFIED.",
+      "status": "adjudicated-not-a-defect"
+    }
+  ]
+}
