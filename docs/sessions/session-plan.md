@@ -794,3 +794,81 @@ sessions are planned once the design is approved.
    stable"), so it comes once the new UI is stable, not partway through. Every UI session in
    that program ends with screenshot checks at 1440 and 1280 px, judged
    against the approved mock-ups.
+
+### Session 20: The colour picker stays open
+
+**Why.** On 2026-11-05, while defining the 45deg-369 colours, the operator
+found that the colour picker closed on every change: a drag in the colour
+field or a typed digit in the RGB boxes shut it, so each hex digit had to be
+entered on its own, reopening the picker between digits. The cause is in
+the editors, not the browser: every colour `<input>` is wired to the
+`input` event, which fires on each drag step and each typed digit, and its
+handler calls `changed()`, which redraws the whole panel. The redraw
+destroys the element that owns the open picker, and the browser closes it.
+Four editors share the wiring: `cnb/ui/palette-editor.js` (custom palette
+cells), `cnb/ui/notehead-rule-editor.js` (a rule's explicit colour),
+`cnb/ui/key-signature-editor.js` (the separator colour) and
+`cnb/ui/staff-rule-editor.js` (staff and ledger line colour).
+
+1. Register.
+2. In each of the four editors, split the colour input's wiring: on
+   `input`, update the state and call `onChange` so the preview follows the
+   drag live, but do not redraw; on `change`, which fires when the picker
+   closes, do the full `changed()` so derived text such as the palette's
+   nearest-colour names catches up. Every other control keeps its wiring.
+3. Pin it in the test file named after each editor: an `input` event on a
+   colour control leaves that same element in the DOM and emits `onChange`;
+   a `change` event redraws. Run the four editors by hand in the browser
+   (drag in the field, type a full hex value) and record the check in
+   `docs/uat-status.md`.
+
+### Session 21: Each notehead has its own height and width
+
+**Why.** Every notehead is drawn at its shape's `semitoneHeight`, at the
+shape's natural aspect ratio. A palette of very different shapes may need
+different sizes to look right, and the operator asked (2026-11-06) that a
+notehead's height and width each be adjustable from 0.25 to 4 semitones:
+the extremes look wrong, but they let the user make whatever adjustment a
+design needs. The notehead-first editor (session 19) lists size among the
+things a click on a notehead sets, so the schema, preview and export built
+here are what that editor will drive. No engine change is needed: the
+engine has no size field and builds each stencil from the registered
+path's numbers in staff-space units, so the exporter can register a scaled
+variant of a shape per size.
+
+1. Register.
+2. Schema (`cnb-config.js`): a rule's `apply` block gains optional
+   `heightSemis` and `widthSemis`, absolute sizes in semitones, resolved
+   through the cumulative rule pipeline like `hollow` and
+   `xOffsetStaffSpaces`. Absent means the shape's own `semitoneHeight` and
+   its natural width, so every existing config resolves, previews and
+   exports exactly as before (the preview and export baselines pin it).
+   Validation: a present value must be a finite positive number (error);
+   outside 0.25 to 4 semitones warns. Document the fields in the
+   architecture plan §4.5 and the LY export spec.
+3. Preview: `cnb-notehead.js` measures with separate x and y scale factors
+   from the resolved size; the stem anchors, the octave-pair offset
+   (`cnb-double-notehead.js`), the ledger width derived from notehead width
+   (`cnb-ledger-set.js`, `cnb-card.js`) and the key-signature marks
+   (`cnb-key-signature.js`) all follow the resolved measurement. Unit tests
+   in the file named after each changed source, and a visual check in
+   `cnb/test-pages/test-notehead.html`.
+4. Export (`cnb-lilypond.js`): for each distinct resolved (shape, height,
+   width) that differs from the shape's own size, Section A registers a
+   variant under a derived name (the shape name with a size suffix), with
+   its path, hollow cutout and attachment points scaled by the same x and
+   y factors, and Section C points the pitch classes at it; the resolved
+   size joins the Section C grouping key beside shape, hollow, colour,
+   attachment and x-offset. The spec gains a section for the variant
+   naming and scaling. Pin a sized export against a new baseline, and
+   check the engraved sizes with an engine render through
+   `cnb/tests/engine-probe.js`, as session 11's notehead-size test does.
+5. Editor (`notehead-rule-editor.js`): a rule's apply block gets height
+   and width controls with a "keep aspect ratio" lock, on by default: with
+   the lock on, editing the height rewrites the width at the shape's
+   natural ratio; with it off, the width is free. The shape's natural width
+   shows as a hint beside the field. Keep the controls minimal: the
+   notehead-first editor (session 19) will supersede this panel. Record
+   the browser check in `docs/uat-status.md`.
+6. README "Preview-only settings" and the gallery configs: say that size
+   exports, and leave the fixtures' sizes untouched.
