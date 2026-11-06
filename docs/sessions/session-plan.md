@@ -920,3 +920,154 @@ variant of a shape per size.
    the browser check in `docs/uat-status.md`.
 6. README "Preview-only settings" and the gallery configs: say that size
    exports, and leave the fixtures' sizes untouched.
+
+### The notehead-first program (sessions 23–30)
+
+**Operator, 2026-11-06:** approved the program in §12 of
+[`docs/planning/notehead-first-editor-design.md`](../planning/notehead-first-editor-design.md)
+(sessions 19 and 20), with one change: the canvas **Size is kept in the
+browser, not saved in the file** (session 25 carries it out). The design and
+its mock-ups (§10) are the specification. Every UI session (25–29) ends by
+taking the app's screenshots at 1440 and 1280 px with session 25's driver
+and judging them against the mock-ups: layout, type, spacing, wording, the
+row count each width should give (§6.1), and no horizontal overflow. The
+judgement and the screenshots go in `docs/uat-status.md`. Where a session
+finds a better answer than a mock-up, it updates the mock-up in the same
+session. No session before 30 releases; the first release is the site's
+first deploy (see "No release until the UI is stable").
+
+### Session 23: The look table and rule inference
+
+**Why.** The notehead-first editor edits one table, a look per pitch class,
+and writes the rules from it (design §0, §5). This session builds that
+model with no UI, so the panels in sessions 27 and 28 sit on tested logic.
+
+1. Register.
+2. `cnb/ui/notehead-inference.js`, pure functions: the look table from a
+   config (shape, fill, colour, size, side step per pitch class, as
+   `resolveNotehead` and the palette give them); the inference of §5.1
+   (default value, smallest period in 1, 2, 3, 4, 6, then the accidentals,
+   else explicit pitch classes), with rule names in words; and the write
+   back: inferred rules for shape, fill, size and side step, colour to the
+   palette (§5.3), rules restricted to durations or keys kept verbatim
+   above them (§5.5).
+3. Tests in `cnb/tests/cnb-notehead-inference-tests.js`: for every gallery
+   and fixture config, writing back its own look table resolves to the
+   same looks for every pitch class, duration and key; the Kite 4-369,
+   45deg-369 and default exports stay byte-identical; the §5.2 worked
+   examples infer the rules the design shows.
+
+### Session 24: Pitch, nudges and staff spacing
+
+**Why.** Pitch (the middle of the staff) and the per-pitch-class nudge are
+the editor's two pitch variables (design §3, §4). This session builds their
+arithmetic with no UI.
+
+1. Register.
+2. `cnb/ui/pitch-model.js`, pure functions: moving the pitch by *d*
+   semitones, rewriting the midpoint, staff pattern, ledger templates and
+   line overrides together (§3.1); nudges to and from `pitchAxis`
+   (stride 12, fractional positions, `axisUnitsPerStaffSpace` = the staff
+   spacing; the section removed when every nudge is 0) with each nudge's
+   limits (§3.2); converting a stride-7 map to nudges, and the ±1 test
+   that keeps a map that cannot convert (§3.3, §3.5); renaming a notehead,
+   which rotates the look table and the nudges (§4.1, §4.3).
+3. The staff spacing accepts a decimal (§3.4). An engine render of
+   Twinline in nudge form (staff spacing 3.43) confirms it engraves at the
+   positions of the stride-7 fixture, through `cnb/tests/engine-probe.js`
+   or the round-trip recipe, skipping with a reason when `lilypond` is not
+   on `PATH`.
+4. Tests in `cnb/tests/cnb-pitch-model-tests.js`, including Twinline's
+   nudges from the §3.3 table and the no-reordering limits.
+
+### Session 25: The new page
+
+**Why.** Replace the 7,200 px column of eleven panels with the one-screen
+layout of design §7, the look of §8 and the reflowing canvas of §6.1.
+
+1. Register.
+2. **Size stays in the browser** (operator, 2026-11-06). The canvas draws
+   at the toolbar's Size (Small 9, Medium 11, Large 16 px per semitone;
+   Medium the first time), remembered per browser, not in the file. The
+   canvas ignores the saved `display.pxPerSemi`, which keeps its meaning
+   for the test pages and the gallery. Choose the browser storage in the
+   session and say why. Update the design §6.1, §10 and §11, which
+   describe the saved-field version.
+3. The reflowing canvas in `cnb/src`: `cnb-collection.js` gains the
+   `fluid` and `rows` options and `minRowWidth`; `cnb-staff.js` draws the
+   lines to `100%` in fluid mode; `cnb-card.js` marks each column with
+   `data-pc` and centres its drawing in a wider column. With both options
+   off, today's layout is unchanged and the preview baseline
+   (`cnb/fixtures/preview-baseline.json`) pins it. New tests in each
+   changed module's test file pin the fluid layout. In `cnb/ui`,
+   `preview-display.js` gains the Size control and picks one row or two
+   with a `ResizeObserver`, redrawing only when the count changes.
+4. The shell: top bar (name, checks indicator, Open, Save, Export for
+   LilyPond), section list, canvas, one panel at a time; the design tokens
+   and type (§8.1–8.3) in one stylesheet; the checks indicator as the only
+   place validation shows (§8.5); Advanced with View file (JSON). The
+   existing editors are mounted in their sections or in Advanced (§9).
+5. The UAT drivers follow the moved panels. A new driver screenshots the
+   app at 1440 and 1280 px for the screenshot checks.
+
+### Session 26: The panels speak to a designer
+
+**Why.** The kept panels still use developer wording and unstyled
+controls (design §8.4, §8.6, §8.8).
+
+1. Register.
+2. Restyle and reword Staff, Ledger lines (with Automatic or My own rules,
+   §1), Clef, Key signature and Export, each with its preview (§6). Module
+   and set numbers leave the titles. Preview-only badges replace the
+   repeated paragraphs, and the Export section names the preview-only
+   settings once.
+3. Tests and UAT drivers follow the wording.
+
+### Session 27: The notehead panel
+
+**Why.** The heart of the design: click a notehead to give it a look, and
+the rules follow (design §2, §5.4).
+
+1. Register.
+2. Click and Shift-click selection on the canvas; the notehead panel
+   docked under it: colour (with session 21's `input`/`change` wiring and
+   Start from a palette), fill, shape (the config's shapes, the built-in
+   shapes, Import from SVG), size (session 22's fields), side step, and
+   Give this look to. Every change goes through session 23's inference.
+3. The rule list under the canvas, in words, with hover tint (§5.4).
+4. Tests in the new modules' test files; a UAT driver that builds the Kite
+   looks by clicking and checks the export matches the fixture.
+
+### Session 28: Pitch
+
+**Why.** The label strip, renaming and nudges (design §3, §4).
+
+1. Register.
+2. The label strip in each row's 14th column, quiet everywhere and
+   draggable in the Pitch section; renaming a notehead from its panel; the
+   Pitch section (middle of the staff, staff spacing, nudges with their
+   limits), all through session 24's model; the custom-map fallback in
+   Advanced (§3.5).
+3. Tests and a UAT driver that rebuilds Twinline from nudges.
+
+### Session 29: The UI is stable
+
+**Why.** The release waits for a stable UI (operator, 2026-11-06).
+
+1. Register.
+2. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the new
+   UI. The rough edges found are fixed in this session, or planned as
+   sessions before 30 if they are large.
+3. README text and pictures follow the new UI. The full UAT runs.
+4. The operator declares the UI stable, which is the condition for
+   session 30.
+
+### Session 30: Release 1.1.0 (release: 1.1.0)
+
+**Why.** The first release since the UI work, and the site's first deploy.
+
+1. Register.
+2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
+   renamed to 1.1.0, and add the notehead-first editor to the entry.
+3. The tag deploys the site. Confirm it is up and that the README and the
+   `file://` notice link work.
