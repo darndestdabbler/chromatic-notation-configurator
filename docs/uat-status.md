@@ -17,7 +17,42 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
-## Last run — 2026-11-05 (session 15)
+## Last run — 2026-11-06 (session 17)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: 14 of 14 drivers pass. The thirteen earlier drivers are
+  unchanged.
+
+`uat-imported-notehead.mjs` (new) checks the operator's 2026-11-05 report:
+a freshly imported 4-semitone notehead was drawn at about 3 semitones until
+an unrelated edit redrew the preview. It imports `cnb/fixtures/45deg.svg`
+into `cnb/index.html` on three routes: the Kite config with the file
+picker and the Default rule, the default config with the file picker and
+the Default rule, and the default config with drag-and-drop and a new rule.
+On each route it measures every notehead the preview draws as soon as the
+shape is selected, which must be 4 × pxPerSemi (64 px). It then sets the
+Default rule's colour to a custom hex and checks that no height changed. It
+also checks that no console or page error is logged.
+
+| Driver | Page under test | Result |
+|---|---|---|
+| `uat-imported-notehead.mjs` | `cnb/index.html` | pass, 13/13 checks |
+
+**Not reproduced, so nothing fixed.** The stale height did not show up on
+the driver's three routes. It also did not show up on a same-name re-import
+of a 3-semitone version, or on the operator's own sequence replayed in six
+orders (import, 3-6-9 staff, keys and key signature, repeat mode, ledger
+removal, rule shape). Every case drew the head at 64 px at once, in
+Chromium, Edge and Firefox. The operator could not recall anything else
+about the session. What the operator saw matches the default config's
+crotchet-minim, which is 2.724 semitones tall and stays on screen until a
+rule selects the new shape. No source file changed. The driver pins the
+behaviour in the browser. A unit test in `cnb/tests/cnb-svg-importer-tests.js`
+pins that the imported shape measures 4 semitones through
+`CNBNotehead.measure`, which the preview uses to size every head.
+
+## Earlier run — 2026-11-05 (session 15)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`, Firefox and Edge as in
   session 6

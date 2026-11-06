@@ -768,6 +768,16 @@ export const tests = [
       assert(JSON.stringify(shape) === JSON.stringify(shapes["ellipse-45deg"]),
         `imported shape ${JSON.stringify(shape)} differs from the config's ${JSON.stringify(shapes["ellipse-45deg"])}`);
     }},
+  { name: "fixtures/45deg.svg as imported measures 4 semitones tall in the preview (session 17)", fn: () => {
+      // The preview sizes every head with CNBNotehead.measure; the operator saw
+      // this shape drawn at the old shape's height (uat-imported-notehead.mjs).
+      const { shape } = CNBSvgImporter.parseSvgText(
+        readFileSync(path.join(FIXTURES, "45deg.svg"), "utf8"), "45deg.svg", { parser: { parseFromString: parseSvgDocument } });
+      const pxPerSemi = CNBConfig.createDefault().display.pxPerSemi;
+      const { pixelHeight, pixelWidth } = CNBNotehead.measure(shape, pxPerSemi);
+      approx(pixelHeight, 4 * pxPerSemi, "4 semitones tall", 1e-9);
+      approx(pixelWidth, 4 * pxPerSemi, "as wide as it is tall (400.029 of 400 units)", 0.01);
+    }},
   { name: "fixtures/45deg.svg anchors are its stem rects' inner edges, and the export divides them by sps 3", fn: () => {
       const svg = readFileSync(path.join(FIXTURES, "45deg.svg"), "utf8");
       const rect = id => ["x", "y", "width", "height"].map(a => Number(svgAttr(svg, id, a)));

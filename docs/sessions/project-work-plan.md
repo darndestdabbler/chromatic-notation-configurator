@@ -28,7 +28,9 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 14 | Release 1.0.1 (release: 1.0.1) | yes | 2026-11-03 |
 | 15 | The app online, and a page that says why it is blank | no | 2026-11-05 |
 | 16 | A second reference notation, 45deg-369 | no | 2026-11-05 |
-| 17 | Release 1.0.2 (release: 1.0.2) | — | not declared |
+| 17 | The preview draws an imported notehead at its own height at once | no | 2026-11-06 |
+| 18 | The preview shows what repeat mode engraves | — | not declared |
+| 19 | Design: a notehead-first editor | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -146,3 +148,13 @@ Make 45deg-369 a checked-in, test-gated reference notation beside Kite 4-369, an
 
 - 2026-11-05 — step 'correct-config': its checks: The shape cannot be named 45deg: validation rejects it because a Scheme symbol must start with a Latin letter. It is named ellipse-45deg instead; the check follows. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-05 — step 'engine-round-trip': its files: The engraved round trip shows the 45deg-369 footnote set in step correct-config running off the page; it is shortened to Kite's length, and the export baseline follows. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 17 — The preview draws an imported notehead at its own height at once
+
+**Releasable: no.**
+
+Find and fix why the app's preview drew a freshly imported 4-semitone notehead too small until an unrelated edit redrew it. A new Playwright driver, cnb/uat/uat-imported-notehead.mjs, loads cnb/fixtures/kite-4-369-config.json into cnb/index.html, imports cnb/fixtures/45deg.svg, applies it in the default notehead rule, and measures every drawn notehead's height in the preview before any further edit. It checks that each is 4 semitones (4 x pxPerSemi) and that the preview is unchanged by a later unrelated edit (a notehead colour change). A first in-browser probe through the file input, including re-importing a shape under the same name, drew it at 64 px (4 semitones) at once, so the driver also follows the operator's other routes (drag-and-drop, applying through a new rule, a colour edit afterwards) until it finds the path that leaves the preview stale or wrongly scaled. The fix goes at that cause. A unit test goes in the test file named after the source file that changes, the driver pins the behaviour in the browser, and docs/uat-status.md records the driver and its run.
+
+**Amended after acceptance:**
+
+- 2026-11-06 — step 'fix': its files: The driver did not reproduce the stale height on any route and found no cause, so no source file changes; the step adds a regression unit test pinning the imported 45deg shape's preview size (4 x pxPerSemi) in the importer's test file (claude-code (anthropic, claude-opus-5-5))
