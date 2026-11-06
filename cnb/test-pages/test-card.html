@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Octave Chord Card Test — Module 9</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 24px 0 4px; }
+    h1:first-of-type { margin-top: 0; }
+    p  { font-size: 13px; color: #666; margin: 0 0 16px; max-width: 760px; }
+    .row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    .demo {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 12px;
+    }
+    .demo .caption {
+      font-size: 12px; color: #888; text-align: center; margin-top: 6px;
+    }
+    /* Staff reference behind each card (Module 10's job in the real preview) */
+    .staff-ref { position: relative; }
+    .staff-ref > svg { position: absolute; left: 0; }
+    .staff-ref > .pc-col { position: relative; }
+  </style>
+</head>
+<body>
+
+<h1>Module 9: Octave Chord Card — single cards (default 4-8 config)</h1>
+<p>
+  Each card is one <code>div.pc-col</code>: material-card label on top, the
+  note-slice SVG (ledgers, stem, octave pair of noteheads), material-card
+  label below. Cards do <b>not</b> draw staff lines — a per-card background
+  staff + debug grid is added here for visual reference (Module 10 does this
+  in the real preview). Expected: <b>C</b> ledgers at 0 &amp; 12, stem up
+  (right side) · <b>C♯</b> hollow noteheads, ledgers at 0 &amp; 12 (the C
+  template triggers PCs 0–2), stem up · <b>E</b> on staff lines, no ledgers ·
+  <b>G</b> stem down (avg 13 ≥ midpoint 12) · <b>A♯</b> hollow, ledgers at
+  10 &amp; 22 · <b>C′</b> (pc 12) stem down, ledgers at 12 &amp; 24.
+</p>
+<div class="row" id="row-crotchet"></div>
+
+<h1>Durations</h1>
+<p>
+  Same pitch class (C), different durations. Expected: <b>crotchet</b> solid
+  with stem · <b>minim</b> stem attached via the minim anchors (default
+  config rules keep naturals solid — duration-based hollowness is a rule
+  concern, not hard-coded) · <b>semibreve</b> no stem (hasStem false).
+</p>
+<div class="row" id="row-durations"></div>
+
+<h1>Palette colors</h1>
+<p>
+  A 12-color palette applied via <code>CNBCard.resolveNotehead</code>'s
+  palette fallback (no explicit color rules). Sharps stay hollow.
+</p>
+<div class="row" id="row-palette"></div>
+
+<script type="module">
+  import { CNBConfig } from "../src/cnb-config.js";
+  import { CNBGrid }   from "../src/cnb-grid.js";
+  import { CNBStaff }  from "../src/cnb-staff.js";
+  import { CNBCard }   from "../src/cnb-card.js";
+
+  const RANGE = { minSemi: -4, maxSemi: 28 };
+
+  /**
+   * Render one card into a .demo tile, with a background staff + debug grid
+   * SVG behind the note-slice for visual reference.
+   */
+  function demoCard(rowId, config, example, caption) {
+    const grid = CNBGrid.create(config, RANGE);
+    const width = CNBCard.columnWidth(config, grid, example);
+
+    const demo = document.createElement("div");
+    demo.className = "demo";
+
+    const wrap = document.createElement("div");
+    wrap.className = "staff-ref";
+
+    const NS = "http://www.w3.org/2000/svg";
+    const bg = document.createElementNS(NS, "svg");
+    bg.setAttribute("width", String(width));
+    bg.setAttribute("height", String(grid.svgHeight));
+    bg.style.top = grid.topLabelHeight + "px";
+    const staffPositions = CNBStaff.getPositions(config, RANGE);
+    CNBGrid.renderDebugOverlay(bg, grid, staffPositions);
+    CNBStaff.render(bg, grid, config, width);
+    wrap.appendChild(bg);
+
+    CNBCard.render(wrap, grid, config, example);
+
+    demo.appendChild(wrap);
+    const cap = document.createElement("div");
+    cap.className = "caption";
+    cap.textContent = caption;
+    demo.appendChild(cap);
+    document.getElementById(rowId).appendChild(demo);
+  }
+
+  // ── Row 1: crotchet cards across pitch classes ────────────────────────────
+  const config = CNBConfig.createDefault();
+  for (const [pc, caption] of [
+    [0,  "C — ledgers 0 & 12, stem up"],
+    [1,  "C♯ — hollow, ledgers 0 & 12"],
+    [4,  "E — on staff, no ledgers"],
+    [7,  "G — stem down"],
+    [10, "A♯ — hollow, ledgers 10 & 22"],
+    [12, "C′ (pc 12) — ledgers 12 & 24"],
+  ]) {
+    demoCard("row-crotchet", config, { pc, duration: "crotchet" }, caption);
+  }
+
+  // ── Row 2: durations ──────────────────────────────────────────────────────
+  for (const [duration, caption] of [
+    ["crotchet",  "crotchet — stem"],
+    ["minim",     "minim — stem (minim anchors)"],
+    ["semibreve", "semibreve — no stem"],
+  ]) {
+    demoCard("row-durations", config, { pc: 0, duration }, caption);
+  }
+
+  // ── Row 3: palette colors ─────────────────────────────────────────────────
+  const colored = CNBConfig.createDefault();
+  colored.palette.colors = [
+    "#e6194b", "#f58231", "#ffb300", "#bfa000", "#3cb44b", "#469990",
+    "#42d4f4", "#4363d8", "#911eb4", "#f032e6", "#a05195", "#808000",
+  ].map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+  for (const pc of [0, 2, 4, 6, 9, 11]) {
+    demoCard("row-palette", colored, { pc, duration: "crotchet" },
+      `PC ${pc} — palette color`);
+  }
+</script>
+
+</body>
+</html>

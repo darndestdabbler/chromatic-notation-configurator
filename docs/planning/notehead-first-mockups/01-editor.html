@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock-up 1: Staff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="app">Chromatic Notation Configurator</span>
+    <span class="doc">Untitled notation</span>
+    <span class="spacer"></span>
+    <span class="checks ok"><span class="dot"></span>No problems</span>
+    <button class="btn ghost">Open…</button>
+    <button class="btn">Save</button>
+    <button class="btn primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar nav">
+      <a class="on" href="#">Staff</a>
+      <a href="#">Noteheads</a>
+      <a href="#">Pitch</a>
+      <a href="#">Ledger lines</a>
+      <a href="#">Clef</a>
+      <a href="#">Key signature</a>
+      <hr>
+      <a href="#">Advanced</a>
+      <a href="#">Export</a>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <section class="card">
+          <div class="canvas-toolbar">
+            <span>Showing crotchets</span>
+            <span class="spacer"></span>
+            <span>Click a notehead to give it a look</span>
+          </div>
+          <div class="canvas" id="canvas"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Staff</h2>
+            <span class="sub">Where the staff lines are, and how they look</span>
+          </div>
+          <div class="card-body stack">
+            <div>
+              <p class="group-title">Pattern</p>
+              <div class="grid-3">
+                <div class="pattern-opt on"><b>4-8</b><span>Two lines an octave, on E and G♯</span></div>
+                <div class="pattern-opt"><b>3-6-9</b><span>Three lines an octave, on D♯, F♯ and A</span></div>
+                <div class="pattern-opt"><b>Custom</b><span>Choose the pitch classes the lines sit on</span></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="label">Staff lines on</span>
+              <div class="row" id="pcs"></div>
+            </div>
+
+            <div class="row" style="gap: var(--space-6); align-items: flex-start">
+              <div class="field">
+                <span class="label">Staff spacing</span>
+                <div class="row"><input class="input num" value="4"><span class="unit">semitones per staff space</span></div>
+                <span class="hint">How tall the staff is in LilyPond. A smaller number spreads the notes further apart.</span>
+              </div>
+            </div>
+
+            <div>
+              <p class="group-title">Lines</p>
+              <div class="row" style="gap: var(--space-5); align-items: flex-end">
+                <div class="field">
+                  <span class="label">Thickness <span class="badge">Preview only</span></span>
+                  <div class="row"><input class="input num" value="20"><span class="unit">% of a semitone</span></div>
+                </div>
+                <div class="field">
+                  <span class="label">Colour <span class="badge">Preview only</span></span>
+                  <div class="row"><span class="swatch" style="background:#000"></span><span class="unit">Black</span></div>
+                </div>
+                <div class="field">
+                  <span class="label">Style</span>
+                  <div class="segmented"><button class="on">Solid</button><button>Dashed</button><button>Dotted</button></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="justify-content: flex-end; border-top: 1px solid var(--line); padding-top: var(--space-3)">
+              <span class="muted small">Next, click a notehead on the staff, or</span>
+              <button class="btn">Go to Noteheads →</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { defaultConfig, placeholders, renderStaff, NAMES, ready } from "./mockup.js";
+    ready(async () => {
+      const config = placeholders(defaultConfig());
+      renderStaff(document.getElementById("canvas"), config, { strip: true });
+      const on = config.staff.semitonePattern;
+      document.getElementById("pcs").innerHTML = NAMES
+        .map((n, pc) => `<span class="pill${on.includes(pc) ? " on" : ""}">${n}</span>`).join("");
+    });
+  </script>
+</body>
+</html>
