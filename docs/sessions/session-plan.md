@@ -654,14 +654,23 @@ trunk for step 3.
    `CHANGELOG.md` 1.0.2 entry session 15 opened, and set `version.json`
    to `1.0.2`.
 
-### Session 17: Release 1.0.2 (release: 1.0.2)
+### No release until the UI is stable
 
-The framework publishes sessions 15–16 as 1.0.2 and pushes the `v1.0.2`
-tag, which triggers the session-15 Pages workflow: this is the first
-deploy of `https://configurator.darndestdabbler.org/`. A patch version:
-the live site, the `file://` notice and a new fixture change no export.
+**Operator, 2026-11-06:** the live site is not deployed until the UI is
+stable, because a site that changes under people will confuse them. Every
+`v*` tag deploys the site (`.github/workflows/pages.yml`), so no release
+session is planned until then. The release planned for 1.0.2 (sessions
+15–16) and the one planned for 1.1.0 are withdrawn.
 
-### Session 18: The preview draws an imported notehead at its own height at once
+- The `CHANGELOG.md` 1.0.2 entry and `version.json` stay as they are. The
+  first release after the UI work takes them over, renamed to its own
+  version. That release is also the site's first deploy.
+- Until then, the README and the `file://` notice point at
+  `https://configurator.darndestdabbler.org/`, which returns 404. The
+  first release session confirms the site is up and the link works.
+- Commits to `main` do not deploy, so pushing them is safe.
+
+### Session 17: The preview draws an imported notehead at its own height at once
 
 **Why.** On 2026-11-05, while authoring 45deg-369 in the app, the operator
 imported a 4-semitone notehead and the preview drew it at about 3 semitones
@@ -678,7 +687,7 @@ main feedback, so it must be right after every edit.
    after the source file that changes, plus the UAT driver. Record the
    driver in `docs/uat-status.md`.
 
-### Session 19: The preview shows what repeat mode engraves
+### Session 18: The preview shows what repeat mode engraves
 
 **Why.** In `repeat` mode the engine engraves a minim as two heads, a
 semibreve and a breve as four, spaced by `cnb:multinote-padding`. The
@@ -700,12 +709,7 @@ defined, so no signature could draw, and nothing said why.
 5. README "Preview-only settings": repeat counts are no longer preview-only
    if the counts now follow the engine; say what remains.
 
-### Session 20: Release 1.1.0 (release: 1.1.0)
-
-The framework publishes sessions 18–19 as 1.1.0. A minor version: the
-preview gains repeat mode, a new capability, with no change to the export.
-
-### Session 21: Design: a notehead-first editor
+### Session 19: Design: a notehead-first editor
 
 **Why.** On 2026-11-05 the operator found the configuration screen
 "extremely complicated and daunting" and proposed redesigning it around the
@@ -785,6 +789,8 @@ sessions are planned once the design is approved.
    against the design, and revise them until they hold up. The operator
    approves pictures, not a description.
 4. The document ends with a proposed program of implementation sessions and
-   their release versions, for the operator to approve. Every UI session in
+   their release versions, for the operator to approve. The program's first
+   release is the site's first deploy (see "No release until the UI is
+   stable"), so it comes once the new UI is stable, not partway through. Every UI session in
    that program ends with screenshot checks at 1440 and 1280 px, judged
    against the approved mock-ups.
