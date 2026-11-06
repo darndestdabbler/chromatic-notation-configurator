@@ -1,8 +1,8 @@
 /**
  * mockup.js: shared drawing for the notehead-first editor mock-ups.
  *
- * Draws the staff canvas with the real preview modules (cnb/src), fitted
- * to the width it has (design §6), plus the label strip (§4.2), a close-up
+ * Draws the staff canvas with the real preview modules (cnb/src), at a
+ * fixed size on one row or two (design §6.1), plus the label strip (§4.2), a close-up
  * of one notehead, shape thumbnails, and the rule inference of design §5
  * in miniature, so the rule list shows what the algorithm really infers.
  *
@@ -13,6 +13,7 @@ import { CNBConfig } from "../../../cnb/src/cnb-config.js";
 import { CNBCollection } from "../../../cnb/src/cnb-collection.js";
 import { CNBGrid } from "../../../cnb/src/cnb-grid.js";
 import { CNBNotehead } from "../../../cnb/src/cnb-notehead.js";
+import { CNBCard } from "../../../cnb/src/cnb-card.js";
 
 const NS = "http://www.w3.org/2000/svg";
 export const NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
@@ -172,63 +173,107 @@ export function shapeThumb(config, name, { hollow = false, color = "#1c1c1e", he
   return svg;
 }
 
-/** A display copy of the config at a given preview scale (never saved). */
+/** The toolbar's Size steps, in px per semitone (design §6.1). */
+export const SIZES = { small: 9, medium: 11, large: 16 };
+const GUTTER = 72;      // the fixed 14th column (label strip)
+const COL_PAD = 2;      // px either side of the widest ledger
+
+/** A display copy of the config at the chosen size (never saved). */
 function displayCopy(config, pxPerSemi, labelSize) {
   const c = CNBConfig.clone(config);
   c.display.pxPerSemi = pxPerSemi;
-  c.display.column = { ...c.display.column, paddingH: Math.max(3, pxPerSemi * 0.3) };
+  c.display.column = { ...c.display.column, paddingH: COL_PAD };
   c.display.label = { ...c.display.label, fontSize: labelSize, marginTop: 6, marginBottom: 6, padding: 4, color: "#5b5d63" };
   c.display.card = { ...c.display.card, shadow: "none" };
   return c;
 }
 
 /**
- * Draw the staff canvas into host, fitted to width (design §6). Options:
+ * Turn one CNBCollection row into the fluid layout the design proposes for
+ * CNBCollection's `fluid` option (§6.1): a grid of equal columns no
+ * narrower than the widest, each drawing centred, and the staff SVG
+ * stretched to the row with its lines drawn to 100%.
+ */
+function fluidRow(holder, n, slots, colMin) {
+  holder.querySelector(".preview-container").style.display = "block";
+  const cols = holder.querySelector(".pc-columns");
+  cols.style.display = "grid";
+  cols.style.gridTemplateColumns = `repeat(${slots}, minmax(${colMin}px, 1fr))`;
+  for (const col of holder.querySelectorAll(".pc-col")) {
+    col.style.width = "";
+    col.style.flex = "";
+    col.querySelector("svg").style.margin = "0 auto";
+  }
+  const bg = holder.querySelector(".staff-lines-bg");
+  bg.setAttribute("width", n === slots ? "100%" : (100 * n / slots).toFixed(4) + "%");
+  for (const line of bg.querySelectorAll("line")) line.setAttribute("x2", "100%");
+}
+
+/**
+ * Draw the staff canvas into host at a fixed size, on one row or two
+ * (design §6.1). Options:
  *   pcs       pitch classes (default C to C′)
- *   width     the px available (default host width)
- *   strip     draw the label strip ("drag" adds the drag affordance)
+ *   px        px per semitone (default Medium)
+ *   rows      1 or 2 (default: one row when it fits the host, else two)
+ *   strip     draw the label strip in each row ("drag" for the Pitch section)
  *   selected  pc to outline; covered: pcs to tint
- *   maxPx     the largest px per semitone to use
+ *   closeup   one fixed-width row centred in the host (the notehead panel)
+ * Returns { rows, colMin, oneRowMin }, the numbers the page code would use.
  */
 export function renderStaff(host, config, opts = {}) {
   const pcs = opts.pcs ?? ROW;
-  const stripW = opts.strip ? 80 : 0;
-  const avail = (opts.width ?? host.clientWidth) - stripW;
-  const labelSize = opts.labelSize ?? 15;
+  const cfg = displayCopy(config, opts.px ?? SIZES.medium, opts.labelSize ?? 15);
+  const grid = CNBGrid.create(cfg, CNBCollection.gridRange(pcs));
+  const colMin = Math.ceil(Math.max(...pcs.map(pc => CNBCard.columnWidth(cfg, grid, { pc, duration: "crotchet" }))));
+  const gutter = opts.strip ? GUTTER : 0;
+  const oneRowMin = pcs.length * colMin + gutter;
+  const rows = opts.rows ?? (host.clientWidth >= oneRowMin ? 1 : 2);
+  const split = rows === 1 ? [pcs] : [pcs.slice(0, 7), pcs.slice(7)];
+  const slots = split[0].length;
 
-  const draw = px => {
-    host.textContent = "";
-    const wrap = document.createElement("div");
-    wrap.className = "staff-wrap";
-    host.appendChild(wrap);
-    const cfg = displayCopy(config, px, labelSize);
+  host.textContent = "";
+  host.dataset.rows = String(rows);
+  for (const rowPcs of split) {
+    const row = document.createElement("div");
+    row.className = "staff-row";
+    host.appendChild(row);
     let strip = null;
     if (opts.strip) {
+      const g = document.createElement("div");
+      g.className = "gutter";
       strip = document.createElement("div");
       strip.className = "strip" + (opts.strip === "drag" ? " drag" : "");
-      wrap.appendChild(strip);
+      g.appendChild(strip);
+      row.appendChild(g);
     }
-    const holder = document.createElement("div");
-    wrap.appendChild(holder);
-    CNBCollection.render(holder, cfg, { pitchClasses: pcs });
-    const container = holder.querySelector(".preview-container");
-    if (strip) drawStrip(strip, cfg, pcs, opts);
-    const cols = [...holder.querySelectorAll(".pc-col")];
-    cols.forEach((col, i) => {
-      const pc = pcs[i];
-      if (pc % 12 === opts.selected) col.classList.add("is-selected");
-      if (opts.covered && opts.covered.includes(pc % 12)) col.classList.add("is-covered");
+    const body = document.createElement("div");
+    body.className = "row-body";
+    if (opts.closeup) {
+      body.style.flex = "none";
+      body.style.width = slots * colMin + "px";
+      row.style.justifyContent = "center";
+    } else {
+      // Below the grid's minimum the row keeps its width, so the stretched
+      // staff stays as wide as the grid and the canvas scrolls (§6.1).
+      body.style.minWidth = slots * colMin + "px";
+    }
+    row.appendChild(body);
+    CNBCollection.render(body, cfg, { pitchClasses: rowPcs });
+    fluidRow(body, rowPcs.length, slots, colMin);
+    if (strip) drawStrip(strip, cfg, rowPcs, opts);
+    [...body.querySelectorAll(".pc-col")].forEach((col, i) => {
+      const pc = rowPcs[i] % 12;
+      if (pc === opts.selected) col.classList.add("is-selected");
+      if (opts.covered && opts.covered.includes(pc)) col.classList.add("is-covered");
     });
-    return container.getBoundingClientRect().width;
-  };
-
-  let px = opts.maxPx ?? 16;
-  const natural = draw(px);
-  if (natural > avail) {
-    px = px * avail / natural;
-    if (draw(px) > avail) draw(px * 0.97);
   }
-  return px;
+  return { rows, colMin, oneRowMin };
+}
+
+/** The canvas toolbar's Size control, with one step marked. */
+export function sizeControl(on = "medium") {
+  return `<span>Size</span><div class="segmented mini">${Object.keys(SIZES)
+    .map(k => `<button class="${k === on ? "on" : ""}">${k[0].toUpperCase() + k.slice(1)}</button>`).join("")}</div>`;
 }
 
 /** The label strip: one label per semitone, even pcs left, odd right. */

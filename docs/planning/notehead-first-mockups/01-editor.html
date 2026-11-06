@@ -39,7 +39,7 @@
           <div class="canvas-toolbar">
             <span>Showing crotchets</span>
             <span class="spacer"></span>
-            <span>Click a notehead to give it a look</span>
+            <span>Click a notehead to give it a look</span><span class="tool" id="size"></span>
           </div>
           <div class="canvas" id="canvas"></div>
         </section>
@@ -101,10 +101,11 @@
   </div>
 
   <script type="module">
-    import { defaultConfig, placeholders, renderStaff, NAMES, ready } from "./mockup.js";
+    import { defaultConfig, placeholders, renderStaff, sizeControl, NAMES, ready } from "./mockup.js";
     ready(async () => {
       const config = placeholders(defaultConfig());
       renderStaff(document.getElementById("canvas"), config, { strip: true });
+      document.getElementById("size").innerHTML = sizeControl("medium");
       const on = config.staff.semitonePattern;
       document.getElementById("pcs").innerHTML = NAMES
         .map((n, pc) => `<span class="pill${on.includes(pc) ? " on" : ""}">${n}</span>`).join("");

@@ -39,7 +39,7 @@
           <div class="canvas-toolbar">
             <span>Showing crotchets</span>
             <span class="spacer"></span>
-            <span>Drag the labels on the left to move the pitches against the staff</span>
+            <span>Drag the labels on the left to move the pitches against the staff</span><span class="tool" id="size"></span>
           </div>
           <div class="canvas" id="canvas"></div>
         </section>
@@ -75,10 +75,11 @@
   </div>
 
   <script type="module">
-    import { loadConfig, nudgeForm, renderStaff, NAMES, ready } from "./mockup.js";
+    import { loadConfig, nudgeForm, renderStaff, sizeControl, NAMES, ready } from "./mockup.js";
     ready(async () => {
       const { config, nudges } = nudgeForm(await loadConfig("cnb/assets/examples/gallery/twinline-compact.json"));
       renderStaff(document.getElementById("canvas"), config, { strip: "drag" });
+      document.getElementById("size").innerHTML = sizeControl("medium");
       document.getElementById("sps").value = config.staff.semitonesPerStaffSpace.toFixed(2);
 
       const pos = pc => pc + nudges[((pc % 12) + 12) % 12];

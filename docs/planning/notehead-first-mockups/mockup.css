@@ -33,7 +33,6 @@
 
   --font: system-ui, "Segoe UI", Roboto, sans-serif;
   --sidebar-w: 200px;
-  --sheet-w: 320px;
 }
 
 * { box-sizing: border-box; }
@@ -99,6 +98,7 @@ body {
 }
 .segmented button:last-child { border-right: 0; }
 .segmented button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.segmented.mini button { height: 26px; padding: 0 var(--space-2); font-size: 12px; }
 
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
@@ -144,7 +144,7 @@ body {
 .nav hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-3) 0; }
 
 .main { flex: 1; min-width: 0; padding: var(--space-5); }
-.main-inner { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.main-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
 
 .card {
   background: var(--surface); border: 1px solid var(--line);
@@ -167,23 +167,37 @@ body {
   font-size: 13px; color: var(--ink-2);
 }
 .canvas-toolbar .spacer { flex: 1; }
-.canvas { position: relative; padding: var(--space-3) var(--space-4) var(--space-4); overflow: hidden; }
-.staff-wrap { position: relative; display: flex; justify-content: center; }
-.staff-wrap .cnb-label-card { box-shadow: none !important; border-color: var(--line) !important; }
+.canvas-toolbar .tool { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3); }
+.canvas { position: relative; padding: var(--space-3) var(--space-4) var(--space-4); overflow-x: auto; }
 
-/* Selected / covered columns (the card's .pc-col). */
+/* One row of the canvas: the fixed 14th column, then the fluid grid. */
+.staff-row { display: flex; align-items: stretch; }
+.staff-row + .staff-row { margin-top: var(--space-5); }
+.row-body { flex: 1; min-width: 0; }
+.row-body .preview-container { width: 100%; }
+.gutter {
+  flex: none; width: 72px; margin-right: var(--space-2);
+  background: var(--surface-2); border-right: 1px solid var(--line); border-radius: var(--radius-s) 0 0 var(--radius-s);
+}
+
+/* Plain pitch labels on the canvas (the chips stay the test pages' default). */
+.staff-row .cnb-label-card {
+  background: transparent !important; border-color: transparent !important; box-shadow: none !important;
+}
+
+/* Selected / covered columns (the card's .pc-col), full height. */
 .pc-col { position: relative; border-radius: var(--radius-s); }
-.pc-col.is-selected { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(47,91,211,.05); }
+.pc-col.is-selected { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(47,91,211,.06); }
 .pc-col.is-covered { background: rgba(47,91,211,.06); }
 
 /* Label strip: two staggered columns, even pcs left. */
-.strip { position: relative; flex: none; width: 72px; margin-right: var(--space-2); }
+.strip { position: relative; width: 100%; }
 .strip .lab {
   position: absolute; transform: translateY(-50%);
   width: 32px; height: 18px; text-align: center; white-space: nowrap;
   font: 400 13px/18px Oswald, var(--font); color: var(--ink-2);
 }
-.strip .lab.even { left: 0; }
+.strip .lab.even { left: 4px; }
 .strip .lab.odd { left: 36px; }
 .strip.drag .lab {
   height: 20px; line-height: 18px; color: var(--ink); font-weight: 500;
@@ -192,28 +206,11 @@ body {
 }
 .strip.drag .lab.mid { border-color: var(--accent); color: var(--accent); }
 .strip .grip {
-  position: absolute; left: -6px; right: -14px; height: 2px; margin-top: -1px;
+  position: absolute; left: 0; right: -10px; height: 2px; margin-top: -1px;
   background: var(--accent); opacity: .6; border-radius: 1px;
 }
 
-/* ── Side sheet (notehead panel) ─────────────────────────────────────── */
-.sheet {
-  position: sticky; top: 56px; flex: 0 0 var(--sheet-w); align-self: stretch;
-  min-height: calc(100vh - 56px);
-  background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-2);
-}
-.sheet-head {
-  display: flex; align-items: center; gap: var(--space-2);
-  height: 52px; padding: 0 var(--space-4); border-bottom: 1px solid var(--line);
-}
-.sheet-head h2 { margin: 0; font-size: 16px; }
-.sheet-head .spacer { flex: 1; }
-.sheet-section { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
-.sheet-section:last-child { border-bottom: 0; }
-.sheet-section .label { font-size: 13px; font-weight: 600; margin-bottom: var(--space-2); display: flex; justify-content: space-between; }
-.sheet-section .label .val { font-weight: 400; color: var(--ink-2); }
-.closeup { display: flex; justify-content: center; background: var(--surface); padding: var(--space-2) 0 0; }
-
+/* ── Notehead panel ──────────────────────────────────────────────────── */
 .shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-2); }
 .shape {
   height: 52px; display: flex; align-items: center; justify-content: center;

@@ -1,8 +1,8 @@
 # Notehead-first editor: design
 
 **Date:** 2026-11-06
-**Status:** Design for the operator's approval (session 19). No code
-changes. The implementation sessions are planned once this design is
+**Status:** Design for the operator's approval (session 19; the canvas
+revised in session 20, §6.1). No code changes. The implementation sessions are planned once this design is
 approved.
 **Why:** On 2026-11-05 the operator found the configuration screen
 "extremely complicated and daunting", and on 2026-11-06 said it "looks like
@@ -33,6 +33,10 @@ HTML drawn with the real preview modules. They are shown in §10.
    hollow, size), its nudge and its sideways offset. Every control edits
    this table. Every config write is a pure function of the table and the
    staff.
+5. **The noteheads keep their size; the window changes the spacing.** The
+   canvas never scales with the window, and the octave never scrolls
+   sideways at the supported widths: spare width spreads the columns, and
+   a narrow window gets two rows (§6.1).
 
 ---
 
@@ -87,15 +91,15 @@ The panel holds:
 | **Colour** | A row of swatches of the colours already in use, then **New colour…**, which opens a colour picker. Each colour has an optional colour-blind-safe alternative, set once for that colour. A **Start from a palette** menu fills all twelve colours from a preset (today's palette list). | `palette.colors` and `palette.cbSafeColors`, one entry per pitch class (§5.3) |
 | **Fill** | Solid or Hollow, a two-button toggle | inferred notehead rules, `apply.hollow` |
 | **Shape** | Thumbnails of the shapes in the config, then the built-in shapes, then **Import from SVG…** (today's importer) | inferred rules, `apply.shape`. A built-in shape is copied into `config.shapes` when first chosen. |
-| **Size** | Height and width in semitones (0.25 to 4), with an aspect-ratio lock that is on by default. The shape's own size is the reset value. | inferred rules, `apply.heightSemis` / `apply.widthSemis` (the fields session 21 adds) |
+| **Size** | Height and width in semitones (0.25 to 4), with an aspect-ratio lock that is on by default. The shape's own size is the reset value. | inferred rules, `apply.heightSemis` / `apply.widthSemis` (the fields session 22 adds) |
 | **Pitch class** | "This notehead is: C ▾", which renames the notehead (§4.1) | `staff`, `ledgers`, the look table (§4.1) |
 | **Nudge** | A slider from −1 to +1 semitone with a number field, 0 in the middle (§3) | `pitchAxis` (§3.2) |
 | **Side step** | Shown only when the nudge makes this notehead share a spot with a neighbour: a horizontal offset in staff spaces, so the two stay readable | inferred rules, `apply.xOffsetStaffSpaces` |
 
 The panel has three columns: on the left, the selected notehead drawn
-large with its two neighbours on a short piece of staff, so a change is
-seen at reading size and in context (§6), with the pitch-class control
-under it; in the middle, the look (colour, fill, shape, size); on the
+alone at the Large size on its piece of staff, so a change is seen up
+close while the canvas above shows it in context (§6), with the
+pitch-class control under it; in the middle, the look (colour, fill, shape, size); on the
 right, the nudge and **Give this look to**. The inferred rules (§5.4) are
 listed under the panel.
 
@@ -373,20 +377,123 @@ Each section shows the staff it needs:
 | Section | Preview |
 |---|---|
 | Staff | the full staff canvas (the 13 noteheads on the new staff) |
-| Noteheads | the full canvas, with the columns of a hovered rule tinted. The notehead panel adds a large drawing of the selected notehead with its two neighbours on a short piece of staff. |
+| Noteheads | the full canvas, with the columns of a hovered rule tinted. The notehead panel adds the selected notehead alone at the Large size. |
 | Pitch | the full canvas with the label strip in drag mode and the middle of the staff marked |
 | Ledger lines | the full canvas, with the columns that show ledger lines highlighted and every candidate ledger spot drawn faintly |
 | Clef | a partial staff: the clef gutter and the first three columns |
 | Key signature | a partial staff: the signature gutter with the selected key, and the first three columns |
 | Advanced, Export | the canvas only: they add nothing to the staff to show |
 
-The canvas uses the real modules (`CNBCollection` and below). It **fits
-the width it has**: the editor renders it with `display.pxPerSemi` scaled
-so that the 13 columns fit (a preview-only value, set on a copy of the
-config and never saved). At 1440 and 1280 px the full row shows with no
-scrolling. Below a minimum size it scrolls horizontally, with a fade at the
-cut edge, so missing columns are visible as missing. The duration and key
-selectors (today's preview controls) sit in a small toolbar on the canvas.
+The duration and key selectors (today's preview controls) sit in a small
+toolbar on the canvas.
+
+### 6.1 The canvas reflows; it never scales
+
+*(Revised in session 20. Session 19 scaled `display.pxPerSemi` so the 13
+columns always fitted. The operator asked instead that the octave never
+scroll sideways and that the noteheads keep their size as the window
+changes, 2026-11-06.)*
+
+**Fixed size.** The canvas draws at a fixed number of pixels per semitone,
+whatever the window width: the config's own saved `display.pxPerSemi`,
+the preview-only setting that already exists for this and is never
+exported. The **Size** control in the canvas toolbar sets it, in three
+steps: Small (9 px per semitone), Medium (11) and Large (16). A saved
+value that is none of these shows as "Custom (N px)" until a step is
+chosen. Because the size is saved, a file opens at the size its designer
+chose, and the standalone test pages and the gallery draw it at that size
+too.
+
+- **Large is 16** because that is what `createDefault()` and every config
+  in the repository are saved at, so existing files open at a named step,
+  and loading never rewrites them (§0). At Large both the default config
+  and Kite are two rows at 1440 and at 1280 px. Kite's two rows need
+  996 px, just inside the 998 px the canvas has at 1280.
+- **Medium is the editor's starting size**, written by its new-notation
+  action, not by `createDefault()`, so the schema default and the preview
+  baselines are untouched. It is the largest size at which the default
+  config's octave fits on one row in a 1440 px window. At Medium the oval
+  notehead is 30 px tall and Kite's 44 px, larger than printed music at
+  reading distance, so nothing is too small to judge.
+- Choosing a step changes only `display.pxPerSemi`, so the exported `.ly`
+  does not change.
+
+The canvas renders a display copy of the config that adds only the
+editor's label style (§6.2), and never writes that back.
+
+**A table of columns.** The octave is 13 equal pitch columns, C to C′.
+Each column is at least as wide as the widest column the config needs (its
+ledger width, `CNBCard.columnWidth`, plus 2 px either side), and any spare
+width is shared equally among them, so the notes spread out on a wide
+window and close up on a narrow one. Each column's drawing (noteheads,
+stem, ledger lines) is centred in it. This is a CSS grid,
+`repeat(13, minmax(<widest column>, 1fr))`. A fixed **14th column** on the
+left holds the label strip (§4.2) and, when they are on, the clef and
+key-signature gutters.
+
+**The staff lines.** There are two ways to draw lines that run across
+columns of changing width:
+
+| | One staff SVG per row, stretched | A staff slice in each column |
+|---|---|---|
+| How | The row's background SVG is `width: 100%`, and each line runs from `x1="0"` to `x2="100%"`. A horizontal line stretches without its stroke getting thicker, because the SVG has no viewBox to scale. | Each column draws its own piece of every line, full column width. |
+| Where columns meet | No join: each line is one element. | Columns meet at fractional pixels, so both pieces are anti-aliased at the join and show a faint lighter tick at every column edge, unless each piece overlaps its neighbour. |
+| Dashed and dotted lines | One dash pattern along the whole row. | The pattern restarts in every column, so the dashes break at each edge. |
+| Change to today's code | Small: the background exists already and is sized to the columns' total. It becomes `100%`. | A staff renderer inside every card. |
+
+**Choice: one staff SVG per row, stretched.** It has no seams, keeps
+dashed lines whole, and is the smaller change.
+
+**One row or two.** When the 13 columns and the 14th do not fit, the
+canvas shows two rows, **C to F♯** and **G to C′**, like two systems of
+music. Each row starts with its own label strip and gutters. Both rows use
+the same seven-column grid, so their columns line up, and the second row's
+staff ends after C′, leaving the seventh cell empty. There is 24 px
+between the rows.
+
+Who decides, and how:
+
+- The **page code** (`preview-display.js`) watches the canvas width
+  (`ResizeObserver`) and picks one row when the width is at least the
+  one-row minimum, otherwise two. It redraws only when the row count
+  changes. Between those points the browser reflows the grid with no
+  redraw.
+- The **rendering modules stay pure.** `CNBCollection.render` takes two
+  new options: `rows` (1 or 2) and `fluid` (true for the grid columns and
+  the stretched staff). `CNBCollection.minRowWidth(config, options)`
+  reports the narrowest width a row can take. CSS alone cannot make the
+  choice, because the minimum depends on the config's shapes.
+
+**At Medium (11 px per semitone)**, the one-row minimum is about 1,110 px
+for the default config and 1,270 px for Kite 4-369. The canvas has about
+1,160 px at a 1440 px window and about 1,000 px at 1280. So the default
+config is one row at 1440 and two at 1280, and Kite is two rows at both,
+or one row at 1440 with the Size set to Small.
+
+**Below the two-row minimum** (seven columns and the 14th, about 640 px
+for the default config and 720 px for Kite at Medium, so a window of
+roughly 900 to 1,000 px), the canvas scrolls sideways inside its own card,
+with a fade at the cut edge, and the toolbar suggests a smaller Size. The
+page itself never scrolls sideways. The editor supports windows from
+1024 px, where the reference configs (the default, Kite 4-369 and
+45deg-369) fit two rows at Medium.
+
+### 6.2 Looking better
+
+Measured against the screenshots:
+
+- **Equal columns.** All 13 are one width, so the octave reads as a
+  regular row, not as columns sized by their ledger lines.
+- **Plain pitch labels.** The column labels above and below the staff are
+  plain grey text in Oswald, without the boxed chips. The editor's
+  stylesheet sets this for the canvas. The chips stay the default for the
+  test pages.
+- **Full-height marks.** Selection is a 2 px accent outline and a faint
+  tint over the whole column, labels included. Hover is the tint alone.
+- **A quiet gutter.** The 14th column has the inset background
+  (`--surface-2`) and a hairline on its right, so the label strip reads as
+  a guide, not as notation.
+- **Space between rows.** 24 px, with the second row's labels at its top.
 
 ---
 
@@ -414,12 +521,12 @@ selectors (today's preview controls) sit in a small toolbar on the canvas.
 - **Section list** (left, 200 px): the sections in the order a designer
   works through them. Advanced and Export sit below a divider.
 - **Canvas and panel** (centre): the canvas is on top and the current
-  section's panel is below it, in a column of at most 1040 px. Selecting a
+  section's panel is below it, in a column of at most 1200 px. Selecting a
   notehead puts the notehead panel in the panel's place (§2).
 
 There is one column of content, not eleven panels of different widths.
-Nothing is wider than the window at 1280 px, and in the mock-ups the 13
-columns fit without scrolling at both 1440 and 1280 px.
+Nothing is wider than the window at 1280 px. The canvas shows the octave
+on one row or two, whichever fits, with no sideways scrolling (§6.1).
 
 ---
 
@@ -520,7 +627,7 @@ The raw JSON is not on the main page.
 | One validation warning repeated under nearly every panel | One checks indicator, one list (§8.5) |
 | Repeated "Preview-only" paragraphs | A badge and one sentence (§8.6) |
 | Raw config JSON on the page | Advanced › View file (JSON), collapsed (§8.7) |
-| A preview cut off at 1440 px with no sign of the missing columns | The canvas fits the width, and below the minimum it fades at the cut edge (§6) |
+| A preview cut off at 1440 px with no sign of the missing columns | The canvas reflows to one row or two at a fixed size, and only below the two-row minimum does it scroll, with a fade at the cut edge (§6.1) |
 | 11 px grey labels on unstyled browser controls | 12 px minimum, `--ink-2` minimum, every control styled (§8.2, §8.3) |
 
 ---
@@ -529,7 +636,7 @@ The raw JSON is not on the main page.
 
 | Today | Becomes | Module |
 |---|---|---|
-| Preview (Module 19) | the staff canvas, with its toolbar | `preview-display.js` **kept**, restyled. The range control moves to Advanced. |
+| Preview (Module 19) | the staff canvas, with its toolbar | `preview-display.js` **kept**, restyled. It gains the Size control and picks one row or two (§6.1). The range control moves to Advanced. |
 | Save / load JSON (17) | **Open** / **Save** in the top bar. Its validation output moves to the checks list. | `config-io.js` **kept** (its file logic). Its panel is **retired**. |
 | Export LilyPond (18) | **Export for LilyPond** in the top bar, plus the Export section | `config-export.js` **kept**. Its panel is folded into the Export section. |
 | Import notehead SVG (16) | **Import from SVG…** in the shape picker | `svg-importer.js` **kept**, opened from the notehead panel |
@@ -568,16 +675,56 @@ small version of the §5.1 inference running on those configs, so the rules
 shown are what the algorithm infers. The controls are static pictures.
 `node docs/planning/notehead-first-mockups/screenshot.mjs` retakes the
 screenshots, after `npm install` and with a Chromium as the UAT drivers
-use, and fails on a page error or horizontal overflow. They were judged
-against this design over three rounds. The fixes were: a quieter label
-strip, the "middle" marker no longer covering a label, stronger nudge
-ranges, unwrapped controls, a corrected example rule, and the notehead
-panel docked under the canvas (§2).
+use, and fails on a page error or horizontal overflow. In session 19 they
+were judged against this design over three rounds. The fixes were: a
+quieter label strip, the "middle" marker no longer covering a label,
+stronger nudge ranges, unwrapped controls, a corrected example rule, and
+the notehead panel docked under the canvas (§2).
+
+**The reflowing canvas (session 20).** The canvas is drawn as §6.1 says.
+`CNBCollection` renders each row, and the mock-up then applies what the
+proposed `fluid` option would do: an equal-column grid no narrower than
+the widest column, each drawing centred, and the staff SVG stretched to
+the row with its lines drawn to 100%. The row count comes from the
+canvas width, as the page code would choose it. Every row has its own
+label strip in the 14th column. The numbers match §6.1: at Medium, one
+row needs 1,112 px for the default config and 1,268 px for Kite, and the
+canvas has 1,158 px at 1440 and 998 px at 1280.
+
+| Screenshot | Config, Size | Rows at 1440 | Rows at 1280 |
+|---|---|---|---|
+| 1. Staff | default, Medium | **one row** | **two rows** |
+| 2. A notehead selected | Kite, Medium | two rows | two rows |
+| 3. Pitch and nudges | Twinline, Medium | two rows | two rows |
+| 4. Advanced | Kite, Small | **one row** | **two rows** |
+
+So both the default config and Kite appear on one row and on two rows.
+Twinline is two rows at both widths at Medium, because the side step
+widens the shared notes' columns. The mock-ups draw each config at the
+Size in the table, as if the user had chosen it. The files themselves are
+saved at 16 px per semitone, Large (§6.1).
+
+Below the two-row minimum, each row keeps the grid's minimum width, so
+the canvas scrolls sideways inside its card, with the staff running the
+full width of the scrolled row. A check at an 880 px window, with the
+default config at Medium, measured two rows: the first row's staff SVG
+and grid both 560 px wide, the second row's staff 480 px (six of its seven
+columns, ending after C′ as designed), the canvas scrolling, and the page
+itself not scrolling sideways.
+
+Judging the session 20 screenshots changed one thing. The notehead
+panel's close-up first showed the selected notehead between its two
+neighbours. At a fixed size the neighbours no longer fit its 206 px, and
+their clipped edges looked like drawing errors, so the close-up now shows
+the selected notehead alone at Large (§2).
 
 ### 1. Staff, with the 13 placeholder noteheads
 
 The default 4-8 staff with every notehead at the default look, and the
 Staff section's panel. The label strip on the left is in its quiet form.
+At 1440 px the octave is **one row**, with the spare width spread between
+the columns. At 1280 px it is **two rows**, C to F♯ and G to C′, with the
+noteheads the same size as at 1440.
 
 ![Mock-up 1 at 1440 px](notehead-first-mockups/shots/01-editor-1440.png)
 
@@ -585,8 +732,10 @@ Staff section's panel. The label strip on the left is in its quiet form.
 
 ### 2. A notehead selected (Kite 4-369)
 
-C♯ is selected: its column is outlined, and the notehead panel is docked
-under the canvas. The hovered Shape rule tints the six columns it covers.
+C♯ is selected: its column is outlined full height, and the notehead
+panel is docked under the canvas, with C♯ drawn alone at Large. Kite at
+Medium is two rows at both widths. The hovered Shape rule tints the six
+columns it covers, across both rows.
 The rule list underneath is what the inference produces for Kite: kite
 down with kite up every 4 semitones, hollow every 2, colours every 3.
 
@@ -598,8 +747,8 @@ down with kite up every 4 semitones, hollow every 2, colours every 3.
 
 Twinline drawn from nudges (stride 12, staff spacing 3.43): the five
 shared pairs sit level on the real preview, which confirms §3.3. The label
-strip is in drag mode, with shared labels side by side and the middle of
-the staff marked at G. Each nudge bar shades how far that note can go
+strip is in drag mode in each of the two rows, with shared labels side by
+side and the middle of the staff marked at G. Each nudge bar shades how far that note can go
 before it would pass a neighbour.
 
 ![Mock-up 3 at 1440 px](notehead-first-mockups/shots/03-pitch-1440.png)
@@ -608,7 +757,9 @@ before it would pass a neighbour.
 
 ### 4. Advanced, and the checks list
 
-The single checks list is open from the top bar. Advanced holds the
+The Size is set to Small, which puts Kite on **one row** at 1440 px; at
+1280 px it is **two rows**. The single checks list is open from the top
+bar. Advanced holds the
 inferred rules, the kept rules for particular durations or keys with their
 export badges, and the rarely needed settings, collapsed, including View
 file (JSON).
@@ -628,9 +779,15 @@ file (JSON).
 - **Hit targets.** Clicking a notehead needs the card to mark each column
   with its pitch class (a `data-pc` attribute). That is a small change to
   `cnb-card.js`, pinned by the preview baseline.
-- **Fit-to-width** changes `pxPerSemi` on a copy of the config, so the
-  canvas size differs from the saved `display.pxPerSemi`. The saved value
-  keeps its meaning for the standalone test pages.
+- **Medium and Small make the test pages smaller too.** The Size is the
+  saved `display.pxPerSemi`, so a file saved at Medium draws at 11 px per
+  semitone on the standalone test pages and in the gallery as well. That
+  is intended: one size, wherever the file is previewed.
+- **The fixed layout must not move.** The `fluid` and `rows` options are
+  off by default, and with them off `CNBCollection` runs today's code
+  unchanged. The preview baseline (`cnb/fixtures/preview-baseline.json`)
+  pins that, and new tests pin the fluid layout: the minimum row width, the
+  row split, and the staff lines drawn to 100%.
 
 ---
 
@@ -640,30 +797,33 @@ For the operator to approve. Once it is approved, these sessions go into
 `session-plan.md`. Nothing is released until the new UI is stable
 (operator, 2026-11-06), so the only release is the last session.
 
-### Sessions 20 and 21 stay first, as planned
+### Sessions 20 to 22 come first, as planned
 
-- **Session 20, the colour picker stays open,** is unchanged and runs
-  first. The operator meets the bug today. Two of its four editors stay as
-  panels (staff, key signature), the rule editor lives on in Advanced, and
-  the new colour row (session 26) uses the same wiring: `input` updates
-  live and `change` redraws.
-- **Session 21, each notehead has its own height and width,** is
+- **Session 20, this design revision** (the canvas reflows instead of
+  scaling, §6.1), was inserted before the others on 2026-11-06, and the
+  program below is numbered from 23.
+- **Session 21, the colour picker stays open,** is unchanged. The operator
+  meets the bug today. Two of its four editors stay as panels (staff, key
+  signature), the rule editor lives on in Advanced, and the new colour row
+  (session 27) uses the same wiring: `input` updates live and `change`
+  redraws.
+- **Session 22, each notehead has its own height and width,** is
   unchanged. It adds the `heightSemis` / `widthSemis` fields, preview and
   export that the notehead panel's Size control drives, so it must come
-  before session 26. Its rule-editor controls stay useful in Advanced.
+  before session 27. Its rule-editor controls stay useful in Advanced.
 
 ### The implementation sessions
 
 | Session | Work | Uses | Release |
 |---|---|---|---|
-| **22. The look table and rule inference** | `cnb/ui/notehead-inference.js`, pure functions: the look table from a config, the §5.1 inference, and the write back to rules and palette, keeping scoped rules (§5.5). Tests in its test file: for every gallery and fixture config, writing back its own look table resolves to the same looks for every pitch class, duration and key, and the Kite, 45deg-369 and default exports stay byte-identical. | — | none |
-| **23. Pitch, nudges and staff spacing** | `cnb/ui/pitch-model.js`, pure functions: moving the pitch (§3.1), nudges to and from `pitchAxis` (§3.2–3.3) with their limits, renaming (§4.1), and the ±1 test (§3.5). The staff spacing accepts a decimal. An engine render of Twinline in nudge form confirms it engraves as the stride-7 fixture does (§11). | — | none |
-| **24. The new page** | The shell (top bar, section list, canvas, one panel at a time), the design tokens and type (§8.1–8.3), the checks indicator as the only place validation shows (§8.5), Open / Save / Export in the top bar, Advanced with View file (JSON), and the canvas fitted to width with clickable columns. The existing editors are mounted in their sections or in Advanced. The UAT drivers follow the moved panels, and a new driver screenshots the app at 1440 and 1280 px. | 20 | none |
-| **25. The panels speak to a designer** | The kept panels restyled and reworded (§8.4, §8.6): Staff, Ledger lines with Automatic or My own rules (§1), Clef, Key signature and Export, each with its preview (§6). Preview-only badges replace the repeated paragraphs. | 24 | none |
-| **26. The notehead panel** | Click and Shift-click selection, colour, fill, shape (with the built-in shapes and Import from SVG), size, side step and Give this look to (§2), written through session 22's inference. The rule list under the canvas, with hover tint (§5.4). | 21, 22, 24 | none |
-| **27. Pitch** | The label strip in both modes, renaming a notehead, and the Pitch section: middle of the staff, staff spacing, nudges (§3, §4), with the custom-map fallback (§3.5). | 23, 24 | none |
-| **28. The UI is stable** | The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the new UI, and the rough edges found are fixed. README text and pictures are updated, and the full UAT runs. The operator declares the UI stable, which is the condition for session 29. | 22–27 | none |
-| **29. Release 1.1.0** *(release: 1.1.0)* | Takes over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`, renamed to 1.1.0, and adds the new editor to it. The tag deploys the site for the first time, and the session confirms the site is up and the README link works. | 28 | **1.1.0, the site's first deploy** |
+| **23. The look table and rule inference** | `cnb/ui/notehead-inference.js`, pure functions: the look table from a config, the §5.1 inference, and the write back to rules and palette, keeping scoped rules (§5.5). Tests in its test file: for every gallery and fixture config, writing back its own look table resolves to the same looks for every pitch class, duration and key, and the Kite, 45deg-369 and default exports stay byte-identical. | — | none |
+| **24. Pitch, nudges and staff spacing** | `cnb/ui/pitch-model.js`, pure functions: moving the pitch (§3.1), nudges to and from `pitchAxis` (§3.2–3.3) with their limits, renaming (§4.1), and the ±1 test (§3.5). The staff spacing accepts a decimal. An engine render of Twinline in nudge form confirms it engraves as the stride-7 fixture does (§11). | — | none |
+| **25. The new page** | The shell (top bar, section list, canvas, one panel at a time), the design tokens and type (§8.1–8.3), the checks indicator as the only place validation shows (§8.5), Open / Save / Export in the top bar, and Advanced with View file (JSON). **The reflowing canvas (§6.1):** in `cnb/src`, `cnb-collection.js` gains the `fluid` and `rows` options and `minRowWidth`, `cnb-staff.js` draws the lines to `100%` in fluid mode, and `cnb-card.js` marks each column with `data-pc` and centres its drawing in a column wider than itself. In `cnb/ui`, `preview-display.js` gains the Size control and picks the row count. With both options off, today's layout is unchanged and the preview baseline pins it byte-identical. New tests in each changed module's test file pin the fluid layout. The existing editors are mounted in their sections or in Advanced. The UAT drivers follow the moved panels, and a new driver screenshots the app at 1440 and 1280 px. | 21 | none |
+| **26. The panels speak to a designer** | The kept panels restyled and reworded (§8.4, §8.6): Staff, Ledger lines with Automatic or My own rules (§1), Clef, Key signature and Export, each with its preview (§6). Preview-only badges replace the repeated paragraphs. | 25 | none |
+| **27. The notehead panel** | Click and Shift-click selection, colour, fill, shape (with the built-in shapes and Import from SVG), size, side step and Give this look to (§2), written through session 23's inference. The rule list under the canvas, with hover tint (§5.4). | 22, 23, 25 | none |
+| **28. Pitch** | The label strip in both modes, in each row's 14th column, renaming a notehead, and the Pitch section: middle of the staff, staff spacing, nudges (§3, §4), with the custom-map fallback (§3.5). | 24, 25 | none |
+| **29. The UI is stable** | The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the new UI, and the rough edges found are fixed. README text and pictures are updated, and the full UAT runs. The operator declares the UI stable, which is the condition for session 30. | 23–28 | none |
+| **30. Release 1.1.0** *(release: 1.1.0)* | Takes over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`, renamed to 1.1.0, and adds the new editor to it. The tag deploys the site for the first time, and the session confirms the site is up and the README link works. | 29 | **1.1.0, the site's first deploy** |
 
 **Version.** 1.1.0, a minor release. The editor is new, but the config
 schema is unchanged apart from the decimal staff spacing (§3.4), and every
@@ -671,10 +831,10 @@ existing file opens, previews and exports as before (§9). The withdrawn
 1.0.2 content (the online app, the `file://` notice, 45deg-369) is folded
 into it.
 
-**Screenshot checks.** Every UI session (24–28) ends by taking the app's
-screenshots at 1440 and 1280 px with session 24's driver, and judging them
+**Screenshot checks.** Every UI session (25–29) ends by taking the app's
+screenshots at 1440 and 1280 px with session 25's driver, and judging them
 against the approved mock-ups in §10: the layout, type, spacing, wording,
-and no horizontal overflow. The judgement and the screenshots are recorded
+the row count each width should give (§6.1), and no horizontal overflow. The judgement and the screenshots are recorded
 in `docs/uat-status.md`. The mock-ups are the reference for how it looks,
 not a pixel target. Where an implementation session finds a better
 answer, it changes the mock-up in the same session, so the two stay in

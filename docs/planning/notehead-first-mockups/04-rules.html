@@ -61,7 +61,7 @@
         <section class="card">
           <div class="canvas-toolbar">
             <span>Showing crotchets</span>
-            <span class="spacer"></span>
+            <span class="spacer"></span><span class="tool" id="size"></span>
           </div>
           <div class="canvas" id="canvas"></div>
         </section>
@@ -107,11 +107,12 @@
   </div>
 
   <script type="module">
-    import { loadConfig, renderStaff, renderRules, ready } from "./mockup.js";
+    import { loadConfig, renderStaff, sizeControl, SIZES, renderRules, ready } from "./mockup.js";
     ready(async () => {
       const config = await loadConfig("cnb/fixtures/kite-4-369-config.json");
       renderRules(document.getElementById("rules"), config);
-      renderStaff(document.getElementById("canvas"), config, { strip: true });
+      renderStaff(document.getElementById("canvas"), config, { strip: true, px: SIZES.small });
+      document.getElementById("size").innerHTML = sizeControl("small");
     });
   </script>
 </body>
