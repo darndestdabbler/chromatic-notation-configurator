@@ -30,7 +30,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 16 | A second reference notation, 45deg-369 | no | 2026-11-05 |
 | 17 | The preview draws an imported notehead at its own height at once | no | 2026-11-06 |
 | 18 | The preview shows what repeat mode engraves | no | 2026-11-06 |
-| 19 | Design: a notehead-first editor | — | not declared |
+| 19 | Design: a notehead-first editor | no | 2026-11-06 |
 | 20 | The colour picker stays open | — | not declared |
 | 21 | Each notehead has its own height and width | — | not declared |
 
@@ -170,3 +170,9 @@ Make the preview show what repeat mode engraves, and say why no key signature dr
 **Amended after acceptance:**
 
 - 2026-11-06 — step 'repeat-counts-text': its files: The common-props test page's intro describes the old repeat-mode preview (single base row); it changes with renderPreview (claude-code (anthropic, claude-opus-5-5))
+
+### Session 19 — Design: a notehead-first editor
+
+**Releasable: no.**
+
+Write the design for a notehead-first editor, docs/planning/notehead-first-editor-design.md, for the operator's approval, and build static HTML mock-ups of its main screens under docs/planning/notehead-first-mockups/. The design covers: the flow (the staff editor stays, then 13 placeholder noteheads C to C' with default-proximity ledgers, and a way to replace the ledger rule); what clicking a notehead sets (colour, solid/hollow, shape, size, pitch class, pitch-axis nudge); pitch (staff.midpoint, snapped to semitones) and pitch axis (a nudge of -1 to +1 semitone per pitch class, exported through today's pitch-axis machinery with octave stride 12, fractional positions and axis units per staff space equal to the staff's semitones per staff space, never reordering notes), including Twinline's fit and configs that need more than +/-1; assigning a pitch class by naming a clicked notehead or by dragging labels in a staggered two-column strip, and whether a nudge travels with its pitch class or its spot in each; a rule-inference algorithm (period 1, 2, 3, 4, 6 or 12, the accidentals, or explicit pitch classes, per colour, hollowness and shape) with the inferred rules shown and the no-pattern case; previews per panel; what existing panels and modules it retires, hides behind an advanced view or keeps, and what happens to configs the inference cannot reproduce; and the look (layout, type, design tokens, wording for a notation designer, validation speaking once, JSON and advanced settings out of the way), answering each finding of the screenshot review. The mock-ups use the real cnb/src preview modules where they can, are screenshotted at 1440 and 1280 px by a small Playwright script, judged against the design and revised until they hold up, and the screenshots are committed. The document ends with a proposed program of implementation sessions and release versions whose first release is the site's first deploy, once the new UI is stable, with every UI session ending in screenshot checks at 1440 and 1280 px against the approved mock-ups.
