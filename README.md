@@ -204,12 +204,17 @@ engine README for engine installation, options (e.g.
 
 ### A worked example, checked in
 
-The Kite 4-369 system reproduction used for release-gate verification is
-in this repo:
+Two reference notations are checked in. Both use the 3-6-9 staff with 3
+semitones per staff space, 4-semitone noteheads, a three-colour cycle and
+solid and hollow heads in alternation. Any config exports headlessly with
+`node cnb/fixtures/export-config.mjs <config.json> [out.ly]`.
+
+**Kite 4-369, the golden one.** This is the system reproduction used for
+release-gate verification:
 
 - `cnb/fixtures/kite-4-369-config.json` — the complete design as a
   loadable config
-- `cnb/fixtures/export-kite-4-369.mjs` — headless export driver
+- `cnb/fixtures/export-kite-4-369.mjs` — its export driver
   (`node cnb/fixtures/export-kite-4-369.mjs out.ly`)
 - `cnb/fixtures/joy-to-the-world-configurator.ly` — a score rendering the
   engine repo's golden music through the exported config
@@ -220,6 +225,20 @@ in this repo:
 Rendered through the engine, this export passes the engine's golden
 assertion suite (74/74) and is pixel-identical to the engine repo's
 `joy-to-the-world` golden baseline.
+
+**45deg-369, the reference alternative.** It is gentler than Kite:
+ellipses tilted 45°, with stems on the head's vertical centre line at the
+edge of the hole, so a stem never crosses the hollow.
+
+- `cnb/fixtures/45deg.svg` — the notehead, with its hollow and stem
+  anchors, from the Music Glyph Toolkit
+- `cnb/fixtures/45deg-369-config.json` — the complete design as a
+  loadable config
+- `cnb/fixtures/45deg-369-export-baseline.ly` — its export; tests keep it
+  byte-identical
+- `cnb/fixtures/joy-to-the-world-45deg.ly` — the same score through this
+  export; a test engraves it with the engine (1.2.0 or later) when
+  `lilypond` is on `PATH`
 
 ## Designing a Notation System
 

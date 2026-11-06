@@ -198,6 +198,29 @@
       "what": "step 'file-protocol-notice': its checks",
       "reason": "node cnb/tests/run-tests.js fails identically on the unchanged tree: its engine-backed gallery size check (check-gallery-examples) measures noteheads at 7/4 the preview size against the sibling engine repo, which changed on 2026-11-05 (its sessions 22-23). That failure does not describe this step; the markup check does, and the whole suite still runs as the run of record.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T20:57:43.076000-05:00",
+      "task": "Make 45deg-369 a checked-in, test-gated reference notation beside Kite 4-369, and plan the follow-on work from the operator's 2026-11-05 Configurator feedback. The operator handed over cnb/fixtures/45deg-369-config.json and 45deg-369-from-configurator.ly made in the app; on the operator's instruction this session corrects the config where it departs from the design (the shape is imported from the committed cnb/fixtures/45deg.svg and named 45deg instead of draft-notehead, the unused crotchet-minim shape is removed, and the meta block gets the 45deg-369 name, suffix, label and footnote instead of the default 4-8 system's), keeping the staff, the operator's empty ledger templates, the #56b3e9 blue, the keys section and the repeat mode as the operator made them. The hand-exported .ly is superseded by an export from the corrected config and is not committed. The one-fixture export driver becomes cnb/fixtures/export-config.mjs <config.json> [out.ly], with export-kite-4-369.mjs kept as a wrapper the umbrella pipeline names; 45deg-369-export-baseline.ly is pinned byte-identically as Kite's is; the importer tests prove the fixture imports with the toolkit's anchors (up (0, 1.649), down (0, -1.650), minim pair equal to crotchet pair) read from the SVG's rects and that the export divides them by 3; the config joins the preview baseline probes; joy-to-the-world-45deg.ly engraves through the engine (1.2.0 or later) as a test that skips with a reason when lilypond or the engine is absent. README, CHANGELOG 1.0.2 and version.json 1.0.2 follow. Finally, sessions 18-21 are added to the session plan after the 1.0.2 release: the notehead-height preview bug, a preview of repeated noteheads and multinote padding, a 1.1.0 release, and a design session for a notehead-first editor with rule inference.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T20:58:34.126000-05:00",
+      "what": "step 'correct-config': its checks",
+      "reason": "The shape cannot be named 45deg: validation rejects it because a Scheme symbol must start with a Latin letter. It is named ellipse-45deg instead; the check follows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T21:03:34.169000-05:00",
+      "what": "step 'engine-round-trip': its files",
+      "reason": "The engraved round trip shows the 45deg-369 footnote set in step correct-config running off the page; it is shortened to Kite's length, and the export baseline follows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

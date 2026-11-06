@@ -338,6 +338,14 @@ export const tests = [
       eq(normalize(CNBLilypond.generate(config)), normalize(baseline), "Kite export");
     }},
 
+  { name: "baselines: the 45deg-369 export still exports byte-identically to 45deg-369-export-baseline.ly", fn: () => {
+      // Exported by cnb/fixtures/export-config.mjs in session 16.
+      const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
+      const baseline = readFileSync(path.join(CNB_DIR, "fixtures", "45deg-369-export-baseline.ly"), "utf8");
+      const config = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "45deg-369-config.json"), "utf8"));
+      eq(normalize(CNBLilypond.generate(config)), normalize(baseline), "45deg-369 export");
+    }},
+
   { name: "baselines: the Kite 4-369 export carries its toolkit (semitone-unit) paths ÷ sps 3", fn: () => {
       const text = readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8");
       const { config } = CNBConfigIO.loadFromText(text);
@@ -1045,6 +1053,29 @@ export const tests = [
           assert(!output.includes(marker), `${marker}: LilyPond printed the payload:\n${output}`);
           assert(!error, `${marker}: the export must compile (so the payload was really read): ${error && error.message}\n${output}`);
         }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }},
+
+  { name: "round trip (engine): joy-to-the-world-45deg.ly engraves through the engine at 1.2.0 or later", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      // Stem anchors inside the head need engine 1.2.0 (its session 17).
+      const version = JSON.parse(readFileSync(path.join(engine.dir, "version.json"), "utf8")).version;
+      const [major, minor] = version.split(".").map(Number);
+      assert(major > 1 || (major === 1 && minor >= 2), `the engine at ${engine.dir} is ${version}; 1.2.0 or later is needed`);
+      const fixtures = path.join(CNB_DIR, "fixtures");
+      const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-45deg-"));
+      try {
+        const { error, output } = await new Promise((resolve) => {
+          execFile(engine.lilypond, ["-I", engine.dir, "-I", fixtures, "-o", path.join(dir, "out"),
+            path.join(fixtures, "joy-to-the-world-45deg.ly")],
+            { cwd: dir, timeout: 120000, windowsHide: true },
+            (error, stdout, stderr) => resolve({ error, output: `${stdout}\n${stderr}` }));
+        });
+        assert(!error, `lilypond must exit 0: ${error && error.message}\n${output}`);
+        assert(!/error:/.test(output), `lilypond printed an error:\n${output}`);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }

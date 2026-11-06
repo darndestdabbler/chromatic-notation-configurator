@@ -27,7 +27,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 13 | Documentation, archive and 1.0.1 | no | 2026-11-03 |
 | 14 | Release 1.0.1 (release: 1.0.1) | yes | 2026-11-03 |
 | 15 | The app online, and a page that says why it is blank | no | 2026-11-05 |
-| 16 | A second reference notation, 45deg-369 | — | not declared |
+| 16 | A second reference notation, 45deg-369 | no | 2026-11-05 |
 | 17 | Release 1.0.2 (release: 1.0.2) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -135,3 +135,14 @@ Put the configurator online and make a file:// open explain itself. cnb/index.ht
 **Rolled back:**
 
 - 2026-11-05 — session 15 — Rollback to Start of This Session from the Work Explorer (operator)
+
+### Session 16 — A second reference notation, 45deg-369
+
+**Releasable: no.**
+
+Make 45deg-369 a checked-in, test-gated reference notation beside Kite 4-369, and plan the follow-on work from the operator's 2026-11-05 Configurator feedback. The operator handed over cnb/fixtures/45deg-369-config.json and 45deg-369-from-configurator.ly made in the app; on the operator's instruction this session corrects the config where it departs from the design (the shape is imported from the committed cnb/fixtures/45deg.svg and named 45deg instead of draft-notehead, the unused crotchet-minim shape is removed, and the meta block gets the 45deg-369 name, suffix, label and footnote instead of the default 4-8 system's), keeping the staff, the operator's empty ledger templates, the #56b3e9 blue, the keys section and the repeat mode as the operator made them. The hand-exported .ly is superseded by an export from the corrected config and is not committed. The one-fixture export driver becomes cnb/fixtures/export-config.mjs <config.json> [out.ly], with export-kite-4-369.mjs kept as a wrapper the umbrella pipeline names; 45deg-369-export-baseline.ly is pinned byte-identically as Kite's is; the importer tests prove the fixture imports with the toolkit's anchors (up (0, 1.649), down (0, -1.650), minim pair equal to crotchet pair) read from the SVG's rects and that the export divides them by 3; the config joins the preview baseline probes; joy-to-the-world-45deg.ly engraves through the engine (1.2.0 or later) as a test that skips with a reason when lilypond or the engine is absent. README, CHANGELOG 1.0.2 and version.json 1.0.2 follow. Finally, sessions 18-21 are added to the session plan after the 1.0.2 release: the notehead-height preview bug, a preview of repeated noteheads and multinote padding, a 1.1.0 release, and a design session for a notehead-first editor with rule inference.
+
+**Amended after acceptance:**
+
+- 2026-11-05 — step 'correct-config': its checks: The shape cannot be named 45deg: validation rejects it because a Scheme symbol must start with a Latin letter. It is named ellipse-45deg instead; the check follows. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-05 — step 'engine-round-trip': its files: The engraved round trip shows the 45deg-369 footnote set in step correct-config running off the page; it is shortened to Kite's length, and the export baseline follows. (claude-code (anthropic, claude-opus-5-5))

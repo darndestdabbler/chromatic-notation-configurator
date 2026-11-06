@@ -63,6 +63,7 @@ export function previewProbes() {
     { id: "default-debug-grid", config: debug, options: {} },
     { id: "default-key-signature", config: keySigDefault(), options: { durations, keys: ["C"] } },
     { id: "kite-4-369", config: loadViaIO(path.join(FIXTURES, "kite-4-369-config.json")), options: { durations } },
+    { id: "45deg-369", config: loadViaIO(path.join(FIXTURES, "45deg-369-config.json")), options: { durations } },
   ];
   for (const f of readdirSync(GALLERY_DIR).filter(n => n.endsWith(".json")).sort()) {
     const config = loadViaIO(path.join(GALLERY_DIR, f));

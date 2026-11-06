@@ -11,6 +11,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { CNBSvgImporter } from "../ui/svg-importer.js";
+import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
@@ -758,6 +759,49 @@ export const tests = [
       // d="M 0 -200 L 200 -100 …" → (moveto 0 2) (lineto 2 1) …, as the toolkit writes it
       assert(shape.lilypondPath.startsWith("'(\n    (moveto 0 2)\n    (lineto 2 1)"), JSON.stringify(shape.lilypondPath));
       assertSame(shape.lilypondAnchors.minimUp, { x: -1.095, y: 2.7 }, "minim rect carries the engine reference's minim anchor");
+    }},
+  { name: "fixtures/45deg.svg imports to exactly the 45deg-369 config's shape (session 16)", fn: () => {
+      const shapes = JSON.parse(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8")).shapes;
+      const doc = parseSvgDocument(readFileSync(path.join(FIXTURES, "45deg.svg"), "utf8"));
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), shapes["ellipse-45deg"].displayName);
+      assert(error === null, "no error: " + error);
+      assert(JSON.stringify(shape) === JSON.stringify(shapes["ellipse-45deg"]),
+        `imported shape ${JSON.stringify(shape)} differs from the config's ${JSON.stringify(shapes["ellipse-45deg"])}`);
+    }},
+  { name: "fixtures/45deg.svg anchors are its stem rects' inner edges, and the export divides them by sps 3", fn: () => {
+      const svg = readFileSync(path.join(FIXTURES, "45deg.svg"), "utf8");
+      const rect = id => ["x", "y", "width", "height"].map(a => Number(svgAttr(svg, id, a)));
+      // stem-up: bottom-centre; stem-down: top-centre. SVG units ÷ 100, Y up.
+      const [ux, uy, uw, uh] = rect("stem-up");
+      const [dx, dy, dw] = rect("stem-down");
+      const up = { x: (ux + uw / 2) / 100, y: -(uy + uh) / 100 };
+      const down = { x: (dx + dw / 2) / 100, y: -dy / 100 };
+      // The toolkit's own export of this file: stem-up (0.0 . 1.6491), stem-down (0.0 . -1.6495).
+      approx(up.y, 1.6491, "the rects put the up anchor 1.649 semitones above the centre", 1e-4);
+      approx(down.y, -1.6495, "and the down anchor 1.650 below it", 1e-4);
+
+      const { shape } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(parseSvgDocument(svg)), "Ellipse 45deg");
+      const a = shape.lilypondAnchors;
+      for (const [key, want] of [["crotchetUp", up], ["crotchetDown", down]]) {
+        approx(a[key].x, want.x, `${key} x`, 5e-5);
+        approx(a[key].y, want.y, `${key} y`, 5e-5);
+      }
+      assertSame(a.minimUp, a.crotchetUp, "no minim rects: minimUp = crotchetUp");
+      assertSame(a.minimDown, a.crotchetDown, "minimDown = crotchetDown");
+
+      const { config } = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8"));
+      const sps = config.staff.semitonesPerStaffSpace;
+      assert(sps === 3, "3 semitones per staff space");
+      const out = CNBLilypond.generate(config);
+      const pair = "'\\(([^ )]+) \\. ([^ )]+)\\)";
+      const m = new RegExp(`register-attachment! 'ellipse-45deg-attach[\\s\\S]*?'crotchet-up\\s+${pair}[\\s\\S]*?'crotchet-down\\s+${pair}` +
+        `[\\s\\S]*?'minim-up\\s+${pair}[\\s\\S]*?'minim-down\\s+${pair}`).exec(out);
+      assert(m, "the export registers ellipse-45deg's attachment");
+      const [cux, cuy, cdx, cdy, mux, muy, mdx, mdy] = m.slice(1).map(Number);
+      for (const [got, want, label] of [[cux, up.x, "up x"], [cuy, up.y, "up y"], [mux, up.x, "minim up x"], [muy, up.y, "minim up y"],
+                                         [cdx, down.x, "down x"], [cdy, down.y, "down y"], [mdx, down.x, "minim down x"], [mdy, down.y, "minim down y"]]) {
+        approx(got, want / sps, `exported ${label} = anchor ÷ ${sps}`, 1e-4);
+      }
     }},
 ];
 

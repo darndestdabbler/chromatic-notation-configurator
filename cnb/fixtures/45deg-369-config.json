@@ -1,37 +1,8 @@
 {
   "version": "1.0",
   "shapes": {
-    "crotchet-minim": {
-      "displayName": "Crotchet–Minim",
-      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
-      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
-      "naturalHeight": 272.4,
-      "naturalWidth": 344.852,
-      "semitoneHeight": 2.724,
-      "anchors": {
-        "crotchetUp": {
-          "x": 157.2926,
-          "y": -42.9985
-        },
-        "crotchetDown": {
-          "x": -157.2934,
-          "y": 43.0027
-        },
-        "minimUp": {
-          "x": 157.2926,
-          "y": -42.9985
-        },
-        "minimDown": {
-          "x": -157.2934,
-          "y": 43.0027
-        }
-      },
-      "lilypondPath": null,
-      "lilypondHollowPath": null,
-      "lilypondAnchors": null
-    },
-    "draft-notehead": {
-      "displayName": "Draft Notehead",
+    "ellipse-45deg": {
+      "displayName": "Ellipse 45deg",
       "svgPath": "M 102.891 102.887 C 8.182 197.596 -114.661 228.307 -171.486 171.481 C -228.311 114.656 -197.6 -8.186 -102.892 -102.895 C -57.411 -148.376 -2.952 -181.154 48.503 -194.018 C 99.959 -206.882 144.197 -198.778 171.485 -171.49 C 228.31 -114.665 197.6 8.178 102.891 102.887 Z",
       "svgHollowPath": "M 51.447 51.443 C -33.791 136.681 -125.924 182.746 -154.337 154.333 C -167.982 140.688 -164.807 111.342 -145.511 72.75 C -126.216 34.158 -92.38 -10.518 -51.447 -51.451 C -10.515 -92.384 34.162 -126.22 72.754 -145.515 C 111.346 -164.811 140.692 -167.985 154.336 -154.341 C 182.75 -125.928 136.684 -33.795 51.447 51.443 Z",
       "naturalHeight": 400,
@@ -106,7 +77,7 @@
   },
   "noteheadRules": [
     {
-      "name": "Default",
+      "name": "Default (ellipse-45deg, solid)",
       "priority": 0,
       "match": {
         "pitchClasses": "all",
@@ -114,7 +85,7 @@
         "keys": "all"
       },
       "apply": {
-        "shape": "draft-notehead",
+        "shape": "ellipse-45deg",
         "hollow": false,
         "color": null,
         "offKeyMark": false
@@ -383,12 +354,12 @@
     "useAccessibleColors": false
   },
   "meta": {
-    "configName": "Default 4-8 System",
-    "fileSuffix": "-Default48",
-    "notationLabel": "Default 4-8 System",
-    "notationFootnote": "",
+    "configName": "45deg-369",
+    "fileSuffix": "-45deg-369",
+    "notationLabel": "45deg-369",
+    "notationFootnote": "*45deg-369 Notation: 4-semitone ellipses tilted 45°; staff lines at +/- 3, 6 & 9 semitones",
     "author": "",
-    "description": "Two staff lines per octave at semitones 4 (E) and 8 (G♯)",
+    "description": "45deg-369 reference alternative to Kite 4-369: 4-semitone ellipses tilted 45°, 3-color cycle, alternating solid/hollow, staff lines at +/- 3, 6, 9 semitones, stems from the edge of the hole.",
     "created": "2026-11-06T01:03:42.297Z",
     "modified": "2026-11-06T01:03:42.297Z"
   }

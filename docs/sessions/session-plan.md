@@ -660,3 +660,83 @@ The framework publishes sessions 15–16 as 1.0.2 and pushes the `v1.0.2`
 tag, which triggers the session-15 Pages workflow: this is the first
 deploy of `https://configurator.darndestdabbler.org/`. A patch version:
 the live site, the `file://` notice and a new fixture change no export.
+
+### Session 18: The preview draws an imported notehead at its own height at once
+
+**Why.** On 2026-11-05, while authoring 45deg-369 in the app, the operator
+imported a 4-semitone notehead and the preview drew it at about 3 semitones
+or less. It came out at its proper height only after an unrelated edit (a
+notehead colour change) redrew the preview. The preview is the designer's
+main feedback, so it must be right after every edit.
+
+1. Register.
+2. Reproduce it in a UAT driver: load the Kite config, import
+   `cnb/fixtures/45deg.svg`, apply it in the default rule, and measure the
+   drawn notehead's height before any further edit. Find which import or
+   rule path leaves the preview with a stale or wrongly scaled shape.
+3. Fix it at the cause, and pin it with a unit test in the test file named
+   after the source file that changes, plus the UAT driver. Record the
+   driver in `docs/uat-status.md`.
+
+### Session 19: The preview shows what repeat mode engraves
+
+**Why.** In `repeat` mode the engine engraves a minim as two heads, a
+semibreve and a breve as four, spaced by `cnb:multinote-padding`. The
+preview draws one head per note, so the operator cannot see repeat mode or
+judge the multinote padding setting (architecture §11, open question 3).
+Separately, the 45deg-369 config had key signatures enabled with no key
+defined, so no signature could draw, and nothing said why.
+
+1. Register.
+2. In `repeat` mode, the card draws each duration's repeated heads as the
+   engine lays them out (counts as the engine engraves them: minim ×2,
+   semibreve ×4, breve ×4), spaced by `engine.multinotePadding` in staff
+   spaces, with stems and ledgers following. `shape` mode is unchanged and
+   byte-identical (the preview baseline pins it).
+3. Check the spacing against an engine render of the Kite and 45deg-369
+   fixtures, as session 11's notehead-size test does.
+4. The key-signature panel and the preview's key selector say when keys are
+   enabled but none is defined or selected, so nothing draws.
+5. README "Preview-only settings": repeat counts are no longer preview-only
+   if the counts now follow the engine; say what remains.
+
+### Session 20: Release 1.1.0 (release: 1.1.0)
+
+The framework publishes sessions 18–19 as 1.1.0. A minor version: the
+preview gains repeat mode, a new capability, with no change to the export.
+
+### Session 21: Design: a notehead-first editor
+
+**Why.** On 2026-11-05 the operator found the configuration screen
+"extremely complicated and daunting" and proposed redesigning it around the
+noteheads themselves: the user defines noteheads and the Configurator
+infers the rules, instead of the user writing rules. This session writes the
+design for the operator's approval. It changes no code; implementation
+sessions are planned once the design is approved.
+
+1. Register.
+2. Write `docs/planning/notehead-first-editor-design.md`, covering:
+   - **Flow.** The staff editor stays as it is. Once the staff exists, the
+     preview shows 13 placeholder noteheads (C to C′) at default positions,
+     with ledger lines from the default proximity rule. The user can replace
+     the proximity rule with their own ledger rules, or otherwise say when
+     ledgers show.
+   - **Clicking a notehead** sets its colour (an earlier colour or a new
+     one), solid or hollow, shape (the imported shapes plus some defaults),
+     pitch class, and pitch-axis position. Changing the pitch class says
+     where that pitch class sits relative to the other positions: making the
+     F♯ notehead a C relabels every other notehead by its relative vertical
+     position.
+   - **Rule inference.** An algorithm turns the per-notehead choices into
+     notehead rules: a period of 1, 2, 3, 4, 6 or 12 semitones, the
+     accidentals, or else explicit pitch classes, for each of colour,
+     hollowness and shape. Show the inferred rules, and say how a rule that
+     no pattern fits is kept.
+   - **Previews.** Each panel gets a preview, a partial staff or the full
+     staff as it needs.
+   - **What it retires.** Which existing panels and modules it replaces,
+     hides behind an advanced view, or keeps, and what happens to configs
+     whose rules the inference cannot reproduce. The config schema and the
+     export stay as they are unless the document argues otherwise.
+3. The document ends with a proposed program of implementation sessions and
+   their release versions, for the operator to approve.

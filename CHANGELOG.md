@@ -17,6 +17,17 @@
   `/cnb/index.html`).
 - A served page no longer logs a 404 for `/favicon.ico`.
 
+### A second reference notation, 45deg-369
+
+- 45deg-369 is checked in beside Kite 4-369 as the gentler reference
+  alternative. It uses the same 3-6-9 staff, with 4-semitone ellipses tilted
+  45°, and stems that attach at the edge of the hole so they never cross it.
+  The fixture is the notehead SVG, the config, its pinned export and a
+  "Joy to the World" score that tests engrave through the engine (1.2.0 or
+  later).
+- `cnb/fixtures/export-config.mjs <config.json> [out.ly]` exports any
+  config headlessly. `export-kite-4-369.mjs` still works and now calls it.
+
 ## 1.0.1
 
 **Regenerate your 1.0.0 exports.** A `.ly` file exported by 1.0.0 from a
