@@ -330,9 +330,9 @@
     {
       "number": 17,
       "title": "The preview draws an imported notehead at its own height at once",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-06T02:54:39.692000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-06T03:22:46.782000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
