@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Config Save/Load Test — Module 17</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 1180px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 520px;
+      max-height: 480px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    /* ── Config IO panel host styling (module ships structure only) ── */
+    .cnb-cio-save-row, .cnb-cio-load-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+      font-size: 12px; color: #555;
+    }
+    .cnb-cio-save {
+      font: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer;
+      border: 1px solid #2b6cb0; border-radius: 6px; background: #eaf2fb; color: #1a4e85;
+    }
+    .cnb-cio-filename { font-family: monospace; font-size: 12px; color: #777; }
+    .cnb-cio-filename-error { color: #c62828; font-family: inherit; }
+    .cnb-cio-load-label { flex: none; }
+    .cnb-cio-file { font-size: 12px; }
+    .cnb-cio-status { font-size: 12px; color: #2e7d32; margin: 8px 0 2px; min-height: 15px; }
+    .cnb-cio-error  { font-size: 12px; color: #c62828; margin: 2px 0; min-height: 15px; }
+    .cnb-cio-validation { margin-top: 8px; font-size: 12px; line-height: 1.6; }
+    .cnb-cio-note     { color: #6b21a8; }
+    .cnb-cio-valid    { color: #2e7d32; }
+    .cnb-cio-verror   { color: #c62828; }
+    .cnb-cio-vwarning { color: #b45309; }
+
+    /* ── Common properties editor host styling (same as its own test page) ── */
+    .cnb-cpe-section { margin-bottom: 16px; }
+    .cnb-cpe-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-cpe-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+    .cnb-cpe-def-row {
+      font-size: 12px; color: #555; padding: 5px 8px; margin-bottom: 4px;
+      border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
+    }
+    .cnb-cpe-mode-option {
+      font-size: 13px; color: #444; padding: 7px 10px; margin-bottom: 5px;
+      border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-cpe-mode-option.selected {
+      border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
+    }
+    .cnb-cpe-mode-help { font-size: 11px; color: #888; max-width: 460px; margin-top: 4px; }
+    .cnb-cpe-repeats.inactive { opacity: 0.55; }
+    .cnb-cpe-repeat-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; color: #555; }
+    .cnb-cpe-repeat-label { width: 160px; flex: none; }
+    .cnb-cpe-repeat-count {
+      font: inherit; font-size: 12px; width: 60px; padding: 3px 6px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-cpe-repeat-base { font-size: 11px; color: #999; }
+    .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
+    .cnb-cpe-engine-label { width: 150px; flex: none; }
+    .cnb-cpe-engine-row input[type="text"], .cnb-cpe-engine-row input[type="number"] {
+      font: inherit; font-size: 12px; padding: 3px 6px; width: 80px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-cpe-stem-control { display: inline-flex; align-items: center; gap: 6px; }
+    .cnb-cpe-stem-auto-label { font-size: 11px; color: #888; }
+    .cnb-cpe-badge { font-size: 10px; color: #999; font-style: italic; }
+    .cnb-cpe-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-cpe-valid { color: #2e7d32; }
+    .cnb-cpe-error { color: #c62828; }
+    .cnb-cpe-warning { color: #b45309; }
+  </style>
+</head>
+<body>
+  <h1>CNB Config Save/Load — Module 17 Visual Test</h1>
+  <p>
+    The UI-shell wiring this page hosts is the session-set 006 integration
+    pattern: one shared <code>config</code> object owned by the page, edited
+    through the Common Properties Editor (Module 15, set 005), saved and
+    loaded through Module 17. Saving stamps <code>meta.created</code> (first
+    save only) and <code>meta.modified</code> (every save) and downloads
+    <code>&lt;configName-slug&gt;.cnb.json</code>; loading merges the file
+    over schema defaults (open-keyed maps replace), validates it, and
+    remounts the editor on the loaded state.
+  </p>
+
+  <div class="card">
+    <h2>Save / load (Module 17)</h2>
+    <div id="config-io-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Shared config state (meta + editable slices)</h2>
+    <pre id="state-json"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Common properties editor (Module 15, edits the shared config)</h2>
+    <div id="editor-host"></div>
+  </div>
+
+  <script type="module">
+    import { CNBConfig } from "../src/cnb-config.js";
+    import { CNBCommonPropsEditor } from "../ui/common-props-editor.js";
+    import { CNBConfigIO } from "../ui/config-io.js";
+
+    // The page (UI shell) owns the single shared config state object;
+    // the modules stay pure and report changes through callbacks.
+    let appConfig = CNBConfig.createDefault();
+
+    const editorHost = document.getElementById("editor-host");
+    const stateJson = document.getElementById("state-json");
+
+    function refreshPanel() {
+      stateJson.textContent = JSON.stringify({
+        meta: appConfig.meta,
+        durations: {
+          representationMode: appConfig.durations.representationMode,
+          repeatCounts: appConfig.durations.repeatCounts,
+        },
+        engine: appConfig.engine,
+        shapeNames: Object.keys(appConfig.shapes),
+      }, null, 2);
+    }
+
+    function mountEditor() {
+      editorHost.textContent = "";
+      CNBCommonPropsEditor.render(editorHost, {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.durations = slices.durations;
+          appConfig.engine = slices.engine;
+          refreshPanel();
+        },
+      });
+    }
+
+    CNBConfigIO.render(document.getElementById("config-io-host"), {
+      getConfig: () => appConfig,
+      // Adopt the stamped config so meta.created survives later saves.
+      onSave: (stamped) => { appConfig = stamped; refreshPanel(); },
+      onLoad: (config) => { appConfig = config; mountEditor(); refreshPanel(); },
+    });
+
+    mountEditor();
+    refreshPanel();
+  </script>
+</body>
+</html>
