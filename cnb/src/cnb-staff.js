@@ -45,11 +45,18 @@ export const CNBStaff = {
   },
 
   /**
-   * Render all staff lines into a group appended to svgParent.
+   * Render all staff lines into a group appended to svgParent. Each line
+   * runs from x1 0 to x2 totalWidth.
+   *
+   * totalWidth may be the string "100%" (session 25): the fluid rows of the
+   * editor's reflowing canvas (design §6.1) stretch the staff SVG to the
+   * row, and every line then runs to the SVG's full width. An SVG with no
+   * viewBox does not scale, so the stroke stays the same thickness.
+   *
    * @param {SVGElement} svgParent
    * @param {object} gridContext
    * @param {object} config
-   * @param {number} totalWidth
+   * @param {number|"100%"} totalWidth  px, or "100%"
    * @returns {SVGGElement}
    */
   render(svgParent, gridContext, config, totalWidth) {

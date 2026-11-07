@@ -53,6 +53,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { useCanvasSize, openSection, openAdvanced } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -208,6 +209,8 @@ page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text())
 page.on("pageerror", e => consoleErrors.push(String(e)));
 
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
+// The canvas draws at Small, where the full row fits one row (design §6.1).
+await useCanvasSize(page, "small");
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-preview-display");
 
@@ -246,6 +249,7 @@ check("STATE PANEL: full default config exposed (4-8 pattern, one shape, shape m
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-initial.png"), fullPage: true });
 
 // ── STEP 1: import an SVG shape (set 004, Module 16) ────────────────────────
+await openSection(page, "noteheads");
 await page.setInputFiles('#svg-importer-host input[type="file"]', {
   name: "uat-ellipse.svg", mimeType: "image/svg+xml",
   buffer: Buffer.from(SAMPLE_SVG, "utf8"),
@@ -284,6 +288,7 @@ check("PALETTE: the preview re-rendered live — noteheads now carry the palette
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-palette.png"), fullPage: true });
 
 // ── STEP 3: staff rules (set 005, Module 13) ────────────────────────────────
+await openSection(page, "staff");
 await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');
 cfg = await fullConfig();
 check("STAFF RULES: 3-6-9 system reaches the shared config (pattern [3,6,9], sps 3)",
@@ -300,6 +305,7 @@ check(`STAFF RULES: preview background staff re-rendered — ${expectedLines} li
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-staff.png"), fullPage: true });
 
 // ── STEP 4: add a notehead rule (set 005, Module 14) ────────────────────────
+await openSection(page, "noteheads");
 await page.click(".cnb-nre-rule-add");
 await page.check('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-shape input');
 await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-shape-select', "uat-ellipse");
@@ -316,6 +322,7 @@ check("NOTEHEAD RULE: the preview re-rendered live — noteheads now draw the im
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-rule.png"), fullPage: true });
 
 // ── STEP 5: common properties (set 005, Module 15) ──────────────────────────
+await openAdvanced(page, "Durations and engine");
 await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
 cfg = await fullConfig();
 check("COMMON PROPS: repeat representation mode reaches the shared config and shows selected",
@@ -324,6 +331,8 @@ check("COMMON PROPS: repeat representation mode reaches the shared config and sh
     document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected")));
 
 // ── STEP 6: exercise the Module 19 preview controls ─────────────────────────
+// The pitch range sits in Advanced since session 25 (design §9).
+await openAdvanced(page, "Pitch range shown");
 await page.selectOption(".cnb-pvd-from", "4");
 await page.selectOption(".cnb-pvd-to", "8");
 check("PREVIEW CONTROLS: narrowing the pitch range to 4–8 renders 5 cards",
@@ -349,7 +358,7 @@ check("PREVIEW CONTROLS: restoring range 0–12 + crotchet renders the full chro
 // ── STEP 7: save the config (Module 17, real download) ──────────────────────
 const [saveDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cio-save"),
+  page.click("#save-config"),
 ]);
 check('SAVE: download suggested filename is "default-4-8-system.cnb.json" (derived from meta.configName)',
   saveDownload.suggestedFilename() === "default-4-8-system.cnb.json",
@@ -372,7 +381,7 @@ check("SAVE: everything configured this session is in the file (uat-ellipse shap
   savedJson.noteheadRules.length === 3);
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ───────────────
-await page.setInputFiles(".cnb-cio-file", savedPath);
+await page.setInputFiles("#open-file", savedPath);
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
 cfg = await fullConfig();
@@ -392,7 +401,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-loaded.png"), full
 // ── STEP 9: export a .ly file (Module 18, real download) ────────────────────
 const [exportDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cex-export"),
+  page.click("#export-ly"),
 ]);
 check('EXPORT: download suggested filename is "default48.ly" (from meta.fileSuffix)',
   exportDownload.suggestedFilename() === "default48.ly",

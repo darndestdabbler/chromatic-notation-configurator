@@ -52,6 +52,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -185,10 +186,15 @@ page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text())
 page.on("pageerror", e => consoleErrors.push(String(e)));
 
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
+// The canvas draws at Small, where the full row fits one row (design §6.1).
+await useCanvasSize(page, "small");
 await page.goto(URL_PATH);
-await page.waitForSelector(".cnb-key-signature-editor");
+await page.waitForSelector(".cnb-key-signature-editor", { state: "attached" });
+await openSection(page, "key-signature");
 
 const fullConfig = async () => JSON.parse(await page.textContent("#state-json"));
+/** The config as the canvas draws it (the Small display copy). */
+const drawn = (c) => canvasConfig(c, "small");
 const keysigColCount = async () => page.$$eval(".cnb-pvd-preview .keysig-col", els => els.length);
 
 // The full-chromatic preview row (PCs 0–12) — the range the preview grid is
@@ -210,9 +216,10 @@ const renderedMarks = () => page.evaluate(() => {
 
 /** Node-side expected mark positions for the current config + key. */
 function expectedMarks(cfg, keyName) {
+  cfg = drawn(cfg);
   const m = CNBKeySignature.measure(cfg, cfg.display.pxPerSemi, keyName);
   if (!m) return null;
-  const grid = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
   const paddingH = cfg.keys.keySignature.gutter.paddingH;
   const leftX = paddingH + m.markWidth / 2;
   const rightX = leftX + m.markWidth;
@@ -319,7 +326,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-sig-enabled-no-key
 // ── STEP 4: select the displayed key in the preview ─────────────────────────
 await page.selectOption(".cnb-pvd-key-select", "C");
 cfg = await fullConfig();
-const expectedGutterC = CNBKeySignature.gutterWidth(cfg, cfg.display.pxPerSemi, "C");
+const expectedGutterC = CNBKeySignature.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi, "C");
 // CSSOM serializes style.width to 3 decimals (138.35264 → "138.353px"),
 // so the fractional notehead-derived width is compared numerically ±0.001.
 check(`KEY SELECTION: selecting C grew a keysig gutter column of ${expectedGutterC}px (Node-side CNBKeySignature.gutterWidth on the same config, ±0.001 CSSOM rounding)`,
@@ -337,10 +344,10 @@ check("KEY SELECTION: ledger lines render beneath the marks (at least one ledger
   await page.evaluate(() =>
     document.querySelectorAll(".cnb-pvd-preview .cnb-key-signature rect, .cnb-pvd-preview .cnb-key-signature line:not(.cnb-key-signature-separator)").length > 0));
 {
-  const grid = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
   const sep = cfg.keys.keySignature.separator;
   const midpoint = cfg.staff.midpoint;
-  const m = CNBKeySignature.measure(cfg, cfg.display.pxPerSemi, "C");
+  const m = CNBKeySignature.measure(drawn(cfg), drawn(cfg).display.pxPerSemi, "C");
   const barX = cfg.keys.keySignature.gutter.paddingH + (m.columns * m.markWidth) / 2;
   check(`SEPARATOR: the engine-gold stem (${sep.color}) runs through the middle of the columns (x=${barX}) and spans midpoint ± ${sep.extentSemis} semitones (x/y parity with the engine centering rule + CNBGrid.semiToY)`,
     await page.$eval(".cnb-pvd-preview .cnb-key-signature-separator",
@@ -352,7 +359,7 @@ check("KEY SELECTION: ledger lines render beneath the marks (at least one ledger
         Math.abs(parseFloat(el.getAttribute("stroke-width")) - exp.w) < 1e-6,
       { color: sep.color,
         x: barX,
-        w: (sep.thicknessPct / 100) * cfg.display.pxPerSemi,
+        w: (sep.thicknessPct / 100) * drawn(cfg).display.pxPerSemi,
         y1: grid.semiToY(midpoint + sep.extentSemis),
         y2: grid.semiToY(midpoint - sep.extentSemis) }));
   check("SEPARATOR: the stem is drawn beneath the marks (first child of the keysig group — engine layering)",
@@ -403,7 +410,7 @@ check("STYLING: explicit tonic octave 0 reaches placement.tonicOctave and shifts
     if (marks.length === 0) return false;
     const m = /translate\([-\d.eE+]+,([-\d.eE+]+)\)/.exec(marks[0].getAttribute("transform") || "");
     return m && Math.abs(parseFloat(m[1]) - expY) < 1e-6;
-  }, CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW)).semiToY(0)));
+  }, CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW)).semiToY(0)));
 await page.check(".cnb-kse-octave-auto-check");
 cfg = await fullConfig();
 check("STYLING: re-checking auto restores tonicOctave null (centered on the staff midpoint — engine parity for the default config)",
@@ -415,7 +422,7 @@ await page.fill(".cnb-kse-sep-extent", "6");
 await page.fill(".cnb-kse-gutter-input", "16");
 cfg = await fullConfig();
 {
-  const grid = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
   check("STYLING: separator extent 6 and gutter padding 16 reach the config and the preview (bar shortened, column resized)",
     cfg.keys.keySignature.separator.extentSemis === 6 &&
     cfg.keys.keySignature.gutter.paddingH === 16 &&
@@ -424,7 +431,7 @@ cfg = await fullConfig();
       { y1: grid.semiToY(cfg.staff.midpoint + 6), y2: grid.semiToY(cfg.staff.midpoint - 6) }) &&
     await page.$eval(".cnb-pvd-preview .keysig-col",
       (el, w) => Math.abs(parseFloat(el.style.width) - w) < 1e-3,
-      CNBKeySignature.gutterWidth(cfg, cfg.display.pxPerSemi, "C")));
+      CNBKeySignature.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi, "C")));
 }
 cfg = await fullConfig();
 expected = expectedMarks(cfg, "C");
@@ -435,6 +442,7 @@ check("STYLING: the notehead-chords marks remain the 8 two-column stack after th
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-styled.png"), fullPage: true });
 
 // ── STEP 6: clef composition (set-009 gutter, left to right) ────────────────
+await openSection(page, "clef");
 await page.setInputFiles(".cnb-cle-file", {
   name: "uat-clef.svg", mimeType: "image/svg+xml",
   buffer: Buffer.from(SAMPLE_CLEF_SVG, "utf8"),
@@ -461,7 +469,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-with-clef.png"), f
 // ── STEP 7: save the config (Module 17, real download) ──────────────────────
 const [saveDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cio-save"),
+  page.click("#save-config"),
 ]);
 const savedPath = path.join(SHOT_DIR, "uat-010-s2-saved.cnb.json");
 await saveDownload.saveAs(savedPath);
@@ -480,7 +488,7 @@ check("SAVE: the keys section is in the file — enabled, 2 definitions, signatu
   JSON.stringify(savedJson.keys));
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ────────────────
-await page.setInputFiles(".cnb-cio-file", savedPath);
+await page.setInputFiles("#open-file", savedPath);
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
 cfg = await fullConfig();
@@ -503,7 +511,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-loaded.png"), full
 // ── STEP 9: export a .ly file (Module 18, real download; s1 coordination) ────
 const [exportDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cex-export"),
+  page.click("#export-ly"),
 ]);
 const exportedPath = path.join(SHOT_DIR, "uat-010-s2-exported.ly");
 await exportDownload.saveAs(exportedPath);

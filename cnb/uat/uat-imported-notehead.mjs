@@ -42,6 +42,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -154,8 +155,12 @@ async function openApp() {
     route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
   page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", e => consoleErrors.push(String(e)));
+  // The canvas draws at Small (design §6.1); the expected head height
+  // follows the same display copy.
+  await useCanvasSize(page, "small");
   await page.goto(`http://localhost:${PORT}/cnb/index.html`);
   await page.waitForSelector(".cnb-preview-display");
+  await openSection(page, "noteheads");
   return page;
 }
 
@@ -191,7 +196,7 @@ const ROUTES = [
   {
     name: "Kite config, file input, Default rule",
     setup: async (page) => {
-      await page.setInputFiles(".cnb-cio-file", KITE);
+      await page.setInputFiles("#open-file", KITE);
       await page.waitForFunction(() =>
         JSON.parse(document.getElementById("state-json").textContent).shapes["kite-up"] !== undefined);
     },
@@ -224,7 +229,7 @@ for (const route of ROUTES) {
   await route.importShape(page);
 
   let cfg = await fullConfig(page);
-  const expected = cfg.shapes["45deg"].semitoneHeight * cfg.display.pxPerSemi;
+  const expected = cfg.shapes["45deg"].semitoneHeight * canvasConfig(cfg, "small").display.pxPerSemi;
   check(`${route.name}: the imported shape is 4 semitones tall`,
     cfg.shapes["45deg"].semitoneHeight === 4, JSON.stringify(cfg.shapes["45deg"].semitoneHeight));
 

@@ -216,9 +216,15 @@ export const CNBCard = {
    * @param {object} gridContext  From CNBGrid.create()
    * @param {object} config
    * @param {{pc:number, duration:string, key?:string|null}} example
+   * @param {{fluid?:boolean}} [layout]  fluid (session 25, the editor's
+   *        reflowing canvas, design §6.1): the column takes no fixed width,
+   *        so it fills its grid cell; the note-slice keeps its own width,
+   *        centred in the column; and the column carries data-pc (the
+   *        card's pc, 0–12) for hit-testing. Off, the output is unchanged.
    * @returns {HTMLDivElement} the div.pc-col element
    */
-  render(container, gridContext, config, { pc, duration, key = null }) {
+  render(container, gridContext, config, { pc, duration, key = null }, layout = {}) {
+    const fluid = layout.fluid === true;
     const resolved = CNBCard.resolveNotehead(config, pc, duration, key);
     const shape = config.shapes[resolved.shape];
 
@@ -238,8 +244,12 @@ export const CNBCard = {
 
     const col = document.createElement("div");
     col.className = "pc-col";
-    col.style.width = colWidth + "px";
-    col.style.flex = "0 0 auto";
+    if (fluid) {
+      col.setAttribute("data-pc", String(pc));
+    } else {
+      col.style.width = colWidth + "px";
+      col.style.flex = "0 0 auto";
+    }
 
     col.appendChild(buildLabel(config, gridContext.topLabelHeight, labelInfo, "top"));
 
@@ -248,6 +258,7 @@ export const CNBCard = {
     svg.setAttribute("width", String(colWidth));
     svg.setAttribute("height", String(gridContext.svgHeight));
     svg.style.display = "block";
+    if (fluid) svg.style.margin = "0 auto";
 
     // 1. Ledger lines (bottom layer), widened by a repeated group's extra width
     // The resolved size (session 22) sets the notehead measurement that the

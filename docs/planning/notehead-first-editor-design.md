@@ -394,32 +394,40 @@ columns always fitted. The operator asked instead that the octave never
 scroll sideways and that the noteheads keep their size as the window
 changes, 2026-11-06.)*
 
-**Fixed size.** The canvas draws at a fixed number of pixels per semitone,
-whatever the window width: the config's own saved `display.pxPerSemi`,
-the preview-only setting that already exists for this and is never
-exported. The **Size** control in the canvas toolbar sets it, in three
-steps: Small (9 px per semitone), Medium (11) and Large (16). A saved
-value that is none of these shows as "Custom (N px)" until a step is
-chosen. Because the size is saved, a file opens at the size its designer
-chose, and the standalone test pages and the gallery draw it at that size
-too.
+**Fixed size.** *(Revised in session 25: the Size stays in the browser,
+operator, 2026-11-06. Session 20 had it as the saved
+`display.pxPerSemi`.)* The canvas draws at a fixed number of pixels per
+semitone, whatever the window width. The **Size** control in the canvas
+toolbar sets it, in three steps: Small (9 px per semitone), Medium (11)
+and Large (16). The first time, the canvas draws at Medium. After that it
+draws at the step last chosen in that browser.
 
-- **Large is 16** because that is what `createDefault()` and every config
-  in the repository are saved at, so existing files open at a named step,
-  and loading never rewrites them (§0). At Large both the default config
-  and Kite are two rows at 1440 and at 1280 px. Kite's two rows need
-  996 px, just inside the 998 px the canvas has at 1280.
-- **Medium is the editor's starting size**, written by its new-notation
-  action, not by `createDefault()`, so the schema default and the preview
-  baselines are untouched. It is the largest size at which the default
-  config's octave fits on one row in a 1440 px window. At Medium the oval
-  notehead is 30 px tall and Kite's 44 px, larger than printed music at
-  reading distance, so nothing is too small to judge.
-- Choosing a step changes only `display.pxPerSemi`, so the exported `.ly`
-  does not change.
+- **The Size is the viewer's, not the file's.** It is remembered in the
+  browser's `localStorage`, under one key. That storage keeps the choice
+  across reloads and after the browser is closed, and it belongs to the
+  browser and the site, never to a file. It is never sent to the server,
+  as a cookie would be. `sessionStorage` would forget the choice when the
+  tab closes, and IndexedDB is asynchronous machinery for one word. Every
+  read and write is guarded, so a browser that blocks storage simply
+  draws at Medium.
+- **The canvas ignores the saved `display.pxPerSemi`.** That field keeps
+  its meaning for the standalone test pages and the gallery, which draw a
+  file at its saved size (16 for `createDefault()` and every config in the
+  repository). Choosing a step changes nothing in the file: the saved JSON
+  and the exported `.ly` stay as they are, and loading never rewrites
+  (§0).
+- **Medium is the starting size** because it is the largest size at which
+  the default config's octave fits on one row in a 1440 px window. At
+  Medium the oval notehead is 30 px tall and Kite's 44 px, larger than
+  printed music at reading distance, so nothing is too small to judge.
+- **Large is 16**, the size the files are saved at, so Large shows a file
+  as the test pages do. At Large both the default config and Kite are two
+  rows at 1440 and at 1280 px. Kite's two rows need 996 px, just inside
+  the 998 px the canvas has at 1280.
 
-The canvas renders a display copy of the config that adds only the
-editor's label style (§6.2), and never writes that back.
+The canvas renders a display copy of the config with the Size as its
+`display.pxPerSemi` (and the editor's label style, §6.2), and never writes
+that back.
 
 **A table of columns.** The octave is 13 equal pitch columns, C to C′.
 Each column is at least as wide as the widest column the config needs (its
@@ -701,8 +709,10 @@ canvas has 1,158 px at 1440 and 998 px at 1280.
 So both the default config and Kite appear on one row and on two rows.
 Twinline is two rows at both widths at Medium, because the side step
 widens the shared notes' columns. The mock-ups draw each config at the
-Size in the table, as if the user had chosen it. The files themselves are
-saved at 16 px per semitone, Large (§6.1).
+Size in the table, as if the user had chosen it in the toolbar. The Size
+is the browser's choice, not the file's: the files themselves stay saved
+at 16 px per semitone, which only the test pages and the gallery read
+(§6.1).
 
 Below the two-row minimum, each row keeps the grid's minimum width, so
 the canvas scrolls sideways inside its card, with the staff running the
@@ -789,10 +799,14 @@ file (JSON).
 - **Hit targets.** Clicking a notehead needs the card to mark each column
   with its pitch class (a `data-pc` attribute). That is a small change to
   `cnb-card.js`, pinned by the preview baseline.
-- **Medium and Small make the test pages smaller too.** The Size is the
-  saved `display.pxPerSemi`, so a file saved at Medium draws at 11 px per
-  semitone on the standalone test pages and in the gallery as well. That
-  is intended: one size, wherever the file is previewed.
+- **The canvas and the test pages can show a file at different sizes.**
+  The Size is kept in the browser's `localStorage`, not in the file
+  (§6.1), so the canvas draws at Small, Medium or Large while the
+  standalone test pages and the gallery draw the file at its saved
+  `display.pxPerSemi`. That is intended: the viewer picks the size, and
+  the file stays unchanged. Large (16) matches every file in the
+  repository, so choosing it shows a file as the test pages do. A browser
+  that blocks storage draws at Medium every time.
 - **The fixed layout must not move.** The `fluid` and `rows` options are
   off by default, and with them off `CNBCollection` runs today's code
   unchanged. The preview baseline (`cnb/fixtures/preview-baseline.json`)

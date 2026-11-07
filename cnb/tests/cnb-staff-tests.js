@@ -117,6 +117,47 @@ export const tests = [
         eq(CNBStaff.render(svg, grid, cfg, 100).children.length, 10, "no dedup on the linear path");
       });
     }},
+
+  // ── Fluid width (session 25, design §6.1) ────────────────────────────
+
+  { name: "render (linear): a numeric width runs each line from 0 to that width", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        const lines = CNBStaff.render(svg, grid, cfg, 640).children;
+        eq(lines.length, 4, "line count");
+        for (const l of lines) {
+          eq(l.getAttribute("x1"), "0", "x1");
+          eq(l.getAttribute("x2"), "640", "x2");
+        }
+      });
+    }},
+
+  { name: "render (linear): width \"100%\" runs every line to 100%", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        const lines = CNBStaff.render(svg, grid, cfg, "100%").children;
+        eq(lines.length, 4, "line count");
+        for (const l of lines) {
+          eq(l.getAttribute("x1"), "0", "x1");
+          eq(l.getAttribute("x2"), "100%", "x2");
+        }
+      });
+    }},
+
+  { name: "render (axis): width \"100%\" runs every deduplicated line to 100%", fn: () => {
+      const cfg = twinlineConfig();
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        const lines = CNBStaff.render(svg, grid, cfg, "100%").children;
+        eq(lines.length, 6, "deduplicated line count");
+        for (const l of lines) {
+          eq(l.getAttribute("x1"), "0", "x1");
+          eq(l.getAttribute("x2"), "100%", "x2");
+        }
+      });
+    }},
 ];
 
 /** Default config on the 013 Twinline axis with staff lines at axis {1,3,5}. */

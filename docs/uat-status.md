@@ -17,6 +17,73 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The new page: screenshot check — 2026-11-07 (session 25)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `cnb/uat/uat-app-layout.mjs`, the new screenshot driver: 27 of 27 checks
+  pass. Run with `CNB_UAT_SHOTS=docs/uat-shots/session-025` to write the
+  four full-page screenshots below.
+- The six drivers of `cnb/index.html` that session 25 moved to the new
+  page pass: golden path 30/30, clef 28/28, key signature 38/38, Kite
+  pipeline 26/26, imported notehead 13/13, hostile input 57/57 (Chromium,
+  Firefox and Edge). `uat-site.mjs` passes 8/8 unchanged.
+
+Session 25 replaced the column of eleven panels with the one-screen page of
+design §7: a top bar, a section list, the staff canvas and one panel at a
+time. The canvas now reflows (§6.1) and draws at the toolbar's Size, which
+is kept in the browser's `localStorage`. The driver opens the app at
+1440 × 900 and 1280 × 800 in a fresh browser, with the default config and
+then with Kite 4-369 opened from the top bar. It checks that:
+
+- the canvas starts at Medium (11 px per semitone);
+- the default config is one row at 1440 and two rows, C to F♯ and G to C′,
+  at 1280. Kite 4-369 is two rows at both widths. These are the rows the
+  design gives for Medium (§6.1, §10);
+- the page never scrolls sideways, in any section;
+- each section shows its own panel and no other, and marks itself current;
+- choosing Small leaves the config unchanged, and Small is still chosen
+  after a reload. At Small the default config is one row;
+- there are no console or page errors.
+
+The drivers draw the canvas at Small, where the full row is one row, and
+compute their expected geometry from the same display copy of the config
+that the canvas draws (`cnb/uat/app-page.mjs`).
+
+### Judged against the mock-ups (design §10)
+
+| Screenshot | Rows | Judgement |
+|---|---|---|
+| [Default, 1440](uat-shots/session-025/app-default-1440.png) | one | Matches mock-up 1's layout: top bar, section list, canvas card with its toolbar, then the Staff panel. The 13 columns share the spare width equally. |
+| [Default, 1280](uat-shots/session-025/app-default-1280.png) | two | Matches mock-up 1 at 1280: C to F♯ over G to C′, same column grid, and the second staff ends after C′. The noteheads are the same size as at 1440. |
+| [Kite 4-369, 1440](uat-shots/session-025/app-kite-1440.png) | two | As mock-up 2's canvas at Medium. The top bar names the opened file, and the checks show No problems. |
+| [Kite 4-369, 1280](uat-shots/session-025/app-kite-1280.png) | two | As above. Nothing is wider than the window. |
+
+The first screenshots had one fault, which was fixed in this session. The
+canvas drew the pitch labels at the config's 22 px, with the 14 px margins
+of the test pages' label chips, so at 1280 × 800 the two rows filled the
+window and pushed the panel below it. The mock-ups use the editor's
+compact label style (15 px, `--ink-2`, 6 px margins), which design §6.1 and
+§6.2 give to the canvas's display copy. `CNBPreviewDisplay.displayConfig`
+now applies it, and the screenshots are full-page to compare with the
+full-page mock-ups.
+
+Differences that later sessions own, as planned:
+
+- **No label strip** in a 14th column, and no Pitch or Ledger lines
+  sections in the list (sessions 28 and 26).
+- **The panels keep their developer wording and layout**, restyled only by
+  the shared tokens and controls: "Staff pattern", "LilyPond
+  staff-line-positions", and the repeated "Preview-only" paragraphs. The
+  wording, the badges and the Staff panel's pattern cards are session 26.
+- **The checks list shows today's messages.** For the default config they
+  are two warnings ("Shape "crotchet-minim" has no lilypondPath…" and
+  "Some pitch classes have no color rule…"). Saying them in designer terms,
+  with links to the controls that fix them, is session 26.
+- **The pitch labels draw in a serif face in these screenshots**, because
+  the drivers stub the Google Fonts request. In the browser, they draw in
+  Oswald, as in the mock-ups.
+
 ## Notehead size check — 2026-11-06 (session 22)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

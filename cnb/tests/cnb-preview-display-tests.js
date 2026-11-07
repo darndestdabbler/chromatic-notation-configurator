@@ -330,7 +330,7 @@ export const tests = [
           onRender: (options, target) => calls.push({ options, target }),
         });
         assertEqual(calls.length, 1, "one render on mount");
-        assertEqual(calls[0].options, PVD.buildOptions(cfg, api.getState()));
+        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1 });
         assert(calls[0].target === findOne(api.root, "cnb-pvd-preview"), "target is the preview element");
       });
     },
@@ -577,11 +577,168 @@ export const tests = [
           collection: { render: (target, config, options) => calls.push({ target, config, options }) },
         });
         assertEqual(calls.length, 1);
-        assert(calls[0].config === cfg, "shared config passed through");
-        assertEqual(calls[0].options, PVD.buildOptions(cfg, api.getState()));
+        assertEqual(calls[0].config, PVD.displayConfig(cfg, "medium"), "the display copy of the shared config");
+        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1 });
         assert(calls[0].target === findOne(api.root, "cnb-pvd-preview"), "renders into the preview element");
         assertEqual(findAll(api.root, "pc-col").length, 0, "Module 10 not invoked");
       });
     },
   },
+
+  // ── Size and rows (session 25, design §6.1) ──
+  {
+    name: "SIZES: Small 9, Medium 11, Large 16 px per semitone; Medium by default",
+    fn: () => {
+      assertEqual(PVD.SIZES, { small: 9, medium: 11, large: 16 });
+      assertEqual(PVD.DEFAULT_SIZE, "medium");
+    },
+  },
+  {
+    name: "readSize: the stored step, else Medium (absent, unknown, null storage, throwing storage)",
+    fn: () => {
+      assertEqual(PVD.readSize(memoryStorage({ [PVD.SIZE_STORAGE_KEY]: "large" })), "large");
+      assertEqual(PVD.readSize(memoryStorage({})), "medium", "absent");
+      assertEqual(PVD.readSize(memoryStorage({ [PVD.SIZE_STORAGE_KEY]: "huge" })), "medium", "unknown");
+      assertEqual(PVD.readSize(memoryStorage({ [PVD.SIZE_STORAGE_KEY]: "toString" })), "medium", "inherited name");
+      assertEqual(PVD.readSize(null), "medium", "no storage");
+      assertEqual(PVD.readSize({ getItem() { throw new Error("blocked"); } }), "medium", "blocked");
+    },
+  },
+  {
+    name: "writeSize: stores the step under SIZE_STORAGE_KEY; a null or throwing storage is ignored",
+    fn: () => {
+      const s = memoryStorage({});
+      PVD.writeSize(s, "small");
+      assertEqual(s.data[PVD.SIZE_STORAGE_KEY], "small");
+      PVD.writeSize(null, "small");
+      PVD.writeSize({ setItem() { throw new Error("blocked"); } }, "small");
+    },
+  },
+  {
+    name: "displayConfig: a copy at the Size's px per semitone, no column padding and the editor's label style; the saved display is untouched",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const copy = PVD.displayConfig(cfg, "small");
+      assertEqual(copy.display.pxPerSemi, 9);
+      assertEqual(copy.display.column.paddingH, 0, "the fluid grid pads the columns itself");
+      assertEqual(cfg.display.pxPerSemi, 16, "input unchanged");
+      assertEqual(cfg.display.column.paddingH, 16, "input padding unchanged");
+      assertEqual(copy.display.label, { ...cfg.display.label, ...PVD.EDITOR_LABEL }, "the editor's label style");
+      assertEqual(PVD.EDITOR_LABEL, { fontSize: 15, marginTop: 6, marginBottom: 6, padding: 4, color: "#5b5d63" });
+      assertEqual(copy.display.label.fontFamily, cfg.display.label.fontFamily, "the label font kept");
+      assertEqual(cfg.display.label.fontSize, 22, "input labels unchanged");
+      assertEqual(copy.display.card, cfg.display.card, "other display settings kept");
+      assert(copy.staff === cfg.staff, "the rest of the config is shared, not changed");
+    },
+  },
+  {
+    name: "rowsFor: one row at or above the one-row minimum, two below it",
+    fn: () => {
+      const cfg = PVD.displayConfig(CNBConfig.createDefault(), "medium");
+      const options = { pitchClasses: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], durations: ["crotchet"], keys: null };
+      const min = CNBCollection.minRowWidth(cfg, { ...options, rows: 1 });
+      assertEqual(PVD.rowsFor(cfg, options, min), 1, "at the minimum");
+      assertEqual(PVD.rowsFor(cfg, options, min - 1), 2, "just below");
+      assertEqual(PVD.rowsFor(cfg, options, Infinity), 1, "unknown width");
+    },
+  },
+  {
+    name: "render: the Size control starts at the stored step, draws at it, and remembers a new choice",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const storage = memoryStorage({ [PVD.SIZE_STORAGE_KEY]: "large" });
+      withDomStub(container => {
+        const calls = [];
+        const api = PVD.render(container, {
+          getConfig: () => cfg, storage, ResizeObserver: null,
+          collection: { render: (target, config, options) => calls.push({ config, options }) },
+        });
+        const options = findAll(api.root, "cnb-pvd-size-option");
+        assertEqual(options.map(b => b.getAttribute("data-size")), ["small", "medium", "large"]);
+        assertEqual(options.filter(b => b.className.includes(" on")).map(b => b.getAttribute("data-size")), ["large"]);
+        assertEqual(calls[0].config.display.pxPerSemi, 16, "drawn at Large");
+        options[0].onclick();
+        assertEqual(api.getSize(), "small");
+        assertEqual(storage.data[PVD.SIZE_STORAGE_KEY], "small", "remembered");
+        assertEqual(calls[calls.length - 1].config.display.pxPerSemi, 9, "redrawn at Small");
+        assertEqual(cfg.display.pxPerSemi, 16, "the shared config is never written");
+      });
+    },
+  },
+  {
+    name: "render: the observed width picks the rows, and a resize redraws only when the count changes",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const observer = fakeObserver();
+        const calls = [];
+        const api = PVD.render(container, {
+          getConfig: () => cfg, storage: null, ResizeObserver: observer.Ctor,
+          onRender: (options) => calls.push(options),
+        });
+        assert(observer.target === api.root, "observes the root");
+        assertEqual(calls.length, 1, "one render on mount");
+        assertEqual(calls[0].rows, 1, "one row before a width is known");
+        const drawnCfg = PVD.displayConfig(cfg, "medium");
+        const one = CNBCollection.minRowWidth(drawnCfg, { rows: 1 });
+        const two = CNBCollection.minRowWidth(drawnCfg, { rows: 2 });
+        observer.resize(one + 50);
+        assertEqual(calls.length, 1, "still one row: no redraw");
+        observer.resize(one - 1);
+        assertEqual(calls.length, 2, "two rows: redrawn");
+        assertEqual(calls[1].rows, 2);
+        assertEqual(api.getRows(), 2);
+        assertEqual(findAllByClassAttr(api.root, "staff-lines-bg").length, 2, "two systems drawn");
+        observer.resize(two + 10);
+        assertEqual(calls.length, 2, "still two rows: no redraw");
+        assertEqual(findOne(api.root, "cnb-pvd-preview").className, "cnb-pvd-preview", "not overflowing");
+        assertEqual(findOne(api.root, "cnb-pvd-size-hint").textContent, "", "no hint");
+        observer.resize(two - 1);
+        assertEqual(calls.length, 2, "below the two-row minimum: no redraw");
+        assertEqual(findOne(api.root, "cnb-pvd-preview").className, "cnb-pvd-preview cnb-pvd-overflow", "overflow marked");
+        assert(findOne(api.root, "cnb-pvd-size-hint").textContent.includes("smaller Size"), "hint suggests a smaller Size");
+        observer.resize(one);
+        assertEqual(calls.length, 3, "back to one row: redrawn");
+        assertEqual(calls[2].rows, 1);
+      });
+    },
+  },
+  {
+    name: "render: rangeHost receives the pitch-range control instead of the controls",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const rangeHost = makeHtmlStubElement("div");
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, rangeHost });
+        assertEqual(findAll(api.root, "cnb-pvd-range").length, 0, "not in the controls");
+        assertEqual(findAll(rangeHost, "cnb-pvd-range").length, 1, "in the range host");
+        const from = findOne(rangeHost, "cnb-pvd-from");
+        from.onchange({ target: { value: "7" } });
+        assertEqual(api.getState().fromPc, 7, "the moved control still drives the preview");
+        assertEqual(findAll(rangeHost, "cnb-pvd-range").length, 1, "redrawn in place, not duplicated");
+        assertEqual(findAll(api.root, "pc-col").length, 6, "the preview follows");
+      });
+    },
+  },
 ];
+
+/** An in-memory stand-in for localStorage. */
+function memoryStorage(initial) {
+  const data = { ...initial };
+  return {
+    data,
+    getItem: (k) => (Object.hasOwn(data, k) ? data[k] : null),
+    setItem: (k, v) => { data[k] = String(v); },
+  };
+}
+
+/** A ResizeObserver stand-in whose resize(width) calls the callback. */
+function fakeObserver() {
+  const handle = { target: null, callback: null };
+  handle.Ctor = function (callback) {
+    handle.callback = callback;
+    this.observe = (target) => { handle.target = target; };
+  };
+  handle.resize = (width) => handle.callback([{ contentRect: { width } }]);
+  return handle;
+}

@@ -64,6 +64,25 @@
  *   │                               absent otherwise)
  *   └── div.cnb-pvd-preview        (Module 10 output; absent when empty)
  *
+ * Session 25 (the editor's reflowing canvas, design §6.1):
+ *   - Size: a segmented control (Small 9, Medium 11, Large 16 px per
+ *     semitone). The preview draws a display copy of the config at that
+ *     size and ignores the saved display.pxPerSemi; the copy is never
+ *     written back. The choice is the viewer's, remembered in the
+ *     browser's localStorage (SIZE_STORAGE_KEY), every access guarded so a
+ *     blocked storage means Medium. opts.storage replaces localStorage
+ *     (null: remember nothing).
+ *   - Rows: the collection renders fluid, on one row when the preview's
+ *     width is at least CNBCollection.minRowWidth for one row, otherwise
+ *     on two (rowsFor). A ResizeObserver on the root (opts.ResizeObserver
+ *     replaces the global; without one the width is unknown and the
+ *     preview stays on one row) redraws only when the row count changes.
+ *     Below the two-row minimum the preview is marked cnb-pvd-overflow
+ *     (the host scrolls it with a fade) and the size hint suggests a
+ *     smaller Size.
+ *   - opts.rangeHost: when given, the pitch-range control is drawn there
+ *     (the editor puts it in Advanced) instead of in the controls.
+ *
  * Dependencies: Module A (config shape), Module B (pitch labels),
  * Module 10 (card collection).
  */
@@ -82,10 +101,93 @@ function deepClone(v) {
   return v === undefined ? v : JSON.parse(JSON.stringify(v));
 }
 
+/** The canvas sizes in px per semitone (design §6.1). */
+const SIZES = { small: 9, medium: 11, large: 16 };
+const DEFAULT_SIZE = "medium";
+const SIZE_STORAGE_KEY = "cnb.canvasSize";
+
+/** The canvas's label style (design §6.2): plain, compact pitch labels. */
+const EDITOR_LABEL = { fontSize: 15, marginTop: 6, marginBottom: 6, padding: 4, color: "#5b5d63" };
+
+/** The browser's localStorage, or null where reading it throws or it is absent. */
+function browserStorage() {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const CNBPreviewDisplay = {
 
   PC_MIN,
   PC_MAX,
+  SIZES,
+  DEFAULT_SIZE,
+  SIZE_STORAGE_KEY,
+  EDITOR_LABEL,
+
+  /**
+   * The remembered Size: the stored name when it is one of SIZES, else
+   * Medium (also when the storage is null or throws).
+   * @param {{getItem: Function}|null} storage
+   * @returns {"small"|"medium"|"large"}
+   */
+  readSize(storage) {
+    try {
+      const v = storage ? storage.getItem(SIZE_STORAGE_KEY) : null;
+      return Object.hasOwn(SIZES, v) ? v : DEFAULT_SIZE;
+    } catch {
+      return DEFAULT_SIZE;
+    }
+  },
+
+  /**
+   * Remember a Size; a null or failing storage remembers nothing.
+   * @param {{setItem: Function}|null} storage
+   * @param {"small"|"medium"|"large"} size
+   */
+  writeSize(storage, size) {
+    try {
+      if (storage) storage.setItem(SIZE_STORAGE_KEY, size);
+    } catch {
+      // Blocked storage: the choice lasts until the page reloads.
+    }
+  },
+
+  /**
+   * The config the canvas draws: a copy with display.pxPerSemi set to the
+   * Size, no column padding, because the fluid grid gives every column its
+   * own 2 px either side of the widest ledger, and the editor's label
+   * style: plain 15 px labels in --ink-2 with tight margins (design §6.1,
+   * §6.2, as in the mock-ups). The input is not changed.
+   * @param {object} config
+   * @param {"small"|"medium"|"large"} size
+   * @returns {object}
+   */
+  displayConfig(config, size) {
+    const display = config.display || {};
+    return {
+      ...config,
+      display: {
+        ...display,
+        pxPerSemi: SIZES[size],
+        column: { ...(display.column || {}), paddingH: 0 },
+        label: { ...(display.label || {}), ...EDITOR_LABEL },
+      },
+    };
+  },
+
+  /**
+   * One row when the width holds a one-row layout, otherwise two.
+   * @param {object} config   the config as drawn (displayConfig)
+   * @param {object} options  collection options (pitchClasses, durations, keys)
+   * @param {number} width    px available
+   * @returns {1|2}
+   */
+  rowsFor(config, options, width) {
+    return width >= CNBCollection.minRowWidth(config, { ...options, rows: 1 }) ? 1 : 2;
+  },
 
   /**
    * Display label for a pitch-class select option: note name via Module B,
@@ -230,8 +332,16 @@ export const CNBPreviewDisplay = {
     const getConfig = opts.getConfig;
     const onRender = opts.onRender || (() => {});
     const collection = opts.collection || CNBCollection;
+    const storage = "storage" in opts ? opts.storage : browserStorage();
+    const Observer = "ResizeObserver" in opts ? opts.ResizeObserver : globalThis.ResizeObserver;
+    const rangeHost = opts.rangeHost || null;
 
     const state = CNBPreviewDisplay.defaultState(getConfig());
+    let size = CNBPreviewDisplay.readSize(storage);
+    let width = Infinity;     // unknown until measured: one row
+    let rows = 1;             // the row count of the last drawn preview
+    let preview = null;       // the last drawn .cnb-pvd-preview
+    let sizeHint = null;      // the hint shown below the two-row minimum
 
     const root = doc.createElement("div");
     root.className = "cnb-preview-display";
@@ -346,37 +456,100 @@ export const CNBPreviewDisplay = {
       return wrap;
     }
 
+    // ── Size (session 25) ─────────────────────────────────────────────────
+    function drawSize() {
+      const wrap = el("div", "cnb-pvd-size");
+      wrap.appendChild(el("span", "cnb-pvd-size-label", "Size"));
+      const group = el("div", "cnb-pvd-size-options");
+      for (const name of Object.keys(SIZES)) {
+        const button = el("button", "cnb-pvd-size-option" + (name === size ? " on" : ""),
+          name[0].toUpperCase() + name.slice(1));
+        button.type = "button";
+        button.setAttribute("data-size", name);
+        button.onclick = () => {
+          size = name;
+          CNBPreviewDisplay.writeSize(storage, name);
+          changed();
+        };
+        group.appendChild(button);
+      }
+      wrap.appendChild(group);
+      sizeHint = el("span", "cnb-pvd-size-hint", "");
+      wrap.appendChild(sizeHint);
+      return wrap;
+    }
+
     // ── Preview area ──────────────────────────────────────────────────────
+    /** The drawn config and the collection options for the current state. */
+    function drawn() {
+      const config = CNBPreviewDisplay.displayConfig(getConfig(), size);
+      return { config, options: CNBPreviewDisplay.buildOptions(config, state) };
+    }
+
+    /** Below the two-row minimum: mark the preview and suggest a smaller Size. */
+    function updateOverflow(config, options) {
+      if (!preview) return;
+      const overflow = width < CNBCollection.minRowWidth(config, { ...options, rows: 2 });
+      preview.className = "cnb-pvd-preview" + (overflow ? " cnb-pvd-overflow" : "");
+      sizeHint.textContent = !overflow ? ""
+        : size === "small" ? "The staff is wider than the window."
+        : "The staff is wider than the window: choose a smaller Size.";
+    }
+
     function drawPreview() {
-      const config = getConfig();
-      const options = CNBPreviewDisplay.buildOptions(config, state);
+      const { config, options } = drawn();
+      preview = null;
       if (options.durations.length === 0) {
         root.appendChild(el("div", "cnb-pvd-empty",
           "No duration selected — pick at least one duration pill to render the preview."));
         onRender(options, null);
         return;
       }
-      const preview = el("div", "cnb-pvd-preview");
-      collection.render(preview, config, options);
+      rows = CNBPreviewDisplay.rowsFor(config, options, width);
+      const collectionOptions = { ...options, fluid: true, rows };
+      preview = el("div", "cnb-pvd-preview");
+      collection.render(preview, config, collectionOptions);
       root.appendChild(preview);
-      onRender(options, preview);
+      updateOverflow(config, options);
+      onRender(collectionOptions, preview);
     }
 
     function redraw() {
       root.textContent = "";   // clears children on real DOM and on the test stub
       const controls = el("div", "cnb-pvd-controls");
-      controls.appendChild(drawRange());
+      if (rangeHost) {
+        rangeHost.textContent = "";
+        rangeHost.appendChild(drawRange());
+      } else {
+        controls.appendChild(drawRange());
+      }
       controls.appendChild(drawDurations());
       const key = drawKey();
       if (key) controls.appendChild(key);
+      controls.appendChild(drawSize());
       root.appendChild(controls);
       drawPreview();
     }
 
     const changed = () => redraw();
 
-    redraw();
+    /** A new width: redraw when the row count changes, else re-mark overflow. */
+    function resized(newWidth) {
+      width = newWidth;
+      const { config, options } = drawn();
+      if (options.durations.length === 0) return;
+      if (CNBPreviewDisplay.rowsFor(config, options, width) !== rows) redraw();
+      else updateOverflow(config, options);
+    }
+
     container.appendChild(root);
+    redraw();
+    if (typeof Observer === "function") {
+      new Observer(entries => {
+        const entry = entries[entries.length - 1];
+        if (entry) resized(entry.contentRect.width);
+      }).observe(root);
+    }
 
     return {
       root,
@@ -393,6 +566,8 @@ export const CNBPreviewDisplay = {
         redraw();
       },
       getOptions: () => CNBPreviewDisplay.buildOptions(getConfig(), state),
+      getSize: () => size,
+      getRows: () => rows,
       redraw,
     };
   },

@@ -16,6 +16,7 @@ import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCard } from "../src/cnb-card.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
 
@@ -309,4 +310,138 @@ export const tests = [
       }
     }},
 
+  // ── Fluid layout (session 25, design §6.1) ─────────────────────────────
+
+  { name: "preview baseline: fluid false and rows 2 without fluid render byte-identically", fn: () => {
+      const baseline = JSON.parse(readFileSync(PREVIEW_BASELINE, "utf8"));
+      const byId = new Map(baseline.probes.map(p => [p.id, p]));
+      for (const p of previewProbes()) {
+        const got = renderHash(p.config, { ...p.options, fluid: false, rows: 2 });
+        eq(got.sha256, byId.get(p.id).sha256, `${p.id}: serialized sha256`);
+      }
+    }},
+
+  { name: "minRowWidth: one row is 13 column minimums (widest column, rounded up, + 2 px each side)", fn: () => {
+      const config = CNBConfig.createDefault();
+      const grid = CNBGrid.create(config, CNBCollection.gridRange(DEFAULT_ROW));
+      const widest = Math.max(...DEFAULT_ROW.map(pc => CNBCard.columnWidth(config, grid, { pc, duration: "crotchet" })));
+      const colMin = Math.ceil(widest) + 4;
+      eq(CNBCollection.minRowWidth(config), 13 * colMin, "one row");
+      eq(CNBCollection.minRowWidth(config, { rows: 1 }), 13 * colMin, "rows 1");
+      eq(CNBCollection.minRowWidth(config, { rows: 2 }), 7 * colMin, "two rows: 7 slots");
+    }},
+
+  { name: "minRowWidth: the widest column over every shown duration sets the minimum", fn: () => {
+      const config = loadViaIO(path.join(FIXTURES, "kite-4-369-config.json"));
+      const grid = CNBGrid.create(config, CNBCollection.gridRange(DEFAULT_ROW));
+      const widest = Math.max(...["crotchet", "minim"].flatMap(duration =>
+        DEFAULT_ROW.map(pc => CNBCard.columnWidth(config, grid, { pc, duration }))));
+      eq(CNBCollection.minRowWidth(config, { durations: ["crotchet", "minim"] }),
+        13 * (Math.ceil(widest) + 4), "crotchet + minim");
+      assert(CNBCollection.minRowWidth(config, { durations: ["crotchet", "minim"] }) >
+        CNBCollection.minRowWidth(config), "repeat-mode minims widen the columns");
+    }},
+
+  { name: "minRowWidth: adds the clef and key-signature gutters", fn: () => {
+      const config = keySigDefault();
+      const plain = CNBCollection.minRowWidth(config, { rows: 2 });
+      const withKey = CNBCollection.minRowWidth(config, { rows: 2, keys: ["C"] });
+      approx(withKey - plain, CNBKeySignature.gutterWidth(config, config.display.pxPerSemi, "C"), "key gutter");
+    }},
+
+  { name: "render (fluid): one system on a grid of 13 equal columns", fn: () => {
+      const config = CNBConfig.createDefault();
+      const colMin = CNBCollection.minRowWidth(config) / 13;
+      withDomStub(container => {
+        const root = CNBCollection.render(container, config, { fluid: true });
+        eq(root.children.length, 1, "one duration row");
+        const systems = fluidSystems(root.children[0]);
+        eq(systems.length, 1, "one system");
+        const { container: c, columns, bg, cards } = systems[0];
+        eq(columns.style.display, "grid", "grid");
+        eq(columns.style.gridTemplateColumns, `repeat(13, minmax(${colMin}px, 1fr))`, "template");
+        eq(c.style.minWidth, 13 * colMin + "px", "system min width");
+        eq(cards.length, 13, "13 cards");
+        eq(cards.map(col => col.getAttribute("data-pc")).join(","), DEFAULT_ROW.join(","), "data-pc");
+        eq(cards.map(col => col.style.gridColumn).join(","), DEFAULT_ROW.map(i => String(i + 1)).join(","), "explicit cells");
+        eq(bg.style.gridColumn, "1 / span 13", "staff spans the row");
+      });
+    }},
+
+  { name: "render (fluid): the staff SVG is 100% wide and every line runs to 100%", fn: () => {
+      const config = CNBConfig.createDefault();
+      withDomStub(container => {
+        const { bg } = fluidSystems(CNBCollection.render(container, config, { fluid: true }).children[0])[0];
+        const grid = CNBGrid.create(config, CNBCollection.gridRange(DEFAULT_ROW));
+        eq(bg.getAttribute("width"), "100%", "svg width");
+        eq(bg.getAttribute("height"), String(grid.svgHeight), "svg height");
+        eq(bg.style.marginTop, grid.topLabelHeight + "px", "aligned with the note-slices");
+        const lines = bg.children.find(c => c.getAttribute("class") === "cnb-staff").children;
+        eq(lines.length, CNBStaff.getPositions(config, grid).length, "line count");
+        assert(lines.every(l => l.getAttribute("x2") === "100%"), "lines to 100%");
+      });
+    }},
+
+  { name: "render (fluid, rows 2): C to F♯ and G to C′ on the same 7-slot grid, 24 px apart", fn: () => {
+      const config = CNBConfig.createDefault();
+      const colMin = CNBCollection.minRowWidth(config) / 13;
+      withDomStub(container => {
+        const systems = fluidSystems(CNBCollection.render(container, config, { fluid: true, rows: 2 }).children[0]);
+        eq(systems.length, 2, "two systems");
+        const [a, b] = systems;
+        eq(a.cards.map(c => c.getAttribute("data-pc")).join(","), "0,1,2,3,4,5,6", "first system");
+        eq(b.cards.map(c => c.getAttribute("data-pc")).join(","), "7,8,9,10,11,12", "second system");
+        for (const s of systems) {
+          eq(s.columns.style.gridTemplateColumns, `repeat(7, minmax(${colMin}px, 1fr))`, "same template");
+          eq(s.container.style.minWidth, 7 * colMin + "px", "same min width");
+        }
+        eq(a.bg.style.gridColumn, "1 / span 7", "first staff spans 7");
+        eq(b.bg.style.gridColumn, "1 / span 6", "second staff ends after C′");
+        eq(a.container.style.marginTop, undefined, "no gap above the first");
+        eq(b.container.style.marginTop, "24px", "24 px between rows");
+        const gridB = CNBGrid.create(config, CNBCollection.gridRange([7, 8, 9, 10, 11, 12]));
+        eq(b.bg.getAttribute("height"), String(gridB.svgHeight), "each system has its own grid range");
+      });
+    }},
+
+  { name: "render (fluid): the key-signature gutter is a fixed track in every system, under the staff", fn: () => {
+      const config = keySigDefault();
+      withDomStub(container => {
+        const systems = fluidSystems(CNBCollection.render(container, config, { fluid: true, rows: 2, keys: ["C"] }).children[0]);
+        const gutter = CNBKeySignature.gutterWidth(config, config.display.pxPerSemi, "C");
+        for (const s of systems) {
+          const key = s.columns.children.find(c => c.className === "keysig-col");
+          assert(key, "keysig column");
+          eq(key.style.gridColumn, "1", "first track");
+          assert(s.columns.style.gridTemplateColumns.startsWith(gutter + "px repeat(7, "), "gutter track");
+          eq(s.cards[0].style.gridColumn, "2", "cards after the gutter");
+        }
+        eq(systems[1].bg.style.gridColumn, "1 / span 7", "staff spans the gutter and six cards");
+      });
+    }},
+
+  { name: "render (fluid): several durations each get captioned rows of systems", fn: () => {
+      const config = CNBConfig.createDefault();
+      withDomStub(container => {
+        const root = CNBCollection.render(container, config, { fluid: true, rows: 2, durations: ["crotchet", "minim"] });
+        eq(root.children.length, 2, "two duration rows");
+        for (const row of root.children) {
+          eq(row.children[0].className, "cnb-duration-caption", "caption first");
+          eq(fluidSystems(row).length, 2, "two systems");
+        }
+      });
+    }},
+
 ];
+
+const DEFAULT_ROW = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/** The fluid systems of one duration row. */
+function fluidSystems(row) {
+  return row.children.filter(c => c.className === "preview-container").map(container => {
+    const columns = container.children.find(c => c.className === "pc-columns");
+    const bg = columns.children.find(c => c.getAttribute("class") === "staff-lines-bg");
+    const cards = columns.children.filter(c => c.className === "pc-col");
+    return { container, columns, bg, cards };
+  });
+}

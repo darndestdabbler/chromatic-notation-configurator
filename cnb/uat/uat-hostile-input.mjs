@@ -241,7 +241,7 @@ async function runIn(spec) {
   const importSvg = (name, body) =>
     page.setInputFiles('#svg-importer-host input[type="file"]', file(name, "image/svg+xml", body));
   const loadJson = (name, body) =>
-    page.setInputFiles(".cnb-cio-file", file(name, "application/json", body));
+    page.setInputFiles("#open-file", file(name, "application/json", body));
 
   // ── Load ──
   await page.goto(`http://localhost:${PORT}/cnb/index.html`);
@@ -307,13 +307,17 @@ async function runIn(spec) {
   await loadJson("unexportable.cnb.json", UNEXPORTABLE);
   await waitText(".cnb-cio-status", "Unexportable");
   const downloadsBefore = downloads;
-  await page.click(".cnb-cex-export");
+  await page.click("#export-ly");
   status = await waitText(".cnb-cex-status", "Export blocked");
   const rows = await page.$$eval(".cnb-cex-verror", els => els.map(e => e.textContent));
   check(`${tag} EXPORT: an invalid config is blocked with its errors listed`,
     status.includes("Export blocked") && rows.some(r => r.includes("NoHyphen") || /hyphen/i.test(r)),
     status + " / " + rows.join(" | "));
   check(`${tag} EXPORT: nothing is downloaded`, downloads === downloadsBefore);
+  const indicator = await text("#checks-indicator");
+  const tooltip = (await page.getAttribute("#export-ly", "title")) || "";
+  check(`${tag} EXPORT: the checks indicator counts the errors and the Export button's tooltip names the block`,
+    /\d+ errors?/.test(indicator) && tooltip.startsWith("Export is blocked"), indicator + " / " + tooltip);
 
   await page.screenshot({ path: path.join(SHOT_DIR, `uat-hostile-input-${spec.name.toLowerCase()}.png`), fullPage: true });
   check(`${tag} NO console or page errors across all hostile input`, consoleErrors.length === 0,

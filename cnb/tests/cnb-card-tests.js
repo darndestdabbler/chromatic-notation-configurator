@@ -129,6 +129,43 @@ export const tests = [
       });
     }},
 
+  // ── render: fluid layout (session 25) ─────────────────────────────────────
+
+  { name: "render: without layout.fluid the column has a fixed width and no data-pc", fn: () => {
+      const { config, grid } = fixture();
+      withDomStub(container => {
+        const col = CNBCard.render(container, grid, config, { pc: 3, duration: "crotchet" }, { fluid: false });
+        eq(col.getAttribute("data-pc"), null, "no data-pc");
+        eq(col.style.flex, "0 0 auto", "fixed flex basis");
+        eq(dissect(col).svg.style.margin, undefined, "slice not centred by margin");
+      });
+    }},
+
+  { name: "render: layout.fluid fills the grid cell, centres the slice and marks data-pc", fn: () => {
+      const { config, grid } = fixture();
+      withDomStub(container => {
+        const fixed = CNBCard.render(container, grid, config, { pc: 3, duration: "crotchet" });
+        const col = CNBCard.render(container, grid, config, { pc: 3, duration: "crotchet" }, { fluid: true });
+        const colWidth = CNBCard.columnWidth(config, grid, { pc: 3, duration: "crotchet" });
+        eq(col.getAttribute("data-pc"), "3", "data-pc");
+        eq(col.style.width, undefined, "no fixed column width");
+        eq(col.style.flex, undefined, "no flex basis");
+        const { svg } = dissect(col);
+        eq(svg.getAttribute("width"), String(colWidth), "slice keeps its own width");
+        eq(svg.style.margin, "0 auto", "slice centred");
+        // The drawing itself is the fixed-layout drawing.
+        eq(JSON.stringify(svg.children), JSON.stringify(dissect(fixed).svg.children), "same drawing");
+      });
+    }},
+
+  { name: "render: layout.fluid marks the upper C as data-pc 12", fn: () => {
+      const { config, grid } = fixture();
+      withDomStub(container => {
+        const col = CNBCard.render(container, grid, config, { pc: 12, duration: "crotchet" }, { fluid: true });
+        eq(col.getAttribute("data-pc"), "12", "data-pc of C′");
+      });
+    }},
+
   { name: "render: draw order is ledgers, stem, then two noteheads on top", fn: () => {
       const { config, grid } = fixture();
       withDomStub(container => {

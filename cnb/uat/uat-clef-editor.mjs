@@ -50,6 +50,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -184,10 +185,15 @@ page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text())
 page.on("pageerror", e => consoleErrors.push(String(e)));
 
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
+// The canvas draws at Small, where the full row fits one row (design §6.1).
+await useCanvasSize(page, "small");
 await page.goto(URL_PATH);
-await page.waitForSelector(".cnb-clef-editor");
+await page.waitForSelector(".cnb-clef-editor", { state: "attached" });
+await openSection(page, "clef");
 
 const fullConfig = async () => JSON.parse(await page.textContent("#state-json"));
+/** The config as the canvas draws it (the Small display copy). */
+const drawn = (c) => canvasConfig(c, "small");
 const clefColCount = async () => page.$$eval(".cnb-pvd-preview .clef-col", els => els.length);
 
 // The full-chromatic preview row (PCs 0–12) — the range the preview grid is
@@ -254,7 +260,7 @@ check("ENABLE: clef.enabled true in the shared config, validation shows Config v
   cfg.clef.enabled === true &&
   await page.evaluate(() =>
     !!document.querySelector(".cnb-clef-editor .cnb-cle-valid")));
-const expectedGutter0 = CNBClef.gutterWidth(cfg, cfg.display.pxPerSemi);
+const expectedGutter0 = CNBClef.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi);
 check(`ENABLE: the preview grew a clef gutter column of ${expectedGutter0}px (Node-side CNBClef.gutterWidth on the same config)`,
   (await clefColCount()) === 1 &&
   await page.$eval(".cnb-pvd-preview .clef-col",
@@ -273,7 +279,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-enabled.png"), ful
 // exactly on the line. This is the primary human-attestation frame.
 await page.fill(".cnb-cle-anchor-input", "20");
 cfg = await fullConfig();
-const grid0 = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+const grid0 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
 check(`POSITION: anchor 20 (top staff line) — clef group at translate(12,${grid0.semiToY(20)}), glyph top ON the line (Node-side parity)`,
   cfg.clef.glyphs["uat-clef"].anchorSemi === 20 &&
   await page.$eval(".cnb-pvd-preview .cnb-clef",
@@ -303,7 +309,7 @@ check("POSITION: float anchor 22.784 reaches the active definition in the shared
 // Node-side geometry parity: the glyph's group must sit at
 // translate(paddingH, semiToY(anchorSemi)) on the same grid the preview
 // creates for the full row.
-const grid1 = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+const grid1 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
 const expectedY1 = grid1.semiToY(22.784);
 check(`POSITION: the rendered clef group sits at translate(12,${expectedY1}) (Node-side CNBGrid.semiToY parity)`,
   await page.$eval(".cnb-pvd-preview .cnb-clef",
@@ -314,8 +320,8 @@ await page.fill(".cnb-cle-gutter-input", "20");
 cfg = await fullConfig();
 check("POSITION: gutter padding 20 reaches the shared config",
   cfg.clef.gutter.paddingH === 20, JSON.stringify(cfg.clef.gutter));
-const expectedGutter1 = CNBClef.gutterWidth(cfg, cfg.display.pxPerSemi);
-const grid2 = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW));
+const expectedGutter1 = CNBClef.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi);
+const grid2 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
 check(`POSITION: gutter column resized to ${expectedGutter1}px and the clef re-anchored at translate(20,${grid2.semiToY(22.784)})`,
   await page.$eval(".cnb-pvd-preview .clef-col",
     (el, w) => el.style.width === w + "px", expectedGutter1) &&
@@ -335,7 +341,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-positioned.png"), 
 // ── STEP 4: save the config (Module 17, real download) ──────────────────────
 const [saveDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cio-save"),
+  page.click("#save-config"),
 ]);
 const savedPath = path.join(SHOT_DIR, "uat-009-s2-saved.cnb.json");
 await saveDownload.saveAs(savedPath);
@@ -351,7 +357,7 @@ check("SAVE: the clef section is in the file — enabled, active uat-clef, float
   JSON.stringify(savedJson.clef));
 
 // ── STEP 5: load the saved config back (Module 17 round trip) ───────────────
-await page.setInputFiles(".cnb-cio-file", savedPath);
+await page.setInputFiles("#open-file", savedPath);
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
 cfg = await fullConfig();
@@ -375,7 +381,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-loaded.png"), full
 // ── STEP 6: export a .ly file (Module 18, real download) ────────────────────
 const [exportDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cex-export"),
+  page.click("#export-ly"),
 ]);
 const exportedPath = path.join(SHOT_DIR, "uat-009-s2-exported.ly");
 await exportDownload.saveAs(exportedPath);

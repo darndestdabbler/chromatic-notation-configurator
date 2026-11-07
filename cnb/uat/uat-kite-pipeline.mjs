@@ -60,6 +60,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { useCanvasSize, openSection, openAdvanced } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -177,6 +178,8 @@ const consoleErrors = [];
 page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
 page.on("pageerror", e => consoleErrors.push(String(e)));
 
+// The canvas draws at Small, where the full row fits one row (design §6.1).
+await useCanvasSize(page, "small");
 await page.goto(`http://localhost:${PORT}/cnb/index.html`);
 await page.waitForSelector(".cnb-preview-display");
 
@@ -211,6 +214,7 @@ function sectionCMap(ly) {
 
 // ── A1: import the two kite shapes (Module 16, toolkit SVG contract) ────────
 for (const name of ["kite-down", "kite-up"]) {
+  await openSection(page, "noteheads");
   await page.setInputFiles('#svg-importer-host input[type="file"]', {
     name: `${name}.svg`, mimeType: "image/svg+xml",
     buffer: await readFile(path.join(ROOT, "cnb", "fixtures", `${name}.svg`)),
@@ -255,8 +259,10 @@ check("AUTHOR/import (D5 fixed): imported lilypondAnchors agree with the fixture
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
 
 // ── A2: staff pattern 3-6-9 (Module 13) ─────────────────────────────────────
+await openSection(page, "staff");
 await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');
 // ── A3: repeat representation mode (Module 15) ──────────────────────────────
+await openAdvanced(page, "Durations and engine");
 await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
 cfg = await fullConfig();
 check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat mode reach the shared config",
@@ -266,6 +272,7 @@ check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat
   cfg.durations.representationMode === "repeat");
 
 // ── A4: custom CB-safe palette, 3-color cycling pool (Module 12) ────────────
+await openSection(page, "noteheads");
 await page.click(".cnb-pal-tab:has-text('Colorblind-safe')");
 await page.click(".cnb-pal-custom-select");
 // Normalize the custom pool to exactly 3 cells, then set the Kite colors.
@@ -335,7 +342,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-007-s1-authored.png"), fu
 // ── A6: export the AUTHORED system and compare with the fixture export ──────
 const [authoredDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cex-export"),
+  page.click("#export-ly"),
 ]);
 const authoredPath = path.join(SHOT_DIR, "kite-4-369-ui-authored.ly");
 await authoredDownload.saveAs(authoredPath);
@@ -392,7 +399,7 @@ check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:fals
 // ═════════════════ PHASE B — the release-gate fixture path ═════════════════
 
 // ── STEP 1: load the Kite 4-369 fixture through the Module 17 loader ────────
-await page.setInputFiles(".cnb-cio-file", FIXTURE);
+await page.setInputFiles("#open-file", FIXTURE);
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
 check("LOAD: config-io reports the fixture loaded and valid",
@@ -434,7 +441,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-007-s1-kite-loaded.png"),
 // ── STEP 3: export the .ly via the Module 18 export button ───────────────────
 const [exportDownload] = await Promise.all([
   page.waitForEvent("download"),
-  page.click(".cnb-cex-export"),
+  page.click("#export-ly"),
 ]);
 check("EXPORT: download produced with a .ly suggested filename",
   exportDownload.suggestedFilename().endsWith(".ly"),

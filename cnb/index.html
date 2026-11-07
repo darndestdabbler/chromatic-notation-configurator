@@ -2,486 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chromatic Notation Configurator</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f5f5f5;
-      padding: 24px;
-      margin: 0;
-    }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    p.intro { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 860px; }
-    .card {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-      padding: 20px;
-      margin: 0 20px 20px 0;
-      display: inline-block;
-      vertical-align: top;
-      max-width: 700px;
-    }
-    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
-    .card.wide { display: block; max-width: none; margin-right: 0; overflow-x: auto; }
-    pre {
-      font-size: 11px;
-      background: #f7f7f7;
-      border: 1px solid #e5e5e5;
-      border-radius: 6px;
-      padding: 10px;
-      max-width: 640px;
-      max-height: 480px;
-      overflow: auto;
-      margin: 0;
-    }
-
-    /* ── Preview display host styling (Module 19 ships structure only) ── */
-    .cnb-pvd-controls { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-bottom: 14px; }
-    .cnb-pvd-range, .cnb-pvd-durations, .cnb-pvd-key { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .cnb-pvd-range-label, .cnb-pvd-durations-label, .cnb-pvd-key-label {
-      font-size: 11px; color: #999; text-transform: uppercase;
-    }
-    .cnb-pvd-range-to { font-size: 12px; color: #888; }
-    .cnb-pvd-from, .cnb-pvd-to, .cnb-pvd-key-select {
-      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-pvd-duration-pill {
-      font: inherit; font-size: 11px; padding: 3px 9px; line-height: 1.2;
-      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
-      color: #888; cursor: pointer;
-    }
-    .cnb-pvd-duration-pill.on { background: #2b6cb0; border-color: #2b6cb0; color: white; }
-    .cnb-pvd-key-note { font-size: 11px; color: #aaa; max-width: 360px; }
-    .cnb-pvd-empty { font-size: 12px; color: #b45309; }
-    .cnb-pvd-preview { overflow-x: auto; }
-    .cnb-duration-caption { font-size: 15px; margin: 12px 0 2px; }
-    .cnb-duration-row:first-child .cnb-duration-caption { margin-top: 0; }
-
-    /* ── Config IO panel host styling (Module 17) ── */
-    .cnb-cio-save-row, .cnb-cio-load-row {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-      font-size: 12px; color: #555;
-    }
-    .cnb-cio-save {
-      font: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer;
-      border: 1px solid #2b6cb0; border-radius: 6px; background: #eaf2fb; color: #1a4e85;
-    }
-    .cnb-cio-filename { font-family: monospace; font-size: 12px; color: #777; }
-    .cnb-cio-filename-error { color: #c62828; font-family: inherit; }
-    .cnb-cio-load-label { flex: none; }
-    .cnb-cio-file { font-size: 12px; }
-    .cnb-cio-status { font-size: 12px; color: #2e7d32; margin: 8px 0 2px; min-height: 15px; }
-    .cnb-cio-error  { font-size: 12px; color: #c62828; margin: 2px 0; min-height: 15px; }
-    .cnb-cio-validation { margin-top: 8px; font-size: 12px; line-height: 1.6; }
-    .cnb-cio-note     { color: #6b21a8; }
-    .cnb-cio-valid    { color: #2e7d32; }
-    .cnb-cio-verror   { color: #c62828; }
-    .cnb-cio-vwarning { color: #b45309; }
-
-    /* ── Config export panel host styling (Module 18) ── */
-    .cnb-cex-export-row {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-      font-size: 12px; color: #555;
-    }
-    .cnb-cex-export {
-      font: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer;
-      border: 1px solid #2b6cb0; border-radius: 6px; background: #eaf2fb; color: #1a4e85;
-    }
-    .cnb-cex-filename { font-family: monospace; font-size: 12px; color: #777; }
-    .cnb-cex-filename-error { color: #c62828; font-family: inherit; }
-    .cnb-cex-status { font-size: 12px; color: #2e7d32; margin: 8px 0 2px; min-height: 15px; }
-    .cnb-cex-status-blocked { color: #b45309; }
-    .cnb-cex-error  { font-size: 12px; color: #c62828; margin: 2px 0; min-height: 15px; }
-    .cnb-cex-validation { margin-top: 8px; font-size: 12px; line-height: 1.6; }
-    .cnb-cex-valid    { color: #2e7d32; }
-    .cnb-cex-verror   { color: #c62828; }
-    .cnb-cex-vwarning { color: #b45309; }
-
-    /* ── SVG importer host styling (Module 16) ── */
-    .cnb-svg-drop-zone {
-      border: 2px dashed #bbb;
-      border-radius: 8px;
-      padding: 24px;
-      text-align: center;
-      font-size: 13px;
-      color: #666;
-      cursor: pointer;
-      margin-bottom: 12px;
-    }
-    .cnb-svg-drop-zone.dragover { border-color: #1b9e77; background: #f0faf6; }
-    #import-status { font-size: 13px; margin: 10px 0 0; min-height: 18px; }
-    #import-status.ok { color: #1b7d43; }
-    #import-status.err { color: #c62828; }
-    #import-warnings { font-size: 12px; color: #ef6c00; margin: 6px 0 0; padding-left: 18px; }
-
-    /* ── Palette editor host styling (Module 12) ── */
-    .cnb-pal-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    .cnb-pal-tab {
-      font: inherit; font-size: 13px; padding: 6px 14px;
-      border: 1px solid #ccc; border-radius: 6px;
-      background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-tab.active { background: #eff6fc; border-color: #2b6cb0; color: #2b6cb0; font-weight: 600; }
-    .cnb-pal-size-group { margin-bottom: 8px; }
-    .cnb-pal-size-label { font-size: 11px; color: #999; margin: 6px 0 3px; text-transform: uppercase; }
-    .cnb-pal-option {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
-      margin-bottom: 4px; cursor: pointer; font-size: 13px;
-    }
-    .cnb-pal-option:hover { border-color: #bbb; }
-    .cnb-pal-option.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-pal-option-swatches { display: flex; gap: 3px; }
-    .cnb-pal-swatch {
-      width: 18px; height: 18px; border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.15);
-    }
-    .cnb-pal-option-name { color: #444; }
-    .cnb-pal-custom { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px; margin: 12px 0; }
-    .cnb-pal-custom.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-pal-custom-select {
-      font: inherit; font-size: 13px; padding: 4px 10px;
-      border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-custom-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .cnb-pal-custom-cell { display: flex; align-items: center; gap: 2px; }
-    .cnb-pal-custom-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-pal-custom-remove, .cnb-pal-custom-add {
-      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
-      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-custom-names { font-size: 11px; color: #888; margin-top: 6px; }
-    .cnb-pal-warning { font-size: 11px; color: #b45309; margin: 6px 0; }
-    .cnb-pal-cb-match { margin: 12px 0; }
-    .cnb-pal-cb-match-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
-    .cnb-pal-cb-match-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 3px; }
-    .cnb-pal-cb-match-arrow { color: #aaa; }
-    .cnb-pal-cb-match-de { color: #999; font-size: 11px; }
-    .cnb-pal-cb-match-empty { font-size: 11px; color: #aaa; }
-    .cnb-pal-cb-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0; cursor: pointer; }
-    .cnb-pal-preview { margin: 12px 0; }
-    .cnb-pal-preview-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
-    .cnb-pal-preview-strip { display: flex; gap: 4px; }
-    .cnb-pal-preview-cell { text-align: center; }
-    .cnb-pal-preview-label { font-size: 11px; color: #666; margin-bottom: 2px; }
-    .cnb-pal-preview-swatch { width: 24px; height: 24px; }
-    .cnb-pal-attribution { font-size: 10px; color: #aaa; margin-top: 14px; max-width: 480px; }
-
-    /* ── Staff/ledger rule editor host styling (Module 13) ── */
-    .cnb-sre-section { margin-bottom: 16px; }
-    .cnb-sre-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-sre-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
-    .cnb-sre-pattern-option {
-      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
-      margin-bottom: 4px; cursor: pointer; font-size: 13px; color: #444;
-    }
-    .cnb-sre-pattern-option:hover { border-color: #bbb; }
-    .cnb-sre-pattern-option.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-sre-custom-pcs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-    .cnb-sre-pc-toggle, .cnb-sre-trigger-pill {
-      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
-      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
-      color: #888; cursor: pointer;
-    }
-    .cnb-sre-pc-toggle.on, .cnb-sre-trigger-pill.on {
-      background: #2b6cb0; border-color: #2b6cb0; color: white;
-    }
-    .cnb-sre-derived {
-      font-size: 12px; color: #555; background: #f8f8f8;
-      border: 1px solid #eee; border-radius: 6px;
-      padding: 8px 10px; margin-bottom: 16px; line-height: 1.6;
-    }
-    .cnb-sre-derived-error { color: #c62828; }
-    .cnb-sre-fields { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
-    .cnb-sre-thickness, .cnb-sre-width-multiplier {
-      width: 64px; font: inherit; font-size: 12px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-sre-style { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-sre-color { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-sre-override-row {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 5px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
-    }
-    .cnb-sre-override-row.overridden { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-sre-override-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; }
-    .cnb-sre-template-row {
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      padding: 6px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
-    }
-    .cnb-sre-template-pos, .cnb-sre-template-mode {
-      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-sre-template-triggers { display: inline-flex; flex-wrap: wrap; gap: 3px; }
-    .cnb-sre-template-triggers.inactive { opacity: 0.35; }
-    .cnb-sre-template-remove {
-      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
-      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-sre-template-add {
-      font: inherit; font-size: 12px; padding: 5px 10px;
-      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-sre-proximity, .cnb-sre-rounded {
-      display: flex; align-items: center; gap: 8px; font-size: 12px;
-      color: #444; margin: 12px 0; cursor: pointer;
-    }
-    .cnb-sre-rounded { margin: 0; }
-    .cnb-sre-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-sre-valid { color: #2e7d32; }
-    .cnb-sre-error { color: #c62828; }
-    .cnb-sre-warning { color: #b45309; }
-
-    /* ── Notehead rule editor host styling (Module 14) ── */
-    .cnb-nre-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-nre-rule-card {
-      border: 1px solid #e5e5e5; border-radius: 8px;
-      padding: 10px 12px; margin-bottom: 10px; background: #fcfcfc;
-    }
-    .cnb-nre-rule-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-    .cnb-nre-rule-num {
-      width: 20px; height: 20px; line-height: 20px; text-align: center;
-      background: #2b6cb0; color: white; border-radius: 50%; font-size: 11px; flex: none;
-    }
-    .cnb-nre-rule-name {
-      flex: 1; font: inherit; font-size: 13px; padding: 3px 8px;
-      border: 1px solid #ddd; border-radius: 4px;
-    }
-    .cnb-nre-rule-up, .cnb-nre-rule-down, .cnb-nre-rule-remove {
-      font: inherit; font-size: 12px; width: 24px; height: 24px; line-height: 1;
-      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-nre-rule-up:disabled, .cnb-nre-rule-down:disabled { opacity: 0.3; cursor: default; }
-    .cnb-nre-match-row { display: flex; align-items: baseline; gap: 8px; margin: 4px 0; }
-    .cnb-nre-match-label { font-size: 11px; color: #888; width: 78px; flex: none; }
-    .cnb-nre-keys-note { font-size: 11px; color: #aaa; }
-    .cnb-nre-pills { display: inline-flex; flex-wrap: wrap; gap: 3px; }
-    .cnb-nre-pc-pill, .cnb-nre-dur-pill, .cnb-nre-key-pill, .cnb-nre-all-pill {
-      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
-      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
-      color: #888; cursor: pointer;
-    }
-    .cnb-nre-pc-pill.on, .cnb-nre-dur-pill.on, .cnb-nre-key-pill.on {
-      background: #2b6cb0; border-color: #2b6cb0; color: white;
-    }
-    .cnb-nre-all-pill.on { background: #444; border-color: #444; color: white; }
-    .cnb-nre-apply { margin-top: 8px; border-top: 1px dashed #e5e5e5; padding-top: 8px; }
-    .cnb-nre-apply-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
-    .cnb-nre-apply-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; min-height: 26px; }
-    .cnb-nre-apply-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; width: 90px; flex: none; }
-    .cnb-nre-shape-select, .cnb-nre-hollow-select, .cnb-nre-color-mode, .cnb-nre-mark-mode {
-      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-nre-color-control, .cnb-nre-mark-control { display: inline-flex; align-items: center; gap: 6px; }
-    .cnb-nre-color-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-nre-mark-input {
-      font: inherit; font-size: 12px; padding: 3px 6px; width: 90px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-nre-size { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: #444; }
-    .cnb-nre-size-height, .cnb-nre-size-width {
-      font: inherit; font-size: 12px; padding: 3px 6px; width: 64px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-nre-size-width:disabled { background: #f5f5f5; color: #888; }
-    .cnb-nre-size-hint { font-size: 11px; color: #aaa; }
-    .cnb-nre-size-lock-label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-    .cnb-nre-rule-add {
-      font: inherit; font-size: 12px; padding: 6px 12px; margin-bottom: 16px;
-      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-nre-resolved { margin-top: 4px; }
-    .cnb-nre-resolved-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-    .cnb-nre-resolved-duration, .cnb-nre-resolved-key { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-nre-resolved-row { display: flex; gap: 4px; flex-wrap: wrap; }
-    .cnb-nre-resolved-cell {
-      border: 1px solid #eee; border-radius: 6px; padding: 5px 6px;
-      font-size: 10px; color: #666; text-align: center; min-width: 46px;
-    }
-    .cnb-nre-resolved-pc { font-weight: 600; color: #333; font-size: 12px; }
-    .cnb-nre-resolved-shape { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cnb-nre-resolved-mark { color: #999; }
-    .cnb-nre-resolved-swatch {
-      width: 100%; height: 10px; border-radius: 3px; border: 1px solid #0002; margin-top: 3px;
-    }
-    .cnb-nre-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-nre-valid { color: #2e7d32; }
-    .cnb-nre-error { color: #c62828; }
-    .cnb-nre-warning { color: #b45309; }
-
-    /* ── Common properties editor host styling (Module 15) ── */
-    .cnb-cpe-section { margin-bottom: 16px; }
-    .cnb-cpe-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-cpe-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
-    .cnb-cpe-def-row {
-      font-size: 12px; color: #555; padding: 5px 8px; margin-bottom: 4px;
-      border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
-    }
-    .cnb-cpe-mode-option {
-      font-size: 13px; color: #444; padding: 7px 10px; margin-bottom: 5px;
-      border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-cpe-mode-option.selected {
-      border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
-    }
-    .cnb-cpe-mode-help { font-size: 11px; color: #888; max-width: 460px; margin-top: 4px; }
-    .cnb-cpe-repeats.inactive { opacity: 0.55; }
-    .cnb-cpe-repeat-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; color: #555; }
-    .cnb-cpe-repeat-label { width: 160px; flex: none; }
-    .cnb-cpe-repeat-count {
-      font: inherit; font-size: 12px; width: 60px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-cpe-repeat-base { font-size: 11px; color: #999; }
-    .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
-    .cnb-cpe-engine-label { width: 150px; flex: none; }
-    .cnb-cpe-engine-row input[type="text"], .cnb-cpe-engine-row input[type="number"] {
-      font: inherit; font-size: 12px; padding: 3px 6px; width: 80px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-cpe-stem-control { display: inline-flex; align-items: center; gap: 6px; }
-    .cnb-cpe-stem-auto-label { font-size: 11px; color: #888; }
-    .cnb-cpe-badge { font-size: 10px; color: #999; font-style: italic; }
-    .cnb-cpe-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-cpe-valid { color: #2e7d32; }
-    .cnb-cpe-error { color: #c62828; }
-    .cnb-cpe-warning { color: #b45309; }
-
-    /* ── Clef editor host styling (set 009) ── */
-    .cnb-cle-section { margin-bottom: 16px; }
-    .cnb-cle-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-cle-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
-    .cnb-cle-enable {
-      display: flex; align-items: center; gap: 8px; font-size: 13px;
-      color: #444; margin-bottom: 14px; cursor: pointer;
-    }
-    .cnb-cle-file { font-size: 12px; }
-    .cnb-cle-import-status { font-size: 12px; color: #2e7d32; margin: 6px 0 0; min-height: 15px; }
-    .cnb-cle-import-error { font-size: 12px; color: #c62828; margin: 2px 0 0; min-height: 15px; }
-    .cnb-cle-import-warnings { font-size: 11px; color: #ef6c00; margin: 4px 0 0; padding-left: 18px; }
-    .cnb-cle-glyph-option {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
-      margin-bottom: 4px; cursor: pointer; font-size: 13px; color: #444;
-    }
-    .cnb-cle-glyph-option:hover { border-color: #bbb; }
-    .cnb-cle-glyph-option.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-cle-glyph-detail { font-size: 11px; color: #999; }
-    .cnb-cle-empty, .cnb-cle-anchor-empty { font-size: 12px; color: #b45309; }
-    .cnb-cle-fields { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
-    .cnb-cle-anchor-input, .cnb-cle-gutter-input {
-      width: 84px; font: inherit; font-size: 12px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-cle-anchor-name { font-size: 12px; color: #888; }
-    .cnb-cle-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-cle-valid { color: #2e7d32; }
-    .cnb-cle-error { color: #c62828; }
-    .cnb-cle-warning { color: #b45309; }
-
-    /* ── Key signature editor host styling (set 010) ── */
-    .cnb-kse-section { margin-bottom: 16px; }
-    .cnb-kse-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-kse-subtitle { font-size: 11px; color: #999; text-transform: uppercase; margin: 12px 0 4px; }
-    .cnb-kse-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
-    .cnb-kse-keys-enable, .cnb-kse-sig-enable {
-      display: flex; align-items: center; gap: 8px; font-size: 13px;
-      color: #444; margin-bottom: 14px; cursor: pointer;
-    }
-    .cnb-kse-sig-enable { margin-bottom: 6px; }
-    .cnb-kse-disabled-note {
-      font-size: 12px; color: #b45309; background: #fff8eb;
-      border: 1px solid #f1dfc0; border-radius: 6px;
-      padding: 8px 10px; margin-bottom: 14px; max-width: 460px;
-    }
-    .cnb-kse-empty { font-size: 12px; color: #b45309; margin-bottom: 6px; }
-    .cnb-kse-def-row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding: 6px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
-    }
-    .cnb-kse-def-name {
-      width: 110px; font: inherit; font-size: 12px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-kse-def-pcs { display: inline-flex; flex-wrap: wrap; gap: 3px; }
-    .cnb-kse-pc-pill {
-      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
-      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
-      color: #888; cursor: pointer;
-    }
-    .cnb-kse-pc-pill.on { background: #2b6cb0; border-color: #2b6cb0; color: white; }
-    .cnb-kse-def-tonic { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-kse-def-tonic-hint { font-size: 11px; color: #999; }
-    .cnb-kse-def-remove {
-      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
-      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-kse-def-add {
-      font: inherit; font-size: 12px; padding: 5px 10px;
-      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-kse-style-option {
-      padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px;
-      margin-bottom: 5px; background: #fafafa; cursor: pointer; max-width: 460px;
-    }
-    .cnb-kse-style-option.selected { border-color: #2b6cb0; background: #eaf2fb; }
-    .cnb-kse-style-label { font-size: 13px; color: #444; }
-    .cnb-kse-style-option.selected .cnb-kse-style-label { color: #1a4e85; font-weight: 600; }
-    .cnb-kse-style-detail { font-size: 11px; color: #888; margin-top: 2px; }
-    .cnb-kse-fields { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
-    .cnb-kse-field-label { font-size: 11px; color: #888; width: 78px; flex: none; }
-    .cnb-kse-field-unit { font-size: 11px; color: #999; }
-    .cnb-kse-octave-auto { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; }
-    .cnb-kse-placement-rule { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent,
-    .cnb-kse-gutter-input {
-      width: 64px; font: inherit; font-size: 12px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-kse-sep-enable { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #444; cursor: pointer; }
-    .cnb-kse-sep-color { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-kse-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-kse-valid { color: #2e7d32; }
-    .cnb-kse-error { color: #c62828; }
-    .cnb-kse-warning { color: #b45309; }
-
-    /* ── Pitch axis editor host styling (set 014) ── */
-    .cnb-pae-section { margin-bottom: 16px; }
-    .cnb-pae-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
-    .cnb-pae-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
-    .cnb-pae-enable {
-      display: flex; align-items: center; gap: 8px; font-size: 13px;
-      color: #444; margin-bottom: 14px; cursor: pointer;
-    }
-    .cnb-pae-preset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .cnb-pae-preset .cnb-pae-title, .cnb-pae-preset .cnb-pae-hint { flex-basis: 100%; }
-    .cnb-pae-preset-select, .cnb-pae-kind-select { font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-pae-preset-apply { font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid #aaa; border-radius: 6px; background: #fafafa; cursor: pointer; }
-    .cnb-pae-field, .cnb-pae-position { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; color: #444; }
-    .cnb-pae-label { width: 220px; flex: none; color: #888; }
-    .cnb-pae-pc-name { width: 28px; flex: none; color: #888; }
-    .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input {
-      width: 64px; font: inherit; font-size: 12px; padding: 3px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    .cnb-pae-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
-    .cnb-pae-valid { color: #2e7d32; }
-    .cnb-pae-error { color: #c62828; }
-    .cnb-pae-warning { color: #b45309; }
-
-    /* ── Shown only when the page is opened from disk (file://) ── */
-    #file-notice {
-      background: #fff4e5; border: 1px solid #b45309; border-radius: 8px;
-      padding: 14px 18px; margin: 0 0 20px; max-width: 860px;
-      font-size: 14px; line-height: 1.5; color: #333;
-    }
-    #file-notice code { background: #f7f7f7; padding: 1px 4px; border-radius: 3px; }
-  </style>
+  <link rel="stylesheet" href="ui/app.css">
 </head>
 <body>
   <script>
@@ -499,78 +26,125 @@
         'and open <code>/cnb/index.html</code> on that server.</div>');
     }
   </script>
-  <h1>Chromatic Notation Configurator</h1>
-  <p class="intro">
-    Design a chromatic notation system and export it for the CNB LilyPond
-    engine. The page owns one shared <code>config</code> object (the UI
-    shell owns state; rendering modules stay pure): the editors below write
-    their config slices through change callbacks, and the preview, save/load,
-    and export panels read the same object through accessors. Save/load uses
-    the JSON native format (Module 17); the <code>.ly</code> export
-    (Module 18) is the one-way artifact consumed by LilyPond.
-  </p>
 
-  <div class="card wide">
-    <h2>Preview (Module 19)</h2>
-    <div id="preview-host"></div>
+  <!-- Top bar (design §7): the app and config name, the checks, Open, Save, Export. -->
+  <header class="topbar">
+    <h1 class="topbar-app">Chromatic Notation Configurator</h1>
+    <span class="topbar-doc" id="config-name"></span>
+    <span class="topbar-spacer"></span>
+    <span class="topbar-status" id="topbar-status" role="status"></span>
+    <div class="checks">
+      <button type="button" id="checks-indicator" class="checks-indicator ok"
+              aria-expanded="false" aria-controls="checks-list">No problems</button>
+      <div id="checks-list" class="checks-list" role="dialog" aria-label="Checks" hidden></div>
+    </div>
+    <button type="button" id="open-config" class="btn-ghost">Open…</button>
+    <input type="file" id="open-file" accept=".json,application/json" hidden>
+    <button type="button" id="save-config">Save</button>
+    <button type="button" id="export-ly" class="btn-primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <!-- Section list: one panel at a time (design §7). -->
+    <nav class="sidebar" aria-label="Sections">
+      <div class="sidebar-inner">
+        <button type="button" class="section-link" data-section="staff">Staff</button>
+        <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
+        <button type="button" class="section-link" data-section="clef">Clef</button>
+        <button type="button" class="section-link" data-section="key-signature">Key signature</button>
+        <hr>
+        <button type="button" class="section-link" data-section="advanced">Advanced</button>
+        <button type="button" class="section-link" data-section="export">Export</button>
+      </div>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <p class="intro">
+          Design a chromatic staff notation: draw the staff, give each notehead
+          its look, then export it for LilyPond.
+        </p>
+
+        <!-- The staff canvas, always visible. -->
+        <section class="card canvas-card" aria-label="Staff canvas">
+          <div id="preview-host"></div>
+        </section>
+
+        <section class="card panel" data-panel="staff" hidden>
+          <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff and ledger lines are, and how they look</span></div>
+          <div class="card-body"><div id="staff-editor-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="noteheads" hidden>
+          <div class="card-head"><h2>Noteheads</h2><span class="sub">The shape, fill and colour of each notehead</span></div>
+          <div class="card-body">
+            <div>
+              <p class="group-title">Rules</p>
+              <div id="notehead-editor-host"></div>
+            </div>
+            <div>
+              <p class="group-title">Colours</p>
+              <div id="palette-editor-host"></div>
+            </div>
+            <div>
+              <p class="group-title">Import a shape from SVG</p>
+              <div id="svg-importer-host"></div>
+              <div id="import-status"></div>
+              <ul id="import-warnings"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="clef" hidden>
+          <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
+          <div class="card-body"><div id="clef-editor-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="key-signature" hidden>
+          <div class="card-head"><h2>Key signature</h2><span class="sub">The keys, and the signature drawn for the selected key</span></div>
+          <div class="card-body"><div id="key-signature-editor-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="advanced" hidden>
+          <div class="card-head"><h2>Advanced</h2><span class="sub">Settings a designer rarely needs</span></div>
+          <div class="card-body">
+            <div>
+              <details class="disclosure">
+                <summary>Durations and engine</summary>
+                <div class="disclosure-body"><div id="props-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Pitch axis map</summary>
+                <div class="disclosure-body"><div id="pitch-axis-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Pitch range shown<span class="sub">which notes the staff canvas draws</span></summary>
+                <div class="disclosure-body"><div id="preview-range-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>View file (JSON)</summary>
+                <div class="disclosure-body">
+                  <div class="json-actions">
+                    <button type="button" id="copy-json">Copy</button>
+                    <span class="muted small" id="copy-status" role="status"></span>
+                  </div>
+                  <pre class="json-view" id="state-json"></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="export" hidden>
+          <div class="card-head"><h2>Export</h2><span class="sub">The LilyPond file</span></div>
+          <div class="card-body"><div id="config-export-host"></div></div>
+        </section>
+      </div>
+    </main>
   </div>
 
-  <div class="card">
-    <h2>Save / load config — JSON (Module 17)</h2>
-    <div id="config-io-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Export LilyPond (Module 18)</h2>
-    <div id="config-export-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Import notehead SVG (Module 16)</h2>
-    <div id="svg-importer-host"></div>
-    <div id="import-status"></div>
-    <ul id="import-warnings"></ul>
-  </div>
-
-  <div class="card">
-    <h2>Color palette (Module 12)</h2>
-    <div id="palette-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Staff &amp; ledger rules (Module 13)</h2>
-    <div id="staff-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Notehead rules (Module 14)</h2>
-    <div id="notehead-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Common properties (Module 15)</h2>
-    <div id="props-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Custom clef (set 009)</h2>
-    <div id="clef-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Keys &amp; key signature (set 010)</h2>
-    <div id="key-signature-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Pitch axis (set 014)</h2>
-    <div id="pitch-axis-editor-host"></div>
-  </div>
-
-  <div class="card">
-    <h2>Shared config state (full config, live)</h2>
-    <pre id="state-json"></pre>
-  </div>
+  <!-- Module 17's panel is retired from view: Open and Save drive it. -->
+  <div id="config-io-host" hidden></div>
 
   <script type="module">
     import { CNBConfig } from "./src/cnb-config.js";
@@ -600,11 +174,97 @@
     // diff them against the downloaded files (the UAT parity checks).
     function refreshPanel() {
       stateJson.textContent = JSON.stringify(appConfig, null, 2);
+      byId("config-name").textContent = (appConfig.meta && appConfig.meta.configName) || "Untitled notation";
+    }
+
+    // ── Sections: one panel at a time ────────────────────────────────────
+    function showSection(name) {
+      for (const panel of document.querySelectorAll(".panel")) {
+        panel.hidden = panel.dataset.panel !== name;
+      }
+      for (const link of document.querySelectorAll(".section-link")) {
+        const on = link.dataset.section === name;
+        link.classList.toggle("on", on);
+        if (on) link.setAttribute("aria-current", "true");
+        else link.removeAttribute("aria-current");
+      }
+    }
+    for (const link of document.querySelectorAll(".section-link")) {
+      link.onclick = () => showSection(link.dataset.section);
+    }
+    showSection("staff");
+
+    // ── Checks (design §8.5): the one place validation shows ─────────────
+    const checksIndicator = byId("checks-indicator");
+    const checksList = byId("checks-list");
+    const exportButton = byId("export-ly");
+
+    function plural(n, word) {
+      return n + " " + word + (n === 1 ? "" : "s");
+    }
+
+    function refreshChecks() {
+      let result;
+      try {
+        result = CNBConfigExport.validateForExport(appConfig);
+      } catch (err) {
+        result = { errors: [err.message], warnings: [] };
+      }
+      const { errors, warnings } = result;
+      checksIndicator.className = "checks-indicator " +
+        (errors.length ? "error" : warnings.length ? "warn" : "ok");
+      checksIndicator.textContent = errors.length ? plural(errors.length, "error")
+        : warnings.length ? plural(warnings.length, "warning") : "No problems";
+
+      checksList.textContent = "";
+      const title = document.createElement("h3");
+      title.textContent = "Checks";
+      checksList.appendChild(title);
+      if (errors.length + warnings.length === 0) {
+        const p = document.createElement("p");
+        p.className = "checks-empty";
+        p.textContent = "No problems: this notation exports as it is.";
+        checksList.appendChild(p);
+      }
+      for (const [kind, messages] of [["error", errors], ["warn", warnings]]) {
+        for (const message of messages) {
+          const item = document.createElement("div");
+          item.className = "checks-item " + kind;
+          const text = document.createElement("p");
+          text.textContent = message;
+          item.appendChild(text);
+          checksList.appendChild(item);
+        }
+      }
+
+      // An error that blocks export also shows on the Export button.
+      exportButton.title = errors.length
+        ? "Export is blocked by " + plural(errors.length, "error") + ": " + errors.join(" · ")
+        : "";
+    }
+
+    function setChecksOpen(open) {
+      checksList.hidden = !open;
+      checksIndicator.setAttribute("aria-expanded", String(open));
+    }
+    checksIndicator.onclick = () => setChecksOpen(checksList.hidden);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setChecksOpen(false); });
+    document.addEventListener("click", (e) => {
+      if (!checksList.hidden && !e.target.closest(".checks")) setChecksOpen(false);
+    });
+
+    // ── Top bar status (the results of Open, Save and Export) ────────────
+    const topbarStatus = byId("topbar-status");
+    function setStatus(text, isError = false) {
+      topbarStatus.textContent = text;
+      topbarStatus.title = text;
+      topbarStatus.classList.toggle("error", isError);
     }
 
     // ── Panels reading the shared config through accessors ───────────────
     const previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
       getConfig: () => appConfig,
+      rangeHost: byId("preview-range-host"),
     });
 
     const exportApi = CNBConfigExport.render(byId("config-export-host"), {
@@ -640,9 +300,57 @@
       },
     });
 
+    /** Module 17's error line, after a failed save or open. */
+    const ioError = () => ioApi.root.querySelector(".cnb-cio-error").textContent;
+
+    byId("save-config").onclick = () => {
+      const built = ioApi.save();
+      if (built) setStatus("Saved as " + built.filename);
+      else setStatus(ioError(), true);
+    };
+
+    const openFile = byId("open-file");
+    byId("open-config").onclick = () => openFile.click();
+    openFile.onchange = () => {
+      const file = openFile.files && openFile.files[0];
+      if (!file) return;
+      file.text().then(
+        (text) => {
+          const result = ioApi.loadText(text, file.name);
+          if (result) setStatus("Opened " + file.name);
+          else setStatus(ioError(), true);
+        },
+        (err) => setStatus("Open failed: could not read the file (" + err.message + ")", true)
+      ).finally(() => { openFile.value = ""; });
+    };
+
+    exportButton.onclick = () => {
+      const result = exportApi.exportLy();
+      if (result) {
+        setStatus("Exported as " + result.filename);
+      } else {
+        const blocked = exportApi.root.querySelector(".cnb-cex-status").textContent;
+        const error = exportApi.root.querySelector(".cnb-cex-error").textContent;
+        setStatus(error || (blocked ? "Export blocked: see the checks" : "Export failed"), true);
+      }
+    };
+
+    // ── View file (JSON) ─────────────────────────────────────────────────
+    byId("copy-json").onclick = () => {
+      const done = (text) => { byId("copy-status").textContent = text; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(stateJson.textContent).then(
+          () => done("Copied."),
+          () => done("Could not copy: select the text instead."));
+      } else {
+        done("Could not copy: select the text instead.");
+      }
+    };
+
     /** Redraw everything that READS the shared config (not the editors). */
     function refreshShared() {
       refreshPanel();
+      refreshChecks();
       previewApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
@@ -808,6 +516,7 @@
 
     mountEditors();
     refreshPanel();
+    refreshChecks();
   </script>
 </body>
 </html>
