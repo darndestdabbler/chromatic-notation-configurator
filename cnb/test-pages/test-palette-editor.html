@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Palette Editor Test — Module 12</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 560px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 480px;
+      max-height: 480px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    /* ── Palette editor host styling (module ships structure only) ── */
+    .cnb-pal-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .cnb-pal-tab {
+      font: inherit; font-size: 13px; padding: 6px 14px;
+      border: 1px solid #ccc; border-radius: 6px;
+      background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-tab.active { background: #eff6fc; border-color: #2b6cb0; color: #2b6cb0; font-weight: 600; }
+
+    .cnb-pal-size-group { margin-bottom: 8px; }
+    .cnb-pal-size-label { font-size: 11px; color: #999; margin: 6px 0 3px; text-transform: uppercase; }
+    .cnb-pal-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
+      margin-bottom: 4px; cursor: pointer; font-size: 13px;
+    }
+    .cnb-pal-option:hover { border-color: #bbb; }
+    .cnb-pal-option.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-pal-option-swatches { display: flex; gap: 3px; }
+    .cnb-pal-swatch {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+    .cnb-pal-option-name { color: #444; }
+
+    .cnb-pal-custom { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px; margin: 12px 0; }
+    .cnb-pal-custom.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-pal-custom-select {
+      font: inherit; font-size: 13px; padding: 4px 10px;
+      border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-custom-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .cnb-pal-custom-cell { display: flex; align-items: center; gap: 2px; }
+    .cnb-pal-custom-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-pal-custom-remove, .cnb-pal-custom-add {
+      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-custom-names { font-size: 11px; color: #888; margin-top: 6px; }
+    .cnb-pal-warning { font-size: 11px; color: #b45309; margin: 6px 0; }
+
+    .cnb-pal-cb-match { margin: 12px 0; }
+    .cnb-pal-cb-match-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+    .cnb-pal-cb-match-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 3px; }
+    .cnb-pal-cb-match-arrow { color: #aaa; }
+    .cnb-pal-cb-match-de { color: #999; font-size: 11px; }
+    .cnb-pal-cb-match-empty { font-size: 11px; color: #aaa; }
+
+    .cnb-pal-cb-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0; cursor: pointer; }
+
+    .cnb-pal-preview { margin: 12px 0; }
+    .cnb-pal-preview-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+    .cnb-pal-preview-strip { display: flex; gap: 4px; }
+    .cnb-pal-preview-cell { text-align: center; }
+    .cnb-pal-preview-label { font-size: 11px; color: #666; margin-bottom: 2px; }
+    .cnb-pal-preview-swatch { width: 24px; height: 24px; }
+
+    .cnb-pal-attribution { font-size: 10px; color: #aaa; margin-top: 14px; max-width: 480px; }
+  </style>
+</head>
+<body>
+  <h1>CNB Palette Editor — Module 12 Visual Test</h1>
+  <p>
+    Pick a palette (or build a custom one), toggle the colorblind-safe
+    alternative, and watch the per-pitch-class preview and the resulting
+    <code>config.palette</code> object update live. The resolveColor row
+    below reads colors back through Module A to confirm the round trip.
+  </p>
+
+  <div class="card">
+    <h2>Palette editor</h2>
+    <div id="editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>config.palette (live)</h2>
+    <pre id="palette-json"></pre>
+  </div>
+
+  <div class="card">
+    <h2>CNBConfig.resolveColor(config, pc) round trip</h2>
+    <div id="resolve-strip" class="cnb-pal-preview-strip"></div>
+  </div>
+
+  <script type="module">
+    import { CNBPaletteEditor } from "../ui/palette-editor.js";
+    import { CNBConfig } from "../src/cnb-config.js";
+
+    const config = CNBConfig.createDefault();
+    const PC_LABELS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+
+    function refresh(palette) {
+      config.palette = palette;
+      document.getElementById("palette-json").textContent =
+        JSON.stringify(palette, null, 2);
+
+      const strip = document.getElementById("resolve-strip");
+      strip.textContent = "";
+      for (let pc = 0; pc < 12; pc++) {
+        const cell = document.createElement("div");
+        cell.className = "cnb-pal-preview-cell";
+        const label = document.createElement("div");
+        label.className = "cnb-pal-preview-label";
+        label.textContent = PC_LABELS[pc];
+        cell.appendChild(label);
+        const sw = document.createElement("div");
+        sw.className = "cnb-pal-swatch cnb-pal-preview-swatch";
+        const hex = CNBConfig.resolveColor(config, pc);
+        sw.style.background = hex || "#000000";
+        sw.title = PC_LABELS[pc] + " → " + (hex || "null (black)");
+        cell.appendChild(sw);
+        strip.appendChild(cell);
+      }
+    }
+
+    const handle = CNBPaletteEditor.render(
+      document.getElementById("editor-host"),
+      { onChange: (palette) => refresh(palette) }
+    );
+    refresh(handle.getPalette());
+  </script>
+</body>
+</html>
