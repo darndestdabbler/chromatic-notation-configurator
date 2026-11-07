@@ -1,0 +1,291 @@
+# Browser UAT status
+
+The Playwright drivers under `cnb/uat/` drive the real app (or a module's
+test page) in Chromium; `uat-hostile-input.mjs` (session 6) runs its
+checklist in Chromium, Firefox and Edge. `npm run uat` runs every
+`cnb/uat/uat-*.mjs` in name order through `cnb/uat/run-uat.mjs` and stops
+at the first driver that exits non-zero. Setup is in the README ("Running
+the Browser UAT").
+
+## A declared suite
+
+The UAT is declared as the second suite, `cnb-uat`, in `dabbler.yaml`
+(`command: npm run uat`, expensive, run whole at close, covering `cnb/`).
+Every driver passed on the first run with no repairs, and the whole run
+takes about a minute, so nothing argues for leaving it to the operator. The
+suite does not install its prerequisites (`npm install`,
+`npx playwright install chromium firefox`, an installed Microsoft Edge). On
+a machine without them a driver exits 2 and names what is missing.
+
+## The new page: screenshot check — 2026-11-07 (session 25)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `cnb/uat/uat-app-layout.mjs`, the new screenshot driver: 27 of 27 checks
+  pass. Run with `CNB_UAT_SHOTS=docs/uat-shots/session-025` to write the
+  four full-page screenshots below.
+- The six drivers of `cnb/index.html` that session 25 moved to the new
+  page pass: golden path 30/30, clef 28/28, key signature 38/38, Kite
+  pipeline 26/26, imported notehead 13/13, hostile input 57/57 (Chromium,
+  Firefox and Edge). `uat-site.mjs` passes 8/8 unchanged.
+
+Session 25 replaced the column of eleven panels with the one-screen page of
+design §7: a top bar, a section list, the staff canvas and one panel at a
+time. The canvas now reflows (§6.1) and draws at the toolbar's Size, which
+is kept in the browser's `localStorage`. The driver opens the app at
+1440 × 900 and 1280 × 800 in a fresh browser, with the default config and
+then with Kite 4-369 opened from the top bar. It checks that:
+
+- the canvas starts at Medium (11 px per semitone);
+- the default config is one row at 1440 and two rows, C to F♯ and G to C′,
+  at 1280. Kite 4-369 is two rows at both widths. These are the rows the
+  design gives for Medium (§6.1, §10);
+- the page never scrolls sideways, in any section;
+- each section shows its own panel and no other, and marks itself current;
+- choosing Small leaves the config unchanged, and Small is still chosen
+  after a reload. At Small the default config is one row;
+- there are no console or page errors.
+
+The drivers draw the canvas at Small, where the full row is one row, and
+compute their expected geometry from the same display copy of the config
+that the canvas draws (`cnb/uat/app-page.mjs`).
+
+### Judged against the mock-ups (design §10)
+
+| Screenshot | Rows | Judgement |
+|---|---|---|
+| [Default, 1440](uat-shots/session-025/app-default-1440.png) | one | Matches mock-up 1's layout: top bar, section list, canvas card with its toolbar, then the Staff panel. The 13 columns share the spare width equally. |
+| [Default, 1280](uat-shots/session-025/app-default-1280.png) | two | Matches mock-up 1 at 1280: C to F♯ over G to C′, same column grid, and the second staff ends after C′. The noteheads are the same size as at 1440. |
+| [Kite 4-369, 1440](uat-shots/session-025/app-kite-1440.png) | two | As mock-up 2's canvas at Medium. The top bar names the opened file, and the checks show No problems. |
+| [Kite 4-369, 1280](uat-shots/session-025/app-kite-1280.png) | two | As above. Nothing is wider than the window. |
+
+The first screenshots had one fault, which was fixed in this session. The
+canvas drew the pitch labels at the config's 22 px, with the 14 px margins
+of the test pages' label chips, so at 1280 × 800 the two rows filled the
+window and pushed the panel below it. The mock-ups use the editor's
+compact label style (15 px, `--ink-2`, 6 px margins), which design §6.1 and
+§6.2 give to the canvas's display copy. `CNBPreviewDisplay.displayConfig`
+now applies it, and the screenshots are full-page to compare with the
+full-page mock-ups.
+
+Differences that later sessions own, as planned:
+
+- **No label strip** in a 14th column, and no Pitch or Ledger lines
+  sections in the list (sessions 28 and 26).
+- **The panels keep their developer wording and layout**, restyled only by
+  the shared tokens and controls: "Staff pattern", "LilyPond
+  staff-line-positions", and the repeated "Preview-only" paragraphs. The
+  wording, the badges and the Staff panel's pattern cards are session 26.
+- **The checks list shows today's messages.** For the default config they
+  are two warnings ("Shape "crotchet-minim" has no lilypondPath…" and
+  "Some pitch classes have no color rule…"). Saying them in designer terms,
+  with links to the controls that fix them, is session 26.
+- **The pitch labels draw in a serif face in these screenshots**, because
+  the drivers stub the Google Fonts request. In the browser, they draw in
+  Oswald, as in the mock-ups.
+
+## Notehead size check — 2026-11-06 (session 22)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- A one-off scratch script outside the tree, not a driver: 14 of 14 checks
+  pass.
+- `cnb/test-pages/test-notehead.html`, the new "Resolved sizes" section,
+  checked by eye from a screenshot. All seven noteheads fill their dashed
+  boxes: four at the natural aspect ratio (0.25, 1, 2.724 and 4 semitones
+  high) and three stretched (1 × 4, 4 × 1.5, 2 × 6).
+
+Session 22 gave each notehead a height and a width (`apply.heightSemis`,
+`apply.widthSemis`). The script opens `cnb/index.html`, uses the size row
+on the default config's second rule ("Sharps are hollow"), and checks that:
+
+- turning the row on sets the shape's own height (2.724) and natural width
+  (3.4485). The "Keep aspect ratio" lock starts on, which disables the width
+  field. The hint reads "natural width 3.4485 at height 2.724".
+- with the lock on, a height of 1.5 sets the width to 1.899 (1.5 × the
+  natural ratio). In the preview the C♯ head shrinks to 24 px tall and keeps
+  its aspect ratio, its ledger shrinks in proportion, and C (unsized) does
+  not change.
+- with the lock off, a width of 3 leaves the height at 1.5. The C♯ head is
+  drawn with `scale(sx,sy)` at 48 × 24 px, its ledger is 96 px (2 × the
+  width), and its column is 128 px (96 + 2 × 16 padding). In the
+  screenshot, stems attach at the edge of the narrower heads.
+- the real export download registers `crotchet-minim-h1p5-w3` (path, hollow
+  cutout, attachment), and Section C points C♯, D♯, F♯, G♯ and A♯ at it.
+
+The first screenshot showed the size row unstyled in the app: default font
+size and no spacing between the fields. `cnb/index.html` now styles the
+`.cnb-nre-size*` hooks like the neighbouring controls. The rerun passes 14
+of 14 checks and looks right.
+
+What the script does not cover: it does not render the engraving. That
+check is the engine-backed test in `cnb/tests/cnb-lilypond-tests.js`, which
+finds every pitch class of the sized fixture engraved at its resolved
+height and width, within 5%.
+
+## Colour picker check — 2026-11-06 (session 21)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- A one-off scratch script outside the tree, not a driver: 43 of 43 checks
+  pass against the fixed code. The same script fails 12 checks against the
+  pre-fix code (HEAD before session 21).
+- `npm run uat`: 14 of 14 drivers pass. `uat-notehead-rule-editor.mjs` now
+  sends `change` after `input` when it sets a rule's custom colour, as a
+  closing picker does, because the editor's resolved strip redraws on
+  `change`.
+
+On 2026-11-05 the operator found that the colour picker closed on every
+change, so a hex value had to be typed one digit at a time. Each colour
+input redrew its whole panel on `input`, which destroyed the element that
+owned the open picker. Session 21 made `input` update the config and the
+preview without a redraw, and `change` (fired when the picker closes) do the
+full redraw.
+
+The script opens `cnb/index.html` and covers all five colour inputs in the
+four editors: the palette's custom cell, a notehead rule's custom colour,
+the key-signature separator, and the staff and ledger line defaults. For
+each input it runs two sequences of `input` events. One is a drag (4
+values). The other is a typed hex value, one digit at a time (`#100000` to
+`#123456`, 6 values). It checks that:
+
+- the same element stays in the DOM through every `input` event. This is
+  the check that fails before the fix, on the first event, for all five
+  inputs.
+- the shared config (`#state-json`) follows every `input` event, and so
+  does the preview for the four colours the default config draws: the
+  palette cell, the rule colour, the staff lines and the ledger lines. The
+  separator is not checked in the preview, because the default preview has
+  no key selected and so draws no key signature.
+- the palette's nearest-colour names stay unchanged until `change`, and
+  catch up on it.
+- `change` redraws the panel, and the new element holds the final value.
+- the page logs no errors.
+
+What it cannot cover: Playwright dispatches the events directly, so it
+never opens the browser's native picker window. That the picker stays open
+while you drag or type is inferred from the element surviving. A person
+has to watch it happen, so the operator's hands-on check of the four
+editors is still owed.
+
+## Last run — 2026-11-06 (session 17)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: 14 of 14 drivers pass. The thirteen earlier drivers are
+  unchanged.
+
+`uat-imported-notehead.mjs` (new) checks the operator's 2026-11-05 report:
+a freshly imported 4-semitone notehead was drawn at about 3 semitones until
+an unrelated edit redrew the preview. It imports `cnb/fixtures/45deg.svg`
+into `cnb/index.html` on three routes: the Kite config with the file
+picker and the Default rule, the default config with the file picker and
+the Default rule, and the default config with drag-and-drop and a new rule.
+On each route it measures every notehead the preview draws as soon as the
+shape is selected, which must be 4 × pxPerSemi (64 px). It then sets the
+Default rule's colour to a custom hex and checks that no height changed. It
+also checks that no console or page error is logged.
+
+| Driver | Page under test | Result |
+|---|---|---|
+| `uat-imported-notehead.mjs` | `cnb/index.html` | pass, 13/13 checks |
+
+**Not reproduced, so nothing fixed.** The stale height did not show up on
+the driver's three routes. It also did not show up on a same-name re-import
+of a 3-semitone version, or on the operator's own sequence replayed in six
+orders (import, 3-6-9 staff, keys and key signature, repeat mode, ledger
+removal, rule shape). Every case drew the head at 64 px at once, in
+Chromium, Edge and Firefox. The operator could not recall anything else
+about the session. What the operator saw matches the default config's
+crotchet-minim, which is 2.724 semitones tall and stays on screen until a
+rule selects the new shape. No source file changed. The driver pins the
+behaviour in the browser. A unit test in `cnb/tests/cnb-svg-importer-tests.js`
+pins that the imported shape measures 4 semitones through
+`CNBNotehead.measure`, which the preview uses to size every head.
+
+## Earlier run — 2026-11-05 (session 15)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`, Firefox and Edge as in
+  session 6
+- Windows 11, Node 25.8.1
+- `npm run uat`: 13 of 13 drivers pass. The twelve earlier drivers are
+  unchanged and pass as in session 6.
+
+`uat-site.mjs` (new) checks the site GitHub Pages publishes, in Chromium.
+It assembles the site with `cnb/site/assemble-site.mjs` into a temp
+directory, serves it over HTTP and loads `/`. The preview renders staff
+lines and noteheads, every editor mounts, there is no `file://` notice, and
+no page error, console error or failed request is logged. It then opens the
+working tree's `cnb/index.html` over `file://` and checks that the notice is
+visible, links to `https://configurator.darndestdabbler.org/` and gives the
+two local commands.
+
+| Driver | Page under test | Result |
+|---|---|---|
+| `uat-site.mjs` | the assembled site at `/`, and `cnb/index.html` over `file://` | pass, 8/8 checks |
+
+**Fixed:** a served page logged one console error, a 404 for
+`/favicon.ico`, which the browser requests on its own. `cnb/index.html` now
+declares an empty inline icon (`<link rel="icon" href="data:,">`), so the
+request is never made.
+
+## Earlier run — 2026-11-01 (session 6)
+
+- playwright-core 1.64.1; Chromium `chromium-1248` (156.0.8078.4); Firefox
+  `firefox-1555` (157.0), installed by `npx playwright install firefox`;
+  Microsoft Edge 155.0.4283.62 (system install, channel `msedge`)
+- Windows 11, Node 25.8.1
+- `npm run uat`: 12 of 12 drivers pass. The eleven drivers below are
+  unchanged and pass as in session 5.
+
+`uat-hostile-input.mjs` feeds `cnb/index.html` a toolkit SVG, a non-toolkit
+SVG, an SVG without `data-lilypond-*`, a file that is not XML, an
+older-version JSON save, a truncated JSON file, a legacy-monolith save, a
+JSON file the app cannot display, and an export of an invalid config. It
+checks for a visible message each time, that the previous state survives
+every refusal, and that no console or page error is logged.
+
+| Browser | Version | Result |
+|---|---|---|
+| Chromium | 156.0.8078.4 | pass, 18/18 checks |
+| Firefox | 157.0 | pass, 18/18 checks |
+| Edge | 155.0.4283.62 | pass, 18/18 checks |
+
+**Fixed:** Firefox logs an "XML Parsing Error" to the console as an error
+whenever `DOMParser` is handed text that is not XML (Chromium and Edge do
+not). The importer now refuses text with no `<svg` element before parsing
+it, so a non-SVG file gets its message without a console error. Nothing
+else broke in Firefox or Edge.
+
+## Earlier run — 2026-10-31 (session 5)
+
+- playwright-core 1.64.1 (from the repository's `node_modules`, via
+  `npm install`)
+- Chromium: ms-playwright cache revision `chromium-1248`, installed by
+  `npx playwright install chromium`
+- Windows 11, Node 25.8.1
+
+There are eleven drivers, not the ten session 5's plan counts:
+`uat-gallery-previews.mjs` is a capture tool (it screenshots each gallery
+fixture's preview for side-by-side human review) and runs with the others.
+
+| Driver | Page under test | Result | Fixed |
+|---|---|---|---|
+| `uat-clef-editor.mjs` | `cnb/index.html` | pass, 28/28 checks | — |
+| `uat-common-props-editor.mjs` | `cnb/test-pages/test-common-props-editor.html` | pass, 24/24 checks | — |
+| `uat-config-export.mjs` | `cnb/test-pages/test-config-export.html` | pass, 22/22 checks | — |
+| `uat-config-io.mjs` | `cnb/test-pages/test-config-io.html` | pass, 19/19 checks | — |
+| `uat-gallery-previews.mjs` | gallery fixtures rendered by `CNBCollection` | pass, 18/18 previews captured | — |
+| `uat-golden-path.mjs` | `cnb/index.html` | pass, 30/30 checks | — |
+| `uat-key-signature.mjs` | `cnb/index.html` | pass, 38/38 checks | — |
+| `uat-kite-pipeline.mjs` | `cnb/index.html` | pass, 26/26 checks | — |
+| `uat-notehead-rule-editor.mjs` | `cnb/test-pages/test-notehead-rule-editor.html` | pass, 34/34 checks | — |
+| `uat-pitch-axis.mjs` | `cnb/test-pages/test-pitch-axis.html` | pass, 27/27 checks | — |
+| `uat-staff-rule-editor.mjs` | `cnb/test-pages/test-staff-rule-editor.html` | pass, 29/29 checks | — |
+
+**Drift since July: none.** Once playwright-core and a Chromium were
+installable from the repository, every driver passed unchanged against the
+current app. What had kept them from running was only the missing install:
+nothing in the repository declared playwright-core, and the drivers' error
+messages pointed at a scratch directory. Session 5 changed only those
+messages, which now point at `npm install` at the repository root.
