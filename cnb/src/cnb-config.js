@@ -48,12 +48,6 @@ function buildDefault() {
       semitonePattern: [4, 8],
       midpoint: 12,
       semitonesPerStaffSpace: 4,
-      lineDefaults: {
-        thicknessPct: 20,
-        style: "solid",
-        color: "#000000",
-      },
-      lineOverrides: {},
     },
 
     ledgers: {
@@ -63,14 +57,6 @@ function buildDefault() {
         { semiWithinOctave: 10, triggerPCs: [10],       triggerMode: "override" },
       ],
       proximityRule: true,
-      lineDefaults: {
-        thicknessPct: 40,
-        widthMultiplier: 2.0,
-        style: "solid",
-        color: "#000000",
-        roundedEnds: true,
-      },
-      lineOverrides: {},
     },
 
     noteheadRules: [
@@ -98,8 +84,6 @@ function buildDefault() {
 
     display: {
       pxPerSemi: 16,
-      stemThicknessPct: 26,
-      stemExtension: 2.5,
       label: {
         fontFamily: "Oswald",
         fontSize: 22,
@@ -127,7 +111,6 @@ function buildDefault() {
         { name: "breve",     displayName: "Breve (Double Whole)", lilypondDuration: 0, defaultShape: "breve",          defaultHollow: false, hasStem: false },
       ],
       representationMode: "shape",
-      repeatCounts: { minim: 2, semibreve: 4, breve: 8 },
     },
 
     keys: {
@@ -184,7 +167,6 @@ function buildDefault() {
           thicknessPct: 160,
           extentSemis: 12,
         },
-        gutter: { paddingH: 12 },
       },
     },
 
@@ -209,7 +191,6 @@ function buildDefault() {
       defaultMagnify: "7/4",
       indent: 0,
       collisionThreshold: 2,
-      stemThickness: null,
       useAccessibleColors: false,
     },
 
@@ -401,16 +382,9 @@ export const CNBConfig = {
       errors.push(`meta.fileSuffix must begin with "-" (got "${fileSuffix}")`);
     }
 
-    // 7. All color hex values match #RRGGBB — already covered in check 3 above for rules/palette.
-    //    Also check staff and ledger colors.
-    const staffColor = ((config.staff || {}).lineDefaults || {}).color;
-    if (staffColor !== undefined && staffColor !== null && !isValidHex(staffColor)) {
-      errors.push(`staff.lineDefaults.color has invalid hex "${staffColor}"`);
-    }
-    const ledgerColor = ((config.ledgers || {}).lineDefaults || {}).color;
-    if (ledgerColor !== undefined && ledgerColor !== null && !isValidHex(ledgerColor)) {
-      errors.push(`ledgers.lineDefaults.color has invalid hex "${ledgerColor}"`);
-    }
+    // 7. All color hex values match #RRGGBB — covered in check 3 above for
+    //    rules/palette. Staff and ledger lines have no colour: the preview
+    //    draws them as the engine does, black (session 34).
 
     // 8. Clef checks (set 009) — only when the clef is enabled, so configs
     //    predating the clef section (and default-off configs) validate
@@ -518,15 +492,6 @@ export const CNBConfig = {
           }
         }
       }
-      const ksGutter = keySig.gutter;
-      if (ksGutter !== undefined && ksGutter !== null) {
-        if (!isPlainObject(ksGutter)) {
-          errors.push("keys.keySignature.gutter must be an object");
-        } else if (ksGutter.paddingH !== undefined && ksGutter.paddingH !== null &&
-                   (typeof ksGutter.paddingH !== "number" || !Number.isFinite(ksGutter.paddingH) || ksGutter.paddingH < 0)) {
-          errors.push(`keys.keySignature.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(ksGutter.paddingH)})`);
-        }
-      }
       // Key definitions are what the signature renders from.
       if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
           !Array.isArray(keysSection.definitions)) {
@@ -566,7 +531,8 @@ export const CNBConfig = {
       }
     }
 
-    // 10. Pitch-axis checks (set 014) — design §1.4, rules PA-1…PA-8 and
+    // 10. Pitch-axis checks (set 014) — design §1.4, rules PA-1…PA-8 (but
+    //     PA-5/PA-6, retired with the line overrides in session 34) and
     //     PA-W1/W3/W4 (docs/planning/pitch-axis-design.md). All checks are
     //     gated on pitchAxis.enabled being truthy — except PA-W4, which by
     //     definition fires on a disabled/absent section — so configs
@@ -596,7 +562,8 @@ export const CNBConfig = {
 
       // PA-2: exactly one entry per pitch class 0–11, finite numeric positions.
       // `positions` (by pc) is non-null only when the map is structurally
-      // sound — the map-dependent checks below (PA-5/6/8, W1/W3) need it.
+      // sound — the map-dependent checks below (PA-8, W1/W3) need it. PA-5
+      // and PA-6 guarded the line overrides retired in session 34.
       let positions = null;
       const pcEntries = pitchAxis.pitchClasses;
       if (!Array.isArray(pcEntries) || pcEntries.length !== 12) {
@@ -647,55 +614,6 @@ export const CNBConfig = {
         }
         if (nonDecreasing && strideOk && positions[11] > positions[0] + pitchAxis.octaveStride) {
           errors.push(`pitchAxis map breaks monotonicity across the octave boundary: position of pc 11 (${positions[11]}) exceeds position of pc 0 (${positions[0]}) + octaveStride (${pitchAxis.octaveStride}) — non-monotonic maps are rejected in "pitch-class-map-v1"`);
-        }
-      }
-
-      // Shared helper for PA-5/PA-6: property names on which two override
-      // objects CONFLICT (same property, different values). Identical or
-      // absent overrides are fine — the collapsed pair draws one line.
-      const overrideConflicts = (ovA, ovB) => {
-        if (!isPlainObject(ovA) || !isPlainObject(ovB)) return [];
-        return Object.keys(ovA).filter(k =>
-          k in ovB && JSON.stringify(ovA[k]) !== JSON.stringify(ovB[k]));
-      };
-      const axisPosOf = (semi, stride) =>
-        positions[((semi % 12) + 12) % 12] + Math.floor(semi / 12) * stride;
-
-      if (positions && strideOk) {
-        // PA-6: staff pattern entries collapsing onto one axis position
-        // must not carry conflicting staff.lineOverrides entries.
-        const staffSection = isPlainObject(config.staff) ? config.staff : {};
-        const pattern = Array.isArray(staffSection.semitonePattern) ? staffSection.semitonePattern : [];
-        const staffOverrides = isPlainObject(staffSection.lineOverrides) ? staffSection.lineOverrides : {};
-        for (let i = 0; i < pattern.length; i++) {
-          for (let j = i + 1; j < pattern.length; j++) {
-            const a = pattern[i], b = pattern[j];
-            if (typeof a !== "number" || typeof b !== "number") continue;
-            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
-            const conflicts = overrideConflicts(staffOverrides[String(a)], staffOverrides[String(b)]);
-            if (conflicts.length > 0) {
-              errors.push(`Staff pattern entries ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
-            }
-          }
-        }
-
-        // PA-5: ledger templates collapsing onto one axis position must
-        // not carry conflicting ledgers.lineOverrides entries.
-        const ledgerSection = isPlainObject(config.ledgers) ? config.ledgers : {};
-        const templates = Array.isArray(ledgerSection.templates) ? ledgerSection.templates : [];
-        const ledgerOverrides = isPlainObject(ledgerSection.lineOverrides) ? ledgerSection.lineOverrides : {};
-        for (let i = 0; i < templates.length; i++) {
-          for (let j = i + 1; j < templates.length; j++) {
-            const ta = templates[i], tb = templates[j];
-            if (!isPlainObject(ta) || !isPlainObject(tb)) continue;
-            const a = ta.semiWithinOctave, b = tb.semiWithinOctave;
-            if (typeof a !== "number" || typeof b !== "number" || a === b) continue;
-            if (axisPosOf(a, pitchAxis.octaveStride) !== axisPosOf(b, pitchAxis.octaveStride)) continue;
-            const conflicts = overrideConflicts(ledgerOverrides[String(a)], ledgerOverrides[String(b)]);
-            if (conflicts.length > 0) {
-              errors.push(`Ledger templates at semiWithinOctave ${a} and ${b} collapse onto one axis position but carry conflicting lineOverrides (${conflicts.join(", ")})`);
-            }
-          }
         }
       }
 
@@ -780,9 +698,6 @@ export const CNBConfig = {
     for (const key of ["multinotePadding", "indent", "collisionThreshold"]) {
       if (engine[key] !== undefined && !CNBScheme.isNumber(engine[key])) numberError(`engine.${key}`, engine[key]);
     }
-    if (present(engine.stemThickness) && !CNBScheme.isNumber(engine.stemThickness)) {
-      numberError("engine.stemThickness", engine.stemThickness);
-    }
 
     const staffSec = isPlainObject(config.staff) ? config.staff : {};
     if (!Array.isArray(staffPattern)) {
@@ -794,10 +709,6 @@ export const CNBConfig = {
     }
     for (const key of ["midpoint", "semitonesPerStaffSpace"]) {
       if (present(staffSec[key]) && !CNBScheme.isNumber(staffSec[key])) numberError(`staff.${key}`, staffSec[key]);
-    }
-    const staffThickness = (staffSec.lineDefaults || {}).thicknessPct;
-    if (staffThickness !== undefined && !CNBScheme.isNumber(staffThickness)) {
-      numberError("staff.lineDefaults.thicknessPct", staffThickness);
     }
 
     const durationDefs = ((config.durations || {}).definitions) || [];
@@ -903,15 +814,35 @@ export const CNBConfig = {
       }
     }
 
-    // W6. Key-scoped notehead rules (audit 2026-11-02, M3). The exporter
-    //     resolves Section C with no key, so a rule whose match.keys is not
-    //     "all" never reaches the .ly; the preview still applies it.
-    for (const rule of rules) {
-      if (!rule || !isPlainObject(rule.match)) continue;
-      const keys = rule.match.keys;
-      if (keys === undefined || keys === "all") continue;
-      const scope = Array.isArray(keys) ? keys.join(", ") : JSON.stringify(keys);
-      warnings.push(`Rule "${rule.name || "(unnamed)"}" is scoped to keys (${scope}) and is not exported: the engraving ignores key-scoped notehead rules, so it shows in the preview only`);
+    // W6. Key definitions the engraving cannot tell apart (session 34, LY
+    //     spec 1.3.9 §6.4). Section C dispatches on the key's pitch classes,
+    //     all the engine passes, so definitions sharing a set engrave alike:
+    //     as the first of them a rule names. Warn when the rules draw them
+    //     differently. (Key-scoped rules export since session 34.)
+    const keysSec = isPlainObject(config.keys) ? config.keys : {};
+    if (keysSec.enabled && Array.isArray(keysSec.definitions)) {
+      const bySet = new Map();
+      for (const def of keysSec.definitions) {
+        if (!isPlainObject(def) || !Array.isArray(def.pitchClasses)) continue;
+        const set = [...new Set(def.pitchClasses.map(p => ((p % 12) + 12) % 12))].sort((a, b) => a - b).join(" ");
+        if (!bySet.has(set)) bySet.set(set, []);
+        bySet.get(set).push(def.name);
+      }
+      const named = new Set(rules.flatMap(r => (r && isPlainObject(r.match) && Array.isArray(r.match.keys)) ? r.match.keys : []));
+      const durationNames = ((config.durations || {}).definitions || []).map(d => d && d.name);
+      const looks = (key) => {
+        try {
+          return JSON.stringify(durationNames.flatMap(d =>
+            [...Array(12).keys()].map(pc => CNBConfig.resolveNotehead(config, pc, d, key))));
+        } catch (_) { return null; }
+      };
+      for (const [set, names] of bySet) {
+        const exported = names.find(n => named.has(n));
+        if (names.length < 2 || exported === undefined) continue;
+        if (new Set(names.map(looks)).size > 1) {
+          warnings.push(`Key definitions ${names.map(n => `"${n}"`).join(", ")} have the same pitch classes (${set}) but notehead rules draw them differently: the engraving knows a key only by its pitch classes, so it draws them all as "${exported}"`);
+        }
+      }
     }
 
     // W7. Off-key marks (architecture §11 question 4; set 005 s2 UAT). A

@@ -182,48 +182,22 @@ export const tests = [
       const s = E.buildStaff(defaultState());
       assertEqualArrays(s.semitonePattern, [4, 8], "pattern");
       assert(s.midpoint === 12 && s.semitonesPerStaffSpace === 4, "derived");
-      assert(s.lineDefaults.thicknessPct === 20 && s.lineDefaults.color === "#000000", "defaults");
+      assertEqualArrays(Object.keys(s), ["semitonePattern", "midpoint", "semitonesPerStaffSpace"],
+        "geometry only: the lines have no style to emit (session 34)");
     },
   },
   {
-    name: "buildStaff: copies lineDefaults (no shared reference with state)",
+    name: "stateFromConfig/build: a config's retired line settings are not carried (session 34)",
     fn: () => {
-      const state = defaultState();
-      const s = E.buildStaff(state);
-      s.lineDefaults.thicknessPct = 99;
-      assert(state.lineDefaults.thicknessPct === 20, "state untouched");
-    },
-  },
-  {
-    name: "buildStaff: prunes empty override entries, keeps populated ones",
-    fn: () => {
-      const state = defaultState();
-      state.lineOverrides = { "4": { color: "#ff0000" }, "8": {} };
-      const s = E.buildStaff(state);
-      assert(s.lineOverrides["4"].color === "#ff0000", "kept");
-      assert(!("8" in s.lineOverrides), "empty pruned");
-    },
-  },
-  {
-    name: "buildStaff: overrides for lines outside the active pattern are not emitted",
-    fn: () => {
-      const state = defaultState();
-      state.lineOverrides = { "4": { color: "#ff0000" } };
-      state.patternKey = "3-6-9";
-      const s = E.buildStaff(state);
-      assert(!("4" in s.lineOverrides), "semi 4 is not a 3-6-9 staff line");
-      assert(Object.keys(s.lineOverrides).length === 0, "nothing else leaks");
-    },
-  },
-  {
-    name: "buildStaff: out-of-pattern overrides survive in state — switching back restores them",
-    fn: () => {
-      const state = defaultState();
-      state.lineOverrides = { "4": { color: "#ff0000" } };
-      state.patternKey = "3-6-9";
-      assert(!("4" in E.buildStaff(state).lineOverrides), "hidden while 3-6-9");
-      state.patternKey = "4-8";
-      assert(E.buildStaff(state).lineOverrides["4"].color === "#ff0000", "restored on 4-8");
+      const config = CNBConfig.createDefault();
+      config.staff.lineDefaults = { thicknessPct: 30, color: "#ff0000" };
+      config.staff.lineOverrides = { "4": { color: "#00ff00" } };
+      config.ledgers.lineDefaults = { widthMultiplier: 3 };
+      config.ledgers.lineOverrides = { "0": { color: "#0000ff" } };
+      const out = E.applyToConfig(config, E.stateFromConfig(config));
+      for (const section of ["staff", "ledgers"]) {
+        assert(!("lineDefaults" in out[section]) && !("lineOverrides" in out[section]), `${section}: not carried`);
+      }
     },
   },
   {
@@ -234,19 +208,14 @@ export const tests = [
     },
   },
   {
-    name: "M4: editing twinline-compact's staff colour keeps midpoint 7 and sps; the pitch-axis export is byte-identical",
+    name: "M4: re-applying twinline-compact's staff, as every edit does, keeps midpoint 7 and sps; the pitch-axis export is byte-identical",
     fn: () => {
       const config = loadTwinlineCompact();
-      const state = E.stateFromConfig(config);
-      state.lineDefaults.color = "#ff0000";
-      const edited = E.applyToConfig(config, state);
-      // The staff slice differs only in the edited field.
-      const expected = CNBConfig.clone(config.staff);
-      expected.lineDefaults.color = "#ff0000";
-      assert(JSON.stringify(edited.staff) === JSON.stringify(expected),
-        "staff slice changed only in lineDefaults.color: " + JSON.stringify(edited.staff));
+      const edited = E.applyToConfig(config, E.stateFromConfig(config));
+      const { semitonePattern, midpoint, semitonesPerStaffSpace } = config.staff;
+      assert(JSON.stringify(edited.staff) === JSON.stringify({ semitonePattern, midpoint, semitonesPerStaffSpace }),
+        "staff slice is the loaded geometry: " + JSON.stringify(edited.staff));
       assert(edited.staff.midpoint === 7 && edited.staff.semitonesPerStaffSpace === 4, "geometry kept");
-      // Staff colour is preview-only, so the export does not change at all.
       assert(CNBLilypond.generate(edited) === CNBLilypond.generate(config), "pitch-axis export byte-identical");
     },
   },
@@ -279,13 +248,13 @@ export const tests = [
     },
   },
   {
-    name: "buildLedgers: proximityRule is a boolean, defaults preserved",
+    name: "buildLedgers: proximityRule is a boolean; the slice is templates and the rule only",
     fn: () => {
       const state = defaultState();
       state.proximityRule = false;
       const l = E.buildLedgers(state);
       assert(l.proximityRule === false, "off");
-      assert(l.lineDefaults.thicknessPct === 40 && l.lineDefaults.roundedEnds === true, "defaults");
+      assertEqualArrays(Object.keys(l), ["templates", "proximityRule"], "no line style (session 34)");
     },
   },
   {
@@ -524,19 +493,15 @@ export const tests = [
     },
   },
   {
-    name: "round-trip: overrides, edited templates, and flags survive",
+    name: "round-trip: edited templates and flags survive",
     fn: () => {
       const state = defaultState();
-      state.lineOverrides = { "4": { thicknessPct: 35, style: "dashed", color: "#cc0000" } };
       state.templates = [{ semiWithinOctave: 5, triggerPCs: [5, 6], triggerMode: "proximity" }];
       state.proximityRule = false;
-      state.ledgerDefaults.widthMultiplier = 3;
       const applied = E.applyToConfig(CNBConfig.createDefault(), state);
       const recovered = E.stateFromConfig(applied);
-      assert(recovered.lineOverrides["4"].style === "dashed", "override");
       assert(recovered.templates[0].triggerMode === "proximity", "template mode");
       assert(recovered.proximityRule === false, "proximity flag");
-      assert(recovered.ledgerDefaults.widthMultiplier === 3, "ledger defaults");
       const applied2 = E.applyToConfig(CNBConfig.createDefault(), recovered);
       assert(JSON.stringify(applied.ledgers) === JSON.stringify(applied2.ledgers), "stable");
     },
@@ -577,7 +542,7 @@ export const tests = [
 
   // ── render() UI against the DOM stub ──
   {
-    name: "render: builds pattern options, derived panel, override rows, template rows, validation",
+    name: "render: builds pattern options, derived panel, template rows, validation — and no line style controls",
     fn: () => withDomStub((container) => {
       const handle = E.render(container, {});
       assert(handle.root.className === "cnb-staff-rule-editor", "root class");
@@ -585,7 +550,10 @@ export const tests = [
       const derived = findAll(handle.root, "cnb-sre-derived-row");
       assert(derived.some(d => d.textContent === "Staff spacing: 4 semitones per staff space"), "staff spacing shown");
       assert(derived.some(d => d.textContent === "Middle of the staff: C, semitone 12"), "middle of the staff shown");
-      assert(findAll(handle.root, "cnb-sre-override-row").length === 2, "one row per pattern line");
+      for (const cls of ["cnb-sre-staff-defaults", "cnb-sre-overrides", "cnb-sre-override-row",
+                         "cnb-sre-ledger-defaults", "cnb-sre-thickness", "cnb-sre-width-multiplier", "cnb-sre-rounded"]) {
+        assert(findAll(handle.root, cls).length === 0, `no ${cls} (session 34)`);
+      }
       assert(findAll(handle.root, "cnb-sre-template-row").length === 3, "default templates");
       assert(findAll(handle.root, "cnb-sre-valid").length === 1, "validation OK banner");
     }),
@@ -606,22 +574,11 @@ export const tests = [
     }),
   },
   {
-    name: "render: preview-only controls carry a Preview only badge with a tooltip, and no paragraph (M2, design §8.6)",
+    name: "render: nothing is preview-only — no Preview only badge and no paragraph (session 34: the ledgers export)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container, {});
       assert(findAll(handle.root, "cnb-sre-preview-only").length === 0, "no preview-only paragraphs");
-      const badges = (token) => findAll(findAll(handle.root, token)
-        .find(s => String(s.className).includes("cnb-sre-section")), "cnb-badge");
-      // Staff lines: thickness, style and colour each carry one.
-      assert(badges("cnb-sre-staff-defaults").length === 3, "a badge beside each staff line control");
-      for (const token of ["cnb-sre-overrides", "cnb-sre-ledger-mode", "cnb-sre-ledger-defaults"]) {
-        assert(badges(token).length === 1, `${token} carries one badge`);
-      }
-      for (const b of findAll(handle.root, "cnb-badge")) {
-        assert(b.textContent === "Preview only", "badge text");
-        assert(b.title.includes("not exported") && b.title.includes("LilyPond"), "tooltip: " + b.title);
-      }
-      assert(badges("cnb-sre-ledger-mode")[0].title.includes("ledger"), "the ledger badge names ledger lines");
+      assert(findAll(handle.root, "cnb-badge").length === 0, "no badge");
     }),
   },
   {
@@ -635,7 +592,6 @@ export const tests = [
       assert(lastSlices.staff.semitonesPerStaffSpace === 3, "derived sps in slice");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
       assert(derived.some(d => d.textContent === "Staff spacing: 3 semitones per staff space"), "derived redrawn");
-      assert(findAll(handle.root, "cnb-sre-override-row").length === 3, "override rows follow pattern");
     }),
   },
   {
@@ -652,74 +608,6 @@ export const tests = [
       // Re-query after redraw, toggle C off again — back to the original
       findAll(handle.root, "cnb-sre-pc-toggle")[0].onclick();
       assertEqualArrays(lastSlices.staff.semitonePattern, [4, 8], "double toggle restores");
-    }),
-  },
-  {
-    name: "render: staff defaults inputs update lineDefaults through onChange",
-    fn: () => withDomStub((container) => {
-      let lastSlices = null;
-      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
-      const section = findAll(handle.root, "cnb-sre-staff-defaults")
-        .find(s => String(s.className).includes("cnb-sre-section"));
-      const thick = findAll(section, "cnb-sre-thickness")[0];
-      thick.oninput({ target: { value: "35" } });
-      assert(lastSlices.staff.lineDefaults.thicknessPct === 35, "thickness");
-      const style = findAll(section, "cnb-sre-style")[0];
-      style.onchange({ target: { value: "dotted" } });
-      assert(lastSlices.staff.lineDefaults.style === "dotted", "style");
-      const color = findAll(section, "cnb-sre-color")[0];
-      color.oninput({ target: { value: "#123456" } });
-      assert(lastSlices.staff.lineDefaults.color === "#123456", "color");
-      assert(handle.getStaff().lineDefaults.thicknessPct === 35, "getStaff agrees");
-    }),
-  },
-  {
-    name: "render: line color input — `input` emits without redrawing (the picker stays open); `change` redraws",
-    fn: () => withDomStub((container) => {
-      let lastSlices = null;
-      let emits = 0;
-      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; emits++; } });
-      const colorIn = (token) => findAll(findAll(handle.root, token)
-        .find(s => String(s.className).includes("cnb-sre-section")), "cnb-sre-color")[0];
-      for (const [token, slice] of [["cnb-sre-staff-defaults", "staff"], ["cnb-sre-ledger-defaults", "ledgers"]]) {
-        const before = colorIn(token);
-        const n = emits;
-        before.oninput({ target: { value: "#123456" } });
-        assert(emits === n + 1 && lastSlices[slice].lineDefaults.color === "#123456", `${token}: input emits`);
-        assert(colorIn(token) === before, `${token}: input leaves the same element in the DOM`);
-        before.onchange({ target: { value: "#654321" } });
-        assert(emits === n + 2 && lastSlices[slice].lineDefaults.color === "#654321", `${token}: change emits`);
-        assert(colorIn(token) !== before, `${token}: change redraws`);
-      }
-    }),
-  },
-  {
-    name: "render: non-numeric thickness input is ignored (no NaN in state)",
-    fn: () => withDomStub((container) => {
-      const handle = E.render(container, {});
-      const thick = findAll(handle.root, "cnb-sre-thickness")[0];
-      thick.oninput({ target: { value: "abc" } });
-      assert(handle.getStaff().lineDefaults.thicknessPct === 20, "unchanged");
-    }),
-  },
-  {
-    name: "render: enabling an override seeds it from defaults; editing and disabling work",
-    fn: () => withDomStub((container) => {
-      let lastSlices = null;
-      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
-
-      const row = findByAttr(handle.root, "data-line-pc", "4")[0];
-      findAll(row, "cnb-sre-override-check")[0].onchange({ target: { checked: true } });
-      assert(lastSlices.staff.lineOverrides["4"].thicknessPct === 20, "seeded from defaults");
-
-      const row2 = findByAttr(handle.root, "data-line-pc", "4")[0];
-      findAll(row2, "cnb-sre-color")[0].oninput({ target: { value: "#ff0000" } });
-      assert(lastSlices.staff.lineOverrides["4"].color === "#ff0000", "override edited");
-      assert(lastSlices.staff.lineDefaults.color === "#000000", "defaults untouched");
-
-      const row3 = findByAttr(handle.root, "data-line-pc", "4")[0];
-      findAll(row3, "cnb-sre-override-check")[0].onchange({ target: { checked: false } });
-      assert(!("4" in lastSlices.staff.lineOverrides), "override removed");
     }),
   },
   {
@@ -766,7 +654,7 @@ export const tests = [
     }),
   },
   {
-    name: "render: proximity checkbox (only with a 'when a note is near' rule, or while off) and ledger defaults",
+    name: "render: proximity checkbox (only with a 'when a note is near' rule, or while off)",
     fn: () => withDomStub((container) => {
       let lastSlices = null;
       const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
@@ -780,13 +668,6 @@ export const tests = [
       const rowB = findByAttr(handle.root, "data-template-index", "0")[0];
       findAll(rowB, "cnb-sre-template-mode")[0].onchange({ target: { value: "override" } });
       assert(findAll(handle.root, "cnb-sre-proximity").length === 1, "still shown while off, so it can be turned on");
-
-      const wm = findAll(handle.root, "cnb-sre-width-multiplier")[0];
-      wm.oninput({ target: { value: "3.5" } });
-      assert(lastSlices.ledgers.lineDefaults.widthMultiplier === 3.5, "width multiplier");
-
-      findAll(handle.root, "cnb-sre-rounded-check")[0].onchange({ target: { checked: false } });
-      assert(lastSlices.ledgers.lineDefaults.roundedEnds === false, "rounded ends off");
     }),
   },
   {
@@ -841,17 +722,16 @@ export const tests = [
     fn: () => withDomStub((container) => {
       const has = (root, token) => findAll(root, token).length > 0;
       const staff = E.render(container, { parts: ["staff"] }).root;
-      assert(has(staff, "cnb-sre-pattern") && has(staff, "cnb-sre-derived") && has(staff, "cnb-sre-staff-defaults"), "staff part");
-      assert(!has(staff, "cnb-sre-overrides") && !has(staff, "cnb-sre-ledger-mode"), "no other part");
+      assert(has(staff, "cnb-sre-pattern") && has(staff, "cnb-sre-derived"), "staff part");
+      assert(!has(staff, "cnb-sre-ledger-mode"), "no other part");
       const ledgers = E.render(container, { parts: ["ledgers"] }).root;
-      assert(has(ledgers, "cnb-sre-ledger-mode") && has(ledgers, "cnb-sre-ledgers") && has(ledgers, "cnb-sre-ledger-defaults"), "ledgers part");
-      assert(!has(ledgers, "cnb-sre-pattern") && !has(ledgers, "cnb-sre-overrides"), "no staff");
-      const overrides = E.render(container, { parts: ["overrides"] }).root;
-      assert(has(overrides, "cnb-sre-overrides") && !has(overrides, "cnb-sre-pattern") && !has(overrides, "cnb-sre-ledgers"), "overrides part");
+      assert(has(ledgers, "cnb-sre-ledger-mode") && has(ledgers, "cnb-sre-ledgers"), "ledgers part");
+      assert(!has(ledgers, "cnb-sre-pattern"), "no staff");
       const all = E.render(container, {}).root;
       const order = all.children.map(c => String(c.className).split(" ").pop());
-      assertEqualArrays(order, ["cnb-sre-pattern", "cnb-sre-derived", "cnb-sre-staff-defaults", "cnb-sre-overrides",
-        "cnb-sre-ledger-mode", "cnb-sre-ledgers", "cnb-sre-ledger-defaults", "cnb-sre-validation"], "default: all, in order");
+      assertEqualArrays(order, ["cnb-sre-pattern", "cnb-sre-derived",
+        "cnb-sre-ledger-mode", "cnb-sre-ledgers", "cnb-sre-validation"], "default: all, in order");
+      assertThrows(() => E.render(container, { parts: ["overrides"] }), "the overrides part left with the line styles (session 34)");
       let lastSlices = null;
       const ledgerOnly = E.render(container, { parts: ["ledgers"], onChange: (s) => { lastSlices = s; } });
       findAll(ledgerOnly.root, "cnb-sre-template-add")[0].onclick();

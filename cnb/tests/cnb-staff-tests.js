@@ -8,7 +8,16 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBGrid } from "../src/cnb-grid.js";
-import { withSvgStub } from "./svg-stub.js";
+import { CNBCard } from "../src/cnb-card.js";
+import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { withSvgStub, withDomStub } from "./svg-stub.js";
+import { findEngine, measureLines } from "./engine-probe.js";
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -19,6 +28,38 @@ function eq(a, b, msg) {
 }
 
 export const tests = [
+  { name: "lilypondPositions: the lines in half staff spaces from the middle, over the 24 semitones centred on it", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      eq(JSON.stringify(CNBStaff.lilypondPositions(cfg)), JSON.stringify([-4, -2, 2, 4]), "4-8, midpoint 12, sps 4");
+      cfg.staff.semitonePattern = [3, 6, 9];
+      cfg.staff.semitonesPerStaffSpace = 3;
+      eq(JSON.stringify(CNBStaff.lilypondPositions(cfg)), JSON.stringify([-6, -4, -2, 2, 4, 6]), "3-6-9, sps 3");
+      cfg.staff.semitonePattern = [0, 3, 9];         // the pitch moved up 6, pattern and midpoint together:
+      cfg.staff.midpoint = 18;                       // the range follows the middle (LY spec 1.3.5)
+      eq(JSON.stringify(CNBStaff.lilypondPositions(cfg)), JSON.stringify([-6, -4, -2, 2, 4, 6]), "moved 6 up");
+    }},
+
+  { name: "lilypondPosition: half staff spaces above the middle, linear and under an axis", fn: () => {
+      const cfg = CNBConfig.createDefault();          // midpoint 12, 4 semitones per staff space
+      eq(CNBStaff.lilypondPosition(cfg, 12), 0, "the middle");
+      eq(CNBStaff.lilypondPosition(cfg, 0), -6, "middle C");
+      eq(CNBStaff.lilypondPosition(cfg, 11), -0.5, "B, half a position below");
+      const twin = twinlineConfig();                  // midpoint G (axis 4), 2 axis units per staff space
+      eq(CNBStaff.lilypondPosition(twin, 0), -4, "C at axis 0");
+      eq(CNBStaff.lilypondPosition(twin, 1), -4, "C♯ shares C's axis position");
+    }},
+
+  { name: "lilypondPositions (axis): the axis formula, collapsed lines deduplicated", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.staff.semitonePattern = [2, 5, 8];
+      cfg.staff.midpoint = 7;
+      cfg.pitchAxis = {
+        enabled: true, kind: "pitch-class-map-v1", octaveStride: 7, axisUnitsPerStaffSpace: 2,
+        pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+      };
+      eq(JSON.stringify(CNBStaff.lilypondPositions(cfg)), JSON.stringify([-6, -3, -1, 1, 4, 6]), "Twinline (LY spec §5.4b)");
+    }},
+
   { name: "getPositions 0-24 with 4-8 pattern returns 4,8,16,20", fn: () => {
       const cfg = CNBConfig.createDefault();
       const pos = CNBStaff.getPositions(cfg, { minSemi: 0, maxSemi: 24 });
@@ -57,28 +98,29 @@ export const tests = [
       eq(CNBStaff.getMidpoint(cfg), 42);
     }},
 
-  { name: "default line thickness 20% of 16px semitone converts to 3.2px", fn: () => {
+  { name: "staffSpacePx: semitonesPerStaffSpace semitones, or axisUnitsPerStaffSpace axis units under a pitch axis", fn: () => {
       const cfg = CNBConfig.createDefault();
-      const px = CNBConfig.pctToPx(cfg.staff.lineDefaults.thicknessPct, cfg.display.pxPerSemi);
-      eq(px, 3.2);
+      eq(CNBStaff.staffSpacePx(cfg, CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 })), 64, "4 × 16 px");
+      const twin = twinlineConfig();
+      eq(CNBStaff.staffSpacePx(twin, CNBGrid.create(twin, { minSemi: 0, maxSemi: 24 })), 32, "2 axis units × 16 px");
+      twin.pitchAxis.enabled = false;
+      eq(CNBStaff.staffSpacePx(twin, CNBGrid.create(twin, { minSemi: 0, maxSemi: 24 })), 64, "a disabled axis is linear");
     }},
 
-  { name: "override thickness 50% of 16px semitone converts to 8px", fn: () => {
+  { name: "render: every line is the engine's, black, solid and 0.1 staff spaces thick; retired line settings are not read", fn: () => {
       const cfg = CNBConfig.createDefault();
-      cfg.staff.lineOverrides = { "4": { thicknessPct: 50 } };
-      const props = Object.assign({}, cfg.staff.lineDefaults, cfg.staff.lineOverrides["4"]);
-      eq(CNBConfig.pctToPx(props.thicknessPct, cfg.display.pxPerSemi), 8);
-    }},
-
-  { name: "line override merges thickness only", fn: () => {
-      const cfg = CNBConfig.createDefault();
-      cfg.staff.lineOverrides = { "4": { thicknessPct: 50 } };
-      const positions = CNBStaff.getPositions(cfg, { minSemi: 0, maxSemi: 24 });
-      const pc = positions[0] % 12;
-      const overrides = cfg.staff.lineOverrides;
-      const defaults = cfg.staff.lineDefaults;
-      const props = Object.assign({}, defaults, overrides[String(pc)] || {});
-      eq(props.thicknessPct, 50);
+      cfg.staff.lineDefaults = { thicknessPct: 50, style: "dashed", color: "#ff0000" };   // retired (session 34)
+      cfg.staff.lineOverrides = { "4": { thicknessPct: 80, color: "#00ff00" } };
+      const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 24 });
+      withSvgStub(svg => {
+        const lines = CNBStaff.render(svg, grid, cfg, 100).children;
+        eq(lines.length, 4, "line count");
+        for (const l of lines) {
+          eq(l.getAttribute("stroke"), "#000000", "black");
+          eq(l.getAttribute("stroke-width"), String(0.1 * 64), "0.1 staff spaces");
+          eq(l.getAttribute("stroke-dasharray"), null, "solid");
+        }
+      });
     }},
 
   // ── Axis path (set 014 s2, design §2.3) ──────────────────────────────
@@ -97,16 +139,52 @@ export const tests = [
       });
     }},
 
-  { name: "render (axis): collapsed lines merge their overrides", fn: () => {
+  { name: "render (axis): a line is 0.1 staff spaces of the axis thick", fn: () => {
       const cfg = twinlineConfig();
-      cfg.staff.lineOverrides = { "5": { thicknessPct: 50 }, "6": { color: "#ff0000" } };
       const grid = CNBGrid.create(cfg, { minSemi: 0, maxSemi: 12 });
       withSvgStub(svg => {
-        const g = CNBStaff.render(svg, grid, cfg, 100);
-        const line = g.children.find(l => Number(l.getAttribute("y1")) === grid.semiToY(5));
-        eq(line.getAttribute("stroke-width"), "8", "thickness override from pc 5");
-        eq(line.getAttribute("stroke"), "#ff0000", "color override from pc 6");
+        for (const l of CNBStaff.render(svg, grid, cfg, 100).children) {
+          eq(l.getAttribute("stroke-width"), String(0.1 * 32), "0.1 × 2 axis units × 16 px");
+        }
       });
+    }},
+
+  // Engine-backed (session 34): the preview draws staff lines and ledgers at
+  // the size the engine engraves them. For one octave-chord card with
+  // ledgers, on the default and Kite 4-369 fixtures, crotchet and minim, the
+  // engraved staff-line thickness and each ledger's thickness and length,
+  // in staff spaces, match the rendered card's (±0.001; one chord per
+  // score, since LilyPond shortens neighbouring notes' ledgers). Skips with
+  // the reason logged without LilyPond or the engine.
+  { name: "lines (engine): staff lines and ledgers engrave at the preview's thickness and length, default and Kite", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const kite = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).config;
+      const failures = [];
+      for (const [label, config] of [["default", CNBConfig.createDefault()], ["Kite 4-369", kite]]) {
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const space = CNBStaff.staffSpacePx(config, grid);
+        const staffLine = withDomStub(svg => Number(CNBStaff.render(svg, grid, config, 100).children[0].getAttribute("stroke-width"))) / space;
+        for (const [duration, token] of [["crotchet", "4"], ["minim", "2"]]) {
+          // Card pc 0 draws semitones 0 and 12, the engine's c' and c''.
+          const ledger = withDomStub(container => {
+            const svg = CNBCard.render(container, grid, config, { pc: 0, duration }).children[1];
+            const rect = svg.children.find(c => c.getAttribute("class") === "cnb-ledger-set").children[0];
+            return { width: Number(rect.getAttribute("width")) / space, thickness: Number(rect.getAttribute("height")) / space };
+          });
+          const got = await measureLines(engine, CNBLilypond.generate(config), `<c' c''>${token}`);
+          if (got.error) { failures.push(`${label} ${duration}: ${got.error}`); continue; }
+          const near = (a, b) => Math.abs(a - b) <= 1e-3;
+          if (!near(got.staffLine, staffLine)) failures.push(`${label}: staff line engraved ${got.staffLine}, preview ${staffLine}`);
+          if (got.ledgers.length === 0) failures.push(`${label} ${duration}: no ledger engraved`);
+          for (const l of got.ledgers) {
+            for (const k of ["width", "thickness"]) {
+              if (!near(l[k], ledger[k])) failures.push(`${label} ${duration} ledger at ${l.y}: ${k} engraved ${l[k]} staff spaces, preview ${ledger[k]}`);
+            }
+          }
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
   { name: "render (linear): the same pattern without the axis draws every semitone", fn: () => {

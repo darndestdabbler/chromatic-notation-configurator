@@ -67,18 +67,17 @@ const LY_EXTENSION = ".ly";
 
 /**
  * Every setting the export leaves out, in one sentence (design §8.6). It
- * follows the exporter's header comment (LY spec 1.3.7 §5.2a), says that
- * the clef and the key signature export since session 30 (§5.5, §5.6), and
- * adds off-key marks, which neither the preview nor the export draws yet
- * (session 29).
+ * follows the exporter's header comment (LY spec §5.2a), says that the
+ * clef and the key signature export since session 30 (§5.5, §5.6) and that
+ * everything else exports or is drawn as the engine draws it since session
+ * 34, and adds off-key marks, which neither the preview nor the export
+ * draws yet (session 29).
  */
 const PREVIEW_ONLY_SENTENCE =
-  "Preview only: the look of the staff lines, the ledger lines, the key " +
-  "signature's spacing, stem thickness, repeat counts, the colour-blind " +
-  "preview switch and rules for a particular key show here but are not " +
-  "exported, because LilyPond draws those its own way; the clef and the rest " +
-  "of the key signature are exported, and off-key marks are kept in the file " +
-  "but neither drawn here nor exported yet.";
+  "Preview only: the colour-blind preview switch shows here but is not " +
+  "exported, because a score chooses its colours when it is engraved; " +
+  "everything else is exported or drawn here as LilyPond draws it, and " +
+  "off-key marks are kept in the file but neither drawn here nor exported yet.";
 
 /** The meta fields the Export section edits, with their designer wording. */
 const META_FIELDS = [

@@ -342,11 +342,13 @@ export const tests = [
         CNBCollection.minRowWidth(config), "repeat-mode minims widen the columns");
     }},
 
-  { name: "minRowWidth: adds the clef and key-signature gutters", fn: () => {
+  { name: "minRowWidth: adds the key-signature track at the row's minimum, where a column is colMin wide (session 34)", fn: () => {
       const config = keySigDefault();
       const plain = CNBCollection.minRowWidth(config, { rows: 2 });
       const withKey = CNBCollection.minRowWidth(config, { rows: 2, keys: ["C"] });
-      approx(withKey - plain, CNBKeySignature.gutterWidth(config, config.display.pxPerSemi, "C"), "key gutter");
+      const colMin = plain / 7;                        // 7 slots, no other gutter
+      const A = CNBKeySignature.gutterWidth(config, config.display.pxPerSemi, "C", 0);
+      approx(withKey - plain, A - colMin / 2, "the first notehead centred 4.8636 staff spaces after the marks");
     }},
 
   { name: "render (fluid): one system on a grid of 13 equal columns", fn: () => {
@@ -437,17 +439,34 @@ export const tests = [
       });
     }},
 
-  { name: "render (fluid): the key-signature gutter is a fixed track in every system, under the staff", fn: () => {
+  { name: "render (fluid): the key-signature track keeps the first notehead 4.8636 staff spaces after the marks at any row width (session 34)", fn: () => {
       const config = keySigDefault();
+      const px = config.display.pxPerSemi;
+      const pad = CNBKeySignature.padding(config, px, "C", 0);
+      const marks = CNBKeySignature.gutterWidth(config, px, "C", 0) - pad.right;   // left padding + marks
       withDomStub(container => {
         const systems = fluidSystems(CNBCollection.render(container, config, { fluid: true, rows: 2, keys: ["C"] }).children[0]);
-        const gutter = CNBKeySignature.gutterWidth(config, config.display.pxPerSemi, "C");
         for (const s of systems) {
           const key = s.columns.children.find(c => c.className === "keysig-col");
           assert(key, "keysig column");
           eq(key.style.gridColumn, "1", "first track");
-          assert(s.columns.style.gridTemplateColumns.startsWith(gutter + "px repeat(7, "), "gutter track");
           eq(s.cards[0].style.gridColumn, "2", "cards after the gutter");
+          // The track as CSS resolves it: max(a, min(calc(P − Q × 100%), M)).
+          const template = s.columns.style.gridTemplateColumns;
+          const m = /^max\(0px, min\(calc\((\S+)px - (\S+) \* 100%\), (\S+)px\)\) repeat\(7, minmax\((\S+)px, (\S+)px\)\)$/.exec(template);
+          assert(m, "track template: " + template);
+          const [P, Q, hi, colMin, maxCol] = m.slice(1).map(Number);
+          eq(key.style.width, template.slice(0, template.indexOf(" repeat(")), "the column takes the track's width");
+          // Columns 800 px wide make the track narrower than the marks, which
+          // draw on into the first track; at 3000 px the cards stop growing
+          // (maxCol, where the track reaches 0) and the spare width follows them.
+          for (const W of [7 * colMin + hi, 7 * colMin + hi + 300, 7 * colMin + hi + 900, 7 * 800, 7 * 3000]) {
+            const K = Math.max(0, Math.min(P - Q * W, hi));
+            const t = Math.min(maxCol, Math.max(colMin, (W - K) / 7));
+            approx(K + t / 2 - marks, 4.8636 * 64, `row ${W} px: marks to the first notehead's centre`, 1e-6);
+            if (W === 7 * 800) assert(K > 0 && K < marks, `row ${W} px: the track (${K}) is narrower than the marks (${marks})`);
+            if (W === 7 * 3000) assert(K === 0 && t === maxCol, `row ${W} px: the track is 0 and the cards stop at ${maxCol} px`);
+          }
         }
         eq(systems[1].bg.style.gridColumn, "1 / span 7", "staff spans the gutter and six cards");
       });

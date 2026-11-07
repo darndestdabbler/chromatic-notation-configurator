@@ -75,8 +75,34 @@ import { CNBMusic } from "./cnb-music.js";
 import { CNBNotehead } from "./cnb-notehead.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
+import { CNBClef } from "./cnb-clef.js";
+import { CNBStaff } from "./cnb-staff.js";
 
 const NS = "http://www.w3.org/2000/svg";
+
+// The engine's spacing around the signature (session 34, measured from
+// renders), in staff spaces: the signature starts 0.75 after the staff's
+// start, or 3.5 after the clef's left edge (LilyPond's clef-to-signature
+// minimum-space), and the first note's head is centred 4.8636 after it,
+// whatever the widths of the marks and of that notehead (measured).
+const SPACE_BEFORE = 0.75;
+const SPACE_FROM_CLEF = 3.5;
+const FIRST_NOTE_CENTRE = 4.8636;
+
+/** CNBKeySignature.padding for a measured signature. */
+function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
+  const space = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) });
+  const clef = CNBClef.activeGlyph(config);
+  const left = clef
+    ? Math.max(0, SPACE_FROM_CLEF * space - CNBClef.measure(clef.def, pxPerSemi).pixelWidth -
+        (config.clef?.gutter?.paddingH ?? 12))
+    : SPACE_BEFORE * space;
+  // Without the first card, a column for a notehead the size of the marks
+  // stands for it: its padding plus half its ledger (CNBCard.columnWidth).
+  const inset = firstHeadCenter ??
+    (config.display?.column?.paddingH ?? 16) + CNBLedgerSet.width(m.markWidth) / 2;
+  return { left, right: Math.max(0, FIRST_NOTE_CENTRE * space - inset) };
+}
 
 /** Signature duration: the engine resolves keysig noteheads at quarter
  *  note (duration 3) — stencils.ly cnb:get-keysig-note-stencil. */
@@ -276,20 +302,41 @@ export const CNBKeySignature = {
   },
 
   /**
-   * Total width of the key-signature gutter in px: content width plus the
-   * configured horizontal padding on both sides. 0 when nothing renders —
-   * the collection reserves no gutter (default-off compatibility).
+   * The gutter's padding left and right of the marks, in px, giving the
+   * engine's spacing (session 34): the marks start 0.75 staff spaces after
+   * the staff's start, or, with a clef shown, 3.5 after the clef glyph's left
+   * edge (the clef column pads the glyph on both sides); the first card's
+   * notehead is centred 4.8636 after them. Null when nothing renders.
    *
    * @param {object} config
    * @param {number} pxPerSemi
    * @param {string|null} keyName
+   * @param {number} [firstHeadCenter]  the first card's CNBCard.headCenterX;
+   *        absent, a column for a notehead the size of the marks stands for it
+   * @returns {{left:number, right:number}|null} px
+   */
+  padding(config, pxPerSemi, keyName, firstHeadCenter) {
+    const m = CNBKeySignature.measure(config, pxPerSemi, keyName);
+    return m ? gutterPadding(config, pxPerSemi, m, firstHeadCenter) : null;
+  },
+
+  /**
+   * Total width of the key-signature gutter in px: content width plus the
+   * padding that gives the engine's spacing either side (padding()). 0 when
+   * nothing renders — the collection reserves no gutter (default-off
+   * compatibility).
+   *
+   * @param {object} config
+   * @param {number} pxPerSemi
+   * @param {string|null} keyName
+   * @param {number} [firstHeadCenter]  as for padding()
    * @returns {number}
    */
-  gutterWidth(config, pxPerSemi, keyName) {
+  gutterWidth(config, pxPerSemi, keyName, firstHeadCenter) {
     const m = CNBKeySignature.measure(config, pxPerSemi, keyName);
     if (!m) return 0;
-    const paddingH = config.keys?.keySignature?.gutter?.paddingH ?? 12;
-    return m.contentWidth + 2 * paddingH;
+    const { left, right } = gutterPadding(config, pxPerSemi, m, firstHeadCenter);
+    return left + m.contentWidth + right;
   },
 
   /**
@@ -310,10 +357,9 @@ export const CNBKeySignature = {
     const ks = (config.keys || {}).keySignature || {};
     // Pitch axis (set 014): offset marks shift the columns right by the
     // largest leftward offset; on a linear grid m.offsets is absent and
-    // paddingH is used unchanged.
-    const paddingH = m.offsets
-      ? (ks.gutter?.paddingH ?? 12) + m.extraLeftPx
-      : ks.gutter?.paddingH ?? 12;
+    // the left padding is used unchanged.
+    const { left } = gutterPadding(config, gridContext.pxPerSemi, m);
+    const paddingH = m.offsets ? left + m.extraLeftPx : left;
     const shapes = config.shapes || {};
 
     const g = document.createElementNS(NS, "g");

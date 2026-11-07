@@ -203,14 +203,35 @@ const renderedMarks = () => page.evaluate(() => {
     });
 });
 
+/**
+ * The rendered distance from the marks' right edge to the centre of the
+ * first card's notehead, in px (getBoundingClientRect), and the engine's
+ * 4.8636 staff spaces at the canvas's current Size (session 34).
+ */
+const signatureGap = async (cfg) => {
+  const size = await page.$eval(".cnb-pvd-size-option.on", b => b.dataset.size);
+  const shown = canvasConfig(cfg, size);
+  const got = await page.evaluate(() => {
+    const marks = [...document.querySelectorAll(".cnb-pvd-preview .keysig-col .cnb-key-signature > g")]
+      .filter(g => g.querySelector(":scope > path"));
+    const head = [...document.querySelectorAll(".cnb-pvd-preview .pc-col")][0]
+      .querySelector(".note-slice > g:not(.cnb-ledger-set)");
+    const r = head.getBoundingClientRect();
+    return (r.left + r.right) / 2 - Math.max(...marks.map(g => g.getBoundingClientRect().right));
+  });
+  return { size, got, want: 4.8636 * shown.display.pxPerSemi * shown.staff.semitonesPerStaffSpace };
+};
+
+/** The marks' left edge in the gutter: the engine's spacing, after the staff's start or a clef (session 34). */
+const marksLeft = (cfg, keyName) => CNBKeySignature.padding(drawn(cfg), drawn(cfg).display.pxPerSemi, keyName).left;
+
 /** Node-side expected mark positions for the current config + key. */
 function expectedMarks(cfg, keyName) {
   cfg = drawn(cfg);
   const m = CNBKeySignature.measure(cfg, cfg.display.pxPerSemi, keyName);
   if (!m) return null;
   const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
-  const paddingH = cfg.keys.keySignature.gutter.paddingH;
-  const leftX = paddingH + m.markWidth / 2;
+  const leftX = marksLeft(cfg, keyName) + m.markWidth / 2;
   const rightX = leftX + m.markWidth;
   return m.semis.map((semi, i) => ({
     x: i % 2 === 0 ? leftX : rightX,
@@ -315,14 +336,56 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-sig-enabled-no-key
 // ── STEP 4: select the displayed key in the preview ─────────────────────────
 await page.selectOption(".cnb-pvd-key-select", "C");
 cfg = await fullConfig();
-const expectedGutterC = CNBKeySignature.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi, "C");
-// CSSOM serializes style.width to 3 decimals (138.35264 → "138.353px"),
-// so the fractional notehead-derived width is compared numerically ±0.001.
-check(`KEY SELECTION: selecting C grew a keysig gutter column of ${expectedGutterC}px (Node-side CNBKeySignature.gutterWidth on the same config, ±0.001 CSSOM rounding)`,
-  (await keysigColCount()) === 1 &&
-  await page.$eval(".cnb-pvd-preview .keysig-col",
-    (el, w) => Math.abs(parseFloat(el.style.width) - w) < 1e-3, expectedGutterC),
-  `dom width=${await page.$eval(".cnb-pvd-preview .keysig-col", el => el.style.width).catch(() => "n/a")}`);
+// The fluid canvas stretches its columns, so the gutter is a CSS track that
+// keeps the engine's spacing at any width (session 34): measured as drawn,
+// at two canvas Sizes, ±1 px.
+for (const size of ["small", "large", "small"]) {
+  await page.click(`.cnb-pvd-size-option[data-size="${size}"]`);
+  const gap = await signatureGap(cfg);
+  check(`KEY SELECTION (${gap.size}): selecting C grew a keysig gutter column (one per row), and the first card's notehead is centred ${gap.want.toFixed(2)} px (the engine's 4.8636 staff spaces) after the marks, as drawn (±1 px)`,
+    (await keysigColCount()) >= 1 && Math.abs(gap.got - gap.want) <= 1, JSON.stringify(gap));
+}
+
+// The fluid rows at any width, as the browser lays them out (session 34): a
+// three-card row of the G signature rendered into containers from the row's
+// minimum to columns 800 px wide (the track narrower than the marks) and
+// 3000 px wide (past where the cards stop growing), with default marks and
+// with a G mark twice as wide as the first card's C. Measured as drawn
+// (getBoundingClientRect), the first notehead is centred the engine's 4.8636
+// staff spaces after the marks (±1 px).
+{
+  const G = { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] };
+  for (const wideG of [false, true]) {
+    const rowCfg = CNBConfig.createDefault();
+    rowCfg.keys.enabled = true;
+    rowCfg.keys.definitions = [{ name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }, G];
+    rowCfg.keys.keySignature.enabled = true;
+    if (wideG) {
+      rowCfg.noteheadRules.push({ name: "wide G", priority: 9,
+        match: { pitchClasses: [7], durations: "all", keys: "all" }, apply: { widthSemis: 6 } });
+    }
+    const options = { pitchClasses: [0, 1, 2], keys: ["G"], rows: 1 };
+    const min = CNBCollection.minRowWidth(rowCfg, options);
+    const want = 4.8636 * rowCfg.display.pxPerSemi * rowCfg.staff.semitonesPerStaffSpace;
+    const rows = await page.evaluate(async ({ cfg, options, widths }) => {
+      const { CNBCollection } = await import("/cnb/src/cnb-collection.js");
+      return widths.map(width => {
+        const host = document.createElement("div");
+        host.style.width = width + "px";
+        document.body.appendChild(host);
+        CNBCollection.render(host, cfg, { ...options, fluid: true });
+        const marks = [...host.querySelectorAll(".keysig-col .cnb-key-signature > g")]
+          .filter(g => g.querySelector(":scope > path"));
+        const head = host.querySelector(".pc-col .note-slice > g:not(.cnb-ledger-set)").getBoundingClientRect();
+        const gap = (head.left + head.right) / 2 - Math.max(...marks.map(g => g.getBoundingClientRect().right));
+        host.remove();
+        return { width, gap };
+      });
+    }, { cfg: rowCfg, options, widths: [Math.ceil(min), Math.ceil(min) + 400, 3 * 800, 3 * 3000] });
+    check(`FLUID ROWS${wideG ? " (a G mark wider than the first C)" : ""}: from the minimum row (${Math.ceil(min)} px) to columns 3000 px wide, the first notehead is centred ${want.toFixed(2)} px after the marks, as the browser lays the row out (±1 px)`,
+      rows.every(r => Math.abs(r.gap - want) <= 1), JSON.stringify(rows));
+  }
+}
 
 let expected = expectedMarks(cfg, "C");
 let actual = await renderedMarks();
@@ -337,7 +400,7 @@ check("KEY SELECTION: ledger lines render beneath the marks (at least one ledger
   const sep = cfg.keys.keySignature.separator;
   const midpoint = cfg.staff.midpoint;
   const m = CNBKeySignature.measure(drawn(cfg), drawn(cfg).display.pxPerSemi, "C");
-  const barX = cfg.keys.keySignature.gutter.paddingH + (m.columns * m.markWidth) / 2;
+  const barX = marksLeft(cfg, "C") + (m.columns * m.markWidth) / 2;
   check(`SEPARATOR: the engine-gold stem (${sep.color}) runs through the middle of the columns (x=${barX}) and spans midpoint ± ${sep.extentSemis} semitones (x/y parity with the engine centering rule + CNBGrid.semiToY)`,
     await page.$eval(".cnb-pvd-preview .cnb-key-signature-separator",
       (el, exp) =>
@@ -371,7 +434,7 @@ check("KEY SELECTION: switching to D Dorian re-anchors the signature on tonic D 
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-d-dorian.png"), fullPage: true });
 await page.selectOption(".cnb-pvd-key-select", "C");
 
-// ── STEP 5: mark style + placement/separator/gutter controls ────────────────
+// ── STEP 5: mark style + placement/separator controls ───────────────────────
 // One implemented style (notehead-chords); the task owner deferred simple-mark
 // styles to a future set (s2-uat.md). Confirm the style vocabulary and the
 // preview-only controls.
@@ -384,13 +447,10 @@ check("STYLING: the mark-style panel offers exactly one style (Notehead chords),
       opts[0].classList.contains("selected") &&
       opts[0].textContent.includes("as LilyPond draws it");
   }));
-check("STYLING: only the spacing carries a Preview only badge with a tooltip; placement and the separator export (session 30, design §8.6)",
-  await page.evaluate(() => {
-    const badges = (part) => document.querySelectorAll(`.cnb-key-signature-editor .cnb-kse-${part} .cnb-badge`);
-    const gutter = badges("gutter");
-    return gutter.length === 1 && gutter[0].textContent === "Preview only" && gutter[0].title.includes("not exported") &&
-      badges("placement").length === 0 && badges("separator").length === 0;
-  }));
+check("STYLING: no spacing control and no Preview only badge: the spacing is the engine's, and placement and the separator export (session 34)",
+  await page.evaluate(() =>
+    !document.querySelector(".cnb-kse-gutter-input") &&
+    document.querySelectorAll(".cnb-key-signature-editor .cnb-badge").length === 0));
 
 // Explicit tonic octave (placement control; auto is the s1 D4 decision).
 await page.uncheck(".cnb-kse-octave-auto-check");
@@ -413,21 +473,18 @@ check("STYLING: re-checking auto restores tonicOctave null (centered on the staf
   cfg.keys.keySignature.placement.tonicOctave === null &&
   CNBKeySignature.signatureSemis(cfg, "C")[0] === 12);
 
-// Separator styling + gutter sizing.
+// Separator styling; the gutter follows the engine's spacing.
 await page.fill(".cnb-kse-sep-extent", "6");
-await page.fill(".cnb-kse-gutter-input", "16");
 cfg = await fullConfig();
 {
   const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
-  check("STYLING: separator extent 6 and gutter padding 16 reach the config and the preview (bar shortened, column resized)",
+  const gap = await signatureGap(cfg);
+  check("STYLING: separator extent 6 reaches the config and the preview (bar shortened); the first notehead stays the engine's spacing after the marks",
     cfg.keys.keySignature.separator.extentSemis === 6 &&
-    cfg.keys.keySignature.gutter.paddingH === 16 &&
     await page.$eval(".cnb-pvd-preview .cnb-key-signature-separator",
       (el, exp) => el.getAttribute("y1") === String(exp.y1) && el.getAttribute("y2") === String(exp.y2),
       { y1: grid.semiToY(cfg.staff.midpoint + 6), y2: grid.semiToY(cfg.staff.midpoint - 6) }) &&
-    await page.$eval(".cnb-pvd-preview .keysig-col",
-      (el, w) => Math.abs(parseFloat(el.style.width) - w) < 1e-3,
-      CNBKeySignature.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi, "C")));
+    Math.abs(gap.got - gap.want) <= 1, JSON.stringify(gap));
 }
 cfg = await fullConfig();
 expected = expectedMarks(cfg, "C");
@@ -461,7 +518,7 @@ check("COMPOSITION: clef enabled — the preview row is clef-col, then keysig-co
   }));
 expected = expectedMarks(cfg, "C");
 actual = await renderedMarks();
-check("COMPOSITION: the keysig marks are unchanged inside their own column (gutters compose, no re-anchoring)",
+check("COMPOSITION: the keysig marks sit in their own column 3.5 staff spaces after the clef glyph's left edge, as the engine spaces them (Node-side CNBKeySignature.padding)",
   expected && marksMatch(actual, expected));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-with-clef.png"), fullPage: true });
 
@@ -476,14 +533,14 @@ const savedJson = JSON.parse(await readFile(savedPath, "utf8"));
 cfg = await fullConfig();
 check("SAVE: the shell adopted the stamped config — the live state panel is deep-equal to the downloaded file",
   JSON.stringify(cfg) === JSON.stringify(savedJson));
-check("SAVE: the keys section is in the file — enabled, 2 definitions, signature enabled, extent 6, gutter 16",
+check("SAVE: the keys section is in the file — enabled, 2 definitions, signature enabled, extent 6, no gutter setting",
   savedJson.keys.enabled === true &&
   savedJson.keys.definitions.length === 2 &&
   savedJson.keys.definitions[1].name === "D Dorian" &&
   savedJson.keys.keySignature.enabled === true &&
   savedJson.keys.keySignature.style === "notehead-chords" &&
   savedJson.keys.keySignature.separator.extentSemis === 6 &&
-  savedJson.keys.keySignature.gutter.paddingH === 16,
+  !("gutter" in savedJson.keys.keySignature),
   JSON.stringify(savedJson.keys));
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ────────────────
@@ -495,12 +552,12 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, gutter input 16)",
+check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, separator extent 6)",
   await page.evaluate(() =>
     document.querySelector(".cnb-kse-keys-enable-check").checked &&
     document.querySelector(".cnb-kse-sig-enable-check").checked &&
     document.querySelectorAll(".cnb-kse-def-row").length === 2 &&
-    document.querySelector(".cnb-kse-gutter-input").value === "16"));
+    document.querySelector(".cnb-kse-sep-extent").value === "6"));
 expected = expectedMarks(cfg, "C");
 actual = await renderedMarks();
 check("LOAD: the preview still renders the key-C signature in its gutter (preview key selection survives the load)",

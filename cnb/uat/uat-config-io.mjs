@@ -165,8 +165,8 @@ const status = async () => page.textContent(".cnb-cio-status");
 const errorArea = async () => page.textContent(".cnb-cio-error");
 const modeSelected = async (mode) => page.evaluate((mode) =>
   document.querySelector(`.cnb-cpe-mode-option[data-mode="${mode}"]`).classList.contains("selected"), mode);
-const minimCount = async () => page.evaluate(() =>
-  document.querySelector('.cnb-cpe-repeat-count[data-duration="minim"]').value);
+const multinotePadding = async () => page.evaluate(() =>
+  document.querySelector(".cnb-cpe-multinote-padding").value);
 const falseHollowChecked = async () => page.evaluate(() =>
   document.querySelector(".cnb-cpe-false-hollow").checked);
 const setTextInput = async (selector, value) => page.evaluate(({ selector, value }) => {
@@ -192,12 +192,12 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s1-initial.png"), ful
 
 // ── Edit the config through the set-005 editor ──────────────────────────────
 await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
-await setTextInput('.cnb-cpe-repeat-count[data-duration="minim"]', "3");
+await setTextInput(".cnb-cpe-multinote-padding", "-0.25");
 await page.click(".cnb-cpe-false-hollow");
 st = await statePanel();
-check("EDIT: repeat mode + minim count 3 + falseHollow true reach the shared config",
+check("EDIT: repeat mode + multinote padding -0.25 + falseHollow true reach the shared config",
   st.durations.representationMode === "repeat" &&
-  st.durations.repeatCounts.minim === 3 && st.engine.falseHollow === true);
+  st.engine.multinotePadding === -0.25 && st.engine.falseHollow === true);
 
 // ── First save (download captured) ──────────────────────────────────────────
 const [download1] = await Promise.all([
@@ -210,9 +210,9 @@ check('SAVE 1: download suggested filename is "default-4-8-system.cnb.json"',
 const savedPath = path.join(SHOT_DIR, "uat-006-s1-saved.cnb.json");
 await download1.saveAs(savedPath);
 const saved1 = JSON.parse(await readFile(savedPath, "utf8"));
-check("SAVE 1: file carries the edited state (repeat mode, minim 3, falseHollow)",
+check("SAVE 1: file carries the edited state (repeat mode, multinote padding -0.25, falseHollow)",
   saved1.durations.representationMode === "repeat" &&
-  saved1.durations.repeatCounts.minim === 3 && saved1.engine.falseHollow === true);
+  saved1.engine.multinotePadding === -0.25 && saved1.engine.falseHollow === true);
 check("SAVE 1: meta.created and meta.modified stamped as ISO timestamps (first save)",
   isIso(saved1.meta.created) && saved1.meta.modified === saved1.meta.created);
 st = await statePanel();
@@ -257,11 +257,11 @@ check("LOAD: validation area shows the loaded config valid (with Module A warnin
     document.querySelectorAll(".cnb-cio-verror").length === 0 &&
     document.querySelectorAll(".cnb-cio-vwarning").length > 0));
 st = await statePanel();
-check("LOAD: shared config restored (repeat mode, minim 3, falseHollow, timestamps)",
-  st.durations.representationMode === "repeat" && st.durations.repeatCounts.minim === 3 &&
+check("LOAD: shared config restored (repeat mode, multinote padding -0.25, falseHollow, timestamps)",
+  st.durations.representationMode === "repeat" && st.engine.multinotePadding === -0.25 &&
   st.engine.falseHollow === true && st.meta.created === saved1.meta.created);
-check("LOAD: the set-005 EDITOR reflects the reloaded state (repeat selected, minim 3, falseHollow checked)",
-  (await modeSelected("repeat")) && (await minimCount()) === "3" && (await falseHollowChecked()));
+check("LOAD: the set-005 EDITOR reflects the reloaded state (repeat selected, multinote padding -0.25, falseHollow checked)",
+  (await modeSelected("repeat")) && (await multinotePadding()) === "-0.25" && (await falseHollowChecked()));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s1-loaded.png"), fullPage: true });
 
 // ── Malformed file: error surfaced, state untouched ─────────────────────────

@@ -38,18 +38,10 @@ const mod12 = (x) => ((x % 12) + 12) % 12;
 // `|| 0` turns −0 into 0.
 const round4 = (x) => Math.round(x * 1e4) / 1e4 || 0;
 
-/** An overrides map keyed by semitone within the octave, its keys moved by d. */
-function shiftKeys(overrides, d) {
-  if (!overrides || typeof overrides !== "object") return overrides;
-  const out = {};
-  for (const [key, val] of Object.entries(overrides)) out[String(mod12(Number(key) + d))] = val;
-  return out;
-}
-
 /**
  * Move the pitch by d semitones and keep the staff where it is on the page
- * (§3.1): the midpoint, the staff pattern, the ledger templates and both
- * line-override maps move by the same d. The pitch-axis map is not touched,
+ * (§3.1): the midpoint, the staff pattern and the ledger templates move by
+ * the same d. The pitch-axis map is not touched,
  * so each nudge travels with its pitch class (§4.3). Automatic ledger lines
  * stay automatic (keepAutomaticLedgers).
  */
@@ -67,7 +59,6 @@ function shiftRaw(config, d) {
   if (Array.isArray(staff.semitonePattern)) {
     staff.semitonePattern = staff.semitonePattern.map(s => mod12(s + d)).sort((a, b) => a - b);
   }
-  staff.lineOverrides = shiftKeys(staff.lineOverrides, d);
   const ledgers = out.ledgers || {};
   if (Array.isArray(ledgers.templates)) {
     for (const t of ledgers.templates) {
@@ -75,7 +66,6 @@ function shiftRaw(config, d) {
       if (Array.isArray(t.triggerPCs)) t.triggerPCs = t.triggerPCs.map(pc => mod12(pc + d));
     }
   }
-  ledgers.lineOverrides = shiftKeys(ledgers.lineOverrides, d);
   return out;
 }
 

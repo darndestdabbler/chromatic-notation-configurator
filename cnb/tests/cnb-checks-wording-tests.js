@@ -56,16 +56,21 @@ export const tests = [
     },
   },
   {
-    name: "describe: a key-scoped rule reads as design §8.5, with Show the rule",
+    name: "describe: keys LilyPond cannot tell apart name both and the one engraved, opening the key signature (session 34)",
     fn: () => {
       const c = kite();
       c.keys.enabled = true;
-      c.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
-      c.noteheadRules.push({ name: "In G, F♯ is hollow", priority: 99,
-        match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { hollow: true } });
-      const d = describeFirst(c, "Rule \"In G, F♯ is hollow\"");
-      eq(d.text, "“In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys, so the exported F♯ keeps its look without it.", "wording");
-      eq(d.link, { label: "Show the rule", target: ruleTarget(c, "In G, F♯ is hollow") }, "link");
+      c.keys.definitions = [
+        { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+        { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7] },
+      ];
+      c.noteheadRules.push({ name: "In A minor, A is blue", priority: 99,
+        match: { pitchClasses: [9], durations: "all", keys: ["A minor"] }, apply: { color: "#0000FF" } });
+      const { warnings } = CNBConfigExport.validateForExport(c);
+      assert(!warnings.some(w => w.startsWith("Rule \"In A minor")), "the key-scoped rule itself is not a check");
+      const d = describeFirst(c, "Key definitions");
+      eq(d.text, "The keys “C”, “A minor” have the same notes, so LilyPond cannot tell them apart: it engraves them all as “A minor” does.", "wording");
+      eq(d.link, { label: "Open Key signature", target: { kind: "section", section: "key-signature" } }, "link");
     },
   },
   {
@@ -194,10 +199,6 @@ export const tests = [
       };
       check(c => { c.staff.semitonePattern = [4]; }, "Staff pattern must",
         "The staff needs at least two lines an octave (it has 1).", open("staff"));
-      check(c => { c.staff.lineDefaults.color = "black"; }, "staff.lineDefaults.color",
-        "The staff lines' colour, “black”, is not a colour like #000000.", open("staff"));
-      check(c => { c.ledgers.lineDefaults.color = "black"; }, "ledgers.lineDefaults.color",
-        "The ledger lines' colour, “black”, is not a colour like #000000.", open("ledger-lines"));
       check(c => { c.meta.fileSuffix = "Mine"; }, "meta.fileSuffix",
         "The file suffix must start with a hyphen, as in “-Mine”.", open("export", '[data-meta="fileSuffix"] input'));
       check(c => { c.meta.fileSuffix = ""; c.meta.configName = "—"; }, "Cannot derive",
@@ -256,14 +257,6 @@ export const tests = [
       const o = describeFirst(outside, "pitchAxis positions for pc");
       eq(o.text, "B sits outside its octave on the pitch axis map, so octaves overlap.", "outside wording");
       eq(o.link, link, "outside link");
-
-      const collapse = twin();
-      collapse.staff.semitonePattern = [2, 3, 5, 8];
-      collapse.staff.lineOverrides = { 2: { color: "#ff0000" }, 3: { color: "#00ff00" } };
-      collapse.pitchAxis.pitchClasses[2].position = 2;
-      const s = describeFirst(collapse, "Staff pattern entries");
-      eq(s.text, "The staff lines on D and D♯ fall on one place on the staff but are given different looks.", "collapse wording");
-      eq(s.link, { label: "Open Advanced", target: { kind: "section", section: "advanced", control: "#staff-line-overrides" } }, "collapse link");
     },
   },
   {

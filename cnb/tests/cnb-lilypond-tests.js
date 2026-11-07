@@ -13,7 +13,10 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions, measureLedgers } from "./engine-probe.js";
+import { withDomStub } from "./svg-stub.js";
+import { CNBGrid } from "../src/cnb-grid.js";
+import { CNBCard } from "../src/cnb-card.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -103,6 +106,19 @@ function parseSectionCClauses(text) {
 }
 
 /** The default config with the given staff pattern and spacing (midpoint 12). */
+/** The default config with keys on, C and G defined, and F♯ red in G (rule index 2). */
+function keyRuleConfig() {
+  const cfg = CNBConfig.createDefault();
+  cfg.keys.enabled = true;
+  cfg.keys.definitions = [
+    { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+    { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] },
+  ];
+  cfg.noteheadRules.push({ name: "F♯ red in G", priority: 5,
+    match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { color: "#FF0000" } });
+  return cfg;
+}
+
 function staffConfig(pattern, sps) {
   const cfg = CNBConfig.createDefault();
   cfg.staff.semitonePattern = pattern;
@@ -230,6 +246,134 @@ export const tests = [
       eq(JSON.stringify([...lines].sort((a, b) => a - b)), JSON.stringify(preview), "engraved lines");
     }},
 
+  // ── Ledger lines (session 34, LY spec 1.3.9 §5.7) ─────────────────────────
+
+  { name: "ledgers: Section B writes, per pitch the preview draws, the ledgers it draws there, and gives each notehead its pitch's", fn: () => {
+      const b = CNBLilypond.sectionB(CNBConfig.createDefault());
+      contains(b, "#(define cnb:ledgers-by-semitone", "the table");
+      // Default 4-8: C and C♯ share the C ledger (staff position −6), D adds
+      // its own (−5); B, between C and the staff, has none, though the engine
+      // rounds its position (−0.5) to C''s 0; C'' has the in-gap ledger at 0.
+      for (const entry of ["(0 . (-6))", "(1 . (-6))", "(2 . (-6 -5))", "(11 . ())", "(12 . (0))", "(22 . (5))", "(24 . (6))"]) {
+        contains(b, entry, entry);
+      }
+      lacks(b, "(25 . ", "nothing beyond the card range");
+      lacks(b, "(-1 . ", "nor below it");
+      contains(b, "\\override NoteHead.ledger-positions =", "per-notehead ledgers");
+      contains(b, "\\override NoteHead.no-ledgers =", "and none where the preview draws none");
+      lacks(b, "cnb:ledger-overrides", "keyed by pitch, not by the rounded position");
+    }},
+
+  { name: "ledgers: keys are engine semitones — the midpoint's offset from 12 on a linear staff, Configurator semitones under an axis", fn: () => {
+      const moved = CNBConfig.createDefault();
+      moved.staff.midpoint = 18;                       // C renamed F♯: pattern and templates move by 6
+      moved.staff.semitonePattern = [2, 10];
+      moved.ledgers.templates = moved.ledgers.templates.map(t =>
+        ({ ...t, semiWithinOctave: (t.semiWithinOctave + 6) % 12, triggerPCs: t.triggerPCs.map(p => (p + 6) % 12) }));
+      const b = CNBLilypond.sectionB(moved);
+      contains(b, "(0 . (-6))", "preview semitone 6 (the moved C), engine semitone 0, keeps C's ledger");
+      contains(b, "'((-6 . ", "the table starts at preview semitone 0, engine −6");
+      const twin = JSON.parse(readFileSync(path.join(CNB_DIR, "assets", "examples", "gallery", "twinline-compact.json"), "utf8"));
+      contains(CNBLilypond.sectionB(twin), "'((0 . ", "an axis config keys by its own semitones");
+    }},
+
+  // Engine round trip (session 34): for the default, Kite 4-369 and 45deg-369
+  // fixtures and every gallery file (Twinline among them), every card's
+  // octave chord engraves exactly the ledgers the card draws, in-gap ledgers
+  // included. Skips with the reason logged without LilyPond or the engine.
+  { name: "ledgers (engine): every card engraves the ledgers the preview draws, default, Kite, 45deg-369 and every gallery file", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const gallery = path.join(CNB_DIR, "assets", "examples", "gallery");
+      const configs = [["default", CNBConfig.createDefault()]];
+      for (const f of ["kite-4-369-config.json", "45deg-369-config.json"]) {
+        configs.push([f, CNBConfigIO.loadFromText(readFileSync(path.join(CNB_DIR, "fixtures", f), "utf8")).config]);
+      }
+      for (const f of readdirSync(gallery).filter(n => n.endsWith(".json"))) {
+        configs.push([f, CNBConfigIO.loadFromText(readFileSync(path.join(gallery, f), "utf8")).config]);
+      }
+      const names = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
+      const pitch = e => names[((e % 12) + 12) % 12] + ["", "'", "''", "'''"][Math.floor(e / 12) + 1];
+      const failures = [];
+      for (const [name, config] of configs) {
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const half = CNBStaff.staffSpacePx(config, grid) / 2;
+        const middleY = grid.semiToY(config.staff.midpoint);
+        const shift = grid.axis && grid.axis.enabled ? 0 : config.staff.midpoint - 12;
+        const cards = [...Array(13).keys()].map(pc => withDomStub(container => {
+          const svg = CNBCard.render(container, grid, config, { pc, duration: "crotchet" }).children[1];
+          const rects = svg.children.find(c => c.getAttribute("class") === "cnb-ledger-set").children;
+          return [...new Set(rects.map(r => Math.round(
+            (middleY - Number(r.getAttribute("y")) - Number(r.getAttribute("height")) / 2) / half * 1e4) / 1e4))]
+            .sort((a, b) => a - b);
+        }));
+        const music = [...Array(13).keys()].map(pc => `<${pitch(pc - shift)} ${pitch(pc + 12 - shift)}>4 r4`).join(" ");
+        const { chords, error } = await measureLedgers(engine, CNBLilypond.generate(config), music);
+        if (error) { failures.push(`${name}: ${error.slice(0, 400)}`); continue; }
+        if (chords.length !== 13) { failures.push(`${name}: ${chords.length} chords engraved`); continue; }
+        cards.forEach((want, pc) => {
+          const got = chords[pc].ledgers;
+          if (got.length !== want.length || got.some((p, i) => Math.abs(p - want[i]) > 2e-3)) {
+            failures.push(`${name} pc ${pc}: engraved ledgers at ${JSON.stringify(got)}, preview ${JSON.stringify(want)}`);
+          }
+        });
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // ── Key-scoped notehead rules (session 34, LY spec 1.3.9 §6.4) ────────────
+
+  { name: "keys: Section C branches on the sorted pitch classes of each key a rule names, the key-less clauses as the fallback", fn: () => {
+      const cfg = keyRuleConfig();
+      const c = CNBLilypond.sectionC(cfg);
+      contains(c, "(key-pcs (sort (list-copy key) <))", "the key, sorted");
+      contains(c, ";; Key G\n         ((equal? key-pcs '(0 2 4 6 7 9 11))", "G's branch");
+      lacks(c, ";; Key C\n", "C names no rule: no branch of its own");
+      contains(c, ";; Any other key\n         (else", "the fallback");
+      const g = c.slice(c.indexOf(";; Key G"), c.indexOf(";; Any other key"));
+      contains(g, "F♯ → crotchet-minim, hollow, color-ff0000", "F♯ red in G");
+      lacks(c.slice(c.indexOf(";; Any other key")), "color-ff0000", "black in any other key");
+      contains(CNBLilypond.sectionA(cfg), "(cnb:register-color! 'color-ff0000 \"#FF0000\")", "the key's colour is registered");
+    }},
+
+  { name: "keys: with keys off, or no rule naming a defined key, Section C is the key-less procedure", fn: () => {
+      const plain = CNBLilypond.sectionC(CNBConfig.createDefault());
+      const off = keyRuleConfig();
+      off.keys.enabled = false;
+      eq(CNBLilypond.sectionC(off).replace(/color-ff0000/g, "x"), CNBLilypond.sectionC(off), "no red at all");
+      lacks(CNBLilypond.sectionC(off), "key-pcs", "keys off: no dispatch (the preview applies no key)");
+      const undefinedKey = keyRuleConfig();
+      undefinedKey.noteheadRules[2].match.keys = ["D"];
+      eq(CNBLilypond.sectionC(undefinedKey), plain, "a rule naming no defined key: byte-identical to the default");
+    }},
+
+  { name: "keys: definitions sharing a pitch-class set make one branch, the first named in definition order", fn: () => {
+      const cfg = keyRuleConfig();
+      cfg.keys.definitions.push({ name: "E minor", pitchClasses: [4, 6, 7, 9, 11, 0, 2] });
+      cfg.noteheadRules.push({ name: "E minor blue", priority: 6,
+        match: { pitchClasses: [4], durations: "all", keys: ["E minor"] }, apply: { color: "#0000FF" } });
+      const c = CNBLilypond.sectionC(cfg);
+      eq(c.split("((equal? key-pcs '(0 2 4 6 7 9 11))").length, 2, "one branch for the set");
+      contains(c, ";; Key G\n", "named after G, defined first");
+    }},
+
+  // Engine round trip (session 34): one key-scoped colour rule, F♯ red in G,
+  // engraves red under \key g \major and black under \key c \major, as the
+  // preview draws it in those keys. Skips with the reason logged without
+  // LilyPond or the engine.
+  { name: "keys (engine): a key-scoped colour rule engraves in its key and not in another", fn: async () => {
+      const cfg = keyRuleConfig();
+      eq(CNBConfig.resolveNotehead(cfg, 6, "crotchet", "G").color, "#FF0000", "preview: red in G");
+      eq(CNBConfig.resolveNotehead(cfg, 6, "crotchet", "C").color, null, "preview: no colour in C");
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const { noteheads, error } = await engraveNoteheads(engine, CNBLilypond.generate(cfg),
+        "\\key g \\major fis'4 g'4 \\key c \\major fis'4");
+      assert(!error, `the export must engrave: ${error}`);
+      eq(JSON.stringify(noteheads.map(n => [n.pc, n.color])),
+        JSON.stringify([[6, "#ff0000"], [7, "#000000"], [6, "#000000"]]), "F♯ red in G only");
+    }},
+
   // LY spec 1.3.5 §5.1a: the range is the 24 semitones centred on the
   // midpoint, which is octaves 0 and 1 whenever the midpoint is 12.
   { name: "staff-line-positions 1.3.5: every config with midpoint 12 gets the octave-0-and-1 positions", fn: () => {
@@ -278,11 +422,10 @@ export const tests = [
 
   { name: "header lists the preview-only settings the export leaves out (M2, L2, L3)", fn: () => {
       const out = CNBLilypond.header(CNBConfig.createDefault());
-      for (const item of ["staff line colour and thickness", "ledger rules", "stem",
-                          "thickness, repeat counts", "the CB-safe preview toggle", "the key\n%% signature's spacing",
-                          "rules scoped to a key"]) {
-        contains(out, item);
-      }
+      contains(out, "%% Preview-only (not exported): the CB-safe preview toggle.", "the one preview-only setting");
+      contains(out, "cnb:use-accessible-colors", "and how a score selects it");
+      // Session 34: everything else is drawn as the engine draws it, or exported.
+      for (const item of ["staff line", "ledger", "stem thickness", "repeat counts", "spacing", "scoped to a key"]) lacks(out, item);
     }},
 
   { name: "header names the palette only when Section A carries its colors, and claims no cb-safe mode (L2)", fn: () => {
@@ -611,11 +754,10 @@ export const tests = [
       lacks(CNBLilypond.generate(cfg), "cnb:stem-thickness");
     }},
 
-  { name: "M2: changed staff-line thickness and color are preview-only — the export is unchanged", fn: () => {
+  { name: "M2: a config carrying retired staff-line thickness and color (session 34) exports unchanged", fn: () => {
       const cfg = CNBConfig.createDefault();
       const before = CNBLilypond.generate(cfg);
-      cfg.staff.lineDefaults.thicknessPct = 40;
-      cfg.staff.lineDefaults.color = "#333333";
+      cfg.staff.lineDefaults = { thicknessPct: 40, color: "#333333" };
       const out = CNBLilypond.generate(cfg);
       lacks(out, "cnb:default-staff-line-thickness");
       lacks(out, "cnb:default-staff-line-color");
@@ -1055,13 +1197,12 @@ export const tests = [
       assert(b.indexOf("cnb:get-pitch-staff-position") < b.indexOf("%% Metadata"), "before metadata");
     }},
 
-  { name: "pitch axis: cnb:semitones-per-staff-space uses axisUnitsPerStaffSpace (handoff 008 §4.1); staff-line thickness stays preview-only", fn: () => {
+  { name: "pitch axis: cnb:semitones-per-staff-space uses axisUnitsPerStaffSpace (handoff 008 §4.1)", fn: () => {
       const config = spikeAxisConfig();
       config.staff.semitonesPerStaffSpace = 4;
-      config.staff.lineDefaults.thicknessPct = 30;
       const b = CNBLilypond.sectionB(config);
       contains(b, "#(set! cnb:semitones-per-staff-space 2)", "axis units, not the linear sps");
-      lacks(b, "cnb:default-staff-line-thickness", "preview-only (M2)");
+      lacks(b, "cnb:default-staff-line-thickness", "no staff-line styling (M2)");
     }},
 
   { name: "pitch axis: attachment points do not depend on axisUnitsPerStaffSpace (relative units, LY spec 1.3.8 §4.4b)", fn: () => {
@@ -1130,17 +1271,13 @@ export const tests = [
       }
     }},
 
-  { name: "pitch axis §8 checks 8-12: generate() refuses configs failing the axis validation", fn: () => {
+  { name: "pitch axis §8 checks 8, 9, 11 and 12 (10 retired with the line overrides, session 34): generate() refuses configs failing the axis validation", fn: () => {
       const cases = [
         ["8 kind", c => { c.pitchAxis.kind = "other"; }, "pitchAxis.kind must be"],
         ["9 map coverage", c => { c.pitchAxis.pitchClasses.pop(); }, "exactly 12 entries"],
         ["9 duplicate pc", c => { c.pitchAxis.pitchClasses[11].pc = 10; }, "more than one entry for pc 10"],
         ["9 stride", c => { c.pitchAxis.octaveStride = 0; }, "octaveStride must be a finite number > 0"],
         ["9 axis units", c => { c.pitchAxis.axisUnitsPerStaffSpace = -2; }, "axisUnitsPerStaffSpace must be a finite number > 0"],
-        ["10 collapsing overrides", c => {
-          c.staff.semitonePattern = [2, 5, 6, 8];
-          c.staff.lineOverrides = { 5: { color: "#ff0000" }, 6: { color: "#0000ff" } };
-        }, "collapse onto one axis position"],
         ["11 x-offset", c => {
           c.noteheadRules.push({ name: "bad", priority: 9, match: { pitchClasses: [1], durations: "all", keys: "all" }, apply: { xOffsetStaffSpaces: "0.85" } });
         }, "xOffsetStaffSpaces must be a finite number"],

@@ -45,8 +45,9 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 31 | The checks speak to a designer | no | 2026-11-07 |
 | 32 | Two more staves to start from | no | 2026-11-07 |
 | 33 | Stems engrave where the preview draws them | no | 2026-11-07 |
-| 34 | The UI is stable | — | not declared |
-| 35 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 34 | The preview draws what the engine engraves | no | 2026-11-07 |
+| 35 | The UI is stable | — | not declared |
+| 36 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -311,3 +312,19 @@ Make exported stems engrave where the preview draws them. The engine hands cnb:r
 
 - 2026-11-07 — step 'relative-attachments': its files: The Kite fixture's moved anchors reach three copies the plan did not list: the built-in kite shapes (pinned equal to the fixture), the kite-4-369 preview-baseline probe, and the Kite UAT's anchor checks; a second export-value test (config-export) and a stale importer comment on the anchor conversion also change. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-07 — step 'engine-stem-test': its files: The engine test showed every engraved stem half its width (0.065 staff space) inward of the preview: LilyPond puts the stem's edge on the attachment, the preview centred it. Asked per the plan, the operator ruled that a difference users may notice must be fixed; the preview moves (cnb-stem.js puts an up stem's right edge and a down stem's left edge on the anchor), which holds for any stem thickness, unlike hard-coding LilyPond's stem width into the export. Stem and card tests and every preview-baseline probe follow. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 34 — The preview draws what the engine engraves
+
+**Releasable: no.**
+
+Close, on the Configurator's side, every gap where the preview draws something the engine never receives (LY spec 5.2a). Where the engine has a fixed value and no simple-mode setting, the preview draws the engine's value, measured from engine renders and expressed in staff spaces (axis units per staff space under a pitch axis), and the setting leaves the editors and the defaults. Configs that still carry these settings load, and the settings are ignored. This covers stems (LilyPond's 0.13 thickness and its length past the far notehead, including shortened stems and stems carried to the middle line; display.stemThicknessPct, display.stemExtension and engine.stemThickness stop being read), staff and ledger lines (the engine's thickness and ledger length, black and solid; the staff and ledger lineDefaults styling, lineOverrides, widthMultiplier and roundedEnds go), the key-signature gutter (the engine's spacing) and the repeat counts, which are already fixed. Ledger rules are exported instead: for every notehead position in the engine's ledger range, Section B writes the exact ledgers the preview draws for a note there as cnb:ledger-overrides, linear and pitch-axis alike, so in-gap ledgers engrave. Section C dispatches on the key's pitch-class list the engine passes, so a key-scoped notehead rule engraves as previewed, and the preview-only warning goes. Engine-backed tests pin stems, line sizes, ledger positions (default, Kite 4-369, 45deg-369, Twinline and every gallery file) and a key-scoped colour rule in two keys. The export and preview baselines are regenerated as each step changes them, and the changes are listed in docs/sessions/change-log.md. LY spec 1.3.9, the architecture plan and the README record the result.
+
+**Amended after acceptance:**
+
+- 2026-11-07 — step 'engine-stems': its files: The engine shortens a stem by how far it reaches past the staff, which needs the staff's LilyPond line positions; the exporter's computeStaffLinePositions moves to CNBStaff so the stem and the export share one copy, and the stem test page passes the grid context the geometry now needs. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'engine-stems': its files: Removing the stem thickness control leaves its CSS rules (.cnb-cpe-stem-control, .cnb-cpe-stem-auto-label) in app.css and three test pages; they go with the control. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'engine-lines': its files: The staff line overrides have a panel of their own in index.html (Advanced), with CSS in app.css, test-page markup and a layout UAT check; the one staff-space size the stem, staff and ledgers now share becomes a CNBStaff helper the stem uses too; key-signature ledgers and the collection's tests read ledger width and style. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'ledger-export': its files: Measured: the engine passes its ledger rule the notehead's position rounded to a whole number (half to even), so on a 4-semitone staff B (-0.5) and C (0) share one cnb:ledger-overrides key and need different ledgers; the export therefore keys the preview's ledgers by the pitch, through NoteHead.ledger-positions / no-ledgers (verified honoured, fractional positions included), which needs a semitone-to-staff-position helper in CNBStaff and the preview's per-note ledger set from CNBLedgerSet. Ledgers stop being preview-only, so the staff editor's ledger badge and the export panel's sentence change with the header. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'key-scoped-rules': its files: The export panel's test pinned the retired M3 warning (a key-scoped rule is not exported); it changes to the rule exporting without a warning. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'gutter-and-repeat-counts': its files: With the gutter and repeat counts gone the export header and the export panel name only the colour-blind toggle as preview-only (config-export.js and its test, deferred here from key-scoped-rules), and the removed controls' CSS goes from app.css and two more test pages. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'docs': its files: The "Limits kept on purpose" list that names the in-gap ledger difference is in session-plan.md (After 1.1.0), not the README; it also calls architecture §11 question 8 moot because stem thickness was preview-only, which this session settles. (claude-code (anthropic, claude-opus-5-5))

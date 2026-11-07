@@ -30,7 +30,8 @@
 <p>
   Left: default 4‑8 configuration with range -4 to 28 — staff lines should coincide with the
   blue marks on the debug grid (semitones 4, 8, 16, 20). Right: 3‑6‑9 pattern — lines at
-  semitones 3, 6, 9, 15, 18, 21, with a dashed override on the line at semitone-within-octave 6.
+  semitones 3, 6, 9, 15, 18, 21. Every line is drawn as the engine draws it: black, solid,
+  0.1 staff spaces thick.
 </p>
 
 <div class="card">
@@ -39,7 +40,7 @@
 </div>
 
 <div class="card">
-  <h2>3‑6‑9 pattern + override on 6</h2>
+  <h2>3‑6‑9 pattern</h2>
   <svg id="staff-369" width="500" style="display:block;"></svg>
 </div>
 
@@ -66,11 +67,11 @@
   // Case 1: default 4-8 system
   renderStaffCase("staff-48", CNBConfig.createDefault());
 
-  // Case 2: 3-6-9 system with a line override
+  // Case 2: 3-6-9 system
   const cfg369 = CNBConfig.createDefault();
   cfg369.staff.semitonePattern = [3, 6, 9];
   cfg369.staff.midpoint = 12;
-  cfg369.staff.lineOverrides = { "6": { style: "dashed", color: "#cc4444" } };
+  cfg369.staff.semitonesPerStaffSpace = 3;
   renderStaffCase("staff-369", cfg369);
 </script>
 

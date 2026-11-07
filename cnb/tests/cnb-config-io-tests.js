@@ -110,8 +110,6 @@ function customConfig() {
     match: { pitchClasses: "all", durations: "all", keys: "all" },
     apply: { shape: "kite-up", hollow: false, color: null, offKeyMark: false },
   }];
-  cfg.staff.lineOverrides = { "3": { thicknessPct: 30 } };
-  cfg.ledgers.lineOverrides = { "0": { color: "#333333" } };
   cfg.palette.schemeSymbols = { "#1B9E77": "shamrock-1b9e77" };
   cfg.durations.repeatCounts = { minim: 2 };
   return cfg;
@@ -293,15 +291,11 @@ export const tests = [
         shapes: { "kite-up": { displayName: "Kite Up" } },
         durations: { repeatCounts: { minim: 2 } },
         palette: { schemeSymbols: { "#123456": "x-123456" } },
-        staff: { lineOverrides: { "3": { thicknessPct: 30 } } },
-        ledgers: { lineOverrides: { "0": { color: "#333333" } } },
       };
       const { config } = IO.mergeLoaded(parsed);
       assertEqual(Object.keys(config.shapes), ["kite-up"], "default shape not resurrected");
       assertEqual(config.durations.repeatCounts, { minim: 2 }, "default repeat counts not resurrected");
       assertEqual(config.palette.schemeSymbols, { "#123456": "x-123456" }, "schemeSymbols replaced");
-      assertEqual(config.staff.lineOverrides, { "3": { thicknessPct: 30 } }, "staff overrides replaced");
-      assertEqual(config.ledgers.lineOverrides, { "0": { color: "#333333" } }, "ledger overrides replaced");
       // Fixed-schema neighbors still merged from defaults:
       assertEqual(config.durations.representationMode, "shape", "sibling field from defaults");
       assertEqual(config.palette.name, "None", "sibling field from defaults");
@@ -351,9 +345,9 @@ export const tests = [
   {
     name: "mergeLoaded: a null/wrong-typed map section falls back to merge behavior (defaults kept)",
     fn: () => {
-      const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, staff: { lineOverrides: null } });
+      const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, palette: { schemeSymbols: null } });
       assertEqual(config.shapes, CNBConfig.createDefault().shapes, "null shapes → default shapes kept");
-      assertEqual(config.staff.lineOverrides, {}, "null overrides → default kept");
+      assertEqual(config.palette.schemeSymbols, {}, "null symbols → default kept");
     },
   },
   {
@@ -716,11 +710,13 @@ export const tests = [
     name: "mergeLoaded: kind check leaves user map keys, extra keys and null-default fields alone",
     fn: () => {
       const cfg = customConfig();
-      cfg.engine.stemThickness = 0.15;      // default null: number allowed
+      cfg.keys.keySignature.placement.tonicOctave = 1;   // default null: number allowed
+      cfg.engine.stemThickness = 0.15;      // retired in session 34: kept, never read
       cfg.clef.active = "none-yet";         // default null: string allowed
       cfg.extraNote = ["kept"];             // not in the schema
       const { config } = IO.mergeLoaded(JSON.parse(JSON.stringify(cfg)));
-      assert(config.engine.stemThickness === 0.15 && config.clef.active === "none-yet", "null-default fields");
+      assert(config.keys.keySignature.placement.tonicOctave === 1 && config.clef.active === "none-yet", "null-default fields");
+      assert(config.engine.stemThickness === 0.15, "a retired field still loads");
       assert("kite-up" in config.shapes, "map keys not checked against defaults");
       assertEqual(config.extraNote, ["kept"], "extra key untouched");
     },

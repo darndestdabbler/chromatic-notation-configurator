@@ -4,7 +4,7 @@
  *
  * Covers the state → config.durations / config.engine builds (including
  * every throw branch), the config → state inverse (round-tripped on every
- * branch), the emit-time pruning of stray repeatCounts keys, Module A
+ * branch), the retired repeatCounts and stemThickness (session 34), Module A
  * validation pass-through, exporter integration (Section C repeat field and
  * Section B emit-if-changed through Module 11), the render() UI driven
  * against a stub DOM, and renderPreview() (Module 10 composition) against
@@ -101,7 +101,6 @@ export const tests = [
         defaultMagnify: "7/4",
         indent: 0,
         collisionThreshold: 2,
-        stemThickness: null,
         useAccessibleColors: false,
       }, "engine defaults");
     },
@@ -109,11 +108,11 @@ export const tests = [
 
   // ── stateFromConfig ──
   {
-    name: "stateFromConfig: default config → shape mode, default counts + engine",
+    name: "stateFromConfig: default config → shape mode, default engine, no repeat counts",
     fn: () => {
       const s = defaultState();
       assert(s.representationMode === "shape", "mode");
-      assertEqual(s.repeatCounts, { minim: 2, semibreve: 4, breve: 8 }, "counts");
+      assert(!("repeatCounts" in s), "no repeat counts: the engine's are fixed (session 34)");
       assertEqual(s.engine, E.ENGINE_DEFAULTS, "engine");
       assert(s.definitions.length === 4 && s.definitions[0].name === "crotchet", "definitions");
     },
@@ -135,7 +134,7 @@ export const tests = [
       cfg.engine = { falseHollow: true };
       const s = E.stateFromConfig(cfg);
       assert(s.engine.falseHollow === true, "explicit kept");
-      assert(s.engine.defaultMagnify === "7/4" && s.engine.stemThickness === null,
+      assert(s.engine.defaultMagnify === "7/4" && s.engine.indent === 0,
         "missing filled from defaults");
     },
   },
@@ -144,9 +143,7 @@ export const tests = [
     fn: () => {
       const cfg = CNBConfig.createDefault();
       const s = E.stateFromConfig(cfg);
-      s.repeatCounts.minim = 99;
       s.definitions[0].name = "mutated";
-      assert(cfg.durations.repeatCounts.minim === 2, "config counts untouched");
       assert(cfg.durations.definitions[0].name === "crotchet", "config defs untouched");
     },
   },
@@ -165,9 +162,7 @@ export const tests = [
       const s = defaultState();
       const out = E.buildDurations(s);
       out.definitions[0].name = "mutated";
-      out.repeatCounts.minim = 99;
       assert(s.definitions[0].name === "crotchet", "definitions cloned");
-      assert(s.repeatCounts.minim === 2, "counts cloned");
     },
   },
   {
@@ -189,24 +184,12 @@ export const tests = [
     },
   },
   {
-    name: "buildDurations: throws on repeat counts that are not integers ≥ 1",
+    name: "buildDurations: a config's retired repeatCounts are not carried (session 34)",
     fn: () => {
-      for (const bad of [0, -1, 2.5, "2", null]) {
-        const s = defaultState();
-        s.repeatCounts.minim = bad;
-        assertThrows(() => E.buildDurations(s), `count ${JSON.stringify(bad)}`);
-      }
-    },
-  },
-  {
-    name: "buildDurations: prunes stray repeatCounts keys at emit, retains them in state",
-    fn: () => {
-      const s = defaultState();
-      s.repeatCounts["ghost-duration"] = 5;
-      const out = E.buildDurations(s);
-      assert(!("ghost-duration" in out.repeatCounts), "pruned from emitted slice");
-      assertEqual(out.repeatCounts, { minim: 2, semibreve: 4, breve: 8 }, "known keys kept");
-      assert(s.repeatCounts["ghost-duration"] === 5, "retained in state");
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.repeatCounts = { minim: 3 };
+      const out = E.buildDurations(E.stateFromConfig(cfg));
+      assertEqual(Object.keys(out), ["definitions", "representationMode"], "definitions and the mode only");
     },
   },
 
@@ -260,18 +243,11 @@ export const tests = [
     },
   },
   {
-    name: "buildEngine: stemThickness accepts null (auto) and finite positives; rejects the rest",
+    name: "buildEngine: a retired engine.stemThickness is dropped (session 34: the preview draws the engine's stem)",
     fn: () => {
       const s = defaultState();
-      s.engine.stemThickness = null;
-      assert(E.buildEngine(s).stemThickness === null, "null ok");
       s.engine.stemThickness = 1.5;
-      assert(E.buildEngine(s).stemThickness === 1.5, "1.5 ok");
-      for (const bad of [0, -1, "2", NaN, Infinity]) {
-        const t = defaultState();
-        t.engine.stemThickness = bad;
-        assertThrows(() => E.buildEngine(t), `stemThickness ${String(bad)}`);
-      }
+      assert(!("stemThickness" in E.buildEngine(s)), "not built");
     },
   },
   {
@@ -319,16 +295,15 @@ export const tests = [
     },
   },
   {
-    name: "round-trip: repeat mode with edited counts",
+    name: "round-trip: repeat mode",
     fn: () => {
       const s = defaultState();
       s.representationMode = "repeat";
-      s.repeatCounts = { minim: 3, semibreve: 6, breve: 12 };
       assertEqual(E.stateFromConfig(E.applyToConfig(CNBConfig.createDefault(), s)), s, "state");
     },
   },
   {
-    name: "round-trip: fully edited engine including a set stemThickness",
+    name: "round-trip: fully edited engine",
     fn: () => {
       const s = defaultState();
       s.engine = {
@@ -338,23 +313,11 @@ export const tests = [
         defaultMagnify: "3/2",
         indent: 5,
         collisionThreshold: 1,
-        stemThickness: 1.2,
         useAccessibleColors: true,
       };
       assertEqual(E.stateFromConfig(E.applyToConfig(CNBConfig.createDefault(), s)), s, "state");
     },
   },
-  {
-    name: "round-trip: stemThickness null (engine auto) branch",
-    fn: () => {
-      const s = defaultState();
-      s.engine.stemThickness = null;
-      assertEqual(
-        E.stateFromConfig(E.applyToConfig(CNBConfig.createDefault(), s)).engine.stemThickness,
-        null, "null preserved");
-    },
-  },
-
   // ── Exporter integration (Module 11) ──
   {
     name: "exporter: representationMode drives Section C's repeat field (LY spec §6.1)",
@@ -385,17 +348,15 @@ export const tests = [
       const s = defaultState();
       s.engine.falseHollow = true;
       s.engine.defaultMagnify = "3/2";
-      s.engine.stemThickness = 1.5;
       const b = CNBLilypond.sectionB(E.applyToConfig(CNBConfig.createDefault(), s));
       assert(b.includes("#(set! cnb:false-hollow #t)"), "falseHollow emitted");
       assert(b.includes("#(set! cnb:default-magnify 3/2)"), "magnify emitted");
-      assert(!b.includes("cnb:stem-thickness"), "stemThickness is preview-only, never emitted (M1)");
     },
   },
 
   // ── render() against the DOM stub ──
   {
-    name: "render: structure — definitions (read-only), mode, repeats, engine, validation",
+    name: "render: structure — definitions (read-only), mode, engine, validation; no repeat counts (session 34)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container);
       const root = handle.root;
@@ -406,20 +367,18 @@ export const tests = [
       assert(findAll(defRows[0], "input").length === 0 &&
              defRows[0].children.length === 0, "definition rows carry no inputs (read-only)");
       assert(findAll(root, "cnb-cpe-mode-option").length === 2, "2 mode options");
-      assert(findAll(root, "cnb-cpe-repeat-row").length === 4, "4 repeat rows");
-      assert(findAll(root, "cnb-cpe-repeat-count").length === 3, "3 count inputs (minim/semibreve/breve)");
-      assert(findAll(root, "cnb-cpe-repeat-base").length === 1, "crotchet shown as base ×1");
-      assert(findAll(root, "cnb-cpe-engine-row").length === 8, "8 engine rows (§4.10 fields)");
+      for (const cls of ["cnb-cpe-repeats", "cnb-cpe-repeat-row", "cnb-cpe-repeat-count"]) {
+        assert(findAll(root, cls).length === 0, `no ${cls}: the engine's counts are fixed`);
+      }
+      assert(findAll(root, "cnb-cpe-engine-row").length === 7, "7 engine rows (§4.10 fields but the stem thickness, session 34)");
       assert(findAll(root, "cnb-cpe-valid").length === 1, "validation valid");
     }),
   },
   {
-    name: "render: mode toggle — click repeat → slice, selected class, repeats section active",
+    name: "render: mode toggle — click repeat → slice and selected class",
     fn: () => withDomStub((container) => {
       let last = null;
       const handle = E.render(container, { onChange: (slices) => { last = slices; } });
-      assert(findAll(handle.root, "cnb-cpe-repeats")[0].className.includes("inactive"),
-        "repeats inactive in shape mode");
       const repeatOpt = findAll(handle.root, "cnb-cpe-mode-option")
         .find(o => o.attrs["data-mode"] === "repeat");
       repeatOpt.onclick();
@@ -429,23 +388,6 @@ export const tests = [
         "repeat selected");
       assert(!opts.find(o => o.attrs["data-mode"] === "shape").className.includes("selected"),
         "shape deselected");
-      assert(!findAll(handle.root, "cnb-cpe-repeats")[0].className.includes("inactive"),
-        "repeats active in repeat mode");
-    }),
-  },
-  {
-    name: "render: repeat counts are labelled unused — preview and engine draw fixed counts (L3, session 18)",
-    fn: () => withDomStub((container) => {
-      const handle = E.render(container);
-      const note = () => findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-preview-only");
-      // The inactive hint says the counts are kept, not that repeat mode uses them (session 18 review).
-      const hint = findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-hint")[0].textContent;
-      assert(hint === "Kept in the file but not used.", "shape mode hint: " + hint);
-      assert(note().length === 1 && note()[0].textContent.startsWith("Not used:") &&
-        note()[0].textContent.includes("minim ×2, semibreve ×4, breve ×4") &&
-        note()[0].textContent.includes("neither the preview nor the export"), "shape mode note");
-      findAll(handle.root, "cnb-cpe-mode-option").find(o => o.attrs["data-mode"] === "repeat").onclick();
-      assert(note().length === 1, "the note stays in repeat mode");
     }),
   },
   {
@@ -457,23 +399,6 @@ export const tests = [
       findAll(handle.root, "cnb-cpe-mode-option")
         .find(o => o.attrs["data-mode"] === "repeat").onclick();
       assert(helpText().includes("(repeat . #t)"), "repeat help");
-    }),
-  },
-  {
-    name: "render: repeat count edit commits integers ≥ 1 and ignores invalid input",
-    fn: () => withDomStub((container) => {
-      let calls = 0;
-      const handle = E.render(container, { onChange: () => { calls++; } });
-      const minimInput = () => findAll(handle.root, "cnb-cpe-repeat-count")
-        .find(i => i.attrs["data-duration"] === "minim");
-      minimInput().oninput({ target: { value: "3" } });
-      assert(handle.getDurations().repeatCounts.minim === 3, "3 committed");
-      const before = calls;
-      minimInput().oninput({ target: { value: "0" } });
-      minimInput().oninput({ target: { value: "2.5" } });
-      minimInput().oninput({ target: { value: "abc" } });
-      assert(handle.getDurations().repeatCounts.minim === 3, "invalid input ignored");
-      assert(calls === before, "no onChange for ignored input");
     }),
   },
   {
@@ -512,47 +437,12 @@ export const tests = [
     }),
   },
   {
-    name: "render: stem auto toggle — input only exists while auto is off; last value restored",
+    name: "render: there is no stem thickness control (session 34)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container);
-      const stemInput = () => findAll(handle.root, "cnb-cpe-stem-thickness");
-      const autoBox = () => findAll(handle.root, "cnb-cpe-stem-auto")[0];
-      assert(autoBox().checked === true && stemInput().length === 0,
-        "auto on, no number input in DOM");
-      autoBox().onchange({ target: { checked: false } });
-      assert(stemInput().length === 1 && stemInput()[0].value === "2",
-        "auto off seeds visible value 2");
-      assert(handle.getEngine().stemThickness === 2, "slice seeded");
-      stemInput()[0].oninput({ target: { value: "1.2" } });
-      assert(handle.getEngine().stemThickness === 1.2, "edit committed");
-      autoBox().onchange({ target: { checked: true } });
-      assert(handle.getEngine().stemThickness === null && stemInput().length === 0,
-        "auto restores null and removes input");
-      autoBox().onchange({ target: { checked: false } });
-      assert(handle.getEngine().stemThickness === 1.2, "prior value restored");
-    }),
-  },
-  {
-    name: "render: the stem thickness badge says preview-only, not exported, whether auto or set (M1)",
-    fn: () => withDomStub((container) => {
-      const handle = E.render(container);
-      const badge = () => findAll(
-        findAll(handle.root, "cnb-cpe-row-stem")[0], "cnb-cpe-badge")[0].textContent;
-      const expected = "preview-only — not exported (the engine has no cnb:stem-thickness)";
-      assert(badge() === expected, "auto badge");
-      findAll(handle.root, "cnb-cpe-stem-auto")[0].onchange({ target: { checked: false } });
-      assert(handle.getEngine().stemThickness === 2 && badge() === expected, "set badge");
-    }),
-  },
-  {
-    name: "render: stem thickness input ignores values ≤ 0",
-    fn: () => withDomStub((container) => {
-      const handle = E.render(container);
-      findAll(handle.root, "cnb-cpe-stem-auto")[0].onchange({ target: { checked: false } });
-      findAll(handle.root, "cnb-cpe-stem-thickness")[0].oninput({ target: { value: "-1" } });
-      assert(handle.getEngine().stemThickness === 2, "negative ignored");
-      findAll(handle.root, "cnb-cpe-stem-thickness")[0].oninput({ target: { value: "0" } });
-      assert(handle.getEngine().stemThickness === 2, "zero ignored");
+      for (const cls of ["cnb-cpe-row-stem", "cnb-cpe-stem-auto", "cnb-cpe-stem-thickness"]) {
+        assert(findAll(handle.root, cls).length === 0, `no ${cls}`);
+      }
     }),
   },
   {
@@ -562,11 +452,11 @@ export const tests = [
       const handle = E.render(container, { onChange: (slices) => { last = slices; } });
       findAll(handle.root, "cnb-cpe-false-hollow")[0].onchange({ target: { checked: true } });
       last.engine.falseHollow = "corrupted";
-      last.durations.repeatCounts.minim = 99;
+      last.durations.definitions[0].name = "corrupted";
       const st = handle.getState();
       st.engine.indent = 42;
       assert(handle.getEngine().falseHollow === true, "engine state intact");
-      assert(handle.getDurations().repeatCounts.minim === 2, "counts state intact");
+      assert(handle.getDurations().definitions[0].name === "crotchet", "durations state intact");
       assert(handle.getEngine().indent === 0, "getState clone");
     }),
   },
@@ -611,11 +501,11 @@ export const tests = [
     }),
   },
   {
-    name: "renderPreview: repeat mode — one row per duration plus a legend of the engine's counts (repeatCounts ignored)",
+    name: "renderPreview: repeat mode — one row per duration plus a legend of the engine's counts (a retired repeatCounts ignored)",
     fn: () => withDomStub((container) => {
       const cfg = CNBConfig.createDefault();
       cfg.durations.representationMode = "repeat";
-      cfg.durations.repeatCounts.minim = 3;
+      cfg.durations.repeatCounts = { minim: 3 };
       const out = E.renderPreview(container, cfg, { pitchClasses: [0, 4, 7] });
       assert(out.mode === "repeat", "mode");
       assertEqual(out.durationsShown, ["crotchet", "minim", "semibreve", "breve"], "all rows");

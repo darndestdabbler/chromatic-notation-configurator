@@ -183,11 +183,12 @@ export const CNBCard = {
   },
 
   /**
-   * Column width for a card: resolved notehead width × the ledger
-   * widthMultiplier (the widest element in the column) plus horizontal
-   * padding on both sides. Module 10 sums these to size the background
-   * staff SVG. On a pitch-axis grid the column widens by the notehead's
-   * |offset| (set 014) so an offset head does not clip.
+   * Column width for a card: the ledger line for the resolved notehead (the
+   * widest element in the column; in repeat mode, for the repeated group,
+   * as LilyPond draws it — CNBLedgerSet.width) plus horizontal padding on
+   * both sides. Module 10 sums these to size the background staff SVG. On
+   * a pitch-axis grid the column widens by the notehead's |offset| (set
+   * 014) so an offset head does not clip.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -197,16 +198,29 @@ export const CNBCard = {
   columnWidth(config, gridContext, { pc, duration, key = null }) {
     const resolved = CNBCard.resolveNotehead(config, pc, duration, key);
     const shape = config.shapes[resolved.shape];
-    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi, resolved);
-    const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const paddingH = config.display?.column?.paddingH ?? 16;
-    // Repeat mode: the column widens by the repeated group's extra width.
     const { groupWidth } = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
-    const ledgerWidth = pixelWidth * multiplier + (groupWidth - pixelWidth);
+    const ledgerWidth = CNBLedgerSet.width(groupWidth);
     if (gridContext.axis && gridContext.axis.enabled) {
       return ledgerWidth + 2 * paddingH + Math.abs(axisOffsetPx(gridContext, resolved));
     }
     return ledgerWidth + 2 * paddingH;
+  },
+
+  /**
+   * Where a card's noteheads are centred, in px from its column's left edge:
+   * the middle of the column, moved by half the notehead's pitch-axis offset
+   * (set 014). The key-signature gutter spaces the first card from it
+   * (session 34).
+   *
+   * @param {object} config
+   * @param {object} gridContext
+   * @param {{pc:number, duration:string, key?:string|null}} example
+   * @returns {number} px
+   */
+  headCenterX(config, gridContext, { pc, duration, key = null }) {
+    const centerX = CNBCard.columnWidth(config, gridContext, { pc, duration, key }) / 2;
+    return centerX + axisOffsetPx(gridContext, CNBCard.resolveNotehead(config, pc, duration, key)) / 2;
   },
 
   /**
@@ -241,7 +255,7 @@ export const CNBCard = {
     // widened column. On a linear grid offsetPx is 0 and both are centerX.
     const offsetPx = axisOffsetPx(gridContext, resolved);
     const baseX = offsetPx === 0 ? centerX : centerX - offsetPx / 2;
-    const headX = offsetPx === 0 ? centerX : centerX + offsetPx / 2;
+    const headX = CNBCard.headCenterX(config, gridContext, { pc, duration, key });
     const labelInfo = CNBMusic.pcLabel(CNBMusic.pitchClass(pc));
 
     const col = document.createElement("div");
@@ -262,16 +276,16 @@ export const CNBCard = {
     svg.style.display = "block";
     if (fluid) svg.style.margin = "0 auto";
 
-    // 1. Ledger lines (bottom layer), widened by a repeated group's extra width
-    // The resolved size (session 22) sets the notehead measurement that the
-    // ledger width, stem anchor and noteheads all follow.
+    // 1. Ledger lines (bottom layer), as long as LilyPond draws them for the
+    // notehead or, in repeat mode, the repeated group. The resolved size
+    // (session 22) sets the notehead measurement that the ledger width,
+    // stem anchor and noteheads all follow.
     const measured = CNBNotehead.measure(shape, gridContext.pxPerSemi, resolved);
     const { pixelWidth } = measured;
-    const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const repeat = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
     const ledgerGroup = CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
       centerX: headX,
-      width: pixelWidth * multiplier + (repeat.groupWidth - pixelWidth),
+      width: CNBLedgerSet.width(repeat.groupWidth),
     });
     // Fluid columns say how many ledger lines they draw, so the editor's
     // Ledger lines section can tint them (session 26, design §6).
@@ -286,6 +300,7 @@ export const CNBCard = {
         gridContext.axis
       );
       const geometry = CNBStem.geometry(config, {
+        gridContext,
         shape,
         scaleFactor: measured.scaleFactor,
         scaleX: measured.scaleX,

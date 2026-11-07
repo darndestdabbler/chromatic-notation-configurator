@@ -296,3 +296,48 @@ operator's verbatim decision was "Approve (Recommended)".
 - Orchestrator provider (excluded): anthropic
 - Verifier's read surface: agency: none — this round's verifier could not look at the tree
 - Raw round output: `.dabbler/runs/s33/`
+
+## Session 34 — the preview draws what the engine engraves: baseline changes
+
+Every preview and export baseline changed in this session. Each change
+follows from one of the session's steps.
+
+**Preview baseline** (`cnb/fixtures/preview-baseline.json`): all 22 probes
+were re-captured.
+
+- Every probe changed when the stems became the engine's: 0.13 staff
+  spaces thick, 3.5 staff spaces past the far notehead, and shortened as
+  LilyPond shortens them.
+- Every probe changed again when the staff lines and ledgers became the
+  engine's: black and solid, staff lines 0.1 and ledgers 0.2 staff spaces
+  thick, ledgers 1.5 notehead widths long. The card columns narrowed with
+  the ledgers (the column is the ledger plus its padding).
+- `default-key-signature`, `gallery/clairnote-dn.json` and
+  `gallery/clairnote-sn.json` changed again when the signature's gutter
+  began giving the engine's spacing: 0.75 staff spaces before the marks,
+  and the first notehead centred 4.8636 after them.
+
+**Export baselines** (the default, Kite 4-369, 45deg-369, sized and
+Twinline compact fixtures): each changed in two places, and nowhere else.
+
+- **The header's preview-only comment** now names only the CB-safe toggle
+  (LY spec 1.3.9 §5.2a).
+- **A ledger block** in Section B, after the staff geometry and the pitch
+  axis (§5.7): `cnb:ledgers-by-semitone` and the `\layout` block that gives
+  each notehead its entry. The non-empty entries, engine semitone →
+  ledger staff positions:
+  - default and sized: 0, 1 → −6; 2 → −6 −5; 10 → −1; 12, 13 → 0 (the
+    in-gap C ledger); 14 → 0 1; 22 → 5; 24 → 6.
+  - Kite 4-369: 0, 1, 2 → −8; 12, 13, 14 → 0 (in the 3-6-9 gap); 24 → 8.
+  - 45deg-369: none (its preview draws no ledgers in the card range).
+  - Twinline compact: 0, 1 → −4; 10, 11 → 2; 12, 13 → 3; 22, 23 → 9;
+    24 → 10.
+- **No Section C change.** None of these fixtures has a key-scoped rule, so
+  the key dispatch (§6.4) adds nothing to them.
+
+## Session 34 verification — VERIFIED after 6 round(s)
+
+- Verifier: gpt-5.6-terra (openai) over api
+- Orchestrator provider (excluded): anthropic
+- Verifier's read surface: agency: none — this round's verifier could not look at the tree
+- Raw round output: `.dabbler/runs/s34/`

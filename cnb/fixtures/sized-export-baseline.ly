@@ -12,10 +12,8 @@
 %%
 %% Color palette: none (no palette colors are exported)
 %%
-%% Preview-only (the engine does not engrave these, so they are not
-%% exported): staff line colour and thickness, ledger rules, stem
-%% thickness, repeat counts, the CB-safe preview toggle, the key
-%% signature's spacing, and notehead rules scoped to a key.
+%% Preview-only (not exported): the CB-safe preview toggle. A score
+%% selects the accessible colours with cnb:use-accessible-colors.
 %%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -124,6 +122,29 @@
 %% Staff geometry
 #(set! cnb:semitones-per-staff-space 4)
 #(set! cnb:staff-line-positions '(-4 -2 2 4))
+
+%% Ledger lines — each notehead the preview draws gets the ledgers drawn
+%% there: engine semitone (middle C = 0) → ledger staff positions. Any
+%% other pitch keeps the engine's ledger rule.
+#(define cnb:ledgers-by-semitone
+   '((0 . (-6)) (1 . (-6)) (2 . (-6 -5)) (3 . ()) (4 . ()) (5 . ())
+     (6 . ()) (7 . ()) (8 . ()) (9 . ()) (10 . (-1)) (11 . ())
+     (12 . (0)) (13 . (0)) (14 . (0 1)) (15 . ()) (16 . ()) (17 . ())
+     (18 . ()) (19 . ()) (20 . ()) (21 . ()) (22 . (5)) (23 . ())
+     (24 . (6))
+     ))
+#(define (cnb:ledgers-of grob)
+   (assv (ly:pitch-semitones (ly:event-property (event-cause grob) 'pitch))
+         cnb:ledgers-by-semitone))
+\layout {
+  \context {
+    \Voice
+    \override NoteHead.ledger-positions =
+      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (if e (cdr e) '())))
+    \override NoteHead.no-ledgers =
+      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (and e (null? (cdr e)))))
+  }
+}
 
 %% Clef
 #(set! cnb:clef-style 'none)

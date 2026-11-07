@@ -2,17 +2,21 @@
  * cnb-staff.js — Module 3: Staff
  *
  * Uses staff pattern from configuration to compute absolute semitone positions
- * and render all staff lines across the SVG width.
+ * and render all staff lines across the SVG width, as the engine draws them
+ * (session 34): no config setting styles them.
  *
- * Dependencies: Module A (config), Module B (music) and Module 2 (staff line)
+ * Dependencies: Module 24 (pitch axis) and Module 2 (staff line)
  *
- * Set 014 (pitch axis): axis-enabled grid contexts deduplicate lines by
- * axis position; linear contexts run the literal pre-set-014 loop.
+ * Set 014 (pitch axis): axis-enabled grid contexts draw one line per axis
+ * position.
  */
 
-import { CNBConfig } from "./cnb-config.js";
-import { CNBMusic } from "./cnb-music.js";
+import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 import { CNBStaffLine } from "./cnb-staff-line.js";
+
+// The engine leaves LilyPond's staff lines alone: 0.1 staff spaces thick,
+// black and solid (session 34, measured against the engine).
+const STAFF_LINE_THICKNESS = 0.1;
 
 export const CNBStaff = {
   /**
@@ -35,6 +39,62 @@ export const CNBStaff = {
       }
     }
     return result.sort((a, b) => a - b);
+  },
+
+  /**
+   * The staff's lines as LilyPond staff positions, the values exported as
+   * cnb:staff-line-positions: semitonePattern expanded across the 24
+   * semitones centred on the midpoint (midpoint − 12 ≤ S < midpoint + 12;
+   * octaves 0 and 1 at the default midpoint 12 — session 28, LY spec 1.3.5
+   * §5.1a), then 2 × (S − midpoint) / semitonesPerStaffSpace — LilyPond
+   * staff positions are HALF-staff-spaces from center (LY spec §5.1; engine
+   * cnb/config.ly). 4-8 system, midpoint 12, sps 4 → [-4, -2, 2, 4];
+   * 3-6-9, midpoint 12, sps 3 → [-6, -4, -2, 2, 4, 6] (007-s1 D2).
+   * Non-integer results are kept as decimals (plan open question 7).
+   * Under an enabled pitch axis the v1.3 §5.4a axis formula applies instead:
+   * 2 × (pos(S) − pos(midpoint)) / axisUnitsPerStaffSpace, deduplicated
+   * (pattern lines may collapse onto one axis position) and sorted.
+   *
+   * @param {object} config
+   * @returns {number[]}
+   */
+  lilypondPositions(config) {
+    const staff = config.staff || {};
+    const pattern = (staff.semitonePattern || []).slice().sort((a, b) => a - b);
+    const midpoint = staff.midpoint || 0;
+
+    // So moving the pitch (staff.midpoint and the pattern together, design
+    // §3.1) never brings a line back at the other edge.
+    const staffSemis = [];
+    for (let oct = Math.floor((midpoint - 12) / 12); oct <= Math.floor((midpoint + 12) / 12); oct++) {
+      for (const s of pattern) {
+        const abs = s + oct * 12;
+        if (abs >= midpoint - 12 && abs < midpoint + 12) staffSemis.push(abs);
+      }
+    }
+
+    const unique = new Set(staffSemis.map(abs => CNBStaff.lilypondPosition(config, abs)));
+    return [...unique].sort((a, b) => a - b);
+  },
+
+  /**
+   * A semitone's LilyPond staff position: half staff spaces above the
+   * middle of the staff, 2 × (S − midpoint) / semitonesPerStaffSpace, or
+   * under an enabled pitch axis 2 × (pos(S) − pos(midpoint)) /
+   * axisUnitsPerStaffSpace (LY spec §5.1, §5.4a).
+   *
+   * @param {object} config
+   * @param {number} semi
+   * @returns {number}
+   */
+  lilypondPosition(config, semi) {
+    const staff = config.staff || {};
+    const midpoint = staff.midpoint || 0;
+    const axis = CNBPitchAxis.create(config);
+    if (axis.enabled) {
+      return 2 * (axis.positionOfSemi(semi) - axis.positionOfSemi(midpoint)) / axis.unitsPerStaffSpace;
+    }
+    return 2 * (semi - midpoint) / (staff.semitonesPerStaffSpace || 1);
   },
 
   /**
@@ -64,55 +124,38 @@ export const CNBStaff = {
       minSemi: gridContext.minSemi,
       maxSemi: gridContext.maxSemi,
     });
-    const overrides = (config.staff && config.staff.lineOverrides) || {};
-    const defaults = (config.staff && config.staff.lineDefaults) || {};
+    const thickness = STAFF_LINE_THICKNESS * CNBStaff.staffSpacePx(config, gridContext);
 
     const NS = "http://www.w3.org/2000/svg";
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-staff");
 
-    // Axis path (set 014, design §2.3): pattern semitones collapsing onto
-    // one axis position draw ONE line, their overrides merged (PA-6
-    // guarantees they do not conflict).
-    const axis = gridContext.axis;
-    if (axis && axis.enabled) {
-      const byPos = new Map();
-      for (const abs of positions) {
-        const pos = axis.positionOfSemi(abs);
-        if (!byPos.has(pos)) byPos.set(pos, { abs, props: Object.assign({}, defaults) });
-        Object.assign(byPos.get(pos).props, overrides[String(CNBMusic.pitchClass(abs))] || {});
-      }
-      for (const { abs, props } of byPos.values()) {
-        CNBStaffLine.render(g, {
-          y: gridContext.semiToY(abs),
-          x1: 0,
-          x2: totalWidth,
-          thickness: CNBConfig.pctToPx(props.thicknessPct, gridContext.pxPerSemi),
-          color: props.color,
-          style: props.style,
-        });
-      }
-      svgParent.appendChild(g);
-      return g;
-    }
-
-    // Linear path — the literal pre-set-014 loop.
-    for (const abs of positions) {
-      const pc = abs % 12;
-      const props = Object.assign({}, defaults, overrides[String(pc)] || {});
-      const thicknessPx = CNBConfig.pctToPx(props.thicknessPct, gridContext.pxPerSemi);
-      const y = gridContext.semiToY(abs);
-      CNBStaffLine.render(g, {
-        y,
-        x1: 0,
-        x2: totalWidth,
-        thickness: thicknessPx,
-        color: props.color,
-        style: props.style,
-      });
+    // Pattern semitones collapsing onto one axis position draw ONE line
+    // (set 014, design §2.3).
+    const ys = new Set(positions.map(abs => gridContext.semiToY(abs)));
+    for (const y of ys) {
+      CNBStaffLine.render(g, { y, x1: 0, x2: totalWidth, thickness });
     }
 
     svgParent.appendChild(g);
     return g;
+  },
+
+  /**
+   * Pixels per staff space on a grid: one staff space is
+   * staff.semitonesPerStaffSpace semitones, or
+   * pitchAxis.axisUnitsPerStaffSpace axis units under an enabled pitch axis,
+   * and the grid draws pxPerSemi px per unit.
+   *
+   * @param {object} config
+   * @param {object} gridContext  from CNBGrid.create()
+   * @returns {number}
+   */
+  staffSpacePx(config, gridContext) {
+    const axis = gridContext.axis;
+    const units = axis && axis.enabled
+      ? axis.unitsPerStaffSpace
+      : ((config.staff && config.staff.semitonesPerStaffSpace) || 1);
+    return gridContext.pxPerSemi * units;
   },
 };

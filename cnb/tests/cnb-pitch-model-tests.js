@@ -93,10 +93,8 @@ export const tests = [
 
   // ── shiftPitch ───────────────────────────────────────────────────────────
 
-  { name: "shiftPitch: midpoint, pattern, ledger templates and overrides move by d", fn: () => {
+  { name: "shiftPitch: midpoint, pattern and ledger templates move by d", fn: () => {
       const cfg = CNBConfig.createDefault();
-      cfg.staff.lineOverrides = { "4": { color: "#333333" } };
-      cfg.ledgers.lineOverrides = { "10": { thicknessPct: 50 } };
       const before = JSON.stringify(cfg);
       const out = P.shiftPitch(cfg, 3);
       eq(JSON.stringify(cfg), before, "the input is not changed");
@@ -104,8 +102,6 @@ export const tests = [
       deepEq(out.staff.semitonePattern, [7, 11], "pattern");
       deepEq(out.ledgers.templates.map(t => [t.semiWithinOctave, t.triggerPCs]),
         [[3, [3, 4, 5]], [5, [5]], [1, [1]]], "templates, mod 12");
-      deepEq(out.staff.lineOverrides, { "7": { color: "#333333" } }, "staff overrides");
-      deepEq(out.ledgers.lineOverrides, { "1": { thicknessPct: 50 } }, "ledger overrides, mod 12");
     }},
 
   { name: "shiftPitch: the staff stays and the labels move (default, Kite 4-369)", fn: () => {

@@ -93,14 +93,9 @@ const TABLE = [
     text: `“${n}” makes noteheads ${dimension(f)} by an amount that is not a size: it must be a number of semitones above 0.`, link: ruleLink(c, n) })],
   [/^Rule "(.*)" apply\.(heightSemis|widthSemis) is (.*) semitones, outside the usual 0\.25–4$/, ([, n, f, v], c) => ({
     text: `“${n}” makes noteheads ${v} semitones ${dimension(f)}, outside the usual 0.25 to 4, so they may not look right.`, link: ruleLink(c, n) })],
-  [/^Rule "(.*)" is scoped to keys \(.*\) and is not exported: /, ([, n], c) => {
-    const rule = ((c && c.noteheadRules) || []).find(r => r && r.name === n);
-    const m = rule && rule.match ? rule.match.pitchClasses : undefined;
-    const which = Array.isArray(m) && m.length > 0 && m.length < 12
-      ? `the exported ${listNames(m)} ${m.length === 1 ? "keeps its" : "keep their"} look without it`
-      : "the exported noteheads keep their look without it";
-    return { text: `“${n}” is not engraved: LilyPond ignores rules for particular keys, so ${which}.`, link: ruleLink(c, n) };
-  }],
+  [/^Key definitions (.*) have the same pitch classes \(.*\) but notehead rules draw them differently: .* draws them all as "(.*)"$/, ([, list, k]) => ({
+    text: `The keys ${list.replace(/"([^"]*)"/g, "“$1”")} have the same notes, so LilyPond cannot tell them apart: it engraves them all as “${k}” does.`,
+    link: sectionLink("key-signature") })],
   [/^Rule "(.*)" sets an off-key mark \(.*\), which is not drawn in the preview or exported yet$/, ([, n], c) => ({
     text: `“${n}” sets an off-key mark, which is not drawn here or exported yet.`, link: ruleLink(c, n) })],
   [/^Rule "(.*)" apply\.xOffsetStaffSpaces must be a finite number \(got .*\)$/, ([, n], c) => ({
@@ -134,13 +129,6 @@ const TABLE = [
   // ── Sections → Open … ──
   [/^Staff pattern must have at least 2 semitone positions \(found (\d+)\)$/, ([, n]) => ({
     text: `The staff needs at least two lines an octave (it has ${n}).`, link: sectionLink("staff") })],
-  [/^staff\.lineDefaults\.color has invalid hex "(.*)"$/, ([, h]) => ({
-    text: `The staff lines' colour, “${h}”, is not a colour like #000000.`, link: sectionLink("staff") })],
-  [/^ledgers\.lineDefaults\.color has invalid hex "(.*)"$/, ([, h]) => ({
-    text: `The ledger lines' colour, “${h}”, is not a colour like #000000.`, link: sectionLink("ledger-lines") })],
-  [/^Staff pattern entries (\d+) and (\d+) collapse onto one axis position but carry conflicting lineOverrides/, ([, a, b]) => ({
-    text: `The staff lines on ${noteName(+a)} and ${noteName(+b)} fall on one place on the staff but are given different looks.`,
-    link: sectionLink("advanced", "#staff-line-overrides") })],
   [/^meta\.fileSuffix must begin with "-" \(got "(.*)"\)$/, ([, s]) => ({
     text: `The file suffix must start with a hyphen, as in “-${s}”.`, link: sectionLink("export", '[data-meta="fileSuffix"] input') })],
   [/^Cannot derive a \.ly filename: /, () => ({

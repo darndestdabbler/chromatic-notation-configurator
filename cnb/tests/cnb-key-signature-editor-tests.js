@@ -6,7 +6,7 @@
  * stateFromConfig, round-tripped on every branch), the render() UI driven
  * against a stub DOM (keys.enabled master gate with its explicit disabled
  * state, key-definition rows, signature style/placement/separator/
- * gutter controls), the editor-level duplicate-name check, the Module A
+ * controls), the editor-level duplicate-name check, the Module A
  * validation pass-through, and the export through the editor path (an
  * editor-built keysig-enabled config leaves the signature to the engine;
  * the default, signature off, exports 'none — session 30).
@@ -118,7 +118,6 @@ function fancyKeys() {
       style: "notehead-chords",
       placement: { rule: "scale-from-tonic", tonicOctave: 2 },
       separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
-      gutter: { paddingH: 20 },
     },
   };
 }
@@ -141,7 +140,7 @@ export const tests = [
       eq(state.keySignature.separator.extentSemis, 12, "default extent");
       assert(!("dot" in state.keySignature) && !("intervalBlocks" in state.keySignature) &&
         !("staggeredLedgers" in state.keySignature), "no simple-mark style subsections");
-      eq(state.keySignature.gutter.paddingH, 12, "default padding");
+      assert(!("gutter" in state.keySignature), "no gutter: the spacing is the engine's (session 34)");
   } },
 
   { name: "stateFromConfig: tolerant of missing/malformed sections (pre-set-010 configs)", fn: () => {
@@ -153,7 +152,7 @@ export const tests = [
       const malformed = E.stateFromConfig({ keys: {
         enabled: "yes", definitions: "nope", offKeyMark: 4,
         keySignature: { style: 7, placement: 3, separator: { color: "gold", thicknessPct: -1, extentSemis: 0 },
-                        gutter: { paddingH: NaN } },
+                        gutter: { paddingH: NaN } },   // retired (session 34): dropped
       } });
       eq(malformed.enabled, true, "truthy enabled coerced");
       deepEq(malformed.definitions, [], "non-array definitions → []");
@@ -163,7 +162,7 @@ export const tests = [
       eq(malformed.keySignature.separator.color, "#ffd42a", "invalid hex → default");
       eq(malformed.keySignature.separator.thicknessPct, 160, "negative thickness → default");
       eq(malformed.keySignature.separator.extentSemis, 12, "zero extent → default");
-      eq(malformed.keySignature.gutter.paddingH, 12, "NaN padding → default");
+      assert(!("gutter" in malformed.keySignature), "a retired gutter is not carried");
   } },
 
   { name: "stateFromConfig: unknown style/rule STRINGS are preserved (preserve-and-report)", fn: () => {
@@ -230,7 +229,6 @@ export const tests = [
       assertThrows(() => E.buildKeys(withSig({ separator: { enabled: true, color: "gold", thicknessPct: 25, extentSemis: 12 } })), "invalid hex");
       assertThrows(() => E.buildKeys(withSig({ separator: { enabled: true, color: "#ffd42a", thicknessPct: -1, extentSemis: 12 } })), "negative thickness");
       assertThrows(() => E.buildKeys(withSig({ separator: { enabled: true, color: "#ffd42a", thicknessPct: 25, extentSemis: 0 } })), "non-positive extent");
-      assertThrows(() => E.buildKeys(withSig({ gutter: { paddingH: -2 } })), "negative padding");
   } },
 
   { name: "buildKeys: mid-edit-reachable states do NOT throw (validation reports them)", fn: () => {
@@ -288,7 +286,7 @@ export const tests = [
         for (const token of ["cnb-kse-def-name", "cnb-kse-pc-pill", "cnb-kse-def-tonic",
                              "cnb-kse-def-remove", "cnb-kse-def-add",
                              "cnb-kse-sig-enable-check", "cnb-kse-placement-rule",
-                             "cnb-kse-sep-color", "cnb-kse-gutter-input"]) {
+                             "cnb-kse-sep-color"]) {
           const controls = findAll(root, token);
           assert(controls.length > 0, `${token} rendered while gated (shown, not hidden)`);
           assert(controls.every(c => c.disabled === true), `${token} disabled while keys are off`);
@@ -458,19 +456,12 @@ export const tests = [
       });
   } },
 
-  { name: "render: only the spacing carries a Preview only badge; placement and the separator export (session 30, design §8.6)", fn: () => {
+  { name: "render: nothing is preview-only — no spacing control and no badge (session 34: the spacing is the engine's)", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });
-        const badgesIn = (token) => findAll(findAll(api.root, token)[0], "cnb-badge");
-        const badges = badgesIn("cnb-kse-gutter");
-        eq(badges.length, 1, "spacing: one badge");
-        eq(badges[0].textContent, "Preview only", "badge text");
-        eq(badges[0].title, E.PREVIEW_ONLY.gutter, "tooltip");
-        assert(badges[0].title.includes("not exported"), "the tooltip says it is not exported");
-        eq(badgesIn("cnb-kse-placement").length, 0, "placement exports");
-        eq(badgesIn("cnb-kse-separator").length, 0, "the separator exports");
-        eq(findAll(api.root, "cnb-badge").length, 1, "no other badges");
-        deepEq(Object.keys(E.PREVIEW_ONLY), ["gutter"], "one preview-only tooltip");
+        eq(findAll(api.root, "cnb-kse-gutter").length, 0, "no spacing control");
+        eq(findAll(api.root, "cnb-badge").length, 0, "no badge");
+        assert(!("PREVIEW_ONLY" in E), "no preview-only tooltips");
         eq(findAll(api.root, "cnb-kse-octave-note").length, 0, "no preview-only paragraph");
         const text = api.root.children
           .filter(c => !String(c.className).includes("cnb-kse-validation"))
@@ -573,18 +564,6 @@ export const tests = [
         extent.value = "6";
         extent.oninput();
         eq(last.keys.keySignature.separator.extentSemis, 6, "extent written");
-      });
-  } },
-
-  { name: "render: gutter padding control writes its field", fn: () => {
-      withDomStub((container) => {
-        let last = null;
-        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-
-        const pad = findAll(api.root, "cnb-kse-gutter-input")[0];
-        pad.value = "20";
-        pad.oninput();
-        eq(last.keys.keySignature.gutter.paddingH, 20, "padding written");
       });
   } },
 

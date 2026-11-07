@@ -1493,10 +1493,9 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
     reproduction fixtures for records 32–40 (sessions 1–4 carried this
     forward).
 - **Limits kept on purpose**, listed so they are not mistaken for
-  backlog: the in-gap ledger difference between preview and engine
-  (pitch-axis design §2.4), invariants I1, I3, I4 and I5, non-monotonic
-  axis maps (PA-8), mixed-offset chords across pitch classes, record 7's
-  grouped far-side ledgers, a glyph-internal clef anchor attribute (the
-  float top anchor covers every surveyed clef), and architecture §11
-  question 8 (stem attachment), which stem thickness being preview-only
-  makes moot for now.
+  backlog: invariants I1, I3, I4 and I5, non-monotonic axis maps (PA-8),
+  mixed-offset chords across pitch classes, record 7's grouped far-side
+  ledgers, and a glyph-internal clef anchor attribute (the float top anchor
+  covers every surveyed clef). Session 34 retired two: the in-gap ledger
+  difference (the ledgers export, LY spec 1.3.9 §5.7) and architecture §11
+  question 8 (the preview draws the engine's stem).

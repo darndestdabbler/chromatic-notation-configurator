@@ -47,12 +47,10 @@
  *     while the pattern is the one loaded, the loaded midpoint and sps are
  *     kept, so a pitch-axis config (midpoint 7 for twinline-compact) is not
  *     moved by an unrelated edit (audit 2026-11-02, M4).
- *   - Legacy line styling lived in a shared named-styles table (App.styles);
- *     Module A replaces that with staff/ledger lineDefaults plus sparse
- *     per-position lineOverrides, which this editor edits directly.
- *   - `ledgers.lineOverrides` (per-template styling overrides) are preserved
- *     through the editor state but have no editing UI in this session; the
- *     staff-side lineOverrides UI is the spec deliverable.
+ *   - Legacy line styling lived in a shared named-styles table (App.styles).
+ *     There is none now: the preview draws staff and ledger lines as the
+ *     engine engraves them (session 34), so the editor emits no line style
+ *     and a config's retired lineDefaults / lineOverrides are not carried.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -60,14 +58,10 @@
  *     customPattern:  number[],            // active when patternKey==="custom"
  *     loadedGeometry: { semitonePattern, midpoint, semitonesPerStaffSpace } | null,
  *                                          // kept while the pattern is unchanged
- *     lineDefaults:  { thicknessPct, style, color },          // staff
- *     lineOverrides:  { [semiWithinOctave]: {thicknessPct?, style?, color?} },
  *     templates:      [{ semiWithinOctave, triggerPCs, triggerMode }],
  *     proximityRule:  boolean,
  *     ledgerMode:     "automatic" | "own",  // automatic: templates from the pattern
  *     pitchAxis:      object | null,        // the config's, read only (places the automatic spots)
- *     ledgerDefaults: { thicknessPct, widthMultiplier, style, color, roundedEnds },
- *     ledgerOverrides:{ ... }                                   // passthrough
  *   }
  *
  * Rendering contract (same as Module 12): render() builds plain DOM via
@@ -96,16 +90,6 @@ import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 // Pitch-class labels (kept inline like Module 12 so the editor core adds no
 // dependency beyond Module A).
 const PC_LABELS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
-
-const LINE_STYLES = ["solid", "dashed", "dotted"];
-
-// Preview-only badges' tooltips (audit 2026-11-02, M2; design §8.6): the
-// engine draws its own staff and ledger lines, so none of these settings
-// reaches the export.
-const STAFF_STYLE_PREVIEW_ONLY =
-  "LilyPond draws staff lines its own way, so this is not exported.";
-const LEDGER_PREVIEW_ONLY =
-  "LilyPond places and draws its own ledger lines, so these are not exported.";
 
 /** The two ledger modes (design §1, step 3) and what each one does. */
 const LEDGER_MODES = {
@@ -142,7 +126,7 @@ const STAFF_PATTERN_PRESETS = {
 };
 
 /** The parts render() can draw, in the order it draws them. */
-const PARTS = ["staff", "overrides", "ledgers"];
+const PARTS = ["staff", "ledgers"];
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -219,22 +203,10 @@ function axisAutomaticTemplates(cleaned, axis) {
   return out;
 }
 
-/** Drop override entries that carry no fields. */
-function pruneOverrides(overrides) {
-  const out = {};
-  for (const [key, val] of Object.entries(overrides || {})) {
-    if (val && typeof val === "object" && Object.keys(val).length > 0) {
-      out[key] = deepClone(val);
-    }
-  }
-  return out;
-}
-
 export const CNBStaffRuleEditor = {
 
   STAFF_PATTERN_PRESETS,
   PC_LABELS,
-  LINE_STYLES,
   LEDGER_MODES,
   PARTS,
 
@@ -337,12 +309,6 @@ export const CNBStaffRuleEditor = {
    * Build a ready `config.staff` slice (plan §4.3) from editor state.
    * Pure function; throws on invalid state rather than guessing.
    *
-   * Emitted lineOverrides are intersected with the active pattern: an
-   * override for a semitone that is no longer a staff line never reaches the
-   * config. The editor STATE still keeps such entries, so switching a
-   * pattern away and back restores the override in both the UI and the
-   * emitted slice.
-   *
    * @param {object} state
    * @returns {object} config.staff object
    */
@@ -357,17 +323,10 @@ export const CNBStaffRuleEditor = {
       geo.midpoint = loaded.midpoint;
       geo.semitonesPerStaffSpace = loaded.semitonesPerStaffSpace;
     }
-    const activeKeys = new Set(geo.semitonePattern.map(String));
-    const overrides = {};
-    for (const [key, val] of Object.entries(pruneOverrides(state.lineOverrides))) {
-      if (activeKeys.has(key)) overrides[key] = val;
-    }
     return {
       semitonePattern: geo.semitonePattern,
       midpoint: geo.midpoint,
       semitonesPerStaffSpace: geo.semitonesPerStaffSpace,
-      lineDefaults: deepClone(state.lineDefaults),
-      lineOverrides: overrides,
     };
   },
 
@@ -385,8 +344,6 @@ export const CNBStaffRuleEditor = {
       return {
         templates: CNBStaffRuleEditor.automaticTemplates(patternOf(state), axisOf(state)),
         proximityRule: true,
-        lineDefaults: deepClone(state.ledgerDefaults),
-        lineOverrides: deepClone(state.ledgerOverrides || {}),
       };
     }
     const templates = (state.templates || []).map((t, i) => {
@@ -405,8 +362,6 @@ export const CNBStaffRuleEditor = {
     return {
       templates,
       proximityRule: !!state.proximityRule,
-      lineDefaults: deepClone(state.ledgerDefaults),
-      lineOverrides: deepClone(state.ledgerOverrides || {}),
     };
   },
 
@@ -457,11 +412,6 @@ export const CNBStaffRuleEditor = {
       patternKey,
       customPattern: pattern.slice(),
       loadedGeometry,
-      lineDefaults: {
-        thicknessPct: 20, style: "solid", color: "#000000",
-        ...deepClone(staff.lineDefaults || {}),
-      },
-      lineOverrides: pruneOverrides(staff.lineOverrides),
       templates: (ledgers.templates || []).map(t => ({
         semiWithinOctave: t.semiWithinOctave,
         triggerPCs: sanitizePattern(t.triggerPCs || []),
@@ -472,12 +422,6 @@ export const CNBStaffRuleEditor = {
       // (session 28). The editor does not edit it.
       pitchAxis: config && config.pitchAxis ? deepClone(config.pitchAxis) : null,
       ledgerMode: CNBStaffRuleEditor.ledgerModeOf(pattern, ledgers, CNBPitchAxis.create(config || {})),
-      ledgerDefaults: {
-        thicknessPct: 40, widthMultiplier: 2.0, style: "solid",
-        color: "#000000", roundedEnds: true,
-        ...deepClone(ledgers.lineDefaults || {}),
-      },
-      ledgerOverrides: deepClone(ledgers.lineOverrides || {}),
     };
   },
 
@@ -488,15 +432,14 @@ export const CNBStaffRuleEditor = {
    *   div.cnb-staff-rule-editor
    *   ├── staff:     div.cnb-sre-pattern         (pattern options, Staff lines on pills)
    *   │              div.cnb-sre-derived         (staff spacing, middle of the staff; read-only)
-   *   │              div.cnb-sre-staff-defaults  (line thickness / style / colour)
-   *   ├── overrides: div.cnb-sre-overrides       (per-staff-line override rows)
    *   ├── ledgers:   div.cnb-sre-ledger-mode     (Automatic / My own rules)
    *   │              div.cnb-sre-ledgers         (My own rules only: template rows + add)
    *   │              label.cnb-sre-proximity     (My own rules, with a "when a note is near"
- *   │                                           rule or the rule off: proximityRule)
-   *   │              div.cnb-sre-ledger-defaults (thickness / style / colour / width / ends)
+   *   │                                           rule or the rule off: proximityRule)
    *   └── div.cnb-sre-validation                 (CNBConfig.validate pass-through)
-   * Preview-only controls carry a span.cnb-badge with a tooltip (design §8.6).
+   * The lines have no look of their own to edit: the preview draws staff and
+   * ledger lines as the engine does, and the export carries which ledgers
+   * show (session 34), so nothing here is preview-only.
    *
    * Events are wired as element properties (onclick/oninput/onchange) so the
    * editor is fully drivable in Node tests via a stub document.
@@ -505,8 +448,8 @@ export const CNBStaffRuleEditor = {
    * @param {{config?:object, parts?:string[], onChange?:(slices:{staff:object,ledgers:object}, state:object)=>void}} [opts]
    *        `config` seeds the editor state and is the base for the validation
    *        pass-through (defaults to CNBConfig.createDefault()). `parts`
-   *        (session 26) names what to draw, from PARTS ("staff",
-   *        "overrides", "ledgers"; all by default, always in that order), so
+   *        (session 26) names what to draw, from PARTS ("staff", "ledgers";
+   *        both by default, always in that order), so
    *        a host can mount the editor once per section; every mount still
    *        emits both whole slices from its own state.
    * @returns {{root:HTMLElement, getState:()=>object, getStaff:()=>object,
@@ -535,12 +478,6 @@ export const CNBStaffRuleEditor = {
       return e;
     };
 
-    const numberFrom = (e, input) => {
-      const raw = (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
-      const v = parseFloat(raw);
-      return Number.isFinite(v) ? v : null;
-    };
-
     const checkedFrom = (e, input) =>
       e && e.target && e.target.checked !== undefined ? !!e.target.checked : !!input.checked;
 
@@ -559,32 +496,7 @@ export const CNBStaffRuleEditor = {
       emit();
     };
 
-    /** A Preview only badge with its one-line tooltip (design §8.6). */
-    const badge = (tooltip) => {
-      const b = el("span", "cnb-badge", "Preview only");
-      b.title = tooltip;
-      return b;
-    };
-
-    /** A group title, with a Preview only badge when a tooltip is given. */
-    const title = (text, tooltip) => {
-      const t = el("div", "cnb-sre-title", text);
-      if (tooltip) t.appendChild(badge(tooltip));
-      return t;
-    };
-
-    /** A labelled field: label (and badge), the control, a unit suffix. */
-    const field = (labelText, control, unit, tooltip) => {
-      const f = el("label", "cnb-sre-field");
-      const label = el("span", "cnb-sre-field-label", labelText);
-      if (tooltip) label.appendChild(badge(tooltip));
-      f.appendChild(label);
-      const row = el("span", "cnb-sre-field-control");
-      row.appendChild(control);
-      if (unit) row.appendChild(el("span", "cnb-sre-unit", unit));
-      f.appendChild(row);
-      return f;
-    };
+    const title = (text) => el("div", "cnb-sre-title", text);
 
     // ── Pattern section ──────────────────────────────────────────────────
     function drawPattern() {
@@ -680,104 +592,11 @@ export const CNBStaffRuleEditor = {
       return wrap;
     }
 
-    // ── Shared line-style field row ──────────────────────────────────────
-    /** Thickness, style and colour fields; `tooltip` badges each of them. */
-    function lineStyleFields(target, prefix, onEdit, tooltip) {
-      const row = el("div", prefix + "-fields cnb-sre-fields");
-
-      const thick = el("input", "cnb-sre-thickness");
-      thick.type = "number";
-      thick.min = "1";
-      thick.max = "100";
-      thick.step = "1";
-      thick.value = String(target.thicknessPct);
-      thick.oninput = (e) => {
-        const v = numberFrom(e, thick);
-        if (v !== null) { target.thicknessPct = v; onEdit(); }
-      };
-      row.appendChild(field("Thickness", thick, "% of a semitone", tooltip));
-
-      const style = el("select", "cnb-sre-style");
-      for (const s of LINE_STYLES) {
-        const o = el("option", null, s[0].toUpperCase() + s.slice(1));
-        o.value = s;
-        if (s === target.style) o.selected = true;
-        style.appendChild(o);
-      }
-      style.value = target.style;
-      style.onchange = (e) => { target.style = valueFrom(e, style); onEdit(); };
-      row.appendChild(field("Style", style, null, tooltip));
-
-      const color = el("input", "cnb-sre-color");
-      color.type = "color";
-      color.value = target.color;
-      // `input` only emits: a redraw would close the open picker. Closing
-      // it (`change`) redraws (session 21).
-      color.oninput = (e) => { target.color = valueFrom(e, color); emit(); };
-      color.onchange = (e) => { target.color = valueFrom(e, color); changed(); };
-      row.appendChild(field("Colour", color, null, tooltip));
-
-      return row;
-    }
-
-    function drawStaffDefaults() {
-      const wrap = el("div", "cnb-sre-section cnb-sre-staff-defaults");
-      wrap.appendChild(title("Lines"));
-      wrap.appendChild(lineStyleFields(state.lineDefaults, "cnb-sre-staff-defaults", changed,
-        STAFF_STYLE_PREVIEW_ONLY));
-      return wrap;
-    }
-
-    // ── Per-line overrides (staff.lineOverrides) ─────────────────────────
-    function drawOverrides() {
-      const wrap = el("div", "cnb-sre-section cnb-sre-overrides");
-      wrap.appendChild(title("Line overrides", STAFF_STYLE_PREVIEW_ONLY));
-      wrap.appendChild(el("div", "cnb-sre-hint", "Give one staff line a look of its own."));
-
-      const pattern = patternOf(state);
-      if (pattern.length === 0) {
-        wrap.appendChild(el("div", "cnb-sre-hint", "The staff has no lines yet."));
-        return wrap;
-      }
-
-      for (const pc of pattern) {
-        const key = String(pc);
-        const overridden = key in state.lineOverrides;
-        const row = el("div", "cnb-sre-override-row" + (overridden ? " overridden" : ""));
-        row.setAttribute("data-line-pc", key);
-
-        const label = el("label", "cnb-sre-override-toggle");
-        const cb = el("input", "cnb-sre-override-check");
-        cb.type = "checkbox";
-        cb.checked = overridden;
-        cb.onchange = (e) => {
-          if (checkedFrom(e, cb)) {
-            // Seed from current defaults so enabling is visually a no-op
-            // until the user edits a field.
-            state.lineOverrides[key] = deepClone(state.lineDefaults);
-          } else {
-            delete state.lineOverrides[key];
-          }
-          changed();
-        };
-        label.appendChild(cb);
-        label.appendChild(el("span", "cnb-sre-override-name",
-          "The line on " + PC_LABELS[pc]));
-        row.appendChild(label);
-
-        if (overridden) {
-          row.appendChild(lineStyleFields(state.lineOverrides[key], "cnb-sre-override", changed));
-        }
-        wrap.appendChild(row);
-      }
-      return wrap;
-    }
-
     // ── Ledger templates ─────────────────────────────────────────────────
     /** The Automatic / My own rules choice (design §1, step 3; §8.3). */
     function drawLedgerMode() {
       const wrap = el("div", "cnb-sre-section cnb-sre-ledger-mode");
-      wrap.appendChild(title("Which ones show", LEDGER_PREVIEW_ONLY));
+      wrap.appendChild(title("Which ones show"));
       const group = el("div", "segmented cnb-sre-ledger-mode-options");
       for (const [mode, info] of Object.entries(LEDGER_MODES)) {
         const button = el("button", state.ledgerMode === mode ? "on" : "", info.label);
@@ -887,37 +706,6 @@ export const CNBStaffRuleEditor = {
       return label;
     }
 
-    function drawLedgerDefaults() {
-      const wrap = el("div", "cnb-sre-section cnb-sre-ledger-defaults");
-      wrap.appendChild(title("Look", LEDGER_PREVIEW_ONLY));
-      wrap.appendChild(lineStyleFields(state.ledgerDefaults, "cnb-sre-ledger-defaults", changed));
-
-      const extras = el("div", "cnb-sre-fields cnb-sre-ledger-extras");
-      const widthMult = el("input", "cnb-sre-width-multiplier");
-      widthMult.type = "number";
-      widthMult.min = "0.5";
-      widthMult.max = "5";
-      widthMult.step = "0.1";
-      widthMult.value = String(state.ledgerDefaults.widthMultiplier);
-      widthMult.oninput = (e) => {
-        const v = numberFrom(e, widthMult);
-        if (v !== null) { state.ledgerDefaults.widthMultiplier = v; changed(); }
-      };
-      extras.appendChild(field("Width", widthMult, "× the notehead's width"));
-
-      const rounded = el("label", "cnb-sre-rounded");
-      const cb = el("input", "cnb-sre-rounded-check");
-      cb.type = "checkbox";
-      cb.checked = !!state.ledgerDefaults.roundedEnds;
-      cb.onchange = (e) => { state.ledgerDefaults.roundedEnds = checkedFrom(e, cb); changed(); };
-      rounded.appendChild(cb);
-      rounded.appendChild(el("span", "cnb-sre-rounded-text", "Rounded ends"));
-      extras.appendChild(rounded);
-
-      wrap.appendChild(extras);
-      return wrap;
-    }
-
     // ── Validation pass-through (Module A) ───────────────────────────────
     function drawValidation() {
       const wrap = el("div", "cnb-sre-validation");
@@ -945,9 +733,7 @@ export const CNBStaffRuleEditor = {
       if (parts.has("staff")) {
         root.appendChild(drawPattern());
         root.appendChild(drawDerived());
-        root.appendChild(drawStaffDefaults());
       }
-      if (parts.has("overrides")) root.appendChild(drawOverrides());
       if (parts.has("ledgers")) {
         root.appendChild(drawLedgerMode());
         if (state.ledgerMode !== "automatic") {
@@ -958,7 +744,6 @@ export const CNBStaffRuleEditor = {
             root.appendChild(drawProximity());
           }
         }
-        root.appendChild(drawLedgerDefaults());
       }
       root.appendChild(drawValidation());
     }

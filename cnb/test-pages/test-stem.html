@@ -90,6 +90,7 @@
     const noteYPositions = chordSemis.map((s) => grid.semiToY(s));
 
     const geom = CNBStem.geometry(config, {
+      gridContext: grid,
       shape,
       scaleFactor: measure.scaleFactor,
       centerX,

@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.8 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units)
-**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.9 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules)
+**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -53,7 +53,9 @@ both: the clef and the key signature, §5.5 and §5.6. Every config's export
 gains at least `cnb:clef-style`, and every config whose signature is off
 gains `cnb:keysig-style 'none`. 1.3.8, for both: stem attachments in
 LilyPond's relative units, §4.4b. Every config with stems exports new
-attachment values.)*
+attachment values. 1.3.9, for both: the ledger lines, §5.7, which every
+config's export gains, and the key dispatch, §6.4, which only a config with
+keys on and a key-scoped rule gains.)*
 
 Summary of additions:
 
@@ -64,6 +66,7 @@ Summary of additions:
 | Section B staff-line thickness | `(pct/100) × (1/sps)` | `(pct/100) × (1/axisUnitsPerStaffSpace)` (§5.3a) |
 | Section C alist | — | optional `(x-offset . N)` field (§6.3) |
 | Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
+| Ledger lines and key-scoped rules (1.3.9, linear and axis alike) | the engine's own ledgers; Section C resolved with no key | `cnb:ledgers-by-semitone` and NoteHead overrides (§5.7); Section C dispatch on the key (§6.4) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -280,13 +283,26 @@ are never emitted:
   they were no-ops. §5.3a below therefore describes a conversion that is no
   longer emitted.
 
-These config fields, along with ledger rules, `durations.repeatCounts` and
-`palette.useCBSafe`, are **preview-only**. Key-scoped notehead rules are
-also preview-only: Section C resolves with no key, and validation warns and
-names each such rule. So is the key signature's spacing
-(`keys.keySignature.gutter`, since 1.3.7 the one part of the clef and key
-signature the engine has no setting for, §5.6). The header lists all of
-them in a comment.
+**Since 1.3.9 the only preview-only setting is `palette.useCBSafe`** (the
+colour-blind preview toggle): the export carries both palettes, and the
+score selects one. The header says so in a comment. The rest of the old
+list (session 34) is either exported or no longer a setting:
+
+- **Exported:** ledger rules (§5.7) and key-scoped notehead rules (§6.4).
+- **Drawn by the preview as the engine engraves them, and retired as
+  settings:** stems (0.13 staff spaces thick, LilyPond's length, the edge
+  on the anchor, §4.4b), staff lines (0.1 staff spaces, black, solid),
+  ledgers (0.2 staff spaces, rounded, 1.5 notehead widths long), the key
+  signature's spacing (0.75 staff spaces after the staff's start or 3.5
+  after a clef's left edge, the first notehead centred 4.8636 after it) and
+  the repeat counts (fixed, minim ×2, semibreve and breve ×4).
+  `display.stemThicknessPct`, `display.stemExtension`,
+  `engine.stemThickness`, `staff.lineDefaults`, `staff.lineOverrides`,
+  `ledgers.lineDefaults`, `ledgers.lineOverrides`,
+  `keys.keySignature.gutter` and `durations.repeatCounts` are no longer
+  defaults, validated or edited. A config that carries them still loads,
+  and none is read or emitted. Validation check 10 (§8) went with the line
+  overrides.
 
 The header's color-palette line names the palette only when Section A
 registers colors taken from it. Otherwise it reads
@@ -595,14 +611,82 @@ from the engine's default:
   (`null`) writes nothing; the engine's own octave matches the preview's
   automatic rule for the default staff. Under a pitch axis §5.4d writes the
   octave instead, so it is written once.
-- `gutter.paddingH` and `placement.rule` have no engine setting. The
-  signature's spacing stays preview-only, and the header says so.
+- `placement.rule` has no engine setting. Since 1.3.9 the signature's
+  spacing is the engine's in the preview too (§5.2a), and
+  `gutter.paddingH` is retired.
 
 **Verified** by an engine round trip: a G major signature with a styled bar
 (`#123abc`, 80%, extent 2) and `tonicOctave 1` engraves its marks' top at
 the preview's position and the bar's end at ±extent, with the bar's colour
 and a thickness of 0.2 staff space read from its stencil; the default
 config engraves no signature.
+
+### 5.7 Ledger lines (new in 1.3.9, linear and axis configs alike)
+
+Before 1.3.9 the export wrote no ledger rules, and the engine drew its own
+ledgers from the staff's spacing. So in-gap ledgers (the C ledger in the
+middle of the 4-8 staff, for example) and any ledger set by a template's
+pitch classes showed only in the preview. Since 1.3.9 every notehead the
+preview draws engraves exactly the ledgers the preview draws for it.
+
+**The table.** Section B writes, after the staff geometry (and the pitch
+axis), one entry for each semitone 0–24, the pitches the preview's cards
+draw. Each entry gives the ledgers `CNBLedgerSet.ledgersFor` resolves for a
+note there, as LilyPond staff positions (`CNBStaff.lilypondPosition`, half
+staff spaces from the middle line, fractional where they fall between
+whole positions), and an empty list where the preview draws none:
+
+```lilypond
+%% Ledger lines — each notehead the preview draws gets the ledgers drawn
+%% there: engine semitone (middle C = 0) → ledger staff positions. Any
+%% other pitch keeps the engine's ledger rule.
+#(define cnb:ledgers-by-semitone
+   '((0 . (-6)) (1 . (-6)) (2 . (-6 -5)) (3 . ()) (4 . ()) (5 . ())
+     …
+     (24 . (6))
+     ))
+#(define (cnb:ledgers-of grob)
+   (assv (ly:pitch-semitones (ly:event-property (event-cause grob) 'pitch))
+         cnb:ledgers-by-semitone))
+\layout {
+  \context {
+    \Voice
+    \override NoteHead.ledger-positions =
+      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (if e (cdr e) '())))
+    \override NoteHead.no-ledgers =
+      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (and e (null? (cdr e)))))
+  }
+}
+```
+
+- **Keys are engine semitones**, middle C = 0. Under a pitch axis the hook
+  reads Configurator semitones as they are (§5.4c), so the key is the
+  preview semitone. On a linear staff the engine puts semitone 12 on the
+  middle line where the preview puts `staff.midpoint` (§5.5), so the key is
+  the preview semitone − (`staff.midpoint` − 12).
+- **Each notehead takes its pitch's entry.** LilyPond's
+  `NoteHead.ledger-positions` overrides the staff's ledger rule for that
+  head, and `no-ledgers` turns its ledgers off when the entry is empty. A
+  `\layout` block at the top level of the export carries both: a score's own
+  `\layout`, at the top level or in a `\score`, starts from it.
+- **Any other pitch keeps the engine's rule.** The preview's staff repeats
+  every octave, while the engraved staff has only the exported lines (§5.1a),
+  so the preview's rule applied far from the staff would leave a ledger
+  floating away from it. The engine's rule reaches the engraved staff.
+
+**Why not `cnb:ledger-overrides`.** The engine's simple mode does take
+explicit ledgers through `cnb:ledger-overrides`, keyed by notehead
+position, but its rule is handed the position rounded to a whole number
+(half to even), measured. On a staff of 4 semitones per staff space, B
+(−0.5) and C (0) share the key 0, yet the preview draws C a ledger and B
+none. The table is keyed by the pitch instead, so no two pitches can share
+an entry. `cnb:ledger-overrides` and `cnb:ledger-positions` are not
+written.
+
+**Verified** by an engine round trip (`cnb/tests/cnb-lilypond-tests.js`,
+measured through `cnb/tests/engine-probe.js`): for the default, Kite
+4-369 and 45deg-369 fixtures and every gallery file (Twinline among them),
+the octave chord of every card engraves exactly the ledgers the card draws.
 
 ## 6. SECTION C — ADDITIONS
 
@@ -662,6 +746,46 @@ carries the offset):
 
 ---
 
+### 6.4 Key-scoped notehead rules (new in 1.3.9, linear and axis configs alike)
+
+Before 1.3.9 Section C resolved every notehead with no key, so a rule whose
+`match.keys` names a key showed only in the preview. The engine passes
+`cnb:get-notehead-config` the key as its pitch classes, the seven it builds
+from `keyAlterations` (C major's with no `\key`), not always in order.
+Since 1.3.9 Section C dispatches on that list:
+
+```scheme
+#(set! cnb:get-notehead-config
+   (lambda (semitone duration key)
+     (let ((pc (modulo semitone 12))
+           (key-pcs (sort (list-copy key) <)))
+       (cond
+         ;; Key G
+         ((equal? key-pcs '(0 2 4 6 7 9 11))
+          (cond …clauses resolved with the key G…))
+
+         ;; Any other key
+         (else
+          (cond …the key-less clauses…))))))
+```
+
+- **A branch for each key a rule names**, with keys on (`keys.enabled`):
+  the definition's pitch classes, sorted, and its clauses resolved with
+  that key (`CNBConfig.resolveNotehead(config, pc, duration, key)`). With
+  keys off the preview applies no key, and neither does the export.
+- **Definitions sharing a pitch-class set make one branch**, the first of
+  them in definition order that a rule names. The engine cannot tell them
+  apart (C major and A minor, for example), so validation warns when the
+  rules draw them differently and names the one engraved.
+- **The key-less clauses are the fallback** for any other key.
+- Section A registers the shapes, variants and colours the branches use.
+- **Compatibility:** a config with keys off, or with no rule naming a
+  defined key, exports byte-identically to 1.3.8.
+
+**Verified** by an engine round trip: a rule colouring F♯ red in G engraves
+F♯ red under `\key g \major` and black under `\key c \major`, as the
+preview draws it in those keys.
+
 ## 8. EXPORT VALIDATION — ADDITIONS
 
 New blocking checks when `pitchAxis` is enabled (mirroring design §1.4;
@@ -671,8 +795,10 @@ numbering continues v1.2.1 §8):
 9. `pitchAxis.pitchClasses` covers pitch classes 0–11 exactly once with
    finite numeric positions; `octaveStride` and `axisUnitsPerStaffSpace`
    are finite and > 0.
-10. No two ledger templates (or staff pattern entries) that collapse onto
-    one axis position carry conflicting style overrides (design PA-5/PA-6).
+10. *(Retired in 1.3.9.)* No two ledger templates (or staff pattern
+    entries) that collapse onto one axis position carry conflicting style
+    overrides (design PA-5/PA-6). The line overrides it guarded are no
+    longer read (§5.2a).
 11. Every `apply.xOffsetStaffSpaces` is a finite number.
 12. The map is globally non-decreasing: positions non-decreasing in pc
     order and `positions[11] ≤ positions[0] + octaveStride` (design PA-8 —
@@ -731,7 +857,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.8** | **Nov 7, 2026** | **Stem attachment units (session 33): new §4.4b. `cnb:register-attachment!` points are written relative to the registered path's exact extent, the units LilyPond's `NoteHead.stem-attachment` reads, instead of staff spaces, so the §4.4a divisor and the §4.1c attachment scaling no longer enter. The preview now puts a stem's edge on its anchor, as LilyPond does. Output CHANGES for every config with stems: the default, 45deg-369, sized and Twinline baselines were regenerated; the Kite fixture's anchors became true semitone anchors and its export is unchanged. 1.0.0 exports with stems engraved them too near the centre and should be regenerated.** |
+| **1.3.9** | **Nov 7, 2026** | **Ledger lines and key-scoped rules (session 34): new §5.7 and §6.4. Section B writes `cnb:ledgers-by-semitone`, the preview's ledgers for every pitch it draws, and a `\layout` block gives each notehead its pitch's entry through `NoteHead.ledger-positions` / `no-ledgers`, so in-gap ledgers engrave; it is keyed by pitch because the engine rounds the position its ledger rule sees. Section C dispatches on the key's sorted pitch classes, one branch per key a rule names, with keys on. §5.2a: the only preview-only setting is the colour-blind toggle; the preview draws stems, staff lines, ledgers, the key signature's spacing and the repeat counts as the engine does, and their settings are retired. §8 check 10 is retired. Output CHANGES for every config (the ledger block and the header); the five export baselines were regenerated.** |
+| 1.3.8 | Nov 7, 2026 | Stem attachment units (session 33): new §4.4b. `cnb:register-attachment!` points are written relative to the registered path's exact extent, the units LilyPond's `NoteHead.stem-attachment` reads, instead of staff spaces, so the §4.4a divisor and the §4.1c attachment scaling no longer enter. The preview now puts a stem's edge on its anchor, as LilyPond does. Output CHANGES for every config with stems: the default, 45deg-369, sized and Twinline baselines were regenerated; the Kite fixture's anchors became true semitone anchors and its export is unchanged. 1.0.0 exports with stems engraved them too near the centre and should be regenerated. |
 | 1.3.7 | Nov 7, 2026 | The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated. |
 | 1.3.6 | Nov 7, 2026 | Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged. |
 | 1.3.5 | Nov 7, 2026 | The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`. |

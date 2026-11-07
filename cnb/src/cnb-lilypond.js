@@ -20,6 +20,8 @@ import { CNBClef } from "./cnb-clef.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 import { CNBScheme } from "./cnb-scheme.js";
+import { CNBStaff } from "./cnb-staff.js";
+import { CNBLedgerSet } from "./cnb-ledger-set.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
 // Values the CNB engine assumes when a setting is not emitted. Section B
@@ -202,16 +204,49 @@ function durationNames(config) {
  */
 function resolveAll(config) {
   const results = [];
-  for (const duration of durationNames(config)) {
-    for (let pc = 0; pc < 12; pc++) {
-      const r = CNBConfig.resolveNotehead(config, pc, duration, null);
-      results.push({
-        pc, duration, shape: r.shape, hollow: r.hollow, color: r.color,
-        heightSemis: r.heightSemis, widthSemis: r.widthSemis,
-      });
+  for (const key of [null, ...keyBranches(config).map(b => b.name)]) {
+    for (const duration of durationNames(config)) {
+      for (let pc = 0; pc < 12; pc++) {
+        const r = CNBConfig.resolveNotehead(config, pc, duration, key);
+        results.push({
+          pc, duration, shape: r.shape, hollow: r.hollow, color: r.color,
+          heightSemis: r.heightSemis, widthSemis: r.widthSemis,
+        });
+      }
     }
   }
   return results;
+}
+
+/**
+ * The keys Section C dispatches on (session 34, LY spec 1.3.9 §6.4): with
+ * keys on, each key definition a notehead rule names, as { name, pcs }
+ * with pcs its sorted pitch classes, the one thing the engine passes for a
+ * key. Definitions sharing a pitch-class set make one branch, the first of
+ * them in definition order (validation warns when they resolve
+ * differently). Empty with keys off: the preview applies no key then.
+ *
+ * @param {object} config
+ * @returns {{name:string, pcs:number[]}[]}
+ */
+function keyBranches(config) {
+  const keys = config.keys || {};
+  if (!keys.enabled) return [];
+  const named = new Set();
+  for (const rule of config.noteheadRules || []) {
+    if (rule && rule.match && Array.isArray(rule.match.keys)) rule.match.keys.forEach(k => named.add(k));
+  }
+  const branches = [];
+  const seen = new Set();
+  for (const def of keys.definitions || []) {
+    if (!def || !named.has(def.name) || !Array.isArray(def.pitchClasses)) continue;
+    const pcs = [...new Set(def.pitchClasses.map(CNBMusic.pitchClass))].sort((a, b) => a - b);
+    const set = pcs.join(" ");
+    if (seen.has(set)) continue;
+    seen.add(set);
+    branches.push({ name: def.name, pcs });
+  }
+  return branches;
 }
 
 /**
@@ -417,14 +452,13 @@ function carriedPaletteName(config) {
 }
 
 /**
- * Header comment lines naming what the preview shows but the engine does
- * not engrave, so the export leaves out (audit 2026-11-02, M1-M3, L2, L3).
+ * Header comment lines naming what the preview shows but the export leaves
+ * out (audit 2026-11-02, M1-M3, L2, L3). Since session 34 the preview draws
+ * everything else as the engine engraves it, or the export carries it.
  */
 const PREVIEW_ONLY_COMMENT = [
-  "%% Preview-only (the engine does not engrave these, so they are not",
-  "%% exported): staff line colour and thickness, ledger rules, stem",
-  "%% thickness, repeat counts, the CB-safe preview toggle, the key",
-  "%% signature's spacing, and notehead rules scoped to a key.",
+  "%% Preview-only (not exported): the CB-safe preview toggle. A score",
+  "%% selects the accessible colours with cnb:use-accessible-colors.",
 ];
 
 /** LilyPond duration number for a named duration, or null when unknown. */
@@ -577,6 +611,63 @@ function clefRegistrationLines(config) {
   lines[lines.length - 1] += "))";
   lines.push("");
   return lines;
+}
+
+// The pitches the preview draws: card pc p (0–12) draws semitones p and
+// p + 12 (CNBCard).
+const PREVIEW_SEMIS = { min: 0, max: 24 };
+const LEDGER_ENTRIES_PER_LINE = 6;
+
+/**
+ * Section B ledger lines (session 34, LY spec 1.3.9 §5.7). For every pitch
+ * the preview draws, the ledgers it draws for a note there
+ * (CNBLedgerSet.ledgersFor), as LilyPond staff positions, an empty list
+ * where it draws none. Each notehead takes its pitch's entry through
+ * NoteHead.ledger-positions (no-ledgers for an empty one), so the engine's
+ * own rule adds nothing. A pitch beyond them keeps the engine's rule, which
+ * reaches the engraved staff: the preview's staff repeats every octave, the
+ * engraved one has only the exported lines. The table is keyed by the
+ * pitch, not by cnb:ledger-overrides' notehead position: the engine hands
+ * its rule the position rounded to a whole number, which two pitches can
+ * share (B at −0.5 and C at 0 on a 4-semitone staff) when the preview draws
+ * them different ledgers. Keys are engine semitones (middle C = 0): under a
+ * pitch axis the hook reads Configurator semitones as they are (§5.4c); on a
+ * linear staff the engine puts semitone 12 on the middle line, where the
+ * preview puts the midpoint (§5.5).
+ */
+function ledgerLines(config, axis) {
+  const midpoint = (config.staff || {}).midpoint || 0;
+  const shift = axis.enabled ? 0 : midpoint - 12;
+  const entries = [];
+  for (let s = PREVIEW_SEMIS.min; s <= PREVIEW_SEMIS.max; s++) {
+    const ledgers = CNBLedgerSet.ledgersFor(config, [s], { minSemi: s - 12, maxSemi: s + 12 }, axis)
+      .map(l => fmtNum(CNBStaff.lilypondPosition(config, l), "ledger position (ledgers.templates)"));
+    entries.push(`(${fmtNum(s - shift, "staff.midpoint")} . (${ledgers.join(" ")}))`);
+  }
+  const rows = [];
+  for (let i = 0; i < entries.length; i += LEDGER_ENTRIES_PER_LINE) {
+    rows.push("     " + entries.slice(i, i + LEDGER_ENTRIES_PER_LINE).join(" "));
+  }
+  return [
+    "%% Ledger lines — each notehead the preview draws gets the ledgers drawn",
+    "%% there: engine semitone (middle C = 0) → ledger staff positions. Any",
+    "%% other pitch keeps the engine's ledger rule.",
+    "#(define cnb:ledgers-by-semitone",
+    "   '(" + rows.join("\n").trimStart(),
+    "     ))",
+    "#(define (cnb:ledgers-of grob)",
+    "   (assv (ly:pitch-semitones (ly:event-property (event-cause grob) 'pitch))",
+    "         cnb:ledgers-by-semitone))",
+    "\\layout {",
+    "  \\context {",
+    "    \\Voice",
+    "    \\override NoteHead.ledger-positions =",
+    "      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (if e (cdr e) '())))",
+    "    \\override NoteHead.no-ledgers =",
+    "      #(lambda (grob) (let ((e (cnb:ledgers-of grob))) (and e (null? (cdr e)))))",
+    "  }",
+    "}",
+  ];
 }
 
 /**
@@ -747,52 +838,16 @@ export const CNBLilypond = {
   },
 
   /**
-   * Compute cnb:staff-line-positions values from the staff config: expand
-   * semitonePattern across the 24 semitones centred on the midpoint
-   * (midpoint − 12 ≤ S < midpoint + 12; octaves 0 and 1 at the default
-   * midpoint 12 — session 28, LY spec 1.3.5 §5.1a),
-   * then 2 × (S - midpoint) / semitonesPerStaffSpace — LilyPond staff
-   * positions are HALF-staff-spaces from center (LY spec §5.1; engine
-   * cnb/config.ly). 4-8 system, midpoint 12, sps 4 → [-4, -2, 2, 4];
-   * 3-6-9, midpoint 12, sps 3 → [-6, -4, -2, 2, 4, 6] (007-s1 D2).
-   * Non-integer results are kept as decimals (plan open question 7).
-   * Under an enabled pitch axis the v1.3 §5.4a axis formula applies instead:
-   * 2 × (pos(S) − pos(midpoint)) / axisUnitsPerStaffSpace, deduplicated
-   * (pattern lines may collapse onto one axis position) and sorted.
+   * Compute cnb:staff-line-positions values from the staff config: the
+   * staff's lines as LilyPond staff positions, CNBStaff.lilypondPositions
+   * (LY spec §5.1, 1.3.5 §5.1a; §5.4a under a pitch axis), which the
+   * preview's stems also read (session 34).
    *
    * @param {object} config
    * @returns {number[]}
    */
   computeStaffLinePositions(config) {
-    const staff = config.staff || {};
-    const pattern = (staff.semitonePattern || []).slice().sort((a, b) => a - b);
-    const midpoint = staff.midpoint || 0;
-
-    // The 24 semitones centred on the middle of the staff (LY spec 1.3.5
-    // §5.1a): midpoint − 12 ≤ S < midpoint + 12, which is 0–23 at the
-    // default midpoint 12. So moving the pitch (staff.midpoint and the
-    // pattern together, design §3.1) never brings a line back at the other
-    // edge.
-    const staffSemis = [];
-    for (let oct = Math.floor((midpoint - 12) / 12); oct <= Math.floor((midpoint + 12) / 12); oct++) {
-      for (const s of pattern) {
-        const abs = s + oct * 12;
-        if (abs >= midpoint - 12 && abs < midpoint + 12) staffSemis.push(abs);
-      }
-    }
-
-    const axis = CNBPitchAxis.create(config);
-    if (axis.enabled) {
-      // Pattern semitones may collapse onto one axis position, so the axis
-      // path deduplicates before it sorts.
-      const anchor = axis.positionOfSemi(midpoint);
-      const unique = new Set(staffSemis.map(abs =>
-        2 * (axis.positionOfSemi(abs) - anchor) / axis.unitsPerStaffSpace));
-      return [...unique].sort((a, b) => a - b);
-    }
-
-    const sps = staff.semitonesPerStaffSpace || 1;
-    return staffSemis.map(abs => 2 * (abs - midpoint) / sps).sort((a, b) => a - b);
+    return CNBStaff.lilypondPositions(config);
   },
 
   /**
@@ -1026,6 +1081,9 @@ export const CNBLilypond = {
       lines.push("");
     }
 
+    lines.push(...ledgerLines(config, axis));
+    lines.push("");
+
     lines.push(...clefLines(config));
     lines.push("");
 
@@ -1113,112 +1171,144 @@ export const CNBLilypond = {
 
     const representationMode = (config.durations && config.durations.representationMode) || "shape";
     const repeat = representationMode === "repeat" ? "#t" : "#f";
-
-    // Resolve the full pc × duration matrix, normalized to emission fields.
-    // The x-offset field's whole lifecycle is axis-gated (v1.3 §6.3): 0 on a
-    // linear config whatever the rules say, and a 0 is never emitted.
     const axisOn = CNBPitchAxis.create(config).enabled;
     const durations = durationNames(config);
-    const byDuration = {};
-    for (const duration of durations) {
-      byDuration[duration] = [];
+
+    // One (cond …) over pc × duration for a key (null: no key), its "(cond"
+    // indented n spaces; its last line closes the cond.
+    const condLines = (key, n) => {
+      const out = [];
+      const at = (k) => " ".repeat(n + k);
+
+      // Resolve the full pc × duration matrix, normalized to emission fields.
+      // The x-offset field's whole lifecycle is axis-gated (v1.3 §6.3): 0 on a
+      // linear config whatever the rules say, and a 0 is never emitted.
+      const byDuration = {};
+      for (const duration of durations) {
+        byDuration[duration] = [];
+        for (let pc = 0; pc < 12; pc++) {
+          const r = CNBConfig.resolveNotehead(config, pc, duration, key);
+          const f = sectionCFields(config, { pc, ...r });
+          f.xOffset = axisOn && r.xOffsetStaffSpaces ? r.xOffsetStaffSpaces : 0;
+          byDuration[duration].push(f);
+        }
+      }
+
+      // Split pcs into duration-uniform (one clause per group, no duration
+      // condition) and duration-varying (compound clauses per duration).
+      const uniformPCs = [];
+      const varyingPCs = [];
       for (let pc = 0; pc < 12; pc++) {
-        const r = CNBConfig.resolveNotehead(config, pc, duration, null);
-        const f = sectionCFields(config, { pc, ...r });
-        f.xOffset = axisOn && r.xOffsetStaffSpaces ? r.xOffsetStaffSpaces : 0;
-        byDuration[duration].push(f);
+        const keys = durations.map(d => sectionCKey(byDuration[d][pc]));
+        (keys.every(k => k === keys[0]) ? uniformPCs : varyingPCs).push(pc);
       }
-    }
 
-    // Split pcs into duration-uniform (one clause per group, no duration
-    // condition) and duration-varying (compound clauses per duration).
-    const uniformPCs = [];
-    const varyingPCs = [];
-    for (let pc = 0; pc < 12; pc++) {
-      const keys = durations.map(d => sectionCKey(byDuration[d][pc]));
-      (keys.every(k => k === keys[0]) ? uniformPCs : varyingPCs).push(pc);
-    }
+      const groupBy = (pcs, duration) => {
+        const groups = {};
+        for (const pc of pcs) {
+          const f = byDuration[duration][pc];
+          const k = sectionCKey(f);
+          if (!groups[k]) groups[k] = { fields: f, pitchClasses: [] };
+          groups[k].pitchClasses.push(pc);
+        }
+        return Object.values(groups).sort((a, b) => a.pitchClasses[0] - b.pitchClasses[0]);
+      };
 
-    const groupBy = (pcs, duration) => {
-      const groups = {};
-      for (const pc of pcs) {
-        const f = byDuration[duration][pc];
-        const key = sectionCKey(f);
-        if (!groups[key]) groups[key] = { fields: f, pitchClasses: [] };
-        groups[key].pitchClasses.push(pc);
-      }
-      return Object.values(groups).sort((a, b) => a.pitchClasses[0] - b.pitchClasses[0]);
-    };
+      const emitClause = (comment, condition, f) => {
+        out.push(`${at(2)};; ${CNBScheme.comment(comment)}`);
+        out.push(`${at(2)}(${condition}`);
+        out.push(`${at(3)}'((shape      . ${f.shapeSym})`);
+        out.push(`${at(5)}(color      . ${f.colorSym})`);
+        out.push(`${at(5)}(hollow     . ${f.hollowSym})`);
+        out.push(`${at(5)}(attachment . ${f.attachSym})`);
+        out.push(`${at(5)}(off-key-mark . #f)`);
+        if (f.xOffset) out.push(`${at(5)}(x-offset   . ${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")})`);
+        out.push(`${at(5)}(repeat     . ${repeat})))`);
+        out.push("");
+      };
 
-    const emitClause = (comment, condition, f) => {
-      lines.push(`         ;; ${CNBScheme.comment(comment)}`);
-      lines.push(`         (${condition}`);
-      lines.push(`          '((shape      . ${f.shapeSym})`);
-      lines.push(`            (color      . ${f.colorSym})`);
-      lines.push(`            (hollow     . ${f.hollowSym})`);
-      lines.push(`            (attachment . ${f.attachSym})`);
-      lines.push(`            (off-key-mark . #f)`);
-      if (f.xOffset) lines.push(`            (x-offset   . ${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")})`);
-      lines.push(`            (repeat     . ${repeat})))`);
-      lines.push("");
-    };
+      const offsetLabel = (f) => !f.xOffset ? ""
+        : `, ${f.xOffset > 0 ? "+" : ""}${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")} staff-space ${f.xOffset > 0 ? "right" : "left"}`;
 
-    const offsetLabel = (f) => !f.xOffset ? ""
-      : `, ${f.xOffset > 0 ? "+" : ""}${fmtNum(f.xOffset, "apply.xOffsetStaffSpaces")} staff-space ${f.xOffset > 0 ? "right" : "left"}`;
+      out.push(`${at(0)}(cond`);
 
-    lines.push("#(set! cnb:get-notehead-config");
-    lines.push("   (lambda (semitone duration key)");
-    lines.push("     (let ((pc (modulo semitone 12)))");
-    lines.push("       (cond");
-
-    // Duration-uniform clauses (resolved identically for every duration —
-    // grouping evaluated against the first duration, arbitrary by uniformity).
-    for (const group of groupBy(uniformPCs, durations[0])) {
-      const names = group.pitchClasses.map(pcName).join(", ");
-      const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
-      emitClause(
-        `${names} → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
-        pcCondition(group.pitchClasses, "pc"),
-        group.fields
-      );
-    }
-
-    // Duration-varying clauses: compound (and <pc-cond> (= duration N)).
-    for (const duration of durations) {
-      const groups = groupBy(varyingPCs, duration);
-      if (groups.length === 0) continue;
-      const lyNum = durationLyNumber(config, duration);
-      if (lyNum === null) {
-        // A wildcard here would make the clause duration-insensitive and
-        // silently wrong — refuse to emit instead.
-        throw new Error(
-          `Duration "${duration}" has no numeric lilypondDuration in ` +
-          `config.durations.definitions — cannot emit duration-aware Section C clauses`
-        );
-      }
-      for (const group of groups) {
+      // Duration-uniform clauses (resolved identically for every duration —
+      // grouping evaluated against the first duration, arbitrary by uniformity).
+      for (const group of groupBy(uniformPCs, durations[0])) {
         const names = group.pitchClasses.map(pcName).join(", ");
         const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
         emitClause(
-          `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
-          `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${fmtNum(lyNum, `durations ${JSON.stringify(duration)} lilypondDuration`)}))`,
+          `${names} → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
+          pcCondition(group.pitchClasses, "pc"),
           group.fields
         );
       }
-    }
 
-    // Fallback (unreachable when all 12 pcs are covered — safety net, as in
-    // the legacy exporter, which also forces hollow #f here).
-    const fb = byDuration[durations[0]][0];
-    lines.push("         ;; Fallback");
-    lines.push(`         (else`);
-    lines.push(`          '((shape      . ${fb.shapeSym})`);
-    lines.push(`            (color      . ${fb.colorSym})`);
-    lines.push(`            (hollow     . #f)`);
-    lines.push(`            (attachment . ${fb.attachSym})`);
-    lines.push(`            (off-key-mark . #f)`);
-    if (fb.xOffset) lines.push(`            (x-offset   . ${fmtNum(fb.xOffset, "apply.xOffsetStaffSpaces")})`);
-    lines.push(`            (repeat     . ${repeat})))))))`);
+      // Duration-varying clauses: compound (and <pc-cond> (= duration N)).
+      for (const duration of durations) {
+        const groups = groupBy(varyingPCs, duration);
+        if (groups.length === 0) continue;
+        const lyNum = durationLyNumber(config, duration);
+        if (lyNum === null) {
+          // A wildcard here would make the clause duration-insensitive and
+          // silently wrong — refuse to emit instead.
+          throw new Error(
+            `Duration "${duration}" has no numeric lilypondDuration in ` +
+            `config.durations.definitions — cannot emit duration-aware Section C clauses`
+          );
+        }
+        for (const group of groups) {
+          const names = group.pitchClasses.map(pcName).join(", ");
+          const hollowLabel = group.fields.hollowSym === "#f" ? "solid" : "hollow";
+          emitClause(
+            `${names} (${duration}) → ${group.fields.shapeSym}, ${hollowLabel}, ${group.fields.colorSym}${offsetLabel(group.fields)}`,
+            `(and ${pcCondition(group.pitchClasses, "pc")} (= duration ${fmtNum(lyNum, `durations ${JSON.stringify(duration)} lilypondDuration`)}))`,
+            group.fields
+          );
+        }
+      }
+
+      // Fallback (unreachable when all 12 pcs are covered — safety net, as in
+      // the legacy exporter, which also forces hollow #f here).
+      const fb = byDuration[durations[0]][0];
+      out.push(`${at(2)};; Fallback`);
+      out.push(`${at(2)}(else`);
+      out.push(`${at(3)}'((shape      . ${fb.shapeSym})`);
+      out.push(`${at(5)}(color      . ${fb.colorSym})`);
+      out.push(`${at(5)}(hollow     . #f)`);
+      out.push(`${at(5)}(attachment . ${fb.attachSym})`);
+      out.push(`${at(5)}(off-key-mark . #f)`);
+      if (fb.xOffset) out.push(`${at(5)}(x-offset   . ${fmtNum(fb.xOffset, "apply.xOffsetStaffSpaces")})`);
+      out.push(`${at(5)}(repeat     . ${repeat}))))`);
+      return out;
+    };
+
+    lines.push("#(set! cnb:get-notehead-config");
+    lines.push("   (lambda (semitone duration key)");
+    const branches = keyBranches(config);
+    if (branches.length === 0) {
+      lines.push("     (let ((pc (modulo semitone 12)))");
+      lines.push(...condLines(null, 7));
+      lines[lines.length - 1] += ")))";
+    } else {
+      // Key dispatch (session 34, LY spec 1.3.9 §6.4): the engine passes the
+      // key as its pitch classes, so each key a rule names is a branch on
+      // that sorted list; any other key resolves as with no key.
+      lines.push("     (let ((pc (modulo semitone 12))");
+      lines.push("           (key-pcs (sort (list-copy key) <)))");
+      lines.push("       (cond");
+      for (const { name, pcs } of branches) {
+        lines.push(`         ;; ${CNBScheme.comment(`Key ${name}`)}`);
+        lines.push(`         ((equal? key-pcs '(${pcs.map(p => fmtNum(p, `keys.definitions ${JSON.stringify(name)} pitchClasses`)).join(" ")}))`);
+        lines.push(...condLines(name, 10));
+        lines[lines.length - 1] += ")";
+        lines.push("");
+      }
+      lines.push("         ;; Any other key");
+      lines.push("         (else");
+      lines.push(...condLines(null, 10));
+      lines[lines.length - 1] += ")))))";
+    }
     lines.push("");
 
     return lines.join("\n");

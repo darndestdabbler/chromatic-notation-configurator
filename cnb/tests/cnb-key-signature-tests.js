@@ -29,6 +29,8 @@ import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBCard } from "../src/cnb-card.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBClef } from "../src/cnb-clef.js";
+import { findEngine, measureSpacing } from "./engine-probe.js";
 import { withSvgStub, withDomStub } from "./svg-stub.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -88,6 +90,12 @@ const MARK_W = (2.724 * PX_PER_SEMI / 272.4) * 344.852; // ≈ 55.17632
 // 160% of a semitone = the engine bar's 0.4 staff-space at the default
 // staff's 4 semitones per space (s2 UAT engine-render measurement).
 const SEPARATOR_PX = (160 / 100) * PX_PER_SEMI;         // 25.6
+// The engine's spacing (session 34): 0.75 staff spaces before the marks;
+// the first card's notehead centred 4.8636 after them, behind its column
+// padding (16) and its ledger (1.5 notehead widths). 64 px per staff space.
+const PAD_LEFT = 0.75 * 64;                                // 48
+const PAD_RIGHT = 4.8636 * 64 - (16 + 0.75 * MARK_W);
+const GUTTER_W = PAD_LEFT + 2 * MARK_W + PAD_RIGHT;
 const GRID_RANGE = { minSemi: -4, maxSemi: 28 };
 const semiToYExpected = semi => (28 - semi) * PX_PER_SEMI;
 
@@ -218,12 +226,33 @@ export const tests = [
       eq(CNBKeySignature.gutterWidth(keysigConfig(), PX_PER_SEMI, "G"), 0, "unknown key → 0");
     }},
 
-  { name: "gutterWidth: notehead-chords → two columns + 2×padding (the separator runs through the middle, adding no width)", fn: () => {
-      approx(CNBKeySignature.gutterWidth(keysigConfig(), PX_PER_SEMI, "C"),
-             2 * MARK_W + 2 * 12, "2 notehead columns + padding");
+  { name: "gutterWidth: notehead-chords → two columns plus the engine's spacing either side (the separator adds no width)", fn: () => {
+      approx(CNBKeySignature.gutterWidth(keysigConfig(), PX_PER_SEMI, "C"), GUTTER_W, "2 notehead columns + the engine's spacing");
       const noBar = keysigConfig([C_MAJOR], { separator: { enabled: false } });
-      approx(CNBKeySignature.gutterWidth(noBar, PX_PER_SEMI, "C"),
-             2 * MARK_W + 2 * 12, "separator on/off does not change the width");
+      approx(CNBKeySignature.gutterWidth(noBar, PX_PER_SEMI, "C"), GUTTER_W, "separator on/off does not change the width");
+      const retired = keysigConfig([C_MAJOR], { gutter: { paddingH: 40 } });
+      approx(CNBKeySignature.gutterWidth(retired, PX_PER_SEMI, "C"), GUTTER_W, "a retired gutter.paddingH is not read");
+    }},
+
+  { name: "padding: the engine's spacing either side, the right side from the first card's notehead centre when given", fn: () => {
+      const config = keysigConfig();
+      const p = CNBKeySignature.padding(config, PX_PER_SEMI, "C");
+      approx(p.left, PAD_LEFT, "0.75 staff spaces");
+      approx(p.right, PAD_RIGHT, "a mark-sized notehead's column stands for the first card");
+      approx(CNBKeySignature.padding(config, PX_PER_SEMI, "C", 100).right, 4.8636 * 64 - 100, "first card centred 100 px in");
+      approx(CNBKeySignature.gutterWidth(config, PX_PER_SEMI, "C", 100), PAD_LEFT + 2 * MARK_W + 4.8636 * 64 - 100, "gutterWidth follows");
+      eq(CNBKeySignature.padding(config, PX_PER_SEMI, null), null, "no key: null");
+    }},
+
+  { name: "gutterWidth: after a clef the marks start 3.5 staff spaces after the clef glyph's left edge", fn: () => {
+      const config = keysigConfig();
+      config.clef.enabled = true;
+      config.clef.glyphs = { four: { displayName: "4", kind: "text", text: "4", textHeightSemis: 4, anchorSemi: 14 } };
+      config.clef.active = "four";
+      const glyph = CNBClef.measure(config.clef.glyphs.four, PX_PER_SEMI).pixelWidth;
+      const clefPad = config.clef.gutter.paddingH;
+      const left = CNBKeySignature.gutterWidth(config, PX_PER_SEMI, "C") - 2 * MARK_W - PAD_RIGHT;
+      approx(clefPad + glyph + clefPad + left - clefPad, 3.5 * 64, "glyph left edge → marks: 3.5 staff spaces");
     }},
 
   { name: "gutterWidth: 0 for an unknown style (validation reports it; renderer inactive)", fn: () => {
@@ -280,7 +309,7 @@ export const tests = [
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
         const noteheads = g.children.slice(3, 11);
-        const leftX = 12 + MARK_W / 2;
+        const leftX = PAD_LEFT + MARK_W / 2;
         const rightX = leftX + MARK_W;
         const semis = [12, 14, 16, 17, 19, 21, 23, 24];
         noteheads.forEach((nh, i) => {
@@ -308,7 +337,7 @@ export const tests = [
         // keysig.ly bar x = max-notehead-x-offset − width/2 — exactly
         // midway between the column centers (engine-SVG-verified in s2
         // UAT: bar x 7.0212 = midpoint of columns 6.3545/7.6880).
-        approx(parseFloat(line.getAttribute("x1")), 12 + MARK_W, "bar x = column midpoint");
+        approx(parseFloat(line.getAttribute("x1")), PAD_LEFT + MARK_W, "bar x = column midpoint");
         eq(line.getAttribute("x1"), line.getAttribute("x2"), "vertical");
         approx(parseFloat(line.getAttribute("y1")), semiToYExpected(24), "top at midpoint+12");
         approx(parseFloat(line.getAttribute("y2")), semiToYExpected(0), "bottom at midpoint−12");
@@ -393,6 +422,78 @@ export const tests = [
       });
     }},
 
+  // Engine-backed (session 34): the signature's gutter gives the engine's
+  // spacing. In the default config with G's signature, the marks start where
+  // the engraved signature starts after the staff's start (or after a text
+  // clef's left edge), and the first card's notehead is centred as far after
+  // the marks as the first engraved notehead (±0.005 staff spaces). Skips
+  // with the reason logged without LilyPond or the engine.
+  { name: "gutter (engine): the marks and the first notehead sit where the engine spaces them — with and without a clef, with marks wider than the first card's notehead, fixed and fluid at any row width", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const G = { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] };
+      const failures = [];
+      for (const { label, clef, wideG } of [
+        { label: "no clef" }, { label: "text clef", clef: true }, { label: "a wide G mark", wideG: true },
+      ]) {
+        const config = keysigConfig([C_MAJOR, G]);
+        if (clef) {
+          config.clef.enabled = true;
+          config.clef.glyphs = { four: { displayName: "4", kind: "text", text: "4", textHeightSemis: 4, anchorSemi: 14 } };
+          config.clef.active = "four";
+        }
+        // G's marks (its tonic among them) twice as wide as the first card's C.
+        if (wideG) {
+          config.noteheadRules.push({ name: "wide G", priority: 9,
+            match: { pitchClasses: [7], durations: "all", keys: "all" }, apply: { widthSemis: 6 } });
+        }
+        const markW = CNBKeySignature.measure(config, PX_PER_SEMI, "G").markWidth;
+        const space = 64;                                  // 4 semitones × 16 px
+        const preview = withDomStub(container => {
+          const root = CNBCollection.render(container, config, { keys: ["G"] });
+          const pc = root.children[0].children.find(c => c.className === "preview-container");
+          const cols = pc.children.find(c => c.className === "pc-columns").children;
+          const widths = cols.map(c => parseFloat(c.style.width));
+          const k = clef ? 1 : 0;                          // the keysig column
+          const kStart = widths.slice(0, k).reduce((a, b) => a + b, 0);
+          const sig = cols[k].children[1].children[0];
+          const firstMark = sig.children.find(c => String(c.getAttribute("transform") || "").startsWith("translate"));
+          const marksLeft = kStart + parseTranslate(firstMark.getAttribute("transform")).x - markW / 2;
+          return {
+            before: (clef ? marksLeft - config.clef.gutter.paddingH : marksLeft) / space,
+            after: (kStart + widths[k] + widths[k + 1] / 2 - (marksLeft + 2 * markW)) / space,
+          };
+        });
+        const got = await measureSpacing(engine, CNBLilypond.generate(config), "\\key g \\major c'4 d'4");
+        if (got.error || !got.keySignature || !got.firstNote) { failures.push(`${label}: ${got.error || "nothing engraved"}`); continue; }
+        const before = got.keySignature.left - (clef ? got.clef.left : got.staffStart);
+        const after = (got.firstNote.left + got.firstNote.right) / 2 - got.keySignature.right;
+        if (Math.abs(before - preview.before) > 5e-3) failures.push(`${label}: before the marks, engraved ${before}, preview ${preview.before}`);
+        if (Math.abs(after - preview.after) > 5e-3) failures.push(`${label}: marks to the first notehead, engraved ${after}, preview ${preview.after}`);
+
+        // The app's fluid canvas stretches the cards: its key-signature track,
+        // as CSS resolves it at rows from the minimum to columns 3000 px wide
+        // (past where the cards stop growing), keeps the first notehead as far
+        // after the marks as the engraving.
+        const template = withDomStub(container => {
+          const row = CNBCollection.render(container, config, { fluid: true, keys: ["G"] }).children[0];
+          const system = row.children.find(c => c.className === "preview-container");
+          return system.children.find(c => c.className === "pc-columns").style.gridTemplateColumns;
+        });
+        const tracks = /^(?:(\S+)px )?max\(0px, min\(calc\((\S+)px - (\S+) \* 100%\), (\S+)px\)\) repeat\(13, minmax\((\S+)px, (\S+)px\)\)$/.exec(template);
+        if (!tracks) { failures.push(`${label}: fluid track template ${template}`); continue; }
+        const [fixed, P, Q, hi, colMin, maxCol] = [Number(tracks[1] || 0), ...tracks.slice(2).map(Number)];
+        const marks = CNBKeySignature.padding(config, PX_PER_SEMI, "G", 0).left + 2 * markW;
+        for (const W of [fixed + hi + 13 * colMin, fixed + hi + 13 * colMin + 500, 13 * 800, 13 * 3000]) {
+          const K = Math.max(0, Math.min(P - Q * W, hi));
+          const t = Math.min(maxCol, Math.max(colMin, (W - fixed - K) / 13));
+          const fluidAfter = (K + t / 2 - marks) / space;
+          if (Math.abs(after - fluidAfter) > 5e-3) failures.push(`${label}, fluid row ${W} px: marks to the first notehead, engraved ${after}, preview ${fluidAfter}`);
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
   { name: "collection: enabled key signature with a selected key prepends a keysig-col", fn: () => {
       withDomStub(container => {
         const config = keysigConfig();
@@ -402,7 +503,7 @@ export const tests = [
         eq(columns.children.length, 14, "keysig column + 13 cards");
         const col = columns.children[0];
         eq(col.className, "keysig-col", "keysig column first");
-        approx(parseFloat(col.style.width), 2 * MARK_W + 24, "gutter width");
+        approx(parseFloat(col.style.width), GUTTER_W, "gutter width");
         const slice = col.children[1];
         eq(slice.getAttribute("class"), "keysig-slice", "keysig SVG between the spacers");
         eq(slice.children[0].getAttribute("class"), "cnb-key-signature", "signature rendered into the slice");
@@ -471,7 +572,7 @@ export const tests = [
       const config = axisKeysigConfig();
       const grid = CNBGrid.create(config, CNBCollection.gridRange([0, 12]));
       const m = CNBKeySignature.measure(config, grid.pxPerSemi, "C");
-      const paddingH = config.keys.keySignature.gutter.paddingH;
+      const paddingH = 0.75 * grid.pxPerSemi * config.pitchAxis.axisUnitsPerStaffSpace;   // the engine's 0.75 staff spaces
       const leftX = paddingH + m.markWidth / 2;
       withSvgStub(svg => {
         const g = CNBKeySignature.render(svg, grid, config, "C");

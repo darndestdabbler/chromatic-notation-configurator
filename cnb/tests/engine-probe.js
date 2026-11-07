@@ -132,18 +132,25 @@ function stencilIsHollow(expr) {
     .some(([, commands]) => (commands.match(/\bmoveto\b/g) || []).length > 1);
 }
 
+/** A printed stencil expression's first colour, "(color (r g b) …", as "#rrggbb", or null. */
+function stencilColor(expr) {
+  const m = expr.match(/\(color \((\S+) (\S+) (\S+)\)/);
+  return m ? "#" + m.slice(1).map(c => Math.round(Number(c) * 255).toString(16).padStart(2, "0")).join("") : null;
+}
+
 /**
  * Compile an exported config (.ly text) under a score of the given music
  * (e.g. "c'4 c'2") and report each engraved notehead in order:
- * { noteheads: [{ pc, durationLog, hollow }] }, where durationLog is
- * LilyPond's (2 = quarter, 1 = half, 0 = whole) and hollow says whether its
- * stencil carries the hollow cutout; or { error } with LilyPond's output
+ * { noteheads: [{ pc, durationLog, hollow, color }] }, where durationLog is
+ * LilyPond's (2 = quarter, 1 = half, 0 = whole), hollow says whether its
+ * stencil carries the hollow cutout and color is the stencil's first colour
+ * as "#rrggbb" (null when it has none); or { error } with LilyPond's output
  * when it fails or prints no notehead.
  *
  * @param {{lilypond:string, dir:string}} engine  from findEngine()
  * @param {string} ly  the exported config
  * @param {string} music  LilyPond music for the score's one staff
- * @returns {Promise<{noteheads?:{pc:number,durationLog:number,hollow:boolean}[], error?:string}>}
+ * @returns {Promise<{noteheads?:{pc:number,durationLog:number,hollow:boolean,color:string|null}[], error?:string}>}
  */
 export function engraveNoteheads(engine, ly, music) {
   const score = `\\version "2.24.2"
@@ -160,7 +167,7 @@ export function engraveNoteheads(engine, ly, music) {
 `;
   return compile(engine, ly, score).then(({ error, output }) => {
     const noteheads = [...output.matchAll(/^CNB-HEAD (\d+) (-?\d+) (.*)$/gm)]
-      .map(([, pc, log, expr]) => ({ pc: Number(pc), durationLog: Number(log), hollow: stencilIsHollow(expr) }));
+      .map(([, pc, log, expr]) => ({ pc: Number(pc), durationLog: Number(log), hollow: stencilIsHollow(expr), color: stencilColor(expr) }));
     if (error || noteheads.length === 0) {
       return { error: `${error ? error.message : "no notehead was measured"}\n${output}` };
     }
@@ -171,16 +178,17 @@ export function engraveNoteheads(engine, ly, music) {
 /**
  * Compile an exported config (.ly text) under a score of the given music
  * (e.g. "\\stemUp c'2") and report each engraved stem in order:
- * { stems: [{ durationLog, direction, x, width }] }, where x is the stem's
- * centre minus the centre of its first notehead's stencil (in repeat mode
- * the whole repeated group), and width the stem's, both in staff spaces;
+ * { stems: [{ durationLog, direction, x, width, bottom, top }] }, where x is
+ * the stem's centre minus the centre of its first notehead's stencil (in
+ * repeat mode the whole repeated group), width the stem's, and bottom and
+ * top its ends above the staff's middle line, all in staff spaces;
  * direction is 1 (up) or -1 (down). Or { error } with LilyPond's output
  * when it fails or prints no stem.
  *
  * @param {{lilypond:string, dir:string}} engine  from findEngine()
  * @param {string} ly  the exported config
  * @param {string} music  LilyPond music for the score's one staff
- * @returns {Promise<{stems?:{durationLog:number,direction:number,x:number,width:number}[], error?:string}>}
+ * @returns {Promise<{stems?:{durationLog:number,direction:number,x:number,width:number,bottom:number,top:number}[], error?:string}>}
  */
 export function measureStems(engine, ly, music) {
   const score = `\\version "2.24.2"
@@ -191,22 +199,192 @@ export function measureStems(engine, ly, music) {
            (common (ly:grob-common-refpoint stem head X))
            (s (ly:grob-extent stem common X))
            (h (ly:grob-extent head common X))
+           (staff (ly:grob-object stem 'staff-symbol))
+           (common-y (ly:grob-common-refpoint stem staff Y))
+           (y (ly:grob-extent stem common-y Y))
+           (middle (ly:grob-relative-coordinate staff common-y Y))
            (space (ly:staff-symbol-staff-space stem)))
-      (format #t "CNB-STEM ~a ~a ~a ~a\\n"
+      (format #t "CNB-STEM ~a ~a ~a ~a ~a ~a\\n"
         (ly:duration-log (ly:event-property (event-cause head) 'duration))
         (ly:grob-property stem 'direction)
         (exact->inexact (/ (- (interval-center s) (interval-center h)) space))
-        (exact->inexact (/ (interval-length s) space)))))
+        (exact->inexact (/ (interval-length s) space))
+        (exact->inexact (/ (- (car y) middle) space))
+        (exact->inexact (/ (- (cdr y) middle) space)))))
   ${music}
 }
 `;
   return compile(engine, ly, score).then(({ error, output }) => {
-    const stems = [...output.matchAll(/^CNB-STEM (-?\d+) (-?\d+) (\S+) (\S+)$/gm)]
-      .map(([, log, dir, x, w]) => ({ durationLog: Number(log), direction: Number(dir), x: Number(x), width: Number(w) }));
+    const stems = [...output.matchAll(/^CNB-STEM (-?\d+) (-?\d+) (\S+) (\S+) (\S+) (\S+)$/gm)]
+      .map(([, log, dir, x, w, bottom, top]) => ({
+        durationLog: Number(log), direction: Number(dir), x: Number(x), width: Number(w),
+        bottom: Number(bottom), top: Number(top),
+      }));
     if (error || stems.length === 0) {
       return { error: `${error ? error.message : "no stem was measured"}\n${output}` };
     }
     return { stems };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "<c' c''>4") and report the engraved staff and ledger lines:
+ * { staffLine, ledgers: [{ y, width, thickness }] }, where staffLine is the
+ * staff lines' thickness, y each ledger's height above the middle line, and
+ * width and thickness its size, all in staff spaces. Or { error } with
+ * LilyPond's output when it fails or prints no staff.
+ *
+ * LilyPond shortens the ledgers of neighbouring notes at one height so they
+ * do not touch; a score of one note or chord measures a ledger at full
+ * length.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{staffLine?:number, ledgers?:{y:number,width:number,thickness:number}[], error?:string}>}
+ */
+export function measureLines(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override Staff.StaffSymbol.after-line-breaking = #(lambda (grob)
+    (format #t "CNB-STAFF ~a ~a\\n"
+      (exact->inexact (ly:staff-symbol-line-thickness grob))
+      (exact->inexact (ly:staff-symbol-staff-space grob))))
+  \\override Staff.LedgerLineSpanner.after-line-breaking = #(lambda (grob)
+    (let ((stil (ly:grob-property grob 'stencil)))
+      (if (ly:stencil? stil)
+        (format #t "CNB-LEDGERS ~s\\n" (ly:stencil-expr stil)))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    const staff = output.match(/^CNB-STAFF (\S+) (\S+)$/m);
+    if (error || !staff) {
+      return { error: `${error ? error.message : "no staff was measured"}\n${output}` };
+    }
+    const space = Number(staff[2]);
+    const expr = (output.match(/^CNB-LEDGERS (.*)$/m) || [, ""])[1];
+    // Each ledger: (translate-stencil (0.0 . y) (round-filled-box -left right
+    // -bottom top blot)), LilyPond's Lookup::round_filled_box.
+    const ledgers = [...expr.matchAll(/\(translate-stencil \(0\.0 \. (\S+)\) \(round-filled-box (\S+) (\S+) (\S+) (\S+) \S+\)\)/g)]
+      .map(([, y, l, r, b, t]) => ({
+        y: Number(y) / space,
+        width: (Number(l) + Number(r)) / space,
+        thickness: (Number(b) + Number(t)) / space,
+      }));
+    return { staffLine: Number(staff[1]) / space, ledgers };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
+ * and report, for each note or chord in order, the staff positions of the
+ * ledger lines engraved for it: { chords: [{ semitones, ledgers }] }, with
+ * semitones the engine's (middle C = 0) and ledgers in half staff spaces
+ * from the middle line, sorted. Or { error } with LilyPond's output when it
+ * fails or prints no notehead.
+ *
+ * The score is kept on one system, whose one LedgerLineSpanner draws every
+ * ledger; each is matched to the chord whose noteheads it is centred nearest
+ * to, so the music should keep its chords apart (rests between them).
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{chords?:{semitones:number[], ledgers:number[]}[], error?:string}>}
+ */
+export function measureLedgers(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override Score.NonMusicalPaperColumn.line-break-permission = ##f
+  \\override NoteHead.after-line-breaking = #(lambda (grob)
+    (let ((sys (ly:grob-system grob)))
+      (format #t "CNB-LHEAD ~a ~a\\n"
+        (ly:pitch-semitones (ly:event-property (event-cause grob) 'pitch))
+        (exact->inexact (interval-center (ly:grob-extent grob sys X))))))
+  \\override Staff.LedgerLineSpanner.after-line-breaking = #(lambda (grob)
+    (let ((stil (ly:grob-property grob 'stencil))
+          (staff (ly:grob-object grob 'staff-symbol)))
+      (if (ly:stencil? stil)
+        (format #t "CNB-LSPAN ~a ~a ~s\\n"
+          (exact->inexact (ly:grob-relative-coordinate grob (ly:grob-system grob) X))
+          (exact->inexact (ly:staff-symbol-staff-space staff))
+          (ly:stencil-expr stil)))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    const heads = [...output.matchAll(/^CNB-LHEAD (-?\d+) (\S+)$/gm)]
+      .map(([, semi, x]) => ({ semi: Number(semi), x: Number(x) }));
+    if (error || heads.length === 0) {
+      return { error: `${error ? error.message : "no notehead was measured"}\n${output}` };
+    }
+    // Chords: heads at one x (to 0.01 staff space), in order of x.
+    const chords = [];
+    for (const h of [...heads].sort((a, b) => a.x - b.x)) {
+      const last = chords[chords.length - 1];
+      if (last && Math.abs(last.x - h.x) < 0.05) last.semitones.push(h.semi);
+      else chords.push({ x: h.x, semitones: [h.semi], ledgers: [] });
+    }
+    const span = output.match(/^CNB-LSPAN (\S+) (\S+) (.*)$/m);
+    if (span) {
+      const [, spanX, space, expr] = span;
+      // (translate-stencil (dx . 0.0) …(translate-stencil (0.0 . y)
+      // (round-filled-box -left right -bottom top blot))…).
+      const dx = Number((expr.match(/^\(translate-stencil \((\S+) \. \S+\)/) || [, 0])[1]);
+      for (const [, y, l, r] of expr.matchAll(/\(translate-stencil \(0\.0 \. (\S+)\) \(round-filled-box (\S+) (\S+) \S+ \S+ \S+\)\)/g)) {
+        const x = Number(spanX) + dx + (Number(r) - Number(l)) / 2;
+        const nearest = chords.reduce((a, c) => (Math.abs(c.x - x) < Math.abs(a.x - x) ? c : a));
+        nearest.ledgers.push(Math.round(2 * Number(y) / Number(space) * 1e4) / 1e4);
+      }
+    }
+    return {
+      chords: chords.map(c => ({ semitones: c.semitones.sort((a, b) => a - b), ledgers: [...new Set(c.ledgers)].sort((a, b) => a - b) })),
+    };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "\\key g \\major c'4") and report where the staff starts and the
+ * clef, the key signature and the first notehead lie across it:
+ * { staffStart, clef, keySignature, firstNote }, each but staffStart a
+ * { left, right } extent (null when not engraved), all in staff spaces
+ * along the system. Or { error } with LilyPond's output when it fails.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{staffStart?:number, clef?:{left:number,right:number}|null,
+ *   keySignature?:{left:number,right:number}|null, firstNote?:{left:number,right:number}|null, error?:string}>}
+ */
+export function measureSpacing(engine, ly, music) {
+  const report = (grob, tag) => `\\override ${grob}.after-line-breaking = #(lambda (g)
+    (let* ((sys (ly:grob-system g)) (x (ly:grob-extent g sys X)) (space (ly:staff-symbol-staff-space g)))
+      (if (< (car x) (cdr x))
+        (format #t "CNB-X ${tag} ~a ~a\\n" (exact->inexact (/ (car x) space)) (exact->inexact (/ (cdr x) space))))))`;
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  ${report("Staff.StaffSymbol", "staff")}
+  ${report("Staff.Clef", "clef")}
+  ${report("Staff.KeySignature", "keysig")}
+  ${report("NoteHead", "head")}
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    if (error) return { error: `${error.message}\n${output}` };
+    const found = {};
+    for (const [, tag, l, r] of output.matchAll(/^CNB-X (\w+) (\S+) (\S+)$/gm)) {
+      const e = { left: Number(l), right: Number(r) };
+      if (!found[tag] || e.left < found[tag].left) found[tag] = e;   // the first notehead is the leftmost
+    }
+    if (!found.staff) return { error: `no staff was measured\n${output}` };
+    return { staffStart: found.staff.left, clef: found.clef || null, keySignature: found.keysig || null, firstNote: found.head || null };
   });
 }
 

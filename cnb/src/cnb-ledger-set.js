@@ -16,14 +16,24 @@
  *   run the same algorithm in axis coordinates and key lines by axis
  *   position (design §2.4); otherwise the literal pre-set-014 arithmetic.
  *
- * Dependencies: Module A (config), Module B (music), Module 4 (ledger line),
- * Module 1 (grid context is passed in). Module 3 (staff) is deliberately NOT
- * imported; the pattern expansion needed here is computed locally.
+ * - The lines are drawn as the engine draws them (session 34): LilyPond's
+ *   0.2 staff spaces thick, 1.5 notehead widths long, black, rounded ends.
+ *
+ * Dependencies: Module B (music), Module 4 (ledger line), Module 3 (staff:
+ * only its staff-space size; the pattern expansion needed here is computed
+ * locally), Module 1 (grid context is passed in).
  */
 
-import { CNBConfig } from "./cnb-config.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBLedgerLine } from "./cnb-ledger-line.js";
+import { CNBStaff } from "./cnb-staff.js";
+
+// LilyPond's ledger line, which the engine leaves at its defaults (session
+// 34, measured against the engine): 0.2 staff spaces thick (line thickness
+// plus a tenth of a staff space), and as long as the notehead widened by a
+// quarter of its width on each side (length-fraction 0.25).
+const LEDGER_THICKNESS = 0.2;
+const LEDGER_LENGTH = 1.5;
 
 /** Expand config.staff.semitonePattern to absolute positions within a range. */
 function expandStaffPositions(config, minSemi, maxSemi) {
@@ -40,15 +50,13 @@ function expandStaffPositions(config, minSemi, maxSemi) {
   return result.sort((a, b) => a - b);
 }
 
-/** Default ledger width: notehead width of the first shape × widthMultiplier. */
+/** Default ledger width: the ledger for the first shape's notehead. */
 function defaultLedgerWidth(config, pxPerSemi) {
-  const defaults = (config.ledgers && config.ledgers.lineDefaults) || {};
-  const multiplier = defaults.widthMultiplier ?? 2.0;
   const names = Object.keys(config.shapes || {});
-  if (names.length === 0) return 2 * pxPerSemi * multiplier;
+  if (names.length === 0) return CNBLedgerSet.width(2 * pxPerSemi);
   const shape = config.shapes[names[0]];
   const scaleFactor = (shape.semitoneHeight * pxPerSemi) / shape.naturalHeight;
-  return shape.naturalWidth * scaleFactor * multiplier;
+  return CNBLedgerSet.width(shape.naturalWidth * scaleFactor);
 }
 
 /**
@@ -95,6 +103,16 @@ function resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis) {
 export const CNBLedgerSet = {
 
   /**
+   * The length of LilyPond's ledger line for a notehead (in repeat mode,
+   * the group of repeated heads) of the given width, in the same units.
+   * @param {number} headWidth
+   * @returns {number}
+   */
+  width(headWidth) {
+    return headWidth * LEDGER_LENGTH;
+  },
+
+  /**
    * Expand ledger templates into absolute-semitone ledger defs for every
    * octave overlapping the given range. Positions outside [minSemi, maxSemi]
    * are dropped. Proximity-mode templates are dropped entirely when
@@ -102,12 +120,11 @@ export const CNBLedgerSet = {
    *
    * @param {object} config
    * @param {{minSemi:number, maxSemi:number}} range
-   * @returns {Array<{semi:number, triggerPCs:number[], triggerMode:string, overrides:object}>}
+   * @returns {Array<{semi:number, triggerPCs:number[], triggerMode:string}>}
    */
   buildDefs(config, { minSemi, maxSemi }) {
     const ledgers = config.ledgers || {};
     const templates = ledgers.templates || [];
-    const lineOverrides = ledgers.lineOverrides || {};
     const proximityEnabled = ledgers.proximityRule !== false;
 
     const defs = [];
@@ -122,7 +139,6 @@ export const CNBLedgerSet = {
           semi,
           triggerPCs: (t.triggerPCs || []).slice(),
           triggerMode: t.triggerMode,
-          overrides: lineOverrides[String(t.semiWithinOctave)] || {},
         });
       }
     }
@@ -211,6 +227,25 @@ export const CNBLedgerSet = {
   },
 
   /**
+   * The ledger semitones the preview draws for a set of noteheads on a grid
+   * spanning `range`: the templates expanded over the range, the staff one
+   * octave beyond it (the staff is periodic, so cropping must not change a
+   * decision near the edge), resolved. render() draws these; the LilyPond
+   * export writes them for every pitch (session 34).
+   *
+   * @param {object} config
+   * @param {number[]} noteSemitones
+   * @param {{minSemi:number, maxSemi:number}} range
+   * @param {object} [axis]  gridContext.axis; absent/disabled = linear
+   * @returns {number[]} sorted ledger semitones
+   */
+  ledgersFor(config, noteSemitones, { minSemi, maxSemi }, axis) {
+    const defs = CNBLedgerSet.buildDefs(config, { minSemi, maxSemi });
+    const staffPositions = expandStaffPositions(config, minSemi - 12, maxSemi + 12);
+    return CNBLedgerSet.resolve(noteSemitones, defs, staffPositions, axis && axis.enabled ? axis : null);
+  },
+
+  /**
    * Resolve and render the ledger lines for a set of noteheads into a group.
    *
    * @param {SVGElement} svgParent
@@ -218,55 +253,26 @@ export const CNBLedgerSet = {
    * @param {object} config
    * @param {number[]} noteSemitones
    * @param {{centerX?:number, width?:number}} [opts]
-   *        width defaults to first-shape notehead width × widthMultiplier;
-   *        centerX defaults to column.paddingH + width/2 (a column layout).
+   *        width defaults to the ledger for the first shape's notehead
+   *        (CNBLedgerSet.width); centerX defaults to column.paddingH +
+   *        width/2 (a column layout).
    * @returns {SVGGElement}
    */
   render(svgParent, gridContext, config, noteSemitones, opts = {}) {
-    const defs = CNBLedgerSet.buildDefs(config, {
-      minSemi: gridContext.minSemi,
-      maxSemi: gridContext.maxSemi,
-    });
-    const staffPositions = expandStaffPositions(
-      config,
-      gridContext.minSemi - 12,
-      gridContext.maxSemi + 12
-    );
-    const axis = gridContext.axis && gridContext.axis.enabled ? gridContext.axis : null;
-    const semis = CNBLedgerSet.resolve(noteSemitones, defs, staffPositions, axis);
+    const semis = CNBLedgerSet.ledgersFor(config, noteSemitones,
+      { minSemi: gridContext.minSemi, maxSemi: gridContext.maxSemi }, gridContext.axis);
 
-    const lineDefaults = (config.ledgers && config.ledgers.lineDefaults) || {};
     const width = opts.width ?? defaultLedgerWidth(config, gridContext.pxPerSemi);
     const paddingH = config.display?.column?.paddingH ?? 16;
     const centerX = opts.centerX ?? paddingH + width / 2;
-
-    const overridesBySemi = new Map(defs.map(d => [d.semi, d.overrides]));
-    if (axis) {
-      // Axis-keyed overrides: every def at one axis position merges into
-      // that position's line (PA-5 guarantees no conflicts).
-      const byPos = new Map();
-      for (const d of defs) {
-        const pos = axis.positionOfSemi(d.semi);
-        byPos.set(pos, Object.assign(byPos.get(pos) || {}, d.overrides));
-      }
-      for (const semi of semis) overridesBySemi.set(semi, byPos.get(axis.positionOfSemi(semi)));
-    }
+    const thickness = LEDGER_THICKNESS * CNBStaff.staffSpacePx(config, gridContext);
 
     const NS = "http://www.w3.org/2000/svg";
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-ledger-set");
 
     for (const semi of semis) {
-      const props = Object.assign({}, lineDefaults, overridesBySemi.get(semi) || {});
-      CNBLedgerLine.render(g, {
-        y: gridContext.semiToY(semi),
-        centerX,
-        width,
-        thickness: CNBConfig.pctToPx(props.thicknessPct, gridContext.pxPerSemi),
-        color: props.color,
-        style: props.style,
-        roundedEnds: props.roundedEnds,
-      });
+      CNBLedgerLine.render(g, { y: gridContext.semiToY(semi), centerX, width, thickness });
     }
 
     svgParent.appendChild(g);

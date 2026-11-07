@@ -5,7 +5,7 @@
  * (architecture plan §4.9): the `keys.enabled` master gate, the key
  * definitions the signature renders from, and the `keys.keySignature`
  * subsection (enable toggle, mark-style selection, placement-rule
- * controls, separator/dot/gutter styling). `keys.offKeyMark` passes
+ * controls, separator/dot styling). `keys.offKeyMark` passes
  * through untouched — off-key marking stays deferred (plan §11).
  *
  * Why the key-definition controls live HERE (session-2 design decision,
@@ -36,8 +36,9 @@
  *
  * Export (session 30, LY spec 1.3.7 §5.6): the engine engraves the
  * signature from the score's `\key`, and the exporter writes its on/off
- * state, an explicit tonic octave and the separator's styling. Only the
- * spacing has no engine setting, so only it carries a Preview only badge.
+ * state, an explicit tonic octave and the separator's styling. The spacing
+ * around the signature is the engine's (session 34), so nothing here is
+ * preview-only, and a config's keySignature.gutter is not carried.
  *
  * `style` is a single-value vocabulary ("notehead-chords"): the task owner
  * evaluated simple built-in marks in set-010 s2 UAT and chose the note
@@ -54,8 +55,7 @@
  *       enabled: boolean,
  *       style: string,   // "notehead-chords" (single-value vocabulary)
  *       placement: { rule: string, tonicOctave: number|null },
- *       separator: { enabled, color, thicknessPct, extentSemis },
- *       gutter: { paddingH: number }
+ *       separator: { enabled, color, thicknessPct, extentSemis }
  *     }
  *   }
  *
@@ -105,15 +105,6 @@ const PLACEMENT_RULES = ["scale-from-tonic"];
 /** The placement rules in a designer's words. */
 const PLACEMENT_RULE_LABELS = { "scale-from-tonic": "Scale from the tonic" };
 
-/**
- * The Preview only badge's tooltip (design §8.6). Placement and the bar
- * export since session 30 (LY spec 1.3.7 §5.6); the spacing has no engine
- * setting.
- */
-const PREVIEW_ONLY = {
-  gutter: "LilyPond spaces the signature its own way, so this is not exported.",
-};
-
 /** Pitch-class display label: "C", "C♯", … (Module B). */
 function pcName(pc) {
   const label = CNBMusic.pcLabel(pc);
@@ -130,7 +121,6 @@ export const CNBKeySignatureEditor = {
 
   STYLES,
   PLACEMENT_RULES,
-  PREVIEW_ONLY,
 
   /**
    * Build a ready `config.keys` slice from editor state. Pure function;
@@ -187,11 +177,6 @@ export const CNBKeySignatureEditor = {
     if (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0) {
       throw new Error(`keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
     }
-    const gutter = ks.gutter;
-    if (!isPlainObject(gutter) || typeof gutter.paddingH !== "number" ||
-        !Number.isFinite(gutter.paddingH) || gutter.paddingH < 0) {
-      throw new Error(`keySignature.gutter.paddingH must be a finite non-negative number (got ${JSON.stringify(gutter && gutter.paddingH)})`);
-    }
     return {
       enabled: !!state.enabled,
       definitions: deepClone(state.definitions),
@@ -209,7 +194,6 @@ export const CNBKeySignatureEditor = {
           thicknessPct: sep.thicknessPct,
           extentSemis: sep.extentSemis,
         },
-        gutter: { paddingH: gutter.paddingH },
       },
     };
   },
@@ -242,7 +226,6 @@ export const CNBKeySignatureEditor = {
     const ks = isPlainObject(keys.keySignature) ? keys.keySignature : {};
     const placement = isPlainObject(ks.placement) ? ks.placement : {};
     const sep = isPlainObject(ks.separator) ? ks.separator : {};
-    const gutter = isPlainObject(ks.gutter) ? ks.gutter : {};
     const finite = (v, min, fallback, exclusive = false) =>
       (typeof v === "number" && Number.isFinite(v) && (exclusive ? v > min : v >= min))
         ? v
@@ -266,7 +249,6 @@ export const CNBKeySignatureEditor = {
           thicknessPct: finite(sep.thicknessPct, 0, 160),
           extentSemis: finite(sep.extentSemis, 0, 12, true),
         },
-        gutter: { paddingH: finite(gutter.paddingH, 0, 12) },
       },
     };
   },
@@ -323,7 +305,7 @@ export const CNBKeySignatureEditor = {
    *   ├── div.cnb-kse-disabled-note    (ONLY while keys.enabled is false)
    *   ├── div.cnb-kse-definitions     (definition rows + add button)
    *   ├── div.cnb-kse-signature       (keySignature.enabled, style,
-   *   │                                placement, separator, dot, gutter)
+   *   │                                placement, separator, dot)
    *   └── div.cnb-kse-validation      (Module A pass-through + editor checks)
    *
    * While keys.enabled is false every control below the master toggle is
@@ -381,16 +363,7 @@ export const CNBKeySignatureEditor = {
 
     const control = (e) => { e.disabled = gated(); return e; };
 
-    /** A subtitle, with a Preview only badge when a tooltip is given. */
-    const subtitle = (text, tooltip) => {
-      const t = el("div", "cnb-kse-subtitle", text);
-      if (tooltip) {
-        const badge = el("span", "cnb-badge", "Preview only");
-        badge.title = tooltip;
-        t.appendChild(badge);
-      }
-      return t;
-    };
+    const subtitle = (text) => el("div", "cnb-kse-subtitle", text);
 
     // ── keys.enabled master toggle (never disabled) ──────────────────────
     function drawKeysEnable() {
@@ -524,7 +497,6 @@ export const CNBKeySignatureEditor = {
       wrap.appendChild(drawStyle());
       wrap.appendChild(drawPlacement());
       wrap.appendChild(drawSeparator());
-      wrap.appendChild(drawGutter());
       return wrap;
     }
 
@@ -682,26 +654,6 @@ export const CNBKeySignatureEditor = {
       row.appendChild(control(extent));
       row.appendChild(el("span", "cnb-kse-field-unit", "semitones above and below the middle"));
 
-      wrap.appendChild(row);
-      return wrap;
-    }
-
-    function drawGutter() {
-      const wrap = el("div", "cnb-kse-gutter");
-      wrap.appendChild(subtitle("Space either side", PREVIEW_ONLY.gutter));
-      const row = el("div", "cnb-kse-fields");
-      const pad = el("input", "cnb-kse-gutter-input");
-      pad.type = "number";
-      pad.min = "0";
-      pad.step = "1";
-      pad.value = String(state.keySignature.gutter.paddingH);
-      pad.title = "Room on each side of the signature";
-      pad.oninput = (e) => {
-        const v = numberFrom(e, pad);
-        if (v !== null && v >= 0) { state.keySignature.gutter.paddingH = v; changed(); }
-      };
-      row.appendChild(control(pad));
-      row.appendChild(el("span", "cnb-kse-field-unit", "px each side"));
       wrap.appendChild(row);
       return wrap;
     }

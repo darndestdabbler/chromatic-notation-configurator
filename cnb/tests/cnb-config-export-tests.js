@@ -234,9 +234,11 @@ export const tests = [
     },
   },
   {
-    name: "key-scoped rules (M3): validateForExport surfaces a warning naming the rule; the export proceeds without it",
+    name: "key-scoped rules (session 34): the export carries the rule, with no warning about it",
     fn: () => {
       const cfg = CNBConfig.createDefault();
+      cfg.keys.enabled = true;
+      cfg.keys.definitions = [{ name: "G major", pitchClasses: [7, 9, 11, 0, 2, 4, 6] }];
       cfg.noteheadRules.push({
         name: "F♯ red in G major",
         priority: 5,
@@ -244,11 +246,12 @@ export const tests = [
         apply: { color: "#FF0000" },
       });
       const v = EX.validateForExport(cfg);
-      assert(v.valid === true, "a warning does not block export");
-      assert(v.warnings.some(w => w.includes('Rule "F♯ red in G major"') && w.includes("not exported")),
-        "the export panel's warnings name the rule: " + JSON.stringify(v.warnings));
+      assert(v.valid === true, "exportable");
+      assert(!v.warnings.some(w => w.includes('Rule "F♯ red in G major"')),
+        "no warning names the rule: " + JSON.stringify(v.warnings));
       const ly = CNBLilypond.generate(cfg);
-      assert(!ly.toLowerCase().includes("#ff0000"), "the rule's color is not in the export");
+      assert(ly.includes("(cnb:register-color! 'color-ff0000 \"#FF0000\")") && ly.includes(";; Key G major"),
+        "the rule's colour and its key's branch are in the export");
     },
   },
   {
@@ -373,9 +376,11 @@ export const tests = [
       // One sentence, naming what the exporter's header lists, and saying
       // the clef and the rest of the key signature export (session 30).
       assertEqual(EX.PREVIEW_ONLY_SENTENCE.split(/[.!?](\s|$)/).filter(s => s && s.trim()).length, 1, "a single sentence");
-      for (const s of ["staff lines", "ledger lines", "key signature's spacing", "stem thickness",
-        "repeat counts", "colour-blind", "particular key", "the clef and the rest of the key signature are exported"]) {
+      for (const s of ["colour-blind", "everything else is exported or drawn here as LilyPond draws it"]) {
         assert(EX.PREVIEW_ONLY_SENTENCE.includes(s), `names ${s}`);
+      }
+      for (const s of ["stem thickness", "spacing", "repeat counts", "particular key", "ledger"]) {
+        assert(!EX.PREVIEW_ONLY_SENTENCE.includes(s), `${s} is no longer preview-only (session 34)`);
       }
       assert(!EX.PREVIEW_ONLY_SENTENCE.includes("placement, bar"), "placement and the bar are no longer preview-only");
       api.exportLy();   // download throws without opts.download: the sentence survives a redraw
@@ -549,7 +554,7 @@ export const tests = [
     fn: () => withDomStub((container) => {
       const cfg = CNBConfig.createDefault();
       cfg.meta.fileSuffix = "NoHyphen";                         // LY spec §8 check 6
-      cfg.staff.lineDefaults.color = "black";                   // check 7: not #RRGGBB
+      cfg.noteheadRules[0].apply.color = "black";             // check 7: not #RRGGBB
       cfg.noteheadRules.push({                                   // check 1: missing shape
         name: "Ghost", priority: 5,
         match: { pitchClasses: [0], durations: "all", keys: "all" },

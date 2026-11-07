@@ -200,7 +200,9 @@ async function layout(page) {
 const visiblePanels = (page) => page.$$eval(".panel", els =>
   els.filter(e => !e.hidden).map(e => e.dataset.panel));
 
-const EXPECTED_ROWS = { default: { 1440: 1, 1280: 2 }, kite: { 1440: 2, 1280: 2 } };
+// Since session 34 a column is as wide as the engine's ledger, 1.5 notehead
+// widths (it was 2), so both configs fit one row at both widths.
+const EXPECTED_ROWS = { default: { 1440: 1, 1280: 1 }, kite: { 1440: 1, 1280: 1 } };
 
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   const { context, page } = await openApp(width, height);
@@ -281,8 +283,8 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     JSON.stringify(cfg.staff.semitonePattern) === "[0,4,8]" && cfg.ledgers.templates.length === 0 &&
     await page.evaluate(() => document.querySelector('#ledger-editor-host [data-ledger-mode="automatic"]').classList.contains("on")),
     JSON.stringify(cfg.ledgers));
-  check(`${width}: Advanced › Staff line overrides re-seeds with one row per line of the new pattern`,
-    (await page.$$eval("#staff-overrides-host .cnb-sre-override-row", els => els.length)) === 3);
+  check(`${width}: Advanced has no Staff line overrides panel (session 34: the lines are the engine's)`,
+    (await page.$$("#staff-overrides-host, #staff-line-overrides")).length === 0);
 
   // ── The Export section edits the notation's name and file suffix ──
   await openSection(page, "export");
@@ -303,7 +305,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   check(`${width}: Open loads Kite 4-369 and the top bar names it`,
     (await page.textContent("#config-name")).includes("Kite 4-369"), await page.textContent("#config-name"));
   l = await layout(page);
-  check(`${width}: Kite 4-369 is ${EXPECTED_ROWS.kite[width]} row(s), C to F♯ and G to C′, at Medium`,
+  check(`${width}: Kite 4-369 is ${EXPECTED_ROWS.kite[width]} row(s) of the 13 pitch columns at Medium`,
     l.systems === EXPECTED_ROWS.kite[width] && l.cards === 13 && !l.overflow, JSON.stringify(l));
   check(`${width}: the page does not scroll sideways (Kite)`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
   check(`${width}: the checks indicator shows the loaded config's state`,
@@ -401,40 +403,40 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     await openSection(page, "staff");
 
     // ── The checks list speaks to a designer (session 31, mock-up 4) ──
-    // Kite with keys on and a rule for G only: the one warning reads as
-    // design §8.5 has it, and its link shows the rule.
+    // Kite with keys on, C and A minor defined (the same notes) and a rule
+    // for A minor only: the engraving cannot tell the two keys apart
+    // (session 34), so the one warning says so in a designer's words, and
+    // its link opens the Key signature section.
     const kiteInG = JSON.parse(await readFile(KITE, "utf8"));
-    kiteInG.keys = { ...(kiteInG.keys || {}), enabled: true,
-      definitions: [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }] };
-    kiteInG.noteheadRules.push({ name: "In G, F♯ is hollow", priority: 99,
-      match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { hollow: true } });
+    kiteInG.keys = { ...(kiteInG.keys || {}), enabled: true, definitions: [
+      { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+      { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7] },
+    ] };
+    kiteInG.noteheadRules.push({ name: "In A minor, A is blue", priority: 99,
+      match: { pitchClasses: [9], durations: "all", keys: ["A minor"] }, apply: { color: "#0000FF" } });
     await page.setInputFiles("#open-file", {
       name: "kite-in-g.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(kiteInG), "utf8"),
     });
     await page.waitForFunction(() => document.getElementById("topbar-status").textContent === "Opened kite-in-g.json");
-    check("1440: a rule for G only gives the checks indicator 1 warning",
+    check("1440: two keys with the same notes, drawn differently, give the checks indicator 1 warning",
       (await page.textContent("#checks-indicator")).trim() === "1 warning", await page.textContent("#checks-indicator"));
     await page.click("#checks-indicator");
     const item = await page.evaluate(() => {
       const el = document.querySelector("#checks-list .checks-item.warn");
       return el && { text: el.querySelector("p").textContent, link: el.querySelector(".checks-link")?.textContent };
     });
-    check("1440: the checks list says the warning in a designer's words, with a Show the rule link",
-      item && item.text === "“In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys, " +
-        "so the exported F♯ keeps its look without it." && item.link === "Show the rule", JSON.stringify(item));
+    check("1440: the checks list says the warning in a designer's words, with an Open Key signature link",
+      item && item.text === "The keys “C”, “A minor” have the same notes, so LilyPond cannot tell them apart: " +
+        "it engraves them all as “A minor” does." && item.link === "Open Key signature", JSON.stringify(item));
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: path.join(SHOT_DIR, "checks-list-1440.png") });
     await page.click("#checks-list .checks-link");
     const followed = await page.evaluate(() => ({
       listHidden: document.getElementById("checks-list").hidden,
       shown: [...document.querySelectorAll(".panel")].filter(e => !e.hidden).map(e => e.dataset.panel),
-      rulesOpen: document.getElementById("rules-by-duration-or-key").open,
-      focused: document.activeElement && document.activeElement.classList.contains("cnb-nre-rule-name")
-        ? document.activeElement.value : null,
     }));
-    check("1440: Show the rule closes the list and opens Advanced at the rule, its name focused",
-      followed.listHidden && JSON.stringify(followed.shown) === '["advanced"]' && followed.rulesOpen &&
-      followed.focused === "In G, F♯ is hollow", JSON.stringify(followed));
+    check("1440: Open Key signature closes the list and opens the Key signature section",
+      followed.listHidden && JSON.stringify(followed.shown) === '["key-signature"]', JSON.stringify(followed));
 
     // ── Two more staves to start from (session 32) ──
     // The default config with Automatic ledgers, so each preset's canvas

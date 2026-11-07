@@ -55,6 +55,15 @@ export const tests = [
     // Default config should have no errors (warnings about lilypondPath:null and empty label are OK)
     assert(result.valid, `Default config should be valid. Errors: ${result.errors.join("; ")}`);
   }},
+  { name: "createDefault() has no stem settings, and a config carrying them still validates (session 34)", fn: () => {
+    const def = CNBConfig.createDefault();
+    for (const [section, key] of [["display", "stemThicknessPct"], ["display", "stemExtension"], ["engine", "stemThickness"]]) {
+      assert(!(key in def[section]), `${section}.${key} is not a default`);
+    }
+    Object.assign(def.display, { stemThicknessPct: 26, stemExtension: 2.5 });
+    def.engine.stemThickness = "0.1";
+    assert(CNBConfig.validate(def).valid, "retired stem settings are ignored");
+  }},
 
   // ── validate — errors ─────────────────────────────────────────────────────
   { name: "validate: missing shape reference → error", fn: () => {
@@ -154,7 +163,7 @@ export const tests = [
     const def = CNBConfig.createDefault();
     const merged = CNBConfig.merge(def, { display: { pxPerSemi: 20 } });
     eq(merged.display.pxPerSemi, 20, "pxPerSemi should be 20");
-    eq(merged.display.stemThicknessPct, def.display.stemThicknessPct, "stemThicknessPct unchanged");
+    eq(merged.display.column.paddingH, def.display.column.paddingH, "column padding unchanged");
     eq(merged.display.debugGrid, false, "debugGrid unchanged");
   }},
   { name: "merge: merging new noteheadRules replaces the array entirely", fn: () => {
@@ -164,12 +173,12 @@ export const tests = [
     eq(merged.noteheadRules.length, 1, "should have exactly 1 rule");
     eq(merged.noteheadRules[0].name, "Only");
   }},
-  { name: "merge: nested staff.lineDefaults preserves unmodified sibling fields", fn: () => {
+  { name: "merge: nested display.label preserves unmodified sibling fields", fn: () => {
     const def = CNBConfig.createDefault();
-    const merged = CNBConfig.merge(def, { staff: { lineDefaults: { thicknessPct: 30 } } });
-    eq(merged.staff.lineDefaults.thicknessPct, 30, "thicknessPct changed");
-    eq(merged.staff.lineDefaults.color, "#000000", "color unchanged");
-    eq(merged.staff.lineDefaults.style, "solid", "style unchanged");
+    const merged = CNBConfig.merge(def, { display: { label: { fontSize: 30 } } });
+    eq(merged.display.label.fontSize, 30, "fontSize changed");
+    eq(merged.display.label.color, "#555555", "color unchanged");
+    eq(merged.display.label.fontFamily, "Oswald", "fontFamily unchanged");
   }},
   { name: "merge: does not mutate base", fn: () => {
     const def = CNBConfig.createDefault();
@@ -518,7 +527,7 @@ export const tests = [
     eq(ks.separator.color, "#ffd42a", "engine cnb:gold");
     eq(ks.separator.thicknessPct, 160, "separator thickness (0.4 staff-space at sps 4 — engine bar, s2 UAT measurement)");
     eq(ks.separator.extentSemis, 12, "±1 octave like the engine bar");
-    eq(ks.gutter.paddingH, 12, "gutter padding");
+    assert(!("gutter" in ks), "no gutter setting: the spacing is the engine's (session 34)");
     // style is a single-value vocabulary — no per-alternate-style config
     // subsections (the simple-mark styles were removed at the task owner's
     // s2 UAT direction; s2-uat.md).
@@ -607,16 +616,12 @@ export const tests = [
     assert(CNBConfig.validate(nonObject).errors.some(e => e.includes("separator must be an object")), "type error");
   }},
 
-  { name: "keysig: validate — gutter.paddingH must be a finite non-negative number when enabled", fn: () => {
-    for (const bad of [-4, NaN, "12", Infinity]) {
-      const cfg = keysigConfig();
-      cfg.keys.keySignature.gutter = { paddingH: bad };
-      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("keys.keySignature.gutter.paddingH")),
-        "paddingH error for " + String(bad));
-    }
-    const zero = keysigConfig();
-    zero.keys.keySignature.gutter = { paddingH: 0 };
-    assert(CNBConfig.validate(zero).valid, "paddingH 0 valid");
+  { name: "keysig: a retired gutter setting (session 34) and repeat counts still validate, unread", fn: () => {
+    const cfg = keysigConfig();
+    cfg.keys.keySignature.gutter = { paddingH: -4 };
+    cfg.durations.repeatCounts = { minim: 0 };
+    assert(CNBConfig.validate(cfg).valid, "not checked: neither is read");
+    assert(!("repeatCounts" in CNBConfig.createDefault().durations), "no repeat counts default");
   }},
 
   { name: "keysig: validate — key definitions are checked when the signature is enabled", fn: () => {
@@ -764,44 +769,24 @@ export const tests = [
     assert(!boundary.errors.some(e => e.includes("monotonic") || e.includes("non-decreasing")), "boundary equality legal");
   }},
 
-  { name: "pitchAxis PA-6: staff pattern entries collapsing onto one axis position must not carry conflicting lineOverrides", fn: () => {
-    // Semis 3 and 4 share Twinline position 2
-    const conflicting = pitchAxisConfig();
-    conflicting.staff.semitonePattern = [3, 4, 8];
-    conflicting.staff.lineOverrides = { "3": { color: "#FF0000" }, "4": { color: "#0000FF" } };
-    const r1 = CNBConfig.validate(conflicting);
-    assert(r1.errors.some(e => e.includes("Staff pattern entries 3 and 4 collapse")), "conflict rejected");
-
-    const identical = pitchAxisConfig();
-    identical.staff.semitonePattern = [3, 4, 8];
-    identical.staff.lineOverrides = { "3": { color: "#FF0000" }, "4": { color: "#FF0000" } };
-    assert(!CNBConfig.validate(identical).errors.some(e => e.includes("collapse")), "identical overrides fine");
-
-    const absent = pitchAxisConfig();
-    absent.staff.semitonePattern = [3, 4, 8];
-    assert(!CNBConfig.validate(absent).errors.some(e => e.includes("collapse")), "absent overrides fine");
-  }},
-
-  { name: "pitchAxis PA-5: ledger templates collapsing onto one axis position must not carry conflicting lineOverrides", fn: () => {
-    // Template semis 0 and 1 share Twinline position 0
-    const conflicting = pitchAxisConfig();
-    conflicting.ledgers.templates = [
+  { name: "retired line settings (session 34): no defaults, and a config carrying them validates, conflicting collapsed overrides included", fn: () => {
+    const def = CNBConfig.createDefault();
+    for (const section of ["staff", "ledgers"]) {
+      assert(!("lineDefaults" in def[section]) && !("lineOverrides" in def[section]), `${section} has no line settings`);
+    }
+    // Semis 3 and 4 share Twinline position 2; ledger templates 0 and 1 share position 0.
+    const cfg = pitchAxisConfig();
+    cfg.staff.semitonePattern = [3, 4, 8];
+    cfg.staff.lineDefaults = { thicknessPct: "30", color: "black" };
+    cfg.staff.lineOverrides = { "3": { color: "#FF0000" }, "4": { color: "#0000FF" } };
+    cfg.ledgers.templates = [
       { semiWithinOctave: 0, triggerPCs: [0], triggerMode: "override" },
       { semiWithinOctave: 1, triggerPCs: [1], triggerMode: "override" },
     ];
-    conflicting.ledgers.lineOverrides = { "0": { thicknessPct: 40 }, "1": { thicknessPct: 60 } };
-    const r1 = CNBConfig.validate(conflicting);
-    assert(r1.errors.some(e => e.includes("Ledger templates at semiWithinOctave 0 and 1 collapse")), "conflict rejected");
-
-    const compatible = pitchAxisConfig();
-    compatible.ledgers.templates = conflicting.ledgers.templates;
-    compatible.ledgers.lineOverrides = { "0": { thicknessPct: 60 }, "1": { thicknessPct: 60 } };
-    assert(!CNBConfig.validate(compatible).errors.some(e => e.includes("collapse")), "identical overrides fine");
-
-    const disjoint = pitchAxisConfig();
-    disjoint.ledgers.templates = conflicting.ledgers.templates;
-    disjoint.ledgers.lineOverrides = { "0": { thicknessPct: 60 }, "1": { color: "#333333" } };
-    assert(!CNBConfig.validate(disjoint).errors.some(e => e.includes("collapse")), "disjoint properties fine");
+    cfg.ledgers.lineDefaults = { color: "black", widthMultiplier: 3 };
+    cfg.ledgers.lineOverrides = { "0": { thicknessPct: 40 }, "1": { thicknessPct: 60 } };
+    const { errors } = CNBConfig.validate(cfg);
+    deepEq(errors, [], "the retired settings are not read");
   }},
 
   { name: "pitchAxis PA-7: apply.xOffsetStaffSpaces must be a finite number when present (enabled configs)", fn: () => {
@@ -922,11 +907,9 @@ export const tests = [
       ["engine.multinotePadding", (c) => { c.engine.multinotePadding = "(display 1)"; }],
       ["engine.indent", (c) => { c.engine.indent = NaN; }],
       ["engine.collisionThreshold", (c) => { c.engine.collisionThreshold = Infinity; }],
-      ["engine.stemThickness", (c) => { c.engine.stemThickness = "0.1"; }],
       ["staff.semitonePattern[1]", (c) => { c.staff.semitonePattern = [4, "8"]; }],
       ["staff.midpoint", (c) => { c.staff.midpoint = "12"; }],
       ["staff.semitonesPerStaffSpace", (c) => { c.staff.semitonesPerStaffSpace = "4) (display 1"; }],
-      ["staff.lineDefaults.thicknessPct", (c) => { c.staff.lineDefaults.thicknessPct = "30"; }],
       ['Duration "crotchet" lilypondDuration', (c) => { c.durations.definitions[0].lilypondDuration = "3)"; }],
       ['palette.schemeSymbols["#1B9E77"]', (c) => { c.palette.schemeSymbols = { "#1B9E77": 'x) (display "X") (quote' }; }],
       ['Shape "crotchet-minim" lilypondPath', (c) => { shape(c).lilypondPath = `'()) (system "calc") (define x '()`; }],
@@ -948,7 +931,6 @@ export const tests = [
     const cfg = CNBConfig.createDefault();
     cfg.engine.lilypondVersion = "2.25.10";
     cfg.engine.defaultMagnify = "8/5";
-    cfg.engine.stemThickness = 0.12;
     cfg.palette.schemeSymbols = { "#1B9E77": "shamrock-1b9e77" };
     cfg.shapes["crotchet-minim"].lilypondPath = "'( (moveto 0 1) (lineto 1 0) (closepath))";
     cfg.shapes["crotchet-minim"].lilypondAnchors = { crotchetUp: { x: 0.7, y: 0 }, minimUp: { x: 1, y: null } };
@@ -972,17 +954,26 @@ export const tests = [
       assert(errors.some(e => e.includes(`Shape "${name}"`)), `${name}: error names the shape: ${JSON.stringify(errors)}`);
     }
   }},
-  { name: "validate() M3: a key-scoped notehead rule warns, naming the rule and its keys", fn: () => {
+  { name: "validate() (session 34): a key-scoped rule no longer warns; keys sharing pitch classes but drawn differently do", fn: () => {
     const cfg = CNBConfig.createDefault();
-    const keyWarnings = (c) => CNBConfig.validate(c).warnings.filter(w => w.includes("scoped to keys"));
-    deepEq(keyWarnings(cfg), [], "no warning when every rule matches all keys");
-    cfg.noteheadRules.push({ name: "F♯ red in G major", priority: 5,
-      match: { pitchClasses: [6], durations: "all", keys: ["G major"] }, apply: { color: "#FF0000" } });
-    const { valid } = CNBConfig.validate(cfg);
-    assert(valid, "a warning, not an error");
+    const keyWarnings = (c) => CNBConfig.validate(c).warnings.filter(w => w.includes("scoped to keys") || w.includes("Key definitions"));
+    cfg.keys.enabled = true;
+    cfg.keys.definitions = [
+      { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
+      { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7] },
+      { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] },
+    ];
+    cfg.noteheadRules.push({ name: "F♯ red in G", priority: 5,
+      match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { color: "#FF0000" } });
+    deepEq(keyWarnings(cfg), [], "a key-scoped rule exports: no warning; C and A minor share notes but look alike");
+    cfg.noteheadRules.push({ name: "A blue in A minor", priority: 6,
+      match: { pitchClasses: [9], durations: "all", keys: ["A minor"] }, apply: { color: "#0000FF" } });
+    assert(CNBConfig.validate(cfg).valid, "a warning, not an error");
     const w = keyWarnings(cfg);
-    assert(w.length === 1 && w[0].includes('Rule "F♯ red in G major"') && w[0].includes("G major") &&
-      w[0].includes("not exported"), `warning names the rule: ${JSON.stringify(w)}`);
+    assert(w.length === 1 && w[0].includes('"C", "A minor"') && w[0].includes("(0 2 4 5 7 9 11)") &&
+      w[0].includes('draws them all as "A minor"'), `names both keys and the one engraved: ${JSON.stringify(w)}`);
+    cfg.keys.enabled = false;
+    deepEq(keyWarnings(cfg), [], "keys off: neither the preview nor the export applies a key");
   }},
   { name: "validate(): a rule that sets an off-key mark warns, naming the rule (session 29)", fn: () => {
     const markWarnings = (c) => CNBConfig.validate(c).warnings.filter(w => w.includes("off-key mark"));

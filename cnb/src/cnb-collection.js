@@ -53,13 +53,28 @@ const NS = "http://www.w3.org/2000/svg";
 const DEFAULT_PCS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 /**
+ * Where the first card's noteheads are centred in its column
+ * (CNBCard.headCenterX), which the key-signature gutter spaces from
+ * (session 34); undefined with no card. In a fluid row the columns stretch,
+ * so the fixed column stands for the first one.
+ */
+function firstHeadCenter(config, grid, pitchClasses, duration) {
+  return pitchClasses.length > 0
+    ? CNBCard.headCenterX(config, grid, { pc: pitchClasses[0], duration })
+    : undefined;
+}
+
+/**
  * Build a fixed-width gutter column (clef / key signature): top and bottom
  * label-height spacers around a grid-height SVG slice that renderInto fills.
+ * A fluid key-signature track (session 34) passes its CSS width as
+ * cssWidth; the slice keeps its own width, and on a wide row draws on into
+ * the first card's track (the column does not clip it).
  */
-function gutterColumn(grid, { className, sliceClass, width, renderInto }) {
+function gutterColumn(grid, { className, sliceClass, width, cssWidth, renderInto }) {
   const col = document.createElement("div");
   col.className = className;
-  col.style.width = width + "px";
+  col.style.width = cssWidth ?? width + "px";
   col.style.flex = "0 0 auto";
 
   const topSpacer = document.createElement("div");
@@ -162,6 +177,41 @@ function renderLabelStrip(svg, grid, config) {
  * Column widths do not depend on the grid's semitone range, so one grid
  * over all the pitch classes serves every system.
  */
+/**
+ * The key-signature track of a fluid row (session 34), or null when no
+ * signature shows. A card is centred in its track, which takes
+ * t = (100% − fixed − K) / slots, so for the first card's notehead to sit
+ * where the engine spaces it (CNBKeySignature.padding) the track must be
+ * K = A − t / 2, A being the width the fixed layout's spacing gives to a
+ * card of no width. Solved for K that is calc(P − Q × 100%), no wider than
+ * its value at the row's minimum, where t = colMin. On a wide row K is
+ * narrower than the marks, which then draw on into the first card's track:
+ * its notehead is still the engine's spacing after them, far clear of the
+ * marks. K reaches 0 when t = 2A (a column of about 940 px at the default
+ * size), so the cards' tracks stop growing there: past it a card centred in
+ * its track could not be close enough, and the row leaves the spare width
+ * after its last card instead.
+ *
+ * @returns {{css:string, minPx:number, maxColPx:number}|null} the CSS track
+ *          width; its width at the row's minimum (px), which the slice keeps,
+ *          so the marks and their ledgers always fit it; and the widest a
+ *          card's track may grow (px)
+ */
+function fluidKeySigTrack(config, grid, key, pitchClasses, duration, fixedPx, slots, colMin) {
+  const centre = firstHeadCenter(config, grid, pitchClasses, duration);
+  const offset = centre === undefined ? 0
+    : centre - CNBCard.columnWidth(config, grid, { pc: pitchClasses[0], duration }) / 2;
+  const pad = CNBKeySignature.padding(config, grid.pxPerSemi, key, offset);
+  if (!pad) return null;
+  const A = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key, offset);
+  const marks = A - pad.right;
+  const minPx = Math.max(marks, A - colMin / 2);
+  const c = 1 - 1 / (2 * slots);
+  const P = (A + fixedPx / (2 * slots)) / c;
+  const Q = 1 / (2 * slots * c);
+  return { css: `max(0px, min(calc(${P}px - ${Q} * 100%), ${minPx}px))`, minPx, maxColPx: 2 * A };
+}
+
 function fluidColumnMin(config, grid, pitchClasses, durations) {
   let widest = 0;
   for (const duration of durations) {
@@ -189,8 +239,10 @@ function splitSystems(pitchClasses, rows) {
 function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots, labelStrip }) {
   const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
-  const keySigGutterWidth = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key);
   const stripWidth = labelStrip ? LABEL_STRIP_PX : 0;
+  const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, duration,
+    stripWidth + clefGutterWidth, slots, colMin);
+  const keySigGutterWidth = keySig ? keySig.minPx : 0;
 
   const gutters = [];
   if (labelStrip) {
@@ -209,11 +261,12 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
       renderInto: svg => CNBClef.render(svg, grid, config),
     }));
   }
-  if (keySigGutterWidth > 0) {
+  if (keySig) {
     gutters.push(gutterColumn(grid, {
       className: "keysig-col",
       sliceClass: "keysig-slice",
-      width: keySigGutterWidth,
+      width: keySig.minPx,
+      cssWidth: keySig.css,
       renderInto: svg => CNBKeySignature.render(svg, grid, config, key),
     }));
   }
@@ -232,7 +285,7 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
   columns.style.position = "relative";
   columns.style.gridTemplateColumns = [
     ...gutters.map(g => g.style.width),
-    `repeat(${slots}, minmax(${colMin}px, 1fr))`,
+    `repeat(${slots}, minmax(${colMin}px, ${keySig ? keySig.maxColPx + "px" : "1fr"}))`,
   ].join(" ");
 
   const bg = document.createElementNS(NS, "svg");
@@ -349,8 +402,10 @@ function renderRow(config, { pitchClasses, duration, key, showCaption }) {
 
   // Key-signature gutter (set 010): 0 unless keys.enabled,
   // keys.keySignature.enabled, and the selected key resolves. Composes
-  // after the clef, left to right (binding rule 3).
-  const keySigGutterWidth = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key);
+  // after the clef, left to right (binding rule 3). The first card's
+  // notehead sets its right padding (session 34).
+  const keySigGutterWidth = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key,
+    firstHeadCenter(config, grid, pitchClasses, duration));
 
   const totalWidth = clefGutterWidth + keySigGutterWidth + pitchClasses.reduce(
     (sum, pc) => sum + CNBCard.columnWidth(config, grid, { pc, duration }),
@@ -442,9 +497,10 @@ export const CNBCollection = {
     const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
     const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
     const slots = splitSystems(pitchClasses, options.rows)[0].length;
+    const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, durations[0], 0, slots, colMin);
     return (options.labelStrip === true ? LABEL_STRIP_PX : 0) +
       CNBClef.gutterWidth(config, grid.pxPerSemi) +
-      CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key) +
+      (keySig ? keySig.minPx : 0) +
       slots * colMin;
   },
 

@@ -245,27 +245,17 @@ staff: {
   midpoint: 12,
 
   // Informational. Derived from the pattern.
-  semitonesPerStaffSpace: 4,
-
-  // Default properties for all staff lines.
-  lineDefaults: {
-    // Thickness as percentage of one semitone height.
-    // At export, converted: absolute = (pct / 100) × (1 / semitonesPerStaffSpace)
-    thicknessPct: 20,             // 20% of semitone height
-    style: "solid",               // "solid" | "dashed" | "dotted"
-    color: "#000000"
-  },
-
-  // Override specific lines by their semitone-within-octave position.
-  // Sparse: only specified values replace defaults.
-  lineOverrides: {
-    // "4": { thicknessPct: 30, color: "#333333" }
-  }
+  semitonesPerStaffSpace: 4
 }
 ```
 
 **Design notes:**
-- `thicknessPct` is the canonical representation. For preview rendering, it's converted to pixels: `pxThickness = (thicknessPct / 100) × pxPerSemi`. For LilyPond export, it's converted to staff-space units per the LY spec formula.
+- **The lines have no style settings (session 34).** The preview draws
+  every staff line as the engine engraves it: black, solid, 0.1 staff
+  spaces thick (`CNBStaff.staffSpacePx`: one staff space is
+  `semitonesPerStaffSpace` semitones, or `axisUnitsPerStaffSpace` axis
+  units under a pitch axis). `lineDefaults` and `lineOverrides` are
+  retired: a config that carries them still loads, and neither is read.
 - `semitonesPerStaffSpace` is informational in this schema but becomes the critical `cnb:semitones-per-staff-space` LilyPond setting.
 
 **↔ LY Spec mapping:**
@@ -273,8 +263,6 @@ staff: {
 |---|---|---|
 | `staff.semitonesPerStaffSpace` | B1 | `#(set! cnb:semitones-per-staff-space N)` |
 | `staff.semitonePattern` → positions | B1 | `#(set! cnb:staff-line-positions '(...))` |
-| `staff.lineDefaults.thicknessPct` | — | preview-only, not emitted (LY spec 1.3.3 §5.2a) |
-| `staff.lineDefaults.color` | — | preview-only, not emitted (LY spec 1.3.3 §5.2a) |
 
 **LilyPond staff-line-positions conversion:**
 The LY engine uses positions relative to center, in HALF-staff-space units
@@ -321,27 +309,24 @@ ledgers: {
   // Default display rule when triggerMode is "proximity":
   // Show ledger at semitone L for notehead at semitone N when
   // |N - L| < |N - nearestStaffLine| AND L is in the same octave region as N.
-  proximityRule: true,
-
-  lineDefaults: {
-    thicknessPct: 40,               // % of semitone height (LY spec default: 40%)
-    widthMultiplier: 2.0,           // × notehead width
-    style: "solid",
-    color: "#000000",
-    roundedEnds: true               // rx/ry = half height in SVG
-  },
-
-  // Per-template overrides by semiWithinOctave
-  lineOverrides: {
-    // "0": { color: "#333333", thicknessPct: 50 }
-  }
+  proximityRule: true
 }
 ```
 
 **Design notes:**
 - **No "outside staff" hard gate.** Some staff configurations have gaps (e.g., 3-6-9 has a gap between 9 and 15). Ledger lines within those gaps may be needed. The display rules (proximity and override) handle this correctly without filtering.
 - **Octave awareness is critical.** A ledger template at `semiWithinOctave: 0` in octave 0 (absolute semi 0) only responds to noteheads in or near octave 0. It does NOT respond to a notehead at semi 24 (octave 2's C). Each octave gets its own instance of each template.
-- The LilyPond engine handles its own ledger rendering internally. The config's ledger section primarily drives the preview renderer. However, ledger thickness is exported for the engine.
+- **The ledgers are drawn as the engine engraves them (session 34):** black,
+  0.2 staff spaces thick, with fully rounded ends, 1.5 times as long as the
+  notehead (in repeat mode, the group of heads) is wide
+  (`CNBLedgerSet.width`). `lineDefaults` (thickness, colour, style,
+  `widthMultiplier`, `roundedEnds`) and `lineOverrides` are retired: a
+  config that carries them still loads, and neither is read.
+- **The rules are exported (session 34, LY spec 1.3.9 §5.7).** For every
+  pitch the preview draws (semitones 0–24), the export writes the ledgers
+  the preview draws there (`CNBLedgerSet.ledgersFor`), and each notehead
+  engraves its pitch's entry, in-gap ledgers included. Other pitches keep
+  the engine's own rule, which reaches the engraved staff.
 
 ### 4.5 Notehead Rules
 
@@ -406,7 +391,7 @@ exactly as before.
   separate `scaleX` (from the width) and `scaleY` (from the height), with
   `scaleFactor = scaleY`. The notehead is drawn with `scale(sx,sy)` only
   when the two differ. The stem anchor's x offset uses `scaleX`, and the
-  octave pair, the ledger width (notehead width × `widthMultiplier`), the
+  octave pair, the ledger width (1.5 notehead widths, §4.4), the
   card column, repeat-mode groups and key-signature marks all follow the
   resolved measurement. Stem length and thickness do not change.
 - **Export:** sizes are exported. Each distinct resolved size other than
@@ -476,13 +461,9 @@ palette: {
 display: {
   pxPerSemi: 16,                // pixels per semitone in preview
 
-  // Note: Staff/ledger thickness in the preview is derived from
-  // staff.lineDefaults.thicknessPct and ledgers.lineDefaults.thicknessPct
-  // converted via: pxThickness = (pct / 100) × pxPerSemi
-
-  // Stem rendering (preview only — not exported to LY)
-  stemThicknessPct: 26,         // % of semitone height
-  stemExtension: 2.5,           // notehead-heights beyond far notehead
+  // Staff lines, ledgers and stems have no settings here: the preview
+  // draws them as the engine engraves them, in staff spaces (session 34;
+  // §4.3, §4.4, Module 8). stemThicknessPct and stemExtension are retired.
 
   label: {
     fontFamily: "Oswald",
@@ -512,7 +493,7 @@ display: {
 }
 ```
 
-**Design note on stem thickness:** The LY spec notes that stem thickness and length are display-only and not exported. However, it's important that the preview stem thickness matches the assumption used when placing stem attachment points. The Inkscape extension positions attachment points assuming a stem width of ~1/5 semitone (~20% of semitone height). The preview `stemThicknessPct` should be consistent with this. If the preview renders stems thinner than the extension assumed, the attachment will appear misaligned.
+**Design note on stems (session 34):** the preview draws LilyPond's stem, which the engine leaves at its defaults: 0.13 staff spaces thick and LilyPond's length past the far notehead (Module 8). Its edge, not its centre, sits on the anchor (session 33), as LilyPond's does, so the stem meets the notehead where the engraving's does.
 
 ### 4.8 Duration Settings
 
@@ -554,15 +535,10 @@ durations: {
   ],
 
   // "shape" = different notehead shapes per duration
-  // "repeat" = repeat same notehead N times
-  representationMode: "shape",
-
-  // Used when representationMode is "repeat"
-  repeatCounts: {
-    minim: 2,
-    semibreve: 4,
-    breve: 8
-  }
+  // "repeat" = repeat the same notehead: the engine's fixed counts,
+  //   minim ×2, semibreve and breve ×4 (session 18). repeatCounts, which
+  //   neither the preview nor the export read, is retired (session 34).
+  representationMode: "shape"
 }
 ```
 
@@ -638,9 +614,12 @@ keys: {
     // staff's 4 semitones per space). Exported as cnb:keysig-bar-color,
     // -thickness (thicknessPct / (10 × sps), 0 when disabled) and
     // -extent-semis, each when it differs from the engine's default.
-    separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
+    separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 }
 
-    gutter: { paddingH: 12 }     // px each side of the signature's gutter (preview-only)
+    // No gutter setting (session 34): the preview spaces the signature as
+    // the engine does — 0.75 staff spaces after the staff's start, or 3.5
+    // after a clef's left edge, and the first notehead centred 4.8636 after
+    // it. gutter.paddingH is retired.
   }
 }
 ```
@@ -662,8 +641,8 @@ keys: {
   is off, engraves none. With the signature on, it writes the bar's
   colour, thickness (0 when the separator is off) and extent, and on a
   linear staff an explicit tonic octave, each only when it differs from
-  the engine's default. The gutter has no engine setting and stays
-  preview-only. Set 010 wrote nothing for this section (its
+  the engine's default. The spacing is the engine's in the preview too
+  (session 34). Set 010 wrote nothing for this section (its
   `s1-engine-coordination.md` records why).
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
@@ -681,7 +660,6 @@ engine: {
   defaultMagnify: "7/4",             // cnb:default-magnify (string to preserve fraction)
   indent: 0,                         // cnb:indent
   collisionThreshold: 2,             // cnb:collision-threshold
-  stemThickness: null,               // preview-only: the engine has no cnb:stem-thickness (LY spec 1.3.3)
   useAccessibleColors: false         // cnb:use-accessible-colors (runtime flag)
 }
 ```
@@ -1073,6 +1051,14 @@ CNBStaff.render(svgParent, gridContext, config, totalWidth) → SVGGElement
 
 // Get the staff midpoint
 CNBStaff.getMidpoint(config) → number
+
+// LilyPond staff positions, half staff spaces from the middle (session 34):
+// the exported staff lines, and one semitone's position
+CNBStaff.lilypondPositions(config) → number[]
+CNBStaff.lilypondPosition(config, semi) → number
+
+// Pixels per staff space on a grid (axis units under a pitch axis)
+CNBStaff.staffSpacePx(config, gridContext) → number
 ```
 
 **Visual test page:** Full-width SVG with staff lines at correct positions, debug grid visible. Default 4-8 (lines at 4, 8, 16, 20).
@@ -1131,6 +1117,13 @@ CNBLedgerSet.resolve(noteSemitones, ledgerDefs, staffPositions) → number[]
 
 // Render resolved ledger lines
 CNBLedgerSet.render(svgParent, gridContext, config, noteSemitones) → SVGGElement
+
+// The ledgers render draws for a set of notes on a grid spanning range
+// (session 34; the export writes them per pitch, LY spec 1.3.9 §5.7)
+CNBLedgerSet.ledgersFor(config, noteSemitones, range, axis) → number[]
+
+// LilyPond's ledger length for a notehead (or repeated group) width: × 1.5
+CNBLedgerSet.width(headWidth) → number
 ```
 
 **Ledger display algorithm:**
@@ -1257,6 +1250,7 @@ CNBStem.direction(chordSemitones, staffMidpoint) → "up" | "down"
 
 // Compute stem geometry using 4-point anchor model
 CNBStem.geometry(config, {
+  gridContext,                // the grid: its staff space and middle line (session 34)
   shape: shapeConfig,
   scaleFactor: number,
   centerX: number,
@@ -1267,6 +1261,10 @@ CNBStem.geometry(config, {
 
 // Render a stem line
 CNBStem.render(svgParent, stemGeometry) → SVGLineElement | null
+
+// LilyPond's stem length past the far notehead, in half staff spaces
+// (session 34), from the far notehead's position and the staff's lines
+CNBStem.length(far, staffPositions) → number
 ```
 
 **4-point anchor model:**
@@ -1276,18 +1274,22 @@ The stem attachment point depends on BOTH direction (up/down) AND duration (fill
 - Stem down, crotchet: use `anchors.crotchetDown`
 - Stem down, minim: use `anchors.minimDown`
 
-This matters because the Inkscape extension positions these anchor points accounting for the stem width (~1/5 semitone). If the preview renders stems too thin, the attachment will appear misaligned. The preview stem thickness (`display.stemThicknessPct`) must be consistent with the assumption used when the extension placed the anchors.
-
-**Stem thickness in preview:**
+**The engine's stem (session 34).** The preview draws LilyPond's stem, measured against the engine, in staff spaces (`semitonesPerStaffSpace` semitones, or `axisUnitsPerStaffSpace` axis units under a pitch axis):
 ```
-stemPx = (config.display.stemThicknessPct / 100) × config.display.pxPerSemi
+thickness = 0.13 staff spaces                    (1.3 staff-line thicknesses)
+length    = 3.5 staff spaces past the far notehead's centre, crotchet and minim,
+            less a third of a half space for each half space it would reach past
+            one staff space beyond the staff's radius, once the far notehead is on
+            the middle line or beyond it in the stem's direction, by at most
+            1 staff space (LilyPond's stem-shorten; CNBStem.length)
 ```
+The engine sets `no-stem-extend`, so no stem is carried to the middle line. `display.stemThicknessPct`, `display.stemExtension` and `engine.stemThickness` are retired. An engine round trip in `cnb/tests/cnb-card-tests.js` pins the direction, thickness and both ends of every card's stem, crotchet and minim, for the default and Kite fixtures, within 0.001 staff spaces.
 
 **The stem's edge sits on the anchor (session 33).** LilyPond puts an up
 stem's right edge and a down stem's left edge on the attachment point, and
-the preview does the same: the stem's centre is half `stemPx` inward of the
-anchor. The engraved and previewed stems then meet the notehead at the same
-place even though their thicknesses differ (an engine round trip in
+the preview does the same: the stem's centre is half its thickness inward
+of the anchor. The engraved and previewed stems then meet the notehead at
+the same place (an engine round trip in
 `cnb/tests/cnb-card-tests.js` measures it within 0.001 staff spaces).
 
 **Test cases:**
@@ -1486,7 +1488,10 @@ the `keyName` argument (the collection passes `options.keys[0]`), never
 from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
 `tonicPc(def)`, `tonicSemi(config, def)`, `signatureSemis(config,
 keyName)` (the placement rule's grid positions), `measure(config,
-pxPerSemi, keyName)`, `gutterWidth(config, pxPerSemi, keyName)` (0 when
+pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
+firstHeadCenter)` (the engine's spacing either side of the marks, session
+34; the collection passes the first card's `CNBCard.headCenterX`),
+`gutterWidth(config, pxPerSemi, keyName, firstHeadCenter)` (0 when
 nothing renders — no gutter reserved), and `render(svgParent,
 gridContext, config, keyName)`. One mark style is implemented,
 "notehead-chords": marks resolve through
@@ -1740,9 +1745,8 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:default-magnify` | `7/4` | `engine.defaultMagnify` | If changed |
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |
-| `cnb:default-staff-line-thickness` | `2` | `staff.lineDefaults.thicknessPct` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
-| `cnb:default-staff-line-color` | `"#000000"` | `staff.lineDefaults.color` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
-| `cnb:stem-thickness` | — (not defined by the engine) | `engine.stemThickness` (preview-only) | Never (LY spec 1.3.3 §5.2a) |
+| `cnb:default-staff-line-thickness`, `-color`, `cnb:stem-thickness` | — | none: the preview draws the engine's lines and stems (session 34) | Never (LY spec §5.2a) |
+| `cnb:ledgers-by-semitone` + `NoteHead.ledger-positions` / `no-ledgers` | — (the engine's own ledger rule) | `ledgers` resolved for semitones 0–24 (`CNBLedgerSet.ledgersFor`) | Always (LY spec 1.3.9 §5.7) |
 | `cnb:file-suffix` | `""` | `meta.fileSuffix` | Always |
 | `cnb:notation-label` | `""` | `meta.notationLabel` | Always |
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |
@@ -1760,6 +1764,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `(attachment . {name}-attach)` | Shape name → attachment name |
 | `(off-key-mark . ...)` | Resolved from `noteheadRules` → offKeyMark |
 | `(repeat . #t/#f)` | `durations.representationMode` |
+| key dispatch `(equal? key-pcs '(…))` | with keys on, each key definition a rule's `match.keys` names (LY spec 1.3.9 §6.4) |
 
 ---
 
@@ -1841,7 +1846,11 @@ Build Module X: [one-line description]
    under a pitch axis the axis formula and its deduplication apply (LY spec
    §5.4a). The range expanded is the 24 semitones centred on the middle of
    the staff (LY spec §5.1a).
-8. **Stem attachment validation:** How to verify that preview stem thickness matches the Inkscape extension's assumptions. May need a visual comparison test.
+8. **Stem attachment validation:** *Settled in sessions 33 and 34.* The
+   preview draws the engine's stem (0.13 staff spaces, LilyPond's length)
+   with its edge on the anchor, as LilyPond does, and engine round trips in
+   `cnb/tests/cnb-card-tests.js` pin the stem's edge, thickness and both ends
+   against the engraving.
 
 ---
 
@@ -1876,9 +1885,7 @@ Complete default config for development and testing.
   staff: {
     semitonePattern: [4, 8],
     midpoint: 12,
-    semitonesPerStaffSpace: 4,
-    lineDefaults: { thicknessPct: 20, style: "solid", color: "#000000" },
-    lineOverrides: {}
+    semitonesPerStaffSpace: 4
   },
 
   ledgers: {
@@ -1887,9 +1894,7 @@ Complete default config for development and testing.
       { semiWithinOctave: 2,  triggerPCs: [2],        triggerMode: "override" },
       { semiWithinOctave: 10, triggerPCs: [10],       triggerMode: "override" }
     ],
-    proximityRule: true,
-    lineDefaults: { thicknessPct: 40, widthMultiplier: 2.0, style: "solid", color: "#000000", roundedEnds: true },
-    lineOverrides: {}
+    proximityRule: true
   },
 
   noteheadRules: [
@@ -1917,8 +1922,6 @@ Complete default config for development and testing.
 
   display: {
     pxPerSemi: 16,
-    stemThicknessPct: 26,
-    stemExtension: 2.5,
     label: {
       fontFamily: "Oswald",
       fontSize: 22,
@@ -1941,8 +1944,7 @@ Complete default config for development and testing.
       { name: "semibreve", displayName: "Semibreve (Whole)",        lilypondDuration: 1, defaultShape: "semibreve",      defaultHollow: false, hasStem: false },
       { name: "breve",     displayName: "Breve (Double Whole)",     lilypondDuration: 0, defaultShape: "breve",          defaultHollow: false, hasStem: false }
     ],
-    representationMode: "shape",
-    repeatCounts: { minim: 2, semibreve: 4, breve: 8 }
+    representationMode: "shape"
   },
 
   keys: {
@@ -1954,7 +1956,6 @@ Complete default config for development and testing.
       style: "notehead-chords",
       placement: { rule: "scale-from-tonic", tonicOctave: null },
       separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
-      gutter: { paddingH: 12 },
     },
   },
 
@@ -1967,7 +1968,6 @@ Complete default config for development and testing.
     defaultMagnify: "7/4",
     indent: 0,
     collisionThreshold: 2,
-    stemThickness: null,
     useAccessibleColors: false
   },
 

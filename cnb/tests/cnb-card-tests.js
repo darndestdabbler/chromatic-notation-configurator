@@ -92,12 +92,21 @@ export const tests = [
 
   // ── columnWidth ────────────────────────────────────────────────────────────
 
-  { name: "columnWidth = notehead width × widthMultiplier + 2 × paddingH", fn: () => {
+  { name: "columnWidth = the engine's ledger (1.5 notehead widths) + 2 × paddingH", fn: () => {
       const { config, grid, shape } = fixture();
       const { pixelWidth } = CNBNotehead.measure(shape, grid.pxPerSemi);
-      const expected = pixelWidth * config.ledgers.lineDefaults.widthMultiplier
-        + 2 * config.display.column.paddingH;
+      const expected = pixelWidth * 1.5 + 2 * config.display.column.paddingH;
       approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "crotchet" }), expected, "column width");
+    }},
+
+  { name: "headCenterX: the column's middle, moved by half a pitch-axis offset (session 34)", fn: () => {
+      const { config, grid } = fixture();
+      approx(CNBCard.headCenterX(config, grid, { pc: 0, duration: "crotchet" }),
+        CNBCard.columnWidth(config, grid, { pc: 0, duration: "crotchet" }) / 2, "linear: the middle");
+      const axis = axisFixture();
+      const offsetPx = 0.85 * 2 * axis.grid.pxPerSemi;      // OFFSET_RULE on C♯: 0.85 staff spaces of 2 axis units
+      approx(CNBCard.headCenterX(axis.config, axis.grid, { pc: 1, duration: "crotchet" }),
+        CNBCard.columnWidth(axis.config, axis.grid, { pc: 1, duration: "crotchet" }) / 2 + offsetPx / 2, "axis: half the offset");
     }},
 
   // ── render: structure ──────────────────────────────────────────────────────
@@ -266,7 +275,7 @@ export const tests = [
         const centerX = colWidth / 2;
         const { scaleFactor } = CNBNotehead.measure(shape, grid.pxPerSemi);
         const geo = CNBStem.geometry(config, {
-          shape, scaleFactor, centerX,
+          gridContext: grid, shape, scaleFactor, centerX,
           noteYPositions: [grid.semiToY(0), grid.semiToY(12)],
           direction: "up", duration: "crotchet",
         });
@@ -458,9 +467,9 @@ export const tests = [
         approx(stemEdge(stem, "up"),
           centerX + shape.anchors.minimUp.x * scaleFactor * (layout.groupWidth / w), "stem at the anchor's relative position across the group");
         const ledger = ledgerG.children[0];
-        approx(Number(ledger.getAttribute("width")), w * 2.0 + layout.groupWidth - w, "ledger widened by the group");
+        approx(Number(ledger.getAttribute("width")), 1.5 * layout.groupWidth, "ledger: 1.5 × the group, as LilyPond draws it");
         approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "minim" }),
-          CNBCard.columnWidth(fixture().config, grid, { pc: 0, duration: "minim" }) + layout.groupWidth - w, "column widened by the group");
+          CNBCard.columnWidth(fixture().config, grid, { pc: 0, duration: "minim" }) + 1.5 * (layout.groupWidth - w), "column widened by the group's ledger");
       });
       withDomStub(container => {
         const { noteheads, stem } = dissect(CNBCard.render(container, grid, config, { pc: 0, duration: "semibreve" }));
@@ -519,8 +528,8 @@ export const tests = [
   // not its centre, on the attachment point (an up stem's right edge, a down
   // stem's left), and so does the preview (session 33), so the anchored edges
   // agree; the export writes the attachment in LilyPond's stem-attachment
-  // units, relative to the notehead's extent (session 33). The stems' widths
-  // differ (display.stemThicknessPct is preview-only), so centres would not.
+  // units, relative to the notehead's extent (session 33). Since session 34
+  // the stems' widths agree as well (the next test).
   { name: "repeat mode (engine): the engraved stem's anchored edge matches the preview's, crotchet and minim, up and down", fn: async () => {
       const { config, grid } = repeatFixture();
       const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
@@ -553,6 +562,52 @@ export const tests = [
       });
     }},
 
+  // Engine-backed (session 34): the preview draws the engine's stem. For every
+  // card's octave chord, crotchet and minim, on the default and Kite 4-369
+  // fixtures, the engraved stem's direction, thickness and both ends, in
+  // staff spaces from the middle line, match the rendered card's. The cards
+  // cover stems up and down, shortened (far head on the middle line or past
+  // it) and full length. Skips with the reason logged without LilyPond or
+  // the engine.
+  { name: "stem (engine): every card's stem engraves at the preview's direction, thickness and ends, default and Kite, crotchet and minim", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const names = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
+      const kite = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).config;
+      const failures = [];
+      for (const [label, config] of [["default", CNBConfig.createDefault()], ["Kite 4-369", kite]]) {
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
+        const middleY = grid.semiToY(config.staff.midpoint);
+        const ly = CNBLilypond.generate(config);
+        for (const [duration, token] of [["crotchet", "4"], ["minim", "2"]]) {
+          // Card pc p draws semitones p and p + 12, the engine's p' and p''.
+          const previews = names.map((_, pc) => withDomStub(container => {
+            const { stem } = dissect(CNBCard.render(container, grid, config, { pc, duration }));
+            const [y1, y2] = ["y1", "y2"].map(k => (middleY - Number(stem.getAttribute(k))) / staffSpacePx);
+            return { direction: y2 > y1 ? 1 : -1, width: Number(stem.getAttribute("stroke-width")) / staffSpacePx,
+              bottom: Math.min(y1, y2), top: Math.max(y1, y2) };
+          }));
+          const { stems, error } = await measureStems(engine, ly, names.map(n => `<${n}' ${n}''>${token}`).join(" "));
+          if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
+          if (stems.length !== names.length) { failures.push(`${label} ${duration}: ${stems.length} stems engraved`); continue; }
+          previews.forEach((want, pc) => {
+            const got = stems[pc];
+            if (got.direction !== want.direction) {
+              failures.push(`${label} ${duration} pc ${pc}: engraved direction ${got.direction}, preview ${want.direction}`);
+              return;
+            }
+            for (const k of ["width", "bottom", "top"]) {
+              if (!(Math.abs(got[k] - want[k]) <= 1e-3)) {
+                failures.push(`${label} ${duration} pc ${pc} ${k}: engraved ${got[k]} staff spaces, preview ${want[k]} (±0.001)`);
+              }
+            }
+          });
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
   // ── session 22: resolved notehead size ─────────────────────────────────────
 
   { name: "size: columnWidth, ledger width, stem anchor and noteheads follow the resolved size", fn: () => {
@@ -564,15 +619,15 @@ export const tests = [
       const m = CNBNotehead.measure(shape, grid.pxPerSemi, { heightSemis: 4, widthSemis: 6 });
       approx(m.pixelWidth, 6 * 16, "sized width 6 semitones");
       const colWidth = CNBCard.columnWidth(config, grid, { pc: 0, duration: "crotchet" });
-      approx(colWidth, 6 * 16 * 2.0 + 2 * 16, "column width from the sized notehead");
+      approx(colWidth, 6 * 16 * 1.5 + 2 * 16, "column width from the sized notehead");
       withDomStub(container => {
         const col = CNBCard.render(container, grid, config, { pc: 0, duration: "crotchet" });
         const { ledgerG, stem, noteheads } = dissect(col);
         assert(ledgerG.children.length > 0, "C draws its ledger");
-        approx(Number(ledgerG.children[0].getAttribute("width")), 6 * 16 * 2.0, "ledger width from the sized notehead");
+        approx(Number(ledgerG.children[0].getAttribute("width")), 6 * 16 * 1.5, "ledger width from the sized notehead");
         approx(stemEdge(stem, "up"), colWidth / 2 + shape.anchors.crotchetUp.x * m.scaleX, "stem anchor x follows scaleX");
         const geo = CNBStem.geometry(config, {
-          shape, scaleFactor: m.scaleFactor, scaleX: m.scaleX, centerX: colWidth / 2,
+          gridContext: grid, shape, scaleFactor: m.scaleFactor, scaleX: m.scaleX, centerX: colWidth / 2,
           noteYPositions: [grid.semiToY(0), grid.semiToY(12)], direction: "up", duration: "crotchet",
         });
         eq(stem.getAttribute("y1"), String(geo.y1), "stem anchor y follows scaleY");

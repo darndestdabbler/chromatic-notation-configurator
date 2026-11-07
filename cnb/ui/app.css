@@ -342,27 +342,26 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Check-box rows. */
-.cnb-pal-cb-toggle, .cnb-sre-proximity, .cnb-sre-rounded, .cnb-sre-override-toggle,
+.cnb-pal-cb-toggle, .cnb-sre-proximity,
 .cnb-cle-enable, .cnb-kse-keys-enable, .cnb-kse-sig-enable, .cnb-kse-octave-auto, .cnb-kse-sep-enable,
-.cnb-pae-enable, .cnb-nre-apply-toggle, .cnb-nre-size-lock-label, .cnb-cpe-stem-control {
+.cnb-pae-enable, .cnb-nre-apply-toggle, .cnb-nre-size-lock-label {
   display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
 }
 .cnb-cle-enable, .cnb-kse-keys-enable, .cnb-pae-enable { margin-bottom: var(--space-4); }
 .cnb-sre-proximity { margin: var(--space-3) 0; }
 
 /* Field rows. */
-.cnb-sre-fields, .cnb-cle-fields, .cnb-kse-fields, .cnb-pae-field, .cnb-pae-position,
-.cnb-cpe-engine-row, .cnb-cpe-repeat-row, .cnb-nre-apply-row, .cnb-nre-match-row, .cnb-pae-preset {
+.cnb-cle-fields, .cnb-kse-fields, .cnb-pae-field, .cnb-pae-position,
+.cnb-cpe-engine-row, .cnb-nre-apply-row, .cnb-nre-match-row, .cnb-pae-preset {
   display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-1) 0;
 }
 .cnb-nre-match-row { align-items: baseline; }
 .cnb-pae-preset .cnb-pae-title, .cnb-pae-preset .cnb-pae-hint { flex-basis: 100%; }
 .cnb-kse-field-label, .cnb-nre-match-label { width: 96px; flex: none; font-size: 13px; color: var(--ink-2); }
 .cnb-cpe-engine-label { width: 170px; flex: none; }
-.cnb-cpe-repeat-label { width: 170px; flex: none; }
 .cnb-pae-label { width: 240px; flex: none; color: var(--ink-2); }
 .cnb-pae-pc-name { width: 32px; flex: none; color: var(--ink-2); }
-.cnb-kse-field-unit, .cnb-cpe-repeat-base, .cnb-cle-anchor-name, .cnb-kse-def-tonic-hint,
+.cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-kse-def-tonic-hint,
 .cnb-cle-glyph-detail, .cnb-kse-style-detail, .cnb-pal-custom-names, .cnb-pal-cb-match-de {
   font-size: 12px; color: var(--ink-2);
 }
@@ -378,10 +377,10 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Numeric and short text fields keep a compact width. */
-.cnb-sre-thickness, .cnb-sre-width-multiplier, .cnb-cle-anchor-input, .cnb-cle-gutter-input,
-.cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-gutter-input,
+.cnb-cle-anchor-input, .cnb-cle-gutter-input,
+.cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent,
 .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
-.cnb-nre-size-height, .cnb-nre-size-width, .cnb-cpe-repeat-count, .cnb-cpe-engine-row input {
+.cnb-nre-size-height, .cnb-nre-size-width, .cnb-cpe-engine-row input {
   width: 84px;
 }
 .cnb-kse-def-name { width: 120px; }
@@ -453,11 +452,10 @@ summary:focus-visible, [tabindex]:focus-visible {
   border: 1px solid var(--line); border-radius: var(--radius-s);
   padding: var(--space-2) var(--space-3); margin-bottom: var(--space-4); line-height: 1.6;
 }
-.cnb-sre-override-row, .cnb-sre-template-row, .cnb-kse-def-row {
+.cnb-sre-template-row, .cnb-kse-def-row {
   display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
   padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s); margin-bottom: var(--space-1);
 }
-.cnb-sre-override-row.overridden { border-color: var(--accent); background: var(--accent-soft); }
 /* Pattern options: a title and a one-line description, three across. */
 .cnb-sre-pattern-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
 .cnb-sre-pattern-options .cnb-sre-pattern-option { flex-direction: column; align-items: flex-start; gap: 2px; margin: 0; }
@@ -465,18 +463,12 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-sre-pattern-option.selected .cnb-sre-pattern-title { color: var(--accent); }
 .cnb-sre-pattern-desc { font-size: 12px; color: var(--ink-2); }
 .cnb-sre-pattern .cnb-sre-custom-pcs { margin: 0; }
-/* Labelled fields: the label (and badge) over the control and its unit. */
-.cnb-sre-fields { gap: var(--space-5); align-items: flex-end; }
-.cnb-sre-field { display: inline-flex; flex-direction: column; gap: var(--space-1); }
-.cnb-sre-field-label { font-size: 13px; color: var(--ink-2); }
-.cnb-sre-field-control { display: inline-flex; align-items: center; gap: var(--space-2); }
-.cnb-sre-unit, .cnb-cle-unit { font-size: 12px; color: var(--ink-2); }
+.cnb-cle-unit { font-size: 12px; color: var(--ink-2); }
 /* Ledger lines: Automatic / My own rules, then the rule rows in words. */
 .cnb-sre-ledger-mode .segmented { margin-bottom: var(--space-2); }
 .cnb-sre-template-at, .cnb-sre-template-show { font-size: 13px; color: var(--ink-2); }
 .cnb-sre-template-pos { width: 72px; }
 .cnb-sre-template-row .cnb-sre-template-remove { margin-left: auto; }
-.cnb-sre-override-name { font-size: 13px; }
 
 /* Notehead rule editor (Module 14). */
 .cnb-nre-rule-card {
@@ -510,7 +502,6 @@ summary:focus-visible, [tabindex]:focus-visible {
   font-size: 13px; color: var(--ink-2); padding: var(--space-2); margin-bottom: var(--space-1);
   border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface-2);
 }
-.cnb-cpe-repeats.inactive { opacity: .55; }
 .cnb-cpe-engine-row { min-height: 32px; }
 
 /* Key signature editor (set 010). */

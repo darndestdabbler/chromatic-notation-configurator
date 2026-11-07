@@ -192,31 +192,22 @@ check('MODE "shape" selected; help text names (repeat . #f)',
   await page.evaluate(() =>
     document.querySelector('.cnb-cpe-mode-option[data-mode="shape"]').classList.contains("selected") &&
     document.querySelector(".cnb-cpe-mode-help").textContent.includes("(repeat . #f)")));
-check("REPEATS section marked inactive in shape mode, but rows stay visible and editable",
-  await page.evaluate(() => {
-    const section = document.querySelector(".cnb-cpe-repeats");
-    const inputs = [...section.querySelectorAll(".cnb-cpe-repeat-count")];
-    return section.classList.contains("inactive") && inputs.length === 3 &&
-      inputs.every(i => !i.disabled && i.offsetHeight > 0) &&
-      getComputedStyle(section).visibility !== "hidden" &&
-      getComputedStyle(section).display !== "none";
-  }));
-check("ENGINE block has 8 rows; false-hollow badge reads default-omitted; stem is engine auto with no number input",
+check("NO REPEAT COUNTS section: the preview and the engine draw fixed counts (session 34)",
+  await page.evaluate(() => !document.querySelector(".cnb-cpe-repeats, .cnb-cpe-repeat-count")));
+check("ENGINE block has 7 rows; false-hollow badge reads default-omitted; no stem thickness row (the preview draws the engine's stem)",
   await page.evaluate(() =>
-    document.querySelectorAll(".cnb-cpe-engine-row").length === 8 &&
+    document.querySelectorAll(".cnb-cpe-engine-row").length === 7 &&
     document.querySelector(".cnb-cpe-row-false-hollow .cnb-cpe-badge").textContent ===
       "engine default — omitted at export" &&
-    document.querySelector(".cnb-cpe-stem-auto").checked === true &&
-    document.querySelector(".cnb-cpe-stem-thickness") === null));
+    document.querySelector(".cnb-cpe-row-stem") === null));
 check("PREVIEW shows 4 captioned duration rows (Module 10, shape mode)",
   (await rowCount()) === 4 && (await captionCount()) === 4 &&
   await page.evaluate(() =>
     document.querySelector("#preview-host .cnb-duration-caption").textContent === "Crotchet (Quarter)"));
 let j = await readJson();
-check("JSON PANEL: shape mode, default counts, default engine",
-  j.durations.representationMode === "shape" &&
-  JSON.stringify(j.durations.repeatCounts) === '{"minim":2,"semibreve":4,"breve":8}' &&
-  j.engine.falseHollow === false && j.engine.stemThickness === null);
+check("JSON PANEL: shape mode, no repeat counts, default engine",
+  j.durations.representationMode === "shape" && !("repeatCounts" in j.durations) &&
+  j.engine.falseHollow === false && !("stemThickness" in j.engine));
 check("SECTION B omits all emit-if-changed engine settings at defaults",
   await sectionB().then(b =>
     !b.includes("cnb:false-hollow") && !b.includes("cnb:default-magnify") &&
@@ -244,16 +235,8 @@ check("TOGGLE REPEAT: legend lists the engine's counts — minim 2, semibreve 4,
 j = await readJson();
 check('TOGGLE REPEAT: JSON representationMode "repeat"; Section C repeat field flips to #t',
   j.durations.representationMode === "repeat" && (await repeatField()).includes("(repeat . #t)"));
-check("TOGGLE REPEAT: repeats section no longer marked inactive",
-  await page.evaluate(() => !document.querySelector(".cnb-cpe-repeats").classList.contains("inactive")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-repeat-mode.png"), fullPage: true });
 
-// ── Edit a repeat count ──────────────────────────────────────────────────────
-await setTextInput('.cnb-cpe-repeat-count[data-duration="minim"]', "3");
-j = await readJson();
-check("EDIT MINIM COUNT to 3: JSON follows; legend and preview keep the engine's count (repeatCounts is unused)",
-  j.durations.repeatCounts.minim === 3 &&
-  (await legendTexts())[0] === "Minim (Half): 2 heads" && (await headsInFirstCard(1)) === 4);
 
 // ── Engine settings ──────────────────────────────────────────────────────────
 await page.click(".cnb-cpe-false-hollow");
@@ -269,34 +252,17 @@ check('MAGNIFY "3/2": JSON follows; Section B emits #(set! cnb:default-magnify 3
   j.engine.defaultMagnify === "3/2" &&
   (await sectionB()).includes("#(set! cnb:default-magnify 3/2)"));
 
-await page.click(".cnb-cpe-stem-auto");
-check("STEM AUTO off: number input appears seeded with 2; Section B still omits cnb:stem-thickness (preview-only, M1)",
-  await page.evaluate(() => {
-    const inp = document.querySelector(".cnb-cpe-stem-thickness");
-    return inp !== null && inp.value === "2" && inp.offsetHeight > 0;
-  }) && !(await sectionB()).includes("cnb:stem-thickness"));
-await setTextInput(".cnb-cpe-stem-thickness", "1.5");
-j = await readJson();
-check("STEM 1.5: JSON follows; Section B omits it; badge says preview-only",
-  j.engine.stemThickness === 1.5 && !(await sectionB()).includes("cnb:stem-thickness") &&
-  (await badgeText("cnb-cpe-row-stem")).startsWith("preview-only"));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-engine.png"), fullPage: true });
-
-await page.click(".cnb-cpe-stem-auto");
-j = await readJson();
-check("STEM AUTO back on: input removed from DOM; JSON null; Section B omits cnb:stem-thickness",
-  await page.evaluate(() => document.querySelector(".cnb-cpe-stem-thickness") === null) &&
-  j.engine.stemThickness === null && !(await sectionB()).includes("cnb:stem-thickness"));
 
 // ── Back to shape mode ───────────────────────────────────────────────────────
 await page.click('.cnb-cpe-mode-option[data-mode="shape"]');
 j = await readJson();
-check("BACK TO SHAPE: 4 preview rows restored, legend gone, repeat field #f, edited minim count kept",
+check("BACK TO SHAPE: 4 preview rows restored, legend gone, repeat field #f",
   (await rowCount()) === 4 &&
   await page.evaluate(() =>
     document.querySelectorAll("#preview-host .cnb-cpe-repeat-item").length === 0) &&
   (await repeatField()).includes("(repeat . #f)") &&
-  j.durations.repeatCounts.minim === 3);
+  j.durations.representationMode === "shape");
 check("BACK TO SHAPE: validation still Config valid",
   await page.evaluate(() => !!document.querySelector(".cnb-cpe-valid")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-back-to-shape.png"), fullPage: true });

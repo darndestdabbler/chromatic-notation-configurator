@@ -159,8 +159,6 @@ const readJson = async () => JSON.parse(await page.textContent("#config-json"));
 const derivedText = async () => (await page.textContent(".cnb-sre-derived")) || "";
 const staffLineCount = async () => page.evaluate(() =>
   document.querySelector("#preview-host .cnb-staff").children.length);
-const staffLineAttr = async (i, attr) => page.evaluate(([i, attr]) =>
-  document.querySelector("#preview-host .cnb-staff").children[i].getAttribute(attr), [i, attr]);
 const ledgerCount = async (col) => page.evaluate((col) =>
   document.querySelectorAll("#preview-host .cnb-ledger-set")[col].children.length, col);
 const markerCount = async () => page.evaluate(() =>
@@ -199,26 +197,11 @@ check("CLICK 3-6-9: derived staff spacing 3 semitones per staff space",
 check("CLICK 3-6-9: preview staff lines now 6", (await staffLineCount()) === 6, String(await staffLineCount()));
 j = await readJson();
 check("CLICK 3-6-9: JSON semitonePattern [3,6,9]", JSON.stringify(j.staff.semitonePattern) === "[3,6,9]");
-check("CLICK 3-6-9: override rows follow pattern (3 rows)",
-  await page.evaluate(() => document.querySelectorAll(".cnb-sre-override-row").length === 3));
-
-// ── Add a line override ─────────────────────────────────────────────────────
-await page.click('.cnb-sre-override-row[data-line-pc="3"] .cnb-sre-override-check');
-j = await readJson();
-check("ENABLE OVERRIDE semi 3: seeded from defaults (thicknessPct 20)",
-  j.staff.lineOverrides["3"] && j.staff.lineOverrides["3"].thicknessPct === 20);
-await page.evaluate(() => {
-  const inp = document.querySelector('.cnb-sre-override-row[data-line-pc="3"] .cnb-sre-color');
-  inp.value = "#cc0000";
-  inp.dispatchEvent(new Event("input", { bubbles: true }));
-});
-j = await readJson();
-check('SET OVERRIDE COLOR: JSON lineOverrides["3"].color = #cc0000', j.staff.lineOverrides["3"].color === "#cc0000");
-check("PREVIEW: semi-3 lines (abs 3 and 15) stroke #cc0000, others still black",
-  (await staffLineAttr(0, "stroke")) === "#cc0000" &&
-  (await staffLineAttr(3, "stroke")) === "#cc0000" &&
-  (await staffLineAttr(1, "stroke")) === "#000000");
-await page.screenshot({ path: path.join(SHOT_DIR, "uat-s1-override.png"), fullPage: true });
+check("CLICK 3-6-9: no line style controls; every preview staff line is black and solid, as the engine draws it (session 34)",
+  await page.evaluate(() =>
+    !document.querySelector(".cnb-sre-override-row, .cnb-sre-thickness, .cnb-sre-color, .cnb-sre-width-multiplier") &&
+    [...document.querySelector("#preview-host .cnb-staff").children].every(l =>
+      l.getAttribute("stroke") === "#000000" && !l.getAttribute("stroke-dasharray"))));
 
 // ── Add a ledger template ───────────────────────────────────────────────────
 check("BEFORE TEMPLATE: column F (semi 5) has 0 ledgers", (await ledgerCount(5)) === 0);

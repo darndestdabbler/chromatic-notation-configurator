@@ -133,10 +133,6 @@
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
               </details>
-              <details class="disclosure" id="staff-line-overrides">
-                <summary>Staff line overrides<span class="sub">one staff line with a look of its own</span></summary>
-                <div class="disclosure-body"><div id="staff-overrides-host"></div></div>
-              </details>
               <details class="disclosure" id="pitch-axis-map">
                 <summary>Pitch axis map</summary>
                 <div class="disclosure-body"><div id="pitch-axis-editor-host"></div></div>
@@ -676,17 +672,16 @@
     }
 
     /** The staff editor is mounted once per section (session 26): its staff
-     *  part in Staff, its ledgers part in Ledger lines and its line
-     *  overrides in Advanced. Every mount emits both whole slices from its
-     *  own state, so an edit in one re-seeds the other two (not the one
-     *  being edited, which would lose its focus). The staff part shows the
-     *  export's staff spacing, which depends on the pitch axis, so all
-     *  three re-seed after every axis change (audit 2026-11-02, L1). Edits
-     *  commit to appConfig immediately, so re-mounting loses nothing. */
+     *  part in Staff and its ledgers part in Ledger lines. Every mount emits
+     *  both whole slices from its own state, so an edit in one re-seeds the
+     *  other (not the one being edited, which would lose its focus). The
+     *  staff part shows the export's staff spacing, which depends on the
+     *  pitch axis, so both re-seed after every axis change (audit
+     *  2026-11-02, L1). Edits commit to appConfig immediately, so
+     *  re-mounting loses nothing. */
     const STAFF_MOUNTS = [
       ["staff", "staff-editor-host"],
       ["ledgers", "ledger-editor-host"],
-      ["overrides", "staff-overrides-host"],
     ];
     function mountStaffEditor(except = null) {
       for (const [part, id] of STAFF_MOUNTS) {

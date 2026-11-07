@@ -302,31 +302,40 @@ Two engine behaviours apply only when `pitchAxis` is enabled
 
 ### Preview-only settings
 
-Some settings change the preview, but the engine does not engrave them, so the
-LilyPond export leaves them out. Each control says so, and the export header
-lists them:
+One setting changes the preview but not the export, and the export header
+says so:
 
-- **Staff line colour and thickness.** The engine draws staff lines in its
-  own style.
-- **Ledger rules.** This covers ledger templates, the proximity rule and
-  ledger styling. The engine places its own ledger lines from the staff
-  spacing.
-- **Stem thickness.** The engine has no setting for it.
-- **Repeat counts.** In repeat mode the preview draws what the engine
-  engraves: minim ×2, semibreve ×4 and breve ×4, each head edge to edge with
-  the multinote padding (`engine.multinotePadding`, in staff spaces) between
-  them. These counts are fixed, so the `durations.repeatCounts` field is used
-  by neither the preview nor the export.
 - **The CB-safe toggle.** The export carries both palettes. A score selects
   the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
   before `\include`.
-- **Notehead rules scoped to a key.** Validation warns and names each one.
-- **The key signature's spacing.** The engine spaces the signature in its
-  own way.
 
-The clef and the rest of the key signature are not on this list: they
-export (LY export spec 1.3.7 §5.5, §5.6). A config with no clef shown
-engraves none, rather than the engine's dozenal clef. A glyph clef is
+Everything else the preview shows is exported, or drawn as the engine
+engraves it (session 34, LY export spec 1.3.9):
+
+- **Ledger rules export.** Every notehead the preview draws engraves the
+  ledgers the preview draws for it, in-gap ledgers included (§5.7).
+- **Notehead rules scoped to a key export.** The engraving applies them in
+  the key the score is in (§6.4). Two keys with the same notes, such as C
+  major and A minor, cannot be told apart, and validation says so when the
+  rules draw them differently.
+- **Stems, staff lines and ledgers are the engine's.** The preview draws
+  them at LilyPond's sizes: stems 0.13 staff spaces thick and LilyPond's
+  length, staff lines 0.1, ledgers 0.2 with rounded ends and 1.5 notehead
+  widths long, all black and solid. They have no settings.
+- **The key signature's spacing is the engine's**, and has no setting.
+- **Repeat counts are fixed.** In repeat mode the preview draws what the
+  engine engraves: minim ×2, semibreve ×4 and breve ×4, each head edge to
+  edge with the multinote padding (`engine.multinotePadding`, in staff
+  spaces) between them.
+
+Configs saved before session 34 still load. Their retired settings (line
+thickness, colour and style, line overrides, ledger width and ends, stem
+thickness and extension, the signature's gutter, repeat counts) are
+ignored.
+
+The clef and the rest of the key signature export (LY export spec 1.3.7
+§5.5, §5.6). A config with no clef shown engraves none, rather than the
+engine's dozenal clef. A glyph clef is
 registered and engraves with its top edge where the preview draws it, and a
 text clef engraves in its font, colour and size, but at the engine's own
 height rather than at its anchor. A key signature that is off engraves

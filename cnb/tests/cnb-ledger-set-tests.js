@@ -76,16 +76,17 @@ export const tests = [
       assert(def0.triggerMode === "override", "triggerMode");
     }},
 
-  { name: "buildDefs attaches lineOverrides by semiWithinOctave to every octave instance", fn: () => {
+  { name: "buildDefs carries no line styling (retired in session 34), even when the config still has lineOverrides", fn: () => {
       const cfg = config48();
       cfg.ledgers.lineOverrides = { "0": { color: "#ff0000" } };
-      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 24 });
-      for (const semi of [0, 12, 24]) {
-        const d = defs.find(x => x.semi === semi);
-        assert(d.overrides.color === "#ff0000", `override attached at ${semi}`);
+      for (const d of CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 24 })) {
+        eqArr(Object.keys(d), ["semi", "triggerPCs", "triggerMode"], `def at ${d.semi}`);
       }
-      const d2 = defs.find(x => x.semi === 2);
-      eqArr(Object.keys(d2.overrides), [], "no override at semi 2");
+    }},
+
+  { name: "width: LilyPond's ledger is 1.5 notehead widths (a quarter of the width added on each side)", fn: () => {
+      assert(CNBLedgerSet.width(40) === 60, "40 → 60");
+      assert(CNBLedgerSet.width(0) === 0, "0 → 0");
     }},
 
   { name: "buildDefs drops proximity templates when proximityRule is false", fn: () => {
@@ -241,6 +242,22 @@ export const tests = [
       eqArr(CNBLedgerSet.resolve([], defs48(), STAFF_48), []);
     }},
 
+  { name: "ledgersFor: the ledgers render draws on a grid of that range (4-8: C, D, the in-gap C'', none for B)", fn: () => {
+      const cfg = config48();
+      const range = { minSemi: -4, maxSemi: 28 };
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [0], range), [0], "C");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [2], range), [0, 2], "D");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [11], range), [], "B");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [12], range), [12], "C'' in the staff's gap");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [0, 12], range), [0, 12], "the octave pair");
+      withSvgStub(svg => {
+        const grid = CNBGrid.create(cfg, range);
+        const g = CNBLedgerSet.render(svg, grid, cfg, [2], { centerX: 50 });
+        eqArr(g.children.map(r => Number(r.getAttribute("y")) + Number(r.getAttribute("height")) / 2),
+          [0, 2].map(s => grid.semiToY(s)), "render draws them");
+      });
+    }},
+
   // ── render (via DOM stub) ──────────────────────────────────────────────────
 
   { name: "render: appends a group with one rect per resolved ledger", fn: () => {
@@ -252,35 +269,41 @@ export const tests = [
         assert(g.getAttribute("class") === "cnb-ledger-set", "group class");
         assert(g.children.length === 2, "D shows ledgers at 0 and 2");
         for (const child of g.children) {
-          assert(child.tag === "rect", "roundedEnds default renders rects");
+          assert(child.tag === "rect", "every ledger is a rounded rect");
         }
       });
     }},
 
-  { name: "render: rects centered on semiToY with pct-derived thickness and centerX", fn: () => {
+  { name: "render: rects centered on semiToY and centerX, 0.2 staff spaces thick with fully rounded ends", fn: () => {
       withSvgStub(svg => {
         const cfg = config48();
         const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
         const g = CNBLedgerSet.render(svg, grid, cfg, [0], { centerX: 50, width: 40 });
         assert(g.children.length === 1, "C shows one ledger");
         const rect = g.children[0];
-        const thickness = CNBConfig.pctToPx(cfg.ledgers.lineDefaults.thicknessPct, grid.pxPerSemi);
-        assert(parseFloat(rect.getAttribute("height")) === thickness, "thickness from pct");
+        const thickness = 0.2 * 4 * 16;                // the engine's 0.2 staff spaces
+        assert(parseFloat(rect.getAttribute("height")) === thickness, "thickness 0.2 staff spaces");
+        assert(parseFloat(rect.getAttribute("rx")) === thickness / 2, "rounded ends");
         assert(parseFloat(rect.getAttribute("y")) === grid.semiToY(0) - thickness / 2, "vertically centered on semi 0");
         assert(parseFloat(rect.getAttribute("x")) === 50 - 40 / 2, "horizontally centered on centerX");
         assert(parseFloat(rect.getAttribute("width")) === 40, "explicit width honored");
       });
     }},
 
-  { name: "render: lineOverrides restyle every octave instance of a template", fn: () => {
+  { name: "render: retired line settings are not read — every ledger is black, the default width 1.5 notehead widths", fn: () => {
       withSvgStub(svg => {
         const cfg = config48();
+        cfg.ledgers.lineDefaults = { thicknessPct: 90, widthMultiplier: 3, color: "#00ff00", roundedEnds: false };
         cfg.ledgers.lineOverrides = { "0": { color: "#ff0000" } };
         const grid = CNBGrid.create(cfg, { minSemi: -4, maxSemi: 28 });
         const g = CNBLedgerSet.render(svg, grid, cfg, [0, 12], { centerX: 50 });
         assert(g.children.length === 2, "ledgers at 0 and 12");
+        const shape = cfg.shapes["crotchet-minim"];
+        const headWidth = shape.naturalWidth * (shape.semitoneHeight * grid.pxPerSemi) / shape.naturalHeight;
         for (const rect of g.children) {
-          assert(rect.getAttribute("fill") === "#ff0000", "override color applied");
+          assert(rect.tag === "rect" && rect.getAttribute("fill") === "#000000", "black rect");
+          assert(parseFloat(rect.getAttribute("height")) === 0.2 * 64, "0.2 staff spaces");
+          assert(Math.abs(parseFloat(rect.getAttribute("width")) - 1.5 * headWidth) < 1e-9, "1.5 notehead widths");
         }
       });
     }},
@@ -367,20 +390,18 @@ export const tests = [
       eqArr(CNBLedgerSet.resolve([6], defs, staffSemis(cfg)), [6], "linear: semi 6 is not a staff line");
     }},
 
-  { name: "render (axis): one line per axis position, overrides merged, placed via semiToY", fn: () => {
+  { name: "render (axis): one line per axis position, 0.2 staff spaces of the axis thick, placed via semiToY", fn: () => {
       const cfg = twinline({ pattern: [2, 9], templates: [
         { semiWithinOctave: 0, triggerPCs: [0, 1], triggerMode: "override" },
         { semiWithinOctave: 1, triggerPCs: [1], triggerMode: "override" },
       ] });
-      cfg.ledgers.lineOverrides = { "0": { color: "#ff0000" }, "1": { thicknessPct: 50 } };
       const grid = CNBGrid.create(cfg, { minSemi: -2, maxSemi: 16 });
       withSvgStub(svg => {
         const g = CNBLedgerSet.render(svg, grid, cfg, [1, 13], { centerX: 50, width: 40 });
         eq(g.children.length, 2, "one ledger per octave's shared position");
         const [low] = g.children;
-        eq(low.getAttribute("fill"), "#ff0000", "color from the pc-0 def");
-        eq(low.getAttribute("height"), "8", "thickness from the pc-1 def");
-        eq(Number(low.getAttribute("y")) + 4, grid.semiToY(1), "centered on the shared y");
+        eq(low.getAttribute("height"), String(0.2 * 2 * 16), "0.2 × 2 axis units × 16 px");
+        eq(Number(low.getAttribute("y")) + 0.2 * 16, grid.semiToY(1), "centered on the shared y");
       });
     }},
 

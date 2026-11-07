@@ -17,27 +17,19 @@
  *     them here could dangle shape references that Module A's validate()
  *     does not check. The definitions ride through editor state and builds
  *     unchanged (deep-cloned).
- *   - `representationMode` ("shape" | "repeat") and `repeatCounts` are the
- *     editable duration settings. A repeat-count input is rendered for each
- *     definition that has an entry in `repeatCounts` (default: minim,
- *     semibreve, breve); definitions without an entry are the base notehead
- *     (×1). Counts must be integers ≥ 1. Neither the preview nor the export
- *     reads them (session 18): both draw the engine's fixed counts
- *     (CNBCard.repeatCount — minim ×2, semibreve ×4, breve ×4), and the
- *     section says so.
- *   - Emit at build follows the set-005 s1 retain-in-state/prune-at-emit
- *     rule: buildDurations() prunes repeatCounts entries whose key is not a
- *     current definition name (possible only in seeded configs — the
- *     definitions themselves are not editable here), while the editor state
- *     retains them.
+ *   - `representationMode` ("shape" | "repeat") is the editable duration
+ *     setting. There are no repeat counts: the preview and the export both
+ *     draw the engine's fixed counts (CNBCard.repeatCount — minim ×2,
+ *     semibreve ×4, breve ×4; session 18), so `durations.repeatCounts` left
+ *     the editor in session 34, and a config that carries it loses it when
+ *     the editor builds the durations slice.
  *   - All plan §4.10 engine fields are editable. `defaultMagnify` stays a
  *     STRING to preserve fractions (plan §4.10); accepted forms are an
  *     integer ("2"), a decimal ("1.75") or a fraction with a nonzero
- *     denominator ("7/4"). `stemThickness` is null (= engine auto, the
- *     checkbox) or a finite number > 0; the number input only exists in the
- *     DOM while auto is off (state toggles DOM presence — nothing is hidden
- *     with CSS). It is preview-only: the exporter never emits it, because
- *     the engine defines no cnb:stem-thickness (audit 2026-11-02, M1).
+ *     denominator ("7/4"). There is no stem thickness: the preview draws
+ *     the engine's stem (session 34), so `engine.stemThickness` is not
+ *     edited, and a config that carries it loses it when the editor builds
+ *     the engine slice.
  *
  * Exporter effect of `representationMode` (LY spec §6.1, wired in Module 11
  * `CNBLilypond.sectionC`): "repeat" → every Section C clause carries
@@ -56,21 +48,18 @@
  * precedent), while the pure build functions THROW on invalid state —
  * programmatic misuse is a caller bug, not something to silently repair:
  *   - buildDurations(): throws on a representationMode outside
- *     {"shape","repeat"}, on a non-array definitions list, and on any
- *     repeat count that is not an integer ≥ 1.
+ *     {"shape","repeat"} and on a non-array definitions list.
  *   - buildEngine(): throws on an empty/non-string lilypondVersion, a
  *     malformed defaultMagnify (see accepted forms above), non-finite
- *     multinotePadding / indent / collisionThreshold, and a stemThickness
- *     that is neither null nor a finite number > 0.
+ *     multinotePadding / indent / collisionThreshold.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
  *     definitions:        [...],                    // read-only passthrough
  *     representationMode: "shape" | "repeat",
- *     repeatCounts:       { [durationName]: count },
  *     engine:             { lilypondVersion, falseHollow, multinotePadding,
  *                           defaultMagnify, indent, collisionThreshold,
- *                           stemThickness, useAccessibleColors }
+ *                           useAccessibleColors }
  *   }
  *
  * Rendering contract (same as Modules 12–14): render() builds plain DOM via
@@ -106,7 +95,6 @@ const ENGINE_DEFAULTS = {
   defaultMagnify: "7/4",
   indent: 0,
   collisionThreshold: 2,
-  stemThickness: null,          // null = engine auto-computes
   useAccessibleColors: false,
 };
 
@@ -138,10 +126,6 @@ function isValidMagnify(str) {
   return !!frac && Number(frac[2]) !== 0;
 }
 
-function isValidRepeatCount(v) {
-  return Number.isInteger(v) && v >= 1;
-}
-
 export const CNBCommonPropsEditor = {
 
   ENGINE_DEFAULTS,
@@ -150,8 +134,6 @@ export const CNBCommonPropsEditor = {
   /**
    * Build a ready `config.durations` slice (plan §4.8) from editor state.
    * Pure function; throws on invalid state rather than guessing.
-   * repeatCounts entries whose key is not a current definition name are
-   * pruned from the emitted slice (retained in state — see module header).
    * @param {object} state
    * @returns {object} config.durations object
    */
@@ -163,18 +145,9 @@ export const CNBCommonPropsEditor = {
     if (mode !== "shape" && mode !== "repeat") {
       throw new Error(`Invalid representationMode ${JSON.stringify(mode)} — must be "shape" or "repeat"`);
     }
-    const defNames = new Set(state.definitions.map(d => d.name));
-    const repeatCounts = {};
-    for (const [name, count] of Object.entries(state.repeatCounts || {})) {
-      if (!isValidRepeatCount(count)) {
-        throw new Error(`Invalid repeat count ${JSON.stringify(count)} for "${name}" — must be an integer ≥ 1`);
-      }
-      if (defNames.has(name)) repeatCounts[name] = count;
-    }
     return {
       definitions: deepClone(state.definitions),
       representationMode: mode,
-      repeatCounts,
     };
   },
 
@@ -197,10 +170,6 @@ export const CNBCommonPropsEditor = {
         throw new Error(`Invalid ${field} ${JSON.stringify(e[field])} — must be a finite number`);
       }
     }
-    if (e.stemThickness !== null &&
-        (typeof e.stemThickness !== "number" || !Number.isFinite(e.stemThickness) || e.stemThickness <= 0)) {
-      throw new Error(`Invalid stemThickness ${JSON.stringify(e.stemThickness)} — must be null (engine auto) or a finite number > 0`);
-    }
     return {
       lilypondVersion: e.lilypondVersion,
       falseHollow: !!e.falseHollow,
@@ -208,7 +177,6 @@ export const CNBCommonPropsEditor = {
       defaultMagnify: e.defaultMagnify,
       indent: e.indent,
       collisionThreshold: e.collisionThreshold,
-      stemThickness: e.stemThickness,
       useAccessibleColors: !!e.useAccessibleColors,
     };
   },
@@ -241,7 +209,6 @@ export const CNBCommonPropsEditor = {
     return {
       definitions: deepClone(durations.definitions || []),
       representationMode: durations.representationMode === "repeat" ? "repeat" : "shape",
-      repeatCounts: deepClone(durations.repeatCounts || {}),
       engine: { ...deepClone(ENGINE_DEFAULTS), ...deepClone(engine) },
     };
   },
@@ -253,7 +220,6 @@ export const CNBCommonPropsEditor = {
    *   div.cnb-common-props-editor
    *   ├── div.cnb-cpe-durations   (read-only duration definition rows)
    *   ├── div.cnb-cpe-mode        (representationMode options + inline help)
-   *   ├── div.cnb-cpe-repeats     (repeatCounts inputs; "inactive" in shape mode)
    *   ├── div.cnb-cpe-engine      (plan §4.10 fields + emit-if-changed badges)
    *   └── div.cnb-cpe-validation  (CNBConfig.validate pass-through)
    *
@@ -276,10 +242,6 @@ export const CNBCommonPropsEditor = {
 
     const root = doc.createElement("div");
     root.className = "cnb-common-props-editor";
-
-    // UI-only memory for the stem-thickness auto toggle (not config state):
-    // toggling auto off restores the last concrete value seen this session.
-    let lastStemThickness = state.engine.stemThickness ?? 2;
 
     const el = (tag, className, text) => {
       const e = doc.createElement(tag);
@@ -347,60 +309,11 @@ export const CNBCommonPropsEditor = {
       return wrap;
     }
 
-    // ── Repeat counts ────────────────────────────────────────────────────
-    function drawRepeats() {
-      const inactive = state.representationMode !== "repeat";
-      const wrap = el("div", "cnb-cpe-section cnb-cpe-repeats" + (inactive ? " inactive" : ""));
-      wrap.appendChild(el("div", "cnb-cpe-title", "Repeat counts"));
-      wrap.appendChild(el("div", "cnb-cpe-hint", inactive
-        ? "Kept in the file but not used."
-        : "Longer durations draw repeated heads in the preview and the engraving."));
-      // Unused (session 18; audit 2026-11-02, L3): the preview and the export
-      // both follow the engine's fixed counts, so repeatCounts changes nothing.
-      wrap.appendChild(el("div", "cnb-cpe-preview-only",
-        "Not used: the preview and the engine both draw fixed counts " +
-        "(minim ×2, semibreve ×4, breve ×4, spaced by the multinote padding), " +
-        "so these counts change neither the preview nor the export."));
-      for (const def of state.definitions) {
-        const row = el("div", "cnb-cpe-repeat-row");
-        row.setAttribute("data-duration", def.name);
-        row.appendChild(el("span", "cnb-cpe-repeat-label", def.displayName));
-        if (def.name in state.repeatCounts) {
-          const input = el("input", "cnb-cpe-repeat-count");
-          input.type = "number";
-          input.min = "1";
-          input.step = "1";
-          input.value = String(state.repeatCounts[def.name]);
-          input.setAttribute("data-duration", def.name);
-          input.title = "Repeat count for " + def.displayName;
-          input.oninput = (e) => {
-            const v = numberFrom(e, input);
-            // Commit only integers ≥ 1; anything else leaves state unchanged
-            // (Module 13 numberFrom precedent — no silent repair).
-            if (v !== null && isValidRepeatCount(v)) {
-              state.repeatCounts[def.name] = v;
-              changed();
-            }
-          };
-          row.appendChild(input);
-        } else {
-          row.appendChild(el("span", "cnb-cpe-repeat-base", "base notehead (×1)"));
-        }
-        wrap.appendChild(row);
-      }
-      return wrap;
-    }
-
     // ── Engine settings ──────────────────────────────────────────────────
 
     /** Emit-if-changed badge text for a Section B engine field. */
     function emitBadge(field) {
       const same = JSON.stringify(state.engine[field]) === JSON.stringify(ENGINE_DEFAULTS[field]);
-      if (field === "stemThickness") {
-        // Never exported, set or not: the engine defines no
-        // cnb:stem-thickness (audit 2026-11-02, M1).
-        return "preview-only — not exported (the engine has no cnb:stem-thickness)";
-      }
       return same ? "engine default — omitted at export" : "non-default — will be emitted";
     }
 
@@ -485,30 +398,6 @@ export const CNBCommonPropsEditor = {
         }),
         emitBadge("collisionThreshold")));
 
-      // Stem thickness: checkbox = engine auto (null); the number input only
-      // exists in the DOM while auto is off. Turning auto off restores the
-      // last value this editor held (retain-in-state); with no prior value it
-      // seeds 2, an immediately visible, editable starting point. The value
-      // is never exported: the engine has no cnb:stem-thickness (M1), and
-      // the badge says so.
-      const stemControl = el("span", "cnb-cpe-stem-control");
-      const auto = boolInput("cnb-cpe-stem-auto", state.engine.stemThickness === null, (v) => {
-        state.engine.stemThickness = v ? null : lastStemThickness;
-        changed();
-      });
-      stemControl.appendChild(auto);
-      stemControl.appendChild(el("span", "cnb-cpe-stem-auto-label", "engine auto"));
-      if (state.engine.stemThickness !== null) {
-        const num = numInput("cnb-cpe-stem-thickness", state.engine.stemThickness, "0.1", (v) => {
-          // Commit only values > 0 (buildEngine's rule).
-          if (v > 0) { state.engine.stemThickness = v; lastStemThickness = v; changed(); }
-        });
-        num.min = "0.1";
-        stemControl.appendChild(num);
-      }
-      wrap.appendChild(engineRow("Stem thickness", "cnb-cpe-row-stem",
-        stemControl, emitBadge("stemThickness")));
-
       wrap.appendChild(engineRow("Use accessible colors", "cnb-cpe-row-accessible",
         boolInput("cnb-cpe-accessible", !!state.engine.useAccessibleColors, (v) => {
           state.engine.useAccessibleColors = v; changed();
@@ -544,7 +433,6 @@ export const CNBCommonPropsEditor = {
       root.textContent = "";   // clears children on real DOM and on the test stub
       root.appendChild(drawDurations());
       root.appendChild(drawMode());
-      root.appendChild(drawRepeats());
       root.appendChild(drawEngine());
       root.appendChild(drawValidation());
     }

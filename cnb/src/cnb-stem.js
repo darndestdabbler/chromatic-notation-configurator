@@ -2,12 +2,22 @@
  * cnb-stem.js — Module 8: Stem
  *
  * Computes stem direction/geometry using the 4-point anchor model and renders a
- * simple vertical line. Depends on config for display settings.
+ * simple vertical line at the engine's stem size: its thickness and length
+ * are LilyPond's, in staff spaces, so no config setting changes them
+ * (session 34).
  *
  * Public API mirrors the Architecture Plan §6.
  */
 
-import { CNBConfig } from "./cnb-config.js";
+import { CNBStaff } from "./cnb-staff.js";
+
+// LilyPond's stem, which the engine leaves at its defaults (session 34,
+// measured against the engine): 0.13 staff spaces thick (1.3 staff-line
+// thicknesses), 3.5 staff spaces long for a crotchet or a minim, and
+// shortened by up to 1 staff space (stem-shorten). Lengths in half spaces.
+const STEM_THICKNESS = 0.13;
+const STEM_LENGTH = 7;
+const STEM_SHORTEN = 2;
 
 export const CNBStem = {
   /**
@@ -33,8 +43,11 @@ export const CNBStem = {
    * Compute stem geometry. Returns null if the shape has no anchors or duration
    * is not crotchet/minim.
    *
-   * @param {object} config          Full CNB config (for display settings)
+   * @param {object} config          Full CNB config (staff geometry)
    * @param {object} opts
+   * @param {object} opts.gridContext  the grid the noteheads are drawn on
+   *        (CNBGrid.create): its pxPerSemi, semiToY and axis give the staff
+   *        space and the middle line
    * @param {object} opts.shape
    * @param {number} opts.scaleFactor
    * @param {number} opts.centerX
@@ -51,7 +64,7 @@ export const CNBStem = {
    *        x offset uses it, its y offset uses scaleFactor (= scaleY).
    * @returns {{x:number,y1:number,y2:number,thickness:number}|null}
    */
-  geometry(config, { shape, scaleFactor, scaleX = scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
+  geometry(config, { gridContext, shape, scaleFactor, scaleX = scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
     if (!shape.anchors) return null;
     // only crotchet/minim have stems
     if (duration !== "crotchet" && duration !== "minim") return null;
@@ -65,35 +78,49 @@ export const CNBStem = {
     const anchorXpx = anchor.x * scaleX * widthScale;
     const anchorYpx = anchor.y * scaleFactor;
 
-    const thickness = CNBConfig.pctToPx(
-      config.display.stemThicknessPct,
-      config.display.pxPerSemi
-    );
+    // The engine's stem (session 34), in staff spaces.
+    const pxPerHalfSpace = CNBStaff.staffSpacePx(config, gridContext) / 2;
+    const thickness = STEM_THICKNESS * 2 * pxPerHalfSpace;
 
     // The stem's edge, not its centre, sits on the anchor, as LilyPond
     // engraves it: an up stem's right edge, a down stem's left edge
     // (session 33, measured against the engine).
     const stemX = centerX + anchorXpx + (direction === "up" ? -thickness / 2 : thickness / 2);
 
-    const pxPerSemi = (config.display && config.display.pxPerSemi) || 16;
-    const noteheadHeightPx = shape.semitoneHeight * pxPerSemi;
-    const extensionPx = (config.display.stemExtension || 0) * noteheadHeightPx;
-
     const low = Math.max(...noteYPositions);
     const high = Math.min(...noteYPositions);
-
-    let y1, y2;
-    if (direction === "up") {
-      // attach at the lowest notehead's anchor point, extend above highest
-      y1 = low + anchorYpx;
-      y2 = high - extensionPx;
-    } else {
-      // down: attach at the highest notehead's anchor point, extend below lowest
-      y1 = high + anchorYpx;
-      y2 = low + extensionPx;
-    }
+    const dir = direction === "up" ? 1 : -1;
+    // The stem starts at the near notehead's anchor and runs past the far
+    // one's centre.
+    const y1 = (direction === "up" ? low : high) + anchorYpx;
+    const farY = direction === "up" ? high : low;
+    const far = dir * (gridContext.semiToY(config.staff.midpoint) - farY) / pxPerHalfSpace;
+    const y2 = farY - dir * CNBStem.length(far, CNBStaff.lilypondPositions(config)) * pxPerHalfSpace;
 
     return { x: stemX, y1, y2, thickness };
+  },
+
+  /**
+   * LilyPond's length for a crotchet or minim stem, from the far notehead's
+   * centre to the stem's end, in half staff spaces (measured against the
+   * engine, session 34). The full length is 3.5 staff spaces. A stem whose
+   * far notehead is on the middle line or beyond it, in the stem's
+   * direction, is shortened by a third of a half space for each half space
+   * its full length would reach past one staff space beyond the staff's
+   * radius, by at most one staff space (LilyPond's stem-shorten). The engine
+   * sets no-stem-extend, so no stem is carried to the middle line.
+   *
+   * @param {number} far  the far notehead's staff position, half staff
+   *        spaces from the middle line, positive in the stem's direction
+   * @param {number[]} staffPositions  the staff's lines, LilyPond staff
+   *        positions (CNBStaff.lilypondPositions)
+   * @returns {number} half staff spaces
+   */
+  length(far, staffPositions) {
+    if (far < 0 || staffPositions.length === 0) return STEM_LENGTH;
+    const radius = (Math.max(...staffPositions) - Math.min(...staffPositions)) / 2;
+    const reach = far + STEM_LENGTH - (radius + 2);
+    return STEM_LENGTH - Math.min(STEM_SHORTEN, Math.max(0, reach / 3));
   },
 
   /**
