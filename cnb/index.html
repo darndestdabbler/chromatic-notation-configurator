@@ -121,11 +121,11 @@
           <div class="card-head"><h2>Advanced</h2><span class="sub">Settings a designer rarely needs</span></div>
           <div class="card-body">
             <div>
-              <details class="disclosure">
+              <details class="disclosure" id="rules-by-duration-or-key">
                 <summary>Rules for particular durations or keys<span class="sub">every notehead rule, including those the noteheads write</span></summary>
                 <div class="disclosure-body"><div id="notehead-editor-host"></div></div>
               </details>
-              <details class="disclosure">
+              <details class="disclosure" id="colour-palette">
                 <summary>Colour palette<span class="sub">all twelve colours at once</span></summary>
                 <div class="disclosure-body"><div id="palette-editor-host"></div></div>
               </details>
@@ -133,7 +133,7 @@
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
               </details>
-              <details class="disclosure">
+              <details class="disclosure" id="staff-line-overrides">
                 <summary>Staff line overrides<span class="sub">one staff line with a look of its own</span></summary>
                 <div class="disclosure-body"><div id="staff-overrides-host"></div></div>
               </details>
@@ -186,6 +186,7 @@
     import { CNBNoteheadPanel } from "./ui/notehead-panel.js";
     import { CNBPitchPanel } from "./ui/pitch-panel.js";
     import { CNBPitchModel } from "./ui/pitch-model.js";
+    import { CNBChecksWording } from "./ui/checks-wording.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -326,21 +327,73 @@
         p.textContent = "No problems: this notation exports as it is.";
         checksList.appendChild(p);
       }
+      // Each item in the designer's words, with the link that fixes it
+      // (session 31, mock-up 4).
       for (const [kind, messages] of [["error", errors], ["warn", warnings]]) {
         for (const message of messages) {
+          const { text, link } = CNBChecksWording.describe(message, appConfig);
           const item = document.createElement("div");
           item.className = "checks-item " + kind;
-          const text = document.createElement("p");
-          text.textContent = message;
-          item.appendChild(text);
+          const body = document.createElement("div");
+          const p = document.createElement("p");
+          p.textContent = text;
+          body.appendChild(p);
+          if (link) {
+            const a = document.createElement("button");
+            a.type = "button";
+            a.className = "checks-link";
+            a.textContent = link.label;
+            a.onclick = () => followCheck(link.target);
+            body.appendChild(a);
+          }
+          item.appendChild(body);
           checksList.appendChild(item);
         }
+      }
+      if (warnings.length && !errors.length) {
+        const note = document.createElement("p");
+        note.className = "checks-note";
+        note.textContent = "Export is not blocked: warnings never stop it.";
+        checksList.appendChild(note);
       }
 
       // An error that blocks export also shows on the Export button.
       exportButton.title = errors.length
-        ? "Export is blocked by " + plural(errors.length, "error") + ": " + errors.join(" · ")
+        ? "Export is blocked by " + plural(errors.length, "error") + ": " +
+          errors.map(m => CNBChecksWording.describe(m, appConfig).text).join(" · ")
         : "";
+    }
+
+    /** Follow a checks link: open what fixes the problem. */
+    function followCheck(target) {
+      setChecksOpen(false);
+      if (target.kind === "noteheads") {
+        showSection("noteheads");
+        selection = target.pcs.slice();
+        openNoteheadPanel();
+        byId("notehead-panel-card").scrollIntoView({ block: "nearest" });
+        return;
+      }
+      if (target.kind === "rule") {
+        showSection("advanced");
+        const rules = byId("rules-by-duration-or-key");
+        rules.open = true;
+        // The editor lists the rules by priority, so find the card by name.
+        const rule = appConfig.noteheadRules[target.index];
+        const name = [...rules.querySelectorAll(".cnb-nre-rule-name")]
+          .find(input => rule && input.value === rule.name);
+        const card = name ? name.closest(".cnb-nre-rule-card") : rules;
+        card.scrollIntoView({ block: "center" });
+        if (name) name.focus({ preventScroll: true });
+        return;
+      }
+      showSection(target.section);
+      const panel = document.querySelector(`.panel[data-panel="${target.section}"]`);
+      const control = target.control ? panel.querySelector(target.control) : null;
+      if (!control) { panel.scrollIntoView({ block: "nearest" }); return; }
+      if (control.tagName === "DETAILS") control.open = true;
+      control.scrollIntoView({ block: "center" });
+      if (typeof control.focus === "function") control.focus({ preventScroll: true });
     }
 
     function setChecksOpen(open) {

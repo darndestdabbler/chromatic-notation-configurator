@@ -21,6 +21,27 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The checks speak to a designer — 2026-11-07 (session 31)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- Run by hand this session: app layout **68/68** (three new checks, below).
+  The whole suite runs at close.
+
+`uat-app-layout.mjs` now opens, at 1440, a copy of Kite 4-369 with keys on,
+a G definition and the rule "In G, F♯ is hollow" scoped to G. It checks that
+the indicator reads "1 warning", that the checks list says it in the
+designer wording of design §8.5 with a **Show the rule** link
+(`cnb/ui/checks-wording.js`), and, after the shot, that following the link
+closes the list and shows Advanced with its rules disclosure open and that
+rule's name focused.
+
+### Judged against mock-up 4 (design §10)
+
+| Screenshot | Judgement |
+|---|---|
+| [Checks list, one warning](uat-shots/session-031/checks-list-1440.png) | Matches mock-up 4's popover: the "Checks" title, the amber "!" mark, the designer sentence, the **Show the rule** link in the accent colour under it, and the muted "Export is not blocked: warnings never stop it." footer, under the amber "1 warning" pill. Two differences. The sentence ends "so the exported F♯ keeps its look without it" where the mock-up says "stays solid": the wording names the rule's noteheads but does not work out what the rule changes, which keeps it true for every rule. The page behind is the Staff section at Medium (two rows), where the mock-up shows Advanced at Small; that is the driver's state, not the list's. |
+
 ## The Clef and Key signature previews at work — 2026-11-07 (session 30)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

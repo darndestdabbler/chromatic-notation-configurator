@@ -2,6 +2,20 @@
 
 ## 1.0.2
 
+### The checks speak to a designer
+
+- Each item in the checks list says the problem in a notation designer's
+  words and links to what fixes it: **Show the rule** opens Advanced at
+  that rule, **Select the notehead** opens the notehead panel for the
+  noteheads concerned, and **Open Staff**, **Open Export** and the like
+  open the section at the control. For example, a rule for one key now
+  reads “In G, F♯ is hollow” is not engraved: LilyPond ignores rules for
+  particular keys, so the exported F♯ keeps its look without it.
+- The Export button's tooltip lists blocking errors in the same words.
+- The messages the validation produces, and what blocks export, are
+  unchanged. A message with no designer wording yet shows as before, with
+  no link.
+
 ### The clef and the key signature reach LilyPond
 
 - The export now carries the clef and the key signature (LY export spec

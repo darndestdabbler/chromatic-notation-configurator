@@ -269,6 +269,14 @@ summary:focus-visible, [tabindex]:focus-visible {
 .checks-item.warn::before { content: "!"; background: var(--warn-soft); color: var(--warn); }
 .checks-item.error::before { content: "×"; background: var(--error-soft); color: var(--error); }
 .checks-empty { padding: var(--space-3) var(--space-4); color: var(--ink-2); }
+.checks-item p { margin: 0 0 var(--space-1); }
+/* The link that fixes the problem (mock-up 4): a button that reads as a link. */
+.checks-link {
+  min-height: 0; padding: 0; border: 0; background: none;
+  color: var(--accent); font-size: 13px; font-weight: 600;
+}
+.checks-link:hover { text-decoration: underline; }
+.checks-note { padding: var(--space-3) var(--space-4); color: var(--ink-2); font-size: 12px; }
 
 /* The editors' own validation lists: the checks list says it once. */
 .cnb-cio-validation, .cnb-cex-validation, .cnb-sre-validation, .cnb-nre-validation,

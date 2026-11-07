@@ -42,7 +42,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 28 | Pitch | no | 2026-11-07 |
 | 29 | Loose ends from sessions 2–26 and the v1 sets | no | 2026-11-07 |
 | 30 | The clef and the key signature reach LilyPond | no | 2026-11-07 |
-| 31 | The checks speak to a designer | — | not declared |
+| 31 | The checks speak to a designer | no | 2026-11-07 |
 | 32 | Two more staves to start from | — | not declared |
 | 33 | Stems engrave where the preview draws them | — | not declared |
 | 34 | The UI is stable | — | not declared |
@@ -288,3 +288,9 @@ Make the LilyPond export carry the clef and the key signature, so the engraving 
 **Amended after acceptance:**
 
 - 2026-11-07 — step 'panel-screenshots': its files: The panel-clef-glyph screenshot shows the clef importer's warning that a glyph without pre-baked data 'will need a fallback conversion if the engine gains clef support', which this session made false: the export now converts the glyph's SVG path. The importer wording and its test are fixed in this step. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 31 — The checks speak to a designer
+
+**Releasable: no.**
+
+Make the checks list speak to a notation designer (design §8.5, mock-up 4). A new pure module, `cnb/ui/checks-wording.js` (`CNBChecksWording.describe(message, config)`), matches each validation and export message a designer can meet through the page against a short table of patterns and returns designer wording plus a link: a target that is a rule (by its index in `noteheadRules`, labelled **Show the rule**), the noteheads to select (pitch classes worked out from the config, labelled **Select the notehead** or **Select the noteheads**), or a section to open with an optional control in it (labelled **Open Staff**, **Open Key signature** and so on). The key-scoped rule warning reads as in §8.5: “In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys…. A message the table does not know comes back as itself with no link. The messages in `CNBConfig.validate` and `CNBConfigExport.validateForExport` do not change, so their tests and the export-blocking rules stay as they are. `cnb/index.html`'s `refreshChecks` shows each item's wording and link; following a link opens the section (or Advanced's rules disclosure, scrolled to the rule card with its name focused, or the notehead panel for the pitch classes) and closes the list. The Export button's tooltip uses the same wording. Tests in `cnb/tests/cnb-checks-wording-tests.js` pin the wording and targets for every mapped message and the pass-through. `uat-app-layout.mjs` opens, through Open, a Kite config with keys on and a rule scoped to G, checks that the list shows the designer wording and a Show the rule link, follows it and checks that Advanced shows that rule; it also saves the open list at 1440 (checks-list-1440.png), which is judged against mock-up 4 in docs/uat-status.md. CHANGELOG.md's 1.0.2 section names the change.

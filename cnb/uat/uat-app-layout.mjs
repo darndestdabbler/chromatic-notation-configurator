@@ -36,6 +36,11 @@
  * chosen on the canvas, each shot after checking that the panel's partial
  * staff draws its gutter. Design §10 has no mock-up for these sections.
  *
+ * Session 31 opens Kite with keys on and a rule for G only, checks that the
+ * checks list says its one warning in a designer's words with a Show the
+ * rule link (design §8.5), saves checks-list-1440.png (mock-up 4), and
+ * follows the link to the rule in Advanced.
+ *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
  * exit 2 = missing dependency, 1 = check failure, 0 = all passed).
@@ -390,6 +395,43 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       keysigGutter > 0 && (await page.$$eval("#key-signature-preview-host .keysig-col .cnb-key-signature-separator", els => els.length)) === 1,
       String(keysigGutter));
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-key-signature-key.png"), fullPage: true });
+    await openSection(page, "staff");
+
+    // ── The checks list speaks to a designer (session 31, mock-up 4) ──
+    // Kite with keys on and a rule for G only: the one warning reads as
+    // design §8.5 has it, and its link shows the rule.
+    const kiteInG = JSON.parse(await readFile(KITE, "utf8"));
+    kiteInG.keys = { ...(kiteInG.keys || {}), enabled: true,
+      definitions: [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }] };
+    kiteInG.noteheadRules.push({ name: "In G, F♯ is hollow", priority: 99,
+      match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { hollow: true } });
+    await page.setInputFiles("#open-file", {
+      name: "kite-in-g.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(kiteInG), "utf8"),
+    });
+    await page.waitForFunction(() => document.getElementById("topbar-status").textContent === "Opened kite-in-g.json");
+    check("1440: a rule for G only gives the checks indicator 1 warning",
+      (await page.textContent("#checks-indicator")).trim() === "1 warning", await page.textContent("#checks-indicator"));
+    await page.click("#checks-indicator");
+    const item = await page.evaluate(() => {
+      const el = document.querySelector("#checks-list .checks-item.warn");
+      return el && { text: el.querySelector("p").textContent, link: el.querySelector(".checks-link")?.textContent };
+    });
+    check("1440: the checks list says the warning in a designer's words, with a Show the rule link",
+      item && item.text === "“In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys, " +
+        "so the exported F♯ keeps its look without it." && item.link === "Show the rule", JSON.stringify(item));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: path.join(SHOT_DIR, "checks-list-1440.png") });
+    await page.click("#checks-list .checks-link");
+    const followed = await page.evaluate(() => ({
+      listHidden: document.getElementById("checks-list").hidden,
+      shown: [...document.querySelectorAll(".panel")].filter(e => !e.hidden).map(e => e.dataset.panel),
+      rulesOpen: document.getElementById("rules-by-duration-or-key").open,
+      focused: document.activeElement && document.activeElement.classList.contains("cnb-nre-rule-name")
+        ? document.activeElement.value : null,
+    }));
+    check("1440: Show the rule closes the list and opens Advanced at the rule, its name focused",
+      followed.listHidden && JSON.stringify(followed.shown) === '["advanced"]' && followed.rulesOpen &&
+      followed.focused === "In G, F♯ is hollow", JSON.stringify(followed));
     await openSection(page, "staff");
   }
 
