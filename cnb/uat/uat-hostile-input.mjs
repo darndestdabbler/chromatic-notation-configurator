@@ -12,9 +12,13 @@
  * where it is refused, and puts nothing on the console. The same checklist
  * runs in Chromium, Firefox and Edge.
  *
- * The Google Fonts CDN requests made by index.html (preview-only cosmetics)
- * are stubbed with empty responses so the run asserts app behavior, not CDN
- * availability.
+ * One exception is pinned (session 29). Malformed XML that still contains an
+ * <svg token reaches DOMParser, and Firefox logs every XML parse failure to
+ * the console itself: measured with Firefox 157, that case logs exactly one
+ * "XML Parsing Error: not well-formed" error. The driver expects that one
+ * message in Firefox and nothing in Chromium or Edge, and fails on anything
+ * else. (A file with no <svg token is refused before DOMParser sees it, so
+ * it logs nothing in any browser.)
  *
  * Usage (from anywhere; paths are resolved relative to this file):
  *   node cnb/uat/uat-hostile-input.mjs
@@ -25,9 +29,9 @@
  *   - Chromium: CNB_UAT_CHROMIUM if set to a non-empty value (a
  *     non-empty-but-invalid path is an error, not a fallback), otherwise the
  *     newest chromium-* browser in the platform's ms-playwright cache
- *     (`npx playwright install chromium`).
+ *     (`npx playwright-core install chromium`).
  *   - Firefox: the Playwright Firefox build matching playwright-core
- *     (`npx playwright install firefox`).
+ *     (`npx playwright-core install firefox`).
  *   - Edge: an installed Microsoft Edge (Playwright channel "msedge").
  *
  * Optional: CNB_UAT_PORT (default 8153), CNB_UAT_SHOTS (screenshot dir,
@@ -110,16 +114,16 @@ if (process.env.CNB_UAT_CHROMIUM) {
   if (!chromiumExe) {
     console.error(
       "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }
 
 const BROWSERS = [
   { name: "Chromium", launch: () => chromium.launch({ executablePath: chromiumExe }),
-    missing: "npx playwright install chromium, or set CNB_UAT_CHROMIUM" },
+    missing: "npx playwright-core install chromium, or set CNB_UAT_CHROMIUM" },
   { name: "Firefox", launch: () => firefox.launch(),
-    missing: "npx playwright install firefox" },
+    missing: "npx playwright-core install firefox" },
   { name: "Edge", launch: () => chromium.launch({ channel: "msedge" }),
     missing: "install Microsoft Edge" },
 ];
@@ -150,6 +154,11 @@ const PLAIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 </svg>`;
 
 const NOT_XML = "Shape notes\n- kite up\n- kite down\n";
+
+/** Broken XML that still contains an <svg token, so it reaches DOMParser. */
+const MALFORMED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+  <path id="notehead" d="M0 0 L10 10" data-semitone-height="2.0"
+</svg`;
 
 const json = (obj) => JSON.stringify(obj, null, 2);
 
@@ -217,10 +226,6 @@ async function runIn(spec) {
   const tag = `[${spec.name} ${browser.version()}]`;
   const page = await browser.newPage({ viewport: { width: 1600, height: 1800 }, acceptDownloads: true });
   page.setDefaultTimeout(10000);
-  await page.route("https://fonts.googleapis.com/**", route =>
-    route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-  await page.route("https://fonts.gstatic.com/**", route =>
-    route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
 
   const consoleErrors = [];
   page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
@@ -280,6 +285,27 @@ async function runIn(spec) {
   status = await waitText("#import-status", "Invalid SVG");
   check(`${tag} SVG: a file that is not XML shows "Invalid SVG"`,
     status.startsWith("Import failed") && status.includes("Invalid SVG"), status);
+
+  const shapesBeforeMalformed = Object.keys((await state()).shapes).sort().join(",");
+  const errorsBeforeMalformed = consoleErrors.length;
+  await importSvg("broken.svg", MALFORMED_SVG);
+  status = await waitText("#import-status", "Invalid SVG");
+  await page.waitForTimeout(200); // let a late console message land
+  // Taken out of consoleErrors so the closing no-errors check still covers
+  // everything else; what this case logs is pinned per browser below.
+  const malformedErrors = consoleErrors.splice(errorsBeforeMalformed);
+  check(`${tag} SVG: malformed XML containing <svg shows "Invalid SVG"`,
+    status.startsWith("Import failed") && status.includes("Invalid SVG"), status);
+  check(`${tag} SVG: the malformed SVG leaves the shapes unchanged`,
+    Object.keys((await state()).shapes).sort().join(",") === shapesBeforeMalformed);
+  if (spec.name === "Firefox") {
+    check(`${tag} SVG: the malformed SVG logs exactly Firefox's own XML parse error and nothing else`,
+      malformedErrors.length === 1 && malformedErrors[0].includes("XML Parsing Error: not well-formed"),
+      JSON.stringify(malformedErrors));
+  } else {
+    check(`${tag} SVG: the malformed SVG logs nothing to the console`,
+      malformedErrors.length === 0, JSON.stringify(malformedErrors));
+  }
 
   // ── JSON load ──
   await loadJson("older.cnb.json", OLDER_SAVE);

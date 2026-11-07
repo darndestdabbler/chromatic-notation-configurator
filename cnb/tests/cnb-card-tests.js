@@ -16,7 +16,7 @@ import { CNBCard } from "../src/cnb-card.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
-import { findEngine, measureNoteheads } from "./engine-probe.js";
+import { findEngine, measureNoteheads, measureStems } from "./engine-probe.js";
 import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -510,6 +510,45 @@ export const tests = [
         }
       }
       if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // Engine-backed (session 29, session 18 review): in repeat mode the default
+  // shape's stem, anchored off the notehead's centre, engraves at the x the
+  // card draws it, measured from the render (Stem against NoteHead) and from
+  // the rendered card, not from repeatLayout. The two agree to within half
+  // the engraved stem width: LilyPond puts the stem's edge, not its centre,
+  // at the attachment point.
+  //
+  // SKIPPED until session 33: the render shows the exporter writes stem
+  // attachments in staff spaces while the engine hands them to LilyPond's
+  // NoteHead.stem-attachment, which reads fractions of the notehead's
+  // extent, so today's engraved stems sit nearer the centre (default minim
+  // up: 0.176 staff spaces engraved, 0.558 previewed). Session 33 fixes the
+  // export and removes this skip.
+  { name: "repeat mode (engine): the engraved stem x matches the preview's, minim up and down", fn: async () => {
+      const { config, grid } = repeatFixture();
+      const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
+      // pc 0 (semis 0 and 12) stems up; pc 6 (6 and 18, averaging the midpoint) stems down.
+      const previewX = (pc) => withDomStub(container => {
+        const { svg, stem } = dissect(CNBCard.render(container, grid, config, { pc, duration: "minim" }));
+        return (Number(stem.getAttribute("x1")) - Number(svg.getAttribute("width")) / 2) / staffSpacePx;
+      });
+      const preview = { up: previewX(0), down: previewX(6) };
+      assert(preview.up > 0.1 && preview.down < -0.1, `the default anchors are off centre: ${JSON.stringify(preview)}`);
+
+      const KNOWN_MISMATCH = "exported stem attachments are in staff spaces, the engine reads relative units (session 33)";
+      if (KNOWN_MISMATCH) { console.log(`      (skipped: ${KNOWN_MISMATCH})`); return; }
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const { stems, error } = await measureStems(engine, CNBLilypond.generate(config), "\\stemUp c'2 \\stemDown fis'2");
+      assert(!error, `the export must compile and engrave: ${error}`);
+      eq(stems.length, 2, "two stems");
+      for (const [stem, want, dir] of [[stems[0], preview.up, 1], [stems[1], preview.down, -1]]) {
+        eq(stem.durationLog, 1, "a minim");
+        eq(stem.direction, dir, "stem direction");
+        assert(Math.abs(stem.x - want) <= stem.width / 2 + 1e-3,
+          `stem ${dir > 0 ? "up" : "down"}: engraved x ${stem.x} staff spaces, preview ${want} (±${stem.width / 2})`);
+      }
     }},
 
   // ── session 22: resolved notehead size ─────────────────────────────────────

@@ -18,8 +18,8 @@ This repo is one of three in the ChromaticNotationBase ecosystem:
 
 - **Vanilla JavaScript** — ES modules (`export` / `import`), no frameworks
 - **No build step** — runs directly in the browser
-- **Node.js 18+** for running tests via CLI
-- **No external runtime dependencies** (Google Fonts loaded via CDN for preview only)
+- **Node.js 18+** for running the unit tests via CLI; **20+** for the browser UAT (`playwright-core` 1.64 requires it)
+- **No external runtime dependencies** — the page fetches nothing from elsewhere; the Oswald label font is served from `cnb/assets/fonts/` (SIL OFL)
 
 ## Core Design Principles
 

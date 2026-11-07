@@ -210,17 +210,20 @@ export const CNBPreviewDisplay = {
    * design §6): that section's gutter and the first three columns (C, C♯,
    * D) on one fluid row, at the canvas Size, with the other gutter turned
    * off, in a div.cnb-pvd-partial appended to host. The config is not
-   * changed.
+   * changed. With duration null (the canvas has no duration selected, so
+   * it draws no staff) nothing is drawn (session 26 review).
    * @param {HTMLElement} host
    * @param {object} config
    * @param {{part:"clef"|"key-signature", size?:"small"|"medium"|"large",
-   *          duration?:string, key?:string|null}} opts
-   * @returns {HTMLDivElement} the div.cnb-pvd-partial
+   *          duration?:string|null, key?:string|null}} opts
+   * @returns {HTMLDivElement|null} the div.cnb-pvd-partial, or null when
+   *          duration is null
    */
   renderPartial(host, config, { part, size = DEFAULT_SIZE, duration = "crotchet", key = null } = {}) {
     if (part !== "clef" && part !== "key-signature") {
       throw new Error(`renderPartial: part must be "clef" or "key-signature" (got ${JSON.stringify(part)})`);
     }
+    if (duration === null) return null;
     const drawn = CNBPreviewDisplay.displayConfig(config, size);
     if (part === "clef" && drawn.keys) {
       drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };

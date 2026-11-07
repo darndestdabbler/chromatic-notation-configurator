@@ -927,13 +927,13 @@ variant of a shape per size.
 [`docs/planning/notehead-first-editor-design.md`](../planning/notehead-first-editor-design.md)
 (sessions 19 and 20), with one change: the canvas **Size is kept in the
 browser, not saved in the file** (session 25 carries it out). The design and
-its mock-ups (§10) are the specification. Every UI session (25–33) ends by
+its mock-ups (§10) are the specification. Every UI session (25–32 and 34) ends by
 taking the app's screenshots at 1440 and 1280 px with session 25's driver
 and judging them against the mock-ups: layout, type, spacing, wording, the
 row count each width should give (§6.1), and no horizontal overflow. The
 judgement and the screenshots go in `docs/uat-status.md`. Where a session
 finds a better answer than a mock-up, it updates the mock-up in the same
-session. No session before 34 releases; the first release is the site's
+session. No session before 35 releases; the first release is the site's
 first deploy (see "No release until the UI is stable").
 
 **Plan amended 2026-11-07, after session 26:** three sessions inserted for
@@ -952,6 +952,15 @@ before the release (operator). Session 32 adds the 2–4–6–8–10 and
 3–5–7–9 staff presets; "The UI is stable" and the release become 33 and
 34. The release stays 1.1.0: the presets are a feature, so they belong
 in the same minor version.
+
+**Plan amended 2026-11-07, during session 29:** one session inserted
+before "The UI is stable" (operator). Session 29's engine-backed stem test
+found that exported stem attachments are in staff spaces where the engine
+reads LilyPond's relative units, so engraved stems sit nearer the
+notehead's centre than the preview draws them. Session 33 fixes the
+export; "The UI is stable" and the release become 34 and 35, so the
+operator's rebuilds and the README pictures follow the fix. The release
+stays 1.1.0: the fix changes no config or setting.
 
 ### Session 23: The look table and rule inference
 
@@ -1299,7 +1308,44 @@ where C falls in a space: its Automatic ledgers are B and C♯.
    preset chosen. Judge the shots against the mock-ups and record them in
    `docs/uat-status.md`.
 
-### Session 33: The UI is stable
+### Session 33: Stems engrave where the preview draws them
+
+**Why.** Session 29's engine-backed stem test found that the exporter and
+the engine disagree on the units of a stem attachment. The exporter writes
+`cnb:register-attachment!` points in staff spaces (LY spec §4.4, §4.4a),
+but the engine passes them unchanged to LilyPond's
+`NoteHead.stem-attachment` (`cnb/stems.ly`), which reads each as a
+fraction of the notehead's half-width and half-height, −1 to 1 (the
+engine's own default, `'(1 . 0)`, is the right edge). So every exported
+shape with stems engraves them nearer the centre than the preview draws
+them: the default crotchet's up stem sits 0.105 staff spaces right of the
+note's centre on the page and 0.393 in the preview, its repeat-mode minim
+0.176 against 0.558. The Kite fixture is right only because its
+`lilypondAnchors` were hand-set to the golden file's relative numbers.
+Every 1.0.0 export with stems is affected, so this goes before the
+release.
+
+1. Register.
+2. The exporter (`cnb/src/cnb-lilypond.js`) writes each attachment in
+   LilyPond's relative units: x ÷ half the registered path's width, y ÷
+   half its height, measured from the path it registers, so a sized
+   variant (§4.1c) keeps the same relative point. The pitch-axis
+   substitution (§4.4a) no longer enters, since the unit cancels.
+   `lilypondAnchors` stay semitone units in the config.
+3. The Kite fixture's `lilypondAnchors` become true semitone anchors that
+   export to the golden file's `(0 . 0.9)` / `(-0.365 . 0.9)`; check the
+   45deg-369 fixture and the gallery files the same way. Regenerate the
+   default, Kite 4-369, 45deg-369, sized and Twinline baselines, and
+   record the change as LY spec 1.3.7, with a note that 1.0.0 exports
+   with stems should be regenerated.
+4. Remove the skip from session 29's test in `cnb/tests/cnb-card-tests.js`
+   ("repeat mode (engine): the engraved stem x matches the preview's"):
+   minims and crotchets, stem up and down, within half the engraved stem
+   width, since LilyPond puts the stem's edge, not its centre, at the
+   attachment point. If that half width proves visible, decide with the
+   operator whether the preview or the export moves.
+
+### Session 34: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06).
 
@@ -1308,15 +1354,15 @@ where C falls in a space: its Automatic ledgers are B and C♯.
    UI, and while doing so checks the colour pickers by hand (drag in the
    field, type a full hex value) in each editor that has one, the check
    session 21 left owed. The rough edges found are fixed in this session,
-   or planned as sessions before 34 if they are large.
+   or planned as sessions before 35 if they are large.
 3. README text and pictures follow the new UI. Its "Preview-only settings"
    list matches the Export section's sentence as session 30 leaves it, and
    it no longer introduces the unused repeat counts as settings that change
    the preview (session 18 review). The full UAT runs.
 4. The operator declares the UI stable, which is the condition for
-   session 34.
+   session 35.
 
-### Session 34: Release 1.1.0 (release: 1.1.0)
+### Session 35: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 

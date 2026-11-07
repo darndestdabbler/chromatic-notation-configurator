@@ -209,6 +209,41 @@ export const tests = [
       assert(error === null, "no error: " + error);
       assertSame(shape.anchors.crotchetDown, { x: 60, y: -90 }, "down anchor = top-centre of the visible rect");
     }},
+  { name: "stemRectEnds maps the rect's own top- and bottom-centre through its transform", fn: () => {
+      const ends = CNBSvgImporter.stemRectEnds({ x: 0, y: 0, width: 10, height: 20 }, "rotate(90)");
+      assertSame(ends.bottom, { x: -20, y: 5 }, "bottom-centre (5, 20) → (-20, 5)");
+      assertSame(ends.top, { x: 0, y: 5 }, "top-centre (5, 0) → (0, 5)");
+      assert(CNBSvgImporter.stemRectEnds({ x: 0, y: 0, width: 1, height: 1 }, "skewX(10)") === null, "unreadable → null");
+    }},
+  { name: "extract anchors a rotated stem-up rect at its own end, not its bounding box (session 11 review)", fn: () => {
+      // rotate(90) on {0, 0, 10, 20}: the ends are level, so the up rect
+      // anchors at its own bottom-centre (-20, 5); the box would give (-10, 10).
+      const doc = toolkitDoc({
+        "stem-up": stubEl("rect", { id: "stem-up", x: "0", y: "0", width: "10", height: "20", transform: "rotate(90)" }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "rot");
+      assert(error === null, "no error: " + error);
+      assertSame(shape.anchors.crotchetUp, { x: -20, y: 5 }, "up anchor = the rect's rotated bottom-centre");
+    }},
+  { name: "extract anchors a rotated stem-down rect at its higher end", fn: () => {
+      // rotate(30) about the origin tilts {-10, 0, 10, 100}: the top-centre
+      // (-5, 0) stays put and is the higher end; the box's top edge is not.
+      const doc = toolkitDoc({
+        "stem-down": stubEl("rect", { id: "stem-down", x: "-10", y: "0", width: "10", height: "100", transform: "rotate(30)" }),
+      });
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "tilt");
+      assert(error === null, "no error: " + error);
+      const rad = Math.PI / 6;
+      assertSame(shape.anchors.crotchetDown,
+        { x: Math.round(-5 * Math.cos(rad) * 1e4) / 1e4, y: Math.round(-5 * Math.sin(rad) * 1e4) / 1e4 },
+        "down anchor = the rect's rotated top-centre");
+      // rotate(180) turns the rect over: its own bottom-centre is now the higher end.
+      const flipped = toolkitDoc({
+        "stem-down": stubEl("rect", { id: "stem-down", x: "-10", y: "0", width: "10", height: "100", transform: "rotate(180)" }),
+      });
+      const r = CNBSvgImporter.buildShape(CNBSvgImporter.extract(flipped), "flipped");
+      assertSame(r.shape.anchors.crotchetDown, { x: 5, y: -100 }, "turned over: the higher end");
+    }},
   { name: "extract refuses a stem rect whose transform it cannot read, naming the rect", fn: () => {
       const doc = toolkitDoc({
         "stem-up": stubEl("rect", { id: "stem-up", x: "0", y: "0", width: "20", height: "350", transform: "skewX(30)" }),
@@ -644,6 +679,21 @@ export const tests = [
       const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
       assert(shape === null, "no shape is built");
       assert(/data-lilypond-notehead is not valid LilyPond path data/.test(error), "error names the attribute: " + error);
+    }},
+  { name: "buildShape returns an import error, not a throw, for a 400-digit path number (session 10 review)", fn: () => {
+      // 400 digits parse to Infinity; the re-serializer used to throw on it.
+      const doc = toolkitDoc({
+        notehead: stubEl("path", { id: "notehead", d: ELLIPSE_D, "data-semitone-height": "2.0",
+          "data-lilypond-notehead": `'((moveto 0 ${"9".repeat(400)}) (closepath))` }),
+      });
+      let result;
+      try {
+        result = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "X");
+      } catch (err) {
+        assert(false, "buildShape threw: " + err.message);
+      }
+      assert(result.shape === null, "no shape is built");
+      assert(/data-lilypond-notehead is not valid LilyPond path data/.test(result.error), "error names the attribute: " + result.error);
     }},
   { name: "buildShape refuses a data-lilypond-hollow that does not parse", fn: () => {
       const doc = toolkitDoc({

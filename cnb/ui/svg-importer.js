@@ -24,8 +24,10 @@
  *     warning) → the minim anchors copy the crotchet anchors.
  *   - A stem rect's own `transform` attribute (matrix/translate/scale/rotate)
  *     is applied before its anchor is read (toolkit audit M8: Inkscape stores
- *     a flipped rect as raw geometry plus scale(-1)); one the importer cannot
- *     read is an import error. Ancestor (group/layer) transforms are not read.
+ *     a flipped rect as raw geometry plus scale(-1)); the anchor comes from
+ *     the rect's own ends mapped through it, so a rotated rect anchors at its
+ *     end (session 11 review). One the importer cannot read is an import
+ *     error. Ancestor (group/layer) transforms are not read.
  *   - The toolkit normalizes shapes to 100 SVG units per semitone, centered
  *     on the origin, and sets the root viewBox to the exact notehead bounds.
  *     Pre-baked LilyPond paths are SVG coordinates ÷ 100 with Y negated.
@@ -65,6 +67,70 @@ function prebakedPath(text, attr) {
     };
   }
   return { path: CNBScheme.path(commands, attr), error: null };
+}
+
+/**
+ * Parse an SVG `transform` list of matrix(a b c d e f), translate(tx [ty]),
+ * scale(sx [sy]) and rotate(deg [cx cy]), composed in order (the rightmost
+ * function applies first, per SVG), into one matrix [a, b, c, d, e, f]
+ * with x' = a·x + c·y + e and y' = b·x + d·y + f. A blank transform is the
+ * identity; one that does not parse is null.
+ */
+function parseTransform(transform) {
+  const text = transform === null || transform === undefined ? "" : String(transform);
+  const mul = (m, n) => [
+    m[0] * n[0] + m[2] * n[1],        m[1] * n[0] + m[3] * n[1],
+    m[0] * n[2] + m[2] * n[3],        m[1] * n[2] + m[3] * n[3],
+    m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5],
+  ];
+  let m = [1, 0, 0, 1, 0, 0];
+  const re = /\s*(matrix|translate|scale|rotate)\s*\(([^()]*)\)\s*,?/gy;
+  let pos = 0;
+  let match;
+  while (pos < text.length && (match = re.exec(text)) !== null) {
+    pos = re.lastIndex;
+    const argText = match[2].trim();
+    const args = argText === "" ? [] : argText.split(/[\s,]+/).map(Number);
+    if (args.some(n => !Number.isFinite(n))) return null;
+    const n = args.length;
+    let t;
+    switch (match[1]) {
+      case "matrix":
+        if (n !== 6) return null;
+        t = args;
+        break;
+      case "translate":
+        if (n !== 1 && n !== 2) return null;
+        t = [1, 0, 0, 1, args[0], n === 2 ? args[1] : 0];
+        break;
+      case "scale":
+        if (n !== 1 && n !== 2) return null;
+        t = [args[0], 0, 0, n === 2 ? args[1] : args[0], 0, 0];
+        break;
+      case "rotate": {
+        if (n !== 1 && n !== 3) return null;
+        const rad = args[0] * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        t = [cos, sin, -sin, cos, 0, 0];
+        if (n === 3) {
+          t = mul(mul([1, 0, 0, 1, args[1], args[2]], t), [1, 0, 0, 1, -args[1], -args[2]]);
+        }
+        break;
+      }
+    }
+    m = mul(m, t);
+  }
+  return text.slice(pos).trim() === "" ? m : null;
+}
+
+/** Drop float noise (cos 90°) and -0. */
+function clean(v) {
+  return roundTo(v, 9) + 0;
+}
+
+/** A point through a parseTransform matrix. */
+function applyTransform(m, x, y) {
+  return { x: clean(m[0] * x + m[2] * y + m[4]), y: clean(m[1] * x + m[3] * y + m[5]) };
 }
 
 function roundTo(value, decimals) {
@@ -173,65 +239,43 @@ export const CNBSvgImporter = {
    */
   transformRect(rect, transform) {
     if (transform === null || transform === undefined || String(transform).trim() === "") return rect;
-    const text = String(transform);
-    // [a, b, c, d, e, f]: x' = a·x + c·y + e, y' = b·x + d·y + f
-    const mul = (m, n) => [
-      m[0] * n[0] + m[2] * n[1],        m[1] * n[0] + m[3] * n[1],
-      m[0] * n[2] + m[2] * n[3],        m[1] * n[2] + m[3] * n[3],
-      m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5],
-    ];
-    let m = [1, 0, 0, 1, 0, 0];
-    const re = /\s*(matrix|translate|scale|rotate)\s*\(([^()]*)\)\s*,?/gy;
-    let pos = 0;
-    let match;
-    while (pos < text.length && (match = re.exec(text)) !== null) {
-      pos = re.lastIndex;
-      const argText = match[2].trim();
-      const args = argText === "" ? [] : argText.split(/[\s,]+/).map(Number);
-      if (args.some(n => !Number.isFinite(n))) return null;
-      const n = args.length;
-      let t;
-      switch (match[1]) {
-        case "matrix":
-          if (n !== 6) return null;
-          t = args;
-          break;
-        case "translate":
-          if (n !== 1 && n !== 2) return null;
-          t = [1, 0, 0, 1, args[0], n === 2 ? args[1] : 0];
-          break;
-        case "scale":
-          if (n !== 1 && n !== 2) return null;
-          t = [args[0], 0, 0, n === 2 ? args[1] : args[0], 0, 0];
-          break;
-        case "rotate": {
-          if (n !== 1 && n !== 3) return null;
-          const rad = args[0] * Math.PI / 180;
-          const cos = Math.cos(rad), sin = Math.sin(rad);
-          t = [cos, sin, -sin, cos, 0, 0];
-          if (n === 3) {
-            t = mul(mul([1, 0, 0, 1, args[1], args[2]], t), [1, 0, 0, 1, -args[1], -args[2]]);
-          }
-          break;
-        }
-      }
-      m = mul(m, t);
-    }
-    if (text.slice(pos).trim() !== "") return null;
-
+    const m = parseTransform(transform);
+    if (!m) return null;
     const corners = [
       [rect.x, rect.y], [rect.x + rect.width, rect.y],
       [rect.x, rect.y + rect.height], [rect.x + rect.width, rect.y + rect.height],
-    ].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
-    const xs = corners.map(c => c[0]);
-    const ys = corners.map(c => c[1]);
-    const clean = v => roundTo(v, 9) + 0; // drop float noise (cos 90°) and -0
-    const minX = clean(Math.min(...xs)), minY = clean(Math.min(...ys));
+    ].map(([x, y]) => applyTransform(m, x, y));
+    const xs = corners.map(c => c.x);
+    const ys = corners.map(c => c.y);
+    const minX = Math.min(...xs), minY = Math.min(...ys);
     return {
       x: minX,
       y: minY,
       width: clean(Math.max(...xs) - minX),
       height: clean(Math.max(...ys) - minY),
+    };
+  },
+
+  /**
+   * A stem rect's two ends, its own top-centre and bottom-centre, mapped
+   * through its `transform` attribute (session 11 review). The anchor is
+   * read from these rather than from the transformed bounding box, whose
+   * edges stop being the rect's ends once it is rotated: rotate(90) on
+   * {0, 0, 10, 20} puts the bottom-centre at (-20, 5), where the box's
+   * bottom-centre would be (-10, 10).
+   *
+   * @param {{x:number,y:number,width:number,height:number}} rect  untransformed
+   * @param {string|null} transform
+   * @returns {{top:{x:number,y:number}, bottom:{x:number,y:number}}|null}
+   *          null when the transform does not parse
+   */
+  stemRectEnds(rect, transform) {
+    const m = parseTransform(transform);
+    if (!m) return null;
+    const cx = rect.x + rect.width / 2;
+    return {
+      top: applyTransform(m, cx, rect.y),
+      bottom: applyTransform(m, cx, rect.y + rect.height),
     };
   },
 
@@ -264,7 +308,12 @@ export const CNBSvgImporter = {
    * minim anchors, otherwise the minim anchors copy the crotchet ones.
    *
    * Attachment points: bottom-center of an up rect, top-center of a down
-   * rect (in native SVG units, same space as svgPath).
+   * rect (in native SVG units, same space as svgPath). A rect read through
+   * a transform carries `ends` (stemRectEnds): an up rect then anchors at
+   * whichever end is lower on the page (greater y), a down rect at the
+   * higher one, and when the two are level (a quarter turn) at its own
+   * bottom-centre for up and top-centre for down. Inkscape's scale(-1)
+   * flip therefore reads as it is drawn.
    *
    * @param {{x:number,y:number,width:number,height:number}|null} stemUpRect
    * @param {{x:number,y:number,width:number,height:number}|null} stemDownRect
@@ -276,12 +325,21 @@ export const CNBSvgImporter = {
   anchorsFromStemRects(stemUpRect, stemDownRect, minimUpRect = null, minimDownRect = null) {
     if (!stemUpRect && !stemDownRect) return null;
 
-    const upPoint = r => r
-      ? { x: roundTo(r.x + r.width / 2, 4), y: roundTo(r.y + r.height, 4) }
-      : { x: 0, y: 0 };
-    const downPoint = r => r
-      ? { x: roundTo(r.x + r.width / 2, 4), y: roundTo(r.y, 4) }
-      : { x: 0, y: 0 };
+    const endsOf = r => r.ends || {
+      top: { x: r.x + r.width / 2, y: r.y },
+      bottom: { x: r.x + r.width / 2, y: r.y + r.height },
+    };
+    const point = p => ({ x: roundTo(p.x, 4), y: roundTo(p.y, 4) });
+    const upPoint = r => {
+      if (!r) return { x: 0, y: 0 };
+      const { top, bottom } = endsOf(r);
+      return point(top.y > bottom.y ? top : bottom);
+    };
+    const downPoint = r => {
+      if (!r) return { x: 0, y: 0 };
+      const { top, bottom } = endsOf(r);
+      return point(bottom.y < top.y ? bottom : top);
+    };
 
     const up = upPoint(stemUpRect);
     const down = downPoint(stemDownRect);
@@ -363,19 +421,22 @@ export const CNBSvgImporter = {
       if (!el) return { rect: null, nonRect: false };
       if (localTag(el) !== "rect") return { rect: null, nonRect: true };
       const transform = el.getAttribute("transform");
-      const rect = CNBSvgImporter.transformRect(CNBSvgImporter.parseRectAttrs({
+      const raw = CNBSvgImporter.parseRectAttrs({
         x: el.getAttribute("x"),
         y: el.getAttribute("y"),
         width: el.getAttribute("width"),
         height: el.getAttribute("height"),
-      }), transform);
-      if (!rect) {
+      });
+      const box = CNBSvgImporter.transformRect(raw, transform);
+      if (!box) {
         return {
           error: `The "${id}" rect has a transform the importer cannot read ` +
             `(${JSON.stringify(transform)}) — only matrix, translate, scale and rotate are accepted`,
         };
       }
-      return { rect, nonRect: false };
+      // The anchor is read from the rect's own ends, not the box (session 11 review).
+      const ends = box === raw ? null : CNBSvgImporter.stemRectEnds(raw, transform);
+      return { rect: ends ? { ...box, ends } : box, nonRect: false };
     };
     const up = readStemRect("stem-up");
     const down = readStemRect("stem-down");

@@ -113,7 +113,7 @@ if (process.env.CNB_UAT_CHROMIUM) {
   if (!EXE) {
     console.error(
       "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }
@@ -167,10 +167,6 @@ const staffLines = (ly) => (ly.match(/cnb:staff-line-positions '\(([^)]*)\)/) ||
 const browser = await chromium.launch({ executablePath: EXE });
 const consoleErrors = [];
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-await page.route("https://fonts.googleapis.com/**", route =>
-  route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-await page.route("https://fonts.gstatic.com/**", route =>
-  route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
 page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
 page.on("pageerror", e => consoleErrors.push(String(e)));
 

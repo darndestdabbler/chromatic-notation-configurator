@@ -120,6 +120,96 @@ export function measureStaffPositions(engine, ly) {
   });
 }
 
+/**
+ * Whether a printed notehead stencil expression carries a hollow cutout.
+ * The engine draws one of two ways (cnb/stencils.ly): a false hollow is a
+ * white path laid over the shape, a true hollow one path whose command list
+ * holds the shape and the cutout as two subpaths.
+ */
+function stencilIsHollow(expr) {
+  if (/\(color \(1\.0 1\.0 1\.0\)/.test(expr)) return true;
+  return [...expr.matchAll(/\(path \S+ \(([^()]*)\)/g)]
+    .some(([, commands]) => (commands.match(/\bmoveto\b/g) || []).length > 1);
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "c'4 c'2") and report each engraved notehead in order:
+ * { noteheads: [{ pc, durationLog, hollow }] }, where durationLog is
+ * LilyPond's (2 = quarter, 1 = half, 0 = whole) and hollow says whether its
+ * stencil carries the hollow cutout; or { error } with LilyPond's output
+ * when it fails or prints no notehead.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{noteheads?:{pc:number,durationLog:number,hollow:boolean}[], error?:string}>}
+ */
+export function engraveNoteheads(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override NoteHead.after-line-breaking = #(lambda (grob)
+    (let ((cause (event-cause grob)))
+      (format #t "CNB-HEAD ~a ~a ~s\\n"
+        (modulo (ly:pitch-semitones (ly:event-property cause 'pitch)) 12)
+        (ly:duration-log (ly:event-property cause 'duration))
+        (ly:stencil-expr (ly:grob-property grob 'stencil)))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    const noteheads = [...output.matchAll(/^CNB-HEAD (\d+) (-?\d+) (.*)$/gm)]
+      .map(([, pc, log, expr]) => ({ pc: Number(pc), durationLog: Number(log), hollow: stencilIsHollow(expr) }));
+    if (error || noteheads.length === 0) {
+      return { error: `${error ? error.message : "no notehead was measured"}\n${output}` };
+    }
+    return { noteheads };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "\\stemUp c'2") and report each engraved stem in order:
+ * { stems: [{ durationLog, direction, x, width }] }, where x is the stem's
+ * centre minus the centre of its first notehead's stencil (in repeat mode
+ * the whole repeated group), and width the stem's, both in staff spaces;
+ * direction is 1 (up) or -1 (down). Or { error } with LilyPond's output
+ * when it fails or prints no stem.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{stems?:{durationLog:number,direction:number,x:number,width:number}[], error?:string}>}
+ */
+export function measureStems(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override Stem.after-line-breaking = #(lambda (stem)
+    (let* ((head (ly:grob-array-ref (ly:grob-object stem 'note-heads) 0))
+           (common (ly:grob-common-refpoint stem head X))
+           (s (ly:grob-extent stem common X))
+           (h (ly:grob-extent head common X))
+           (space (ly:staff-symbol-staff-space stem)))
+      (format #t "CNB-STEM ~a ~a ~a ~a\\n"
+        (ly:duration-log (ly:event-property (event-cause head) 'duration))
+        (ly:grob-property stem 'direction)
+        (exact->inexact (/ (- (interval-center s) (interval-center h)) space))
+        (exact->inexact (/ (interval-length s) space)))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    const stems = [...output.matchAll(/^CNB-STEM (-?\d+) (-?\d+) (\S+) (\S+)$/gm)]
+      .map(([, log, dir, x, w]) => ({ durationLog: Number(log), direction: Number(dir), x: Number(x), width: Number(w) }));
+    if (error || stems.length === 0) {
+      return { error: `${error ? error.message : "no stem was measured"}\n${output}` };
+    }
+    return { stems };
+  });
+}
+
 /** Run LilyPond on the config and a score in a scratch directory: { error, output }. */
 function compile(engine, ly, score) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-probe-"));

@@ -114,7 +114,7 @@ if (process.env.CNB_UAT_CHROMIUM) {
   if (!EXE) {
     console.error(
       "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }
@@ -156,12 +156,6 @@ const consoleErrors = [];
 async function openApp(width, height) {
   const context = await browser.newContext({ viewport: { width, height } });
   const page = await context.newPage();
-  // Stub the Google Fonts CDN (preview-only cosmetics) so the run asserts
-  // app behavior, not CDN availability.
-  await page.route("https://fonts.googleapis.com/**", route =>
-    route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-  await page.route("https://fonts.gstatic.com/**", route =>
-    route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
   page.on("console", m => { if (m.type() === "error") consoleErrors.push(`${width}: ${m.text()}`); });
   page.on("pageerror", e => consoleErrors.push(`${width}: ${e}`));
   await page.goto(`http://localhost:${PORT}/cnb/index.html`);
@@ -238,6 +232,18 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     (await partial("clef-preview-host")) === "0,1,2", await partial("clef-preview-host"));
   check(`${width}: the Key signature panel shows a partial staff of C, C♯ and D`,
     (await partial("key-signature-preview-host")) === "0,1,2", await partial("key-signature-preview-host"));
+  // With every duration deselected the canvas draws no staff, and neither do
+  // the two panels (session 26 review); reselecting one draws them again.
+  const pills = await page.$$eval(".cnb-pvd-duration-pill.on", els => els.map(e => e.dataset.duration));
+  for (const d of pills) await page.click(`.cnb-pvd-duration-pill[data-duration="${d}"]`);
+  const emptyHosts = await page.evaluate(() => ["clef-preview-host", "key-signature-preview-host"]
+    .map(id => document.getElementById(id).children.length));
+  check(`${width}: with no duration selected, the Clef and Key signature panels show no partial staff`,
+    pills.length > 0 && emptyHosts.every(n => n === 0), JSON.stringify({ pills, emptyHosts }));
+  for (const d of pills) await page.click(`.cnb-pvd-duration-pill[data-duration="${d}"]`);
+  check(`${width}: reselecting the durations draws the partial staffs again`,
+    (await partial("clef-preview-host")) === "0,1,2" && (await partial("key-signature-preview-host")) === "0,1,2",
+    (await partial("clef-preview-host")) + " / " + (await partial("key-signature-preview-host")));
 
   // ── The staff editor's three mounts stay in step (session 26) ──
   const stateJson = async () => JSON.parse(await page.textContent("#state-json"));

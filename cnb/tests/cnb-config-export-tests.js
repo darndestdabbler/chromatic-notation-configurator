@@ -652,4 +652,11 @@ export const tests = [
       assert(CNBConfigExport.buildExport(config).ok === false, "buildExport blocks without throwing");
     },
   },
+  {
+    name: "PREVIEW_ONLY_SENTENCE names off-key marks as neither drawn nor exported yet (session 29)",
+    fn: () => {
+      assert(EX.PREVIEW_ONLY_SENTENCE.includes("off-key marks are kept in the file but neither drawn here nor exported yet"),
+        EX.PREVIEW_ONLY_SENTENCE);
+    },
+  },
 ];

@@ -914,6 +914,16 @@ export const CNBConfig = {
       warnings.push(`Rule "${rule.name || "(unnamed)"}" is scoped to keys (${scope}) and is not exported: the engraving ignores key-scoped notehead rules, so it shows in the preview only`);
     }
 
+    // W7. Off-key marks (architecture §11 question 4; set 005 s2 UAT). A
+    //     rule may set one, but the preview draws no mark and the export
+    //     writes (off-key-mark . #f) until off-key marking is built.
+    for (const rule of rules) {
+      if (!rule || !isPlainObject(rule.apply)) continue;
+      const mark = rule.apply.offKeyMark;
+      if (mark === undefined || mark === false) continue;
+      warnings.push(`Rule "${rule.name || "(unnamed)"}" sets an off-key mark (${JSON.stringify(mark)}), which is not drawn in the preview or exported yet`);
+    }
+
     // W5. CB-safe palette has fewer entries than primary palette
     const primaryCount  = (palette.colors || []).length;
     const cbSafeCount   = (palette.cbSafeColors || []).length;

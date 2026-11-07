@@ -21,10 +21,6 @@
  * read from the page's live state panel, so they are independent of the
  * browser.
  *
- * The Google Fonts CDN requests made by index.html (Oswald, preview-only
- * cosmetics per CLAUDE.md) are stubbed with empty responses so the run
- * asserts app behavior, not CDN availability.
- *
  * Usage (from anywhere; paths are resolved relative to this file):
  *   node cnb/uat/uat-golden-path.mjs
  *
@@ -123,7 +119,7 @@ if (process.env.CNB_UAT_CHROMIUM) {
   if (!EXE) {
     console.error(
       "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }
@@ -196,13 +192,6 @@ const page = await browser.newPage({
   viewport: { width: 1600, height: 1800 },
   acceptDownloads: true,           // save + export both trigger real downloads
 });
-
-// Stub the Google Fonts CDN (preview-only cosmetics) so the run asserts app
-// behavior, not CDN availability.
-await page.route("https://fonts.googleapis.com/**", route =>
-  route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-await page.route("https://fonts.gstatic.com/**", route =>
-  route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
 
 const consoleErrors = [];
 page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });

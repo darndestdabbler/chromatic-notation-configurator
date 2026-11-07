@@ -427,15 +427,24 @@ the field.
 
 ### 3.4 The chord caveat (engine work item E13-2, restated as design input)
 
-Session 1 measured that LilyPond's chord-internal arrangement is
-diatonic-`staff-position`-derived: stencil-translation offsets are honored
-for unison-treated pairs (`<c' cis'>`: +0.85 exact) but **absorbed** for
-diatonic-neighbor pairs (`<gis' a'>`: separation unchanged). The engine must
-therefore choose E13-2's mechanism (write mapped values into
-`staff-position`, or post-layout `X-offset`), with a diatonic-second
-shared-position chord as acceptance evidence. This design's export surface
-(`(x-offset . N)`) is mechanism-agnostic — the field's meaning is "offset
-this head by N staff spaces", and the engine owns how.
+Session 1 measured that stencil-translation offsets are honored for
+unison-treated pairs (`<c' cis'>`: +0.85 exact) but **absorbed** for
+diatonic-neighbor pairs (`<gis' a'>`: separation unchanged). The engine had
+to choose E13-2's mechanism, with a diatonic-second shared-position chord as
+acceptance evidence. This design's export surface (`(x-offset . N)`) is
+mechanism-agnostic — the field's meaning is "offset this head by N staff
+spaces", and the engine owns how.
+
+*Corrected (session 29, from engine handoff 008 §3; export spec §6.3).*
+Session 1 put the absorption down to a chord arrangement derived from the
+diatonic `staff-position`. The engine found the cause is the stem's
+extent-based head arrangement (`Stem::calc_positioning_done`). Neither
+mechanism named above survived measurement: writing mapped values into
+`staff-position` does not change the chord arrangement, and `X-offset` is
+discarded for chord members. The engine instead translates the NoteColumn
+by the least-displaced head's offset and each head by its residual, so the
+`<gis' a'>` chord now separates as specified. See
+[export spec §6.3](../CNB-LY-EXPORT-SPEC-v1_3.md).
 
 ---
 
@@ -490,7 +499,11 @@ per the s1 coordination record, and P4 explicitly blocked on their landing.
    neighbor shared-position chords absorb stencil offsets. Bounded, engine-
    owned, acceptance-tested by a diatonic-second render. Until it lands, the
    compact feature is honest only for single-note/octave-pair surfaces
-   (which is the entire preview card model).
+   (which is the entire preview card model). *Resolved (session 29 note):*
+   E13-2 landed in engine set 008; the absorption came from the stem's
+   extent-based head arrangement, not a diatonic-`staff-position`
+   arrangement, and the engine's NoteColumn translation fixes it (export
+   spec §6.3, corrected).
 2. **Unit-contract drift** — mitigated by the single substitution rule
    (§1.2) and its two machine-checked anchors (linear degeneracy; spike
    reproduction).

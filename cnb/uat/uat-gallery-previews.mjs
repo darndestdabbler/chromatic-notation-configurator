@@ -131,8 +131,6 @@ await new Promise(r => server.listen(PORT, r));
 // ── Capture ──────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({ executablePath: EXE });
 const page = await browser.newPage({ viewport: { width: 1700, height: 700 }, deviceScaleFactor: 2 });
-// Stub Google Fonts (preview-only cosmetics) so capture never depends on the CDN.
-await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, contentType: "text/css", body: "" }));
 
 const consoleErrors = [];
 page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });

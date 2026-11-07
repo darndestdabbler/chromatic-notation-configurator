@@ -13,7 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads } from "./engine-probe.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -1064,6 +1064,28 @@ export const tests = [
         assert(width >= 0.5 && width <= 3, `pc ${pc}: width ${width} staff spaces is outside 0.5–3`);
         assert(height >= 0.5 && height <= 3, `pc ${pc}: height ${height} staff spaces is outside 0.5–3`);
       }
+    }},
+
+  { name: "durations (engine): \"C minims are hollow\" engraves c'4 solid and c'2 hollow", fn: async () => {
+      // Audit 2026-11-02 H4: the engine's duration categories were one off,
+      // so a minim rule hollowed quarter notes. Fixed in the engine's 1.1.1;
+      // this pins it from a real render.
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const config = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"));
+      config.noteheadRules.push({
+        name: "C minims are hollow", priority: 3,
+        match: { pitchClasses: [0], durations: ["minim"], keys: "all" },
+        apply: { hollow: true },
+      });
+      const { noteheads, error } = await engraveNoteheads(engine, CNBLilypond.generate(config), "c'4 c'2");
+      assert(!error, `the export must compile and engrave: ${error}`);
+      eq(noteheads.length, 2, "two noteheads");
+      const [quarter, half] = noteheads;
+      assert(quarter.pc === 0 && quarter.durationLog === 2, `first is the quarter C: ${JSON.stringify(quarter)}`);
+      assert(half.pc === 0 && half.durationLog === 1, `second is the half C: ${JSON.stringify(half)}`);
+      assert(!quarter.hollow, "the quarter C is solid");
+      assert(half.hollow, "the half C is hollow");
     }},
 
   // ── session 22: sized shape variants (LY spec §4.1c) ───────────────────────

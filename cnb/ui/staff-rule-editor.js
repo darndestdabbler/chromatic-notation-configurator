@@ -270,6 +270,9 @@ export const CNBStaffRuleEditor = {
    * The ledger mode a config's ledgers are in: "automatic" when its
    * templates are exactly automaticTemplates(pattern), in order, and the
    * proximity rule is on, so writing them back changes nothing; else "own".
+   * Exactly means each loaded template has the same three fields and no
+   * other: one missing triggerPCs, or carrying an extra field, is "own"
+   * (session 26 review), so the next edit cannot silently rewrite it.
    * @param {number[]} pattern
    * @param {object} ledgers  config.ledgers
    * @param {object} [axis]   the config's CNBPitchAxis, as for automaticTemplates
@@ -278,13 +281,15 @@ export const CNBStaffRuleEditor = {
   ledgerModeOf(pattern, ledgers, axis) {
     const l = ledgers || {};
     if (l.proximityRule === false) return "own";
-    const auto = JSON.stringify(CNBStaffRuleEditor.automaticTemplates(pattern, axis));
-    const loaded = JSON.stringify((l.templates || []).map(t => ({
-      semiWithinOctave: t.semiWithinOctave,
-      triggerPCs: t.triggerPCs || [],
-      triggerMode: t.triggerMode,
-    })));
-    return auto === loaded ? "automatic" : "own";
+    const auto = CNBStaffRuleEditor.automaticTemplates(pattern, axis);
+    const loaded = Array.isArray(l.templates) ? l.templates : [];
+    const exact = (t, a) => t !== null && typeof t === "object" && !Array.isArray(t) &&
+      Object.keys(t).length === 3 && Array.isArray(t.triggerPCs) &&
+      t.semiWithinOctave === a.semiWithinOctave &&
+      t.triggerMode === a.triggerMode &&
+      JSON.stringify(t.triggerPCs) === JSON.stringify(a.triggerPCs);
+    return loaded.length === auto.length && loaded.every((t, i) => exact(t, auto[i]))
+      ? "automatic" : "own";
   },
 
   /**

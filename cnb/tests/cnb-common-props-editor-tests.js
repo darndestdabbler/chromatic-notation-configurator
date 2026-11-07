@@ -438,6 +438,9 @@ export const tests = [
     fn: () => withDomStub((container) => {
       const handle = E.render(container);
       const note = () => findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-preview-only");
+      // The inactive hint says the counts are kept, not that repeat mode uses them (session 18 review).
+      const hint = findAll(findAll(handle.root, "cnb-cpe-repeats")[0], "cnb-cpe-hint")[0].textContent;
+      assert(hint === "Kept in the file but not used.", "shape mode hint: " + hint);
       assert(note().length === 1 && note()[0].textContent.startsWith("Not used:") &&
         note()[0].textContent.includes("minim ×2, semibreve ×4, breve ×4") &&
         note()[0].textContent.includes("neither the preview nor the export"), "shape mode note");

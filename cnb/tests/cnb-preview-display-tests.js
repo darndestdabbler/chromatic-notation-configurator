@@ -962,6 +962,19 @@ export const tests = [
       });
     },
   },
+  {
+    name: "renderPartial: duration null (no duration selected) draws nothing for either part (session 26 review)",
+    fn: () => {
+      const cfg = keyedConfig();
+      for (const part of ["clef", "key-signature"]) {
+        withDomStub(container => {
+          const before = container.children.length;
+          assertEqual(PVD.renderPartial(container, cfg, { part, key: "G", duration: null }), null, `${part}: returns null`);
+          assertEqual(container.children.length, before, `${part}: the host stays empty`);
+        });
+      }
+    },
+  },
 ];
 
 /** An in-memory stand-in for localStorage. */

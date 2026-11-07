@@ -116,7 +116,7 @@ if (process.env.CNB_UAT_CHROMIUM) {
   if (!EXE) {
     console.error(
       "No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }

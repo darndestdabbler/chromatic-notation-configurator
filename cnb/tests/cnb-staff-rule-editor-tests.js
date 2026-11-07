@@ -334,6 +334,35 @@ export const tests = [
     },
   },
   {
+    name: "ledgerModeOf: a template missing triggerPCs, or with an extra field, is own (session 26 review)",
+    fn: () => {
+      const eq = (a, b, msg) => assert(a === b, `${msg}: expected ${b}, got ${a}`);
+      const exact = E.automaticTemplates([4, 8]);
+      eq(JSON.stringify(exact), JSON.stringify([{ semiWithinOctave: 0, triggerPCs: [], triggerMode: "proximity" }]), "4-8 spots");
+      const mode = (templates) => E.ledgerModeOf([4, 8], { templates, proximityRule: true });
+      eq(mode(exact), "automatic", "the exact templates");
+      eq(mode([{ triggerMode: "proximity", triggerPCs: [], semiWithinOctave: 0 }]), "automatic", "field order does not matter");
+      eq(mode([{ semiWithinOctave: 0, triggerMode: "proximity" }]), "own", "triggerPCs missing");
+      eq(mode([{ ...exact[0], note: "mine" }]), "own", "an extra field");
+      eq(mode([{ ...exact[0], triggerPCs: null }]), "own", "triggerPCs not an array");
+      eq(mode([...exact, ...exact]), "own", "a repeated template");
+
+      // The same under a pitch axis: Twinline's exact spots are automatic,
+      // the same spots with an extra field are not.
+      const twinline = JSON.parse(readFileSync(
+        new URL("../assets/examples/gallery/twinline-compact.json", import.meta.url), "utf8"));
+      const axis = CNBPitchAxis.create(twinline);
+      const pattern = twinline.staff.semitonePattern;
+      const spots = E.automaticTemplates(pattern, axis);
+      assert(spots.length > 0, "Twinline has automatic spots");
+      eq(E.ledgerModeOf(pattern, { templates: spots, proximityRule: true }, axis), "automatic", "axis: exact");
+      eq(E.ledgerModeOf(pattern, { templates: spots.map(t => ({ ...t, color: "#000000" })), proximityRule: true }, axis),
+        "own", "axis: an extra field");
+      eq(E.ledgerModeOf(pattern, { templates: spots.map(({ triggerPCs, ...t }) => t), proximityRule: true }, axis),
+        "own", "axis: triggerPCs missing");
+    },
+  },
+  {
     name: "automaticTemplates under a pitch axis: unchanged with no axis; an identity axis gives today's spots (every gallery pattern)",
     fn: () => {
       const dir = new URL("../assets/examples/gallery/", import.meta.url);

@@ -916,6 +916,9 @@ export const tests = [
       ["engine.lilypondVersion", (c) => { c.engine.lilypondVersion = '2.24.2"\n#(display "X")'; }],
       ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = '7/4) #(display "X")'; }],
       ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = null; }],
+      // 400 digits parse to Infinity, which export would refuse (session 10 review).
+      ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = "9".repeat(400); }],
+      ['Shape "crotchet-minim" lilypondPath', (c) => { shape(c).lilypondPath = `'((moveto 0 ${"9".repeat(400)}))`; }],
       ["engine.multinotePadding", (c) => { c.engine.multinotePadding = "(display 1)"; }],
       ["engine.indent", (c) => { c.engine.indent = NaN; }],
       ["engine.collisionThreshold", (c) => { c.engine.collisionThreshold = Infinity; }],
@@ -980,6 +983,20 @@ export const tests = [
     const w = keyWarnings(cfg);
     assert(w.length === 1 && w[0].includes('Rule "F♯ red in G major"') && w[0].includes("G major") &&
       w[0].includes("not exported"), `warning names the rule: ${JSON.stringify(w)}`);
+  }},
+  { name: "validate(): a rule that sets an off-key mark warns, naming the rule (session 29)", fn: () => {
+    const markWarnings = (c) => CNBConfig.validate(c).warnings.filter(w => w.includes("off-key mark"));
+    const cfg = CNBConfig.createDefault();
+    eq(cfg.noteheadRules[0].apply.offKeyMark, false, "the default rule says no mark");
+    deepEq(markWarnings(cfg), [], "offKeyMark false gives no warning");
+    cfg.noteheadRules.push({ name: "Off-key crosses", priority: 5,
+      match: { pitchClasses: [1, 3], durations: "all", keys: "all" }, apply: { offKeyMark: "cross" } });
+    cfg.noteheadRules.push({ name: "No mark here", priority: 6,
+      match: { pitchClasses: [6], durations: "all", keys: "all" }, apply: { offKeyMark: false } });
+    assert(CNBConfig.validate(cfg).valid, "a warning, not an error");
+    const w = markWarnings(cfg);
+    assert(w.length === 1 && w[0].includes('Rule "Off-key crosses"') && w[0].includes('"cross"') &&
+      w[0].includes("not drawn in the preview or exported yet"), `warning names the rule: ${JSON.stringify(w)}`);
   }},
 
 ];

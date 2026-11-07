@@ -40,7 +40,8 @@ PDF / SVG / PNG output
 ### Prerequisites
 
 - A desktop web browser — see [Supported browsers](#supported-browsers)
-- [Node.js](https://nodejs.org/) 18+ (for running tests and serving the app locally)
+- [Node.js](https://nodejs.org/) 18+ for the unit tests and serving the app locally; 20+ for the
+  browser UAT (its `playwright-core` 1.64 needs it)
 
 ### Usage
 
@@ -71,11 +72,12 @@ tag. It copies the app with `node cnb/site/assemble-site.mjs <outDir>`
 
 The app is checked in these desktop browsers by the browser UAT
 (`cnb/uat/uat-hostile-input.mjs` runs the same checklist in all three; the
-other drivers run in Chromium):
+other drivers run in Chromium). The Chromium is Playwright's own build
+(Chrome for Testing, `chromium-1248`), not an installed Google Chrome:
 
 | Browser | Version checked | Status |
 |---|---|---|
-| Chromium / Chrome | 156 | Supported |
+| Chromium (Playwright's build) | 156 | Supported |
 | Firefox | 157 | Supported |
 | Microsoft Edge | 155 | Supported |
 
@@ -97,11 +99,12 @@ node cnb/tests/run-tests.js     # or: npm test
 **Browser UAT (`cnb-uat`)** — the Playwright drivers under `cnb/uat/` drive
 the real app. The root `package.json` declares only dev tooling
 (`playwright-core`); the app itself stays dependency-free. The prerequisites
-are per machine and the suite does not install them. Once per clone:
+are per machine and the suite does not install them. The drivers need Node.js 20+.
+Once per clone:
 
 ```bash
-npm install                                # installs playwright-core into node_modules/
-npx playwright install chromium firefox    # downloads the matching Chromium and Firefox builds
+npm install                                     # installs the locked playwright-core into node_modules/
+npx playwright-core install chromium firefox    # its own installer: the Chromium and Firefox builds it was made for
 ```
 
 Microsoft Edge is used from its normal installation (Playwright channel
@@ -283,8 +286,19 @@ position, disambiguated by notehead shape or horizontal offset, which brings
 the Twinline family within reach. With `pitchAxis` absent or disabled the
 Configurator behaves exactly as a one-row-per-semitone staff. The re-tiering
 is recorded in
-[§9 of the feasibility matrix](docs/research/gallery-survey/feasibility-matrix.md#9-amendment-2026-10-31-set-014-twinline-family-re-tiered);
-the playbook's Part 2 text predates it.
+[§9 of the feasibility matrix](docs/research/gallery-survey/feasibility-matrix.md#9-amendment-2026-10-31-set-014-twinline-family-re-tiered),
+and the playbook's Part 2 follows it.
+
+### Under a pitch axis
+
+Two engine behaviours apply only when `pitchAxis` is enabled
+([export spec §5.4e](docs/CNB-LY-EXPORT-SPEC-v1_3.md)):
+
+- **Collision analysis rounds axis positions to whole numbers**, so on a map
+  with fractional positions the collision threshold compares rounded
+  positions, not exact ones.
+- **Dotted notes in two voices at one axis position lose a dot**: both
+  noteheads are drawn, but LilyPond removes the dots of the down-stem head.
 
 ### Preview-only settings
 

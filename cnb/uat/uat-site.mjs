@@ -5,11 +5,11 @@
  *    directory, serves that directory over HTTP and loads `/`: the preview
  *    renders (staff lines and noteheads), every editor mounts, the file://
  *    notice is absent, and no page error, console error or failed request
- *    (such as a /favicon.ico 404) is logged.
+ *    (such as a /favicon.ico 404) is logged. The page requests nothing
+ *    outside the site's own origin (session 29): Oswald is served from the
+ *    site, and the labels are drawn in it.
  * 2. Loads the working tree's cnb/index.html over file://: the notice is
  *    visible and links to the live site.
- *
- * The Google Fonts CDN requests are stubbed, as in the other drivers.
  *
  * Usage: node cnb/uat/uat-site.mjs
  *
@@ -88,7 +88,7 @@ if (process.env.CNB_UAT_CHROMIUM) {
   EXE = findCachedChromium();
   if (!EXE) {
     console.error("No Chromium found in the ms-playwright cache. Set CNB_UAT_CHROMIUM to " +
-      "a Chromium/Chrome binary, or install one (npx playwright install chromium).");
+      "a Chromium/Chrome binary, or install one (npx playwright-core install chromium).");
     process.exit(2);
   }
 }
@@ -104,7 +104,7 @@ if (assembled.status !== 0) {
 
 const MIME = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
-  ".svg": "image/svg+xml", ".json": "application/json",
+  ".svg": "image/svg+xml", ".json": "application/json", ".ttf": "font/ttf",
 };
 const server = http.createServer(async (req, res) => {
   try {
@@ -136,20 +136,18 @@ const browser = await chromium.launch({ executablePath: EXE });
 
 async function newPage() {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
-  await page.route("https://fonts.googleapis.com/**", route =>
-    route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-  await page.route("https://fonts.gstatic.com/**", route =>
-    route.fulfill({ status: 200, contentType: "font/woff2", body: "" }));
   const errors = [];
+  const requests = [];
+  page.on("request", r => requests.push(r.url()));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", e => errors.push(String(e)));
   page.on("response", r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
-  return { page, errors };
+  return { page, errors, requests };
 }
 
 // ── 1. The assembled site over HTTP ─────────────────────────────────────────
 {
-  const { page, errors } = await newPage();
+  const { page, errors, requests } = await newPage();
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: "load" });
   await page.waitForSelector(".cnb-pvd-preview .pc-col", { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(300); // let any late console error or request land
@@ -169,6 +167,21 @@ async function newPage() {
   check("SITE: the preview and every editor mount", emptyHosts.length === 0, emptyHosts.join(", "));
   check("SITE: no file:// notice over HTTP", (await page.$("#file-notice")) === null);
   check("SITE: no page errors, console errors or failed requests", errors.length === 0, errors.join(" | "));
+  const origin = `http://localhost:${PORT}`;
+  const foreign = requests.filter(u => !u.startsWith("data:") && new URL(u).origin !== origin);
+  check("SITE: every request stays on the site's own origin", foreign.length === 0, foreign.join(" | "));
+  const oswald = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const label = document.querySelector(".cnb-pvd-preview .cnb-label-card");
+    return {
+      loaded: document.fonts.check('16px "Oswald"') &&
+        [...document.fonts].some(f => f.family.replace(/"/g, "") === "Oswald" && f.status === "loaded"),
+      family: label ? getComputedStyle(label).fontFamily : null,
+    };
+  });
+  check("SITE: Oswald loads from the site and the labels use it",
+    oswald.loaded && requests.some(u => u === `${origin}/assets/fonts/oswald-variable.ttf`) &&
+    /Oswald/.test(oswald.family || ""), JSON.stringify(oswald));
   await page.close();
 }
 

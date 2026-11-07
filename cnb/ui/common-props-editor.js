@@ -353,7 +353,7 @@ export const CNBCommonPropsEditor = {
       const wrap = el("div", "cnb-cpe-section cnb-cpe-repeats" + (inactive ? " inactive" : ""));
       wrap.appendChild(el("div", "cnb-cpe-title", "Repeat counts"));
       wrap.appendChild(el("div", "cnb-cpe-hint", inactive
-        ? "Used only in repeat mode (kept while editing in shape mode)."
+        ? "Kept in the file but not used."
         : "Longer durations draw repeated heads in the preview and the engraving."));
       // Unused (session 18; audit 2026-11-02, L3): the preview and the export
       // both follow the engine's fixed counts, so repeatCounts changes nothing.

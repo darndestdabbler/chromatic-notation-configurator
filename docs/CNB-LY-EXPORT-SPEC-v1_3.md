@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.5 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle)
-**Date:** November 7, 2026 (1.3.5); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.6 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis)
+**Date:** November 7, 2026 (1.3.5, 1.3.6); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -378,6 +378,27 @@ axis is enabled**, in Section B right after the §5.4b procedure:
   `tonicOctave` removes the divergence.
 - Not emitted for linear configs (byte-identity with v1.2.1).
 
+#### 5.4e Engine behaviours under a pitch axis (new in 1.3.6)
+
+Two things the engine does under a pitch axis that the export cannot
+change (engine handoff 008 §5, flags 1 and 2). The exported output is the
+same as in 1.3.5; this section only records them.
+
+- **Collision analysis rounds axis positions to whole numbers.** The
+  engine's collision machinery reads placed noteheads back as staff
+  positions rounded to whole numbers, so `cnb:collision-threshold`
+  compares axis distances on that rounded grid. On a map with fractional
+  positions, two noteheads whose positions differ by less than a whole
+  number can be treated as colliding, or as not colliding, differently
+  from what their exact positions would give. Keep this in mind when
+  fractional positions are combined with a tight collision threshold.
+- **Dotted notes in two voices at one axis position lose a dot.** When two
+  voices put notes of the same duration at one axis position, both
+  noteheads are drawn (no head is merged away; the `x-offset` field, §6.3,
+  separates them), but LilyPond's own merge logic removes the dots of the
+  down-stem head. So a dotted pair of that kind shows the up voice's dot
+  only. This is upstream LilyPond behaviour; the engine leaves it alone.
+
 ---
 
 ## 6. SECTION C — ADDITIONS
@@ -498,7 +519,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.5** | **Nov 7, 2026** | **The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`.** |
+| **1.3.6** | **Nov 7, 2026** | **Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged.** |
+| 1.3.5 | Nov 7, 2026 | The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`. |
 | 1.3.4 | Nov 6, 2026 | Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size. |
 | 1.3.3 | Nov 3, 2026 | Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set. |
 | 1.3.2 | Nov 3, 2026 | Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled. |

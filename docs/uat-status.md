@@ -11,11 +11,40 @@ the Browser UAT").
 
 The UAT is declared as the second suite, `cnb-uat`, in `dabbler.yaml`
 (`command: npm run uat`, expensive, run whole at close, covering `cnb/`).
-Every driver passed on the first run with no repairs, and the whole run
-takes about a minute, so nothing argues for leaving it to the operator. The
+Drivers have needed repairs since it was declared in session 5, most of all
+when the app moved to the new page in session 25, and each session that
+changes the app keeps them passing. The suite runs at close because the
+whole run takes about a minute and gives the same result every time, so
+nothing argues for leaving it to the operator. The
 suite does not install its prerequisites (`npm install`,
-`npx playwright install chromium firefox`, an installed Microsoft Edge). On
+`npx playwright-core install chromium firefox`, the locked package's own
+installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
+
+## Oswald from the site — 2026-11-07 (session 29)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: **17 of 17 drivers pass**, among them app layout 63/63
+  (two new checks: with every duration deselected the Clef and Key
+  signature panels show no partial staff, and reselecting draws them
+  again) and site 10/10 (two new checks, below).
+
+The page used to fetch Oswald from Google Fonts at run time, and every
+driver stubbed that request with an empty response, so the labels were
+drawn in a fallback face and the request was never checked (session 15
+review). Oswald is now served from the site: `cnb/assets/fonts/` holds the
+variable font from google/fonts (`ofl/oswald`), its SIL Open Font Licence
+(`OFL.txt`) and `oswald.css`, which `cnb/index.html` and the test pages
+link. The Google links and every driver's font stub are gone.
+`uat-site.mjs` records every request the assembled site makes and fails on
+any outside its own origin, and checks that Oswald loads from the site and
+that the column labels use it.
+
+The screenshots in [`uat-shots/session-029/`](uat-shots/session-029/)
+(`app-default-1440.png`, `app-default-1280.png`) draw the column labels in
+Oswald's condensed face, as the mock-ups do; the session 28 shots show the
+fallback face.
 
 ## Pitch — 2026-11-07 (session 28)
 

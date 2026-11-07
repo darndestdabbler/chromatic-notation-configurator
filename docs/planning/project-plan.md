@@ -36,37 +36,34 @@ own release gate until this repo's exporter is real.
 
 ---
 
-## 2. Current state (what works today)
+## 2. Current state (updated 2026-11-07, session 29)
 
-Two codebases coexist in this repo right now, deliberately:
+When this plan was written (2026-07-04) two codebases coexisted: the legacy
+monolith (`chromatic-configurator.html`, `configurator-core.js`,
+`music-color-palettes.js`, 240 tests) as the reference, and `cnb/`, a
+modular rewrite through Phase 1 only, with no exporter, UI or SVG import.
+That is no longer the case:
 
-- **The legacy monolith** — removed from the tree in 1.0.0 and preserved at
-  git tag `legacy-monolith-final` (it lived in `legacy/` when this plan was
-  written) — the original working monolith
-  (`chromatic-configurator.html`, ~3,057 lines, plus `configurator-core.js`
-  and `music-color-palettes.js`). Fully functional, 240 passing tests,
-  marked **reference only — do not modify**. This is the source of truth
-  for behavior the rewrite needs to reach parity with: 6-tab UI, cumulative
-  notehead rules (shape/hollow/color as separate layered rule types),
-  palette-based color system (standard + colorblind-safe, CIEDE2000-based
-  matching), per-shape overlap % for double-notehead minim rendering,
-  auto-derived staff geometry, full `.ly` export (Sections A/B/C), JSON
-  save/load with version migration, and SVG import from the Inkscape
-  toolkit's output.
-- **`cnb/`** — the in-progress ground-up modular rewrite, ES modules, no
-  build step, no framework. Only through **Phase 1 (Foundation)** of a
-  5-phase build order (`docs/CNB-ARCHITECTURE-PLAN-v2.md`): config/music
-  primitives and basic grid/staff-line/ledger-line/notehead/stem modules,
-  123/123 new tests passing. **There is no `.ly` exporter, no UI, and no
-  SVG import in `cnb/` yet** — the rewrite doesn't yet do the things the
-  legacy monolith already does.
-- Prior sessions used a hand-rolled baton/checklist workflow (`docs/batons/
-  baton-sessions-N-to-N+1.md`, `docs/checklists/session-N-checklist.xlsx`)
-  documented in `CLAUDE.md`. **This plan and the session sets it produces
-  supersede that workflow going forward** — keep the existing baton/
-  checklist files as historical record, don't delete them, but don't
-  generate new ones once Dabbler session sets are running; retire the
-  baton/checklist instructions in `CLAUDE.md` accordingly (Phase 0 below).
+- **One codebase.** `cnb/` is the app. The monolith was removed from the
+  tree in 1.0.0 and is preserved at git tag `legacy-monolith-final`.
+- **The exporter exists.** `cnb/src/cnb-lilypond.js` writes the `.ly`
+  config per [`CNB-LY-EXPORT-SPEC-v1_3.md`](../CNB-LY-EXPORT-SPEC-v1_3.md),
+  and engine-backed tests and the Kite 4-369 round-trip check it against
+  the engine. This repo's release criterion (§1) was met in 1.0.0.
+- **The UI exists.** The app at `cnb/index.html` is the notehead-first
+  editor ([`notehead-first-editor-design.md`](notehead-first-editor-design.md),
+  sessions 19–28): Staff, Noteheads, Pitch, Ledger lines, Clef, Key
+  signature, Advanced and Export, around a canvas that previews the
+  notation. SVG import from the toolkit is in the notehead panel.
+- **Releases.** 1.0.0 and 1.0.1 are tagged; the next release, 1.1.0, is
+  planned in [`docs/sessions/session-plan.md`](../sessions/session-plan.md).
+- **Workflow.** Work runs as numbered Dabbler sessions under
+  `docs/sessions/`. The baton/checklist files (`docs/batons/`,
+  `docs/checklists/`) and the v1 session sets (`docs/session-sets/`) are
+  historical records: keep them, generate no new ones.
+
+The sections below are the plan as written in July and are kept as history;
+the session plan is the live plan.
 
 ---
 

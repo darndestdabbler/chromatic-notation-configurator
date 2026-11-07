@@ -103,6 +103,14 @@ export const tests = [
       eq(CNBScheme.parseRatio(v), null, `parseRatio(${JSON.stringify(v)})`);
     }
   }},
+  { name: "parseRatio rejects a decimal too long for a double (session 10 review)", fn: () => {
+    const huge = "9".repeat(400);
+    assert(Number(huge) === Infinity, "the test number overflows");
+    for (const v of [huge, `${huge}/4`, `7/${huge}`, `1.${huge}/${huge}`]) {
+      eq(CNBScheme.parseRatio(v), null, `parseRatio(${v.length} chars)`);
+    }
+    throwsNaming(() => CNBScheme.ratio(huge, "engine.defaultMagnify"), "engine.defaultMagnify", "overflow");
+  }},
   { name: "ratio re-emits from the parsed numbers", fn: () => {
     eq(CNBScheme.ratio("7/4", "f"), "7/4");
     eq(CNBScheme.ratio("1.50", "f"), "1.5");
@@ -155,6 +163,9 @@ export const tests = [
     eq(CNBScheme.parsePath("'((moveto 0 x))"), null, "symbol argument");
     eq(CNBScheme.parsePath("'((moveto 0 1e3))"), null, "exponent");
     eq(CNBScheme.parsePath("'((moveto 0 #t))"), null, "boolean");
+    const huge = "9".repeat(400);
+    eq(CNBScheme.parsePath(`'((moveto 0 ${huge}))`), null, "400-digit number (overflows to Infinity)");
+    eq(CNBScheme.parsePath(`'((moveto -${huge} 0))`), null, "400-digit negative number");
   }},
   { name: "parsePath rejects non-strings and empty text", fn: () => {
     for (const v of [null, undefined, 3, "", "   "]) eq(CNBScheme.parsePath(v), null, String(v));

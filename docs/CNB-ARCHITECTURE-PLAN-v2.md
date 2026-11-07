@@ -1782,8 +1782,14 @@ Build Module X: [one-line description]
 
 ## 11. Open Questions
 
-1. **UI framework:** Vanilla JS vs. Preact vs. Lit for Phase 5. Deferred.
-2. **Module bundling:** ES module imports in dev, potential bundler for production. Deferred.
+1. **UI framework:** *Settled: vanilla JS.* Every UI module (`cnb/ui/`)
+   and the app (`cnb/index.html`) are plain ES modules with no framework,
+   wired by properties so they test under Node (sets 004–006 onward;
+   `CLAUDE.md` "Language & Environment").
+2. **Module bundling:** *Settled: no bundler, no build step.* The browser
+   loads the ES modules as they are, in development and in production. The
+   published site is a copy, not a build (`cnb/site/assemble-site.mjs`,
+   session 15).
 3. **Quad noteheads:** *Resolved in session 18.* In repeat mode the card
    follows the engine's `cnb:build-duration-stencil`: minim ×2, semibreve
    and breve ×4 (fixed; `durations.repeatCounts` is not read), each copy
@@ -1793,9 +1799,26 @@ Build Module X: [one-line description]
    stem-attachment does, and the ledgers widen with the group
    (`CNBCard.repeatCount` / `CNBCard.repeatLayout`).
 4. **Off-key marking:** Visual treatment. Deferred.
-5. **Accidentals and clefs:** Deferred. Grid module designed to support positioning.
-6. **Responsive scaling:** Scroll vs. scale on narrow screens. Deferred.
-7. **Staff-line-positions conversion edge cases:** What if the pattern doesn't divide evenly by semitonesPerStaffSpace? Need to handle non-standard patterns.
+5. **Accidentals and clefs:** *Clefs settled in set 009:* custom clefs
+   render in a left gutter placed on the semitone grid (Modules 20 and 21,
+   §4.12). Accidentals remain open (enhancement E4, listed under "After
+   1.1.0" in `docs/sessions/session-plan.md`).
+6. **Responsive scaling:** *Settled in session 20: neither scale nor
+   scroll the page.* The canvas is drawn at a fixed size (the Size choice,
+   kept in the browser) and reflows to one or two rows of equal columns;
+   only below the two-row minimum does it scroll sideways inside its card
+   (`docs/planning/notehead-first-editor-design.md` §6.1).
+7. **Staff-line-positions conversion edge cases:** *Settled.* The staff
+   editor derives `semitonesPerStaffSpace` as the greatest common divisor
+   of the pattern's intervals, the wrap-around one included
+   (`CNBStaffRuleEditor.derivedGeometry`), so the lines of a pattern chosen
+   in the editor are always whole staff spaces apart. Any position that
+   still comes out fractional (a spacing set by hand that does not divide,
+   or a midpoint off the lines' grid) is written as a decimal of up to 4
+   places, which the engine accepts as a staff-line position;
+   under a pitch axis the axis formula and its deduplication apply (LY spec
+   §5.4a). The range expanded is the 24 semitones centred on the middle of
+   the staff (LY spec §5.1a).
 8. **Stem attachment validation:** How to verify that preview stem thickness matches the Inkscape extension's assumptions. May need a visual comparison test.
 
 ---

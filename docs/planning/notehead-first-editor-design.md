@@ -742,12 +742,14 @@ at 16 px per semitone, which only the test pages and the gallery read
 (§6.1).
 
 Below the two-row minimum, each row keeps the grid's minimum width, so
-the canvas scrolls sideways inside its card, with the staff running the
-full width of the scrolled row. A check at an 880 px window, with the
-default config at Medium, measured two rows: the first row's staff SVG
-and grid both 560 px wide, the second row's staff 480 px (six of its seven
-columns, ending after C′ as designed), the canvas scrolling, and the page
-itself not scrolling sideways.
+the canvas scrolls sideways inside its card. Both rows are drawn on the
+first row's seven tracks. A check at an 880 px window, with the default
+config at Medium, measured two rows (session 29, correcting session 20's
+account). The first row's grid and staff SVG are both 560 px, seven
+80 px tracks. The second row's grid is also 560 px with seven 80 px
+tracks; its six columns fill the first six, and its staff SVG is 480 px,
+ending after C′ as designed. The canvas scrolls and the page itself does
+not scroll sideways.
 
 Judging the session 20 screenshots changed one thing. The notehead
 panel's close-up first showed the selected notehead between its two

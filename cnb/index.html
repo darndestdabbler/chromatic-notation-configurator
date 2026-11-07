@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chromatic Notation Configurator</title>
   <link rel="icon" href="data:,">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/fonts/oswald.css">
   <link rel="stylesheet" href="ui/app.css">
 </head>
 <body>
@@ -366,10 +364,11 @@
     // ── Panels reading the shared config through accessors ───────────────
     // The Clef and Key signature panels' partial staffs (design §6), at the
     // canvas Size with its duration and key, redrawn with every canvas draw.
+    // With no duration selected the canvas draws no staff, and neither do they.
     let canvasOptions = { durations: ["crotchet"], keys: null };
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
-      const duration = (canvasOptions.durations && canvasOptions.durations[0]) || "crotchet";
+      const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
       const key = (canvasOptions.keys && canvasOptions.keys[0]) || null;
       for (const [part, id] of [["clef", "clef-preview-host"], ["key-signature", "key-signature-preview-host"]]) {
         const host = byId(id);

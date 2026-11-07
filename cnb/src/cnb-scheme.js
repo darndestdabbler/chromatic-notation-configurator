@@ -81,7 +81,9 @@ export const CNBScheme = {
   /**
    * Parse a positive ratio: a finite number > 0, or a string "a", "a.b",
    * "a/b" of unsigned decimals. Returns { num, den } (den null when there is
-   * no fraction), or null.
+   * no fraction), or null. A decimal too long for a double (hundreds of
+   * digits parse to Infinity) is refused, so validation rejects what the
+   * exporter would.
    */
   parseRatio(v) {
     if (typeof v === "number") {
@@ -91,7 +93,8 @@ export const CNBScheme = {
     const [a, b] = v.split("/");
     const num = Number(a);
     const den = b === undefined ? null : Number(b);
-    if (!(num > 0) || (den !== null && !(den > 0))) return null;
+    const positive = n => Number.isFinite(n) && n > 0;
+    if (!positive(num) || (den !== null && !positive(den))) return null;
     return { num, den };
   },
 
@@ -118,7 +121,8 @@ export const CNBScheme = {
   /**
    * Strictly parse LilyPond path data: an optionally quoted list of
    * (moveto x y), (lineto x y), (curveto x1 y1 x2 y2 x3 y3) and (closepath),
-   * with numeric literals and nothing else. Returns [{ cmd, args }] or null.
+   * with numeric literals and nothing else. Returns [{ cmd, args }] or null;
+   * null too for a literal too long for a double (it parses to Infinity).
    */
   parsePath(text) {
     if (typeof text !== "string") return null;
@@ -138,7 +142,9 @@ export const CNBScheme = {
       for (let k = 0; k < PATH_ARITY.get(cmd); k++) {
         const n = tokens[i++];
         if (n === undefined || !PATH_NUMBER_RE.test(n)) return null;
-        args.push(Number(n));
+        const value = Number(n);
+        if (!Number.isFinite(value)) return null;
+        args.push(value);
       }
       if (tokens[i++] !== ")") return null;
       commands.push({ cmd, args });

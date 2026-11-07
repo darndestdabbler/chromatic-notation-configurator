@@ -393,6 +393,21 @@
       "what": "step 'uat-record': its files",
       "reason": "The full UAT run found uat-key-signature.mjs counting the canvas row's columns without the new label strip, so the driver is fixed in this step; the screenshot judgement's fixes were CSS only, so index.html and pitch-panel.js are not changed.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 29,
+      "dateTime": "2026-11-07T07:54:33.012000-05:00",
+      "task": "Close the small defects, test gaps and stale documents that the reviews of sessions 2\u201326 and the v1 sets 001\u2013014 left open, as session 29 of the plan lists them. CNBScheme.parseRatio and parsePath refuse a number that parses to Infinity, so a 400-digit engine.defaultMagnify fails validation by name and a 400-digit path number is an import error. The SVG importer reads a stem rect's anchor from its transformed edges instead of its bounding box, so rotate(90) on {0, 0, 10, 20} anchors at (-20, 5) while Inkscape's scale(-1) flip still reads as before. Two engine-backed tests, which skip with the reason when lilypond or the engine is missing: a duration rule (\"C minims are hollow\" on the Kite fixture) engraves c'4 solid and c'2 hollow, and in repeat mode a stem anchored off the notehead's centre engraves at the preview's x, measured from the render. Small fixes: the repeat counts' inactive label says they are kept but not used; Automatic ledger lines are recognised on load only when every loaded template is exactly the automatic one, with triggerPCs present and no other fields; with every duration deselected the Clef and Key signature panels draw no partial staff; the design's \u00a710 880 px measurement and uat-status's \"no repairs\" sentence are corrected. Oswald is served from cnb/assets/fonts/ under its OFL with the licence beside it, the Google links and the drivers' font stubs go, and uat-site.mjs fails on any request outside the site's own origin. Off-key marks get a validation warning naming each rule that sets one, a Preview only badge on the control, and a mention in the Export sentence. The UAT setup docs say Node 20+ for the browser UAT, install browsers with the locked playwright-core's own installer and name Playwright's Chromium, and uat-hostile-input.mjs pins Firefox's console for malformed XML that contains an <svg token. The stale documents are brought up to date: the project plan's current state, the pitch-axis design's superseded chord diagnosis, the two engine behaviours under a pitch axis (in the export spec and README Known limitations), the playbook's I2, and architecture \u00a711's settled questions.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 29,
+      "dateTime": "2026-11-07T08:11:34.894000-05:00",
+      "what": "step 'engine-repeat-stem-test': its files",
+      "reason": "The render shows the exporter emits stem attachments in staff spaces while the engine passes them to LilyPond's stem-attachment, which reads fractions of the notehead extent, so the engraved stem cannot match the preview without changing export bytes (a declared non-goal). The operator chose to defer the fix: this step inserts a new session for it into session-plan.md and adds the probe and the test, skipping with that session named until the fix lands.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

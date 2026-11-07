@@ -1008,4 +1008,20 @@ export const tests = [
       assert(plainPath.getAttribute("transform") === `scale(${shape.semitoneHeight * 16 / shape.naturalHeight})`, "unsized cell unchanged");
     }),
   },
+  {
+    name: "render: the off-key mark row carries a Preview only badge saying it is not drawn or exported yet (session 29)",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container, {});
+      const rows = findAll(handle.root, "cnb-nre-apply-mark");
+      assert(rows.length > 0, "every rule card has an off-key mark row");
+      for (const row of rows) {
+        const badges = findAll(row, "cnb-badge");
+        assert(badges.length === 1 && badges[0].textContent === "Preview only", "one Preview only badge");
+        assert(badges[0].title === E.OFF_KEY_MARK_TOOLTIP, "its tooltip");
+      }
+      assert(/not drawn in the preview or exported yet/.test(E.OFF_KEY_MARK_TOOLTIP), "the tooltip says why");
+      assert(findAll(findAll(handle.root, "cnb-nre-apply-shape")[0] || { children: [] }, "cnb-badge").length === 0,
+        "other apply rows carry no badge");
+    }),
+  },
 ];

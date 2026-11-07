@@ -62,7 +62,9 @@ The grid maps every semitone to its own vertical position — higher pitch,
 higher on the page. Line thicknesses are expressed as a **percentage of one
 semitone's height** (`thicknessPct`), so a design scales cleanly regardless of
 the pixels-per-semitone zoom (`display.pxPerSemi`). This "one row per
-semitone" rule is also a hard limit — see invariant **I2** in Part 2.
+semitone" rule is the default, not a hard limit: the optional `pitchAxis`
+section maps several pitch classes onto one position — see invariant **I2**
+in Part 2.
 
 ### 1.3 Staff pattern and stem direction
 
@@ -222,7 +224,8 @@ resolved configs. Two subtleties worth knowing when you read your own exports:
 ## Part 2 — What the platform can and cannot do
 
 The Configurator reproduces a large fraction of the published chromatic-staff
-gallery, but not all of it. The limits are **five architectural invariants**,
+gallery, but not all of it. The limits are **five architectural invariants**
+(four hard limits, and I2, which the pitch axis has relaxed),
 each an assumption of the config schema or rendering model whose violation
 makes the output *structurally different* from the target — not merely missing
 an optional mark. They were confirmed and amended against the 55-system survey
@@ -230,7 +233,8 @@ an optional mark. They were confirmed and amended against the 55-system survey
 your design idea hits one, the platform is the wrong tool for *that* aspect of
 the design; the guidance below gives the redesign path where one exists.
 
-Prevalence counts below are the survey's Tier-4 tallies (matrix §5).
+Prevalence counts below are the survey's Tier-4 tallies (matrix §5, as
+amended by §9 when the pitch axis relaxed I2).
 
 ### I1 — Horizontal staff orientation
 
@@ -244,21 +248,28 @@ is no vertical-staff mode in the schema, preview, or exporter.
   a horizontal staff (ChromaTonnetz's 4-orientation × 3-fill glyphs are
   staff-agnostic); only the read direction is out of scope.
 
-### I2 — One pitch per vertical grid position
+### I2 — One pitch per vertical grid position (relaxed by the pitch axis)
 
-`semiToY` gives every semitone its own row. **Compact** staves, where two
+By default every semitone has its own row. **Compact** staves, where two
 chromatic neighbors share a vertical position and are disambiguated by
-notehead **shape or which side of a line** they sit on, have no config
-representation.
+notehead **shape or which side of a line** they sit on, are expressible with
+the optional `pitchAxis` config section (set 014; architecture plan §4.13):
+an explicit pitch-class → position map, with notehead shape or a sideways
+offset (`xOffsetStaffSpaces`) telling the shared notes apart. In the editor,
+the Pitch section's nudges write it. With `pitchAxis` absent or disabled the
+staff is one row per semitone, exactly as before.
 
 - **Exemplars:** the Twinline family — Chromatic/Diatonic Twinline (32, 33),
   Reed Twinline (34), Black-Triangle (35), Black-Oval (36), Bilinear (37),
-  TwinNote/TD (38, 39), Chromatic Nydana (40). *9 systems — the single largest
-  Tier-4 lineage.*
-- **What to do:** redesign to a **full-height** staff (one row per semitone).
-  The shape-disambiguation idea itself (semicircle-vs-oval, triangle
-  orientation) *is* expressible as a notehead scheme; you lose only the
-  vertical compression.
+  TwinNote/TD (38, 39), Chromatic Nydana (40). *9 systems,* once the largest
+  Tier-4 lineage; since the
+  [matrix §9 amendment](../research/gallery-survey/feasibility-matrix.md#9-amendment-2026-10-31-set-014-twinline-family-re-tiered)
+  none of them is Tier 4 (32, 33, 35 and 39 are Tier 1; 34, 36, 37, 38 and
+  40 are Tier 2, for other devices).
+- **What to do:** build the compact staff with the pitch axis (the
+  `twinline-compact.json` gallery file is a worked example). What remains
+  out of reach is a non-monotonic map (validation PA-8) and the two engine
+  behaviours in the README's "Under a pitch axis" limitations.
 
 ### I3 — Duration is a notehead style, not a glyph geometry
 
@@ -322,12 +333,15 @@ firm targets of Tiers 1–3
 
 | Tier | Meaning | Count (of 55) |
 |---|---|---|
-| **1 — expressible today** | staff/ledger/notehead/palette/duration all covered by the current schema | 21 |
-| **2 — expressible with the set-009/010 enhancements** | needs custom clefs (E1) and/or key signatures (E2), which now exist | 12 |
+| **1 — expressible today** | staff/ledger/notehead/palette/duration all covered by the current schema | 25 |
+| **2 — expressible with the set-009/010 enhancements** | needs custom clefs (E1) and/or key signatures (E2), which now exist | 17 |
 | **3 — partially expressible** | staff/notehead core reproducible, one auxiliary device or display detail not | 1 |
-| **4 — structurally out of scope** | breaks an invariant I1–I5 | 21 |
+| **4 — structurally out of scope** | breaks an invariant I1, I3, I4 or I5 | 12 |
 
-Tier 4 by invariant: **I1** orientation 4 · **I2** compact 9 · **I3** duration
+Counts as amended by matrix §9 (set 014), when the Twinline family (records
+32–40) left Tier 4; the original counts were 21, 12, 1 and 21.
+
+Tier 4 by invariant: **I1** orientation 4 · **I2** compact none (originally 9) · **I3** duration
 geometry 6 · **I4** bounded staff 1 (+3 Express Stave, corrected at set 011) ·
 **I5** movable-Do 1.
 

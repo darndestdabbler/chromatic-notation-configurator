@@ -48,7 +48,8 @@
  *     seed-then-edit pattern as the custom-color control's #000000). The
  *     mark's *visual treatment* remains deferred (plan §11.4), so the
  *     resolved strip and preview show the effective mark identifier as
- *     text.
+ *     text. The row carries a Preview only badge whose tooltip says the
+ *     mark is not drawn or exported yet (session 29).
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -93,6 +94,10 @@ import { CNBNotehead } from "../src/cnb-notehead.js";
 
 // Pitch-class labels (kept inline like Modules 12–13 so the editor core
 // adds no dependency beyond Module A).
+/** The off-key mark row's Preview only tooltip (session 29, design §8.6). */
+const OFF_KEY_MARK_TOOLTIP =
+  "Kept in the file, but not drawn in the preview or exported yet: off-key marking is still to be built.";
+
 const PC_LABELS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
@@ -143,6 +148,7 @@ function isValidHex(str) {
 }
 
 export const CNBNoteheadRuleEditor = {
+  OFF_KEY_MARK_TOOLTIP,
 
   PC_LABELS,
 
@@ -424,7 +430,7 @@ export const CNBNoteheadRuleEditor = {
     }
 
     // ── Apply-property row: enable checkbox + a control when enabled ─────
-    function applyRow(cssName, labelText, enabled, onToggle, buildControl) {
+    function applyRow(cssName, labelText, enabled, onToggle, buildControl, badgeTooltip = null) {
       const row = el("div", "cnb-nre-apply-row " + cssName + (enabled ? " enabled" : ""));
       const label = el("label", "cnb-nre-apply-toggle");
       const cb = el("input", cssName + "-check cnb-nre-apply-check");
@@ -434,6 +440,12 @@ export const CNBNoteheadRuleEditor = {
       label.appendChild(cb);
       label.appendChild(el("span", "cnb-nre-apply-name", labelText));
       row.appendChild(label);
+      if (badgeTooltip) {
+        // A Preview only badge with its one-line tooltip (design §8.6).
+        const badge = el("span", "cnb-badge", "Preview only");
+        badge.title = badgeTooltip;
+        row.appendChild(badge);
+      }
       if (enabled) row.appendChild(buildControl());
       return row;
     }
@@ -655,7 +667,7 @@ export const CNBNoteheadRuleEditor = {
             wrap.appendChild(input);
           }
           return wrap;
-        }));
+        }, OFF_KEY_MARK_TOOLTIP));
 
       if (axisEnabled || rule.apply.xOffsetStaffSpaces !== undefined) {
         apply.appendChild(applyRow("cnb-nre-apply-xoffset", "Horizontal offset (staff spaces)",
