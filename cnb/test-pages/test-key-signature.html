@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Key Signature Test — set 010</title>
+  <link rel="stylesheet" href="../assets/fonts/oswald.css">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 24px 0 4px; }
+    h1:first-of-type { margin-top: 0; }
+    p  { font-size: 13px; color: #666; margin: 0 0 16px; max-width: 820px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+<h1>C major — notehead-chords default (debug grid)</h1>
+<p>
+  The operator-directed default style, mirroring the engine's
+  <code>keysig.ly</code>: the C-major scale as real noteheads from semi 12
+  (tonic auto-centered on the staff midpoint) up to semi 24, interleaved
+  into two columns — left column C-E-G-B (major 7th on the root), right
+  column D-F-A-C (minor 7th on the 2nd degree) — with the C-ledgers at
+  semis 12/24 and the D-ledger at 14, capped by the gold separator bar
+  spanning semis 0–24.
+</p>
+<div class="card" id="c-major"></div>
+
+<h1>A natural minor — different tonic, same rules (debug grid)</h1>
+<p>
+  Tonic auto-placement puts A at semi 9 (span 9–21 centered on midpoint 12).
+  Expected: minor-7th chord A-C-E-G in the left column, half-diminished
+  B-D-F-A in the right — the mode's chord qualities fall out of the scale
+  automatically, as in keysig.ly.
+</p>
+<div class="card" id="a-minor"></div>
+
+<h1>A major — hollow sharps and palette colors (debug grid)</h1>
+<p>
+  A major (3 sharps) with the default "sharps are hollow" rule and a
+  Dark2-style palette. Expected: C♯, F♯, G♯ signature noteheads render
+  hollow; every notehead takes its pitch class's palette color — the
+  signature resolves through the same rule pipeline as the cards.
+</p>
+<div class="card" id="a-major"></div>
+
+<h1>3-6-9 staff pattern (debug grid)</h1>
+<p>
+  C major on the Kite-style staff (pattern [3, 6, 9], 3 semitones per staff
+  space). Expected: identical semis 12–24 (midpoint unchanged), ledgers
+  resolved against the 3-6-9 lines by the shared octave-aware rules.
+</p>
+<div class="card" id="pattern-369"></div>
+
+<h1>Composed with a clef — clef first, then key signature (debug grid)</h1>
+<p>
+  The set-009 register-bracket clef plus the C-major signature. Expected:
+  clef gutter, then keysig gutter, then the cards (binding rule 3), staff
+  lines running unbroken behind both gutters.
+</p>
+<div class="card" id="with-clef"></div>
+
+<h1>Dot style — simple built-in mark (debug grid)</h1>
+<p>
+  <code>style: "dot"</code>: one filled circle per scale degree at the same
+  grid positions, single column, colored by the same notehead color
+  resolution (palette applied here), separator bar retained.
+</p>
+<div class="card" id="dot-style"></div>
+
+<h1>Full chromatic row — production look (no debug grid)</h1>
+<p>
+  The default 4-8 chromatic row with the C-major signature enabled.
+  Expected: the pre-set-010 preview plus the key-signature gutter on the
+  left; labels, ledgers, stems unchanged.
+</p>
+<div class="card" id="full-row"></div>
+
+<h1>Disabled — default-off compatibility</h1>
+<p>
+  <code>keys.keySignature.enabled: false</code> (the default). Expected:
+  byte-for-byte the pre-set-010 preview — no gutter, no reserved width.
+</p>
+<div class="card" id="disabled-row"></div>
+
+<script type="module">
+  import { CNBConfig }     from "../src/cnb-config.js";
+  import { CNBCollection } from "../src/cnb-collection.js";
+
+  const C_MAJOR  = { name: "C",       pitchClasses: [0, 2, 4, 5, 7, 9, 11] };
+  const A_MINOR  = { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7] };
+  const A_MAJOR  = { name: "A",       pitchClasses: [9, 11, 1, 2, 4, 6, 8] };
+
+  const DARK2 = ["#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E",
+                 "#E6AB02", "#A6761D", "#666666", "#1F78B4", "#33A02C",
+                 "#FB9A99", "#B2DF8A"];
+
+  function withKeysig(definitions, configure = () => {}) {
+    const config = CNBConfig.createDefault();
+    config.keys.enabled = true;
+    config.keys.definitions = definitions;
+    config.keys.keySignature.enabled = true;
+    configure(config);
+    return config;
+  }
+
+  const SUBSET = { pitchClasses: [0, 4, 7, 12] };
+
+  // ── 1. C major, notehead-chords default ──────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("c-major"),
+    withKeysig([C_MAJOR], c => { c.display.debugGrid = true; }),
+    { ...SUBSET, keys: ["C"] }
+  );
+
+  // ── 2. A natural minor ────────────────────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("a-minor"),
+    withKeysig([A_MINOR], c => { c.display.debugGrid = true; }),
+    { ...SUBSET, keys: ["A minor"] }
+  );
+
+  // ── 3. A major: hollow sharps + palette colors ────────────────────────────
+  CNBCollection.render(
+    document.getElementById("a-major"),
+    withKeysig([A_MAJOR], c => {
+      c.display.debugGrid = true;
+      c.palette.colors = DARK2.map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+    }),
+    { ...SUBSET, keys: ["A"] }
+  );
+
+  // ── 4. 3-6-9 staff pattern ────────────────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("pattern-369"),
+    withKeysig([C_MAJOR], c => {
+      c.staff.semitonePattern = [3, 6, 9];
+      c.staff.semitonesPerStaffSpace = 3;
+      c.display.debugGrid = true;
+    }),
+    { ...SUBSET, keys: ["C"] }
+  );
+
+  // ── 5. Composed with the set-009 clef ─────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("with-clef"),
+    withKeysig([C_MAJOR], c => {
+      c.display.debugGrid = true;
+      c.clef.enabled = true;
+      c.clef.active = "bracket";
+      c.clef.glyphs = { bracket: {
+        displayName: "Register Bracket",
+        kind: "glyph",
+        svgPath: [
+          "M 0 0 L 40 0 L 40 600 L 0 600 Z",
+          "M 40 0 L 240 0 L 240 60 L 40 60 Z",
+          "M 40 270 L 180 270 L 180 330 L 40 330 Z",
+          "M 40 540 L 240 540 L 240 600 L 40 600 Z",
+        ].join(" "),
+        naturalHeight: 600,
+        naturalWidth: 240,
+        semitoneHeight: 6,
+        viewBoxMinX: 0,
+        viewBoxMinY: 0,
+        lilypondPath: null,
+        anchorSemi: 20,
+      } };
+    }),
+    { ...SUBSET, keys: ["C"] }
+  );
+
+  // ── 6. Dot style ──────────────────────────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("dot-style"),
+    withKeysig([C_MAJOR], c => {
+      c.display.debugGrid = true;
+      c.keys.keySignature.style = "dot";
+      c.palette.colors = DARK2.map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+    }),
+    { ...SUBSET, keys: ["C"] }
+  );
+
+  // ── 7. Full chromatic row, production look ────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("full-row"),
+    withKeysig([C_MAJOR]),
+    { keys: ["C"] }
+  );
+
+  // ── 8. Disabled — must match the pre-set-010 default exactly ──────────────
+  CNBCollection.render(
+    document.getElementById("disabled-row"),
+    CNBConfig.createDefault(),
+    { keys: ["C"] }
+  );
+</script>
+
+</body>
+</html>
