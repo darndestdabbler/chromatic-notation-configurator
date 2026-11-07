@@ -921,19 +921,19 @@ variant of a shape per size.
 6. README "Preview-only settings" and the gallery configs: say that size
    exports, and leave the fixtures' sizes untouched.
 
-### The notehead-first program (sessions 23–33)
+### The notehead-first program (sessions 23–34)
 
 **Operator, 2026-11-06:** approved the program in §12 of
 [`docs/planning/notehead-first-editor-design.md`](../planning/notehead-first-editor-design.md)
 (sessions 19 and 20), with one change: the canvas **Size is kept in the
 browser, not saved in the file** (session 25 carries it out). The design and
-its mock-ups (§10) are the specification. Every UI session (25–32) ends by
+its mock-ups (§10) are the specification. Every UI session (25–33) ends by
 taking the app's screenshots at 1440 and 1280 px with session 25's driver
 and judging them against the mock-ups: layout, type, spacing, wording, the
 row count each width should give (§6.1), and no horizontal overflow. The
 judgement and the screenshots go in `docs/uat-status.md`. Where a session
 finds a better answer than a mock-up, it updates the mock-up in the same
-session. No session before 33 releases; the first release is the site's
+session. No session before 34 releases; the first release is the site's
 first deploy (see "No release until the UI is stable").
 
 **Plan amended 2026-11-07, after session 26:** three sessions inserted for
@@ -946,6 +946,12 @@ and ledger fixes they are the first to need, and "The UI is stable" and
 the release become 32 and 33. Larger deferred work is listed, unscheduled,
 under "After 1.1.0". The release stays 1.1.0, a minor version: the clef
 and key-signature export is a new feature, with no breaking change.
+
+**Plan amended 2026-11-07, during session 27:** one session inserted
+before the release (operator). Session 32 adds the 2–4–6–8–10 and
+3–5–7–9 staff presets; "The UI is stable" and the release become 33 and
+34. The release stays 1.1.0: the presets are a feature, so they belong
+in the same minor version.
 
 ### Session 23: The look table and rule inference
 
@@ -1254,7 +1260,46 @@ the Pitch section and the other controls those sessions build.
 4. Tests, and the layout driver opens the list for a config with a warning
    and follows its link.
 
-### Session 32: The UI is stable
+### Session 32: Two more staves to start from
+
+**Why.** The Staff panel offers 4–8 and 3–6–9. With 2–4–6–8–10 and
+3–5–7–9 added (operator, 2026-11-07), the presets cover the evenly
+spaced staves centred on F♯, whose gap is centred on C, at spacings of
+4, 3 and 2 semitones. 2–4–6–8–10 belongs with 4–8 and 3–6–9: its gap is
+one missing line, on C (the gallery's Richter entries,
+`docs/research/gallery-survey/catalog.md`). 3–5–7–9 is the other case,
+where C falls in a space: its Automatic ledgers are B and C♯.
+
+1. Register.
+2. `STAFF_PATTERN_PRESETS` (`cnb/ui/staff-rule-editor.js`) gains
+   "2-4-6-8-10" ("Five lines an octave, on D, E, F♯, G♯ and A♯") and
+   "3-5-7-9" ("Four lines an octave, on D♯, F, G and A"), after the two
+   there now. The `patternKey` type and the comments that name the
+   presets (the preset table, `automaticTemplates`) follow. The midpoint
+   stays 12 and the spacing derives as 2, so no geometry code changes;
+   tests pin both.
+3. Tests:
+   - in `cnb-staff-rule-editor-tests.js`: each new pattern opens as its
+     preset and saves back unchanged; `automaticTemplates` gives `[0]`
+     for 2–4–6–8–10 and `[1, 11]` for 3–5–7–9;
+   - in `cnb-ledger-set-tests.js`: what 3–5–7–9's Automatic ledgers draw
+     around C. Octave-aware resolution (region `floor(semi / 12)`) gives
+     C at 12 the C♯ ledger at 13 only, and B at 11 its own ledger, so C
+     shows one ledger above and none below. Pin that, and show it to the
+     operator at the UAT; if it is judged wrong, the fix is planned, not
+     made here;
+   - in `cnb-lilypond-tests.js`: the staff-line positions,
+     `'(-10 -8 -6 -4 -2 2 4 6 8 10)` for 2–4–6–8–10 and
+     `'(-9 -7 -5 -3 3 5 7 9)` for 3–5–7–9. The second puts lines on odd
+     staff positions, which no fixture does yet, so engrave it once
+     through `cnb/tests/engine-probe.js`, skipping with the reason
+     without `lilypond`, and check that the lines fall where the preview
+     draws them.
+4. `uat-app-layout.mjs` saves the Staff panel and canvas with each new
+   preset chosen. Judge the shots against the mock-ups and record them in
+   `docs/uat-status.md`.
+
+### Session 33: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06).
 
@@ -1263,15 +1308,15 @@ the Pitch section and the other controls those sessions build.
    UI, and while doing so checks the colour pickers by hand (drag in the
    field, type a full hex value) in each editor that has one, the check
    session 21 left owed. The rough edges found are fixed in this session,
-   or planned as sessions before 33 if they are large.
+   or planned as sessions before 34 if they are large.
 3. README text and pictures follow the new UI. Its "Preview-only settings"
    list matches the Export section's sentence as session 30 leaves it, and
    it no longer introduces the unused repeat counts as settings that change
    the preview (session 18 review). The full UAT runs.
 4. The operator declares the UI stable, which is the condition for
-   session 33.
+   session 34.
 
-### Session 33: Release 1.1.0 (release: 1.1.0)
+### Session 34: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
