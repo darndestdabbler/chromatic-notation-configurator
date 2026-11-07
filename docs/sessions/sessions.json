@@ -572,9 +572,9 @@
     {
       "number": 28,
       "title": "Pitch",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-07T06:21:51.177000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-07T07:45:53.113000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
