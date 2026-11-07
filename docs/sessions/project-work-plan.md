@@ -34,7 +34,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 20 | Design revision: the canvas reflows instead of scaling | no | 2026-11-06 |
 | 21 | The colour picker stays open | no | 2026-11-06 |
 | 22 | Each notehead has its own height and width | no | 2026-11-06 |
-| 23 | The look table and rule inference | — | not declared |
+| 23 | The look table and rule inference | no | 2026-11-06 |
 | 24 | Pitch, nudges and staff spacing | — | not declared |
 | 25 | The new page | — | not declared |
 | 26 | The panels speak to a designer | — | not declared |
@@ -207,3 +207,9 @@ Give each notehead its own height and width. A notehead rule's apply block gains
 **Amended after acceptance:**
 
 - 2026-11-06 — step 'browser-check-record': its files: The browser check found the new size row unstyled in the app (default font size, no spacing); cnb/index.html needs CSS for the .cnb-nre-size* hooks, matching the neighbouring apply-row controls (claude-code (anthropic, claude-opus-5-5))
+
+### Session 23 — The look table and rule inference
+
+**Releasable: no.**
+
+Build the notehead-first editor's model with no UI (design docs/planning/notehead-first-editor-design.md §0.4, §5). A new pure-function module cnb/ui/notehead-inference.js gives: the look table of a config (one row per pitch class: shape, fill, colour, size as heightSemis/widthSemis, side step as xOffsetStaffSpaces), resolved through CNBConfig.resolveNotehead from the rules the inference owns (rules matching every duration and key and setting no offKeyMark), with colour from the rule's apply.color or else the primary palette entry; the §5.1 inference of one attribute (default = most common value, ties broken by C; smallest period in 1, 2, 3, 4, 6; else the accidentals or naturals; else an explicit list), with rule names in words such as "Hollow on the accidentals" or "Kite-up, every 4 semitones from C♯ and D"; and the write back of a look table to a config: a Default rule plus one rule per non-default value for shape, fill, size and side step (priorities in that order, apply.color never set, zero side steps and shape-own sizes omitted), colour written to palette.colors (entries whose hex is unchanged are kept as they are and in their order, cbSafeColors untouched, §5.3), and the rules the inference does not own kept verbatim above the inferred ones, their priorities raised only if needed to stay above (§5.5). Tests in cnb/tests/cnb-notehead-inference-tests.js, registered in the runner, pin: for every gallery and fixture config, writing back its own look table resolves to the same notehead (and the same colour) for every pitch class, every defined duration and every defined key or none; the default, Kite 4-369 and 45deg-369 exports of the written-back configs match their baseline .ly files byte for byte; the §5.2 worked examples (default, Kite, 45deg, Twinline) infer the rules and names the design shows; and a small built config shows a key- or duration-scoped rule and an apply.color rule surviving the write back with the same resolutions.
