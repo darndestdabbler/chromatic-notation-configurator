@@ -921,20 +921,31 @@ variant of a shape per size.
 6. README "Preview-only settings" and the gallery configs: say that size
    exports, and leave the fixtures' sizes untouched.
 
-### The notehead-first program (sessions 23–30)
+### The notehead-first program (sessions 23–33)
 
 **Operator, 2026-11-06:** approved the program in §12 of
 [`docs/planning/notehead-first-editor-design.md`](../planning/notehead-first-editor-design.md)
 (sessions 19 and 20), with one change: the canvas **Size is kept in the
 browser, not saved in the file** (session 25 carries it out). The design and
-its mock-ups (§10) are the specification. Every UI session (25–29) ends by
+its mock-ups (§10) are the specification. Every UI session (25–32) ends by
 taking the app's screenshots at 1440 and 1280 px with session 25's driver
 and judging them against the mock-ups: layout, type, spacing, wording, the
 row count each width should give (§6.1), and no horizontal overflow. The
 judgement and the screenshots go in `docs/uat-status.md`. Where a session
 finds a better answer than a mock-up, it updates the mock-up in the same
-session. No session before 30 releases; the first release is the site's
+session. No session before 33 releases; the first release is the site's
 first deploy (see "No release until the UI is stable").
+
+**Plan amended 2026-11-07, after session 26:** three sessions inserted for
+what reviews, audits and the v1 session sets left open. Session 29 takes
+the small defects, test gaps and stale documents; session 30 exports the
+clef and key signature, which the engine has taken since July and the
+configurator still leaves out; session 31 is design §8.5, the checks list
+in a designer's terms. Sessions 27 and 28 gain the inference, pitch-model
+and ledger fixes they are the first to need, and "The UI is stable" and
+the release become 32 and 33. Larger deferred work is listed, unscheduled,
+under "After 1.1.0". The release stays 1.1.0, a minor version: the clef
+and key-signature export is a new feature, with no breaking change.
 
 ### Session 23: The look table and rule inference
 
@@ -1034,8 +1045,14 @@ the rules follow (design §2, §5.4).
    Start from a palette), fill, shape (the config's shapes, the built-in
    shapes, Import from SVG), size (session 22's fields), side step, and
    Give this look to. Every change goes through session 23's inference.
-3. The rule list under the canvas, in words, with hover tint (§5.4).
-4. Tests in the new modules' test files; a UAT driver that builds the Kite
+3. Two inference fixes the session 23 review left open, which the panel is
+   the first to need: a notehead whose colour is taken back to none (black)
+   writes the palette without it, which `writeBack` cannot do yet; and a
+   rule kept for particular durations or keys is raised in priority only
+   when it does not already sit above every inferred rule, as design §5.5
+   says, not with all the kept rules in bulk.
+4. The rule list under the canvas, in words, with hover tint (§5.4).
+5. Tests in the new modules' test files; a UAT driver that builds the Kite
    looks by clicking and checks the export matches the fixture.
 
 ### Session 28: Pitch
@@ -1048,26 +1065,267 @@ the rules follow (design §2, §5.4).
    Pitch section (middle of the staff, staff spacing, nudges with their
    limits), all through session 24's model; the custom-map fallback in
    Advanced (§3.5).
-3. Tests and a UAT driver that rebuilds Twinline from nudges.
+3. Two pitch-model questions sessions 24 and 25 left to this session:
+   - `readNudges` measures a stride-12 map's nudges from 0, not from C's
+     position, as the design's formula does, so a map whose every position
+     is shifted by the same amount reads as twelve equal nudges instead of
+     none (session 24 review). Use C's position, with the test the review
+     gives (`writeNudges` with every nudge 0.5, read back as zeros).
+   - The staff's edges under a pitch shift (design §11): the exporter and
+     the preview expand the pattern over semitones 0–23, so a shift that
+     carries a line past one edge brings it back at the other. Decide
+     whether the drawn and exported range follows the middle of the staff,
+     record the decision in the design, and pin it with a test that renames
+     C to F♯ on the default staff.
+   - Ledger lines under nudges: session 26's Automatic ledger spots follow
+     the semitone pattern, not the nudged positions, and the Twinline-like
+     preset keeps the 4-8 templates (the one caveat the operator was told
+     of at the session 4 UAT, `docs/sessions/uat-session-4.md`). Automatic
+     spots follow the staff spacing as the nudges place the lines.
+4. Tests and a UAT driver that rebuilds Twinline from nudges.
 
-### Session 29: The UI is stable
+### Session 29: Loose ends from sessions 2–26 and the v1 sets
+
+**Why.** Reviews and audits from session 2 on, and the records of the v1
+session sets 001–014 (`docs/session-sets/`), left small defects, test gaps
+and stale documents that no session took up. None blocks a designer today,
+but each is a wrong answer or an unchecked claim, and the release should
+not carry them. The larger items those records defer are under "After
+1.1.0" at the end of this plan.
+
+1. Register.
+2. Numbers that overflow (session 10 review): `CNBScheme.parseRatio` and
+   `parsePath` accept a decimal of hundreds of digits, which becomes
+   `Infinity`, so validation passes a config that export then refuses, and
+   the SVG importer can throw instead of returning its import error. Reject
+   non-finite numbers where they are parsed. Tests in
+   `cnb/tests/cnb-scheme-tests.js`, `cnb-config-tests.js` and
+   `cnb-svg-importer-tests.js`: a 400-digit `engine.defaultMagnify` fails
+   validation by name, and a 400-digit path number is an import error.
+3. Rotated stem rects (session 11 review): `transformRect` reduces a
+   transformed rect to its bounding box before the anchors are read, so a
+   rotated stem rect anchors at the wrong point (`rotate(90)` on
+   `{0, 0, 10, 20}`: the bottom centre is `(-20, 5)`, the box gives
+   `(-10, 10)`). Read the anchor from the transformed corners. Test in
+   `cnb-svg-importer-tests.js`.
+4. Two engine-backed tests that skip with the reason when `lilypond` is not
+   on `PATH`:
+   - **Durations** (audit 2026-11-02, H4). The engine fixed its duration
+     categories in its 1.1.1, but this repository has no test that a
+     duration rule engraves on the right notes. With the Kite fixture plus
+     "C minims are hollow", `c'4 c'2` engraves the quarter solid and the
+     half hollow. In `cnb-lilypond-tests.js`, through
+     `cnb/tests/engine-probe.js`.
+   - **Repeat-mode stems** (session 18 review). In repeat mode, with a stem
+     anchor off the notehead's centre, the engraved stem's x matches the
+     preview's, measured from the render rather than from
+     `CNBCard.repeatLayout`. In `cnb-card-tests.js`.
+5. Small wording and behaviour fixes:
+   - Advanced › Durations: the repeat counts' inactive label says "Used
+     only in repeat mode" although nothing uses them (session 18 review);
+     say they are kept but not used.
+   - Automatic ledger lines are recognised on load only when each loaded
+     template matches exactly, with `triggerPCs` present and no other
+     fields (session 26 review).
+   - With every duration deselected, the Clef and Key signature panels show
+     no partial staff, as the canvas shows none, rather than a crotchet one
+     (session 26 review).
+   - Design §10: correct the 880 px measurement to the seven-track second
+     row the code draws (session 20 review).
+   - `docs/uat-status.md`: the "first run with no repairs" sentence no
+     longer matches the history (session 21 review).
+6. The Google Fonts request (session 15 review): the page fetches Oswald
+   from Google at run time, though the site was described as fetching
+   nothing, and the UAT drivers stub the request so it is never checked.
+   Serve Oswald from the site (`cnb/assets/fonts/`, under its SIL Open Font
+   Licence, with the licence file beside it), drop the Google links, and
+   have `uat-site.mjs` fail on any request outside the site's own origin.
+   The UAT screenshots then draw the labels in Oswald, as the mock-ups do.
+7. Off-key marks: a rule's `apply.offKeyMark` can be edited, but the
+   preview draws no mark and the export writes `(off-key-mark . #f)`, with
+   no word to the designer (architecture §11 question 4; set 005 s2 UAT).
+   Until off-key marking is built (see "After 1.1.0"), validation warns and
+   names each rule that sets one, the control carries a Preview only badge
+   saying it is not drawn or exported yet, and the Export sentence names
+   it.
+8. The UAT setup (sessions 5 and 6 reviews):
+   - `CLAUDE.md` says Node.js 18+, but `playwright-core` 1.64 needs 20:
+     say 20+ for the browser UAT.
+   - README installs browsers with `npx playwright install`, which can
+     fetch an unpinned `playwright`; use the locked `playwright-core`'s
+     own installer.
+   - README's browser table says "Chromium / Chrome 156"; the drivers run
+     Playwright's Chromium, not Google Chrome.
+   - `uat-hostile-input.mjs` pins Firefox's "no console errors" for
+     malformed XML that still contains an `<svg` token.
+9. Stale documents (session 7 review; set 012; engine handoff 008 §5;
+   architecture plan §11):
+   - `docs/planning/project-plan.md` "Current state" still says two
+     codebases coexist and the exporter and UI do not exist.
+   - `docs/planning/pitch-axis-design.md` §3.4 and §5.2 risk 1 still give
+     the superseded "diatonic-`staff-position`-derived" chord diagnosis;
+     the export spec §6.3 has the correction.
+   - Two engine behaviours under a pitch axis (handoff 008 §5, flags 1
+     and 2) are documented nowhere here: collision analysis rounds axis
+     positions to whole numbers, and LilyPond drops the down-stem head's
+     dots for dotted notes in two voices at one axis position. Add them to
+     the export spec and README "Known limitations".
+   - `docs/playbook/notation-builder-playbook.md` still treats I2 as a hard
+     limit and counts nine Tier-4 I2 records; the pitch axis lifted it
+     (feasibility matrix §9).
+   - Architecture plan §11: questions 1, 2, 6 and 7 and the clef half of
+     5 are settled in the code and read as open. Mark each with how it was
+     settled; question 8 (stem attachment) stays open.
+
+### Session 30: The clef and the key signature reach LilyPond
+
+**Why.** The engine has taken a clef and key-signature configuration since
+its sets 005 and 006 (July 2026), and their handoffs list this repository's
+side as owed (engine `docs/planning/configurator-coordination-backlog.md`
+§1–§2): the exporter still writes nothing for either. So the preview and
+the engraving disagree. Every export, even one with the clef off, engraves
+the engine's default dozenal clef, which the preview does not draw, and a
+config that turns its key signature off still engraves one.
+
+1. Register.
+2. Read the two handoffs first:
+   `docs/session-sets/005-clef-configurability/configurator-handoff.md` §5
+   and `006-keysig-configurability/configurator-handoff.md` §3 in the
+   engine repo. Their flags set the conversions: the clef anchor's
+   middle-C = 0 origin, the gutter from px to semitones, the clef path's
+   command-list format, the text label's colour and font, the
+   `thicknessPct` conversion (`thicknessPct / (10 × semitones per staff
+   space)`), the tonic octave's numbering on a linear staff (the handoff's
+   −1, which the session-3 round trip found does not apply under a pitch
+   axis), and a separator that is off with no engine switch for it.
+3. Export, emit-if-changed like the other engine settings:
+   - **Clef:** `cnb:clef-style` (`'none` when the clef is off, `'custom`
+     with the glyph registered by `cnb:register-clef!` and named by
+     `cnb:clef-name`, `'text` with `cnb:clef-text`), and the size and
+     gutter settings.
+   - **Key signature:** `cnb:keysig-style` (`'none` when it is off), the
+     bar's colour, thickness and extent, and `cnb:keysig-tonic-octave` on
+     linear staves too.
+   Decide, and record in the spec, whether the default config, whose clef
+   is off, exports `'none` (the preview's answer) or leaves the engine's
+   dozenal clef; either way the default export baseline changes only on
+   purpose, and the change is named in `CHANGELOG.md`.
+4. Lift the tests that pin "no clef token" and "no keysig token", add the
+   addendum to `docs/CNB-LY-EXPORT-SPEC-v1_3.md` (1.3.5), and update the
+   architecture plan §4.9 and §4.12, which say nothing is emitted.
+5. Engine round trips, skipping with the reason without `lilypond`: a clef
+   glyph, a text clef and a key signature with a styled bar engrave where
+   the preview draws them, measured through `cnb/tests/engine-probe.js`;
+   one of them on a pitch axis with a fractional clef anchor (handoff 008
+   §5, flag 5).
+6. The Clef and Key signature panels lose the Preview only badges that no
+   longer apply, and the Export section's sentence and README "Preview-only
+   settings" follow.
+7. Screenshots that show the two previews at work (operator, 2026-11-07:
+   session 26's panel shots used Kite, which has neither, so its Clef and
+   Key signature previews drew three bare columns). `uat-app-layout.mjs`
+   saves the Clef panel with a clef glyph on and the Key signature panel
+   with keys and a signature on, for a key chosen on the canvas, and checks
+   that each partial staff draws its gutter. Judge them and record them in
+   `docs/uat-status.md`. The design's §10 has no mock-up for these
+   sections; these shots stand in for one.
+
+### Session 31: The checks speak to a designer
+
+**Why.** Design §8.5: each item in the checks list says the problem in a
+designer's terms and links to the control that fixes it. Session 25 built
+the indicator and the list with today's messages, and session 25's record
+gave the rewording to session 26, whose section did not include it. It
+comes after sessions 27 and 28 because its links open the notehead panel,
+the Pitch section and the other controls those sessions build.
+
+1. Register.
+2. A pure function in `cnb/ui/`, tested in its own test file, maps each
+   validation and export message to designer wording and a target: the
+   noteheads to select, or the section (and control) to open. The messages
+   themselves stay as they are in `CNBConfig.validate` and
+   `CNBConfigExport.validateForExport`, so their tests and the
+   export-blocking rules do not change. A message the map does not know
+   shows as today, with no link.
+3. The checks list shows the designer wording and a link (**Show the
+   rule**, **Select the notehead**, **Open Staff**) that does what it says;
+   the Export button's tooltip uses the same wording. Mock-up 4 is the
+   reference.
+4. Tests, and the layout driver opens the list for a config with a warning
+   and follows its link.
+
+### Session 32: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06).
 
 1. Register.
 2. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the new
-   UI. The rough edges found are fixed in this session, or planned as
-   sessions before 30 if they are large.
-3. README text and pictures follow the new UI. The full UAT runs.
+   UI, and while doing so checks the colour pickers by hand (drag in the
+   field, type a full hex value) in each editor that has one, the check
+   session 21 left owed. The rough edges found are fixed in this session,
+   or planned as sessions before 33 if they are large.
+3. README text and pictures follow the new UI. Its "Preview-only settings"
+   list matches the Export section's sentence as session 30 leaves it, and
+   it no longer introduces the unused repeat counts as settings that change
+   the preview (session 18 review). The full UAT runs.
 4. The operator declares the UI stable, which is the condition for
-   session 30.
+   session 33.
 
-### Session 30: Release 1.1.0 (release: 1.1.0)
+### Session 33: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
 1. Register.
 2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
-   renamed to 1.1.0, and add the notehead-first editor to the entry.
+   renamed to 1.1.0, and add the notehead-first editor, and the clef and
+   key-signature export, to the entry.
 3. The tag deploys the site. Confirm it is up and that the README and the
    `file://` notice link work.
+
+---
+
+## After 1.1.0: work the records defer
+
+Larger items that the v1 session sets (001–014), the gallery survey and
+sessions 1–4 deferred, still open on 2026-11-07. None is scheduled. Each is
+a feature or a research task that needs its own design, or a decision from
+the operator, before it becomes numbered sessions; most serve the
+full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
+"Strategic note"). Release versions are proposed when they are planned.
+
+- **Off-key marking** (architecture §11 question 4; sets 005, 010): draw
+  the mark in the preview and export it. The engine already takes it
+  (`cnb:register-off-key-mark!`, the `off-key-mark` field). Key rows in
+  the card collection (architecture §5 Module 10, "future") are likely
+  part of it, since a mark depends on the key.
+- **E3, stem and duration devices** (`enhancement-requirements.md` E3):
+  several stems, auxiliary stems, new flags, direction-dependent ticks.
+  Configurator and engine; blocks Tier-2 records 20, 22, 29, 34, 36, 38
+  and 40. A program of its own.
+- **E4, accidental marks** (E4; records 4, 27, 29). Configurator and
+  engine; may share machinery with off-key marking.
+- **Key signatures made of custom symbols, in the Clairnote style** (set
+  010 s2 notes D11, D12 and its design consult; record 40). The engine
+  backlog §2.3 says to reopen a mark-list rendering hook when this is
+  scheduled.
+- **Gallery fidelity** (`reproduction-report.md`):
+  - Gap A, a ledger rule that hides a ledger when a staff line lies between
+    it and the note, which would let the Clairnote SN/DN, Chromatic Lyre
+    and AxLoMaFi fixtures drop their trimmed trigger lists (preview only);
+  - Gap C, the Hass notehead's vertical offset, perhaps now possible with
+    session 22's sizes and session 24's nudges (test that first);
+  - Gap D, polished glyph SVGs for the Hass, AxLoMaFi, Schoenberg,
+    Trilinear and Jazz-oval fixtures, and their real sizes through
+    `heightSemis` (operator assets);
+  - a configurable dash pattern for staff and ledger lines (preview only);
+  - the 21 provisional verdicts of feasibility matrix §5 and per-system
+    reproduction fixtures for records 32–40 (sessions 1–4 carried this
+    forward).
+- **Limits kept on purpose**, listed so they are not mistaken for
+  backlog: the in-gap ledger difference between preview and engine
+  (pitch-axis design §2.4), invariants I1, I3, I4 and I5, non-monotonic
+  axis maps (PA-8), mixed-offset chords across pitch classes, record 7's
+  grouped far-side ledgers, a glyph-internal clef anchor attribute (the
+  float top anchor covers every surveyed clef), and architecture §11
+  question 8 (stem attachment), which stem thickness being preview-only
+  makes moot for now.
