@@ -41,8 +41,8 @@
  *     follow the lines as the config's pitch axis places them (the nudges
  *     of the Pitch section), kept in the state as `pitchAxis`.
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
- *     range (semis 0–24), i.e. 12, for every pattern — both plan examples
- *     (4-8 and 3-6-9) use it and the card/stem modules assume it. That
+ *     range (semis 0–24), i.e. 12, for every pattern — every preset (4-8,
+ *     3-6-9, 2-4-6-8-10, 3-5-7-9) uses it and the card/stem modules assume it. That
  *     derived value (and the GCD sps) applies only when the pattern changes:
  *     while the pattern is the one loaded, the loaded midpoint and sps are
  *     kept, so a pitch-axis config (midpoint 7 for twinline-compact) is not
@@ -56,7 +56,7 @@
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
- *     patternKey:     "4-8" | "3-6-9" | "custom",
+ *     patternKey:     "4-8" | "3-6-9" | "2-4-6-8-10" | "3-5-7-9" | "custom",
  *     customPattern:  number[],            // active when patternKey==="custom"
  *     loadedGeometry: { semitonePattern, midpoint, semitonesPerStaffSpace } | null,
  *                                          // kept while the pattern is unchanged
@@ -129,11 +129,16 @@ const TRIGGER_MODE_LABELS = {
 /**
  * Staff pattern presets. "4-8" is the default config's system; "3-6-9" is
  * the plan's worked alternative (gap systems exercise the no-hard-gate
- * ledger rules). Anything else is edited as "custom".
+ * ledger rules). "2-4-6-8-10" and "3-5-7-9" (session 32) complete the
+ * evenly spaced staves centred on F♯: 4-8, 3-6-9 and 2-4-6-8-10 leave one
+ * missing line, on C, while 3-5-7-9 puts C in a space. Anything else is
+ * edited as "custom".
  */
 const STAFF_PATTERN_PRESETS = {
   "4-8":   { title: "4–8",   description: "Two lines an octave, on E and G♯",          pattern: [4, 8] },
   "3-6-9": { title: "3–6–9", description: "Three lines an octave, on D♯, F♯ and A", pattern: [3, 6, 9] },
+  "2-4-6-8-10": { title: "2–4–6–8–10", description: "Five lines an octave, on D, E, F♯, G♯ and A♯", pattern: [2, 4, 6, 8, 10] },
+  "3-5-7-9": { title: "3–5–7–9", description: "Four lines an octave, on D♯, F, G and A", pattern: [3, 5, 7, 9] },
 };
 
 /** The parts render() can draw, in the order it draws them. */
@@ -239,7 +244,8 @@ export const CNBStaffRuleEditor = {
    * 0–11 that is not a staff line and whose distance from the first line
    * is a multiple of the staff spacing (derivedGeometry's), ascending. So
    * the staff's own spacing continues into its gaps and beyond its outer
-   * lines: 4-8 and 3-6-9 both give C. An empty pattern gives none.
+   * lines: 4-8, 3-6-9 and 2-4-6-8-10 give C, 3-5-7-9 gives C♯ and B. An
+   * empty pattern gives none.
    *
    * Under an enabled pitch axis (session 28) the spots follow the lines as
    * the axis places them: from each staff line, whole staff spacings

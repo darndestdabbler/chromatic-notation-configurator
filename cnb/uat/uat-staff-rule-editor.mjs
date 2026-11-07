@@ -168,11 +168,11 @@ const markerCount = async () => page.evaluate(() =>
 
 // ── Initial state ────────────────────────────────────────────────────────────
 check('PAGE title contains "Staff/Ledger Rule Editor"', (await page.title()).includes("Staff/Ledger Rule Editor"));
-check("PATTERN LIST has 3 options, 4–8 selected",
+check("PATTERN LIST has 5 options (4 presets + custom), 4–8 selected",
   await page.evaluate(() => {
     const opts = document.querySelectorAll(".cnb-sre-pattern-option");
     const sel = document.querySelector(".cnb-sre-pattern-option.selected");
-    return opts.length === 3 && sel && sel.dataset.patternKey === "4-8";
+    return opts.length === 5 && sel && sel.dataset.patternKey === "4-8";
   }));
 const d0 = await derivedText();
 check("DERIVED PANEL: staff spacing 4 semitones per staff space, middle of the staff C (semitone 12)",

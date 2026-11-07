@@ -21,6 +21,33 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Two more staves to start from — 2026-11-07 (session 32)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- Run by hand this session: app layout **71/71** (three new checks, below).
+  The whole suite runs at close.
+
+At 1440, `uat-app-layout.mjs` now opens the default config through Open
+and switches Ledger lines to Automatic. It then chooses the new 2–4–6–8–10
+and 3–5–7–9 presets in turn. For each one it checks that the config gets
+the preset's pattern, midpoint 12, spacing 2 and the Automatic ledger
+positions (C for 2–4–6–8–10; C♯ and B for 3–5–7–9), and saves the page.
+Finally it chooses 4–8 again and checks that the default staff comes back.
+
+### Judged against mock-up 1 (design §10)
+
+| Screenshot | Judgement |
+|---|---|
+| [Staff, 2–4–6–8–10](uat-shots/session-032/panel-staff-2-4-6-8-10.png) | As mock-up 1's panel, with five pattern cards in place of three. The cards keep the mock-up's three-column grid and wrap onto a second row, with 3–5–7–9 and Custom on it. The chosen card is drawn in the accent colour, and its title and line read as the plan gives them. The D, E, F♯, G♯ and A♯ pills are on, and the panel reads "Staff spacing: 2 semitones per staff space" and "Middle of the staff: C, semitone 12". On the canvas, five lines an octave leave one gap, at C. Both C noteheads, and the upper C′, sit on a ledger line in that gap, and no other column has a ledger. |
+| [Staff, 3–5–7–9](uat-shots/session-032/panel-staff-3-5-7-9.png) | The same panel, with 3–5–7–9 chosen, the D♯, F, G and A pills on, and the same spacing and middle. Four lines an octave leave a wider gap with C in a space. C♯ and B each sit on their own ledger. **For the operator's judgment: C has a ledger above it and none below.** Both C noteheads (semitones 0 and 12) hang under the C♯ ledger, and C′ (24) has the C♯ ledger above it too. The B ledger below C is never drawn for C, because ledger resolution is octave-aware and B (11) belongs to the octave below C (12). `cnb-ledger-set-tests.js` pins this. If it is judged wrong, the fix is planned for a later session, not made in this one. |
+
+The export side of the same staves is pinned in `cnb-lilypond-tests.js`.
+2–4–6–8–10 exports `'(-10 -8 -6 -4 -2 2 4 6 8 10)` and 3–5–7–9 exports
+`'(-9 -7 -5 -3 3 5 7 9)`. An engine engraving of 3–5–7–9, the first
+fixture with lines on odd staff positions, puts its lines at exactly those
+positions, which are the ones the preview draws.
+
 ## The checks speak to a designer — 2026-11-07 (session 31)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

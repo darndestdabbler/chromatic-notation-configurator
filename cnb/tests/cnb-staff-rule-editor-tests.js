@@ -306,6 +306,8 @@ export const tests = [
       const at = (pattern) => E.automaticTemplates(pattern).map(t => t.semiWithinOctave);
       assertEqualArrays(at([4, 8]), [0], "4-8: spacing 4 continues to C");
       assertEqualArrays(at([3, 6, 9]), [0], "3-6-9: spacing 3 continues to C");
+      assertEqualArrays(at([2, 4, 6, 8, 10]), [0], "2-4-6-8-10: spacing 2 continues to C");
+      assertEqualArrays(at([3, 5, 7, 9]), [1, 11], "3-5-7-9: spacing 2 gives C♯ and B, C is a space");
       assertEqualArrays(at([2, 6]), [10], "2-6: spacing 4 from D gives A♯");
       assertEqualArrays(at([0, 4, 8]), [], "0-4-8: every spot is already a line");
       assertEqualArrays(at([1, 7]), [], "1-7: spacing 6, both spots are lines");
@@ -475,6 +477,28 @@ export const tests = [
     },
   },
   {
+    name: "stateFromConfig: 2-4-6-8-10 and 3-5-7-9 open as their presets and save back unchanged (session 32)",
+    fn: () => {
+      for (const [key, pattern] of [["2-4-6-8-10", [2, 4, 6, 8, 10]], ["3-5-7-9", [3, 5, 7, 9]]]) {
+        assertEqualArrays(E.STAFF_PATTERN_PRESETS[key].pattern, pattern, `${key} preset pattern`);
+        // Chosen in the panel: midpoint 12, spacing derived as 2.
+        const chosen = defaultState();
+        chosen.patternKey = key;
+        const staff = E.applyToConfig(CNBConfig.createDefault(), chosen).staff;
+        assertEqualArrays(staff.semitonePattern, pattern, `${key}: pattern saved`);
+        assert(staff.midpoint === 12, `${key}: midpoint 12, got ${staff.midpoint}`);
+        assert(staff.semitonesPerStaffSpace === 2, `${key}: spacing 2, got ${staff.semitonesPerStaffSpace}`);
+        // Opened from that config: the preset, and saving changes nothing.
+        const config = E.applyToConfig(CNBConfig.createDefault(), chosen);
+        const opened = E.stateFromConfig(config);
+        assert(opened.patternKey === key, `${key} recognized, got ${opened.patternKey}`);
+        const saved = E.applyToConfig(config, opened);
+        assert(JSON.stringify(saved.staff) === JSON.stringify(config.staff), `${key}: staff unchanged`);
+        assert(JSON.stringify(saved.ledgers) === JSON.stringify(config.ledgers), `${key}: ledgers unchanged`);
+      }
+    },
+  },
+  {
     name: "round-trip: preset branch (apply → recover → apply is stable)",
     fn: () => {
       const config = CNBConfig.createDefault();
@@ -557,7 +581,7 @@ export const tests = [
     fn: () => withDomStub((container) => {
       const handle = E.render(container, {});
       assert(handle.root.className === "cnb-staff-rule-editor", "root class");
-      assert(findAll(handle.root, "cnb-sre-pattern-option").length === 3, "2 presets + custom");
+      assert(findAll(handle.root, "cnb-sre-pattern-option").length === 5, "4 presets + custom");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
       assert(derived.some(d => d.textContent === "Staff spacing: 4 semitones per staff space"), "staff spacing shown");
       assert(derived.some(d => d.textContent === "Middle of the staff: C, semitone 12"), "middle of the staff shown");
@@ -799,9 +823,11 @@ export const tests = [
       let lastSlices = null;
       const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
       const titles = findAll(handle.root, "cnb-sre-pattern-title").map(t => t.textContent);
-      assertEqualArrays(titles, ["4–8", "3–6–9", "Custom"], "titles");
+      assertEqualArrays(titles, ["4–8", "3–6–9", "2–4–6–8–10", "3–5–7–9", "Custom"], "titles");
       const descs = findAll(handle.root, "cnb-sre-pattern-desc").map(t => t.textContent);
       assert(descs[0] === "Two lines an octave, on E and G♯", "4-8 described");
+      assert(descs[2] === "Five lines an octave, on D, E, F♯, G♯ and A♯", "2-4-6-8-10 described");
+      assert(descs[3] === "Four lines an octave, on D♯, F, G and A", "3-5-7-9 described");
       const pills = findAll(handle.root, "cnb-sre-pc-toggle");
       assert(pills.length === 12, "pills shown for a preset");
       assert(pills.filter(p => String(p.className).includes(" on")).length === 2, "the preset's lines are on");

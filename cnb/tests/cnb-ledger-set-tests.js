@@ -205,6 +205,27 @@ export const tests = [
       eqArr(CNBLedgerSet.resolve([12], defs, STAFF_48), []);
     }},
 
+  { name: "proximity (session 32): 3-5-7-9's Automatic ledgers give C one ledger above and none below", fn: () => {
+      // 3-5-7-9 at spacing 2: its Automatic ledgers are proximity templates
+      // at C♯ (1) and B (11). Resolution is octave-aware (region
+      // floor(semi / 12)), so C at 12 reaches only the C♯ ledger at 13 in
+      // its own region; B's ledger at 11 belongs to region 0 and only B
+      // draws it. Pinned as it resolves today, for the operator's judgment.
+      const cfg = CNBConfig.createDefault();
+      cfg.staff.semitonePattern = [3, 5, 7, 9];
+      cfg.staff.semitonesPerStaffSpace = 2;
+      cfg.ledgers.templates = [
+        { semiWithinOctave: 1, triggerPCs: [], triggerMode: "proximity" },
+        { semiWithinOctave: 11, triggerPCs: [], triggerMode: "proximity" },
+      ];
+      cfg.ledgers.proximityRule = true;
+      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: -4, maxSemi: 28 });
+      const staff = [-9, -7, -5, -3, 3, 5, 7, 9, 15, 17, 19, 21, 27];
+      eqArr(CNBLedgerSet.resolve([12], defs, staff), [13], "C at 12: the C♯ ledger above only");
+      eqArr(CNBLedgerSet.resolve([11], defs, staff), [11], "B at 11: its own ledger");
+      eqArr(CNBLedgerSet.resolve([13], defs, staff), [13], "C♯ at 13: its own ledger");
+    }},
+
   // ── resolve: hygiene ───────────────────────────────────────────────────────
 
   { name: "resolve de-duplicates a ledger triggered by multiple notes", fn: () => {

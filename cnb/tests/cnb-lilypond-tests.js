@@ -13,7 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions } from "./engine-probe.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -23,6 +23,7 @@ import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
 import { CNBScheme } from "../src/cnb-scheme.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
+import { CNBStaff } from "../src/cnb-staff.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -99,6 +100,14 @@ function parseSectionCClauses(text) {
     }
   }
   return map;
+}
+
+/** The default config with the given staff pattern and spacing (midpoint 12). */
+function staffConfig(pattern, sps) {
+  const cfg = CNBConfig.createDefault();
+  cfg.staff.semitonePattern = pattern;
+  cfg.staff.semitonesPerStaffSpace = sps;
+  return cfg;
 }
 
 export const tests = [
@@ -189,6 +198,36 @@ export const tests = [
       cfg.staff.semitonesPerStaffSpace = 3;
       const pos = CNBLilypond.computeStaffLinePositions(cfg);
       eq(JSON.stringify(pos), JSON.stringify([-6, -4, -2, 2, 4, 6]));
+    }},
+
+  // Session 32's presets: spacing 2, midpoint 12.
+  { name: "staff-line-positions: 2-4-6-8-10 system, midpoint 12, sps 2 → (-10 -8 -6 -4 -2 2 4 6 8 10)", fn: () => {
+      const cfg = staffConfig([2, 4, 6, 8, 10], 2);
+      eq(JSON.stringify(CNBLilypond.computeStaffLinePositions(cfg)), JSON.stringify([-10, -8, -6, -4, -2, 2, 4, 6, 8, 10]));
+      contains(CNBLilypond.generate(cfg), "#(set! cnb:staff-line-positions '(-10 -8 -6 -4 -2 2 4 6 8 10))");
+    }},
+
+  { name: "staff-line-positions: 3-5-7-9 system, midpoint 12, sps 2 → (-9 -7 -5 -3 3 5 7 9), lines on odd positions", fn: () => {
+      const cfg = staffConfig([3, 5, 7, 9], 2);
+      eq(JSON.stringify(CNBLilypond.computeStaffLinePositions(cfg)), JSON.stringify([-9, -7, -5, -3, 3, 5, 7, 9]));
+      contains(CNBLilypond.generate(cfg), "#(set! cnb:staff-line-positions '(-9 -7 -5 -3 3 5 7 9))");
+    }},
+
+  { name: "staff-line-positions (engine): 3-5-7-9 engraves its lines on the odd positions, where the preview draws them", fn: async () => {
+      // No other fixture puts lines on odd staff positions. The preview's
+      // lines for the card range, as half-staff-spaces from the midpoint,
+      // must be the engraved ones. (Noteheads are not compared: on a
+      // linear staff the engine's staff-position property stays LilyPond's
+      // diatonic one, whatever the staff.)
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const cfg = staffConfig([3, 5, 7, 9], 2);
+      const preview = CNBStaff.getPositions(cfg, { minSemi: 0, maxSemi: 24 })
+        .map(S => 2 * (S - cfg.staff.midpoint) / cfg.staff.semitonesPerStaffSpace);
+      eq(JSON.stringify(preview), JSON.stringify([-9, -7, -5, -3, 3, 5, 7, 9]), "preview lines");
+      const { lines, error } = await measureStaffPositions(engine, CNBLilypond.generate(cfg));
+      assert(!error, `the export must engrave: ${error}`);
+      eq(JSON.stringify([...lines].sort((a, b) => a - b)), JSON.stringify(preview), "engraved lines");
     }},
 
   // LY spec 1.3.5 §5.1a: the range is the 24 semitones centred on the

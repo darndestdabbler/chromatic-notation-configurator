@@ -39,7 +39,9 @@
  * Session 31 opens Kite with keys on and a rule for G only, checks that the
  * checks list says its one warning in a designer's words with a Show the
  * rule link (design §8.5), saves checks-list-1440.png (mock-up 4), and
- * follows the link to the rule in Advanced.
+ * follows the link to the rule in Advanced. Session 32: it then opens the
+ * default config with Automatic ledgers, chooses the 2-4-6-8-10 and
+ * 3-5-7-9 presets in turn, and saves panel-staff-<preset>.png for each.
  *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
@@ -57,6 +59,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { openSection, selectNotehead } from "./app-page.mjs";
+import { CNBConfig } from "../src/cnb-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -432,6 +435,33 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     check("1440: Show the rule closes the list and opens Advanced at the rule, its name focused",
       followed.listHidden && JSON.stringify(followed.shown) === '["advanced"]' && followed.rulesOpen &&
       followed.focused === "In G, F♯ is hollow", JSON.stringify(followed));
+
+    // ── Two more staves to start from (session 32) ──
+    // The default config with Automatic ledgers, so each preset's canvas
+    // draws the ledgers its spacing gives (3-5-7-9: C♯ and B).
+    await page.setInputFiles("#open-file", {
+      name: "default.json", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(CNBConfig.createDefault()), "utf8"),
+    });
+    await page.waitForFunction(() => document.getElementById("topbar-status").textContent === "Opened default.json");
+    await openSection(page, "ledger-lines");
+    await page.click('#ledger-editor-host [data-ledger-mode="automatic"]');
+    for (const [key, pattern, spots] of [["2-4-6-8-10", [2, 4, 6, 8, 10], [0]], ["3-5-7-9", [3, 5, 7, 9], [1, 11]]]) {
+      await openSection(page, "staff");
+      await page.click(`#staff-editor-host [data-pattern-key="${key}"]`);
+      await page.waitForTimeout(100);
+      const chosen = await stateJson();
+      check(`1440: choosing the ${key} preset writes its pattern, midpoint 12, spacing 2 and its Automatic ledgers`,
+        JSON.stringify(chosen.staff.semitonePattern) === JSON.stringify(pattern) && chosen.staff.midpoint === 12 &&
+        chosen.staff.semitonesPerStaffSpace === 2 &&
+        JSON.stringify(chosen.ledgers.templates.map(t => t.semiWithinOctave)) === JSON.stringify(spots),
+        JSON.stringify({ staff: chosen.staff.semitonePattern, ledgers: chosen.ledgers.templates }));
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: path.join(SHOT_DIR, `panel-staff-${key}.png`), fullPage: true });
+    }
+    await page.click('#staff-editor-host [data-pattern-key="4-8"]');
+    check("1440: choosing 4-8 again restores the default staff",
+      JSON.stringify((await stateJson()).staff.semitonePattern) === "[4,8]");
     await openSection(page, "staff");
   }
 
