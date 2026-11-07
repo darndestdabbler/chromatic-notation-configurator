@@ -648,9 +648,9 @@ The raw JSON is not on the main page.
 | Save / load JSON (17) | **Open** / **Save** in the top bar. Its validation output moves to the checks list. | `config-io.js` **kept** (its file logic). Its panel is **retired**. |
 | Export LilyPond (18) | **Export for LilyPond** in the top bar, plus the Export section | `config-export.js` **kept**. Its panel is folded into the Export section. |
 | Import notehead SVG (16) | **Import from SVG…** in the shape picker | `svg-importer.js` **kept**, opened from the notehead panel |
-| Colour palette (12) | the Colour row of the notehead panel and **Start from a palette** | `palette-editor.js` **retired** as a panel. Its preset list and colour-blind matching are **kept** and reused by the colour row. |
+| Colour palette (12) | the Colour row of the notehead panel and **Start from a palette** | `palette-editor.js` **retired** as a panel. Its preset list and colour-blind matching are **kept** and reused by the colour row. *(Session 27: the panel is kept for now in Advanced › Colour palette, unchanged, beside the colour row. It still sets all twelve colours at once, and the UAT drivers that pick a palette there keep working. Retiring it is left to session 32's rough edges.)* |
 | Staff & ledger rules (13) | the Staff section (unchanged in function) and the Ledger lines section | `staff-rule-editor.js` **kept**. Line overrides move to Advanced. |
-| Notehead rules (14) | the notehead panel plus inference. Duration- and key-scoped rules go to Advanced. | `notehead-rule-editor.js` **hidden** in Advanced |
+| Notehead rules (14) | the notehead panel plus inference. Duration- and key-scoped rules go to Advanced. | `notehead-rule-editor.js` **hidden** in Advanced › Rules for particular durations or keys (session 27), where it lists every rule, the inferred ones included |
 | Common properties (15) | Advanced › Durations and Engine | `common-props-editor.js` **hidden** in Advanced |
 | Custom clef (009) | the Clef section | `clef-editor.js` **kept**, restyled |
 | Keys & key signature (010) | the Key signature section | `key-signature-editor.js` **kept**, restyled |

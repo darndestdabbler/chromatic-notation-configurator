@@ -42,7 +42,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
+import { useCanvasSize, canvasConfig, openAdvanced, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -160,7 +160,6 @@ async function openApp() {
   await useCanvasSize(page, "small");
   await page.goto(`http://localhost:${PORT}/cnb/index.html`);
   await page.waitForSelector(".cnb-preview-display");
-  await openSection(page, "noteheads");
   return page;
 }
 
@@ -226,7 +225,11 @@ const ROUTES = [
 for (const route of ROUTES) {
   const page = await openApp();
   await route.setup(page);
+  // Since session 27 the importer is the notehead panel's Import from SVG
+  // and the rule editor sits in Advanced.
+  await selectNotehead(page, 0);
   await route.importShape(page);
+  await openAdvanced(page, "Rules for particular durations or keys");
 
   let cfg = await fullConfig(page);
   const expected = cfg.shapes["45deg"].semitoneHeight * canvasConfig(cfg, "small").display.pxPerSemi;

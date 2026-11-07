@@ -507,3 +507,87 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 /* Key signature editor (set 010). */
 .cnb-kse-sig-enable { margin-bottom: var(--space-2); }
+
+/* ── Selecting noteheads (session 27, design §2, §6.2) ─────────────────── */
+/* A column is the hit target. Selection: a 2 px accent outline and a faint
+ * tint over the whole column, labels included; hover of a rule: the tint. */
+.canvas-card .cnb-pvd-preview .pc-col { cursor: pointer; border-radius: var(--radius-s); }
+.canvas-card .cnb-pvd-preview .pc-col:hover { background: rgba(47, 91, 211, .04); }
+.cnb-pvd-preview .pc-col.cnb-pvd-tint { background: rgba(47, 91, 211, .09); }
+.cnb-pvd-preview .pc-col.cnb-pvd-selected {
+  background: rgba(47, 91, 211, .07); box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* The Noteheads section's rule list (§5.4). */
+.cnb-nhp-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cnb-nhp-rule {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 36px;
+  padding: var(--space-1) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.cnb-nhp-rule:hover { background: var(--accent-soft); border-color: #c9d6f6; }
+.cnb-nhp-rule-marks { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; width: 88px; }
+.cnb-nhp-rule-swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+.cnb-nhp-rule-words { font-size: 14px; }
+
+/* The notehead panel (§2): three columns under the canvas. */
+.notehead-panel-card[hidden] { display: none; }
+.cnb-notehead-panel { display: flex; flex-direction: column; }
+.cnb-nhp-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line);
+}
+.cnb-nhp-title { font-size: 20px; }
+.cnb-nhp-summary { flex: 1; font-size: 13px; color: var(--ink-2); }
+.cnb-nhp-close { background: transparent; border-color: transparent; color: var(--ink-2); }
+.cnb-nhp-import #import-status:empty, .cnb-nhp-import #import-warnings:empty { display: none; }
+.cnb-nhp-kept {
+  margin: var(--space-3) var(--space-4) 0; padding: var(--space-2) var(--space-3); font-size: 13px;
+  color: var(--warn); background: var(--warn-soft); border-radius: var(--radius-s);
+}
+.cnb-nhp-body {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr) minmax(0, 300px);
+  gap: var(--space-5); padding: var(--space-4);
+}
+.cnb-nhp-col { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.cnb-nhp-closeup {
+  display: flex; justify-content: center; padding: var(--space-2);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.cnb-nhp-closeup .pc-col { cursor: default; }
+.cnb-nhp-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cnb-nhp-label {
+  flex-basis: 100%; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.cnb-nhp-swatches { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nhp-swatch {
+  width: 24px; height: 24px; min-height: 24px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.18);
+}
+.cnb-nhp-swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.cnb-nhp-none, .cnb-nhp-rule-swatch.cnb-nhp-none {
+  background: linear-gradient(135deg, #fff 45%, var(--error) 45%, var(--error) 55%, #fff 55%);
+}
+.cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock, .cnb-nhp-give-part {
+  display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--ink-2);
+}
+.cnb-nhp-preset { max-width: 220px; }
+.cnb-nhp-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.cnb-nhp-segmented > button { min-height: 30px; border: 0; border-right: 1px solid var(--line); border-radius: 0; font-size: 13px; }
+.cnb-nhp-segmented > button:last-child { border-right: 0; }
+.cnb-nhp-segmented > button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cnb-nhp-shapes { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nhp-shape-option { min-width: 52px; min-height: 40px; padding: var(--space-1) var(--space-2); }
+.cnb-nhp-shape-option.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-nhp-import { flex-basis: 100%; }
+.cnb-nhp-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
+.cnb-nhp-unit { font-size: 12px; color: var(--ink-2); }
+.cnb-nhp-hint { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+.cnb-nhp-give-parts { display: flex; flex-wrap: wrap; gap: var(--space-3); flex-basis: 100%; }
+.cnb-nhp-give-choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nhp-give-option { font-size: 13px; }
+
+@media (max-width: 1180px) {
+  .cnb-nhp-body { grid-template-columns: 180px minmax(0, 1fr); }
+  .cnb-nhp-right { grid-column: 1 / -1; }
+}

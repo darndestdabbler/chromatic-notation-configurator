@@ -89,6 +89,13 @@
  * is not 0; renderPartial draws the Clef or Key signature section's
  * partial staff, that gutter and the first three columns.
  *
+ * Session 27 (selecting noteheads, design §2, §5.4): a click on a canvas
+ * column (its data-pc; C′ is pitch class 0) calls opts.onSelect(pc,
+ * { add }), add being true for a Shift-click; the page owns the selection.
+ * setMarks({ selected, tinted }) marks the columns of those pitch classes
+ * with the classes cnb-pvd-selected and cnb-pvd-tint (in every row, C′ with
+ * C) without a redraw, and the marks are put back after every redraw.
+ *
  * Dependencies: Module A (config shape), Module B (pitch labels),
  * Module 10 (card collection).
  */
@@ -388,6 +395,9 @@ export const CNBPreviewDisplay = {
     let preview = null;       // the last drawn .cnb-pvd-preview
     let sizeHint = null;      // the hint shown below the two-row minimum
     let focus = null;         // the open section (setFocus); "ledger-lines" marks ledgers
+    const onSelect = opts.onSelect || null;
+    let marks = { selected: [], tinted: [] };   // setMarks, put back after every redraw
+    let columns = [];         // the drawn pitch columns (data-pc), for the marks
 
     const root = doc.createElement("div");
     root.className = "cnb-preview-display";
@@ -543,9 +553,49 @@ export const CNBPreviewDisplay = {
         : "The staff is wider than the window: choose a smaller Size.";
     }
 
+    // ── Selection and marks (session 27, design §2, §5.4) ─────────────────
+    /** The columns under el that carry data-pc (a card's column). */
+    function pitchColumns(el) {
+      const out = [];
+      for (const child of el.children || []) {
+        if (typeof child.getAttribute === "function" && child.getAttribute("data-pc") !== null) out.push(child);
+        else out.push(...pitchColumns(child));
+      }
+      return out;
+    }
+
+    /** Turn one class token on or off in an element's className. */
+    function setToken(e, token, on) {
+      const tokens = String(e.className || "").split(/\s+/).filter(t => t && t !== token);
+      if (on) tokens.push(token);
+      e.className = tokens.join(" ");
+    }
+
+    /** Put the marks on the drawn columns: C′ (12) is marked with C. */
+    function applyMarks() {
+      for (const col of columns) {
+        const pc = Number(col.getAttribute("data-pc")) % 12;
+        setToken(col, "cnb-pvd-selected", marks.selected.includes(pc));
+        setToken(col, "cnb-pvd-tint", marks.tinted.includes(pc));
+      }
+    }
+
+    /** Wire the columns' clicks and mark them. */
+    function wireColumns() {
+      columns = preview ? pitchColumns(preview) : [];
+      if (onSelect) {
+        for (const col of columns) {
+          const pc = Number(col.getAttribute("data-pc")) % 12;
+          col.onclick = (e) => onSelect(pc, { add: !!(e && e.shiftKey) });
+        }
+      }
+      applyMarks();
+    }
+
     function drawPreview() {
       const { config, options } = drawn();
       preview = null;
+      columns = [];
       if (options.durations.length === 0) {
         root.appendChild(el("div", "cnb-pvd-empty",
           "No duration selected — pick at least one duration pill to render the preview."));
@@ -558,6 +608,7 @@ export const CNBPreviewDisplay = {
       preview = el("div", "cnb-pvd-preview");
       collection.render(preview, config, collectionOptions);
       root.appendChild(preview);
+      wireColumns();
       updateOverflow(config, options);
       onRender(collectionOptions, preview);
     }
@@ -627,6 +678,13 @@ export const CNBPreviewDisplay = {
         redraw();
       },
       getFocus: () => focus,
+      /** Mark the columns of the selected and the tinted pitch classes
+       *  (0–11; C′ follows C) with cnb-pvd-selected and cnb-pvd-tint, with
+       *  no redraw. The marks are put back after every redraw. */
+      setMarks: ({ selected = [], tinted = [] } = {}) => {
+        marks = { selected: selected.slice(), tinted: tinted.slice() };
+        applyMarks();
+      },
       redraw,
     };
   },

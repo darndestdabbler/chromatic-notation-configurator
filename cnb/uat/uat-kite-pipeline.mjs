@@ -60,7 +60,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, openSection, openAdvanced } from "./app-page.mjs";
+import { useCanvasSize, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -213,8 +213,9 @@ function sectionCMap(ly) {
 // ═════════════════════ PHASE A — author the system in the UI ═══════════════
 
 // ── A1: import the two kite shapes (Module 16, toolkit SVG contract) ────────
+// Since session 27 the importer is the notehead panel's Import from SVG.
+await selectNotehead(page, 0);
 for (const name of ["kite-down", "kite-up"]) {
-  await openSection(page, "noteheads");
   await page.setInputFiles('#svg-importer-host input[type="file"]', {
     name: `${name}.svg`, mimeType: "image/svg+xml",
     buffer: await readFile(path.join(ROOT, "cnb", "fixtures", `${name}.svg`)),
@@ -272,7 +273,8 @@ check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat
   cfg.durations.representationMode === "repeat");
 
 // ── A4: custom CB-safe palette, 3-color cycling pool (Module 12) ────────────
-await openSection(page, "noteheads");
+// Since session 27 the palette and rule editors sit in Advanced.
+await openAdvanced(page, "Colour palette");
 await page.click(".cnb-pal-tab:has-text('Colorblind-safe')");
 await page.click(".cnb-pal-custom-select");
 // Normalize the custom pool to exactly 3 cells, then set the Kite colors.
@@ -299,6 +301,7 @@ check("AUTHOR/palette: custom CB-safe pool cycles per-PC exactly like the fixtur
 
 // ── A5: the three Kite rules (Module 14) ────────────────────────────────────
 // Rule 0 (Default): point its shape at kite-down.
+await openAdvanced(page, "Rules for particular durations or keys");
 await page.selectOption('.cnb-nre-rule-card[data-rule-index="0"] .cnb-nre-shape-select', "kite-down");
 // Rule 1 ("Sharps are hollow", [1,3,6,8,10]) → odd semitones [1,3,5,7,9,11]:
 for (const pc of [6, 8, 10, 5, 7, 9, 11]) {

@@ -162,8 +162,10 @@ async function newPage() {
   }));
   check("SITE: the preview renders staff lines and noteheads",
     counts.staffLines > 0 && counts.noteheads > 0, JSON.stringify(counts));
+  // The notehead panel's host fills only while a notehead is selected
+  // (session 27, design §2).
   const emptyHosts = await page.$$eval('[id$="-host"]', els =>
-    els.filter(el => el.children.length === 0).map(el => el.id));
+    els.filter(el => el.children.length === 0 && el.id !== "notehead-panel-host").map(el => el.id));
   check("SITE: the preview and every editor mount", emptyHosts.length === 0, emptyHosts.join(", "));
   check("SITE: no file:// notice over HTTP", (await page.$("#file-notice")) === null);
   check("SITE: no page errors, console errors or failed requests", errors.length === 0, errors.join(" | "));

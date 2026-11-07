@@ -43,6 +43,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -238,8 +239,12 @@ async function runIn(spec) {
     } catch { /* fall through: the check reports the text it found */ }
     return text(sel);
   };
-  const importSvg = (name, body) =>
-    page.setInputFiles('#svg-importer-host input[type="file"]', file(name, "image/svg+xml", body));
+  // Since session 27 the importer is the notehead panel's Import from SVG,
+  // so a notehead is selected first.
+  const importSvg = async (name, body) => {
+    if (!(await page.$(".cnb-notehead-panel"))) await selectNotehead(page, 0);
+    return page.setInputFiles('#svg-importer-host input[type="file"]', file(name, "image/svg+xml", body));
+  };
   const loadJson = (name, body) =>
     page.setInputFiles("#open-file", file(name, "application/json", body));
 

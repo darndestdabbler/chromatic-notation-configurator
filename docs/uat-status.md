@@ -17,6 +17,79 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The notehead panel — 2026-11-07 (session 27)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: **16 of 16 drivers pass**: app layout 53/53, clef 28/28,
+  common properties 24/24, config export 22/22, config IO 19/19, gallery
+  previews, golden path 30/30, hostile input 57/57 (Chromium, Firefox and
+  Edge), imported notehead 13/13, key signature 39/39, Kite pipeline 26/26,
+  notehead panel 13/13 (new), notehead rule editor 34/34, pitch axis, site
+  8/8, staff rule editor 29/29.
+- `cnb/uat/uat-app-layout.mjs` writes the screenshots below; at each width
+  it opens Kite 4-369, selects C♯ in the Noteheads section and hovers the
+  Shape rule, as mock-up 2 does.
+
+Session 27 added the notehead panel (design §2), the rule list (§5.4) and
+click selection on the canvas. The new driver, `uat-notehead-panel.mjs`,
+opens Kite 4-369 with its looks taken away (the rules reduced to the
+Default and the palette colours cleared) and gives them back by clicking:
+kite up to C♯ and Every 4th, then D, F♯ and A♯ by Shift-click; Hollow to
+C♯ and Every other; and sky-blue, rose and black to C, C♯ and D through
+the colour input, each given to Every 3rd. The `.ly` it exports equals
+`cnb/fixtures/kite-4-369-export-baseline.ly` byte for byte (date line
+aside). It also checks the selection outline, that the colour input's
+element survives an `input` event, and the rule list's words and hover
+tint. The layout driver gained, at both widths: the panel docks under the
+canvas at its width with the rule list under it, C♯ is outlined and the
+hovered rule tints its six columns, no sideways scroll, and Esc closes the
+panel.
+
+The drivers that imported shapes or used the rule and palette editors in
+the Noteheads section now import through the panel's Import from SVG and
+find the two editors in Advanced (`selectNotehead` in `app-page.mjs`).
+`uat-site.mjs` no longer counts the notehead panel's host, which is empty
+until a notehead is selected, as an editor that failed to mount.
+
+### Judged against mock-up 2 (design §10)
+
+| Screenshot | Judgement |
+|---|---|
+| [Notehead selected, 1440](uat-shots/session-027/app-notehead-1440.png), [1280](uat-shots/session-027/app-notehead-1280.png) | As mock-up 2: Kite at Medium in two rows at both widths, C♯ outlined full height, the hovered Shape rule tinting C♯, D, F, F♯, A and A♯ across both rows. The panel sits under the canvas at its width, in three columns: C♯ alone at Large; colour, fill, shape and size; Give this look to. The rule list is under the panel. Nothing scrolls sideways. |
+| [Default, 1440](uat-shots/session-027/app-default-1440.png), [1280](uat-shots/session-027/app-default-1280.png) | Unchanged from session 26: one row at 1440, two at 1280. |
+
+The first screenshots had three faults, fixed in this session:
+
+- the rule list was hidden while the panel was open; design §2 lists the
+  rules under the panel, and mock-up 2 shows them there. The panel now
+  takes the section panel's place and the Noteheads section's rules stay
+  under it;
+- the panel's head had only the pitch class. It now says the look in
+  words, as the mock-up does ("C♯ kite up · hollow · rose"), with a
+  "Close ✕" button;
+- the import area left an empty status line and warning list under the
+  drop zone, and the rule lines' words did not line up when a line had no
+  swatch or thumbnail.
+
+Different from the mock-up, on purpose or for later:
+
+- **No pitch-class control and no nudge.** Renaming a notehead and the
+  nudge slider are session 28's. The panel's right column holds the side
+  step, shown only on a notehead that shares a spot, and Give this look
+  to.
+- **Give this look to has checkboxes** for the parts to copy, where the
+  mock-up names them in a sentence. A checkbox says which parts are copied
+  before the click.
+- **Import from SVG is a drop zone** under the shape thumbnails, not a
+  tile beside them, because the importer accepts a dropped file.
+- **The rule list's lines are words with marks**, not the mock-up's
+  three-column table with counts.
+- **The palette editor is kept** in Advanced › Colour palette for now
+  (design §9).
+- **The colour picker by hand** (drag in the field, type a full hex) is
+  owed to session 32, as for the other editors.
+
 ## The panels speak to a designer — 2026-11-07 (session 26)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

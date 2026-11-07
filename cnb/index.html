@@ -71,27 +71,23 @@
           <div id="preview-host"></div>
         </section>
 
+        <!-- The notehead panel (design §2): under the canvas while a notehead is
+             selected, in the section panel's place, with the rules under it. -->
+        <section class="card notehead-panel-card" id="notehead-panel-card" aria-label="Notehead" hidden>
+          <div id="notehead-panel-host"></div>
+        </section>
+
         <section class="card panel" data-panel="staff" hidden>
           <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff lines are, and how they look</span></div>
           <div class="card-body"><div id="staff-editor-host"></div></div>
         </section>
 
         <section class="card panel" data-panel="noteheads" hidden>
-          <div class="card-head"><h2>Noteheads</h2><span class="sub">The shape, fill and colour of each notehead</span></div>
+          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look; the rules follow</span></div>
           <div class="card-body">
             <div>
               <p class="group-title">Rules</p>
-              <div id="notehead-editor-host"></div>
-            </div>
-            <div>
-              <p class="group-title">Colours</p>
-              <div id="palette-editor-host"></div>
-            </div>
-            <div>
-              <p class="group-title">Import a shape from SVG</p>
-              <div id="svg-importer-host"></div>
-              <div id="import-status"></div>
-              <ul id="import-warnings"></ul>
+              <div id="rule-list-host"></div>
             </div>
           </div>
         </section>
@@ -121,6 +117,14 @@
           <div class="card-head"><h2>Advanced</h2><span class="sub">Settings a designer rarely needs</span></div>
           <div class="card-body">
             <div>
+              <details class="disclosure">
+                <summary>Rules for particular durations or keys<span class="sub">every notehead rule, including those the noteheads write</span></summary>
+                <div class="disclosure-body"><div id="notehead-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Colour palette<span class="sub">all twelve colours at once</span></summary>
+                <div class="disclosure-body"><div id="palette-editor-host"></div></div>
+              </details>
               <details class="disclosure">
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
@@ -175,6 +179,7 @@
     import { CNBConfigIO } from "./ui/config-io.js";
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
+    import { CNBNoteheadPanel } from "./ui/notehead-panel.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -197,7 +202,10 @@
     // The canvas shows what the open section needs (design §6): the Ledger
     // lines section marks the ledger spots and the columns that draw them.
     let previewApi = null;
+    let currentSection = "staff";
     function showSection(name) {
+      currentSection = name;
+      closeNoteheadPanel();
       for (const panel of document.querySelectorAll(".panel")) {
         panel.hidden = panel.dataset.panel !== name;
       }
@@ -212,7 +220,61 @@
     for (const link of document.querySelectorAll(".section-link")) {
       link.onclick = () => showSection(link.dataset.section);
     }
-    showSection("staff");
+
+    // ── The notehead panel (design §2) ───────────────────────────────────
+    // A click on the canvas selects a pitch class (Shift-click adds one) and
+    // puts the notehead panel in the section panel's place; Esc, ✕ or a
+    // section link closes it. The panel writes the whole config through the
+    // look table's inference.
+    let selection = [];
+    let tinted = [];
+    let panelApi = null;
+    const panelCard = byId("notehead-panel-card");
+    const panelHost = byId("notehead-panel-host");
+
+    function refreshMarks() {
+      if (previewApi) previewApi.setMarks({ selected: selection, tinted });
+    }
+
+    function openNoteheadPanel() {
+      // The Noteheads section's rule list stays under the panel (design §2).
+      for (const panel of document.querySelectorAll(".panel")) panel.hidden = panel.dataset.panel !== "noteheads";
+      panelCard.hidden = false;
+      panelHost.textContent = "";
+      panelApi = CNBNoteheadPanel.render(panelHost, {
+        getConfig: () => appConfig,
+        selection,
+        onChange: (config) => {
+          appConfig = config;
+          mountLookEditors();
+          refreshShared({ keepPanel: true });
+        },
+        onClose: () => showSection(currentSection),
+        importControl: drawImporter,
+      });
+      refreshMarks();
+    }
+
+    function closeNoteheadPanel() {
+      if (!panelApi) return;
+      panelApi = null;
+      selection = [];
+      panelHost.textContent = "";
+      panelCard.hidden = true;
+      refreshMarks();
+    }
+
+    function selectNotehead(pc, { add }) {
+      if (!add) selection = [pc];
+      else if (selection.includes(pc)) selection = selection.filter(p => p !== pc);
+      else selection = [...selection, pc];
+      if (selection.length === 0) showSection(currentSection);
+      else openNoteheadPanel();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && panelApi) showSection(currentSection);
+    });
 
     // ── Checks (design §8.5): the one place validation shows ─────────────
     const checksIndicator = byId("checks-indicator");
@@ -299,12 +361,25 @@
     previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
       getConfig: () => appConfig,
       rangeHost: byId("preview-range-host"),
+      onSelect: selectNotehead,
       onRender: (options) => {
         canvasOptions = options;
         refreshSectionPreviews();
       },
     });
-    previewApi.setFocus("staff");   // redraws, which draws the partial staffs at the canvas Size
+    showSection("staff");           // sets the focus, which redraws the partial staffs at the canvas Size
+
+    // ── The Noteheads section's rule list (design §5.4) ──────────────────
+    // Hovering a line tints the canvas columns it covers.
+    function refreshRuleList() {
+      const host = byId("rule-list-host");
+      host.textContent = "";
+      tinted = [];
+      CNBNoteheadPanel.renderRuleList(host, appConfig, {
+        onHover: (pcs) => { tinted = pcs; refreshMarks(); },
+      });
+      refreshMarks();
+    }
 
     const exportApi = CNBConfigExport.render(byId("config-export-host"), {
       getConfig: () => appConfig,
@@ -392,11 +467,15 @@
       }
     };
 
-    /** Redraw everything that READS the shared config (not the editors). */
-    function refreshShared() {
+    /** Redraw everything that READS the shared config (not the editors).
+     *  keepPanel: the notehead panel made the change and keeps its own DOM,
+     *  so an open colour picker stays open (session 21's wiring). */
+    function refreshShared({ keepPanel = false } = {}) {
       refreshPanel();
       refreshChecks();
       previewApi.redraw();
+      refreshRuleList();
+      if (panelApi && !keepPanel) panelApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
     }
@@ -407,19 +486,11 @@
     // the current config. Every editor edit is committed to appConfig
     // immediately via onChange, so re-mounting never loses edits.
     function mountEditors() {
-      byId("palette-editor-host").textContent = "";
-      byId("notehead-editor-host").textContent = "";
       byId("props-editor-host").textContent = "";
       byId("clef-editor-host").textContent = "";
       byId("key-signature-editor-host").textContent = "";
 
-      CNBPaletteEditor.render(byId("palette-editor-host"), {
-        palette: appConfig.palette,
-        onChange: (palette) => {
-          appConfig.palette = palette;
-          refreshShared();
-        },
-      });
+      mountPaletteEditor();
 
       mountStaffEditor();
 
@@ -459,6 +530,27 @@
         },
       });
 
+      mountPitchAxisEditor();
+    }
+
+    /** The palette editor (Advanced › Colour palette) seeds from the
+     *  palette at mount, so it re-seeds when the notehead panel writes one. */
+    function mountPaletteEditor() {
+      byId("palette-editor-host").textContent = "";
+      CNBPaletteEditor.render(byId("palette-editor-host"), {
+        palette: appConfig.palette,
+        onChange: (palette) => {
+          appConfig.palette = palette;
+          refreshShared();
+        },
+      });
+    }
+
+    /** After a notehead panel change: the editors that read the rules, the
+     *  palette or the shapes re-seed. */
+    function mountLookEditors() {
+      mountPaletteEditor();
+      mountNoteheadEditor();
       mountPitchAxisEditor();
     }
 
@@ -531,49 +623,64 @@
       });
     }
 
-    // ── SVG shape import (Module 16) ─────────────────────────────────────
-    const importStatus = byId("import-status");
-    const importWarnings = byId("import-warnings");
+    // ── SVG shape import (Module 16), in the notehead panel's shape row ──
+    // The panel redraws its shape row after every change, so the last
+    // import's status is kept here and drawn again with the importer. An
+    // imported shape joins the shape thumbnails; a click gives it.
+    const lastImport = { className: "", text: "", warnings: [] };
 
-    CNBSvgImporter.renderImportControl(byId("svg-importer-host"), {
-      onResult: (result) => {
-        importWarnings.textContent = "";
-        for (const w of result.warnings) {
-          const li = document.createElement("li");
-          li.textContent = w;
-          importWarnings.appendChild(li);
-        }
-        if (result.error) {
-          importStatus.className = "err";
-          importStatus.textContent = "Import failed: " + result.error;
-          return;   // config untouched
-        }
-        const replaced = result.name in appConfig.shapes;
-        const previousShape = appConfig.shapes[result.name];
-        try {
-          appConfig.shapes[result.name] = result.shape;
-          // The shape vocabulary changed: re-seed the editors (the notehead
-          // rule editor's shape selects read it at mount time).
-          mountEditors();
-          refreshShared();
-        } catch (err) {
-          // The shape could not be displayed: put the previous entry back.
-          if (replaced) appConfig.shapes[result.name] = previousShape;
-          else delete appConfig.shapes[result.name];
-          mountEditors();
-          refreshShared();
-          importStatus.className = "err";
-          importStatus.textContent = "Import failed: the shape could not be displayed (" +
-            err.message + ")";
-          return;
-        }
-        importStatus.className = "ok";
-        importStatus.textContent = "Imported shape \"" + result.name + "\"" +
+    function drawImporter(slot) {
+      const control = document.createElement("div");
+      control.id = "svg-importer-host";
+      slot.appendChild(control);
+      const status = document.createElement("div");
+      status.id = "import-status";
+      status.className = lastImport.className;
+      status.textContent = lastImport.text;
+      slot.appendChild(status);
+      const warnings = document.createElement("ul");
+      warnings.id = "import-warnings";
+      for (const w of lastImport.warnings) {
+        const li = document.createElement("li");
+        li.textContent = w;
+        warnings.appendChild(li);
+      }
+      slot.appendChild(warnings);
+      CNBSvgImporter.renderImportControl(control, { onResult: importShape, label: "Import from SVG… (click, or drop a .svg file here)" });
+    }
+
+    function importShape(result) {
+      lastImport.warnings = result.warnings.slice();
+      if (result.error) {
+        lastImport.className = "err";
+        lastImport.text = "Import failed: " + result.error;
+        if (panelApi) panelApi.redraw();
+        return;   // config untouched
+      }
+      const replaced = result.name in appConfig.shapes;
+      const previousShape = appConfig.shapes[result.name];
+      try {
+        appConfig.shapes[result.name] = result.shape;
+        lastImport.className = "ok";
+        lastImport.text = "Imported shape \"" + result.name + "\"" +
           (replaced ? " (replaced the existing entry with that name)" : "");
-      },
-    });
+        // The shape vocabulary changed: re-seed the editors (the notehead
+        // rule editor's shape selects read it at mount time).
+        mountEditors();
+        refreshShared();
+      } catch (err) {
+        // The shape could not be displayed: put the previous entry back.
+        if (replaced) appConfig.shapes[result.name] = previousShape;
+        else delete appConfig.shapes[result.name];
+        lastImport.className = "err";
+        lastImport.text = "Import failed: the shape could not be displayed (" + err.message + ")";
+        mountEditors();
+        refreshShared();
+      }
+    }
 
     mountEditors();
+    refreshRuleList();
     refreshPanel();
     refreshChecks();
   </script>

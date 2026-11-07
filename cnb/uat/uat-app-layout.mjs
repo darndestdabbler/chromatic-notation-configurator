@@ -42,7 +42,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection } from "./app-page.mjs";
+import { openSection, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -279,6 +279,30 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     /^(No problems|\d+ (warning|error)s?)$/.test((await page.textContent("#checks-indicator")).trim()),
     await page.textContent("#checks-indicator"));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-kite-${width}.png`), fullPage: true });
+
+  // ── A notehead selected and a rule hovered (session 27, mock-up 2) ──
+  await openSection(page, "noteheads");
+  await selectNotehead(page, 1);
+  // The hover by its event, so the page can be shown from the top.
+  await page.dispatchEvent(".cnb-nhp-rule >> nth=0", "mouseenter");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const geo = await page.evaluate(() => {
+    const box = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const [canvas, panel, rules] = [box(".canvas-card"), box("#notehead-panel-card"), box('[data-panel="noteheads"]')];
+    return { canvasBottom: canvas.bottom, panelTop: panel.top, panelBottom: panel.bottom, rulesTop: rules.top,
+      sameWidth: Math.abs(canvas.width - panel.width) < 1 && Math.abs(panel.width - rules.width) < 1 };
+  });
+  check(`${width}: the notehead panel docks under the canvas at its width, with the rule list under it`,
+    geo.panelTop >= geo.canvasBottom && geo.rulesTop >= geo.panelBottom && geo.sameWidth, JSON.stringify(geo));
+  check(`${width}: C♯ is outlined and the hovered shape rule tints its six columns`,
+    JSON.stringify(await page.$$eval(".cnb-pvd-preview .pc-col.cnb-pvd-selected", els => els.map(e => +e.dataset.pc))) === "[1]" &&
+    JSON.stringify(await page.$$eval(".cnb-pvd-preview .pc-col.cnb-pvd-tint", els => els.map(e => +e.dataset.pc))) === "[1,2,5,6,9,10]");
+  l = await layout(page);
+  check(`${width}: the notehead panel does not make the page scroll sideways`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
+  await page.screenshot({ path: path.join(SHOT_DIR, `app-notehead-${width}.png`), fullPage: true });
+  await page.keyboard.press("Escape");
+  check(`${width}: Esc closes the notehead panel`, await page.isHidden("#notehead-panel-card"));
+  await openSection(page, "staff");
 
   // ── The kept panels, for the screenshot check (session 26) ──
   if (width === 1440) {

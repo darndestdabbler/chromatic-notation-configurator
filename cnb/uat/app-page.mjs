@@ -45,9 +45,23 @@ export async function openSection(page, name) {
 }
 
 /**
+ * Select a notehead on the canvas by its pitch class (0–11), which opens
+ * the notehead panel (session 27, design §2); add: true Shift-clicks it
+ * into the selection. The panel holds the shape row's Import from SVG
+ * (#svg-importer-host, #import-status, #import-warnings).
+ */
+export async function selectNotehead(page, pc, { add = false } = {}) {
+  await page.click(`.canvas-card .cnb-pvd-preview .pc-col[data-pc="${pc}"]`,
+    add ? { modifiers: ["Shift"] } : {});
+  await page.waitForSelector(".cnb-notehead-panel");
+}
+
+/**
  * Show Advanced and open its disclosure whose summary starts with `title`
- * ("Durations and engine", "Staff line overrides", "Pitch axis map",
- * "Pitch range shown", "View file (JSON)").
+ * ("Rules for particular durations or keys", "Colour palette", "Durations
+ * and engine", "Staff line overrides", "Pitch axis map", "Pitch range
+ * shown", "View file (JSON)"). Since session 27 the notehead rule editor
+ * and the palette editor live here.
  */
 export async function openAdvanced(page, title) {
   await openSection(page, "advanced");

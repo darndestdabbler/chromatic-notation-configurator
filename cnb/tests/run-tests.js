@@ -45,6 +45,8 @@ const TEST_FILES = [
   "./cnb-key-signature-editor-tests.js",
   "./cnb-pitch-axis-editor-tests.js",
   "./cnb-notehead-inference-tests.js",
+  "./cnb-builtin-shapes-tests.js",
+  "./cnb-notehead-panel-tests.js",
   "./cnb-pitch-model-tests.js",
   "./cnb-config-io-tests.js",
   "./cnb-config-export-tests.js",

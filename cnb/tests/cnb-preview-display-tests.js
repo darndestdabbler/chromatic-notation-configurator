@@ -770,6 +770,63 @@ export const tests = [
       });
     },
   },
+  // ── Selection and marks (session 27, design §2, §5.4) ──
+  {
+    name: "render: a click on a column selects its pitch class, Shift-click adds, and C′ is C",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const picks = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          onSelect: (pc, how) => picks.push([pc, how.add]) });
+        const col = (pc) => findAll(api.root, "pc-col").find(c => c.getAttribute("data-pc") === String(pc));
+        col(1).onclick({ shiftKey: false });
+        col(4).onclick({ shiftKey: true });
+        col(12).onclick({});
+        assertEqual(picks, [[1, false], [4, true], [0, false]], "picks");
+      });
+    },
+  },
+  {
+    name: "render: without onSelect the columns take no clicks",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null });
+        assert(findAll(api.root, "pc-col").every(c => c.onclick === undefined), "no click handlers");
+      });
+    },
+  },
+  {
+    name: "setMarks: marks the selected and tinted columns, C′ with C, and keeps them across redraws and rows",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const obs = fakeObserver();
+      withDomStub(container => {
+        let renders = 0;
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          ResizeObserver: obs.Ctor, onRender: () => { renders++; } });
+        const marked = (token) => findAll(api.root, token).map(c => c.getAttribute("data-pc")).join(",");
+        const before = renders;
+        api.setMarks({ selected: [0], tinted: [1, 5] });
+        assertEqual(renders, before, "no redraw");
+        assertEqual(marked("cnb-pvd-selected"), "0,12", "C and C′ selected");
+        assertEqual(marked("cnb-pvd-tint"), "1,5", "tinted");
+        assert(findAll(api.root, "cnb-pvd-selected").every(c => c.className.split(" ").includes("pc-col")), "column class kept");
+
+        api.redraw();
+        assertEqual(marked("cnb-pvd-selected"), "0,12", "after a redraw");
+        const drawnCfg = PVD.displayConfig(cfg, "medium");
+        obs.resize(CNBCollection.minRowWidth(drawnCfg, { rows: 1 }) - 1);
+        assertEqual(api.getRows(), 2, "two rows");
+        assertEqual(marked("cnb-pvd-tint"), "1,5", "after the row count changes");
+
+        api.setMarks({ selected: [3] });
+        assertEqual(marked("cnb-pvd-selected"), "3", "replaced");
+        assertEqual(marked("cnb-pvd-tint"), "", "tint cleared");
+      });
+    },
+  },
   {
     name: "renderPartial: the clef gutter and the first three columns, with the key signature off",
     fn: () => {

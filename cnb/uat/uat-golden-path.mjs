@@ -53,7 +53,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, openSection, openAdvanced } from "./app-page.mjs";
+import { useCanvasSize, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -223,12 +223,11 @@ const staffLineCount = async () =>
 // ── STEP 0: initial assembly ────────────────────────────────────────────────
 check('PAGE title is "Chromatic Notation Configurator"',
   (await page.title()) === "Chromatic Notation Configurator", await page.title());
-check("ASSEMBLY: all eight module roots mounted (Modules 12–19 on one page)",
+check("ASSEMBLY: the seven always-mounted module roots on one page (Modules 12–15, 17–19; the SVG importer opens with a notehead, session 27)",
   await page.evaluate(() =>
     !!document.querySelector(".cnb-preview-display") &&
     !!document.querySelector(".cnb-config-io") &&
     !!document.querySelector(".cnb-config-export") &&
-    !!document.querySelector(".cnb-svg-drop-zone") &&
     !!document.querySelector(".cnb-palette-editor") &&
     !!document.querySelector(".cnb-staff-rule-editor") &&
     !!document.querySelector(".cnb-notehead-rule-editor") &&
@@ -249,7 +248,8 @@ check("STATE PANEL: full default config exposed (4-8 pattern, one shape, shape m
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-initial.png"), fullPage: true });
 
 // ── STEP 1: import an SVG shape (set 004, Module 16) ────────────────────────
-await openSection(page, "noteheads");
+// Since session 27 the importer is the notehead panel's Import from SVG.
+await selectNotehead(page, 0);
 await page.setInputFiles('#svg-importer-host input[type="file"]', {
   name: "uat-ellipse.svg", mimeType: "image/svg+xml",
   buffer: Buffer.from(SAMPLE_SVG, "utf8"),
@@ -275,7 +275,8 @@ check("IMPORT: the notehead rule editor re-seeded — its shape selects now offe
       .some(o => o.value === "uat-ellipse")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-imported.png"), fullPage: true });
 
-// ── STEP 2: pick a palette (set 004, Module 12) ─────────────────────────────
+// ── STEP 2: pick a palette (set 004, Module 12; Advanced since session 27) ──
+await openAdvanced(page, "Colour palette");
 await page.click('.cnb-pal-option[data-preset-key="dark2-3"]');
 cfg = await fullConfig();
 check("PALETTE: Dark2 3-color preset reaches the shared config (12 per-PC colors, first #1b9e77, scheme symbols)",
@@ -304,8 +305,8 @@ check(`STAFF RULES: preview background staff re-rendered — ${expectedLines} li
   `dom=${await staffLineCount()} expected=${expectedLines}`);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-staff.png"), fullPage: true });
 
-// ── STEP 4: add a notehead rule (set 005, Module 14) ────────────────────────
-await openSection(page, "noteheads");
+// ── STEP 4: add a notehead rule (set 005, Module 14; Advanced since session 27)
+await openAdvanced(page, "Rules for particular durations or keys");
 await page.click(".cnb-nre-rule-add");
 await page.check('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-shape input');
 await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-shape-select', "uat-ellipse");

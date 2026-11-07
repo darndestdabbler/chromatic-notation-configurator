@@ -182,6 +182,63 @@ export const tests = [
       for (const r of rules) deepEq([r.match.durations, r.match.keys], ["all", "all"], r.name);
     }},
 
+  // ── ruleLines: the rule list in words (§5.4, session 27) ──────────────
+
+  { name: "ruleLines (§5.2): default 4-8 → one line per attribute, each at its default where uniform", fn: () => {
+      const c = CNBConfig.createDefault();
+      const lines = I.ruleLines(c, I.lookTable(c));
+      deepEq(lines.map(l => [l.attribute, l.words]), [
+        ["shape", "Shape: crotchet minim everywhere"],
+        ["fill", "Fill: solid, with hollow on the accidentals"],
+        ["size", "Size: each shape at its own size"],
+        ["side", "Side step: none everywhere"],
+        ["colour", "Colour: none everywhere"],
+      ], "lines");
+      deepEq(lines[2].values, [{ value: { heightSemis: null, widthSemis: null }, pcs: [...Array(12).keys()] }], "size value");
+      deepEq(lines[1].values, [{ value: false, pcs: [0, 2, 4, 5, 7, 9, 11] }, { value: true, pcs: ACC }], "fill values, default first");
+    }},
+
+  { name: "ruleLines (§5.2): Kite 4-369 → kite up every 4, hollow every 2, colours every 3", fn: () => {
+      const kite = fixture("kite-4-369-config.json");
+      const lines = I.ruleLines(kite, I.lookTable(kite));
+      deepEq(lines.map(l => l.words), [
+        "Shape: kite down, with kite up every 4 semitones from C♯ and D",
+        "Fill: solid, with hollow every 2 semitones from C♯",
+        "Size: each shape at its own size",
+        "Side step: none everywhere",
+        "Colour: every 3 semitones, skyblue, rose, black",
+      ], "words");
+      deepEq(lines[0].values, [{ value: "kite-down", pcs: [0, 3, 4, 7, 8, 11] }, { value: "kite-up", pcs: [1, 2, 5, 6, 9, 10] }], "shape values");
+      deepEq(lines[4].values.map(v => [v.value, v.pcs]), [
+        ["#50b4e9", [0, 3, 6, 9]], ["#cc79a7", [1, 4, 7, 10]], ["#000000", [2, 5, 8, 11]],
+      ], "colour values");
+    }},
+
+  { name: "ruleLines (§5.2): 45deg-369 → one shape, hollow every 2, colours every 3", fn: () => {
+      const deg = fixture("45deg-369-config.json");
+      deepEq(I.ruleLines(deg, I.lookTable(deg)).map(l => l.words), [
+        "Shape: ellipse 45deg everywhere",
+        "Fill: solid, with hollow every 2 semitones from C♯",
+        "Size: each shape at its own size",
+        "Side step: none everywhere",
+        "Colour: every 3 semitones, black, puce, sky blue",
+      ], "words");
+    }},
+
+  { name: "ruleLines (§5.2): Twinline → its side steps in words; sizes in words", fn: () => {
+      const twin = gallery("twinline-compact.json");
+      const lines = I.ruleLines(twin, I.lookTable(twin));
+      deepEq(lines.map(l => l.attribute), ["shape", "fill", "size", "side", "colour"], "attributes");
+      eq(lines[3].words, "Side step: none, with 0.85 staff spaces on C♯, E, F♯, A and B", "side words");
+      deepEq(lines[3].values, [{ value: 0, pcs: [0, 2, 3, 5, 7, 8, 10] }, { value: 0.85, pcs: [1, 4, 6, 9, 11] }], "side values");
+      const noSteps = I.lookTable(twin).map(r => ({ ...r, xOffsetStaffSpaces: 0 }));
+      eq(I.ruleLines(twin, noSteps).find(l => l.attribute === "side").words, "Side step: none everywhere", "axis, no step");
+      const sized = fixture("sized-config.json");
+      const size = I.ruleLines(sized, I.lookTable(sized)).find(l => l.attribute === "size");
+      eq(size.words, "Size: the shape's own, with width 4 semitones on C and height 1.5, width 3 semitones on the accidentals", "size words");
+      deepEq(size.values[2], { value: { heightSemis: 1.5, widthSemis: 3 }, pcs: ACC }, "size value");
+    }},
+
   // ── writeBack ─────────────────────────────────────────────────────────
 
   { name: "writeBack: every gallery and fixture config resolves the same for every pc, duration and key", fn: () => {
@@ -231,5 +288,48 @@ export const tests = [
       assert(after.noteheadRules.every(r => r.apply.color === undefined), "no apply.color written");
       deepEq(after.palette.colors.map(c => [c.pc, c.hex]), [[0, "#ff0000"]], "colour in the palette");
       eq(config.noteheadRules.length, 5, "input not mutated");
+    }},
+
+  { name: "writeBack (session 27): a colour taken back to none leaves the palette with its twin", fn: () => {
+      const kite = fixture("kite-4-369-config.json");
+      const table = I.lookTable(kite);
+      table[1].color = null;                       // C♯, rose → none
+      const after = I.writeBack(kite, table);
+      assert(!after.palette.colors.some(c => c.pc === 1), "C♯ has no colour entry");
+      assert(!after.palette.cbSafeColors.some(c => c.pc === 1), "C♯ has no twin");
+      eq(after.palette.colors.length, 11, "the other entries kept");
+      eq(CNBConfig.resolveColor(after, 1), CNBConfig.resolveColor(CNBConfig.createDefault(), 1), "C♯ draws as with no palette");
+      const ly = CNBLilypond.generate(after);
+      const cSharp = ly.split(";; C♯")[1].split(";;")[0];
+      assert(/\(color\s+\. black-000000\)/.test(cSharp), "C♯ exports black: " + cSharp);
+      eq(I.lookTable(after)[1].color, null, "reads back as none");
+    }},
+
+  { name: "writeBack (session 27): a changed colour's twin follows its new colour or is dropped", fn: () => {
+      const config = fixture("kite-4-369-config.json");
+      config.palette.cbSafeColors = config.palette.cbSafeColors.map(c => ({ ...c, hex: c.hex === "#000000" ? "#111111" : "#0072b2" }));
+      const table = I.lookTable(config);
+      table[1].color = "#000000";                  // C♯ rose → black, whose twin is #111111
+      table[4].color = "#123456";                  // E rose → a new colour with no twin
+      const after = I.writeBack(config, table);
+      const twin = (pc) => after.palette.cbSafeColors.find(c => c.pc === pc);
+      eq(twin(1).hex, "#111111", "C♯ takes black's twin");
+      eq(twin(4), undefined, "E's stale twin dropped");
+      eq(twin(7).hex, "#0072b2", "G, unchanged, keeps its twin");
+      eq(after.palette.colors.find(c => c.pc === 4).hex, "#123456", "E's new colour");
+    }},
+
+  { name: "writeBack (§5.5, session 27): only kept rules below the inferred ones are raised, in order", fn: () => {
+      const config = CNBConfig.createDefault();            // infers 2 rules: priorities 0 and 1
+      const kept = (name, priority) => ({ name, priority, match: { pitchClasses: [0], durations: ["minim"], keys: "all" }, apply: { widthSemis: 3 } });
+      config.noteheadRules.push(kept("high", 9), kept("low", 0), kept("mid", 1), kept("edge", 2));
+      const after = written(config);
+      const out = after.noteheadRules.filter(r => !I.ownsRule(r));
+      deepEq(out.map(r => [r.name, r.priority]), [["low", 2], ["mid", 2], ["edge", 2], ["high", 9]], "raised just above, high kept");
+      const sorted = after.noteheadRules.slice().sort((a, b) => a.priority - b.priority).filter(r => !I.ownsRule(r)).map(r => r.name);
+      deepEq(sorted, ["low", "mid", "edge", "high"], "applied in their old order");
+      const top = Math.max(...after.noteheadRules.filter(I.ownsRule).map(r => r.priority));
+      assert(out.every(r => r.priority > top), "all above the inferred rules");
+      deepEq(resolveEverything(after), resolveEverything(config), "same resolutions");
     }},
 ];

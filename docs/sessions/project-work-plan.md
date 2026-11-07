@@ -38,10 +38,13 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 24 | Pitch, nudges and staff spacing | no | 2026-11-07 |
 | 25 | The new page | no | 2026-11-07 |
 | 26 | The panels speak to a designer | no | 2026-11-07 |
-| 27 | The notehead panel | — | not declared |
+| 27 | The notehead panel | no | 2026-11-07 |
 | 28 | Pitch | — | not declared |
-| 29 | The UI is stable | — | not declared |
-| 30 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 29 | Loose ends from sessions 2–26 and the v1 sets | — | not declared |
+| 30 | The clef and the key signature reach LilyPond | — | not declared |
+| 31 | The checks speak to a designer | — | not declared |
+| 32 | The UI is stable | — | not declared |
+| 33 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -242,3 +245,14 @@ Make the kept panels speak to a notation designer (design docs/planning/notehead
 
 - 2026-11-07 — step 'uat-drivers-follow': its files: Running every driver showed the wording changes break uat-clef-editor, uat-key-signature and the test-page driver uat-staff-rule-editor (its derived-panel checks); uat-golden-path and uat-kite-pipeline use only class hooks that did not change and pass as they are. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-07 — step 'uat-record': its files: Judging the panel screenshots found a browser-default file input in the Clef panel (design 8.3), the Ledger lines panel repeating its card title as a group title, and the 'when a note is near' checkbox shown when no rule uses that mode; the fixes are in app.css and the staff editor with its tests. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 27 — The notehead panel
+
+**Releasable: no.**
+
+Build the notehead panel of the notehead-first editor (design docs/planning/notehead-first-editor-design.md §2, §5.3–§5.5). Two inference fixes come first in cnb/ui/notehead-inference.js: writeBack removes a pitch class's palette.colors entry (and its colour-blind twin in palette.cbSafeColors) when its colour is taken back to none, and a changed colour's twin follows the twin another pitch class of the new colour already has, else is dropped; and a rule kept for particular durations or keys keeps its priority when it already sits above every inferred rule and is otherwise raised just enough to sit above them and after the kept rules before it, instead of all kept rules being lifted in bulk. The module also gains the rule list in words, one line per attribute (shape, fill, size, side step, colour) with the pitch classes each value covers. A new data module cnb/ui/builtin-shapes.js holds the four built-in shapes (the default oval crotchet-minim, ellipse-45deg, kite-up, kite-down, with their SVG and LilyPond data, pinned equal to the default config and the fixtures) and copies one into config.shapes when it is first chosen. The canvas (cnb/ui/preview-display.js) gains click and Shift-click selection on its columns' existing data-pc hit targets (C′ selects C) and selection and hover marks kept across redraws. A new cnb/ui/notehead-panel.js draws the panel docked under the canvas for the selected pitch classes: the selected notehead alone at Large, colour (swatches of the colours in use, none, New colour with session 21's input/change wiring, the colour-blind-safe alternative, Start from a palette from the palette editor's presets), fill (Solid or Hollow), shape (thumbnails of the config's shapes, then the built-in ones, then Import from SVG through the existing importer), size (session 22's height and width with the aspect lock on by default and the shape's own size as reset), side step (only when the pitch axis makes the notehead share a spot with a neighbour), Give this look to (All, Every other, Every 3rd, 4th, 6th from the selected pitch class, The accidentals, The naturals, choosing which parts of the look to copy), and a marker when a kept rule for particular durations or keys also changes the notehead. Every change edits the look table and goes through writeBack. The page (cnb/index.html, cnb/ui/app.css) shows the rule list in the Noteheads section with hover tint on the canvas, opens the notehead panel in the panel's place on selection (Esc or ✕ closes it), and moves the notehead rule editor to Advanced › Rules for particular durations or keys and the palette editor to Advanced › Colour palette, unchanged, recording that in design §9. Tests go in the test files named after the changed and new modules; the app's UAT drivers follow the moved controls; a new driver builds the Kite 4-369 looks by clicking, starting from the Kite fixture with its rules reduced to the Default and its palette colours cleared, and checks the export equals cnb/fixtures/kite-4-369-export-baseline.ly; and the layout driver's screenshots at 1440 and 1280 px, now with a notehead selected, are judged against mock-up 2 and recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-07 — step 'uat-drivers-follow': its files and checks: Running every app driver showed uat-site.mjs also follows the panel: it requires every *-host element to be filled at load, and the notehead panel's host fills only while a notehead is selected. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-07 — step 'uat-record': its files and checks: Judging the screenshots against mock-up 2 found the rule list hidden under an open panel (design 2 lists it there), a head without the look in words, and an empty import status gap and misaligned rule words; the fixes are in index.html, app.css and the panel with its test, and the Kite driver's selection check follows the rule list staying visible. (claude-code (anthropic, claude-opus-5-5))
