@@ -1,0 +1,116 @@
+{
+  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads. Every probe was re-captured in session 33, when the preview began putting a stem's edge (an up stem's right, a down stem's left) on its anchor, as LilyPond engraves it, and the Kite fixture's stem anchors moved to the engine reference's attachment (1.8 / 0.73 semitones).",
+  "capturedAt": "8b6013a",
+  "probes": [
+    {
+      "id": "default",
+      "sha256": "068e181ada043cea80a7b4022d8b0a8640b10babea1ee849dd26d3f2cbb528e1",
+      "length": 85276
+    },
+    {
+      "id": "default-debug-grid",
+      "sha256": "f522f8150d91b5bdccd3d6c0aa77cbd4dc261f0e3e6c00507dc2030618e709dc",
+      "length": 52757
+    },
+    {
+      "id": "default-key-signature",
+      "sha256": "dd5fdef5cb60fe88d68003d8718d2242c787fbf29ee43e6c8adeb3247e56097e",
+      "length": 96496
+    },
+    {
+      "id": "kite-4-369",
+      "sha256": "dff3111a91c748c5190575d77c2112f7a4ff3544582fec1d96670d1d259d0829",
+      "length": 72021
+    },
+    {
+      "id": "45deg-369",
+      "sha256": "1ef5d4b7d89be07a4db06d90d39c38f53dc4225deff3ca9d992f5764bad28c95",
+      "length": 98779
+    },
+    {
+      "id": "gallery/0-5-7-notation.json",
+      "sha256": "fd458ef176ea079189522b4768d56fd5f3b9571cfcfbffbb7c5a65a0f3d62a09",
+      "length": 78828
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json",
+      "sha256": "55f8f421ad87c2e4ef6930f6f8cda74ac66d43ca223fe6be07113871e191d195",
+      "length": 87682
+    },
+    {
+      "id": "gallery/ambros-system.json",
+      "sha256": "12bb916b5ceb3333c60a8e04d43d3fbbce0fec2d10ed40ba3e65ae7a35d9b6d1",
+      "length": 79614
+    },
+    {
+      "id": "gallery/avique-notation.json",
+      "sha256": "d5903ef42f9a5f84d01cb0e5ecf53e773362365ae2d5f32686ec305d4583f2bd",
+      "length": 79634
+    },
+    {
+      "id": "gallery/axlomafi.json",
+      "sha256": "cac6b5cf14f94c37b14fa2027c8520fd23fe3a5c3abb175eecf7ace8f3347248",
+      "length": 77846
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json",
+      "sha256": "efe9edc95d1bc3a3e9d512facee24b1bd354f24885aea74d87ce165e4f919749",
+      "length": 88342
+    },
+    {
+      "id": "gallery/clairnote-dn.json",
+      "sha256": "03ffe5d04822b422cb732d17c7ad0b5fc8d45e75691aa406a15f5b962d66f58c",
+      "length": 98852
+    },
+    {
+      "id": "gallery/clairnote-sn.json",
+      "sha256": "44deb012b4e683f260ea035ff2e419df8378d00c1f3ad308c2ebe521880437e7",
+      "length": 91808
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json",
+      "sha256": "dcc6cad2b4b5d0752e0ce81304f4daacbb247ff03d613ee7838cb597151d9ecf",
+      "length": 78364
+    },
+    {
+      "id": "gallery/express-stave-original.json",
+      "sha256": "71fc20a6e3cd306e5249f42e00761fac442bb343edf50582b97e7d2c93660dda",
+      "length": 87830
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json",
+      "sha256": "552442d2067295df989516711400a5c398da330154652f5894984f1dfb8f0f83",
+      "length": 83894
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json",
+      "sha256": "bed7201607628a49e5bc560352ca7fbb6fa63fc1260b6a44383c5390d2138f96",
+      "length": 68000
+    },
+    {
+      "id": "gallery/lautus-notation.json",
+      "sha256": "33513b0661bdf60a45eb6eb8ede056c7544570e87900c2a0482ed335d58aeb14",
+      "length": 78800
+    },
+    {
+      "id": "gallery/notagraph.json",
+      "sha256": "a068f32a938eb0bac8a76709697502ae77dfcd1f59cfe7d20caf0530e975348c",
+      "length": 79414
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json",
+      "sha256": "8293a65e342370e9a526295a72e7747fcfdb086f5f15b51b6819f4119d271157",
+      "length": 79114
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json",
+      "sha256": "64e06a49386db5f974bad4371a380520e5c4fd8665ddf4aa575da2fab7a00b91",
+      "length": 77542
+    },
+    {
+      "id": "gallery/trilinear-notation.json",
+      "sha256": "6c39ce1352d29adfdeb64e2d02dacb0e15934e991af4ae6a37fe19096c4af532",
+      "length": 67816
+    }
+  ]
+}
