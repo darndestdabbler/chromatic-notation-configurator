@@ -772,10 +772,20 @@ file (JSON).
 
 ## 11. Risks
 
-- **A decimal staff spacing** (§3.4) has not yet been engraved. The engine
-  divides with Scheme's `/`, and validation already accepts it, but the
-  first session that writes one checks it with an engine render, as
-  sessions 11 and 18 did.
+- **A decimal staff spacing** (§3.4) has been engraved (session 24).
+  Twinline in nudge form, with a staff spacing of 3.4286, engraves every
+  notehead and staff line within 0.01 half-space of the stride-7
+  fixture, the tolerance the test asserts. The engine render is the last test in
+  `cnb/tests/cnb-pitch-model-tests.js`, and it skips with the reason when
+  `lilypond` is not on `PATH`.
+- **The staff's edges under a pitch shift** (§3.1). The exporter and the
+  preview expand the staff pattern over semitones 0–23. So when a shift
+  carries a line past one edge of that range, the line comes back at the
+  other edge. Relative to the middle of the staff, the pattern is
+  unchanged, but the staff can gain a line at one end and lose one at the
+  other. Session 24's tests pin exact positions only while no line crosses
+  an edge. Session 28 should decide whether the drawn range follows the
+  middle of the staff.
 - **Hit targets.** Clicking a notehead needs the card to mark each column
   with its pitch class (a `data-pc` attribute). That is a small change to
   `cnb-card.js`, pinned by the preview baseline.
