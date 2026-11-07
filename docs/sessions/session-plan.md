@@ -921,19 +921,19 @@ variant of a shape per size.
 6. README "Preview-only settings" and the gallery configs: say that size
    exports, and leave the fixtures' sizes untouched.
 
-### The notehead-first program (sessions 23–34)
+### The notehead-first program (sessions 23–35)
 
 **Operator, 2026-11-06:** approved the program in §12 of
 [`docs/planning/notehead-first-editor-design.md`](../planning/notehead-first-editor-design.md)
 (sessions 19 and 20), with one change: the canvas **Size is kept in the
 browser, not saved in the file** (session 25 carries it out). The design and
-its mock-ups (§10) are the specification. Every UI session (25–32 and 34) ends by
+its mock-ups (§10) are the specification. Every UI session (25–32 and 35) ends by
 taking the app's screenshots at 1440 and 1280 px with session 25's driver
 and judging them against the mock-ups: layout, type, spacing, wording, the
 row count each width should give (§6.1), and no horizontal overflow. The
 judgement and the screenshots go in `docs/uat-status.md`. Where a session
 finds a better answer than a mock-up, it updates the mock-up in the same
-session. No session before 35 releases; the first release is the site's
+session. No session before 36 releases; the first release is the site's
 first deploy (see "No release until the UI is stable").
 
 **Plan amended 2026-11-07, after session 26:** three sessions inserted for
@@ -961,6 +961,18 @@ notehead's centre than the preview draws them. Session 33 fixes the
 export; "The UI is stable" and the release become 34 and 35, so the
 operator's rebuilds and the README pictures follow the fix. The release
 stays 1.1.0: the fix changes no config or setting.
+
+**Plan amended 2026-11-07, after session 33:** one session inserted before
+"The UI is stable" (operator: "address all gaps that we have now in a
+session"). Session 34 closes every gap between the preview and the
+engraving that this repository can close; "The UI is stable" and the
+release become 35 and 36. The operator's rule for each gap: a setting the
+engine cannot take leaves the editors and the preview draws what the engine
+engraves, while ledger rules and key-scoped notehead rules, which the
+engine can take, are exported. The three gaps only the engine can close
+(text-clef height, the clef's left padding, the key-signature octave under
+a pitch axis) are planned as session 24 of the engine repository. The
+release stays 1.1.0: no config stops loading.
 
 ### Session 23: The look table and rule inference
 
@@ -1345,7 +1357,70 @@ release.
    attachment point. If that half width proves visible, decide with the
    operator whether the preview or the export moves.
 
-### Session 34: The UI is stable
+### Session 34: The preview draws what the engine engraves
+
+**Why.** Session 33 found the preview and the engraving differ wherever the
+preview has a setting the engine never receives, and the operator's rule is
+that a difference a user could notice, or that would make them doubt the
+export, is fixed rather than documented. Measured on 2026-11-07 against the
+engine, default config, in staff spaces: stems are 0.13 thick and reach
+about 3.5 past the far head's centre on the page, but 0.065 and 1.70 in the
+preview; staff lines are 0.10 on the page and 0.05 in the preview. Staff and
+ledger line thickness, colour and dash, ledger width and rounded ends, the
+ledger rules, key-scoped notehead rules, the repeat counts and the
+key-signature gutter all change the preview and nothing on the page
+(LY spec §5.2a). The operator chose, per gap (2026-11-07):
+
+- where the engine has its own fixed value and no setting in its simple
+  mode, **the preview draws the engine's value** and the setting leaves the
+  editors. The engine's advanced line mode (`cnb:staff-and-ledger-lines`) is
+  not used;
+- **ledger rules are exported**: the engine's simple mode takes, for each
+  notehead position, the exact ledgers to draw (`cnb:ledger-overrides`,
+  `cnb/ledgers.ly`), so the ledger editor keeps working;
+- the three gaps only the engine can close go to the engine repository's
+  plan, as its session 24.
+
+1. Register.
+2. **Stems.** The preview draws a stem at the engine's thickness and length,
+   in staff spaces (axis units per staff space under a pitch axis): LilyPond's
+   0.13 thickness and its length past the far notehead, including the cases
+   where LilyPond shortens a stem or carries it to the middle line, as
+   measured against the engine. `display.stemThicknessPct` and
+   `display.stemExtension` stop being read. An engine-backed test in
+   `cnb/tests/cnb-card-tests.js` pins stem thickness and both ends, crotchet
+   and minim, up and down, for the default and Kite fixtures.
+3. **Staff and ledger lines.** The preview draws staff lines and ledgers at
+   the engine's thickness and length, black and solid, measured from a
+   render. The line settings the engine does not take (staff and ledger
+   thickness, colour, dash, line overrides, ledger width multiplier and
+   rounded ends) leave the staff editor and stop being read; configs that
+   carry them still load. An engine-backed test pins the measured sizes.
+4. **Which ledgers appear.** The export writes, for every notehead position
+   in the engine's range, the ledgers the preview draws for a note there,
+   as `cnb:ledger-overrides` (and `cnb:ledger-positions` if the overrides
+   need them), linear and pitch-axis alike, so the engraving shows the
+   preview's ledgers, in-gap ledgers included. An engine round trip
+   compares the engraved ledger positions with the preview's for the
+   default, Kite 4-369, 45deg-369 and Twinline fixtures and every gallery
+   file. This retires the "in-gap ledger difference" listed under "Limits
+   kept on purpose".
+5. **Key-scoped notehead rules.** Section C dispatches on the key the engine
+   passes (the key's pitch-class list), so a rule whose `match.keys` names
+   a key definition engraves as the preview draws it. Validation stops
+   warning that such rules are preview-only. An engine round trip checks one
+   key-scoped colour rule in two keys.
+6. **The rest.** The key-signature gutter follows the engine's spacing and
+   its setting leaves the editor; the repeat counts leave the editor (the
+   engine's counts are fixed, session 18). The baselines (export and
+   preview) are regenerated and every change is listed.
+7. LY spec 1.3.9 records the ledger and key exports and §5.2a's shorter
+   preview-only list; the architecture plan's display, staff and ledger
+   sections say what the preview now draws. The README's "Preview-only
+   settings" list shrinks to what remains (the colour-blind palette toggle,
+   which the score selects).
+
+### Session 35: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06).
 
@@ -1354,15 +1429,15 @@ release.
    UI, and while doing so checks the colour pickers by hand (drag in the
    field, type a full hex value) in each editor that has one, the check
    session 21 left owed. The rough edges found are fixed in this session,
-   or planned as sessions before 35 if they are large.
+   or planned as sessions before 36 if they are large.
 3. README text and pictures follow the new UI. Its "Preview-only settings"
-   list matches the Export section's sentence as session 30 leaves it, and
+   list matches the Export section's sentence as session 34 leaves it, and
    it no longer introduces the unused repeat counts as settings that change
    the preview (session 18 review). The full UAT runs.
 4. The operator declares the UI stable, which is the condition for
-   session 35.
+   session 36.
 
-### Session 35: Release 1.1.0 (release: 1.1.0)
+### Session 36: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
@@ -1384,6 +1459,11 @@ the operator, before it becomes numbered sessions; most serve the
 full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
 "Strategic note"). Release versions are proposed when they are planned.
 
+- **Export what engine session 24 adds** (operator, 2026-11-07): once the
+  engine anchors a text clef, pads the clef gutter on both sides and picks
+  the key-signature octave per tonic under a pitch axis, the exporter
+  writes the new settings and LY spec §5.4d and §5.5 drop their "known
+  divergence" notes. Needs that engine release first.
 - **Off-key marking** (architecture §11 question 4; sets 005, 010): draw
   the mark in the preview and export it. The engine already takes it
   (`cnb:register-off-key-mark!`, the `off-key-mark` field). Key rows in
