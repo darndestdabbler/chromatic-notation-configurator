@@ -83,6 +83,12 @@
  *   - opts.rangeHost: when given, the pitch-range control is drawn there
  *     (the editor puts it in Advanced) instead of in the controls.
  *
+ * Session 26 (each section's preview, design §6): setFocus("ledger-lines")
+ * draws the canvas with every candidate ledger spot and the class
+ * cnb-pvd-focus-ledgers, so the host tints the columns whose data-ledgers
+ * is not 0; renderPartial draws the Clef or Key signature section's
+ * partial staff, that gutter and the first three columns.
+ *
  * Dependencies: Module A (config shape), Module B (pitch labels),
  * Module 10 (card collection).
  */
@@ -176,6 +182,45 @@ export const CNBPreviewDisplay = {
         label: { ...(display.label || {}), ...EDITOR_LABEL },
       },
     };
+  },
+
+  /** The pitch classes a partial preview shows: the first three columns. */
+  PARTIAL_PCS: [0, 1, 2],
+
+  /**
+   * A partial staff for the Clef or Key signature section (session 26,
+   * design §6): that section's gutter and the first three columns (C, C♯,
+   * D) on one fluid row, at the canvas Size, with the other gutter turned
+   * off, in a div.cnb-pvd-partial appended to host. The config is not
+   * changed.
+   * @param {HTMLElement} host
+   * @param {object} config
+   * @param {{part:"clef"|"key-signature", size?:"small"|"medium"|"large",
+   *          duration?:string, key?:string|null}} opts
+   * @returns {HTMLDivElement} the div.cnb-pvd-partial
+   */
+  renderPartial(host, config, { part, size = DEFAULT_SIZE, duration = "crotchet", key = null } = {}) {
+    if (part !== "clef" && part !== "key-signature") {
+      throw new Error(`renderPartial: part must be "clef" or "key-signature" (got ${JSON.stringify(part)})`);
+    }
+    const drawn = CNBPreviewDisplay.displayConfig(config, size);
+    if (part === "clef" && drawn.keys) {
+      drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };
+    }
+    if (part === "key-signature" && drawn.clef) {
+      drawn.clef = { ...drawn.clef, enabled: false };
+    }
+    const wrap = globalThis.document.createElement("div");
+    wrap.className = "cnb-pvd-partial";
+    CNBCollection.render(wrap, drawn, {
+      pitchClasses: CNBPreviewDisplay.PARTIAL_PCS,
+      durations: [duration],
+      keys: key ? [key] : null,
+      fluid: true,
+      rows: 1,
+    });
+    host.appendChild(wrap);
+    return wrap;
   },
 
   /**
@@ -342,6 +387,7 @@ export const CNBPreviewDisplay = {
     let rows = 1;             // the row count of the last drawn preview
     let preview = null;       // the last drawn .cnb-pvd-preview
     let sizeHint = null;      // the hint shown below the two-row minimum
+    let focus = null;         // the open section (setFocus); "ledger-lines" marks ledgers
 
     const root = doc.createElement("div");
     root.className = "cnb-preview-display";
@@ -490,7 +536,8 @@ export const CNBPreviewDisplay = {
     function updateOverflow(config, options) {
       if (!preview) return;
       const overflow = width < CNBCollection.minRowWidth(config, { ...options, rows: 2 });
-      preview.className = "cnb-pvd-preview" + (overflow ? " cnb-pvd-overflow" : "");
+      preview.className = "cnb-pvd-preview" + (overflow ? " cnb-pvd-overflow" : "") +
+        (focus === "ledger-lines" ? " cnb-pvd-focus-ledgers" : "");
       sizeHint.textContent = !overflow ? ""
         : size === "small" ? "The staff is wider than the window."
         : "The staff is wider than the window: choose a smaller Size.";
@@ -507,6 +554,7 @@ export const CNBPreviewDisplay = {
       }
       rows = CNBPreviewDisplay.rowsFor(config, options, width);
       const collectionOptions = { ...options, fluid: true, rows };
+      if (focus === "ledger-lines") collectionOptions.ledgerSpots = true;
       preview = el("div", "cnb-pvd-preview");
       collection.render(preview, config, collectionOptions);
       root.appendChild(preview);
@@ -568,6 +616,17 @@ export const CNBPreviewDisplay = {
       getOptions: () => CNBPreviewDisplay.buildOptions(getConfig(), state),
       getSize: () => size,
       getRows: () => rows,
+      /** The section the page shows (session 26, design §6): "ledger-lines"
+       *  draws every candidate ledger spot and marks the preview so the
+       *  host tints the columns that draw ledger lines; anything else draws
+       *  the canvas as usual. Redraws only when the focus changes. */
+      setFocus: (name) => {
+        const next = name ?? null;
+        if (next === focus) return;
+        focus = next;
+        redraw();
+      },
+      getFocus: () => focus,
       redraw,
     };
   },

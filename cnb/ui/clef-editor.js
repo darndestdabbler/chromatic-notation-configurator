@@ -52,6 +52,13 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBSvgImporter } from "./svg-importer.js";
 
+/**
+ * The Preview only badge's tooltip (design §8.6): the exporter emits
+ * nothing for clefs (architecture plan §4.12), so the whole section shows
+ * only in the preview.
+ */
+const CLEF_PREVIEW_ONLY = "LilyPond draws its own clef, so this clef is not exported.";
+
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
 function deepClone(v) {
@@ -63,6 +70,8 @@ function isPlainObject(v) {
 }
 
 export const CNBClefEditor = {
+
+  CLEF_PREVIEW_ONLY,
 
   /**
    * Build a ready `config.clef` slice from editor state. Pure function;
@@ -225,8 +234,8 @@ export const CNBClefEditor = {
       state.glyphs[result.name] = result.glyph;
       state.active = result.name;
       importError = "";
-      importStatus = `Imported clef glyph "${result.name}"` +
-        (replaced ? " (replaced the existing entry with that name)" : "");
+      importStatus = `Imported the clef "${result.name}"` +
+        (replaced ? " (it replaces the clef of that name)" : "");
       changed();
       return result;
     }
@@ -239,18 +248,19 @@ export const CNBClefEditor = {
       cb.checked = !!state.enabled;
       cb.onchange = (e) => { state.enabled = checkedFrom(e, cb); changed(); };
       label.appendChild(cb);
-      label.appendChild(el("span", "cnb-cle-enable-text",
-        "Enable clef (renders the active glyph in a left gutter of the preview)"));
+      label.appendChild(el("span", "cnb-cle-enable-text", "Show a clef at the start of the staff"));
+      const badge = el("span", "cnb-badge", "Preview only");
+      badge.title = CLEF_PREVIEW_ONLY;
+      label.appendChild(badge);
       return label;
     }
 
     // ── Clef glyph import (session-1 importer, clef kind) ────────────────
     function drawImport() {
       const wrap = el("div", "cnb-cle-section cnb-cle-import");
-      wrap.appendChild(el("div", "cnb-cle-title", "Import clef glyph (SVG)"));
+      wrap.appendChild(el("div", "cnb-cle-title", "Import a clef from SVG"));
       wrap.appendChild(el("div", "cnb-cle-hint",
-        "Toolkit contract: path data + data-semitone-height (viewBox fallback). " +
-        "Stem/anchor attributes are not required for clefs."));
+        "An SVG drawn with the music glyph toolkit, which records its height in semitones."));
 
       const input = el("input", "cnb-cle-file");
       input.type = "file";
@@ -260,7 +270,7 @@ export const CNBClefEditor = {
         if (!file) return;
         file.text().then(
           (text) => importClefText(text, file.name),
-          (err) => { importError = "Import failed: could not read file — " + err.message; redraw(); }
+          (err) => { importError = "Import failed: could not read the file (" + err.message + ")"; redraw(); }
         );
       };
       wrap.appendChild(input);
@@ -278,13 +288,11 @@ export const CNBClefEditor = {
     // ── Glyph selection ──────────────────────────────────────────────────
     function drawGlyphs() {
       const wrap = el("div", "cnb-cle-section cnb-cle-glyphs");
-      wrap.appendChild(el("div", "cnb-cle-title", "Clef glyphs"));
+      wrap.appendChild(el("div", "cnb-cle-title", "Clefs"));
 
       const names = Object.keys(state.glyphs);
       if (names.length === 0) {
-        wrap.appendChild(el("div", "cnb-cle-empty",
-          "No clef glyphs yet — import an SVG above (text/register-label " +
-          "entries can also be added via JSON load)."));
+        wrap.appendChild(el("div", "cnb-cle-empty", "No clefs yet: import one from SVG above."));
         return wrap;
       }
 
@@ -296,11 +304,11 @@ export const CNBClefEditor = {
         const kind = (def && def.kind) === "text" ? "text" : "glyph";
         const detail = kind === "text"
           ? `text “${(def && def.text) || ""}”`
-          : "glyph";
+          : "drawing";
         row.appendChild(el("span", "cnb-cle-glyph-name",
           ((def && def.displayName) || name)));
         row.appendChild(el("span", "cnb-cle-glyph-detail",
-          `${detail} · anchor ${def && typeof def.anchorSemi === "number" ? def.anchorSemi : "?"}`));
+          `${detail} · top at semitone ${def && typeof def.anchorSemi === "number" ? def.anchorSemi : "?"}`));
         row.onclick = () => { state.active = name; changed(); };
         wrap.appendChild(row);
       }
@@ -310,35 +318,33 @@ export const CNBClefEditor = {
     // ── Anchor semitone (active definition) ──────────────────────────────
     function drawAnchor() {
       const wrap = el("div", "cnb-cle-section cnb-cle-anchor");
-      wrap.appendChild(el("div", "cnb-cle-title", "Anchor semitone (active glyph)"));
+      wrap.appendChild(el("div", "cnb-cle-title", "Top of the clef"));
 
       const active = state.active && isPlainObject(state.glyphs[state.active])
         ? state.glyphs[state.active]
         : null;
       if (!active) {
         wrap.appendChild(el("div", "cnb-cle-anchor-empty",
-          "No active clef glyph — import or select one to position it."));
+          "Import or choose a clef to place it."));
         return wrap;
       }
 
       wrap.appendChild(el("div", "cnb-cle-hint",
-        "Semitone the glyph's TOP edge sits on. Floats allowed — designs " +
-        "registered by an interior feature (treble clef, Express Stave B) " +
-        "have fractional top anchors."));
+        "The semitone the top of the clef sits on. Decimals are allowed: a clef " +
+        "is usually placed by a feature inside it, such as the curl of a treble clef."));
 
       const row = el("div", "cnb-cle-fields");
       const anchor = el("input", "cnb-cle-anchor-input");
       anchor.type = "number";
       anchor.step = "any";
       anchor.value = String(active.anchorSemi);
-      anchor.title = "Anchor semitone of the glyph's top edge (float)";
       anchor.oninput = (e) => {
         const v = numberFrom(e, anchor);
         if (v !== null) { active.anchorSemi = v; changed(); }
       };
       row.appendChild(anchor);
       row.appendChild(el("span", "cnb-cle-anchor-name",
-        "on " + ((active.displayName) || state.active)));
+        "semitones, for " + ((active.displayName) || state.active)));
       wrap.appendChild(row);
       return wrap;
     }
@@ -346,10 +352,8 @@ export const CNBClefEditor = {
     // ── Gutter sizing ────────────────────────────────────────────────────
     function drawGutter() {
       const wrap = el("div", "cnb-cle-section cnb-cle-gutter");
-      wrap.appendChild(el("div", "cnb-cle-title", "Gutter sizing"));
-      wrap.appendChild(el("div", "cnb-cle-hint",
-        "Horizontal padding (px) on each side of the glyph. Gutter width = " +
-        "glyph width + 2 × padding; no gutter is reserved while disabled."));
+      wrap.appendChild(el("div", "cnb-cle-title", "Space either side"));
+      wrap.appendChild(el("div", "cnb-cle-hint", "Room on each side of the clef, before the first note."));
 
       const row = el("div", "cnb-cle-fields");
       const pad = el("input", "cnb-cle-gutter-input");
@@ -357,12 +361,12 @@ export const CNBClefEditor = {
       pad.min = "0";
       pad.step = "1";
       pad.value = String(state.gutter.paddingH);
-      pad.title = "Gutter padding (px per side)";
       pad.oninput = (e) => {
         const v = numberFrom(e, pad);
         if (v !== null && v >= 0) { state.gutter.paddingH = v; changed(); }
       };
       row.appendChild(pad);
+      row.appendChild(el("span", "cnb-cle-unit", "px"));
       wrap.appendChild(row);
       return wrap;
     }

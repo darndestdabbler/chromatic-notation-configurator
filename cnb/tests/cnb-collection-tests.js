@@ -382,6 +382,39 @@ export const tests = [
       });
     }},
 
+  { name: "render (fluid, ledgerSpots): every candidate ledger spot is a faint line to 100%, under the staff lines", fn: () => {
+      const config = CNBConfig.createDefault();   // templates at C, D and A♯
+      withDomStub(container => {
+        const plain = fluidSystems(CNBCollection.render(container, config, { fluid: true }).children[0])[0].bg;
+        assert(!plain.children.some(c => c.getAttribute("class") === "ledger-spots"), "no spots without the option");
+        for (const rows of [1, 2]) {
+          const systems = fluidSystems(CNBCollection.render(container, config,
+            { fluid: true, rows, ledgerSpots: true }).children[0]);
+          for (const { bg, cards } of systems) {
+            const order = bg.children.map(c => c.getAttribute("class"));
+            assert(order.indexOf("ledger-spots") >= 0 && order.indexOf("ledger-spots") < order.indexOf("cnb-staff"),
+              "spots drawn before (under) the staff lines");
+            const pcs = cards.map(c => Number(c.getAttribute("data-pc")));
+            const grid = CNBGrid.create(config, CNBCollection.gridRange(pcs));
+            const expected = [];
+            for (let s = Math.ceil(grid.minSemi); s <= grid.maxSemi; s++) {
+              if ([0, 2, 10].includes(((s % 12) + 12) % 12)) expected.push(String(grid.semiToY(s)));
+            }
+            const spots = bg.children.find(c => c.getAttribute("class") === "ledger-spots").children;
+            eq(JSON.stringify(spots.map(l => l.getAttribute("y1")).sort((a, b) => a - b)),
+              JSON.stringify(expected.sort((a, b) => a - b)), `rows ${rows}: one spot per template position in range`);
+            assert(spots.every(l => l.getAttribute("class") === "ledger-spot" && l.getAttribute("x2") === "100%"),
+              "faint lines across the row");
+          }
+        }
+      });
+    }},
+
+  { name: "render (ledgerSpots): ignored without fluid, so the fixed layout is unchanged", fn: () => {
+      const config = CNBConfig.createDefault();
+      eq(JSON.stringify(renderHash(config, { ledgerSpots: true })), JSON.stringify(renderHash(config, {})), "same output");
+    }},
+
   { name: "render (fluid, rows 2): C to F♯ and G to C′ on the same 7-slot grid, 24 px apart", fn: () => {
       const config = CNBConfig.createDefault();
       const colMin = CNBCollection.minRowWidth(config) / 13;

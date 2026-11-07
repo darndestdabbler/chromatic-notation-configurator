@@ -175,8 +175,8 @@ check("PATTERN LIST has 3 options, 4–8 selected",
     return opts.length === 3 && sel && sel.dataset.patternKey === "4-8";
   }));
 const d0 = await derivedText();
-check("DERIVED PANEL sps 4, midpoint 12, LY positions (-4 -2 2 4)",
-  d0.includes("Semitones per staff space: 4") && d0.includes("Staff midpoint: 12") && d0.includes("(-4 -2 2 4)"), d0);
+check("DERIVED PANEL: staff spacing 4 semitones per staff space, middle of the staff C (semitone 12)",
+  d0.includes("Staff spacing: 4 semitones per staff space") && d0.includes("Middle of the staff: C, semitone 12"), d0);
 check("PREVIEW staff lines: 4 (semis 4, 8, 16, 20)", (await staffLineCount()) === 4, String(await staffLineCount()));
 check("PREVIEW note columns: 25 markers (chromatic 0–24)", (await markerCount()) === 25);
 check("PREVIEW column C (semi 0) shows 1 ledger", (await ledgerCount(0)) === 1);
@@ -194,8 +194,8 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-s1-initial.png"), fullPag
 // ── Change the staff pattern ────────────────────────────────────────────────
 await page.click('[data-pattern-key="3-6-9"]');
 const d1 = await derivedText();
-check("CLICK 3-6-9: derived sps 3, LY positions (-6 -4 -2 2 4 6)",
-  d1.includes("Semitones per staff space: 3") && d1.includes("(-6 -4 -2 2 4 6)"), d1);
+check("CLICK 3-6-9: derived staff spacing 3 semitones per staff space",
+  d1.includes("Staff spacing: 3 semitones per staff space"), d1);
 check("CLICK 3-6-9: preview staff lines now 6", (await staffLineCount()) === 6, String(await staffLineCount()));
 j = await readJson();
 check("CLICK 3-6-9: JSON semitonePattern [3,6,9]", JSON.stringify(j.staff.semitonePattern) === "[3,6,9]");

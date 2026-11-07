@@ -158,6 +158,23 @@ export const tests = [
       });
     }},
 
+  { name: "render: layout.fluid marks data-ledgers, the number of ledger lines drawn; fixed columns do not", fn: () => {
+      const { config, grid } = fixture();
+      withDomStub(container => {
+        for (const pc of [0, 2, 5]) {
+          const col = CNBCard.render(container, grid, config, { pc, duration: "crotchet" }, { fluid: true });
+          const ledgers = dissect(col).svg.children.find(c => c.getAttribute("class") === "cnb-ledger-set");
+          eq(col.getAttribute("data-ledgers"), String(ledgers.children.length), `pc ${pc}: the count drawn`);
+        }
+        const c = CNBCard.render(container, grid, config, { pc: 0, duration: "crotchet" }, { fluid: true });
+        assert(Number(c.getAttribute("data-ledgers")) > 0, "C draws a ledger line");
+        const f = CNBCard.render(container, grid, config, { pc: 5, duration: "crotchet" }, { fluid: true });
+        eq(f.getAttribute("data-ledgers"), "0", "F draws none");
+        const fixed = CNBCard.render(container, grid, config, { pc: 0, duration: "crotchet" });
+        eq(fixed.getAttribute("data-ledgers"), null, "no data-ledgers off fluid");
+      });
+    }},
+
   { name: "render: layout.fluid marks the upper C as data-pc 12", fn: () => {
       const { config, grid } = fixture();
       withDomStub(container => {

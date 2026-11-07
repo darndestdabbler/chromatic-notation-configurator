@@ -720,6 +720,96 @@ export const tests = [
       });
     },
   },
+
+  // ── Section previews (session 26, design §6) ──
+  {
+    name: "render: setFocus(\"ledger-lines\") draws the ledger spots and marks the preview; other focus does not",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        let lastOptions = null;
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          onRender: (options) => { lastOptions = options; } });
+        const preview = () => findOne(api.root, "cnb-pvd-preview");
+        assert(!String(preview().className).includes("cnb-pvd-focus-ledgers"), "no mark at first");
+        assertEqual(findAllByClassAttr(api.root, "ledger-spot").length, 0, "no spots at first");
+        assertEqual(api.getFocus(), null, "no focus");
+
+        api.setFocus("ledger-lines");
+        assertEqual(api.getFocus(), "ledger-lines", "focus kept");
+        assert(String(preview().className).includes("cnb-pvd-focus-ledgers"), "preview marked");
+        assertEqual(lastOptions.ledgerSpots, true, "the collection was asked for the spots");
+        assert(findAllByClassAttr(api.root, "ledger-spot").length > 0, "spots drawn");
+        const cols = findAll(api.root, "pc-col");
+        assert(cols.some(c => c.getAttribute("data-ledgers") !== "0") &&
+          cols.some(c => c.getAttribute("data-ledgers") === "0"), "columns say which draw ledger lines");
+
+        api.setFocus("clef");
+        assert(!String(preview().className).includes("cnb-pvd-focus-ledgers"), "mark removed");
+        assertEqual(findAllByClassAttr(api.root, "ledger-spot").length, 0, "spots removed");
+        assertEqual(lastOptions.ledgerSpots, undefined, "not asked for");
+      });
+    },
+  },
+  {
+    name: "render: setFocus redraws only when the focus changes, and the mark survives an overflow update",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const obs = fakeObserver();
+      withDomStub(container => {
+        let renders = 0;
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          ResizeObserver: obs.Ctor, onRender: () => { renders++; } });
+        api.setFocus("ledger-lines");
+        const n = renders;
+        api.setFocus("ledger-lines");
+        assertEqual(renders, n, "same focus: no redraw");
+        obs.resize(100);   // below the two-row minimum: overflow re-marks the class
+        const cls = String(findOne(api.root, "cnb-pvd-preview").className);
+        assert(cls.includes("cnb-pvd-overflow") && cls.includes("cnb-pvd-focus-ledgers"), "both marks: " + cls);
+      });
+    },
+  },
+  {
+    name: "renderPartial: the clef gutter and the first three columns, with the key signature off",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.keySignature = { ...CNBConfig.createDefault().keys.keySignature, enabled: true };
+      cfg.clef = { enabled: true, active: "num", gutter: { paddingH: 8 },
+        glyphs: { num: { kind: "text", text: "4", textHeightSemis: 5, anchorSemi: 20 } } };
+      const before = JSON.stringify(cfg);
+      withDomStub(container => {
+        const wrap = PVD.renderPartial(container, cfg, { part: "clef", size: "large", key: "G" });
+        assertEqual(wrap.className, "cnb-pvd-partial", "wrapper class");
+        assert(container.children.includes(wrap), "appended to the host");
+        assertEqual(findAll(wrap, "pc-col").map(c => c.getAttribute("data-pc")).join(","), "0,1,2", "C, C♯ and D");
+        assertEqual(findAll(wrap, "clef-col").length, 1, "the clef gutter");
+        assertEqual(findAll(wrap, "keysig-col").length, 0, "no key signature");
+        assertEqual(findAll(wrap, "preview-container").length, 1, "one row");
+      });
+      assertEqual(JSON.stringify(cfg), before, "the config is not changed");
+    },
+  },
+  {
+    name: "renderPartial: the key signature gutter for the given key, with the clef off; bad parts throw",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.keySignature = { ...CNBConfig.createDefault().keys.keySignature, enabled: true };
+      cfg.clef = { enabled: true, active: "num", gutter: { paddingH: 8 },
+        glyphs: { num: { kind: "text", text: "4", textHeightSemis: 5, anchorSemi: 20 } } };
+      withDomStub(container => {
+        const wrap = PVD.renderPartial(container, cfg, { part: "key-signature", size: "medium", key: "G" });
+        assertEqual(findAll(wrap, "keysig-col").length, 1, "the key signature gutter");
+        assertEqual(findAll(wrap, "clef-col").length, 0, "no clef");
+        assertEqual(findAll(wrap, "pc-col").length, 3, "three columns");
+        const none = PVD.renderPartial(container, cfg, { part: "key-signature", key: null });
+        assertEqual(findAll(none, "keysig-col").length, 0, "no key chosen: no signature");
+        const minim = PVD.renderPartial(container, cfg, { part: "key-signature", key: "G", duration: "minim" });
+        assertEqual(findAll(minim, "pc-col").length, 3, "a given duration draws too");
+        assertThrows(() => PVD.renderPartial(container, cfg, { part: "staff" }), "part", "unknown part");
+      });
+    },
+  },
 ];
 
 /** An in-memory stand-in for localStorage. */

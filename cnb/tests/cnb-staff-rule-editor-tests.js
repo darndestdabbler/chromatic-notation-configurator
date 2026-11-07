@@ -297,6 +297,57 @@ export const tests = [
     },
   },
 
+  // ── automaticTemplates + ledger mode (session 26, design §1) ──
+  {
+    name: "automaticTemplates: the staff's spacing continued past its lines, as proximity templates",
+    fn: () => {
+      const at = (pattern) => E.automaticTemplates(pattern).map(t => t.semiWithinOctave);
+      assertEqualArrays(at([4, 8]), [0], "4-8: spacing 4 continues to C");
+      assertEqualArrays(at([3, 6, 9]), [0], "3-6-9: spacing 3 continues to C");
+      assertEqualArrays(at([2, 6]), [10], "2-6: spacing 4 from D gives A♯");
+      assertEqualArrays(at([0, 4, 8]), [], "0-4-8: every spot is already a line");
+      assertEqualArrays(at([1, 7]), [], "1-7: spacing 6, both spots are lines");
+      assertEqualArrays(at([0, 2, 7]), [1, 3, 4, 5, 6, 8, 9, 10, 11], "spacing 1: every other spot");
+      assertEqualArrays(at([]), [], "no lines, no spots");
+      for (const t of E.automaticTemplates([4, 8])) {
+        assert(t.triggerMode === "proximity" && t.triggerPCs.length === 0, "proximity, no triggers");
+      }
+      assertEqualArrays(at([8, 4, 8]), [0], "input sorted and deduped");
+    },
+  },
+  {
+    name: "ledgerModeOf: automatic only for exactly the automatic templates, in order, with the proximity rule on",
+    fn: () => {
+      const auto = { templates: E.automaticTemplates([2, 6]), proximityRule: true };
+      assert(E.ledgerModeOf([2, 6], auto) === "automatic", "exact match");
+      assert(E.ledgerModeOf([2, 6], { ...auto, proximityRule: false }) === "own", "proximity off");
+      assert(E.ledgerModeOf([4, 8], auto) === "own", "other pattern's spots");
+      const withTriggers = { templates: [{ semiWithinOctave: 10, triggerPCs: [9], triggerMode: "proximity" }], proximityRule: true };
+      assert(E.ledgerModeOf([2, 6], withTriggers) === "own", "triggers would be lost on write-back");
+      assert(E.ledgerModeOf([0, 4, 8], { templates: [], proximityRule: true }) === "automatic", "no spots, none written");
+      assert(E.ledgerModeOf([3, 6, 9], { templates: [], proximityRule: true }) === "own", "45deg-369: no ledgers is own");
+      assert(defaultState().ledgerMode === "own", "the default config's override templates are own rules");
+      const kite = JSON.parse(readFileSync(new URL("../fixtures/kite-4-369-config.json", import.meta.url), "utf8"));
+      assert(E.stateFromConfig(kite).ledgerMode === "own", "Kite's override template is an own rule");
+    },
+  },
+  {
+    name: "automatic mode: buildLedgers follows the pattern; a loaded automatic config writes back unchanged",
+    fn: () => {
+      const config = CNBConfig.createDefault();
+      config.ledgers.templates = E.automaticTemplates([4, 8]);
+      const state = E.stateFromConfig(config);
+      assert(state.ledgerMode === "automatic", "recognised on load");
+      assert(JSON.stringify(E.applyToConfig(config, state).ledgers) === JSON.stringify(config.ledgers),
+        "write-back is the loaded ledgers");
+      state.patternKey = "custom";
+      state.customPattern = [2, 6];
+      const l = E.buildLedgers(state);
+      assertEqualArrays(l.templates.map(t => t.semiWithinOctave), [10], "spots follow the new pattern");
+      assert(l.proximityRule === true, "proximity on");
+    },
+  },
+
   // ── applyToConfig + validation pass-through ──
   {
     name: "applyToConfig: does not mutate the input config",
@@ -436,37 +487,43 @@ export const tests = [
       assert(handle.root.className === "cnb-staff-rule-editor", "root class");
       assert(findAll(handle.root, "cnb-sre-pattern-option").length === 3, "2 presets + custom");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
-      assert(derived.some(d => d.textContent.includes("Semitones per staff space: 4")), "sps shown");
-      assert(derived.some(d => d.textContent.includes("(-4 -2 2 4)")), "LY positions shown");
+      assert(derived.some(d => d.textContent === "Staff spacing: 4 semitones per staff space"), "staff spacing shown");
+      assert(derived.some(d => d.textContent === "Middle of the staff: C, semitone 12"), "middle of the staff shown");
       assert(findAll(handle.root, "cnb-sre-override-row").length === 2, "one row per pattern line");
       assert(findAll(handle.root, "cnb-sre-template-row").length === 3, "default templates");
       assert(findAll(handle.root, "cnb-sre-valid").length === 1, "validation OK banner");
     }),
   },
   {
-    name: "render L1: under a pitch axis the derived panel shows the exporter's axis geometry (twinline-compact)",
+    name: "render L1: under a pitch axis the derived panel shows the export's axis unit and loaded midpoint (twinline-compact)",
     fn: () => withDomStub((container) => {
       const config = loadTwinlineCompact();
       const handle = E.render(container, { config });
       const rows = findAll(handle.root, "cnb-sre-derived-row").map(d => d.textContent);
       const exported = CNBLilypond.sectionB(config);
-      assert(exported.includes("#(set! cnb:staff-line-positions '(-3 -1 1 4 6 8))"), "the export emits the axis staff");
-      assert(rows.includes("LilyPond staff-line-positions: (-3 -1 1 4 6 8)"), "panel matches the export: " + JSON.stringify(rows));
-      assert(rows.includes("Axis units per staff space: 2 (pitch axis)"), "axis unit shown");
-      assert(rows.includes("Staff midpoint: 7"), "loaded midpoint shown");
+      assert(exported.includes("#(set! cnb:semitones-per-staff-space 2)"), "the export uses the axis unit");
+      assert(rows.includes("Staff spacing: 2 axis units per staff space, from the pitch axis map in Advanced"),
+        "axis unit shown: " + JSON.stringify(rows));
+      assert(rows.includes("Middle of the staff: G, semitone 7"), "loaded midpoint shown");
     }),
   },
   {
-    name: "render: staff line styling and ledger sections are labelled preview-only (M2)",
+    name: "render: preview-only controls carry a Preview only badge with a tooltip, and no paragraph (M2, design §8.6)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container, {});
-      for (const section of ["cnb-sre-staff-defaults", "cnb-sre-overrides", "cnb-sre-ledgers", "cnb-sre-ledger-defaults"]) {
-        const notes = findAll(findAll(handle.root, section)[0], "cnb-sre-preview-only");
-        assert(notes.length === 1 && notes[0].textContent.startsWith("Preview-only:") &&
-          notes[0].textContent.includes("not exported"), `${section} carries the preview-only note`);
+      assert(findAll(handle.root, "cnb-sre-preview-only").length === 0, "no preview-only paragraphs");
+      const badges = (token) => findAll(findAll(handle.root, token)
+        .find(s => String(s.className).includes("cnb-sre-section")), "cnb-badge");
+      // Staff lines: thickness, style and colour each carry one.
+      assert(badges("cnb-sre-staff-defaults").length === 3, "a badge beside each staff line control");
+      for (const token of ["cnb-sre-overrides", "cnb-sre-ledger-mode", "cnb-sre-ledger-defaults"]) {
+        assert(badges(token).length === 1, `${token} carries one badge`);
       }
-      const ledgerNote = findAll(findAll(handle.root, "cnb-sre-ledgers")[0], "cnb-sre-preview-only")[0].textContent;
-      assert(ledgerNote.includes("proximity rule"), "the ledger note names the proximity rule");
+      for (const b of findAll(handle.root, "cnb-badge")) {
+        assert(b.textContent === "Preview only", "badge text");
+        assert(b.title.includes("not exported") && b.title.includes("LilyPond"), "tooltip: " + b.title);
+      }
+      assert(badges("cnb-sre-ledger-mode")[0].title.includes("ledger"), "the ledger badge names ledger lines");
     }),
   },
   {
@@ -479,7 +536,7 @@ export const tests = [
       assertEqualArrays(lastSlices.staff.semitonePattern, [3, 6, 9], "onChange staff slice");
       assert(lastSlices.staff.semitonesPerStaffSpace === 3, "derived sps in slice");
       const derived = findAll(handle.root, "cnb-sre-derived-row");
-      assert(derived.some(d => d.textContent.includes("(-6 -4 -2 2 4 6)")), "derived redrawn");
+      assert(derived.some(d => d.textContent === "Staff spacing: 3 semitones per staff space"), "derived redrawn");
       assert(findAll(handle.root, "cnb-sre-override-row").length === 3, "override rows follow pattern");
     }),
   },
@@ -611,13 +668,20 @@ export const tests = [
     }),
   },
   {
-    name: "render: proximity checkbox and ledger defaults (width multiplier, rounded ends)",
+    name: "render: proximity checkbox (only with a 'when a note is near' rule, or while off) and ledger defaults",
     fn: () => withDomStub((container) => {
       let lastSlices = null;
       const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      assert(findAll(handle.root, "cnb-sre-proximity").length === 0, "no near rule: no checkbox");
 
+      const row = findByAttr(handle.root, "data-template-index", "0")[0];
+      findAll(row, "cnb-sre-template-mode")[0].onchange({ target: { value: "proximity" } });
+      assert(findAll(handle.root, "cnb-sre-proximity").length === 1, "a near rule shows it");
       findAll(handle.root, "cnb-sre-proximity-check")[0].onchange({ target: { checked: false } });
       assert(lastSlices.ledgers.proximityRule === false, "proximity off");
+      const rowB = findByAttr(handle.root, "data-template-index", "0")[0];
+      findAll(rowB, "cnb-sre-template-mode")[0].onchange({ target: { value: "override" } });
+      assert(findAll(handle.root, "cnb-sre-proximity").length === 1, "still shown while off, so it can be turned on");
 
       const wm = findAll(handle.root, "cnb-sre-width-multiplier")[0];
       wm.oninput({ target: { value: "3.5" } });
@@ -653,6 +717,75 @@ export const tests = [
         .filter(o => String(o.className).includes("selected"));
       assert(selected.length === 1 && selected[0].getAttribute("data-pattern-key") === "3-6-9",
         "3-6-9 option selected");
+    }),
+  },
+  {
+    name: "render: pattern options have a title and a description; a preset's Staff lines on pills make it custom",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      const titles = findAll(handle.root, "cnb-sre-pattern-title").map(t => t.textContent);
+      assertEqualArrays(titles, ["4–8", "3–6–9", "Custom"], "titles");
+      const descs = findAll(handle.root, "cnb-sre-pattern-desc").map(t => t.textContent);
+      assert(descs[0] === "Two lines an octave, on E and G♯", "4-8 described");
+      const pills = findAll(handle.root, "cnb-sre-pc-toggle");
+      assert(pills.length === 12, "pills shown for a preset");
+      assert(pills.filter(p => String(p.className).includes(" on")).length === 2, "the preset's lines are on");
+      pills[0].onclick();   // add C to 4-8
+      assert(handle.getState().patternKey === "custom", "now custom");
+      assertEqualArrays(lastSlices.staff.semitonePattern, [0, 4, 8], "started from the preset");
+    }),
+  },
+  {
+    name: "render parts: each part draws only its own sections; unknown parts throw",
+    fn: () => withDomStub((container) => {
+      const has = (root, token) => findAll(root, token).length > 0;
+      const staff = E.render(container, { parts: ["staff"] }).root;
+      assert(has(staff, "cnb-sre-pattern") && has(staff, "cnb-sre-derived") && has(staff, "cnb-sre-staff-defaults"), "staff part");
+      assert(!has(staff, "cnb-sre-overrides") && !has(staff, "cnb-sre-ledger-mode"), "no other part");
+      const ledgers = E.render(container, { parts: ["ledgers"] }).root;
+      assert(has(ledgers, "cnb-sre-ledger-mode") && has(ledgers, "cnb-sre-ledgers") && has(ledgers, "cnb-sre-ledger-defaults"), "ledgers part");
+      assert(!has(ledgers, "cnb-sre-pattern") && !has(ledgers, "cnb-sre-overrides"), "no staff");
+      const overrides = E.render(container, { parts: ["overrides"] }).root;
+      assert(has(overrides, "cnb-sre-overrides") && !has(overrides, "cnb-sre-pattern") && !has(overrides, "cnb-sre-ledgers"), "overrides part");
+      const all = E.render(container, {}).root;
+      const order = all.children.map(c => String(c.className).split(" ").pop());
+      assertEqualArrays(order, ["cnb-sre-pattern", "cnb-sre-derived", "cnb-sre-staff-defaults", "cnb-sre-overrides",
+        "cnb-sre-ledger-mode", "cnb-sre-ledgers", "cnb-sre-ledger-defaults", "cnb-sre-validation"], "default: all, in order");
+      let lastSlices = null;
+      const ledgerOnly = E.render(container, { parts: ["ledgers"], onChange: (s) => { lastSlices = s; } });
+      findAll(ledgerOnly.root, "cnb-sre-template-add")[0].onclick();
+      assertEqualArrays(lastSlices.staff.semitonePattern, [4, 8], "a part still emits the whole staff slice");
+      assertThrows(() => E.render(container, { parts: ["pitch"] }), "unknown part");
+    }),
+  },
+  {
+    name: "render: switching to Automatic writes the automatic spots; back to My own rules starts from them",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      const modeButton = (mode) => findByAttr(handle.root, "data-ledger-mode", mode)[0];
+      assert(String(modeButton("own").className).includes("on"), "the default config opens in My own rules");
+      assert(findAll(handle.root, "cnb-sre-template-row").length === 3, "its rules listed");
+      assert(findAll(handle.root, "cnb-sre-ledger-mode-desc")[0].textContent === E.LEDGER_MODES.own.description, "own described");
+
+      modeButton("automatic").onclick();
+      assert(handle.getState().ledgerMode === "automatic", "mode switched");
+      assert(JSON.stringify(lastSlices.ledgers.templates) === JSON.stringify(E.automaticTemplates([4, 8])), "automatic spots written");
+      assert(lastSlices.ledgers.proximityRule === true, "proximity on");
+      assert(findAll(handle.root, "cnb-sre-template-row").length === 0, "no rule list in Automatic");
+      assert(findAll(handle.root, "cnb-sre-proximity").length === 0, "no proximity box in Automatic");
+      assert(findAll(handle.root, "cnb-sre-ledger-mode-desc")[0].textContent === E.LEDGER_MODES.automatic.description, "automatic described");
+
+      findByAttr(handle.root, "data-pattern-key", "3-6-9")[0].onclick();
+      assertEqualArrays(lastSlices.ledgers.templates.map(t => t.semiWithinOctave), [0], "spots follow the pattern");
+
+      modeButton("own").onclick();
+      assert(handle.getState().ledgerMode === "own", "back to own");
+      assert(JSON.stringify(lastSlices.ledgers.templates) === JSON.stringify(E.automaticTemplates([3, 6, 9])),
+        "own rules start from the automatic spots");
+      const row = findByAttr(handle.root, "data-template-index", "0")[0];
+      assert(findAll(row, "cnb-sre-template-mode")[0].value === "proximity", "listed as 'when a note is near'");
     }),
   },
 

@@ -96,7 +96,13 @@ input[type="color"] {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); cursor: pointer;
 }
 input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
-input[type="file"] { font-size: 13px; }
+input[type="file"] { font-size: 13px; color: var(--ink-2); }
+/* The file picker's button, styled like every other button (§8.3). */
+input[type="file"]::file-selector-button {
+  font: inherit; color: var(--ink); min-height: 32px; padding: 0 var(--space-3); margin-right: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover { border-color: #cfccc4; }
 
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
 summary:focus-visible, [tabindex]:focus-visible {
@@ -218,9 +224,21 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-pvd-preview .cnb-duration-row:first-child .cnb-duration-caption { margin-top: 0; }
 .cnb-pvd-preview .cnb-duration-row + .cnb-duration-row { margin-top: var(--space-5); }
 
+/* The Ledger lines section's canvas (§6): the columns that draw ledger
+   lines tinted, every candidate spot a faint dashed line. */
+.cnb-pvd-focus-ledgers .pc-col:not([data-ledgers="0"]) { background: rgba(47, 91, 211, .07); border-radius: var(--radius-s); }
+.cnb-pvd-preview .ledger-spot { stroke: var(--accent); }
+
+/* The Clef and Key signature sections' partial staff (§6). */
+.cnb-pvd-partial {
+  width: max-content; max-width: 100%; overflow-x: auto;
+  padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
 /* Plain pitch labels on the canvas (§6.2); the chips stay the test pages'
    default. The card sets them inline, hence !important. */
-.cnb-pvd-preview .cnb-label-card {
+.cnb-pvd-preview .cnb-label-card, .cnb-pvd-partial .cnb-label-card {
   background: transparent !important; border-color: transparent !important; box-shadow: none !important;
 }
 
@@ -340,10 +358,15 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-cle-glyph-detail, .cnb-kse-style-detail, .cnb-pal-custom-names, .cnb-pal-cb-match-de {
   font-size: 12px; color: var(--ink-2);
 }
-.cnb-cpe-badge {
+.cnb-cpe-badge, .cnb-badge {
   display: inline-block; padding: 1px var(--space-2);
   font-size: 12px; font-weight: 600; color: var(--ink-2);
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+}
+/* Preview only badges (§8.6): beside a control or a group title, never uppercase. */
+.cnb-badge {
+  margin-left: var(--space-2); line-height: 1.4; vertical-align: middle;
+  text-transform: none; letter-spacing: 0; cursor: help; white-space: nowrap;
 }
 
 /* Numeric and short text fields keep a compact width. */
@@ -364,6 +387,18 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-cle-import-warnings, .cnb-cle-empty, .cnb-cle-anchor-empty, .cnb-kse-empty { font-size: 13px; color: var(--warn); }
 .cnb-cio-filename, .cnb-cex-filename { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--ink-2); }
 .cnb-cex-export-row, .cnb-cio-save-row, .cnb-cio-load-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+/* Export section: the notation's name, file suffix, label and footnote, then the one sentence. */
+.cnb-cex-meta { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.cnb-cex-meta-field { display: grid; grid-template-columns: 140px minmax(0, 420px); column-gap: var(--space-3); row-gap: 2px; align-items: center; }
+.cnb-cex-meta-label { font-size: 13px; color: var(--ink-2); }
+.cnb-cex-meta-input { width: 100%; }
+.cnb-cex-meta-hint { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+.cnb-cex-preview-only {
+  font-size: 13px; color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); max-width: 720px;
+}
+.cnb-cex-filename-label { font-size: 13px; color: var(--ink-2); }
 .cnb-kse-disabled-note {
   font-size: 13px; color: var(--warn); background: var(--warn-soft);
   border: 1px solid #f1dcb4; border-radius: var(--radius-s);
@@ -415,6 +450,25 @@ summary:focus-visible, [tabindex]:focus-visible {
   padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s); margin-bottom: var(--space-1);
 }
 .cnb-sre-override-row.overridden { border-color: var(--accent); background: var(--accent-soft); }
+/* Pattern options: a title and a one-line description, three across. */
+.cnb-sre-pattern-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+.cnb-sre-pattern-options .cnb-sre-pattern-option { flex-direction: column; align-items: flex-start; gap: 2px; margin: 0; }
+.cnb-sre-pattern-title { font-weight: 600; }
+.cnb-sre-pattern-option.selected .cnb-sre-pattern-title { color: var(--accent); }
+.cnb-sre-pattern-desc { font-size: 12px; color: var(--ink-2); }
+.cnb-sre-pattern .cnb-sre-custom-pcs { margin: 0; }
+/* Labelled fields: the label (and badge) over the control and its unit. */
+.cnb-sre-fields { gap: var(--space-5); align-items: flex-end; }
+.cnb-sre-field { display: inline-flex; flex-direction: column; gap: var(--space-1); }
+.cnb-sre-field-label { font-size: 13px; color: var(--ink-2); }
+.cnb-sre-field-control { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cnb-sre-unit, .cnb-cle-unit { font-size: 12px; color: var(--ink-2); }
+/* Ledger lines: Automatic / My own rules, then the rule rows in words. */
+.cnb-sre-ledger-mode .segmented { margin-bottom: var(--space-2); }
+.cnb-sre-template-at, .cnb-sre-template-show { font-size: 13px; color: var(--ink-2); }
+.cnb-sre-template-pos { width: 72px; }
+.cnb-sre-template-row .cnb-sre-template-remove { margin-left: auto; }
+.cnb-sre-override-name { font-size: 13px; }
 
 /* Notehead rule editor (Module 14). */
 .cnb-nre-rule-card {

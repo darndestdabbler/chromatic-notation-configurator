@@ -220,7 +220,9 @@ export const CNBCard = {
    *        reflowing canvas, design §6.1): the column takes no fixed width,
    *        so it fills its grid cell; the note-slice keeps its own width,
    *        centred in the column; and the column carries data-pc (the
-   *        card's pc, 0–12) for hit-testing. Off, the output is unchanged.
+   *        card's pc, 0–12) for hit-testing and data-ledgers (the number
+   *        of ledger lines it draws; session 26). Off, the output is
+   *        unchanged.
    * @returns {HTMLDivElement} the div.pc-col element
    */
   render(container, gridContext, config, { pc, duration, key = null }, layout = {}) {
@@ -267,10 +269,13 @@ export const CNBCard = {
     const { pixelWidth } = measured;
     const multiplier = config.ledgers?.lineDefaults?.widthMultiplier ?? 2.0;
     const repeat = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
-    CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
+    const ledgerGroup = CNBLedgerSet.render(svg, gridContext, config, [lowerSemi, upperSemi], {
       centerX: headX,
       width: pixelWidth * multiplier + (repeat.groupWidth - pixelWidth),
     });
+    // Fluid columns say how many ledger lines they draw, so the editor's
+    // Ledger lines section can tint them (session 26, design §6).
+    if (fluid) col.setAttribute("data-ledgers", String(ledgerGroup.children.length));
 
     // 2. Stem (under the noteheads)
     const durationDef = (config.durations?.definitions || []).find(d => d.name === duration);

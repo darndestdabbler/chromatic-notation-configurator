@@ -52,6 +52,11 @@
  * does ("the UI shell owns state") — so render() takes a `getConfig`
  * accessor plus an onExport callback instead of a config seed.
  *
+ * Session 26 (the Export section, design §1 step 6, §8.6): with
+ * opts.onMeta the panel also edits the notation's name, file suffix,
+ * label and footnote (META_FIELDS), handing the new meta to the host,
+ * and it names the preview-only settings once (PREVIEW_ONLY_SENTENCE).
+ *
  * Dependencies: Module A (config), Module 11 (LilyPond exporter).
  */
 
@@ -59,6 +64,30 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 
 const LY_EXTENSION = ".ly";
+
+/**
+ * Every setting the export leaves out, in one sentence (design §8.6). It
+ * follows the exporter's header comment (LY spec 1.3.3 §5.2a) and adds the
+ * clef and the key signature's look, which the exporter emits nothing for
+ * (architecture plan §4.9, §4.12).
+ */
+const PREVIEW_ONLY_SENTENCE =
+  "Preview only: the look of the staff lines, the ledger lines, the clef, " +
+  "the key signature's placement, bar and spacing, stem thickness, repeat " +
+  "counts, the colour-blind preview switch and rules for a particular key " +
+  "show here but are not exported, because LilyPond draws those its own way.";
+
+/** The meta fields the Export section edits, with their designer wording. */
+const META_FIELDS = [
+  { key: "configName", label: "Name",
+    hint: "Shown at the top of the page, and the name of the saved file." },
+  { key: "fileSuffix", label: "File suffix",
+    hint: "Names the exported file, and a score can add it to the files it writes. It starts with a hyphen." },
+  { key: "notationLabel", label: "Notation label",
+    hint: "A score can print it with the music." },
+  { key: "notationFootnote", label: "Footnote",
+    hint: "A score can print it as a footnote to the label. Left empty, it is not exported." },
+];
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -112,6 +141,8 @@ function usedShapeNames(config) {
 export const CNBConfigExport = {
 
   LY_EXTENSION,
+  PREVIEW_ONLY_SENTENCE,
+  META_FIELDS,
 
   /**
    * Derive the .ly download filename from config.meta (spec step 1: "named
@@ -213,11 +244,15 @@ export const CNBConfigExport = {
    *
    * Structure (styling left to the host via class hooks):
    *   div.cnb-config-export
-   *   ├── div.cnb-cex-export-row   (export button + live filename preview)
-   *   ├── div.cnb-cex-status       ("Exported as …" / "Export blocked — …")
-   *   ├── div.cnb-cex-error        (unexpected failures only; empty when none)
-   *   └── div.cnb-cex-validation   (errors/warnings/valid badge from the
-   *                                 last export attempt)
+   *   ├── div.cnb-cex-meta           (only with onMeta: name, file suffix,
+   *   │                               label, footnote; kept across redraws)
+   *   ├── p.cnb-cex-preview-only     (PREVIEW_ONLY_SENTENCE)
+   *   └── div.cnb-cex-body           (redrawn)
+   *       ├── div.cnb-cex-export-row (export button + live filename preview)
+   *       ├── div.cnb-cex-status     ("Exported as …" / "Export blocked — …")
+   *       ├── div.cnb-cex-error      (unexpected failures only; empty when none)
+   *       └── div.cnb-cex-validation (errors/warnings/valid badge from the
+   *                                   last export attempt)
    *
    * The status line distinguishes a BLOCKED export (validation errors,
    * shown in .cnb-cex-verror rows — spec step 2: the user sees WHY export
@@ -235,10 +270,14 @@ export const CNBConfigExport = {
    *     browser Blob + object-URL + anchor-click download (text/plain, as
    *     the legacy exporter used for .ly); in a DOM-less environment the
    *     default throws (pass an override in tests).
+   *   - onMeta(meta) (session 26): when given, the panel draws the
+   *     META_FIELDS and calls it with a copy of getConfig().meta carrying
+   *     the edited field, on every keystroke; the host stores it and
+   *     redraws. Without it the panel edits nothing.
    *
    * @param {HTMLElement} container
    * @param {{getConfig: () => object, onExport?: Function,
-   *          download?: Function}} opts
+   *          download?: Function, onMeta?: (meta: object) => void}} opts
    * @returns {{root: HTMLElement, exportLy: () => object|null,
    *            redraw: () => void}}
    */
@@ -265,6 +304,8 @@ export const CNBConfigExport = {
       URL.revokeObjectURL(url);
     });
 
+    const onMeta = typeof opts.onMeta === "function" ? opts.onMeta : null;
+
     const root = doc.createElement("div");
     root.className = "cnb-config-export";
 
@@ -274,6 +315,39 @@ export const CNBConfigExport = {
       if (text !== undefined) e.textContent = text;
       return e;
     };
+
+    const metaOf = () => {
+      const cfg = getConfig() || {};
+      return isPlainObject(cfg.meta) ? cfg.meta : {};
+    };
+
+    // ── Meta fields (session 26): built once and kept, so an input keeps
+    // its focus while the host redraws the panel after each keystroke;
+    // redraw() only refreshes a value that the config changed elsewhere.
+    const metaInputs = {};
+    let metaBlock = null;
+    if (onMeta) {
+      metaBlock = el("div", "cnb-cex-meta");
+      for (const f of META_FIELDS) {
+        const row = el("label", "cnb-cex-meta-field");
+        row.setAttribute("data-meta", f.key);
+        row.appendChild(el("span", "cnb-cex-meta-label", f.label));
+        const input = el("input", "cnb-cex-meta-input");
+        input.type = "text";
+        input.oninput = (e) => {
+          const value = String((e && e.target && e.target.value !== undefined) ? e.target.value : input.value);
+          onMeta({ ...metaOf(), [f.key]: value });
+        };
+        metaInputs[f.key] = input;
+        row.appendChild(input);
+        row.appendChild(el("span", "cnb-cex-meta-hint", f.hint));
+        metaBlock.appendChild(row);
+      }
+      root.appendChild(metaBlock);
+    }
+    root.appendChild(el("p", "cnb-cex-preview-only", PREVIEW_ONLY_SENTENCE));
+    const body = el("div", "cnb-cex-body");
+    root.appendChild(body);
 
     // Panel state shown by redraw(); config state stays with the host.
     let statusText = "";
@@ -330,14 +404,15 @@ export const CNBConfigExport = {
 
     function drawExportRow() {
       const row = el("div", "cnb-cex-export-row");
-      const btn = el("button", "cnb-cex-export", "Export LilyPond (.ly)");
+      const btn = el("button", "cnb-cex-export", "Export for LilyPond");
       btn.type = "button";
       btn.onclick = () => exportLy();
       row.appendChild(btn);
       const preview = filenamePreview();
+      if (preview.ok) row.appendChild(el("span", "cnb-cex-filename-label", "The file is named"));
       row.appendChild(el("span",
         "cnb-cex-filename" + (preview.ok ? "" : " cnb-cex-filename-error"),
-        preview.ok ? preview.text : "no filename — " + preview.text));
+        preview.ok ? preview.text : "No file name: " + preview.text));
       return row;
     }
 
@@ -357,12 +432,17 @@ export const CNBConfigExport = {
     }
 
     function redraw() {
-      root.textContent = "";   // clears children on real DOM and on the test stub
-      root.appendChild(drawExportRow());
-      root.appendChild(el("div",
+      const meta = metaOf();
+      for (const [key, input] of Object.entries(metaInputs)) {
+        const value = typeof meta[key] === "string" ? meta[key] : "";
+        if (input.value !== value) input.value = value;
+      }
+      body.textContent = "";   // clears children on real DOM and on the test stub
+      body.appendChild(drawExportRow());
+      body.appendChild(el("div",
         "cnb-cex-status" + (statusBlocked ? " cnb-cex-status-blocked" : ""), statusText));
-      root.appendChild(el("div", "cnb-cex-error", errorText));
-      root.appendChild(drawValidation());
+      body.appendChild(el("div", "cnb-cex-error", errorText));
+      body.appendChild(drawValidation());
     }
 
     redraw();

@@ -359,7 +359,65 @@ export const tests = [
       const bad = EX.render(container, { getConfig: () => badCfg });
       const preview = findAll(bad.root, "cnb-cex-filename")[0];
       assert(preview.className.includes("cnb-cex-filename-error"), "error class");
-      assert(preview.textContent.includes("no filename"), "error text");
+      assert(preview.textContent.includes("No file name"), "error text");
+    }),
+  },
+  {
+    name: "render: the button says Export for LilyPond, and the preview-only settings are named once",
+    fn: () => withDomStub((container) => {
+      const api = EX.render(container, { getConfig: () => CNBConfig.createDefault() });
+      assertEqual(findAll(api.root, "cnb-cex-export")[0].textContent, "Export for LilyPond", "button text");
+      const notes = findAll(api.root, "cnb-cex-preview-only");
+      assertEqual(notes.length, 1, "one sentence");
+      assertEqual(notes[0].textContent, EX.PREVIEW_ONLY_SENTENCE, "the sentence");
+      // One sentence, naming what the exporter's header lists plus the clef and key signature.
+      assertEqual(EX.PREVIEW_ONLY_SENTENCE.split(/[.!?](\s|$)/).filter(s => s && s.trim()).length, 1, "a single sentence");
+      for (const s of ["staff lines", "ledger lines", "clef", "key signature", "stem thickness",
+        "repeat counts", "colour-blind", "particular key"]) {
+        assert(EX.PREVIEW_ONLY_SENTENCE.includes(s), `names ${s}`);
+      }
+      api.exportLy();   // download throws without opts.download: the sentence survives a redraw
+      assertEqual(findAll(api.root, "cnb-cex-preview-only").length, 1, "still one after a redraw");
+    }),
+  },
+  {
+    name: "render meta: without onMeta no fields are drawn",
+    fn: () => withDomStub((container) => {
+      const api = EX.render(container, { getConfig: () => CNBConfig.createDefault() });
+      assertEqual(findAll(api.root, "cnb-cex-meta").length, 0, "no meta block");
+      assertEqual(findAll(api.root, "cnb-cex-meta-input").length, 0, "no inputs");
+    }),
+  },
+  {
+    name: "render meta: with onMeta the name, file suffix, label and footnote edit meta through the host",
+    fn: () => withDomStub((container) => {
+      let config = CNBConfig.createDefault();
+      const seen = [];
+      let api = null;
+      api = EX.render(container, {
+        getConfig: () => config,
+        onMeta: (meta) => { seen.push(meta); config = { ...config, meta }; api.redraw(); },
+      });
+      const fields = findAll(api.root, "cnb-cex-meta-field");
+      assertEqual(fields.map(f => f.getAttribute("data-meta")).join(","),
+        "configName,fileSuffix,notationLabel,notationFootnote", "the four fields, in order");
+      assertEqual(fields.map(f => findAll(f, "cnb-cex-meta-label")[0].textContent).join(","),
+        "Name,File suffix,Notation label,Footnote", "designer labels");
+      const input = (key) => findAll(fields.find(f => f.getAttribute("data-meta") === key), "cnb-cex-meta-input")[0];
+      assertEqual(input("configName").value, "Default 4-8 System", "seeded from meta");
+      assertEqual(input("notationFootnote").value, "", "empty footnote");
+
+      const suffix = input("fileSuffix");
+      suffix.oninput({ target: { value: "-Kite" } });
+      assertEqual(seen.length, 1, "onMeta called");
+      assertEqual(seen[0].fileSuffix, "-Kite", "edited field");
+      assertEqual(seen[0].configName, "Default 4-8 System", "other fields kept");
+      assertEqual(findAll(api.root, "cnb-cex-filename")[0].textContent, "kite.ly", "the file name follows");
+      assert(input("fileSuffix") === suffix, "the input survives the redraw, so it keeps its focus");
+
+      config = { ...config, meta: { ...config.meta, notationLabel: "Loaded elsewhere" } };
+      api.redraw();
+      assertEqual(input("notationLabel").value, "Loaded elsewhere", "redraw refreshes a value changed elsewhere");
     }),
   },
 

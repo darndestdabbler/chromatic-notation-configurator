@@ -50,6 +50,7 @@
       <div class="sidebar-inner">
         <button type="button" class="section-link" data-section="staff">Staff</button>
         <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
+        <button type="button" class="section-link" data-section="ledger-lines">Ledger lines</button>
         <button type="button" class="section-link" data-section="clef">Clef</button>
         <button type="button" class="section-link" data-section="key-signature">Key signature</button>
         <hr>
@@ -71,7 +72,7 @@
         </section>
 
         <section class="card panel" data-panel="staff" hidden>
-          <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff and ledger lines are, and how they look</span></div>
+          <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff lines are, and how they look</span></div>
           <div class="card-body"><div id="staff-editor-host"></div></div>
         </section>
 
@@ -95,14 +96,25 @@
           </div>
         </section>
 
+        <section class="card panel" data-panel="ledger-lines" hidden>
+          <div class="card-head"><h2>Ledger lines</h2><span class="sub">Where short lines appear for notes off the staff, and how they look</span></div>
+          <div class="card-body"><div id="ledger-editor-host"></div></div>
+        </section>
+
         <section class="card panel" data-panel="clef" hidden>
           <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
-          <div class="card-body"><div id="clef-editor-host"></div></div>
+          <div class="card-body">
+            <div id="clef-preview-host"></div>
+            <div id="clef-editor-host"></div>
+          </div>
         </section>
 
         <section class="card panel" data-panel="key-signature" hidden>
-          <div class="card-head"><h2>Key signature</h2><span class="sub">The keys, and the signature drawn for the selected key</span></div>
-          <div class="card-body"><div id="key-signature-editor-host"></div></div>
+          <div class="card-head"><h2>Key signature</h2><span class="sub">The keys, and the signature drawn for the key chosen on the staff</span></div>
+          <div class="card-body">
+            <div id="key-signature-preview-host"></div>
+            <div id="key-signature-editor-host"></div>
+          </div>
         </section>
 
         <section class="card panel" data-panel="advanced" hidden>
@@ -112,6 +124,10 @@
               <details class="disclosure">
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Staff line overrides<span class="sub">one staff line with a look of its own</span></summary>
+                <div class="disclosure-body"><div id="staff-overrides-host"></div></div>
               </details>
               <details class="disclosure">
                 <summary>Pitch axis map</summary>
@@ -136,14 +152,14 @@
         </section>
 
         <section class="card panel" data-panel="export" hidden>
-          <div class="card-head"><h2>Export</h2><span class="sub">The LilyPond file</span></div>
+          <div class="card-head"><h2>Export</h2><span class="sub">The notation's name and the LilyPond file</span></div>
           <div class="card-body"><div id="config-export-host"></div></div>
         </section>
       </div>
     </main>
   </div>
 
-  <!-- Module 17's panel is retired from view: Open and Save drive it. -->
+  <!-- The save and open panel is retired from view: Open and Save drive it. -->
   <div id="config-io-host" hidden></div>
 
   <script type="module">
@@ -178,6 +194,9 @@
     }
 
     // ── Sections: one panel at a time ────────────────────────────────────
+    // The canvas shows what the open section needs (design §6): the Ledger
+    // lines section marks the ledger spots and the columns that draw them.
+    let previewApi = null;
     function showSection(name) {
       for (const panel of document.querySelectorAll(".panel")) {
         panel.hidden = panel.dataset.panel !== name;
@@ -188,6 +207,7 @@
         if (on) link.setAttribute("aria-current", "true");
         else link.removeAttribute("aria-current");
       }
+      if (previewApi) previewApi.setFocus(name);
     }
     for (const link of document.querySelectorAll(".section-link")) {
       link.onclick = () => showSection(link.dataset.section);
@@ -262,13 +282,38 @@
     }
 
     // ── Panels reading the shared config through accessors ───────────────
-    const previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
+    // The Clef and Key signature panels' partial staffs (design §6), at the
+    // canvas Size with its duration and key, redrawn with every canvas draw.
+    let canvasOptions = { durations: ["crotchet"], keys: null };
+    function refreshSectionPreviews() {
+      const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
+      const duration = (canvasOptions.durations && canvasOptions.durations[0]) || "crotchet";
+      const key = (canvasOptions.keys && canvasOptions.keys[0]) || null;
+      for (const [part, id] of [["clef", "clef-preview-host"], ["key-signature", "key-signature-preview-host"]]) {
+        const host = byId(id);
+        host.textContent = "";
+        CNBPreviewDisplay.renderPartial(host, appConfig, { part, size, duration, key });
+      }
+    }
+
+    previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
       getConfig: () => appConfig,
       rangeHost: byId("preview-range-host"),
+      onRender: (options) => {
+        canvasOptions = options;
+        refreshSectionPreviews();
+      },
     });
+    previewApi.setFocus("staff");   // redraws, which draws the partial staffs at the canvas Size
 
     const exportApi = CNBConfigExport.render(byId("config-export-host"), {
       getConfig: () => appConfig,
+      // The Export section edits the notation's name, file suffix, label
+      // and footnote (design §1, step 6).
+      onMeta: (meta) => {
+        appConfig.meta = meta;
+        refreshShared();
+      },
     });
 
     const ioApi = CNBConfigIO.render(byId("config-io-host"), {
@@ -440,21 +485,35 @@
       });
     }
 
-    /** The staff editor's derived panel shows the export's staff geometry,
-     *  which depends on the pitch axis, so it re-seeds after every axis
-     *  change (audit 2026-11-02, L1). Its own edits commit to appConfig
-     *  immediately, so re-mounting loses nothing. */
-    function mountStaffEditor() {
-      byId("staff-editor-host").textContent = "";
-      CNBStaffRuleEditor.render(byId("staff-editor-host"), {
-        config: appConfig,
-        onChange: (slices) => {
-          appConfig.staff = slices.staff;
-          appConfig.ledgers = slices.ledgers;
-          mountPitchAxisEditor();
-          refreshShared();
-        },
-      });
+    /** The staff editor is mounted once per section (session 26): its staff
+     *  part in Staff, its ledgers part in Ledger lines and its line
+     *  overrides in Advanced. Every mount emits both whole slices from its
+     *  own state, so an edit in one re-seeds the other two (not the one
+     *  being edited, which would lose its focus). The staff part shows the
+     *  export's staff spacing, which depends on the pitch axis, so all
+     *  three re-seed after every axis change (audit 2026-11-02, L1). Edits
+     *  commit to appConfig immediately, so re-mounting loses nothing. */
+    const STAFF_MOUNTS = [
+      ["staff", "staff-editor-host"],
+      ["ledgers", "ledger-editor-host"],
+      ["overrides", "staff-overrides-host"],
+    ];
+    function mountStaffEditor(except = null) {
+      for (const [part, id] of STAFF_MOUNTS) {
+        if (part === except) continue;
+        byId(id).textContent = "";
+        CNBStaffRuleEditor.render(byId(id), {
+          config: appConfig,
+          parts: [part],
+          onChange: (slices) => {
+            appConfig.staff = slices.staff;
+            appConfig.ledgers = slices.ledgers;
+            mountStaffEditor(part);
+            mountPitchAxisEditor();
+            refreshShared();
+          },
+        });
+      }
     }
 
     /** The notehead rule editor reads its shape/duration/key vocabularies

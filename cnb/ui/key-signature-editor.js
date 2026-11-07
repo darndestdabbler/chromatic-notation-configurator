@@ -103,6 +103,22 @@ function isValidHex(v) {
 const STYLES = ["notehead-chords"];
 const PLACEMENT_RULES = ["scale-from-tonic"];
 
+/** The placement rules in a designer's words. */
+const PLACEMENT_RULE_LABELS = { "scale-from-tonic": "Scale from the tonic" };
+
+/**
+ * The Preview only badges' tooltips (design §8.6). The exporter emits
+ * nothing for the key signature: the engine engraves its own from the
+ * score's \key (architecture plan §4.9), placed from middle C, with a bar
+ * of its own colour and thickness.
+ */
+const PREVIEW_ONLY = {
+  placement: "LilyPond places the signature from middle C, so this is not exported. " +
+    "Automatic matches it for the default staff.",
+  separator: "LilyPond draws its own bar, in its own colour and thickness, so this is not exported.",
+  gutter: "LilyPond spaces the signature its own way, so this is not exported.",
+};
+
 /** Pitch-class display label: "C", "C♯", … (Module B). */
 function pcName(pc) {
   const label = CNBMusic.pcLabel(pc);
@@ -119,6 +135,7 @@ export const CNBKeySignatureEditor = {
 
   STYLES,
   PLACEMENT_RULES,
+  PREVIEW_ONLY,
 
   /**
    * Build a ready `config.keys` slice from editor state. Pure function;
@@ -369,6 +386,17 @@ export const CNBKeySignatureEditor = {
 
     const control = (e) => { e.disabled = gated(); return e; };
 
+    /** A subtitle, with a Preview only badge when a tooltip is given. */
+    const subtitle = (text, tooltip) => {
+      const t = el("div", "cnb-kse-subtitle", text);
+      if (tooltip) {
+        const badge = el("span", "cnb-badge", "Preview only");
+        badge.title = tooltip;
+        t.appendChild(badge);
+      }
+      return t;
+    };
+
     // ── keys.enabled master toggle (never disabled) ──────────────────────
     function drawKeysEnable() {
       const label = el("label", "cnb-kse-keys-enable");
@@ -378,32 +406,28 @@ export const CNBKeySignatureEditor = {
       cb.onchange = (e) => { state.enabled = checkedFrom(e, cb); changed(); };
       label.appendChild(cb);
       label.appendChild(el("span", "cnb-kse-keys-enable-text",
-        "Enable keys (key definitions, key rule matching, and the key signature)"));
+        "Use keys: name the keys this notation knows, for its key signature and for rules in a key"));
       return label;
     }
 
     function drawDisabledNote() {
       if (!gated()) return null;
       return el("div", "cnb-kse-disabled-note",
-        "Keys are disabled — the controls below are shown but inactive. " +
-        "Edits are kept; nothing key-related renders or matches until " +
-        "keys are enabled.");
+        "Keys are off. The settings below are kept, but nothing to do with " +
+        "keys shows until keys are on.");
     }
 
     // ── Key definitions ──────────────────────────────────────────────────
     function drawDefinitions() {
       const wrap = el("div", "cnb-kse-section cnb-kse-definitions");
-      wrap.appendChild(el("div", "cnb-kse-title", "Key definitions"));
+      wrap.appendChild(el("div", "cnb-kse-title", "Keys"));
       wrap.appendChild(el("div", "cnb-kse-hint",
-        "The keys the signature (and rule matching) can use: a name plus " +
-        "the key's pitch classes. The tonic resolves from an explicit " +
-        "choice, else the name's leading note letter, else the first " +
-        "listed pitch class."));
+        "Each key has a name and its notes. Its tonic is the one you choose, " +
+        "else the note its name starts with, else its first note."));
 
       if (state.definitions.length === 0) {
         wrap.appendChild(el("div", "cnb-kse-empty",
-          "No key definitions yet — add one to give the signature (and the " +
-          "preview's key selector) something to render."));
+          "No keys yet: add one to draw its signature."));
       }
 
       state.definitions.forEach((def, index) => {
@@ -413,7 +437,7 @@ export const CNBKeySignatureEditor = {
         const name = el("input", "cnb-kse-def-name");
         name.type = "text";
         name.value = def.name;
-        name.title = "Key name (used by key selection and rule matching)";
+        name.title = "The key's name, as the Key menu and the rules show it";
         name.oninput = (e) => { def.name = String(valueFrom(e, name)); changed(); };
         row.appendChild(control(name));
 
@@ -434,8 +458,8 @@ export const CNBKeySignatureEditor = {
         row.appendChild(pills);
 
         const tonic = el("select", "cnb-kse-def-tonic");
-        tonic.title = "Tonic pitch class (auto = from the name, else the first pitch class)";
-        const auto = el("option", "", "auto");
+        tonic.title = "Tonic (auto: from the name, else the first note)";
+        const auto = el("option", "", "Tonic: auto");
         auto.value = "";
         tonic.appendChild(auto);
         for (let pc = 0; pc <= 11; pc++) {
@@ -454,20 +478,20 @@ export const CNBKeySignatureEditor = {
         row.appendChild(control(tonic));
 
         const info = CNBKeySignatureEditor.tonicInfo(def);
-        const sourceText = { explicit: "explicit", name: "from name", fallback: "first pitch class" }[info.source];
+        const sourceText = { explicit: "explicit", name: "from name", fallback: "first note" }[info.source];
         row.appendChild(el("span", "cnb-kse-def-tonic-hint",
           `tonic ${pcName(info.pc)} (${sourceText})`));
 
         const remove = el("button", "cnb-kse-def-remove", "×");
         remove.type = "button";
-        remove.title = "Remove this key definition";
+        remove.title = "Remove this key";
         remove.onclick = () => { state.definitions.splice(index, 1); changed(); };
         row.appendChild(control(remove));
 
         wrap.appendChild(row);
       });
 
-      const add = el("button", "cnb-kse-def-add", "+ Add key definition");
+      const add = el("button", "cnb-kse-def-add", "+ Add a key");
       add.type = "button";
       add.onclick = () => { state.definitions.push(definitionTemplate()); changed(); };
       wrap.appendChild(control(add));
@@ -479,12 +503,9 @@ export const CNBKeySignatureEditor = {
       const wrap = el("div", "cnb-kse-section cnb-kse-signature");
       wrap.appendChild(el("div", "cnb-kse-title", "Key signature"));
       wrap.appendChild(el("div", "cnb-kse-hint",
-        "Grid-positioned marks for the selected key at the start of the " +
-        "staff (the key shown is picked in the preview's Key control — " +
-        "example data, not config). The exporter emits nothing for this " +
-        "section: the CNB engine engraves its notehead-chord key " +
-        "signature from the score's \\key through the exported notehead " +
-        "config. Inspired by Clairnote DN's alternative key signatures."));
+        "The selected key's scale, drawn as noteheads at the start of the " +
+        "staff. LilyPond draws its own signature from the score's key, with " +
+        "the noteheads this notation exports."));
 
       const enable = el("label", "cnb-kse-sig-enable");
       const cb = el("input", "cnb-kse-sig-enable-check");
@@ -493,16 +514,16 @@ export const CNBKeySignatureEditor = {
       cb.onchange = (e) => { state.keySignature.enabled = checkedFrom(e, cb); changed(); };
       enable.appendChild(control(cb));
       enable.appendChild(el("span", "cnb-kse-sig-enable-text",
-        "Enable key signature (renders in a gutter after the clef)"));
+        "Show the key signature after the clef"));
       wrap.appendChild(enable);
 
       // Why nothing draws (session 18): the signature needs a defined key,
       // and the preview draws the one its Key control selects.
       if (state.enabled && state.keySignature.enabled) {
         wrap.appendChild(el("div", "cnb-kse-sig-status", state.definitions.length === 0
-          ? "No key is defined, so no key signature draws. Add a key definition above."
-          : "The signature draws for the key selected in the preview's Key control. " +
-            "With (none) selected, no signature draws."));
+          ? "No key is defined, so no key signature draws. Add a key above."
+          : "The signature draws for the key chosen in the staff's Key menu. " +
+            "With (none) chosen, no signature draws."));
       }
 
       wrap.appendChild(drawStyle());
@@ -514,25 +535,23 @@ export const CNBKeySignatureEditor = {
 
     function drawStyle() {
       const wrap = el("div", "cnb-kse-style");
-      wrap.appendChild(el("div", "cnb-kse-subtitle", "Mark style"));
+      wrap.appendChild(subtitle("Marks"));
 
       const options = [
         {
           value: "notehead-chords",
-          label: "Notehead chords (engine style)",
-          detail: "The key's scale as real noteheads — 7 degrees ascending " +
-            "from the tonic plus the octave tonic, interleaved into two " +
-            "columns (two stacked 7th chords), mirroring the engine's " +
-            "keysig.ly. The only implemented style; richer custom-symbol " +
-            "signatures are a future extension.",
+          label: "Notehead chords",
+          detail: "The key's scale as noteheads: seven notes up from the tonic " +
+            "and the tonic an octave higher, in two columns, as LilyPond " +
+            "draws it. The only kind of mark so far; others may come later.",
         },
       ];
       if (!STYLES.includes(state.keySignature.style)) {
         options.push({
           value: state.keySignature.style,
           label: `${state.keySignature.style} (unrecognized)`,
-          detail: "Loaded from the config file but not a known style — " +
-            "validation reports it; pick a known style to fix.",
+          detail: "The file names marks this version does not know. " +
+            "Choose Notehead chords to fix it.",
         });
       }
       for (const option of options) {
@@ -553,11 +572,9 @@ export const CNBKeySignatureEditor = {
 
     function drawPlacement() {
       const wrap = el("div", "cnb-kse-placement");
-      wrap.appendChild(el("div", "cnb-kse-subtitle", "Placement"));
+      wrap.appendChild(subtitle("Placement", PREVIEW_ONLY.placement));
       wrap.appendChild(el("div", "cnb-kse-hint",
-        "How the key's pitch classes map to grid positions. " +
-        "\"scale-from-tonic\" (the engine's keysig.ly rule) is the only " +
-        "implemented rule; the vocabulary extends when new rules land."));
+        "Where the marks sit: the scale rises from the tonic, the only rule so far."));
 
       const ruleRow = el("div", "cnb-kse-fields");
       ruleRow.appendChild(el("span", "cnb-kse-field-label", "Rule"));
@@ -567,7 +584,7 @@ export const CNBKeySignatureEditor = {
         : [...PLACEMENT_RULES, state.keySignature.placement.rule];
       for (const value of ruleValues) {
         const option = el("option", "",
-          PLACEMENT_RULES.includes(value) ? value : `${value} (unrecognized)`);
+          PLACEMENT_RULES.includes(value) ? PLACEMENT_RULE_LABELS[value] : `${value} (unrecognized)`);
         option.value = value;
         if (value === state.keySignature.placement.rule) option.selected = true;
         rule.appendChild(option);
@@ -593,14 +610,14 @@ export const CNBKeySignatureEditor = {
       };
       autoLabel.appendChild(control(autoCheck));
       autoLabel.appendChild(el("span", "cnb-kse-octave-auto-text",
-        "auto (center the octave span on the staff midpoint)"));
+        "Automatic (centred on the middle of the staff)"));
       octaveRow.appendChild(autoLabel);
 
       const octave = el("input", "cnb-kse-octave-input");
       octave.type = "number";
       octave.step = "1";
       octave.value = isAuto ? "" : String(state.keySignature.placement.tonicOctave);
-      octave.title = "Explicit tonic octave (integer)";
+      octave.title = "The tonic's octave, a whole number";
       octave.disabled = gated() || isAuto;
       octave.oninput = (e) => {
         const v = numberFrom(e, octave);
@@ -611,20 +628,14 @@ export const CNBKeySignatureEditor = {
       };
       octaveRow.appendChild(octave);
       wrap.appendChild(octaveRow);
-      wrap.appendChild(el("div", "cnb-kse-hint cnb-kse-octave-note",
-        "Preview-only placement: the engine anchors the signature at " +
-        "middle C. The auto rule matches it for the default config."));
       return wrap;
     }
 
     function drawSeparator() {
       const wrap = el("div", "cnb-kse-separator");
-      wrap.appendChild(el("div", "cnb-kse-subtitle", "Separator bar"));
+      wrap.appendChild(subtitle("Separator bar", PREVIEW_ONLY.separator));
       wrap.appendChild(el("div", "cnb-kse-hint",
-        "The gold stem running through the horizontal middle of the mark " +
-        "columns (the engine's keysig bar — 0.4 staff-space thick, drawn " +
-        "beneath the marks). Styling here is preview-only — the engine " +
-        "hard-codes its color and thickness."));
+        "The gold bar through the middle of the mark columns, beneath the marks."));
 
       const row = el("div", "cnb-kse-fields");
 
@@ -634,13 +645,13 @@ export const CNBKeySignatureEditor = {
       cb.checked = !!state.keySignature.separator.enabled;
       cb.onchange = (e) => { state.keySignature.separator.enabled = checkedFrom(e, cb); changed(); };
       enable.appendChild(control(cb));
-      enable.appendChild(el("span", "", "show"));
+      enable.appendChild(el("span", "", "Show"));
       row.appendChild(enable);
 
       const color = el("input", "cnb-kse-sep-color");
       color.type = "color";
       color.value = state.keySignature.separator.color;
-      color.title = "Separator color";
+      color.title = "Colour";
       // `input` only emits: a redraw would close the open picker. Closing
       // it (`change`) redraws (session 21).
       const setColor = (e, then) => {
@@ -656,25 +667,25 @@ export const CNBKeySignatureEditor = {
       thickness.min = "0";
       thickness.step = "1";
       thickness.value = String(state.keySignature.separator.thicknessPct);
-      thickness.title = "Thickness (% of semitone height)";
+      thickness.title = "Thickness";
       thickness.oninput = (e) => {
         const v = numberFrom(e, thickness);
         if (v !== null && v >= 0) { state.keySignature.separator.thicknessPct = v; changed(); }
       };
       row.appendChild(control(thickness));
-      row.appendChild(el("span", "cnb-kse-field-unit", "% thick"));
+      row.appendChild(el("span", "cnb-kse-field-unit", "% of a semitone thick"));
 
       const extent = el("input", "cnb-kse-sep-extent");
       extent.type = "number";
       extent.step = "1";
       extent.value = String(state.keySignature.separator.extentSemis);
-      extent.title = "Extent (semitones above/below the staff midpoint)";
+      extent.title = "How far the bar reaches";
       extent.oninput = (e) => {
         const v = numberFrom(e, extent);
         if (v !== null && v > 0) { state.keySignature.separator.extentSemis = v; changed(); }
       };
       row.appendChild(control(extent));
-      row.appendChild(el("span", "cnb-kse-field-unit", "± semitones"));
+      row.appendChild(el("span", "cnb-kse-field-unit", "semitones above and below the middle"));
 
       wrap.appendChild(row);
       return wrap;
@@ -682,21 +693,20 @@ export const CNBKeySignatureEditor = {
 
     function drawGutter() {
       const wrap = el("div", "cnb-kse-gutter");
-      wrap.appendChild(el("div", "cnb-kse-subtitle", "Gutter sizing"));
+      wrap.appendChild(subtitle("Space either side", PREVIEW_ONLY.gutter));
       const row = el("div", "cnb-kse-fields");
-      row.appendChild(el("span", "cnb-kse-field-label", "Padding"));
       const pad = el("input", "cnb-kse-gutter-input");
       pad.type = "number";
       pad.min = "0";
       pad.step = "1";
       pad.value = String(state.keySignature.gutter.paddingH);
-      pad.title = "Horizontal padding (px) each side of the signature";
+      pad.title = "Room on each side of the signature";
       pad.oninput = (e) => {
         const v = numberFrom(e, pad);
         if (v !== null && v >= 0) { state.keySignature.gutter.paddingH = v; changed(); }
       };
       row.appendChild(control(pad));
-      row.appendChild(el("span", "cnb-kse-field-unit", "px per side"));
+      row.appendChild(el("span", "cnb-kse-field-unit", "px each side"));
       wrap.appendChild(row);
       return wrap;
     }

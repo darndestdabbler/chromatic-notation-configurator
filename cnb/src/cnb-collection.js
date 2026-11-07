@@ -39,6 +39,7 @@
 import { CNBGrid } from "./cnb-grid.js";
 import { CNBStaff } from "./cnb-staff.js";
 import { CNBCard } from "./cnb-card.js";
+import { CNBLedgerSet } from "./cnb-ledger-set.js";
 import { CNBClef } from "./cnb-clef.js";
 import { CNBKeySignature } from "./cnb-key-signature.js";
 
@@ -108,7 +109,7 @@ function splitSystems(pitchClasses, rows) {
  * system's own columns, so its lines (drawn to 100%) end after its last
  * card, and the cards are placed explicitly beside it.
  */
-function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first }) {
+function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots }) {
   const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
   const keySigGutterWidth = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key);
@@ -164,6 +165,7 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
     });
     CNBGrid.renderDebugOverlay(bg, grid, staffPositions);
   }
+  if (ledgerSpots) renderLedgerSpots(bg, grid, config);
   CNBStaff.render(bg, grid, config, "100%");
   columns.appendChild(bg);
 
@@ -182,15 +184,45 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
   return container;
 }
 
+/**
+ * Every spot where the ledger rules could draw a ledger line in this
+ * system's grid range (CNBLedgerSet.buildDefs), as a faint line across the
+ * staff SVG, under the staff lines (session 26: the Ledger lines section's
+ * preview, design §6). One line per drawn position: positions that a pitch
+ * axis collapses onto one are drawn once.
+ */
+function renderLedgerSpots(bg, grid, config) {
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("class", "ledger-spots");
+  const ys = new Set();
+  for (const def of CNBLedgerSet.buildDefs(config, { minSemi: grid.minSemi, maxSemi: grid.maxSemi })) {
+    ys.add(grid.semiToY(def.semi));
+  }
+  for (const y of [...ys].sort((a, b) => a - b)) {
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("class", "ledger-spot");
+    line.setAttribute("x1", "0");
+    line.setAttribute("x2", "100%");
+    line.setAttribute("y1", String(y));
+    line.setAttribute("y2", String(y));
+    line.setAttribute("stroke", "#2f5bd3");
+    line.setAttribute("stroke-opacity", "0.35");
+    line.setAttribute("stroke-width", "1");
+    line.setAttribute("stroke-dasharray", "4 4");
+    g.appendChild(line);
+  }
+  bg.appendChild(g);
+}
+
 /** One fluid duration row: an optional caption, then one system or two. */
-function renderFluidRow(config, { pitchClasses, duration, key, showCaption, rows, colMin }) {
+function renderFluidRow(config, { pitchClasses, duration, key, showCaption, rows, colMin, ledgerSpots }) {
   const row = document.createElement("div");
   row.className = "cnb-duration-row";
   if (showCaption) row.appendChild(durationCaption(config, duration));
   const systems = splitSystems(pitchClasses, rows);
   systems.forEach((pcs, i) => {
     row.appendChild(renderFluidSystem(config, {
-      pitchClasses: pcs, duration, key, slots: systems[0].length, colMin, first: i === 0,
+      pitchClasses: pcs, duration, key, slots: systems[0].length, colMin, first: i === 0, ledgerSpots,
     }));
   });
   return row;
@@ -332,7 +364,7 @@ export const CNBCollection = {
    * @param {HTMLElement} container
    * @param {object} config
    * @param {{pitchClasses?:number[], durations?:string[], keys?:string[]|null,
-   *          fluid?:boolean, rows?:1|2}} [options]
+   *          fluid?:boolean, rows?:1|2, ledgerSpots?:boolean}} [options]
    *        pitchClasses defaults to the full chromatic row 0–12;
    *        durations defaults to ["crotchet"], one row per entry;
    *        keys[0] selects the key shown in the key-signature gutter
@@ -341,8 +373,10 @@ export const CNBCollection = {
    *        columns no narrower than the widest, sharing any spare width,
    *        with the staff stretched to the row; rows 2 (fluid only) splits
    *        the pitch classes into two systems, C to F♯ and G to C′ for the
-   *        full row, on the same column grid. With fluid off the layout is
-   *        the fixed one, unchanged.
+   *        full row, on the same column grid. ledgerSpots (fluid only,
+   *        session 26) draws every candidate ledger spot as a faint
+   *        line.ledger-spot under each system's staff lines. With fluid
+   *        off the layout is the fixed one, unchanged.
    * @returns {HTMLDivElement} the div.cnb-preview element
    */
   render(container, config, options = {}) {
@@ -365,6 +399,7 @@ export const CNBCollection = {
           showCaption: durations.length > 1,
           rows,
           colMin,
+          ledgerSpots: options.ledgerSpots === true,
         }));
       }
       container.appendChild(root);

@@ -280,7 +280,7 @@ export const tests = [
         const root = container.children[0];
 
         eq(findAll(root, "cnb-kse-disabled-note").length, 1, "disabled note shown");
-        assert(subtreeText(root).includes("Keys are disabled"), "note explains the state");
+        assert(subtreeText(root).includes("Keys are off"), "note explains the state");
 
         const master = findAll(root, "cnb-kse-keys-enable-check")[0];
         assert(master && !master.disabled, "master toggle is NOT disabled");
@@ -344,7 +344,7 @@ export const tests = [
         findAll(api.root, "cnb-kse-def-add")[0].onclick();
         status = findAll(api.root, "cnb-kse-sig-status");
         eq(status.length, 1, "status still shown");
-        assert(status[0].textContent.includes("preview's Key control"), "selector text");
+        assert(status[0].textContent.includes("the staff's Key menu"), "selector text");
 
         api.setState({ keySignature: { ...api.getState().keySignature, enabled: false } });
         eq(findAll(api.root, "cnb-kse-sig-status").length, 0, "no status while the signature is off");
@@ -445,15 +445,39 @@ export const tests = [
       });
   } },
 
-  { name: "render: style options — the single notehead-chords style, selected, with engine attribution", fn: () => {
+  { name: "render: style options — the single notehead-chords style, selected, said as LilyPond draws it", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });
         const options = findAll(api.root, "cnb-kse-style-option");
         eq(options.length, 1, "one implemented style");
         eq(options[0].getAttribute("data-style"), "notehead-chords", "notehead-chords");
         assert(options[0].className.includes("selected"), "selected by default");
-        assert(subtreeText(options[0]).includes("keysig.ly"), "engine attribution in copy");
-        assert(subtreeText(options[0]).includes("future extension"), "notes future styles are an extension");
+        eq(subtreeText(findAll(options[0], "cnb-kse-style-label")[0]), "Notehead chords", "label");
+        assert(subtreeText(options[0]).includes("as LilyPond draws it"), "the engine's style, in words");
+        assert(subtreeText(options[0]).includes("others may come later"), "notes other styles may come");
+      });
+  } },
+
+  { name: "render: placement, separator and spacing carry Preview only badges with tooltips, no paragraph (design §8.6)", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig() });
+        const badgesIn = (token) => findAll(findAll(api.root, token)[0], "cnb-badge");
+        for (const [token, key] of [["cnb-kse-placement", "placement"], ["cnb-kse-separator", "separator"], ["cnb-kse-gutter", "gutter"]]) {
+          const badges = badgesIn(token);
+          eq(badges.length, 1, `${token}: one badge`);
+          eq(badges[0].textContent, "Preview only", `${token}: badge text`);
+          eq(badges[0].title, E.PREVIEW_ONLY[key], `${token}: tooltip`);
+          assert(badges[0].title.includes("not exported"), `${token}: tooltip says it is not exported`);
+        }
+        eq(findAll(api.root, "cnb-badge").length, 3, "no other badges");
+        assert(E.PREVIEW_ONLY.placement.includes("middle C"), "the placement tooltip names the engine's anchor");
+        eq(findAll(api.root, "cnb-kse-octave-note").length, 0, "no preview-only paragraph");
+        const text = api.root.children
+          .filter(c => !String(c.className).includes("cnb-kse-validation"))
+          .map(subtreeText).join(" ");
+        for (const dev of ["keysig.ly", "Preview-only", "Gutter", "midpoint", "pitch class", "definition", "Enable", "scale-from-tonic"]) {
+          assert(!text.includes(dev), `no developer wording "${dev}"`);
+        }
       });
   } },
 
@@ -523,8 +547,8 @@ export const tests = [
         auto2.onchange();
         eq(last.keys.keySignature.placement.tonicOctave, null, "auto restores null");
 
-        assert(subtreeText(findAll(api.root, "cnb-kse-octave-note")[0]).includes("middle C"),
-          "engine-divergence note present");
+        assert(findAll(findAll(api.root, "cnb-kse-placement")[0], "cnb-badge")[0].title.includes("middle C"),
+          "engine-divergence tooltip present");
       });
   } },
 

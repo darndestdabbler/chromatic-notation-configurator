@@ -28,9 +28,16 @@
  *     (half-staff-space units, LY spec §5.1 — the ×2 is the 007-s2 D2 fix;
  *     plan §4.3 originally omitted it), which is exactly Module 11's
  *     linear computeStaffLinePositions() (parity is unit-tested). The
- *     derived PANEL calls computeStaffLinePositions() on the full config
- *     the editor produces, so under a pitch axis it shows the axis formula
- *     the export emits (audit 2026-11-02, L1).
+ *     derived PANEL reads the full config the editor produces, so under a
+ *     pitch axis it shows the axis unit the export uses (audit 2026-11-02,
+ *     L1); since session 26 it shows the staff spacing and the middle of
+ *     the staff in a designer's words, not the LilyPond positions.
+ *   - Ledger mode (session 26, design §1): "automatic" writes
+ *     automaticTemplates(pattern), proximity templates where the staff's
+ *     spacing continues past its lines, with the proximity rule on; a
+ *     config opens in it only when its ledgers are exactly that, so
+ *     opening and saving changes nothing. Anything else is "own" (My own
+ *     rules), today's template list.
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
  *     range (semis 0–24), i.e. 12, for every pattern — both plan examples
  *     (4-8 and 3-6-9) use it and the card/stem modules assume it. That
@@ -55,6 +62,7 @@
  *     lineOverrides:  { [semiWithinOctave]: {thicknessPct?, style?, color?} },
  *     templates:      [{ semiWithinOctave, triggerPCs, triggerMode }],
  *     proximityRule:  boolean,
+ *     ledgerMode:     "automatic" | "own",  // automatic: templates from the pattern
  *     ledgerDefaults: { thicknessPct, widthMultiplier, style, color, roundedEnds },
  *     ledgerOverrides:{ ... }                                   // passthrough
  *   }
@@ -68,7 +76,7 @@
  * the .cnb-sre-* class hooks.
  *
  * Dependencies: Module A (validation pass-through and config plumbing);
- * Module 11 and Module 24 for the derived panel's export geometry.
+ * Module 24 for the derived panel's axis unit.
  * renderPreview() additionally composes Module 1 (grid), Module 3 (staff) and
  * Module 5 (ledger set) — the spec's step 3 live-preview wiring ships in the
  * module so hosts (test page now, Module 19 later) only place it. The preview
@@ -80,7 +88,6 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
-import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 
 // Pitch-class labels (kept inline like Module 12 so the editor core adds no
@@ -89,14 +96,32 @@ const PC_LABELS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A",
 
 const LINE_STYLES = ["solid", "dashed", "dotted"];
 
-// Preview-only notes (audit 2026-11-02, M2): the engine draws its own staff
-// and ledger lines, so none of these settings reaches the export.
+// Preview-only badges' tooltips (audit 2026-11-02, M2; design §8.6): the
+// engine draws its own staff and ledger lines, so none of these settings
+// reaches the export.
 const STAFF_STYLE_PREVIEW_ONLY =
-  "Preview-only: the engine draws staff lines in its own colour and " +
-  "thickness, so these settings are not exported.";
+  "LilyPond draws staff lines its own way, so this is not exported.";
 const LEDGER_PREVIEW_ONLY =
-  "Preview-only: the engine places and draws its own ledger lines, so " +
-  "ledger templates, the proximity rule and ledger styling are not exported.";
+  "LilyPond places and draws its own ledger lines, so these are not exported.";
+
+/** The two ledger modes (design §1, step 3) and what each one does. */
+const LEDGER_MODES = {
+  automatic: {
+    label: "Automatic",
+    description: "A ledger line can appear wherever the staff's spacing continues past its " +
+      "lines, and shows when a notehead is closer to it than to any staff line.",
+  },
+  own: {
+    label: "My own rules",
+    description: "At each spot you add, a ledger line shows when one of the chosen notes is played.",
+  },
+};
+
+/** The template trigger modes, in a designer's words. */
+const TRIGGER_MODE_LABELS = {
+  override: "when one of these is played",
+  proximity: "when a note is near",
+};
 
 /**
  * Staff pattern presets. "4-8" is the default config's system; "3-6-9" is
@@ -104,9 +129,12 @@ const LEDGER_PREVIEW_ONLY =
  * ledger rules). Anything else is edited as "custom".
  */
 const STAFF_PATTERN_PRESETS = {
-  "4-8":   { label: "4–8 (E, G♯) — 2 lines per octave",     pattern: [4, 8] },
-  "3-6-9": { label: "3–6–9 (D♯, F♯, A) — 3 lines per octave", pattern: [3, 6, 9] },
+  "4-8":   { title: "4–8",   description: "Two lines an octave, on E and G♯",          pattern: [4, 8] },
+  "3-6-9": { title: "3–6–9", description: "Three lines an octave, on D♯, F♯ and A", pattern: [3, 6, 9] },
 };
+
+/** The parts render() can draw, in the order it draws them. */
+const PARTS = ["staff", "overrides", "ledgers"];
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -162,6 +190,51 @@ export const CNBStaffRuleEditor = {
   STAFF_PATTERN_PRESETS,
   PC_LABELS,
   LINE_STYLES,
+  LEDGER_MODES,
+  PARTS,
+
+  /**
+   * The Automatic ledger templates for a staff pattern (design §1, step 3):
+   * a proximity template, with no trigger pitch classes, at every position
+   * 0–11 that is not a staff line and whose distance from the first line
+   * is a multiple of the staff spacing (derivedGeometry's), ascending. So
+   * the staff's own spacing continues into its gaps and beyond its outer
+   * lines: 4-8 and 3-6-9 both give C. An empty pattern gives none.
+   * @param {number[]} pattern  semitone-within-octave positions (0–11)
+   * @returns {Array<{semiWithinOctave:number, triggerPCs:number[], triggerMode:"proximity"}>}
+   */
+  automaticTemplates(pattern) {
+    const cleaned = sanitizePattern(pattern);
+    if (cleaned.length === 0) return [];
+    const sps = CNBStaffRuleEditor.derivedGeometry(cleaned).semitonesPerStaffSpace;
+    const out = [];
+    for (let p = 0; p < 12; p++) {
+      if (!cleaned.includes(p) && (((p - cleaned[0]) % sps) + sps) % sps === 0) {
+        out.push({ semiWithinOctave: p, triggerPCs: [], triggerMode: "proximity" });
+      }
+    }
+    return out;
+  },
+
+  /**
+   * The ledger mode a config's ledgers are in: "automatic" when its
+   * templates are exactly automaticTemplates(pattern), in order, and the
+   * proximity rule is on, so writing them back changes nothing; else "own".
+   * @param {number[]} pattern
+   * @param {object} ledgers  config.ledgers
+   * @returns {"automatic"|"own"}
+   */
+  ledgerModeOf(pattern, ledgers) {
+    const l = ledgers || {};
+    if (l.proximityRule === false) return "own";
+    const auto = JSON.stringify(CNBStaffRuleEditor.automaticTemplates(pattern));
+    const loaded = JSON.stringify((l.templates || []).map(t => ({
+      semiWithinOctave: t.semiWithinOctave,
+      triggerPCs: t.triggerPCs || [],
+      triggerMode: t.triggerMode,
+    })));
+    return auto === loaded ? "automatic" : "own";
+  },
 
   /**
    * Derive staff geometry from a semitone-within-octave pattern.
@@ -239,11 +312,21 @@ export const CNBStaffRuleEditor = {
   /**
    * Build a ready `config.ledgers` slice (plan §4.4) from editor state.
    * Template triggerPCs are deduped and sorted (many-to-one user input);
-   * invalid positions or trigger modes throw.
+   * invalid positions or trigger modes throw. In the "automatic" ledger
+   * mode the templates are automaticTemplates of the current pattern and
+   * the proximity rule is on, whatever the state's template list holds.
    * @param {object} state
    * @returns {object} config.ledgers object
    */
   buildLedgers(state) {
+    if (state.ledgerMode === "automatic") {
+      return {
+        templates: CNBStaffRuleEditor.automaticTemplates(patternOf(state)),
+        proximityRule: true,
+        lineDefaults: deepClone(state.ledgerDefaults),
+        lineOverrides: deepClone(state.ledgerOverrides || {}),
+      };
+    }
     const templates = (state.templates || []).map((t, i) => {
       if (!Number.isInteger(t.semiWithinOctave) || t.semiWithinOctave < 0 || t.semiWithinOctave > 11) {
         throw new Error(`Ledger template ${i + 1} has invalid semiWithinOctave ${JSON.stringify(t.semiWithinOctave)}`);
@@ -323,6 +406,7 @@ export const CNBStaffRuleEditor = {
         triggerMode: t.triggerMode,
       })),
       proximityRule: ledgers.proximityRule !== false,
+      ledgerMode: CNBStaffRuleEditor.ledgerModeOf(pattern, ledgers),
       ledgerDefaults: {
         thicknessPct: 40, widthMultiplier: 2.0, style: "solid",
         color: "#000000", roundedEnds: true,
@@ -335,24 +419,31 @@ export const CNBStaffRuleEditor = {
   /**
    * Render the staff/ledger rule editor into a container.
    *
-   * Structure (all styling left to the host via class hooks):
+   * Structure (all styling left to the host via class hooks), by part:
    *   div.cnb-staff-rule-editor
-   *   ├── div.cnb-sre-pattern         (preset options + custom PC toggles)
-   *   ├── div.cnb-sre-derived         (sps, midpoint, LY staff-line-positions)
-   *   ├── div.cnb-sre-staff-defaults  (thicknessPct / style / color)
-   *   ├── div.cnb-sre-overrides       (per-staff-line override rows)
-   *   ├── div.cnb-sre-ledgers         (template rows + add button)
-   *   ├── label.cnb-sre-proximity     (proximityRule checkbox)
-   *   ├── div.cnb-sre-ledger-defaults (thickness / width / style / color / ends)
-   *   └── div.cnb-sre-validation      (CNBConfig.validate pass-through)
+   *   ├── staff:     div.cnb-sre-pattern         (pattern options, Staff lines on pills)
+   *   │              div.cnb-sre-derived         (staff spacing, middle of the staff; read-only)
+   *   │              div.cnb-sre-staff-defaults  (line thickness / style / colour)
+   *   ├── overrides: div.cnb-sre-overrides       (per-staff-line override rows)
+   *   ├── ledgers:   div.cnb-sre-ledger-mode     (Automatic / My own rules)
+   *   │              div.cnb-sre-ledgers         (My own rules only: template rows + add)
+   *   │              label.cnb-sre-proximity     (My own rules, with a "when a note is near"
+ *   │                                           rule or the rule off: proximityRule)
+   *   │              div.cnb-sre-ledger-defaults (thickness / style / colour / width / ends)
+   *   └── div.cnb-sre-validation                 (CNBConfig.validate pass-through)
+   * Preview-only controls carry a span.cnb-badge with a tooltip (design §8.6).
    *
    * Events are wired as element properties (onclick/oninput/onchange) so the
    * editor is fully drivable in Node tests via a stub document.
    *
    * @param {HTMLElement} container
-   * @param {{config?:object, onChange?:(slices:{staff:object,ledgers:object}, state:object)=>void}} [opts]
+   * @param {{config?:object, parts?:string[], onChange?:(slices:{staff:object,ledgers:object}, state:object)=>void}} [opts]
    *        `config` seeds the editor state and is the base for the validation
-   *        pass-through (defaults to CNBConfig.createDefault()).
+   *        pass-through (defaults to CNBConfig.createDefault()). `parts`
+   *        (session 26) names what to draw, from PARTS ("staff",
+   *        "overrides", "ledgers"; all by default, always in that order), so
+   *        a host can mount the editor once per section; every mount still
+   *        emits both whole slices from its own state.
    * @returns {{root:HTMLElement, getState:()=>object, getStaff:()=>object,
    *            getLedgers:()=>object, applyTo:(config:object)=>object,
    *            setState:(partial:object)=>void, redraw:()=>void}}
@@ -360,6 +451,12 @@ export const CNBStaffRuleEditor = {
   render(container, opts = {}) {
     const doc = globalThis.document;
     const baseConfig = opts.config ? CNBConfig.clone(opts.config) : CNBConfig.createDefault();
+    const parts = new Set(opts.parts ?? PARTS);
+    for (const p of parts) {
+      if (!PARTS.includes(p)) {
+        throw new Error(`Unknown staff editor part ${JSON.stringify(p)} (expected ${PARTS.join(", ")})`);
+      }
+    }
     const state = CNBStaffRuleEditor.stateFromConfig(baseConfig);
     const onChange = opts.onChange || (() => {});
 
@@ -397,50 +494,91 @@ export const CNBStaffRuleEditor = {
       emit();
     };
 
+    /** A Preview only badge with its one-line tooltip (design §8.6). */
+    const badge = (tooltip) => {
+      const b = el("span", "cnb-badge", "Preview only");
+      b.title = tooltip;
+      return b;
+    };
+
+    /** A group title, with a Preview only badge when a tooltip is given. */
+    const title = (text, tooltip) => {
+      const t = el("div", "cnb-sre-title", text);
+      if (tooltip) t.appendChild(badge(tooltip));
+      return t;
+    };
+
+    /** A labelled field: label (and badge), the control, a unit suffix. */
+    const field = (labelText, control, unit, tooltip) => {
+      const f = el("label", "cnb-sre-field");
+      const label = el("span", "cnb-sre-field-label", labelText);
+      if (tooltip) label.appendChild(badge(tooltip));
+      f.appendChild(label);
+      const row = el("span", "cnb-sre-field-control");
+      row.appendChild(control);
+      if (unit) row.appendChild(el("span", "cnb-sre-unit", unit));
+      f.appendChild(row);
+      return f;
+    };
+
     // ── Pattern section ──────────────────────────────────────────────────
     function drawPattern() {
       const wrap = el("div", "cnb-sre-section cnb-sre-pattern");
-      wrap.appendChild(el("div", "cnb-sre-title", "Staff pattern"));
+      wrap.appendChild(title("Pattern"));
 
-      for (const [key, preset] of Object.entries(STAFF_PATTERN_PRESETS)) {
-        const opt = el("div", "cnb-sre-pattern-option" + (state.patternKey === key ? " selected" : ""), preset.label);
+      const option = (key, titleText, description) => {
+        const opt = el("div", "cnb-sre-pattern-option" +
+          (key === "custom" ? " cnb-sre-pattern-custom" : "") +
+          (state.patternKey === key ? " selected" : ""));
         opt.setAttribute("data-pattern-key", key);
+        opt.appendChild(el("span", "cnb-sre-pattern-title", titleText));
+        opt.appendChild(el("span", "cnb-sre-pattern-desc", description));
+        return opt;
+      };
+
+      const options = el("div", "cnb-sre-pattern-options");
+      for (const [key, preset] of Object.entries(STAFF_PATTERN_PRESETS)) {
+        const opt = option(key, preset.title, preset.description);
         opt.onclick = () => { state.patternKey = key; changed(); };
-        wrap.appendChild(opt);
+        options.appendChild(opt);
       }
 
-      const custom = el("div", "cnb-sre-pattern-option cnb-sre-pattern-custom" +
-        (state.patternKey === "custom" ? " selected" : ""), "Custom pattern");
-      custom.setAttribute("data-pattern-key", "custom");
-      custom.onclick = () => {
+      // Seed the custom pattern from the current effective pattern so
+      // switching to Custom starts from what the user already sees.
+      const toCustom = () => {
         if (state.patternKey !== "custom") {
-          // Seed the custom pattern from the current effective pattern so
-          // switching to Custom starts from what the user already sees.
           state.customPattern = patternOf(state);
           state.patternKey = "custom";
-          changed();
         }
       };
-      wrap.appendChild(custom);
+      const custom = option("custom", "Custom", "Choose the notes the lines sit on");
+      custom.onclick = () => {
+        if (state.patternKey !== "custom") { toCustom(); changed(); }
+      };
+      options.appendChild(custom);
+      wrap.appendChild(options);
 
-      if (state.patternKey === "custom") {
-        const pcs = el("div", "cnb-sre-custom-pcs");
-        for (let pc = 0; pc < 12; pc++) {
-          const on = (state.customPattern || []).includes(pc);
-          const pill = el("button", "cnb-sre-pc-toggle" + (on ? " on" : ""), PC_LABELS[pc]);
-          pill.type = "button";
-          pill.setAttribute("data-pc", String(pc));
-          pill.title = `Semitone ${pc}`;
-          pill.onclick = () => {
-            const set = new Set(state.customPattern || []);
-            if (set.has(pc)) set.delete(pc); else set.add(pc);
-            state.customPattern = [...set].sort((a, b) => a - b);
-            changed();
-          };
-          pcs.appendChild(pill);
-        }
-        wrap.appendChild(pcs);
+      // Staff lines on: always shown; a click on a preset's pills makes the
+      // pattern custom, starting from the preset.
+      wrap.appendChild(title("Staff lines on"));
+      const current = patternOf(state);
+      const pcs = el("div", "cnb-sre-custom-pcs");
+      for (let pc = 0; pc < 12; pc++) {
+        const on = current.includes(pc);
+        const pill = el("button", "cnb-sre-pc-toggle" + (on ? " on" : ""), PC_LABELS[pc]);
+        pill.type = "button";
+        pill.setAttribute("data-pc", String(pc));
+        pill.title = (on ? "Remove the line on " : "Add a line on ") + PC_LABELS[pc];
+        pill.onclick = () => {
+          toCustom();
+          const set = new Set(state.customPattern || []);
+          if (set.has(pc)) set.delete(pc); else set.add(pc);
+          state.customPattern = [...set].sort((a, b) => a - b);
+          changed();
+        };
+        pcs.appendChild(pill);
       }
+      wrap.appendChild(pcs);
       return wrap;
     }
 
@@ -450,12 +588,12 @@ export const CNBStaffRuleEditor = {
       const pattern = patternOf(state);
       if (pattern.length < 2) {
         wrap.appendChild(el("div", "cnb-sre-derived-error",
-          "Need at least 2 staff lines per octave."));
+          "A staff needs at least 2 lines an octave."));
         return wrap;
       }
       // The geometry the export will carry: the full config this editor
-      // produces, through the exporter's own formula, so the panel is right
-      // under a pitch axis too (audit 2026-11-02, L1).
+      // produces, so the lines are right under a pitch axis too (audit
+      // 2026-11-02, L1). Read-only here: the Pitch section edits them.
       let cfg;
       try {
         cfg = CNBStaffRuleEditor.applyToConfig(baseConfig, state);
@@ -465,19 +603,18 @@ export const CNBStaffRuleEditor = {
       }
       const axis = CNBPitchAxis.create(cfg);
       wrap.appendChild(el("div", "cnb-sre-derived-row", axis.enabled
-        ? "Axis units per staff space: " + axis.unitsPerStaffSpace + " (pitch axis)"
-        : "Semitones per staff space: " + cfg.staff.semitonesPerStaffSpace));
+        ? "Staff spacing: " + axis.unitsPerStaffSpace + " axis units per staff space, from the pitch axis map in Advanced"
+        : "Staff spacing: " + cfg.staff.semitonesPerStaffSpace + " semitones per staff space"));
+      const mid = cfg.staff.midpoint;
       wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "Staff midpoint: " + cfg.staff.midpoint));
-      wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "LilyPond staff-line-positions: (" + CNBLilypond.computeStaffLinePositions(cfg).join(" ") + ")"));
-      wrap.appendChild(el("div", "cnb-sre-derived-row",
-        "Staff lines per octave: " + cfg.staff.semitonePattern.length));
+        "Middle of the staff: " +
+        (Number.isInteger(mid) ? PC_LABELS[((mid % 12) + 12) % 12] + ", semitone " : "semitone ") + mid));
       return wrap;
     }
 
     // ── Shared line-style field row ──────────────────────────────────────
-    function lineStyleFields(target, prefix, onEdit) {
+    /** Thickness, style and colour fields; `tooltip` badges each of them. */
+    function lineStyleFields(target, prefix, onEdit, tooltip) {
       const row = el("div", prefix + "-fields cnb-sre-fields");
 
       const thick = el("input", "cnb-sre-thickness");
@@ -486,23 +623,22 @@ export const CNBStaffRuleEditor = {
       thick.max = "100";
       thick.step = "1";
       thick.value = String(target.thicknessPct);
-      thick.title = "Thickness (% of semitone height)";
       thick.oninput = (e) => {
         const v = numberFrom(e, thick);
         if (v !== null) { target.thicknessPct = v; onEdit(); }
       };
-      row.appendChild(thick);
+      row.appendChild(field("Thickness", thick, "% of a semitone", tooltip));
 
       const style = el("select", "cnb-sre-style");
       for (const s of LINE_STYLES) {
-        const o = el("option", null, s);
+        const o = el("option", null, s[0].toUpperCase() + s.slice(1));
         o.value = s;
         if (s === target.style) o.selected = true;
         style.appendChild(o);
       }
       style.value = target.style;
       style.onchange = (e) => { target.style = valueFrom(e, style); onEdit(); };
-      row.appendChild(style);
+      row.appendChild(field("Style", style, null, tooltip));
 
       const color = el("input", "cnb-sre-color");
       color.type = "color";
@@ -511,29 +647,28 @@ export const CNBStaffRuleEditor = {
       // it (`change`) redraws (session 21).
       color.oninput = (e) => { target.color = valueFrom(e, color); emit(); };
       color.onchange = (e) => { target.color = valueFrom(e, color); changed(); };
-      row.appendChild(color);
+      row.appendChild(field("Colour", color, null, tooltip));
 
       return row;
     }
 
     function drawStaffDefaults() {
       const wrap = el("div", "cnb-sre-section cnb-sre-staff-defaults");
-      wrap.appendChild(el("div", "cnb-sre-title", "Staff line defaults"));
-      wrap.appendChild(el("div", "cnb-sre-hint", "Thickness (% of semitone) · style · color"));
-      wrap.appendChild(el("div", "cnb-sre-preview-only", STAFF_STYLE_PREVIEW_ONLY));
-      wrap.appendChild(lineStyleFields(state.lineDefaults, "cnb-sre-staff-defaults", changed));
+      wrap.appendChild(title("Lines"));
+      wrap.appendChild(lineStyleFields(state.lineDefaults, "cnb-sre-staff-defaults", changed,
+        STAFF_STYLE_PREVIEW_ONLY));
       return wrap;
     }
 
     // ── Per-line overrides (staff.lineOverrides) ─────────────────────────
     function drawOverrides() {
       const wrap = el("div", "cnb-sre-section cnb-sre-overrides");
-      wrap.appendChild(el("div", "cnb-sre-title", "Per-line overrides"));
-      wrap.appendChild(el("div", "cnb-sre-preview-only", STAFF_STYLE_PREVIEW_ONLY));
+      wrap.appendChild(title("Line overrides", STAFF_STYLE_PREVIEW_ONLY));
+      wrap.appendChild(el("div", "cnb-sre-hint", "Give one staff line a look of its own."));
 
       const pattern = patternOf(state);
       if (pattern.length === 0) {
-        wrap.appendChild(el("div", "cnb-sre-hint", "No staff lines in the pattern yet."));
+        wrap.appendChild(el("div", "cnb-sre-hint", "The staff has no lines yet."));
         return wrap;
       }
 
@@ -559,7 +694,7 @@ export const CNBStaffRuleEditor = {
         };
         label.appendChild(cb);
         label.appendChild(el("span", "cnb-sre-override-name",
-          PC_LABELS[pc] + " (semi " + pc + ")"));
+          "The line on " + PC_LABELS[pc]));
         row.appendChild(label);
 
         if (overridden) {
@@ -571,43 +706,65 @@ export const CNBStaffRuleEditor = {
     }
 
     // ── Ledger templates ─────────────────────────────────────────────────
+    /** The Automatic / My own rules choice (design §1, step 3; §8.3). */
+    function drawLedgerMode() {
+      const wrap = el("div", "cnb-sre-section cnb-sre-ledger-mode");
+      wrap.appendChild(title("Which ones show", LEDGER_PREVIEW_ONLY));
+      const group = el("div", "segmented cnb-sre-ledger-mode-options");
+      for (const [mode, info] of Object.entries(LEDGER_MODES)) {
+        const button = el("button", state.ledgerMode === mode ? "on" : "", info.label);
+        button.type = "button";
+        button.setAttribute("data-ledger-mode", mode);
+        button.onclick = () => {
+          if (state.ledgerMode === mode) return;
+          // Either way the list starts from the automatic spots: switching
+          // to My own rules edits them rather than starting from nothing.
+          state.templates = CNBStaffRuleEditor.automaticTemplates(patternOf(state));
+          if (mode === "automatic") state.proximityRule = true;
+          state.ledgerMode = mode;
+          changed();
+        };
+        group.appendChild(button);
+      }
+      wrap.appendChild(group);
+      wrap.appendChild(el("div", "cnb-sre-hint cnb-sre-ledger-mode-desc",
+        LEDGER_MODES[state.ledgerMode === "automatic" ? "automatic" : "own"].description));
+      return wrap;
+    }
+
     function drawLedgers() {
       const wrap = el("div", "cnb-sre-section cnb-sre-ledgers");
-      wrap.appendChild(el("div", "cnb-sre-title", "Ledger line templates"));
-      wrap.appendChild(el("div", "cnb-sre-hint",
-        "Where ledger lines CAN appear (per octave) and which nearby pitch " +
-        "classes trigger them. Proximity mode shows the ledger for any note " +
-        "closer to it than to a staff line."));
-      wrap.appendChild(el("div", "cnb-sre-preview-only", LEDGER_PREVIEW_ONLY));
+      wrap.appendChild(title("My own rules"));
 
       (state.templates || []).forEach((t, idx) => {
         const row = el("div", "cnb-sre-template-row");
         row.setAttribute("data-template-index", String(idx));
 
+        row.appendChild(el("span", "cnb-sre-template-at", "At"));
         const pos = el("select", "cnb-sre-template-pos");
         for (let pc = 0; pc < 12; pc++) {
-          const o = el("option", null, pc + " · " + PC_LABELS[pc]);
+          const o = el("option", null, PC_LABELS[pc]);
           o.value = String(pc);
           if (pc === t.semiWithinOctave) o.selected = true;
           pos.appendChild(o);
         }
         pos.value = String(t.semiWithinOctave);
-        pos.title = "Ledger position (semitone within octave)";
+        pos.title = "Where the ledger line sits, in every octave";
         pos.onchange = (e) => {
           const v = parseInt(valueFrom(e, pos), 10);
           if (Number.isInteger(v)) { t.semiWithinOctave = v; changed(); }
         };
         row.appendChild(pos);
 
+        row.appendChild(el("span", "cnb-sre-template-show", "show a ledger line"));
         const mode = el("select", "cnb-sre-template-mode");
         for (const m of ["override", "proximity"]) {
-          const o = el("option", null, m);
+          const o = el("option", null, TRIGGER_MODE_LABELS[m]);
           o.value = m;
           if (m === t.triggerMode) o.selected = true;
           mode.appendChild(o);
         }
         mode.value = t.triggerMode;
-        mode.title = "Trigger mode";
         mode.onchange = (e) => { t.triggerMode = valueFrom(e, mode); changed(); };
         row.appendChild(mode);
 
@@ -619,8 +776,8 @@ export const CNBStaffRuleEditor = {
           pill.type = "button";
           pill.setAttribute("data-pc", String(pc));
           pill.title = t.triggerMode === "proximity"
-            ? "Trigger pitch classes are ignored in proximity mode"
-            : "Toggle trigger pitch class " + PC_LABELS[pc];
+            ? "A ledger line shown when a note is near does not use these"
+            : (on ? "Stop showing it for " : "Show it for ") + PC_LABELS[pc];
           pill.onclick = () => {
             const set = new Set(t.triggerPCs || []);
             if (set.has(pc)) set.delete(pc); else set.add(pc);
@@ -633,14 +790,14 @@ export const CNBStaffRuleEditor = {
 
         const remove = el("button", "cnb-sre-template-remove", "×");
         remove.type = "button";
-        remove.title = "Remove template";
+        remove.title = "Remove this ledger line";
         remove.onclick = () => { state.templates.splice(idx, 1); changed(); };
         row.appendChild(remove);
 
         wrap.appendChild(row);
       });
 
-      const add = el("button", "cnb-sre-template-add", "+ Add ledger template");
+      const add = el("button", "cnb-sre-template-add", "+ Add a ledger line");
       add.type = "button";
       add.onclick = () => {
         state.templates.push({ semiWithinOctave: 0, triggerPCs: [0], triggerMode: "override" });
@@ -658,16 +815,13 @@ export const CNBStaffRuleEditor = {
       cb.onchange = (e) => { state.proximityRule = checkedFrom(e, cb); changed(); };
       label.appendChild(cb);
       label.appendChild(el("span", "cnb-sre-proximity-text",
-        "Enable proximity rule (proximity-mode templates show for any nearby note)"));
+        "Show the ledger lines set to “when a note is near”"));
       return label;
     }
 
     function drawLedgerDefaults() {
       const wrap = el("div", "cnb-sre-section cnb-sre-ledger-defaults");
-      wrap.appendChild(el("div", "cnb-sre-title", "Ledger line defaults"));
-      wrap.appendChild(el("div", "cnb-sre-hint",
-        "Thickness (% of semitone) · style · color · width (× notehead) · rounded ends"));
-      wrap.appendChild(el("div", "cnb-sre-preview-only", LEDGER_PREVIEW_ONLY));
+      wrap.appendChild(title("Look", LEDGER_PREVIEW_ONLY));
       wrap.appendChild(lineStyleFields(state.ledgerDefaults, "cnb-sre-ledger-defaults", changed));
 
       const extras = el("div", "cnb-sre-fields cnb-sre-ledger-extras");
@@ -677,12 +831,11 @@ export const CNBStaffRuleEditor = {
       widthMult.max = "5";
       widthMult.step = "0.1";
       widthMult.value = String(state.ledgerDefaults.widthMultiplier);
-      widthMult.title = "Width (× notehead width)";
       widthMult.oninput = (e) => {
         const v = numberFrom(e, widthMult);
         if (v !== null) { state.ledgerDefaults.widthMultiplier = v; changed(); }
       };
-      extras.appendChild(widthMult);
+      extras.appendChild(field("Width", widthMult, "× the notehead's width"));
 
       const rounded = el("label", "cnb-sre-rounded");
       const cb = el("input", "cnb-sre-rounded-check");
@@ -721,13 +874,24 @@ export const CNBStaffRuleEditor = {
 
     function redraw() {
       root.textContent = "";   // clears children on real DOM and on the test stub
-      root.appendChild(drawPattern());
-      root.appendChild(drawDerived());
-      root.appendChild(drawStaffDefaults());
-      root.appendChild(drawOverrides());
-      root.appendChild(drawLedgers());
-      root.appendChild(drawProximity());
-      root.appendChild(drawLedgerDefaults());
+      if (parts.has("staff")) {
+        root.appendChild(drawPattern());
+        root.appendChild(drawDerived());
+        root.appendChild(drawStaffDefaults());
+      }
+      if (parts.has("overrides")) root.appendChild(drawOverrides());
+      if (parts.has("ledgers")) {
+        root.appendChild(drawLedgerMode());
+        if (state.ledgerMode !== "automatic") {
+          root.appendChild(drawLedgers());
+          // The proximity switch matters only to rules set to "when a note
+          // is near", so it shows only when one is (or while it is off).
+          if ((state.templates || []).some(t => t.triggerMode === "proximity") || !state.proximityRule) {
+            root.appendChild(drawProximity());
+          }
+        }
+        root.appendChild(drawLedgerDefaults());
+      }
       root.appendChild(drawValidation());
     }
 

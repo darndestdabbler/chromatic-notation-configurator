@@ -386,15 +386,20 @@ await page.selectOption(".cnb-pvd-key-select", "C");
 // One implemented style (notehead-chords); the task owner deferred simple-mark
 // styles to a future set (s2-uat.md). Confirm the style vocabulary and the
 // preview-only controls.
-check("STYLING: the mark-style panel offers exactly one style (notehead-chords), selected, with engine attribution",
+check("STYLING: the mark-style panel offers exactly one style (Notehead chords), selected, as LilyPond draws it",
   cfg.keys.keySignature.style === "notehead-chords" &&
   await page.evaluate(() => {
     const opts = [...document.querySelectorAll(".cnb-kse-style-option")];
     return opts.length === 1 &&
       opts[0].getAttribute("data-style") === "notehead-chords" &&
       opts[0].classList.contains("selected") &&
-      opts[0].textContent.includes("keysig.ly");
+      opts[0].textContent.includes("as LilyPond draws it");
   }));
+check("STYLING: placement, separator and spacing each carry a Preview only badge with a tooltip (design §8.6)",
+  await page.evaluate(() => ["placement", "separator", "gutter"].every(part => {
+    const badges = document.querySelectorAll(`.cnb-key-signature-editor .cnb-kse-${part} .cnb-badge`);
+    return badges.length === 1 && badges[0].textContent === "Preview only" && badges[0].title.includes("not exported");
+  })));
 
 // Explicit tonic octave (placement control; auto is the s1 D4 decision).
 await page.uncheck(".cnb-kse-octave-auto-check");

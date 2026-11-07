@@ -230,8 +230,8 @@ await page.setInputFiles(".cnb-cle-file", {
 });
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cle-import-status").textContent.includes("uat-clef"));
-check('IMPORT: status confirms \'Imported clef glyph "uat-clef"\'',
-  (await page.textContent(".cnb-cle-import-status")).includes('Imported clef glyph "uat-clef"'),
+check('IMPORT: status confirms \'Imported the clef "uat-clef"\'',
+  (await page.textContent(".cnb-cle-import-status")).includes('Imported the clef "uat-clef"'),
   await page.textContent(".cnb-cle-import-status"));
 cfg = await fullConfig();
 check("IMPORT: the glyph entry reaches the shared config (kind glyph, semitoneHeight 6, natural 100×300, default anchor centered on midpoint 12 → 15)",

@@ -269,6 +269,27 @@ export const tests = [
       });
     }},
 
+  { name: "render: the enable toggle says what it does and carries a Preview only badge (design §8.6)", fn: () => {
+      withDomStub(container => {
+        const api = E.render(container, { config: CNBConfig.createDefault() });
+        const toggle = findAll(api.root, "cnb-cle-enable")[0];
+        eq(findAll(toggle, "cnb-cle-enable-text")[0].textContent, "Show a clef at the start of the staff", "toggle text");
+        const badges = findAll(api.root, "cnb-badge");
+        eq(badges.length, 1, "one badge, beside the toggle");
+        eq(findAll(toggle, "cnb-badge").length, 1, "the badge is in the toggle row");
+        eq(badges[0].textContent, "Preview only", "badge text");
+        eq(badges[0].title, E.CLEF_PREVIEW_ONLY, "tooltip");
+        assert(E.CLEF_PREVIEW_ONLY.includes("LilyPond draws its own clef"), "tooltip says why");
+        // The panel's own text; the validation list is the checks list's (hidden in the app).
+        const text = api.root.children
+          .filter(c => !String(c.className).includes("cnb-cle-validation"))
+          .map(subtreeText).join(" ");
+        for (const dev of ["Clef glyph", "Module", "set 0", "Gutter", "Anchor", "Toolkit contract", "Float"]) {
+          assert(!text.includes(dev), `no developer wording "${dev}" in: ${text}`);
+        }
+      });
+    }},
+
   // ── render(): glyph selection ──
   { name: "render: glyph rows list every definition and clicking one sets it active", fn: () => {
       withDomStub(container => {
@@ -376,7 +397,7 @@ export const tests = [
         eq(result.error, null, "import succeeded");
         eq(last.clef.active, "my-clef", "imported glyph is active");
         eq(last.clef.glyphs["my-clef"].kind, "glyph", "glyph entry stored");
-        assert(subtreeText(api.root).includes('Imported clef glyph "my-clef"'),
+        assert(subtreeText(api.root).includes('Imported the clef "my-clef"'),
           "status line shown");
         eq(findAll(api.root, "cnb-cle-glyph-option").length, 1, "glyph row rendered");
       });

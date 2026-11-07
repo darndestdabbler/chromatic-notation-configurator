@@ -33,15 +33,21 @@ export function canvasConfig(config, size) {
   return CNBPreviewDisplay.displayConfig(config, size);
 }
 
-/** Show a section's panel ("staff", "noteheads", "clef", "key-signature", "advanced", "export"). */
+/**
+ * Show a section's panel ("staff", "noteheads", "ledger-lines", "clef",
+ * "key-signature", "advanced", "export"). Since session 26 the staff
+ * editor is mounted once per section: its pattern and line look in Staff,
+ * the ledger rules (Automatic or My own rules) in Ledger lines, and the
+ * line overrides in Advanced.
+ */
 export async function openSection(page, name) {
   await page.click(`.section-link[data-section="${name}"]`);
 }
 
 /**
  * Show Advanced and open its disclosure whose summary starts with `title`
- * ("Durations and engine", "Pitch axis map", "Pitch range shown",
- * "View file (JSON)").
+ * ("Durations and engine", "Staff line overrides", "Pitch axis map",
+ * "Pitch range shown", "View file (JSON)").
  */
 export async function openAdvanced(page, title) {
   await openSection(page, "advanced");

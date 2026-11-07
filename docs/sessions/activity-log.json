@@ -332,6 +332,29 @@
       "what": "step 'screenshot-record': its files",
       "reason": "The judgement against the 10 mock-ups found the canvas's display copy still uses the config's 22 px label chips spacing, not the editor's compact label style that design 6.1 and the mock-ups use, so two rows fill a 1280x800 window; the fix is in CNBPreviewDisplay.displayConfig and its test. The driver's screenshots become full-page to compare with the full-page mock-up shots.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:10:51.241000-05:00",
+      "task": "Make the kept panels speak to a notation designer (design docs/planning/notehead-first-editor-design.md \u00a71, \u00a76, \u00a78.4, \u00a78.6, \u00a78.8). The staff and ledger editor (Module 13) renders only the parts it is given (staff, ledgers, overrides; all three by default, so its test page is unchanged), and the page mounts it three times: Staff (pattern, staff lines on, staff spacing and middle of the staff read-only, staff line look), a new Ledger lines section after Noteheads (a segmented Automatic or My own rules choice: Automatic writes proximity templates at every position where the staff's own spacing continues past its lines and is recognised on load only when the templates are exactly those, in order, with the proximity rule on; switching to My own rules starts from those positions; My own rules is today's template list reworded as 'at this spot, show a ledger line when one of these is played'; then the ledger line look), and Advanced > Staff line overrides; an edit in one mount re-seeds the other two. The staff, ledger, clef, key-signature and export panels are reworded in designer terms, with units as suffixes and no module or set numbers, and their repeated Preview-only paragraphs become a small Preview only badge with a one-line tooltip beside each such control. The Export section holds the notation's name, the output file suffix, the notation label and the footnote (written to meta through a new onMeta callback of Module 18) and names the preview-only settings once, in one sentence. Each section gets its \u00a76 preview: the Ledger lines section tints the canvas columns that draw ledger lines (CNBCard marks a fluid column with data-ledgers) and draws every candidate ledger spot faintly (a ledgerSpots option of CNBCollection's fluid mode, off by default), and the Clef and Key signature panels each show a partial staff, that gutter and the first three columns, drawn by a new CNBPreviewDisplay.renderPartial at the canvas Size with the selected duration and key. Unit tests follow in each changed module's test file, the app's UAT drivers follow the wording and the new section, the full UAT runs, and the panels' screenshots are judged and recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:36:37.600000-05:00",
+      "what": "step 'uat-drivers-follow': its files",
+      "reason": "Running every driver showed the wording changes break uat-clef-editor, uat-key-signature and the test-page driver uat-staff-rule-editor (its derived-panel checks); uat-golden-path and uat-kite-pipeline use only class hooks that did not change and pass as they are.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:39:03.739000-05:00",
+      "what": "step 'uat-record': its files",
+      "reason": "Judging the panel screenshots found a browser-default file input in the Clef panel (design 8.3), the Ledger lines panel repeating its card title as a group title, and the 'when a note is near' checkbox shown when no rule uses that mode; the fixes are in app.css and the staff editor with its tests.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

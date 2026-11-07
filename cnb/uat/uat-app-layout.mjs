@@ -15,8 +15,15 @@
  *     and changes nothing in the config;
  *   - no console or page errors.
  *
+ * Session 26 adds the Ledger lines section to the walk, checks each
+ * section's preview (the ledger marks and spots, the Clef and Key
+ * signature partial staffs), that the staff editor's three mounts stay in
+ * step, and that the Export section edits the name and file suffix.
+ *
  * It saves app-default-1440.png, app-default-1280.png, app-kite-1440.png
- * and app-kite-1280.png to the shots directory. Every UI session (25–29)
+ * and app-kite-1280.png, and at 1440 with Kite one shot per kept panel
+ * (panel-staff, panel-ledger-lines, panel-clef, panel-key-signature,
+ * panel-export), to the shots directory. Every UI session (25–29)
  * judges these against the approved mock-ups in design §10 and records the
  * judgement in docs/uat-status.md (design §12, "Screenshot checks").
  *
@@ -192,7 +199,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 
   // ── One panel at a time ──
   let onePanel = true;
-  for (const name of ["noteheads", "clef", "key-signature", "advanced", "export", "staff"]) {
+  for (const name of ["noteheads", "ledger-lines", "clef", "key-signature", "advanced", "export", "staff"]) {
     await openSection(page, name);
     const shown = await visiblePanels(page);
     const current = await page.$$eval(".section-link.on", els => els.map(e => e.dataset.section));
@@ -203,6 +210,61 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   check(`${width}: each section shows its own panel and no other, and marks itself current`, onePanel);
   l = await layout(page);
   check(`${width}: no section makes the page scroll sideways`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
+
+  // ── Each section's preview (session 26, design §6) ──
+  const marks = () => page.evaluate(() => ({
+    focus: document.querySelector(".cnb-pvd-preview").classList.contains("cnb-pvd-focus-ledgers"),
+    spots: document.querySelectorAll(".cnb-pvd-preview .ledger-spot").length,
+    ledgered: [...document.querySelectorAll(".cnb-pvd-preview .pc-col")]
+      .filter(c => c.dataset.ledgers !== "0").map(c => c.dataset.pc),
+  }));
+  await openSection(page, "ledger-lines");
+  let m = await marks();
+  check(`${width}: Ledger lines marks the canvas, draws the candidate spots and says which columns draw ledger lines`,
+    m.focus && m.spots > 0 && m.ledgered.includes("0") && !m.ledgered.includes("5"), JSON.stringify(m));
+  await openSection(page, "clef");
+  m = await marks();
+  check(`${width}: leaving Ledger lines removes the marks and spots`, !m.focus && m.spots === 0, JSON.stringify(m));
+  const partial = (id) => page.evaluate((hostId) => {
+    const host = document.getElementById(hostId);
+    return [...host.querySelectorAll(".cnb-pvd-partial .pc-col")].map(c => c.dataset.pc).join(",");
+  }, id);
+  check(`${width}: the Clef panel shows a partial staff of C, C♯ and D`,
+    (await partial("clef-preview-host")) === "0,1,2", await partial("clef-preview-host"));
+  check(`${width}: the Key signature panel shows a partial staff of C, C♯ and D`,
+    (await partial("key-signature-preview-host")) === "0,1,2", await partial("key-signature-preview-host"));
+
+  // ── The staff editor's three mounts stay in step (session 26) ──
+  const stateJson = async () => JSON.parse(await page.textContent("#state-json"));
+  await openSection(page, "ledger-lines");
+  await page.click('#ledger-editor-host [data-ledger-mode="automatic"]');
+  let cfg = await stateJson();
+  check(`${width}: Ledger lines › Automatic writes the automatic spot (C, by proximity)`,
+    JSON.stringify(cfg.ledgers.templates) === JSON.stringify([{ semiWithinOctave: 0, triggerPCs: [], triggerMode: "proximity" }]) &&
+    cfg.ledgers.proximityRule === true, JSON.stringify(cfg.ledgers.templates));
+  await openSection(page, "staff");
+  await page.click('#staff-editor-host [data-pattern-key="custom"]');
+  await page.click('#staff-editor-host .cnb-sre-pc-toggle[data-pc="0"]');   // lines on C, E and G♯: spacing 4, no spot left
+  cfg = await stateJson();
+  check(`${width}: a staff edit keeps the Automatic ledger lines and they follow the pattern`,
+    JSON.stringify(cfg.staff.semitonePattern) === "[0,4,8]" && cfg.ledgers.templates.length === 0 &&
+    await page.evaluate(() => document.querySelector('#ledger-editor-host [data-ledger-mode="automatic"]').classList.contains("on")),
+    JSON.stringify(cfg.ledgers));
+  check(`${width}: Advanced › Staff line overrides re-seeds with one row per line of the new pattern`,
+    (await page.$$eval("#staff-overrides-host .cnb-sre-override-row", els => els.length)) === 3);
+
+  // ── The Export section edits the notation's name and file suffix ──
+  await openSection(page, "export");
+  await page.fill('.cnb-cex-meta-field[data-meta="configName"] .cnb-cex-meta-input', "Lines on C");
+  await page.fill('.cnb-cex-meta-field[data-meta="fileSuffix"] .cnb-cex-meta-input', "-LinesOnC");
+  cfg = await stateJson();
+  check(`${width}: Export › Name and File suffix write meta, the top bar and the file name follow`,
+    cfg.meta.configName === "Lines on C" && cfg.meta.fileSuffix === "-LinesOnC" &&
+    (await page.textContent("#config-name")) === "Lines on C" &&
+    (await page.textContent(".cnb-cex-filename")) === "linesonc.ly", JSON.stringify(cfg.meta));
+  check(`${width}: the Export section names the preview-only settings once`,
+    (await page.$$eval(".cnb-cex-preview-only", els => els.length)) === 1);
+  await openSection(page, "staff");
 
   // ── Kite 4-369 through Open ──
   await page.setInputFiles("#open-file", KITE);
@@ -217,6 +279,16 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     /^(No problems|\d+ (warning|error)s?)$/.test((await page.textContent("#checks-indicator")).trim()),
     await page.textContent("#checks-indicator"));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-kite-${width}.png`), fullPage: true });
+
+  // ── The kept panels, for the screenshot check (session 26) ──
+  if (width === 1440) {
+    for (const name of ["staff", "ledger-lines", "clef", "key-signature", "export"]) {
+      await openSection(page, name);
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: path.join(SHOT_DIR, `panel-${name}.png`), fullPage: true });
+    }
+    await openSection(page, "staff");
+  }
 
   // ── The Size is the browser's: it survives a reload and leaves the file alone ──
   const before = await page.textContent("#state-json");

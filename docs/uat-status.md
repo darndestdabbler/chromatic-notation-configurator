@@ -17,6 +17,71 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The panels speak to a designer — 2026-11-07 (session 26)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: **15 of 15 drivers pass**: app layout 45/45, clef 28/28,
+  common properties 24/24, config export 22/22, config IO 19/19, gallery
+  previews, golden path 30/30, hostile input 57/57 (Chromium, Firefox and
+  Edge), imported notehead 13/13, key signature 39/39, Kite pipeline 26/26,
+  notehead rule editor 34/34, pitch axis, site 8/8, staff rule editor 29/29.
+- `cnb/uat/uat-app-layout.mjs`, run with
+  `CNB_UAT_SHOTS=docs/uat-shots/session-026`, writes the four app
+  screenshots and, at 1440 × 900 with Kite 4-369 opened, one screenshot
+  of each panel this session reworded.
+
+Session 26 reworded and restyled the Staff, Clef, Key signature and Export
+panels, and added the Ledger lines section with its Automatic or My own
+rules choice (design §1, §6, §8.4, §8.6). The drivers follow the new
+wording: the clef import status ("Imported the clef …"), the Notehead
+chords style, and the staff panel's read-only staff spacing and middle of
+the staff, which replace the LilyPond staff-line positions. The layout
+driver gained these checks, at both widths:
+
+- the Ledger lines section marks the canvas, draws every candidate ledger
+  spot faintly, and marks the columns that draw ledger lines (C on, F off);
+  leaving the section removes the marks;
+- the Clef and Key signature panels each show a partial staff of C, C♯
+  and D;
+- the staff editor's three mounts stay in step: choosing Automatic writes
+  the automatic spot at C, a staff edit in Staff keeps Automatic and the
+  spots follow the new pattern, and Advanced › Staff line overrides shows
+  one row per line of the new pattern;
+- Export › Name and File suffix write `meta`, and the top bar and the
+  exported file name follow;
+- the Export section names the preview-only settings once.
+
+### Judged against design §8
+
+| Screenshot | Judgement |
+|---|---|
+| [Staff](uat-shots/session-026/panel-staff.png) | As mock-up 1's panel: three pattern cards with a title and a line each, the Staff lines on pills, the staff spacing and middle of the staff read-only, and the line look with unit suffixes and a Preview only badge beside thickness, style and colour. |
+| [Ledger lines](uat-shots/session-026/panel-ledger-lines.png) | The canvas tints C, C♯, D and C′, the columns Kite draws ledger lines for, and the candidate spots at C are faint dashed lines across both rows. Kite opens in My own rules: "At C show a ledger line when one of these is played", with C, C♯ and D on. |
+| [Clef](uat-shots/session-026/panel-clef.png) | The partial staff of C, C♯ and D sits above the controls (Kite has no clef, so no gutter). The toggle carries the Preview only badge. |
+| [Key signature](uat-shots/session-026/panel-key-signature.png) | Partial staff, then the keys-off note and the controls, greyed until keys are on. The Placement, Separator bar and Space either side titles carry the badges, and the paragraphs are gone. |
+| [Export](uat-shots/session-026/panel-export.png) | Name, File suffix, Notation label and Footnote with a line each, then the one preview-only sentence, then Export for LilyPond and the file name. |
+| [Default, 1440](uat-shots/session-026/app-default-1440.png), [1280](uat-shots/session-026/app-default-1280.png), [Kite, 1440](uat-shots/session-026/app-kite-1440.png), [1280](uat-shots/session-026/app-kite-1280.png) | Unchanged from session 25 apart from the Staff panel; the rows are as before. |
+
+The first screenshots had three faults, fixed in this session:
+
+- the Clef panel's file input was the browser's own "Choose File" button,
+  which §8.3 rules out. It is now styled like the other buttons;
+- the Ledger lines panel repeated its card title as a group title. The
+  group is now "Which ones show";
+- the "when a note is near" checkbox showed under Kite's rules, none of
+  which use that mode. It now shows only when a rule does, or while it is
+  off, so it can be turned back on.
+
+Still open:
+
+- **The checks list shows today's messages.** Session 25's record gave the
+  designer-terms rewording of §8.5 to session 26, but session 26's section
+  of the plan does not name it, and its work plan excluded it. No later
+  session names it yet.
+- **The pitch labels draw in a serif face in these screenshots**, because
+  the drivers stub the Google Fonts request, as in session 25.
+
 ## The new page: screenshot check — 2026-11-07 (session 25)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`
