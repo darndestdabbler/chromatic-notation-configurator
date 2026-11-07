@@ -52,13 +52,6 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBSvgImporter } from "./svg-importer.js";
 
-/**
- * The Preview only badge's tooltip (design §8.6): the exporter emits
- * nothing for clefs (architecture plan §4.12), so the whole section shows
- * only in the preview.
- */
-const CLEF_PREVIEW_ONLY = "LilyPond draws its own clef, so this clef is not exported.";
-
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
 function deepClone(v) {
@@ -70,8 +63,6 @@ function isPlainObject(v) {
 }
 
 export const CNBClefEditor = {
-
-  CLEF_PREVIEW_ONLY,
 
   /**
    * Build a ready `config.clef` slice from editor state. Pure function;
@@ -249,9 +240,6 @@ export const CNBClefEditor = {
       cb.onchange = (e) => { state.enabled = checkedFrom(e, cb); changed(); };
       label.appendChild(cb);
       label.appendChild(el("span", "cnb-cle-enable-text", "Show a clef at the start of the staff"));
-      const badge = el("span", "cnb-badge", "Preview only");
-      badge.title = CLEF_PREVIEW_ONLY;
-      label.appendChild(badge);
       return label;
     }
 

@@ -13,7 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads, engraveNoteheads } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature } from "./engine-probe.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -21,6 +21,8 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBLilypond, _internals } from "../src/cnb-lilypond.js";
 import { CNBScheme } from "../src/cnb-scheme.js";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -238,7 +240,8 @@ export const tests = [
   { name: "header lists the preview-only settings the export leaves out (M2, L2, L3)", fn: () => {
       const out = CNBLilypond.header(CNBConfig.createDefault());
       for (const item of ["staff line colour and thickness", "ledger rules", "stem",
-                          "thickness, repeat counts", "the CB-safe preview toggle", "rules scoped to a key"]) {
+                          "thickness, repeat counts", "the CB-safe preview toggle", "the key\n%% signature's spacing",
+                          "rules scoped to a key"]) {
         contains(out, item);
       }
     }},
@@ -786,77 +789,170 @@ export const tests = [
       assert(threw, "sectionC should refuse to emit a duration-insensitive clause");
     }},
 
-  // ── Clef non-emission (set 009 session 2, per s1-engine-coordination.md:
-  //    the engine exposes no clef hook, so the exporter emits NOTHING for
-  //    clefs — a clef-enabled config must export exactly like the same
-  //    config with the clef disabled, and remain a valid export) ──
+  // ── Clef (session 30, engine handoff 005 §5, LY spec 1.3.7 §5.5) ─────────
 
-  { name: "generate: clef-enabled config passes validation and exports byte-identically to clef-disabled (no engine clef hook — s1 coordination)", fn: () => {
-      const enabled = CNBConfig.createDefault();
-      enabled.clef = {
-        enabled: true,
-        active: "express-b",
-        glyphs: {
-          "express-b": {
-            displayName: "Express B Clef",
-            kind: "glyph",
-            svgPath: "M 0 0 L 100 0 L 100 300 L 0 300 Z",
-            naturalHeight: 300,
-            naturalWidth: 100,
-            semitoneHeight: 6,
-            viewBoxMinX: 0,
-            viewBoxMinY: 0,
-            lilypondPath: null,
-            anchorSemi: 22.784,
-          },
-        },
-        gutter: { paddingH: 20 },
-      };
-      const disabled = CNBConfig.clone(enabled);
-      disabled.clef.enabled = false;
-
-      assert(CNBConfig.validate(enabled).valid, "clef-enabled config is valid");
-      const enabledLy = CNBLilypond.generate(enabled);   // throws on blocking errors
-      const disabledLy = CNBLilypond.generate(disabled);
-      // The header stamps a date-only line, so two same-run exports are
-      // byte-identical without normalization.
-      eq(enabledLy, disabledLy, "clef section is invisible to the exporter");
-      lacks(enabledLy, "clef", "no clef token anywhere in the export");
+  { name: "clef: a config with no clef shown (the default) engraves none — 'none, no registration, no gutter", fn: () => {
+      for (const config of [CNBConfig.createDefault(), glyphClefConfig()]) {
+        if (config.clef.enabled) config.clef.enabled = false;
+        const out = CNBLilypond.generate(config);
+        contains(out, "%% Clef\n#(set! cnb:clef-style 'none)", "'none in Section B");
+        lacks(out, "cnb:register-clef!", "nothing registered");
+        lacks(out, "cnb:clef-gutter-semitones", "no gutter");
+      }
     }},
 
-  // ── Key-signature non-emission (set 010 session 2, per that set's
-  //    s1-engine-coordination.md: the engine already renders notehead-chord
-  //    key signatures from the score's \key through the exported notehead
-  //    config, and exposes no key-signature configuration surface — there
-  //    is nothing for the exporter to emit. A keysig-enabled config must
-  //    export exactly like the same config with it disabled, and remain a
-  //    valid export) ──
+  { name: "clef: a glyph clef is registered (path, anchor, height) and shown as 'custom by name, with its gutter in semitones", fn: () => {
+      const config = glyphClefConfig();
+      assert(CNBConfig.validate(config).valid, "valid");
+      const a = CNBLilypond.sectionA(config);
+      const path = CNBLilypond.svgPathToLilypond("M 0 0 L 100 0 L 100 300 L 0 300 Z", 50, 1);
+      contains(a, `#(cnb:register-clef! 'express-b\n   (list\n     (cons 'path ${path.replace(/\n/g, "\n       ")})\n` +
+        "     (cons 'anchor-semitones 22.784)\n     (cons 'height-semitones 6)))", "registration");
+      const b = CNBLilypond.sectionB(config);
+      contains(b, "#(set! cnb:clef-style 'custom)\n#(set! cnb:clef-name 'express-b)\n#(set! cnb:clef-gutter-semitones 1.25)",
+        "style, name, and 20 px ÷ 16 px per semitone");
+      lacks(b, "cnb:clef-size-semitones", "the glyph's own height-semitones sizes it");
+    }},
 
-  { name: "generate: key-signature-enabled config passes validation and exports byte-identically to key-signature-disabled (engine renders keysigs from the score's \\key — s1 coordination)", fn: () => {
-      const enabled = CNBConfig.createDefault();
-      enabled.keys.enabled = true;
-      enabled.keys.definitions = [
-        { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
-        { name: "A", pitchClasses: [1, 2, 4, 6, 8, 9, 11], tonicPc: 9 },
-      ];
-      enabled.keys.keySignature = {
-        enabled: true,
-        style: "notehead-chords",
-        placement: { rule: "scale-from-tonic", tonicOctave: 2 },
-        separator: { enabled: true, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
-        gutter: { paddingH: 20 },
-      };
-      const disabled = CNBConfig.clone(enabled);
-      disabled.keys.keySignature.enabled = false;
+  { name: "clef: a glyph's lilypondPath and colour are carried; on a linear staff the anchor keeps its distance from the midpoint", fn: () => {
+      const config = glyphClefConfig({ lilypondPath: "'((moveto 0 0) (lineto 1 3) (closepath))", color: "#1b9e77" });
+      const a = CNBLilypond.sectionA(config);
+      const baked = CNBScheme.path("'((moveto 0 0) (lineto 1 3) (closepath))", "t").replace(/\n/g, "\n       ");
+      contains(a, `(cons 'path ${baked})`, "pre-baked path");
+      contains(a, "(cons 'color \"#1b9e77\")))", "colour");
+      config.staff.midpoint = 7;   // the engine's middle line is semitone 12 under the treble clef
+      contains(CNBLilypond.sectionA(config), "(cons 'anchor-semitones 27.784)", "22.784 − 7 + 12");
+      config.clef.glyphs["express-b"].color = "red";
+      let threw = null;
+      try { CNBLilypond.sectionA(config); } catch (err) { threw = err; }
+      assert(threw && /color/.test(threw.message), "a colour that is not #RRGGBB is refused");
+    }},
 
-      assert(CNBConfig.validate(enabled).valid, "keysig-enabled config is valid");
-      const enabledLy = CNBLilypond.generate(enabled);   // throws on blocking errors
-      const disabledLy = CNBLilypond.generate(disabled);
-      // The header stamps a date-only line, so two same-run exports are
-      // byte-identical without normalization.
-      eq(enabledLy, disabledLy, "keySignature section is invisible to the exporter");
-      lacks(enabledLy, "keysig", "no keysig token anywhere in the export");
-      lacks(enabledLy, "keySignature", "no keySignature token anywhere in the export");
+  { name: "clef: under a pitch axis a fractional anchor is used as is (the hook reads Configurator semitones)", fn: () => {
+      const config = spikeAxisConfig();
+      config.clef = glyphClefConfig().clef;
+      config.clef.glyphs["express-b"].anchorSemi = 12.5;
+      contains(CNBLilypond.sectionA(config), "(cons 'anchor-semitones 12.5)", "anchor as is");
+    }},
+
+  { name: "clef: a text clef is 'text with a markup of its font, colour and bold weight, at its height", fn: () => {
+      const config = textClefConfig();
+      assert(CNBConfig.validate(config).valid, "valid");
+      const b = CNBLilypond.sectionB(config);
+      contains(b, "#(set! cnb:clef-style 'text)\n" +
+        "#(set! cnb:clef-text (markup #:with-color \"#aa0000\" #:override (cons 'font-name \"Georgia, serif Bold\") \"4\"))\n" +
+        "#(set! cnb:clef-size-semitones 4)\n#(set! cnb:clef-gutter-semitones 0.75)", "text clef settings");
+      lacks(CNBLilypond.sectionA(config), "cnb:register-clef!", "nothing registered");
+      config.clef.glyphs.lbl.text = 'say "hi"';
+      contains(CNBLilypond.sectionB(config), '"say \\"hi\\""', "label text is a Scheme string");
+    }},
+
+  { name: "clef (engine): a glyph clef on a pitch axis with a fractional anchor engraves its top edge where the preview draws it", fn: async () => {
+      // Handoff 008 §5 flag 5. The preview puts the glyph's top at
+      // semiToY(anchorSemi), axis position positionOfSemi(anchorSemi).
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const { config } = CNBConfigIO.loadFromText(readFileSync(
+        path.join(CNB_DIR, "assets", "examples", "gallery", "twinline-compact.json"), "utf8"));
+      config.clef = glyphClefConfig().clef;
+      config.clef.glyphs["express-b"].anchorSemi = 13.5;   // between C♯ and D an octave up
+      const axis = CNBPitchAxis.create(config);
+      const units = config.pitchAxis.axisUnitsPerStaffSpace;
+      const top = 2 * (axis.positionOfSemi(13.5) - axis.positionOfSemi(config.staff.midpoint)) / units;
+      const bottom = top - 2 * 6 / units;
+      const { clef, error } = await measureClef(engine, CNBLilypond.generate(config));
+      assert(!error, `the export must compile: ${error}`);
+      assert(clef, "a clef was engraved");
+      assert(Math.abs(clef.top - top) < 0.01, `top ${clef.top} half-staff-spaces, preview ${top}`);
+      assert(Math.abs(clef.bottom - bottom) < 0.01, `bottom ${clef.bottom}, preview ${bottom}`);
+    }},
+
+  { name: "clef (engine): a text clef engraves at its preview height, and a config with no clef engraves none", fn: async () => {
+      // The engine places a text clef at its own height, not at anchorSemi
+      // (LY spec 1.3.7 §5.5, a known divergence), so only the height is
+      // measured here.
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const config = textClefConfig();
+      const { clef, error } = await measureClef(engine, CNBLilypond.generate(config));
+      assert(!error, `the export must compile: ${error}`);
+      const want = 2 * 4 / config.staff.semitonesPerStaffSpace;
+      assert(clef && Math.abs((clef.top - clef.bottom) - want) <= 0.05 * want,
+        `height ${clef && clef.top - clef.bottom} half-staff-spaces, preview ${want}`);
+      const none = await measureClef(engine, CNBLilypond.generate(CNBConfig.createDefault()));
+      assert(!none.error, `the default export must compile: ${none.error}`);
+      eq(none.clef, null, "no clef stencil");
+    }},
+
+  // ── Key signature (session 30, engine handoff 006 §3, LY spec 1.3.7 §5.6) ─
+
+  { name: "key signature: 'none unless keys and the signature are both on (the default included)", fn: () => {
+      contains(CNBLilypond.sectionB(CNBConfig.createDefault()), "%% Key signature\n#(set! cnb:keysig-style 'none)", "default");
+      const keysOff = keySignatureConfig();
+      keysOff.keys.enabled = false;
+      contains(CNBLilypond.sectionB(keysOff), "#(set! cnb:keysig-style 'none)", "keys off");
+      const sigOff = keySignatureConfig();
+      sigOff.keys.keySignature.enabled = false;
+      contains(CNBLilypond.sectionB(sigOff), "#(set! cnb:keysig-style 'none)", "signature off");
+      // A signature on at the engine's defaults writes nothing at all.
+      lacks(CNBLilypond.sectionB(keySignatureConfig()), "keysig", "the engine's 'chord and default bar");
+    }},
+
+  { name: "key signature: the bar's colour, thickness (pct ÷ (10 × sps)) and extent are written when they differ from the engine's", fn: () => {
+      const config = keySignatureConfig();
+      assert(CNBConfig.validate(config).valid, "valid");
+      Object.assign(config.keys.keySignature.separator, { color: "#123ABC", thicknessPct: 80, extentSemis: 6 });
+      contains(CNBLilypond.sectionB(config), "%% Key signature\n#(set! cnb:keysig-bar-color \"#123ABC\")\n" +
+        "#(set! cnb:keysig-bar-thickness 2)\n#(set! cnb:keysig-bar-extent-semis 6)", "80 ÷ (10 × 4) = 2");
+      config.staff.semitonesPerStaffSpace = 3;
+      config.keys.keySignature.separator.thicknessPct = 160;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-bar-thickness 5.3333)", "the default 160% at sps 3 is not the engine's 4");
+      config.keys.keySignature.separator.enabled = false;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-bar-thickness 0)", "a separator that is off draws a zero-width bar");
+      config.keys.keySignature.separator.color = "gold";
+      let threw = null;
+      try { CNBLilypond.sectionB(config); } catch (err) { threw = err; }
+      assert(threw && /separator\.color/.test(threw.message), "a colour that is not #RRGGBB is refused");
+    }},
+
+  { name: "key signature: an explicit tonic octave is written as is on a linear staff; automatic writes none", fn: () => {
+      const config = keySignatureConfig();
+      lacks(CNBLilypond.sectionB(config), "cnb:keysig-tonic-octave", "automatic: the engine's own octave");
+      config.keys.keySignature.placement.tonicOctave = 2;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:keysig-tonic-octave 2)", "explicit, no offset");
+      const axis = spikeAxisConfig();
+      axis.keys = keySignatureConfig().keys;
+      axis.keys.keySignature.placement.tonicOctave = 2;
+      const b = CNBLilypond.sectionB(axis);
+      eq(b.split("cnb:keysig-tonic-octave").length, 2, "under an axis it is written once, by the axis block");
+    }},
+
+  { name: "key signature (engine): a styled bar engraves its colour and thickness, and the marks where the preview draws them", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const config = keySignatureConfig();
+      config.keys.keySignature.placement.tonicOctave = 1;
+      Object.assign(config.keys.keySignature.separator, { color: "#123abc", thicknessPct: 80, extentSemis: 2 });
+      // The marks: G's scale from the preview's tonic in octave 1 (semitones
+      // 19–31, above the middle), each a head of the default shape's height.
+      // The bar runs ±extentSemis about the middle line, its round ends
+      // half its thickness further, so it reaches below the marks.
+      const semis = CNBKeySignature.signatureSemis(config, "G");
+      const sps = config.staff.semitonesPerStaffSpace;
+      const head = config.shapes["crotchet-minim"].semitoneHeight / sps;   // half-heights, in half-staff-spaces
+      const top = 2 * (Math.max(...semis) - config.staff.midpoint) / sps + head;
+      const bottom = -(2 * 2 / sps + 0.8 / sps);
+      const { keySignature: ks, error } = await measureKeySignature(engine, CNBLilypond.generate(config), "g \\major");
+      assert(!error, `the export must compile: ${error}`);
+      assert(ks && ks.bar, `a key signature with a bar was engraved: ${JSON.stringify(ks)}`);
+      assert(Math.abs(ks.top - top) < 0.02, `top ${ks.top} half-staff-spaces, preview ${top}`);
+      assert(Math.abs(ks.bottom - bottom) < 0.02, `bottom ${ks.bottom} (the bar's end), preview ${bottom}`);
+      const want = [0x12, 0x3a, 0xbc].map(v => v / 255);
+      assert(ks.bar.color.every((v, i) => Math.abs(v - want[i]) < 1e-3), `bar colour ${ks.bar.color}`);
+      assert(Math.abs(ks.bar.thickness - 0.8 / sps) < 1e-3, `bar ${ks.bar.thickness} staff spaces, preview ${0.8 / sps}`);
+      const off = await measureKeySignature(engine, CNBLilypond.generate(CNBConfig.createDefault()), "g \\major");
+      assert(!off.error, `the default export must compile: ${off.error}`);
+      eq(off.keySignature, null, "a config with the signature off engraves none");
     }},
 
   // ── Pitch axis (set 014 session 3): v1.3 emission, §8a gate lifted ──────
@@ -1348,5 +1444,48 @@ function spikeAxisConfig() {
   };
   config.staff.semitonePattern = [2, 5, 8];
   config.staff.midpoint = 7;
+  return config;
+}
+
+// ── Clef test helpers (session 30) ───────────────────────────────────────────
+
+/** The default config with a 300 × 100 glyph clef, 6 semitones tall, shown. */
+function glyphClefConfig(overrides = {}) {
+  const config = CNBConfig.createDefault();
+  config.clef = {
+    enabled: true,
+    active: "express-b",
+    glyphs: {
+      "express-b": {
+        displayName: "Express B Clef", kind: "glyph",
+        svgPath: "M 0 0 L 100 0 L 100 300 L 0 300 Z",
+        naturalHeight: 300, naturalWidth: 100, semitoneHeight: 6,
+        viewBoxMinX: 0, viewBoxMinY: 0, lilypondPath: null, anchorSemi: 22.784,
+        ...overrides,
+      },
+    },
+    gutter: { paddingH: 20 },
+  };
+  return config;
+}
+
+/** The default config with keys and a key signature on, at the engine's defaults, and a G key. */
+function keySignatureConfig() {
+  const config = CNBConfig.createDefault();
+  config.keys.enabled = true;
+  config.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
+  config.keys.keySignature.enabled = true;
+  return config;
+}
+
+/** The default config with a red "4" text clef, 4 semitones tall, shown. */
+function textClefConfig() {
+  const config = CNBConfig.createDefault();
+  config.clef = {
+    enabled: true,
+    active: "lbl",
+    glyphs: { lbl: { kind: "text", text: "4", textHeightSemis: 4, anchorSemi: 20, fontFamily: "Georgia, serif", color: "#aa0000" } },
+    gutter: { paddingH: 12 },
+  };
   return config;
 }

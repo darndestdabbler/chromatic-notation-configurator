@@ -370,12 +370,14 @@ export const tests = [
       const notes = findAll(api.root, "cnb-cex-preview-only");
       assertEqual(notes.length, 1, "one sentence");
       assertEqual(notes[0].textContent, EX.PREVIEW_ONLY_SENTENCE, "the sentence");
-      // One sentence, naming what the exporter's header lists plus the clef and key signature.
+      // One sentence, naming what the exporter's header lists, and saying
+      // the clef and the rest of the key signature export (session 30).
       assertEqual(EX.PREVIEW_ONLY_SENTENCE.split(/[.!?](\s|$)/).filter(s => s && s.trim()).length, 1, "a single sentence");
-      for (const s of ["staff lines", "ledger lines", "clef", "key signature", "stem thickness",
-        "repeat counts", "colour-blind", "particular key"]) {
+      for (const s of ["staff lines", "ledger lines", "key signature's spacing", "stem thickness",
+        "repeat counts", "colour-blind", "particular key", "the clef and the rest of the key signature are exported"]) {
         assert(EX.PREVIEW_ONLY_SENTENCE.includes(s), `names ${s}`);
       }
+      assert(!EX.PREVIEW_ONLY_SENTENCE.includes("placement, bar"), "placement and the bar are no longer preview-only");
       api.exportLy();   // download throws without opts.download: the sentence survives a redraw
       assertEqual(findAll(api.root, "cnb-cex-preview-only").length, 1, "still one after a redraw");
     }),

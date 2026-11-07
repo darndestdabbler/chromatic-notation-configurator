@@ -597,9 +597,9 @@ keys: {
     // Visual treatment for off-key notes. Deferred.
   },
 
-  // Key signature (set 010). Default-off compatibility: with enabled:false
-  // the preview layout and the LilyPond export are byte-identical to the
-  // pre-set-010 output (pinned by tests against a pre-change baseline).
+  // Key signature (set 010). With enabled:false the preview draws no
+  // signature, and since session 30 the export writes
+  // cnb:keysig-style 'none, so the engraving draws none either.
   keySignature: {
     enabled: false,
 
@@ -624,8 +624,8 @@ keys: {
     // rule as inactive. tonicOctave null = auto (center the octave span
     // [tonic, tonic+12] on staff.midpoint, ties resolving upward — matches
     // the engine's middle-C anchor for the default config); an explicit
-    // integer overrides (preview-only: the engine derives the octave from
-    // middleCPosition).
+    // integer overrides, and is exported as cnb:keysig-tonic-octave with
+    // no offset (LY spec 1.3.7 §5.6).
     placement: { rule: "scale-from-tonic", tonicOctave: null },
 
     // The gold STEM running through the horizontal middle of the mark
@@ -633,11 +633,12 @@ keys: {
     // #ffd42a: keysig.ly draws it at max-notehead-x-offset − width/2 =
     // midway between the column centers, 0.4 staff-space thick — set-010
     // s2 UAT engine-render measurement; 160% of a semitone at the default
-    // staff's 4 semitones per space). Styling is preview-side; the engine
-    // hard-codes its color/thickness.
+    // staff's 4 semitones per space). Exported as cnb:keysig-bar-color,
+    // -thickness (thicknessPct / (10 × sps), 0 when disabled) and
+    // -extent-semis, each when it differs from the engine's default.
     separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
 
-    gutter: { paddingH: 12 }     // px each side of the signature's gutter
+    gutter: { paddingH: 12 }     // px each side of the signature's gutter (preview-only)
   }
 }
 ```
@@ -651,16 +652,17 @@ keys: {
 - **Composes with the set-009 clef gutter** — clef first, then key
   signature, left to right, both positioned via the semitone grid
   (Module 1). No second placement mechanism.
-- **No LilyPond emission (set 010 state).** The engine ALREADY renders
-  notehead-chord key signatures: its `cnb-key-signature-engraver` is
-  unconditionally installed and driven by the score's `\key` through the
-  procedure-model notehead config the Configurator already exports — so
-  the exporter emits NOTHING for this section, and a keysig-enabled
-  config exports byte-identically to the same config with it disabled
-  (pinned by tests). Engine-side configurability (disable flag, separator
-  styling, dot mode, anchor-octave control) is recorded as engine-repo
-  work in `docs/session-sets/010-custom-key-signatures/s1-engine-coordination.md`;
-  the LY export spec is unchanged.
+- **LilyPond export (session 30, LY spec 1.3.7 §5.6).** The engine
+  renders notehead-chord key signatures from the score's `\key` through
+  the exported notehead config, and since its set 006 it takes a
+  configuration. The exporter writes `cnb:keysig-style 'none` unless keys
+  and the signature are both on, so the default config, whose signature
+  is off, engraves none. With the signature on, it writes the bar's
+  colour, thickness (0 when the separator is off) and extent, and on a
+  linear staff an explicit tonic octave, each only when it differs from
+  the engine's default. The gutter has no engine setting and stays
+  preview-only. Set 010 wrote nothing for this section (its
+  `s1-engine-coordination.md` records why).
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -718,9 +720,9 @@ meta: {
 
 ```javascript
 clef: {
-  // Default-off compatibility: with enabled:false the preview layout and
-  // the LilyPond export are byte-identical to the pre-set-009 output
-  // (pinned by tests against a pre-change export baseline fixture).
+  // With enabled:false the preview draws no clef, and since session 30 the
+  // export writes cnb:clef-style 'none, so the engraving draws none either
+  // (not the engine's default dozenal clef).
   enabled: false,
 
   // Name of the active definition in `glyphs`, or null.
@@ -770,14 +772,17 @@ clef: {
   Module 16 (`extractClef` / `buildClefGlyph` / `parseClefSvgText`),
   reusing the toolkit `data-*` contract; stem/anchor attributes are not
   required for clefs.
-- **No LilyPond emission (set 009 state).** The CNB engine exposes no
-  custom-clef hook (its dozenal clef engraver is unconditional and takes
-  no configuration), so the exporter emits NOTHING for clefs: a
-  clef-enabled config exports byte-identically to the same config with
-  the clef disabled. The section still round-trips through JSON save/load.
-  See `docs/session-sets/009-custom-clefs/s1-engine-coordination.md` for
-  the engine-repo follow-on work; the LY export spec is unchanged (its
-  "only if emission was added" condition is not met).
+- **LilyPond export (session 30, LY spec 1.3.7 §5.5).** Set 009 wrote
+  nothing for clefs, because the engine then had no clef hook
+  (`docs/session-sets/009-custom-clefs/s1-engine-coordination.md`). Its
+  set 005 added one, and the exporter now always writes `cnb:clef-style`:
+  `'none` when no clef is shown (the default config included), `'custom`
+  for a glyph, registered with `cnb:register-clef!` (path, top-edge
+  anchor on the engine's axis, height, colour), or `'text` for a text
+  clef, as a markup of its font, colour and weight at its height. A shown
+  clef also gets its gutter, `paddingH ÷ pxPerSemi` semitones, on the right
+  only. The engine places a text clef at a fixed height of its own rather
+  than at `anchorSemi`, a known divergence.
 
 ### 4.13 Pitch Axis (added set 014)
 
@@ -1449,6 +1454,8 @@ clef renders — the collection reserves no gutter), and
 Module 10 as a `div.clef-col` prepended inside `.pc-columns` behind
 `clef.enabled`; the background staff SVG spans the gutter.
 Dependencies: Module 1, Module A. Visual test page: `test-clef.html`.
+Since session 30 Module 11 exports the clef this module draws
+(`CNBClef.activeGlyph` decides both; LY spec 1.3.7 §5.5).
 
 **Module 21 — Clef Editor** (`ui/clef-editor.js`, UI): edits the `clef`
 section — enable toggle, clef glyph import (wraps Module 16's
@@ -1482,7 +1489,10 @@ engine's gold bar geometry). `style` is a single-value vocabulary; an
 unknown style renders nothing (the task owner deferred richer styles to a
 future set — s2-uat.md). Integrated into Module 10 as a `div.keysig-col`
 after the clef column. Dependencies: Modules A, B, 1 (grid context passed
-in), 5, 6. Visual test page: `test-key-signature.html`.
+in), 5, 6. Visual test page: `test-key-signature.html`. Since session 30
+Module 11 exports the signature's on/off state, bar styling and explicit
+tonic octave, so the engine engraves what this module draws (LY spec
+1.3.7 §5.6).
 
 **Module 23 — Key Signature Editor** (`ui/key-signature-editor.js`, UI):
 edits the whole `keys` section — the `keys.enabled` master gate, the key
@@ -1727,6 +1737,9 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:file-suffix` | `""` | `meta.fileSuffix` | Always |
 | `cnb:notation-label` | `""` | `meta.notationLabel` | Always |
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |
+| `cnb:clef-style` (+ name, text, size, gutter; A6 `cnb:register-clef!`) | `'dozenal` | `clef` (§4.12) | Always: `'none` when no clef is shown (LY spec 1.3.7 §5.5) |
+| `cnb:keysig-style` | `'chord` | `keys.enabled`, `keys.keySignature.enabled` | `'none` unless both are on (LY spec 1.3.7 §5.6) |
+| `cnb:keysig-bar-color` / `-thickness` / `-extent-semis`, `cnb:keysig-tonic-octave` | `"#ffd42a"` / `4` / `12`, `#f` | `keys.keySignature.separator`, `.placement.tonicOctave` | If changed, signature on (LY spec 1.3.7 §5.6) |
 
 ### Section C — Configuration Procedure
 

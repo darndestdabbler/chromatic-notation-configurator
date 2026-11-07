@@ -14,8 +14,8 @@
 %%
 %% Preview-only (the engine does not engrave these, so they are not
 %% exported): staff line colour and thickness, ledger rules, stem
-%% thickness, repeat counts, the CB-safe preview toggle, and notehead
-%% rules scoped to a key.
+%% thickness, repeat counts, the CB-safe preview toggle, the key
+%% signature's spacing, and notehead rules scoped to a key.
 %%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -82,6 +82,12 @@
 
 %% Key-signature octave — explicit under a pitch axis (engine handoff 008 §4.2)
 #(set! cnb:keysig-tonic-octave 0)
+
+%% Clef
+#(set! cnb:clef-style 'none)
+
+%% Key signature
+#(set! cnb:keysig-style 'none)
 
 %% Metadata
 #(set! cnb:file-suffix "-TwinlineCompact")

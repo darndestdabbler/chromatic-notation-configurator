@@ -21,6 +21,33 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The Clef and Key signature previews at work — 2026-11-07 (session 30)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- Run by hand this session: app layout **65/65** (two new checks, below),
+  clef 28/28 and key signature 39/39 (their export checks now look for the
+  clef and key-signature settings the download carries, LY export spec
+  1.3.7). The whole suite runs at close.
+
+Session 26's panel shots used Kite 4-369, which has neither a clef nor a
+key signature, so its Clef and Key signature panels drew three bare
+columns. `uat-app-layout.mjs` now opens Kite again at 1440, imports a glyph
+clef and turns it on, then turns keys on, adds C major, turns the
+signature on and chooses C in the canvas's Key menu. Before each shot it
+checks that the panel's partial staff draws its gutter: the clef glyph in
+a `.clef-col`, the signature and its bar in a `.keysig-col`. Design §10 has
+no mock-up for these two sections, so these shots stand in for one.
+
+| Screenshot | Judgement |
+|---|---|
+| [Clef, glyph on](uat-shots/session-030/panel-clef-glyph.png) | The imported double-arrow glyph draws in a gutter before C, in the panel's partial staff and on both canvas rows, its top at semitone 15 and 6 semitones tall, as the "Top of the clef" field says. The enable row has no Preview only badge now that the clef exports. The first shot showed the importer's note that a glyph without pre-baked data "will need a fallback conversion if the engine gains clef support", which this session made false. It now says the LilyPond export converts the glyph's SVG path instead (`cnb/ui/svg-importer.js`). |
+| [Key signature, C chosen](uat-shots/session-030/panel-key-signature-key.png) | With C chosen on the canvas, the signature draws after the clef on both canvas rows, and on its own in the panel's partial staff: the two-column note stack with the gold bar beneath it. Only "Space either side" keeps a Preview only badge; Placement and Separator bar export. **A defect remains:** the automatic octave puts C's marks on semitones 12–24, but a row's grid only reaches 4 semitones above its highest column (`CNBCollection.gridRange`). The top marks are therefore cut off in the partial staff (C to D, up to semitone 18) and on the first canvas row (C to F♯, up to 22). The second row (G to C′) shows them whole. This is preview layout, not export, so it is left for a later session. |
+
+The full-page captures also show the sticky top bar part way down the page,
+as earlier shots do. The canvas's key menu note ("Key rows are deferred in
+the card collection (plan §5 Module 10)…") is developer wording.
+
 ## Oswald from the site — 2026-11-07 (session 29)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

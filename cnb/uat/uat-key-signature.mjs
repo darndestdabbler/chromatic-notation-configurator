@@ -18,8 +18,8 @@
  * THIS process on the full config read from the page's live state panel:
  * CNBKeySignature.gutterWidth / measure / signatureSemis and
  * CNBGrid.semiToY for the preview geometry, CNBLilypond.generate for the
- * export (both the byte-identity of the download and the set-010
- * no-emission pin: keysig-enabled ≡ keysig-disabled).
+ * export (both the byte-identity of the download and, since session 30,
+ * the signature's emission: its tonic octave when enabled, 'none when not).
  *
  * Usage (from anywhere; paths are resolved relative to this file):
  *   node cnb/uat/uat-key-signature.mjs
@@ -384,11 +384,13 @@ check("STYLING: the mark-style panel offers exactly one style (Notehead chords),
       opts[0].classList.contains("selected") &&
       opts[0].textContent.includes("as LilyPond draws it");
   }));
-check("STYLING: placement, separator and spacing each carry a Preview only badge with a tooltip (design §8.6)",
-  await page.evaluate(() => ["placement", "separator", "gutter"].every(part => {
-    const badges = document.querySelectorAll(`.cnb-key-signature-editor .cnb-kse-${part} .cnb-badge`);
-    return badges.length === 1 && badges[0].textContent === "Preview only" && badges[0].title.includes("not exported");
-  })));
+check("STYLING: only the spacing carries a Preview only badge with a tooltip; placement and the separator export (session 30, design §8.6)",
+  await page.evaluate(() => {
+    const badges = (part) => document.querySelectorAll(`.cnb-key-signature-editor .cnb-kse-${part} .cnb-badge`);
+    const gutter = badges("gutter");
+    return gutter.length === 1 && gutter[0].textContent === "Preview only" && gutter[0].title.includes("not exported") &&
+      badges("placement").length === 0 && badges("separator").length === 0;
+  }));
 
 // Explicit tonic octave (placement control; auto is the s1 D4 decision).
 await page.uncheck(".cnb-kse-octave-auto-check");
@@ -519,17 +521,17 @@ try { direct = CNBLilypond.generate(cfg); } catch (err) { directErr = err.messag
 check("EXPORT PARITY: downloaded .ly is byte-identical to a direct CNBLilypond.generate() call on the same config (run in Node, independent of the browser)",
   direct !== null && direct === exported,
   directErr || `lengths ${exported.length} vs ${direct ? direct.length : "n/a"}`);
-// The set-010 no-emission pin, end-to-end: the engine renders key
-// signatures from the score's \key through the already-exported notehead
-// config (s1-engine-coordination.md), so the keysig-enabled download must
-// be byte-identical to the export of the same config with the signature
-// disabled, with no keysig token anywhere.
+// The key signature exports since session 30 (LY spec 1.3.7 §5.6): the
+// download leaves the signature on and carries the explicit tonic octave
+// set above, and the same config with the signature disabled writes 'none.
 const disabledCfg = CNBConfig.clone(cfg);
 disabledCfg.keys.keySignature.enabled = false;
-check("EXPORT NO-EMISSION: the keysig-enabled download is byte-identical to generate() of the same config with the signature disabled, and contains no keysig/keySignature token",
-  direct !== null && CNBLilypond.generate(disabledCfg) === exported &&
-  !exported.includes("keysig") && !exported.includes("keySignature"),
-  "keysig leaked into the export");
+const tonicOctave = cfg.keys.keySignature.placement.tonicOctave;
+check("EXPORT EMISSION: the keysig-enabled download keeps the signature and its tonic octave; with the signature disabled generate() writes 'none",
+  direct !== null && !exported.includes("cnb:keysig-style 'none") &&
+  (!Number.isInteger(tonicOctave) || exported.includes(`#(set! cnb:keysig-tonic-octave ${tonicOctave})`)) &&
+  CNBLilypond.generate(disabledCfg).includes("#(set! cnb:keysig-style 'none)"),
+  `tonic octave ${tonicOctave}; the key-signature settings are wrong in the export`);
 check("EXPORT: valid badge shown, no error rows",
   await page.evaluate(() =>
     !!document.querySelector(".cnb-cex-valid") &&

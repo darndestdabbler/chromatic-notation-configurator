@@ -7,9 +7,9 @@
  * against a stub DOM (keys.enabled master gate with its explicit disabled
  * state, key-definition rows, signature style/placement/separator/
  * gutter controls), the editor-level duplicate-name check, the Module A
- * validation pass-through, and export invariance through the editor path
- * (an editor-built keysig-enabled config exports byte-identically to the
- * default — the exporter emits nothing for the keys section).
+ * validation pass-through, and the export through the editor path (an
+ * editor-built keysig-enabled config leaves the signature to the engine;
+ * the default, signature off, exports 'none — session 30).
  */
 
 import { CNBKeySignatureEditor } from "../ui/key-signature-editor.js";
@@ -458,19 +458,19 @@ export const tests = [
       });
   } },
 
-  { name: "render: placement, separator and spacing carry Preview only badges with tooltips, no paragraph (design §8.6)", fn: () => {
+  { name: "render: only the spacing carries a Preview only badge; placement and the separator export (session 30, design §8.6)", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });
         const badgesIn = (token) => findAll(findAll(api.root, token)[0], "cnb-badge");
-        for (const [token, key] of [["cnb-kse-placement", "placement"], ["cnb-kse-separator", "separator"], ["cnb-kse-gutter", "gutter"]]) {
-          const badges = badgesIn(token);
-          eq(badges.length, 1, `${token}: one badge`);
-          eq(badges[0].textContent, "Preview only", `${token}: badge text`);
-          eq(badges[0].title, E.PREVIEW_ONLY[key], `${token}: tooltip`);
-          assert(badges[0].title.includes("not exported"), `${token}: tooltip says it is not exported`);
-        }
-        eq(findAll(api.root, "cnb-badge").length, 3, "no other badges");
-        assert(E.PREVIEW_ONLY.placement.includes("middle C"), "the placement tooltip names the engine's anchor");
+        const badges = badgesIn("cnb-kse-gutter");
+        eq(badges.length, 1, "spacing: one badge");
+        eq(badges[0].textContent, "Preview only", "badge text");
+        eq(badges[0].title, E.PREVIEW_ONLY.gutter, "tooltip");
+        assert(badges[0].title.includes("not exported"), "the tooltip says it is not exported");
+        eq(badgesIn("cnb-kse-placement").length, 0, "placement exports");
+        eq(badgesIn("cnb-kse-separator").length, 0, "the separator exports");
+        eq(findAll(api.root, "cnb-badge").length, 1, "no other badges");
+        deepEq(Object.keys(E.PREVIEW_ONLY), ["gutter"], "one preview-only tooltip");
         eq(findAll(api.root, "cnb-kse-octave-note").length, 0, "no preview-only paragraph");
         const text = api.root.children
           .filter(c => !String(c.className).includes("cnb-kse-validation"))
@@ -546,9 +546,6 @@ export const tests = [
         auto2.checked = true;
         auto2.onchange();
         eq(last.keys.keySignature.placement.tonicOctave, null, "auto restores null");
-
-        assert(findAll(findAll(api.root, "cnb-kse-placement")[0], "cnb-badge")[0].title.includes("middle C"),
-          "engine-divergence tooltip present");
       });
   } },
 
@@ -631,9 +628,9 @@ export const tests = [
       });
   } },
 
-  // ─── Export invariance through the editor path (spec step 2) ──────────
+  // ─── Export through the editor path (session 30, LY spec 1.3.7 §5.6) ──
 
-  { name: "export invariance: an editor-built keysig-enabled config exports byte-identically to default", fn: () => {
+  { name: "export: an editor-built keysig-enabled config hands the signature to the engine; the default exports 'none", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: CNBConfig.createDefault() });
 
@@ -649,8 +646,10 @@ export const tests = [
 
         const edited = api.applyTo(CNBConfig.createDefault());
         eq(edited.keys.keySignature.enabled, true, "signature enabled through the UI");
-        eq(CNBLilypond.generate(edited), CNBLilypond.generate(CNBConfig.createDefault()),
-          "the exporter emits nothing for the keys section (engine renders keysigs from the score's \\key)");
+        assert(!CNBLilypond.generate(edited).includes("cnb:keysig-style"),
+          "signature on at the defaults: the engine's own 'chord style, nothing written");
+        assert(CNBLilypond.generate(CNBConfig.createDefault()).includes("#(set! cnb:keysig-style 'none)"),
+          "the default config, signature off: 'none");
       });
   } },
 

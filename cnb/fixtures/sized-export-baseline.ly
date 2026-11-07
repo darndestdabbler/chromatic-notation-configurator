@@ -14,8 +14,8 @@
 %%
 %% Preview-only (the engine does not engrave these, so they are not
 %% exported): staff line colour and thickness, ledger rules, stem
-%% thickness, repeat counts, the CB-safe preview toggle, and notehead
-%% rules scoped to a key.
+%% thickness, repeat counts, the CB-safe preview toggle, the key
+%% signature's spacing, and notehead rules scoped to a key.
 %%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -124,6 +124,12 @@
 %% Staff geometry
 #(set! cnb:semitones-per-staff-space 4)
 #(set! cnb:staff-line-positions '(-4 -2 2 4))
+
+%% Clef
+#(set! cnb:clef-style 'none)
+
+%% Key signature
+#(set! cnb:keysig-style 'none)
 
 %% Metadata
 #(set! cnb:file-suffix "-Sized")

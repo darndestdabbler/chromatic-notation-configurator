@@ -210,6 +210,90 @@ export function measureStems(engine, ly, music) {
   });
 }
 
+/**
+ * Compile an exported config (.ly text) under a one-note score and report
+ * the engraved clef: { clef: { top, bottom } } in half-staff-spaces from the
+ * middle line (LilyPond staff positions), or { clef: null } when the engine
+ * engraved no clef stencil, or { error } with LilyPond's output when it
+ * fails.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @returns {Promise<{clef?:{top:number,bottom:number}|null, error?:string}>}
+ */
+export function measureClef(engine, ly) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override Staff.Clef.after-line-breaking = #(lambda (grob)
+    (if (ly:stencil? (ly:grob-property grob 'stencil))
+      (let* ((staff (ly:grob-object grob 'staff-symbol))
+             (common (ly:grob-common-refpoint grob staff Y))
+             (y (ly:grob-extent grob common Y))
+             (middle (ly:grob-relative-coordinate staff common Y))
+             (space (ly:staff-symbol-staff-space grob)))
+        (format #t "CNB-CLEF ~a ~a\\n"
+          (exact->inexact (/ (* 2 (- (cdr y) middle)) space))
+          (exact->inexact (/ (* 2 (- (car y) middle)) space))))))
+  c'4
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    if (error) return { error: `${error.message}\n${output}` };
+    const m = output.match(/^CNB-CLEF (\S+) (\S+)$/m);
+    return { clef: m ? { top: Number(m[1]), bottom: Number(m[2]) } : null };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a one-note score in the given
+ * key (e.g. "g \\major") and report the engraved key signature:
+ * { keySignature: { top, bottom, bar } }, top and bottom in
+ * half-staff-spaces from the middle line, and bar the separator, the
+ * stencil's first line (the engine draws it beneath the marks), as
+ * { color: [r, g, b] (0–1), thickness } with thickness in staff spaces;
+ * { keySignature: null } when the engine engraved none; or { error } with
+ * LilyPond's output when it fails.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} key  LilyPond key, e.g. "g \\major"
+ * @returns {Promise<{keySignature?:{top:number,bottom:number,bar:{color:number[],thickness:number}|null}|null, error?:string}>}
+ */
+export function measureKeySignature(engine, ly, key) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+{
+  \\override Staff.KeySignature.after-line-breaking = #(lambda (grob)
+    (let ((stil (ly:grob-property grob 'stencil)))
+      (if (and (ly:stencil? stil) (not (ly:stencil-empty? stil)))
+        (let* ((staff (ly:grob-object grob 'staff-symbol))
+               (common (ly:grob-common-refpoint grob staff Y))
+               (y (ly:grob-extent grob common Y))
+               (middle (ly:grob-relative-coordinate staff common Y))
+               (space (ly:staff-symbol-staff-space grob)))
+          (format #t "CNB-KEYSIG ~a ~a ~a\\n"
+            (exact->inexact (/ (* 2 (- (cdr y) middle)) space))
+            (exact->inexact (/ (* 2 (- (car y) middle)) space))
+            (exact->inexact space))
+          (format #t "CNB-KEYSIG-EXPR ~s\\n" (ly:stencil-expr stil))))))
+  \\key ${key} c'4
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    if (error) return { error: `${error.message}\n${output}` };
+    const m = output.match(/^CNB-KEYSIG (\S+) (\S+) (\S+)$/m);
+    if (!m) return { keySignature: null };
+    const expr = (output.match(/^CNB-KEYSIG-EXPR (.*)$/m) || [, ""])[1];
+    const space = Number(m[3]);
+    // The bar: (scale-stencil (s s) (color (r g b) (translate-stencil (…)
+    // (draw-line thickness x1 y1 x2 y2)))), its thickness scaled by s.
+    const b = expr.match(/\(scale-stencil \((\S+) \S+\) \(color \((\S+) (\S+) (\S+)\) \(translate-stencil \([^)]*\) \(draw-line (\S+)/);
+    const bar = b && { color: [b[2], b[3], b[4]].map(Number), thickness: Number(b[5]) * Number(b[1]) / space };
+    return { keySignature: { top: Number(m[1]), bottom: Number(m[2]), bar } };
+  });
+}
+
 /** Run LilyPond on the config and a score in a scratch directory: { error, output }. */
 function compile(engine, ly, score) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-probe-"));

@@ -321,8 +321,19 @@ lists them:
   the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
   before `\include`.
 - **Notehead rules scoped to a key.** Validation warns and names each one.
+- **The key signature's spacing.** The engine spaces the signature in its
+  own way.
 
-Notehead height and width are not on this list: they do export. A rule's
+The clef and the rest of the key signature are not on this list: they
+export (LY export spec 1.3.7 §5.5, §5.6). A config with no clef shown
+engraves none, rather than the engine's dozenal clef. A glyph clef is
+registered and engraves with its top edge where the preview draws it, and a
+text clef engraves in its font, colour and size, but at the engine's own
+height rather than at its anchor. A key signature that is off engraves
+none. One that is on engraves with its bar's colour, thickness and extent,
+and with an explicit tonic octave.
+
+Notehead height and width are not on this list either: they do export. A rule's
 size (`apply.heightSemis` / `apply.widthSemis`, in semitones; the rule
 editor's Size row) is engraved as a scaled copy of the shape, registered
 under a name such as `crotchet-minim-h1p5-w3` (LY export spec 1.3.4

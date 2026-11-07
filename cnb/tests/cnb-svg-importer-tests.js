@@ -758,6 +758,9 @@ export const tests = [
       assert(glyph.svgPath === "M 0 0 Z M 1 1 Z", "every <path> taken when nothing names the glyph");
       assert(glyph.lilypondPath === null, "incomplete pre-baked data → null");
       assert(warnings.some(w => /Not every glyph path has/.test(w)), "warned: " + warnings.join("; "));
+      // The clef exports since session 30: the warning says what the export does.
+      assert(warnings.some(w => /the LilyPond export converts this glyph's SVG path instead/.test(w)) &&
+        !warnings.some(w => /gains clef support/.test(w)), "the warning names the fallback: " + warnings.join("; "));
     }},
   { name: "buildClefGlyph refuses a glyph path whose data-lilypond-glyph does not parse, naming the path", fn: () => {
       const paths = [

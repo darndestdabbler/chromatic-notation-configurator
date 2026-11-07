@@ -16,6 +16,7 @@
  */
 
 import { CNBConfig } from "./cnb-config.js";
+import { CNBClef } from "./cnb-clef.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 import { CNBScheme } from "./cnb-scheme.js";
@@ -335,8 +336,8 @@ function carriedPaletteName(config) {
 const PREVIEW_ONLY_COMMENT = [
   "%% Preview-only (the engine does not engrave these, so they are not",
   "%% exported): staff line colour and thickness, ledger rules, stem",
-  "%% thickness, repeat counts, the CB-safe preview toggle, and notehead",
-  "%% rules scoped to a key.",
+  "%% thickness, repeat counts, the CB-safe preview toggle, the key",
+  "%% signature's spacing, and notehead rules scoped to a key.",
 ];
 
 /** LilyPond duration number for a named duration, or null when unknown. */
@@ -429,6 +430,146 @@ function pitchAxisLines(config, axis) {
     "%% Key-signature octave — explicit under a pitch axis (engine handoff 008 §4.2)",
     `#(set! cnb:keysig-tonic-octave ${fmtNum(tonicOctave, "keys.keySignature.placement.tonicOctave")})`,
   ];
+}
+
+/** A #RRGGBB colour as a Scheme string, else throws naming the field. */
+function hexString(v, field) {
+  if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) {
+    throw new Error(`${field}: ${JSON.stringify(v)} is not a #RRGGBB colour`);
+  }
+  return CNBScheme.string(v);
+}
+
+/**
+ * The shown clef as the engine names it (engine handoff 005 §5, LY spec
+ * 1.3.7 §5.5): { name, def, sym, field }, or null when no clef is shown.
+ */
+function shownClef(config) {
+  const active = CNBClef.activeGlyph(config);
+  if (!active) return null;
+  const field = `clef.glyphs[${JSON.stringify(active.name)}]`;
+  return { ...active, sym: CNBScheme.symbol(slug(active.name), `${field} name`), field };
+}
+
+/**
+ * A glyph clef's top-edge anchor on the engine's semitone axis (handoff 005
+ * §5 flag A: middle C = 0, with middleCPosition). On a linear staff the
+ * engine puts semitone 12 on the middle line under the treble clef, where
+ * the preview puts staff.midpoint, so the anchor keeps its distance from
+ * the midpoint. Under a pitch axis the hook reads Configurator semitones
+ * directly (LY spec §5.4c), so the anchor is used as is.
+ */
+function clefAnchor(config, def) {
+  if (CNBPitchAxis.create(config).enabled) return def.anchorSemi;
+  return def.anchorSemi - ((config.staff || {}).midpoint || 0) + 12;
+}
+
+/**
+ * Section A lines registering a shown glyph clef with cnb:register-clef!
+ * (handoff 005 §2): its pre-baked lilypondPath, else svgPath converted like
+ * a notehead fallback (the engine measures the path and scales it to
+ * height-semitones, so only its shape matters), the converted anchor, the
+ * design height, and the colour when one is set. [] for a text clef or none.
+ */
+function clefRegistrationLines(config) {
+  const clef = shownClef(config);
+  if (!clef || (clef.def.kind || "glyph") !== "glyph") return [];
+  const { def, sym, field } = clef;
+  const path = def.lilypondPath
+    ? CNBScheme.path(def.lilypondPath, `${field}.lilypondPath`)
+    : CNBLilypond.svgPathToLilypond(def.svgPath, def.naturalHeight / def.semitoneHeight, 1);
+  const lines = [
+    "%% --- Register clef ---",
+    `#(cnb:register-clef! '${sym}`,
+    "   (list",
+    `     (cons 'path ${path.replace(/\n/g, "\n       ")})`,
+    `     (cons 'anchor-semitones ${fmtNum(clefAnchor(config, def), `${field}.anchorSemi`)})`,
+    `     (cons 'height-semitones ${fmtNum(def.semitoneHeight, `${field}.semitoneHeight`)})`,
+  ];
+  if (def.color) lines.push(`     (cons 'color ${hexString(def.color, `${field}.color`)})`);
+  lines[lines.length - 1] += "))";
+  lines.push("");
+  return lines;
+}
+
+/**
+ * Section B clef lines (handoff 005 §1, LY spec 1.3.7 §5.5). The engine's
+ * default is its dozenal clef, which the Configurator has no kind for, so
+ * cnb:clef-style is always written: 'none when no clef is shown, 'custom
+ * naming the registered glyph, or 'text with the label as a markup carrying
+ * the preview's font, colour and bold weight, at its preview height. A shown
+ * clef also gets its gutter, the preview's paddingH in semitones (the engine
+ * adds it on the right only).
+ */
+function clefLines(config) {
+  const clef = shownClef(config);
+  const lines = ["%% Clef"];
+  if (!clef) {
+    lines.push("#(set! cnb:clef-style 'none)");
+    return lines;
+  }
+  const { def, sym, field } = clef;
+  if ((def.kind || "glyph") === "text") {
+    const font = CNBScheme.string(`${def.fontFamily || "Georgia, serif"} Bold`);
+    const color = hexString(def.color || "#000000", `${field}.color`);
+    lines.push("#(set! cnb:clef-style 'text)");
+    lines.push(`#(set! cnb:clef-text (markup #:with-color ${color} #:override (cons 'font-name ${font}) ${CNBScheme.string(def.text)}))`);
+    lines.push(`#(set! cnb:clef-size-semitones ${fmtNum(def.textHeightSemis, `${field}.textHeightSemis`)})`);
+  } else {
+    lines.push("#(set! cnb:clef-style 'custom)");
+    lines.push(`#(set! cnb:clef-name '${sym})`);
+  }
+  const display = config.display || {};
+  const paddingH = (config.clef.gutter || {}).paddingH ?? 12;
+  lines.push(`#(set! cnb:clef-gutter-semitones ${fmtNum(paddingH / (display.pxPerSemi || 16), "clef.gutter.paddingH")})`);
+  return lines;
+}
+
+/**
+ * Section B key-signature lines (engine handoff 006 §1–§3, LY spec 1.3.7
+ * §5.6). 'none unless keys and the signature are both on; the engine's
+ * default 'chord is the one style, so it is not written. With the signature
+ * on, each bar setting is written only when it differs from the engine's
+ * default: the colour (#ffd42a), the thickness in #:draw-line units,
+ * thicknessPct / (10 × semitones per staff space) (4), or 0 for a separator
+ * that is off — the engine has no switch for the bar alone — and the
+ * half-extent in semitones (12). On a linear staff an explicit tonic octave
+ * is written as is: the engine places semitone s where the preview does at
+ * the default middle (12), so their octaves agree, as a round trip measures
+ * (the handoff's −1 offset does not hold). Under a pitch axis
+ * pitchAxisLines() writes the octave instead (§5.4d).
+ *
+ * @param {object} config
+ * @param {number} sps  semitones (axis units under an axis) per staff space
+ * @param {boolean} axisOn
+ * @returns {string[]}
+ */
+function keySignatureLines(config, sps, axisOn) {
+  const keys = config.keys || {};
+  const ks = keys.keySignature || {};
+  const lines = ["%% Key signature"];
+  if (!keys.enabled || !ks.enabled) {
+    lines.push("#(set! cnb:keysig-style 'none)");
+    return lines;
+  }
+  const sep = ks.separator || {};
+  const color = sep.color ?? "#ffd42a";
+  if (color.toLowerCase() !== "#ffd42a") {
+    lines.push(`#(set! cnb:keysig-bar-color ${hexString(color, "keys.keySignature.separator.color")})`);
+  }
+  const thickness = sep.enabled === false ? 0 : (sep.thicknessPct ?? 160) / (10 * sps);
+  if (thickness !== 4) {
+    lines.push(`#(set! cnb:keysig-bar-thickness ${fmtNum(thickness, "keys.keySignature.separator.thicknessPct")})`);
+  }
+  const extent = sep.extentSemis ?? 12;
+  if (extent !== 12) {
+    lines.push(`#(set! cnb:keysig-bar-extent-semis ${fmtNum(extent, "keys.keySignature.separator.extentSemis")})`);
+  }
+  const octave = (ks.placement || {}).tonicOctave;
+  if (!axisOn && Number.isInteger(octave)) {
+    lines.push(`#(set! cnb:keysig-tonic-octave ${fmtNum(octave, "keys.keySignature.placement.tonicOctave")})`);
+  }
+  return lines.length === 1 ? [] : lines;
 }
 
 /**
@@ -780,13 +921,17 @@ export const CNBLilypond = {
       lines.push("");
     }
 
+    // A6. Clef glyph registration (LY spec 1.3.7 §5.5)
+    lines.push(...clefRegistrationLines(config));
+
     return lines.join("\n");
   },
 
   /**
    * Generate Section B — engine settings (LY spec §5):
-   * B1 staff geometry (always), B2 emit-if-changed engine settings and
-   * staff-line styling, B3 metadata.
+   * B1 staff geometry (always), the pitch axis when enabled, the clef
+   * (always: LY spec 1.3.7 §5.5), B2 emit-if-changed engine settings,
+   * B3 metadata.
    * @param {object} config
    * @returns {string}
    */
@@ -827,6 +972,15 @@ export const CNBLilypond = {
 
     if (axis.enabled) {
       lines.push(...pitchAxisLines(config, axis));
+      lines.push("");
+    }
+
+    lines.push(...clefLines(config));
+    lines.push("");
+
+    const keySignature = keySignatureLines(config, sps, axis.enabled);
+    if (keySignature.length > 0) {
+      lines.push(...keySignature);
       lines.push("");
     }
 

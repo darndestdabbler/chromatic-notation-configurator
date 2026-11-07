@@ -796,8 +796,8 @@ export const CNBSvgImporter = {
     if (!lilypondPath) {
       warnings.push(
         (pieces.length > 1 ? "Not every glyph path has a " : "No ") +
-        "data-lilypond-clef / data-lilypond-glyph / data-lilypond-notehead attribute — export of " +
-        "this glyph will need a fallback conversion if the engine gains clef support");
+        "data-lilypond-clef / data-lilypond-glyph / data-lilypond-notehead attribute, so the " +
+        "LilyPond export converts this glyph's SVG path instead");
     }
 
     const midpoint = opts.defaultMidpoint ?? 12;

@@ -2,6 +2,31 @@
 
 ## 1.0.2
 
+### The clef and the key signature reach LilyPond
+
+- The export now carries the clef and the key signature (LY export spec
+  1.3.7, §5.5 and §5.6), so the engraving draws what the preview draws.
+- **Every export changes.** A config with no clef shown, the default
+  included, writes `cnb:clef-style 'none`. Before, every export engraved
+  the engine's dozenal clef, which the preview never drew; a score that
+  wants it back sets `cnb:clef-style 'dozenal` after `\include`. A config
+  whose key signature is off writes `cnb:keysig-style 'none`, so it no
+  longer engraves one from the score's `\key`. The five pinned export
+  baselines (default, Kite 4-369, 45deg-369, sized, Twinline) were
+  regenerated for this, and nothing else in them changed.
+- A glyph clef is registered with `cnb:register-clef!` and shown by name,
+  with its top edge where the preview puts it, on a pitch axis too. A text
+  clef is written as a label in its font, colour and bold weight, at its
+  height. The engine places a text clef at a height of its own, not at its
+  anchor. A shown clef's padding is exported as its gutter, on the right
+  only.
+- With the signature on, the bar's colour, thickness and extent are
+  exported, and a bar that is off is written at zero thickness. On a linear
+  staff an explicit tonic octave is exported as it is: an engine render
+  measured no octave offset. The signature's spacing stays preview-only.
+- The export header lists the key signature's spacing among the
+  preview-only settings.
+
 ### The configurator online
 
 - The app is published at <https://configurator.darndestdabbler.org/>,

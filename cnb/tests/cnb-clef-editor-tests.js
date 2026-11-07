@@ -269,17 +269,13 @@ export const tests = [
       });
     }},
 
-  { name: "render: the enable toggle says what it does and carries a Preview only badge (design §8.6)", fn: () => {
+  { name: "render: the enable toggle says what it does, and no Preview only badge (the clef exports, session 30)", fn: () => {
       withDomStub(container => {
         const api = E.render(container, { config: CNBConfig.createDefault() });
         const toggle = findAll(api.root, "cnb-cle-enable")[0];
         eq(findAll(toggle, "cnb-cle-enable-text")[0].textContent, "Show a clef at the start of the staff", "toggle text");
-        const badges = findAll(api.root, "cnb-badge");
-        eq(badges.length, 1, "one badge, beside the toggle");
-        eq(findAll(toggle, "cnb-badge").length, 1, "the badge is in the toggle row");
-        eq(badges[0].textContent, "Preview only", "badge text");
-        eq(badges[0].title, E.CLEF_PREVIEW_ONLY, "tooltip");
-        assert(E.CLEF_PREVIEW_ONLY.includes("LilyPond draws its own clef"), "tooltip says why");
+        eq(findAll(api.root, "cnb-badge").length, 0, "no badge");
+        eq(E.CLEF_PREVIEW_ONLY, undefined, "no preview-only tooltip");
         // The panel's own text; the validation list is the checks list's (hidden in the app).
         const text = api.root.children
           .filter(c => !String(c.className).includes("cnb-cle-validation"))

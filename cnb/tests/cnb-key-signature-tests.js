@@ -2,9 +2,9 @@
  * cnb-key-signature-tests.js — Unit tests for the set-010 key-signature
  * feature
  *
- * Covers: default-off compatibility (byte-identical LilyPond export against
- * the pre-change baseline fixture, and keysig-enabled export identical to
- * keysig-disabled — the s1 engine-coordination outcome), the tonic
+ * Covers: the key signature's LilyPond export (the default config against
+ * its baseline fixture; an enabled signature left to the engine's 'chord, a
+ * disabled one exported as 'none — session 30), the tonic
  * resolution chain (D3), auto/explicit vertical anchoring (D4), the
  * notehead-chords layout (the operator-directed default mirroring the
  * engine's keysig.ly: scale + octave tonic interleaved into two columns =
@@ -93,21 +93,20 @@ const semiToYExpected = semi => (28 - semi) * PX_PER_SEMI;
 
 export const tests = [
 
-  // ── Default-off compatibility (spec binding rule 1 / step 3) ───────────
+  // ── Export (session 30, LY spec 1.3.7 §5.6) ────────────────────────────
 
-  { name: "export invariance: default config export matches the pre-change baseline byte-for-byte", fn: () => {
+  { name: "export: the default config matches default-export-baseline.ly byte-for-byte", fn: () => {
       const baseline = normalizeLy(fs.readFileSync(BASELINE_PATH, "utf8"));
       const current = normalizeLy(CNBLilypond.generate(CNBConfig.createDefault()));
-      eq(current, baseline, "default export unchanged by the keySignature schema");
+      eq(current, baseline, "default export");
     }},
 
-  { name: "export invariance: keysig-enabled config exports identically to keysig-disabled", fn: () => {
+  { name: "export: a keysig-enabled config engraves the engine's signature, and the same config disabled exports 'none", fn: () => {
       const enabled = keysigConfig();
       const disabled = CNBConfig.clone(enabled);
       disabled.keys.keySignature.enabled = false;
-      eq(normalizeLy(CNBLilypond.generate(enabled)),
-         normalizeLy(CNBLilypond.generate(disabled)),
-         "exporter is blind to the keySignature section (engine renders keysigs from the score's \\key — s1 coordination)");
+      assert(!CNBLilypond.generate(enabled).includes("cnb:keysig-style"), "enabled at the defaults: the engine's 'chord");
+      assert(CNBLilypond.generate(disabled).includes("#(set! cnb:keysig-style 'none)"), "disabled: no signature engraved");
     }},
 
   // ── activeKey gating (decision D5) ─────────────────────────────────────

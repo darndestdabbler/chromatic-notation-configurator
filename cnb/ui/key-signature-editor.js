@@ -34,11 +34,10 @@
  * matching are name-keyed, so a duplicated name makes later definitions
  * unreachable.
  *
- * Engine-divergence copy (s1-engine-coordination.md §2): the exporter
- * emits NOTHING for this section — the CNB engine renders notehead-chord
- * key signatures from the score's `\key` through the already-exported
- * notehead config. An explicit tonic octave and the separator styling are
- * therefore PREVIEW-ONLY, and the controls say so.
+ * Export (session 30, LY spec 1.3.7 §5.6): the engine engraves the
+ * signature from the score's `\key`, and the exporter writes its on/off
+ * state, an explicit tonic octave and the separator's styling. Only the
+ * spacing has no engine setting, so only it carries a Preview only badge.
  *
  * `style` is a single-value vocabulary ("notehead-chords"): the task owner
  * evaluated simple built-in marks in set-010 s2 UAT and chose the note
@@ -107,15 +106,11 @@ const PLACEMENT_RULES = ["scale-from-tonic"];
 const PLACEMENT_RULE_LABELS = { "scale-from-tonic": "Scale from the tonic" };
 
 /**
- * The Preview only badges' tooltips (design §8.6). The exporter emits
- * nothing for the key signature: the engine engraves its own from the
- * score's \key (architecture plan §4.9), placed from middle C, with a bar
- * of its own colour and thickness.
+ * The Preview only badge's tooltip (design §8.6). Placement and the bar
+ * export since session 30 (LY spec 1.3.7 §5.6); the spacing has no engine
+ * setting.
  */
 const PREVIEW_ONLY = {
-  placement: "LilyPond places the signature from middle C, so this is not exported. " +
-    "Automatic matches it for the default staff.",
-  separator: "LilyPond draws its own bar, in its own colour and thickness, so this is not exported.",
   gutter: "LilyPond spaces the signature its own way, so this is not exported.",
 };
 
@@ -504,8 +499,8 @@ export const CNBKeySignatureEditor = {
       wrap.appendChild(el("div", "cnb-kse-title", "Key signature"));
       wrap.appendChild(el("div", "cnb-kse-hint",
         "The selected key's scale, drawn as noteheads at the start of the " +
-        "staff. LilyPond draws its own signature from the score's key, with " +
-        "the noteheads this notation exports."));
+        "staff. LilyPond draws it from the score's key, with the noteheads, " +
+        "bar and octave this notation exports."));
 
       const enable = el("label", "cnb-kse-sig-enable");
       const cb = el("input", "cnb-kse-sig-enable-check");
@@ -572,7 +567,7 @@ export const CNBKeySignatureEditor = {
 
     function drawPlacement() {
       const wrap = el("div", "cnb-kse-placement");
-      wrap.appendChild(subtitle("Placement", PREVIEW_ONLY.placement));
+      wrap.appendChild(subtitle("Placement"));
       wrap.appendChild(el("div", "cnb-kse-hint",
         "Where the marks sit: the scale rises from the tonic, the only rule so far."));
 
@@ -633,7 +628,7 @@ export const CNBKeySignatureEditor = {
 
     function drawSeparator() {
       const wrap = el("div", "cnb-kse-separator");
-      wrap.appendChild(subtitle("Separator bar", PREVIEW_ONLY.separator));
+      wrap.appendChild(subtitle("Separator bar"));
       wrap.appendChild(el("div", "cnb-kse-hint",
         "The gold bar through the middle of the mark columns, beneath the marks."));
 

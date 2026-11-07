@@ -31,6 +31,11 @@
  * judges these against the approved mock-ups in design §10 and records the
  * judgement in docs/uat-status.md (design §12, "Screenshot checks").
  *
+ * Session 30 adds panel-clef-glyph.png and panel-key-signature-key.png:
+ * Kite with a glyph clef on, then with keys and a signature on for a key
+ * chosen on the canvas, each shot after checking that the panel's partial
+ * staff draws its gutter. Design §10 has no mock-up for these sections.
+ *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
  * exit 2 = missing dependency, 1 = check failure, 0 = all passed).
@@ -53,6 +58,13 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const KITE = path.join(ROOT, "cnb", "fixtures", "kite-4-369-config.json");
 const TWINLINE = path.join(ROOT, "cnb", "assets", "examples", "gallery", "twinline-compact.json");
 const PORT = Number(process.env.CNB_UAT_PORT || 8161);
+// A toolkit-style clef glyph (the uat-clef-editor.mjs sample), 6 semitones tall.
+const SAMPLE_CLEF_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="300" viewBox="0 0 100 300">
+  <path id="clef"
+        d="M 50 0 L 100 60 L 65 60 L 65 240 L 100 240 L 50 300 L 0 240 L 35 240 L 35 60 L 0 60 Z"
+        data-semitone-height="6"
+        style="fill:#000000;stroke:none"/>
+</svg>`;
 const SHOT_DIR = process.env.CNB_UAT_SHOTS || path.join(os.tmpdir(), "cnb-uat");
 
 // ── Dependency resolution (same contract as uat-kite-pipeline.mjs) ──────────
@@ -343,6 +355,41 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       await page.waitForTimeout(100);
       await page.screenshot({ path: path.join(SHOT_DIR, `panel-${name}.png`), fullPage: true });
     }
+
+    // ── The Clef and Key signature previews at work (session 30) ──
+    // Kite has neither, so its panel shots above draw three bare columns.
+    // Here Kite gets a glyph clef, then keys and a signature for a key
+    // chosen on the canvas, and each panel's partial staff must draw its
+    // gutter before it is shot.
+    await page.setInputFiles("#open-file", KITE);
+    await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Opened"));
+    const gutterWidth = (host, col) => page.evaluate(([h, c]) => {
+      const el = document.querySelector(`#${h} .cnb-pvd-partial .${c}`);
+      return el ? el.getBoundingClientRect().width : 0;
+    }, [host, col]);
+    await openSection(page, "clef");
+    await page.setInputFiles(".cnb-cle-file", {
+      name: "clef.svg", mimeType: "image/svg+xml", buffer: Buffer.from(SAMPLE_CLEF_SVG, "utf8"),
+    });
+    await page.waitForFunction(() => document.querySelector(".cnb-cle-import-status").textContent.includes("Imported"));
+    await page.check(".cnb-cle-enable-check");
+    await page.waitForTimeout(100);
+    const clefGutter = await gutterWidth("clef-preview-host", "clef-col");
+    check("1440: with a glyph clef on, the Clef panel's partial staff draws the clef in its gutter",
+      clefGutter > 0 && (await page.$$eval("#clef-preview-host .cnb-clef", els => els.length)) === 1, String(clefGutter));
+    await page.screenshot({ path: path.join(SHOT_DIR, "panel-clef-glyph.png"), fullPage: true });
+
+    await openSection(page, "key-signature");
+    await page.check(".cnb-kse-keys-enable-check");
+    await page.click(".cnb-kse-def-add");                  // C major, the new-definition template
+    await page.check(".cnb-kse-sig-enable-check");
+    await page.selectOption(".cnb-pvd-key-select", "C");   // the key, chosen on the canvas
+    await page.waitForTimeout(100);
+    const keysigGutter = await gutterWidth("key-signature-preview-host", "keysig-col");
+    check("1440: with keys and a signature on and C chosen on the canvas, the Key signature panel's partial staff draws the signature in its gutter",
+      keysigGutter > 0 && (await page.$$eval("#key-signature-preview-host .keysig-col .cnb-key-signature-separator", els => els.length)) === 1,
+      String(keysigGutter));
+    await page.screenshot({ path: path.join(SHOT_DIR, "panel-key-signature-key.png"), fullPage: true });
     await openSection(page, "staff");
   }
 

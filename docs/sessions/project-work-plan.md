@@ -41,11 +41,12 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 27 | The notehead panel | no | 2026-11-07 |
 | 28 | Pitch | no | 2026-11-07 |
 | 29 | Loose ends from sessions 2–26 and the v1 sets | no | 2026-11-07 |
-| 30 | The clef and the key signature reach LilyPond | — | not declared |
+| 30 | The clef and the key signature reach LilyPond | no | 2026-11-07 |
 | 31 | The checks speak to a designer | — | not declared |
 | 32 | Two more staves to start from | — | not declared |
-| 33 | The UI is stable | — | not declared |
-| 34 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 33 | Stems engrave where the preview draws them | — | not declared |
+| 34 | The UI is stable | — | not declared |
+| 35 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -277,3 +278,13 @@ Close the small defects, test gaps and stale documents that the reviews of sessi
 **Amended after acceptance:**
 
 - 2026-11-07 — step 'engine-repeat-stem-test': its files: The render shows the exporter emits stem attachments in staff spaces while the engine passes them to LilyPond's stem-attachment, which reads fractions of the notehead extent, so the engraved stem cannot match the preview without changing export bytes (a declared non-goal). The operator chose to defer the fix: this step inserts a new session for it into session-plan.md and adds the probe and the test, skipping with that session named until the fix lands. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 30 — The clef and the key signature reach LilyPond
+
+**Releasable: no.**
+
+Make the LilyPond export carry the clef and the key signature, so the engraving matches the preview. Following the engine handoffs (set 005 §5, set 006 §3, set 008 §5 flag 5), the exporter writes `cnb:clef-style` emit-if-changed. It is `'none` when no clef is shown, which is also the decision for the default config: it exports `'none`, the preview's answer, so the engine's dozenal clef is no longer engraved unasked. It is `'custom` for a glyph clef, registered with `cnb:register-clef!` (path from `lilypondPath` or the converted `svgPath`, the top-edge anchor converted to the engine's origin, `height-semitones` from `semitoneHeight`, and the colour) and named by `cnb:clef-name`. It is `'text` for a text clef, with `cnb:clef-text` as a markup carrying the definition's font, colour and bold weight, plus `cnb:clef-size-semitones`. When a clef is shown, `cnb:clef-gutter-semitones` is `paddingH ÷ pxPerSemi`, on the right only. For the key signature the exporter writes `cnb:keysig-style 'none` unless keys and the signature are both on. With the signature on, it writes the bar's colour, its thickness (`thicknessPct / (10 × semitones per staff space)`, and 0 when the separator is off) and its extent, each only when it differs from the engine's default. It also writes `cnb:keysig-tonic-octave` on linear staves for an explicit tonic octave, numbered as the linear round trip measures (the handoff's −1). Under an axis the existing explicit octave stays as it is. The default, Kite, 45deg, sized and Twinline baselines are regenerated on purpose, and the change is named in CHANGELOG.md. The "no clef token" and "no keysig token" pins are lifted, and new tests pin what is emitted. Engine round trips go through new `cnb/tests/engine-probe.js` measurements and skip, giving the reason, when lilypond is absent: a glyph clef on a pitch axis with a fractional anchor engraves its top edge where the preview draws it; a text clef engraves at its preview height; a key signature with a styled bar engraves its marks' span where the preview draws them, with the bar's colour and thickness in its stencil. The engine places text clefs at a fixed height, not at the anchor, so that divergence is recorded in the spec. The LY export spec gains the addendum as 1.3.7, because 1.3.5 and 1.3.6 were taken by sessions 28 and 29. The architecture plan §4.9, §4.12 and its Module 20/22 notes stop saying nothing is emitted. The Clef panel loses its Preview only badge, and so do the Key signature panel's Placement and Separator bar. The spacing badge stays, since the engine has no setting for it. The Export section's sentence, the header's preview-only comment and the README's "Preview-only settings" follow. `uat-app-layout.mjs` saves the Clef panel with a glyph clef on and the Key signature panel with keys and a signature on for a key chosen on the canvas, and checks that each partial staff draws its gutter. The shots are judged and recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-07 — step 'panel-screenshots': its files: The panel-clef-glyph screenshot shows the clef importer's warning that a glyph without pre-baked data 'will need a fallback conversion if the engine gains clef support', which this session made false: the export now converts the glyph's SVG path. The importer wording and its test are fixed in this step. (claude-code (anthropic, claude-opus-5-5))

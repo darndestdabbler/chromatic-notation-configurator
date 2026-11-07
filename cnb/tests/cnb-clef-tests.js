@@ -1,9 +1,9 @@
 /**
  * cnb-clef-tests.js — Unit tests for the set-009 clef feature
  *
- * Covers: default-off compatibility (byte-identical LilyPond export
- * against the pre-change baseline fixture, and clef-enabled export
- * identical to clef-disabled), CNBClef measure/gutter/render (including
+ * Covers: the clef's LilyPond export (the default config against its
+ * baseline fixture; an enabled clef exported, a disabled one exported as
+ * 'none — session 30), CNBClef measure/gutter/render (including
  * FLOAT anchorSemi — the s1 anchoring decision), clef glyph SVG import,
  * and the collection's clef gutter column.
  *
@@ -90,21 +90,22 @@ function stubDoc({ rootAttrs = {}, byId = {}, firstPath = null }) {
 
 export const tests = [
 
-  // ── Default-off compatibility (spec binding rule 1) ────────────────────
+  // ── Export (session 30, LY spec 1.3.7 §5.5) ────────────────────────────
 
-  { name: "export invariance: default config export matches the pre-change baseline byte-for-byte", fn: () => {
+  { name: "export: the default config matches default-export-baseline.ly byte-for-byte", fn: () => {
       const baseline = normalizeLy(fs.readFileSync(BASELINE_PATH, "utf8"));
       const current = normalizeLy(CNBLilypond.generate(CNBConfig.createDefault()));
-      eq(current, baseline, "default export unchanged by the clef schema");
+      eq(current, baseline, "default export");
     }},
 
-  { name: "export invariance: clef-enabled config exports identically to clef-disabled", fn: () => {
+  { name: "export: a clef-enabled config exports its clef, and the same config disabled exports 'none", fn: () => {
       const enabled = clefConfig();
       const disabled = CNBConfig.clone(enabled);
       disabled.clef.enabled = false;
-      eq(normalizeLy(CNBLilypond.generate(enabled)),
-         normalizeLy(CNBLilypond.generate(disabled)),
-         "exporter is blind to the clef section (no engine hook — s1 coordination)");
+      const on = CNBLilypond.generate(enabled);
+      const off = CNBLilypond.generate(disabled);
+      assert(on.includes("#(set! cnb:clef-style 'custom)") && on.includes("#(cnb:register-clef! 'test-clef"), "enabled: the glyph is registered and shown");
+      assert(off.includes("#(set! cnb:clef-style 'none)") && !off.includes("cnb:register-clef!"), "disabled: no clef engraved");
     }},
 
   // ── CNBClef.activeGlyph / measure / gutterWidth ────────────────────────

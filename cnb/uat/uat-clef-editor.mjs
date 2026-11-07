@@ -16,8 +16,8 @@
  * download) — with Node-side parity checks run in THIS process on the full
  * config read from the page's live state panel: CNBClef.gutterWidth /
  * CNBGrid.semiToY for the preview geometry, CNBLilypond.generate for the
- * export (both the byte-identity of the download and the set-009
- * no-emission pin: clef-enabled ≡ clef-disabled).
+ * export (both the byte-identity of the download and, since session 30,
+ * the clef's emission: registered and shown when enabled, 'none when not).
  *
  * Usage (from anywhere; paths are resolved relative to this file):
  *   node cnb/uat/uat-clef-editor.mjs
@@ -381,15 +381,16 @@ try { direct = CNBLilypond.generate(cfg); } catch (err) { directErr = err.messag
 check("EXPORT PARITY: downloaded .ly is byte-identical to a direct CNBLilypond.generate() call on the same config (run in Node, independent of the browser)",
   direct !== null && direct === exported,
   directErr || `lengths ${exported.length} vs ${direct ? direct.length : "n/a"}`);
-// The set-009 no-emission pin, end-to-end: the engine has no clef hook
-// (s1-engine-coordination.md), so the clef-enabled download must be
-// byte-identical to the export of the same config with the clef disabled.
+// The clef exports since session 30 (LY spec 1.3.7 §5.5): the download
+// registers the imported glyph and shows it by name, and the same config
+// with the clef disabled engraves none.
 const disabledCfg = CNBConfig.clone(cfg);
 disabledCfg.clef.enabled = false;
-check("EXPORT NO-EMISSION: the clef-enabled download is byte-identical to generate() of the same config with the clef disabled, and contains no clef token",
-  direct !== null && CNBLilypond.generate(disabledCfg) === exported &&
-  !exported.includes("clef"),
-  "clef leaked into the export");
+check("EXPORT EMISSION: the clef-enabled download registers the glyph and shows it as 'custom; with the clef disabled generate() writes 'none",
+  direct !== null && exported.includes("#(cnb:register-clef! '") &&
+  exported.includes("#(set! cnb:clef-style 'custom)") && exported.includes("#(set! cnb:clef-name '") &&
+  CNBLilypond.generate(disabledCfg).includes("#(set! cnb:clef-style 'none)"),
+  "the clef settings are missing from the export");
 check("EXPORT: valid badge shown, no error rows",
   await page.evaluate(() =>
     !!document.querySelector(".cnb-cex-valid") &&

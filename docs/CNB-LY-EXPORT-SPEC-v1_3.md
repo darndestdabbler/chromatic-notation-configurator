@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.6 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis)
-**Date:** November 7, 2026 (1.3.5, 1.3.6); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.7 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature)
+**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -48,7 +48,10 @@ pins enforce this. *(1.3.2 exception: path data, for linear and axis configs
 alike — §4.1b. 1.3.4 addition, also for both: sized shape variants for
 rules that set `heightSemis` / `widthSemis`, §4.1c. A config that sets no
 size is unaffected. 1.3.5, for both: the staff's range follows its middle,
-§5.1a. A config whose `staff.midpoint` is 12 is unaffected.)*
+§5.1a. A config whose `staff.midpoint` is 12 is unaffected. 1.3.7, for
+both: the clef and the key signature, §5.5 and §5.6. Every config's export
+gains at least `cnb:clef-style`, and every config whose signature is off
+gains `cnb:keysig-style 'none`.)*
 
 Summary of additions:
 
@@ -58,6 +61,7 @@ Summary of additions:
 | Section A4 attachments | ÷ `staff.semitonesPerStaffSpace` | ÷ `pitchAxis.axisUnitsPerStaffSpace` (§4.4a) |
 | Section B staff-line thickness | `(pct/100) × (1/sps)` | `(pct/100) × (1/axisUnitsPerStaffSpace)` (§5.3a) |
 | Section C alist | — | optional `(x-offset . N)` field (§6.3) |
+| Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -217,7 +221,10 @@ are never emitted:
 These config fields, along with ledger rules, `durations.repeatCounts` and
 `palette.useCBSafe`, are **preview-only**. Key-scoped notehead rules are
 also preview-only: Section C resolves with no key, and validation warns and
-names each such rule. The header lists all of them in a comment.
+names each such rule. So is the key signature's spacing
+(`keys.keySignature.gutter`, since 1.3.7 the one part of the clef and key
+signature the engine has no setting for, §5.6). The header lists all of
+them in a comment.
 
 The header's color-palette line names the palette only when Section A
 registers colors taken from it. Otherwise it reads
@@ -344,10 +351,11 @@ its argument — the engine's `ly:pitch-semitones`, middle C = 0 — directly
 as a Configurator semitone: `staff.midpoint` and the map are applied to it
 with no octave shift. Configurator semitone `s` and engine semitone `s` are
 therefore the same pitch under an axis, and the axis — not the clef — sets
-the register. (The linear path differs: there the treble clef puts
-Configurator semitone 12 on middle C, which is where the set-006 −1 octave
-offset of `cnb:keysig-tonic-octave` comes from. That offset does not apply
-under an axis; see §5.4d.)
+the register. (The linear path differs: there the clef sets the register,
+and under the treble clef the engine puts semitone 12 on the middle line,
+where the preview puts the default `staff.midpoint`. The set-006 −1 octave
+offset of `cnb:keysig-tonic-octave` this note once cited applies on
+neither path: §5.6 measures the linear numbering as is.)
 
 #### 5.4d Key-signature octave under a pitch axis (new in 1.3.1)
 
@@ -400,6 +408,139 @@ same as in 1.3.5; this section only records them.
   only. This is upstream LilyPond behaviour; the engine leaves it alone.
 
 ---
+
+### 5.5 The clef (new in 1.3.7, linear and axis configs alike)
+
+Before 1.3.7 the exporter wrote nothing for the `clef` section, so every
+export engraved the engine's default dozenal clef, which the preview does
+not draw. The engine has had a clef configuration since its set 005
+(`docs/session-sets/005-clef-configurability/configurator-handoff.md` in
+the engine repository), and the exporter now writes it. A clef is *shown*
+when `clef.enabled` is on and `clef.active` names a definition
+(`CNBClef.activeGlyph`).
+
+**Decision: a config with no clef shown exports `'none`.** That is the
+preview's answer, and it includes the default config, whose clef is off.
+The Configurator has no kind for the engine's dozenal clef, so it never
+asks for it; a score that wants it sets `cnb:clef-style 'dozenal` after
+`\include`. So `cnb:clef-style` is always written, in Section B after the
+staff geometry (and the pitch axis, when one is enabled):
+
+| Config | Section B | Section A |
+|---|---|---|
+| no clef shown | `#(set! cnb:clef-style 'none)` | — |
+| `kind: "glyph"` | `'custom`, `cnb:clef-name '<slug of the name>`, gutter | A6: `cnb:register-clef!` |
+| `kind: "text"` | `'text`, `cnb:clef-text`, `cnb:clef-size-semitones`, gutter | — |
+
+**Glyph registration (A6).** Section A ends with
+
+```lilypond
+%% --- Register clef ---
+#(cnb:register-clef! 'express-b
+   (list
+     (cons 'path '(
+         (moveto 0 0)
+         …))
+     (cons 'anchor-semitones 22.784)
+     (cons 'height-semitones 6)))
+```
+
+- `path`: the definition's pre-baked `lilypondPath`, re-emitted from its
+  numbers, or else `svgPath` converted as a notehead fallback is (§4.1b, Y
+  negated) with a divisor of 1. The engine measures the path and scales it
+  uniformly to `height-semitones`, so only the shape matters, not its units.
+- `anchor-semitones`: the glyph's top edge (`anchorSemi`) on the engine's
+  axis, middle C = 0 with `middleCPosition` (handoff flag A). On a linear
+  staff the engine puts semitone 12 on the middle line under the treble
+  clef, where the preview puts `staff.midpoint`, so the exporter writes
+  `anchorSemi − staff.midpoint + 12`, the same distance from the middle.
+  Under a pitch axis the hook reads Configurator semitones (§5.4c), so it
+  writes `anchorSemi` as it is. The engine interpolates a fractional anchor
+  through the hook, as the preview does.
+- `height-semitones`: `semitoneHeight`. `cnb:clef-size-semitones` is not
+  written for a glyph clef.
+- `color`: the definition's `color`, when it has one (`#RRGGBB`).
+
+**Text clef.** `cnb:clef-text` is a markup, so the label keeps the
+preview's font, colour and bold weight (handoff flag D):
+
+```lilypond
+#(set! cnb:clef-text (markup #:with-color "#000000" #:override (cons 'font-name "Georgia, serif Bold") "4"))
+#(set! cnb:clef-size-semitones 4)
+```
+
+The colour defaults to `#000000` and the font to `Georgia, serif`, as in the
+preview. `cnb:clef-size-semitones` is `textHeightSemis`.
+
+**Gutter.** A shown clef gets
+`cnb:clef-gutter-semitones = clef.gutter.paddingH ÷ display.pxPerSemi`, the
+preview's padding in semitones (handoff flag B). The preview pads both
+sides; the engine adds the space on the right only, so the left padding has
+no engine counterpart.
+
+**Units under a pitch axis.** The engine divides the anchor-free lengths
+(`height-semitones`, `cnb:clef-size-semitones`, the gutter) by
+`cnb:semitones-per-staff-space`, which is `axisUnitsPerStaffSpace` under an
+axis (§5.4a), so they read as grid units, as the preview draws them.
+
+**Known divergence: a text clef's height on the staff.** The engine anchors
+only a `'custom` clef. It places a `'text` clef at a fixed height of its
+own, so a text clef engraves at its preview size but not at its
+`anchorSemi`. Anchoring text clefs is engine work, recorded as a follow-up.
+
+**Verified** by engine round trips (`cnb/tests/cnb-lilypond-tests.js`,
+measured through `cnb/tests/engine-probe.js`): a glyph clef on the Twinline
+axis with the fractional anchor 13.5 engraves its top and bottom edges at
+the preview's positions; a text clef engraves at its preview height; the
+default config engraves no clef.
+
+### 5.6 The key signature (new in 1.3.7, linear and axis configs alike)
+
+Before 1.3.7 the exporter wrote nothing for `keys.keySignature`, so a
+config whose signature is off still engraved one from the score's `\key`.
+The engine has had a key-signature configuration since its set 006
+(`docs/session-sets/006-keysig-configurability/configurator-handoff.md`),
+and the exporter now writes it in Section B, after the clef:
+
+- **`cnb:keysig-style 'none`** unless `keys.enabled` and
+  `keys.keySignature.enabled` are both on. The default config's signature
+  is off, so it exports `'none`. With the signature on, the style is the
+  engine's default `'chord` (`notehead-chords`, the one style) and is not
+  written.
+
+With the signature on, each bar setting is written only when it differs
+from the engine's default:
+
+| Setting | Conversion | Engine default |
+|---|---|---|
+| `cnb:keysig-bar-color` | `separator.color`, as is | `"#ffd42a"` |
+| `cnb:keysig-bar-thickness` | `separator.thicknessPct / (10 × sps)`; **0 when `separator.enabled` is false** | `4` |
+| `cnb:keysig-bar-extent-semis` | `separator.extentSemis`, as is | `12` |
+| `cnb:keysig-tonic-octave` | linear staff: an integer `placement.tonicOctave`, **as is** | `#f` |
+
+- `sps` is `staff.semitonesPerStaffSpace`, or `axisUnitsPerStaffSpace`
+  under an axis. The thickness is in `#:draw-line` units, a tenth of a
+  staff space each, so the default 160% at sps 4 is the engine's 4. At
+  sps 3 the same 160% is written as 5.3333.
+- **A separator that is off** is written as thickness 0. The engine has no
+  switch for the bar alone (handoff §3.3), and a zero-width line draws
+  nothing. A bar-only switch is recorded as an engine follow-up.
+- **The tonic octave on a linear staff has no offset.** Handoff §3.2 gave
+  `tonicOctave − 1`, but on a linear staff the engine places semitone `s`
+  where the preview does at the default middle (12), so the two octave
+  numberings agree. The round trip measures it: `tonicOctave 1` puts G's
+  marks on semitones 19–31, exactly the preview's. Automatic placement
+  (`null`) writes nothing; the engine's own octave matches the preview's
+  automatic rule for the default staff. Under a pitch axis §5.4d writes the
+  octave instead, so it is written once.
+- `gutter.paddingH` and `placement.rule` have no engine setting. The
+  signature's spacing stays preview-only, and the header says so.
+
+**Verified** by an engine round trip: a G major signature with a styled bar
+(`#123abc`, 80%, extent 2) and `tonicOctave 1` engraves its marks' top at
+the preview's position and the bar's end at ±extent, with the bar's colour
+and a thickness of 0.2 staff space read from its stencil; the default
+config engraves no signature.
 
 ## 6. SECTION C — ADDITIONS
 
@@ -504,7 +645,16 @@ engine round-trip test as evidence.
 | Variable | Type | Default | Required |
 |----------|------|---------|----------|
 | `cnb:get-pitch-staff-position` | `#f` or procedure `(semitone) → half-staff-spaces` | `#f` | Only when `pitchAxis.enabled` — **new v1.3 (E13-1)** |
-| `cnb:keysig-tonic-octave` | `#f` or integer | `#f` | Only when `pitchAxis.enabled` (§5.4d) — **new 1.3.1** |
+| `cnb:keysig-tonic-octave` | `#f` or integer | `#f` | When `pitchAxis.enabled` (§5.4d) — **new 1.3.1**; on a linear staff for an explicit `tonicOctave` with the signature on (§5.6) — **1.3.7** |
+| `cnb:clef-style` | `'dozenal` \| `'none` \| `'custom` \| `'text` | `'dozenal` | Always (§5.5) — **new 1.3.7** |
+| `cnb:clef-name` | symbol | `#f` | For a glyph clef (§5.5) — **new 1.3.7** |
+| `cnb:clef-text` | markup | `""` | For a text clef (§5.5) — **new 1.3.7** |
+| `cnb:clef-size-semitones` | number | `#f` | For a text clef (§5.5) — **new 1.3.7** |
+| `cnb:clef-gutter-semitones` | number | `#f` | For a shown clef (§5.5) — **new 1.3.7** |
+| `cnb:keysig-style` | `'chord` \| `'none` | `'chord` | `'none` unless keys and the signature are on (§5.6) — **new 1.3.7** |
+| `cnb:keysig-bar-color` | `"#RRGGBB"` | `"#ffd42a"` | If changed, signature on (§5.6) — **new 1.3.7** |
+| `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
+| `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:semitones-per-staff-space` | Integer | `2` | Always; `pitchAxis.axisUnitsPerStaffSpace` under an axis (§5.4a) — **clarified 1.3.1** |
 
 ### Procedure Return Alist
@@ -519,7 +669,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.6** | **Nov 7, 2026** | **Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged.** |
+| **1.3.7** | **Nov 7, 2026** | **The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated.** |
+| 1.3.6 | Nov 7, 2026 | Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged. |
 | 1.3.5 | Nov 7, 2026 | The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`. |
 | 1.3.4 | Nov 6, 2026 | Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size. |
 | 1.3.3 | Nov 3, 2026 | Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set. |
