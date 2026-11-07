@@ -54,10 +54,10 @@
 %% --- Register stem attachments ---
 #(cnb:register-attachment! 'ellipse-45deg-attach
    (list
-     (cons 'crotchet-up   '(0 . 0.5497))
-     (cons 'crotchet-down '(0 . -0.5498))
-     (cons 'minim-up      '(0 . 0.5497))
-     (cons 'minim-down    '(0 . -0.5498))))
+     (cons 'crotchet-up   '(0 . 0.8246))
+     (cons 'crotchet-down '(0 . -0.8247))
+     (cons 'minim-up      '(0 . 0.8246))
+     (cons 'minim-down    '(0 . -0.8247))))
 
 %% Color registrations
 %% Primary palette: Custom · 3 colors

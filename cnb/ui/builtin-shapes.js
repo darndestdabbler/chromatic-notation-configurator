@@ -76,19 +76,19 @@ const SHAPES = {
     "anchors": {
       "crotchetUp": {
         "x": 0,
-        "y": -270
+        "y": -180
       },
       "crotchetDown": {
         "x": 0,
-        "y": 270
+        "y": 180
       },
       "minimUp": {
-        "x": -109.5,
-        "y": -270
+        "x": -73,
+        "y": -180
       },
       "minimDown": {
-        "x": 109.5,
-        "y": 270
+        "x": 73,
+        "y": 180
       }
     },
     "lilypondPath": "'(\n    (moveto 0 2)\n    (lineto 2 1)\n    (lineto 0 -2)\n    (lineto -2 1)\n    (lineto 0 2)\n    (closepath))",
@@ -96,19 +96,19 @@ const SHAPES = {
     "lilypondAnchors": {
       "crotchetUp": {
         "x": 0,
-        "y": 2.7
+        "y": 1.8
       },
       "crotchetDown": {
         "x": 0,
-        "y": -2.7
+        "y": -1.8
       },
       "minimUp": {
-        "x": -1.095,
-        "y": 2.7
+        "x": -0.73,
+        "y": 1.8
       },
       "minimDown": {
-        "x": 1.095,
-        "y": -2.7
+        "x": 0.73,
+        "y": -1.8
       }
     }
   },
@@ -122,19 +122,19 @@ const SHAPES = {
     "anchors": {
       "crotchetUp": {
         "x": 0,
-        "y": -270
+        "y": -180
       },
       "crotchetDown": {
         "x": 0,
-        "y": 270
+        "y": 180
       },
       "minimUp": {
-        "x": -109.5,
-        "y": -270
+        "x": -73,
+        "y": -180
       },
       "minimDown": {
-        "x": 109.5,
-        "y": 270
+        "x": 73,
+        "y": 180
       }
     },
     "lilypondPath": "'(\n    (moveto 0 -2)\n    (lineto -2 -1)\n    (lineto 0 2)\n    (lineto 2 -1)\n    (lineto 0 -2)\n    (closepath))",
@@ -142,19 +142,19 @@ const SHAPES = {
     "lilypondAnchors": {
       "crotchetUp": {
         "x": 0,
-        "y": 2.7
+        "y": 1.8
       },
       "crotchetDown": {
         "x": 0,
-        "y": -2.7
+        "y": -1.8
       },
       "minimUp": {
-        "x": -1.095,
-        "y": 2.7
+        "x": -0.73,
+        "y": 1.8
       },
       "minimDown": {
-        "x": 1.095,
-        "y": -2.7
+        "x": 0.73,
+        "y": -1.8
       }
     }
   },

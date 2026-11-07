@@ -811,7 +811,9 @@ export const tests = [
       const { shape } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "kite-up");
       // d="M 0 -200 L 200 -100 …" → (moveto 0 2) (lineto 2 1) …, as the toolkit writes it
       assert(shape.lilypondPath.startsWith("'(\n    (moveto 0 2)\n    (lineto 2 1)"), JSON.stringify(shape.lilypondPath));
-      assertSame(shape.lilypondAnchors.minimUp, { x: -1.095, y: 2.7 }, "minim rect carries the engine reference's minim anchor");
+      // The engine reference's minim anchor (-0.365 . 0.9), relative to the
+      // kite's ±2-semitone extent, is (-0.73, 1.8) semitones (session 33).
+      assertSame(shape.lilypondAnchors.minimUp, { x: -0.73, y: 1.8 }, "minim rect carries the engine reference's minim anchor");
     }},
   { name: "fixtures/45deg.svg imports to exactly the 45deg-369 config's shape (session 16)", fn: () => {
       const shapes = JSON.parse(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8")).shapes;
@@ -831,7 +833,7 @@ export const tests = [
       approx(pixelHeight, 4 * pxPerSemi, "4 semitones tall", 1e-9);
       approx(pixelWidth, 4 * pxPerSemi, "as wide as it is tall (400.029 of 400 units)", 0.01);
     }},
-  { name: "fixtures/45deg.svg anchors are its stem rects' inner edges, and the export divides them by sps 3", fn: () => {
+  { name: "fixtures/45deg.svg anchors are its stem rects' inner edges, and the export writes them relative to the notehead's extent", fn: () => {
       const svg = readFileSync(path.join(FIXTURES, "45deg.svg"), "utf8");
       const rect = id => ["x", "y", "width", "height"].map(a => Number(svgAttr(svg, id, a)));
       // stem-up: bottom-centre; stem-down: top-centre. SVG units ÷ 100, Y up.
@@ -853,8 +855,10 @@ export const tests = [
       assertSame(a.minimDown, a.crotchetDown, "minimDown = crotchetDown");
 
       const { config } = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8"));
-      const sps = config.staff.semitonesPerStaffSpace;
-      assert(sps === 3, "3 semitones per staff space");
+      // The export writes them relative to the notehead's extent, LilyPond's
+      // stem-attachment units (session 33): the ellipse fills its 4 × 4-semitone
+      // box, so each anchor is divided by the half extent, 2 semitones.
+      const half = 2;
       const out = CNBLilypond.generate(config);
       const pair = "'\\(([^ )]+) \\. ([^ )]+)\\)";
       const m = new RegExp(`register-attachment! 'ellipse-45deg-attach[\\s\\S]*?'crotchet-up\\s+${pair}[\\s\\S]*?'crotchet-down\\s+${pair}` +
@@ -863,7 +867,7 @@ export const tests = [
       const [cux, cuy, cdx, cdy, mux, muy, mdx, mdy] = m.slice(1).map(Number);
       for (const [got, want, label] of [[cux, up.x, "up x"], [cuy, up.y, "up y"], [mux, up.x, "minim up x"], [muy, up.y, "minim up y"],
                                          [cdx, down.x, "down x"], [cdy, down.y, "down y"], [mdx, down.x, "minim down x"], [mdy, down.y, "minim down y"]]) {
-        approx(got, want / sps, `exported ${label} = anchor ÷ ${sps}`, 1e-4);
+        approx(got, want / half, `exported ${label} = anchor ÷ ${half}`, 2e-4);
       }
     }},
 ];

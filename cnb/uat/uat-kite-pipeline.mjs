@@ -227,31 +227,32 @@ check("AUTHOR/import: both kite shapes reach the shared config with pre-baked Li
   norm(cfg.shapes["kite-up"].lilypondHollowPath) === norm(fixtureJson.shapes["kite-up"].lilypondHollowPath) &&
   norm(cfg.shapes["kite-down"].lilypondHollowPath) === norm(fixtureJson.shapes["kite-down"].lilypondHollowPath),
   JSON.stringify(Object.keys(cfg.shapes)));
-check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0, -270)/(0, 270) — bottom-center of stem-up, top-center of stem-down",
+check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0, -180)/(0, 180) — bottom-center of stem-up, top-center of stem-down",
   cfg.shapes["kite-up"].anchors.crotchetUp.x === 0 &&
-  cfg.shapes["kite-up"].anchors.crotchetUp.y === -270 &&
-  cfg.shapes["kite-up"].anchors.crotchetDown.y === 270,
+  cfg.shapes["kite-up"].anchors.crotchetUp.y === -180 &&
+  cfg.shapes["kite-up"].anchors.crotchetDown.y === 180,
   JSON.stringify(cfg.shapes["kite-up"].anchors));
 // D6 closed (session 11): the kite SVGs now carry stem-minim-up/-down
 // placemarker rects (the toolkit's optional minim pair) at the engine
 // reference's minim attachment, and the fixture's shapes are rebuilt from
 // these SVGs by cnb/fixtures/rebuild-kite-shapes.mjs — so import reproduces
 // the reference's distinct minim offsets. (Semitone units per the D5 fix:
-// ∓1.095 semitones = the reference's ∓0.365 staff-spaces at sps 3.)
-check("AUTHOR/import (D6 closed): imported minim anchors equal the fixture's distinct minim x-offsets -1.095/1.095 semitones",
-  cfg.shapes["kite-up"].lilypondAnchors.minimUp.x === -1.095 &&
-  cfg.shapes["kite-up"].lilypondAnchors.minimDown.x === 1.095 &&
+// ∓0.73 semitones = the reference's ∓0.365 of the kite's ±2-semitone
+// half width, LilyPond's stem-attachment units — session 33.)
+check("AUTHOR/import (D6 closed): imported minim anchors equal the fixture's distinct minim x-offsets -0.73/0.73 semitones",
+  cfg.shapes["kite-up"].lilypondAnchors.minimUp.x === -0.73 &&
+  cfg.shapes["kite-up"].lilypondAnchors.minimDown.x === 0.73 &&
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-up"].lilypondAnchors) &&
   JSON.stringify(cfg.shapes["kite-down"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-down"].lilypondAnchors),
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
 // D5 FIXED (session 2): lilypondAnchors are canonically SEMITONE units —
-// 270 native SVG units ÷ 100 units-per-semitone = 2.7 — and the imported
-// shape now agrees with the fixture exactly. The staff-space conversion
-// (÷ sps → 0.9) happens in the exporter at export time (asserted on the
-// authored export below).
-check("AUTHOR/import (D5 fixed): imported lilypondAnchors agree with the fixture — crotchetUp y = 2.7 semitone units on both",
-  cfg.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 2.7 &&
-  fixtureJson.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 2.7,
+// 180 native SVG units ÷ 100 units-per-semitone = 1.8 — and the imported
+// shape now agrees with the fixture exactly. The exporter writes it
+// relative to the kite's ±2-semitone extent (→ 0.9, session 33; asserted
+// on the authored export below).
+check("AUTHOR/import (D5 fixed): imported lilypondAnchors agree with the fixture — crotchetUp y = 1.8 semitone units on both",
+  cfg.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 1.8 &&
+  fixtureJson.shapes["kite-up"].lilypondAnchors.crotchetUp.y === 1.8,
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
 
 // ── A2: staff pattern 3-6-9 (Module 13) ─────────────────────────────────────
@@ -382,7 +383,7 @@ check("AUTHOR/export: authored colors registered with the exact Kite hexes (symb
   /\(cnb:register-color! '[\w-]*50b4e9 "#50b4e9"\)/.test(authored) &&
   /\(cnb:register-color! '[\w-]*cc79a7 "#cc79a7"\)/.test(authored) &&
   authored.includes(`#(cnb:register-color! 'black-000000 "#000000")`));
-check("AUTHOR/export (D5, D6 closed): authored attachments emit the engine-reference staff-space units ('(0 . 0.9) at sps 3) and the reference's distinct minim x-offsets ('(-0.365 . 0.9)), as the fixture export does",
+check("AUTHOR/export (D5, D6 closed): authored attachments emit the engine reference's relative stem-attachment units ('(0 . 0.9)) and the reference's distinct minim x-offsets ('(-0.365 . 0.9)), as the fixture export does",
   authored.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
   authored.includes("(cons 'minim-up      '(-0.365 . 0.9))") &&
   fixtureExport.includes("(cons 'crotchet-up   '(0 . 0.9))") &&

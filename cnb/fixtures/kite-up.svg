@@ -7,15 +7,17 @@
        output for these paths, format_scheme(parse_and_normalize(d)) wrapped as
        the toolkit writes them: SEMITONE units, Y up (SVG units / 100, Y
        negated). The exporter divides them by the staff's semitones per staff
-       space. The stem-minim rects carry the engine reference's minim
-       attachment (x -/+109.5 SVG units = -/+1.095 semitones).
+       space. Session 33: the stem rects mark the engine reference's attachment
+       (0 . 0.9) / minim (-0.365 . 0.9), which LilyPond reads relative to
+       the 4 x 4-semitone notehead: y -/+180 SVG units = +/-1.8 semitones,
+       minim x -/+73 SVG units = -/+0.73 semitones.
        cnb/fixtures/rebuild-kite-shapes.mjs rebuilds kite-4-369-config.json's
        shapes from this file through the importer. -->
   <g id="layer1">
-    <rect id="stem-down" x="-10" y="270" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
-    <rect id="stem-up" x="-10" y="-620" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
-    <rect id="stem-minim-down" x="99.5" y="270" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
-    <rect id="stem-minim-up" x="-119.5" y="-620" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <rect id="stem-down" x="-10" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-up" x="-10" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <rect id="stem-minim-down" x="63" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-minim-up" x="-83" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
     <path id="notehead"
           d="M 0 -200 L 200 -100 L 0 200 L -200 -100 L 0 -200 Z"
           data-semitone-height="4"

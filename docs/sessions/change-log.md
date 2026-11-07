@@ -289,3 +289,10 @@ operator's verbatim decision was "Approve (Recommended)".
 - Orchestrator provider (excluded): anthropic
 - Verifier's read surface: agency: none — this round's verifier could not look at the tree
 - Raw round output: `.dabbler/runs/s32/`
+
+## Session 33 verification — VERIFIED after 2 round(s)
+
+- Verifier: gpt-5.6-terra (openai) over api
+- Orchestrator provider (excluded): anthropic
+- Verifier's read surface: agency: none — this round's verifier could not look at the tree
+- Raw round output: `.dabbler/runs/s33/`

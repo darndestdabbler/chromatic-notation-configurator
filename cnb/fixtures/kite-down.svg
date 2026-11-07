@@ -8,10 +8,10 @@
        Session 11 (audit H2): the data-lilypond-* values are the toolkit's own
        output for these paths (SEMITONE units, Y up); see kite-up.svg. -->
   <g id="layer1">
-    <rect id="stem-down" x="-10" y="270" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
-    <rect id="stem-up" x="-10" y="-620" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
-    <rect id="stem-minim-down" x="99.5" y="270" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
-    <rect id="stem-minim-up" x="-119.5" y="-620" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <rect id="stem-down" x="-10" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-up" x="-10" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <rect id="stem-minim-down" x="63" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-minim-up" x="-83" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
     <path id="notehead"
           d="M 0 200 L -200 100 L 0 -200 L 200 100 L 0 200 Z"
           data-semitone-height="4"

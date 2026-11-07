@@ -459,29 +459,50 @@ export const tests = [
 
   // ── Section A: attachments ─────────────────────────────────────────────────
 
-  { name: "sectionA converts SVG anchors to staff-space units (÷ scale, Y-invert, ÷ sps)", fn: () => {
-      // naturalHeight 272.4 / semitoneHeight 2.724 → 100 SVG units per
-      // semitone; default staff has sps 4, so 157.2926 SVG units →
-      // 1.5729 semitones → 0.3932 staff-spaces (007-s1 D5 fix).
+  { name: "sectionA writes SVG anchors relative to the registered path's extent (LilyPond's stem-attachment units)", fn: () => {
+      // The default shape's path spans about ±172.4 × ±136.2 SVG units (its
+      // curves' true extremes), so the anchor (157.2926, −42.9985) is 0.9122
+      // of the half width right and 0.3157 of the half height up, whatever
+      // the staff's sps (session 33, LY spec 1.3.8 §4.4b).
       const out = CNBLilypond.sectionA(CNBConfig.createDefault());
       contains(out, "#(cnb:register-attachment! 'crotchet-minim-attach");
-      contains(out, "(cons 'crotchet-up   '(0.3932 . 0.1075))");
-      contains(out, "(cons 'crotchet-down '(-0.3932 . -0.1075))");
-      contains(out, "(cons 'minim-up      '(0.3932 . 0.1075))");
-      contains(out, "(cons 'minim-down    '(-0.3932 . -0.1075))");
+      contains(out, "(cons 'crotchet-up   '(0.9122 . 0.3157))");
+      contains(out, "(cons 'crotchet-down '(-0.9122 . -0.3157))");
+      contains(out, "(cons 'minim-up      '(0.9122 . 0.3157))");
+      contains(out, "(cons 'minim-down    '(-0.9122 . -0.3157))");
     }},
 
-  { name: "sectionA prefers lilypondAnchors (semitone units), converting ÷ sps at export", fn: () => {
-      // Kite reference values: 2.7 semitones at sps 3 → the engine's 0.9
-      // staff-space attachment; minim x ∓1.095 → ∓0.365 (007-s1 D5).
+  { name: "attachmentPoints measures a curve's true extremes, not its control points", fn: () => {
+      // The curve (0,0)→(4,0) with controls at y 4 peaks at y 3, so the
+      // extent is x 0…4, y 0…3: (4, 3) is the top-right corner, (2, 1.5) the centre.
+      const shape = {
+        naturalHeight: 3, semitoneHeight: 3,
+        lilypondPath: "'((moveto 0 0) (curveto 0 4 4 4 4 0) (closepath))",
+        lilypondAnchors: {
+          crotchetUp: { x: 4, y: 3 }, crotchetDown: { x: 2, y: 1.5 },
+          minimUp: { x: 0, y: 0 }, minimDown: { x: 3, y: 0.75 },
+        },
+      };
+      const pts = _internals.attachmentPoints(shape);
+      eq(JSON.stringify(pts.crotchetUp), JSON.stringify({ x: 1, y: 1 }), "corner");
+      eq(JSON.stringify(pts.crotchetDown), JSON.stringify({ x: 0, y: 0 }), "centre");
+      eq(JSON.stringify(pts.minimUp), JSON.stringify({ x: -1, y: -1 }), "origin corner");
+      eq(JSON.stringify(pts.minimDown), JSON.stringify({ x: 0.5, y: -0.5 }), "inside");
+    }},
+
+  { name: "sectionA prefers lilypondAnchors (semitone units), relative to the pre-baked path's extent", fn: () => {
+      // Kite reference values: the kite path spans ±2 semitones each way, so
+      // 1.8 semitones up is the engine's 0.9 and minim x ∓0.73 is ∓0.365, at
+      // any sps (session 33).
       const cfg = CNBConfig.createDefault();
       cfg.staff.semitonePattern = [3, 6, 9];
       cfg.staff.semitonesPerStaffSpace = 3;
+      cfg.shapes["crotchet-minim"].lilypondPath = "'((moveto 0 2) (lineto 2 1) (lineto 0 -2) (lineto -2 1) (lineto 0 2) (closepath))";
       cfg.shapes["crotchet-minim"].lilypondAnchors = {
-        crotchetUp:   { x: 0,      y: 2.7 },
-        crotchetDown: { x: 0,      y: -2.7 },
-        minimUp:      { x: -1.095, y: 2.7 },
-        minimDown:    { x: 1.095,  y: -2.7 },
+        crotchetUp:   { x: 0,     y: 1.8 },
+        crotchetDown: { x: 0,     y: -1.8 },
+        minimUp:      { x: -0.73, y: 1.8 },
+        minimDown:    { x: 0.73,  y: -1.8 },
       };
       const out = CNBLilypond.sectionA(cfg);
       contains(out, "(cons 'crotchet-up   '(0 . 0.9))");
@@ -1043,15 +1064,14 @@ export const tests = [
       lacks(b, "cnb:default-staff-line-thickness", "preview-only (M2)");
     }},
 
-  { name: "pitch axis §4.4a: attachment points divide by axisUnitsPerStaffSpace", fn: () => {
+  { name: "pitch axis: attachment points do not depend on axisUnitsPerStaffSpace (relative units, LY spec 1.3.8 §4.4b)", fn: () => {
       const config = spikeAxisConfig();
-      config.staff.semitonesPerStaffSpace = 4;
-      config.shapes["crotchet-minim"].lilypondAnchors = {
-        crotchetUp: { x: 1, y: 0.5 }, crotchetDown: { x: -1, y: -0.5 },
-        minimUp: { x: 1, y: 0.5 }, minimDown: { x: -1, y: -0.5 },
-      };
-      const a = CNBLilypond.sectionA(config);
-      contains(a, "(cons 'crotchet-up   '(0.5 . 0.25))", "÷ 2, not ÷ 4");
+      const block = (cfg) => /#\(cnb:register-attachment![\s\S]*?\)\)\)\)/.exec(CNBLilypond.sectionA(cfg))[0];
+      const axis2 = block(config);
+      config.pitchAxis.axisUnitsPerStaffSpace = 4;
+      eq(block(config), axis2, "axis units 2 and 4");
+      config.pitchAxis.enabled = false;
+      eq(block(config), axis2, "linear");
     }},
 
   { name: "pitch axis: explicit cnb:keysig-tonic-octave — placement.tonicOctave when integer, else the auto octave for a C tonic (handoff 008 §4.2)", fn: () => {
@@ -1242,7 +1262,7 @@ export const tests = [
       eq(hOnly.scale.x, 1, "height only: x unscaled");
     }},
 
-  { name: "sized variants: Section A scales the path, cutout and attachments of each variant", fn: () => {
+  { name: "sized variants: Section A scales the path and cutout of each variant and keeps its shape's relative attachments", fn: () => {
       const cfg = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
       const a = CNBLilypond.sectionA(cfg);
       const shape = cfg.shapes["crotchet-minim"];
@@ -1254,12 +1274,10 @@ export const tests = [
         contains(a, `#(define cnb:${reg.sym}-cutout-path ${CNBLilypond.svgPathToLilypond(shape.svgHollowPath, ups, sps, reg.scale)})`, `${reg.sym} cutout`);
         contains(a, `#(cnb:register-path! '${reg.sym} cnb:${reg.sym}-path)`, `${reg.sym} registered`);
         contains(a, `#(cnb:register-hollow! '${reg.sym}-cutout cnb:${reg.sym}-cutout-path)`, `${reg.sym} cutout registered`);
-        const pts = _internals.attachmentPoints(shape, sps, reg.scale);
-        const plain = _internals.attachmentPoints(shape, sps);
-        assert(Math.abs(pts.crotchetUp.x - plain.crotchetUp.x * reg.scale.x) < 2e-4, "attachment x scaled");
-        assert(Math.abs(pts.crotchetUp.y - plain.crotchetUp.y * reg.scale.y) < 2e-4, "attachment y scaled");
-        contains(a, `#(cnb:register-attachment! '${reg.sym}-attach`, `${reg.sym} attachment`);
-        contains(a, `(cons 'crotchet-up   '(${_internals.fmtPair(pts.crotchetUp)}))`, `${reg.sym} attachment value`);
+        // Attachments are relative to the path's extent, which scales with
+        // the anchor: a variant registers its shape's own points.
+        const pts = _internals.attachmentPoints(shape);
+        contains(a, `#(cnb:register-attachment! '${reg.sym}-attach\n   (list\n     (cons 'crotchet-up   '(${_internals.fmtPair(pts.crotchetUp)}))`, `${reg.sym} attachment value`);
       }
       contains(a, "#(cnb:register-path! 'crotchet-minim cnb:crotchet-minim-path)", "the unsized shape is still used (D, E, F, G, A, B)");
     }},

@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.7 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature)
-**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.8 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units)
+**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -51,14 +51,16 @@ size is unaffected. 1.3.5, for both: the staff's range follows its middle,
 §5.1a. A config whose `staff.midpoint` is 12 is unaffected. 1.3.7, for
 both: the clef and the key signature, §5.5 and §5.6. Every config's export
 gains at least `cnb:clef-style`, and every config whose signature is off
-gains `cnb:keysig-style 'none`.)*
+gains `cnb:keysig-style 'none`. 1.3.8, for both: stem attachments in
+LilyPond's relative units, §4.4b. Every config with stems exports new
+attachment values.)*
 
 Summary of additions:
 
 | Area | v1.2.1 | v1.3 (only when `pitchAxis.enabled`) |
 |---|---|---|
 | Section B staff geometry | linear `cnb:staff-line-positions` formula | axis formula (§5.4a) + the compiled pitch-axis procedure (§5.4b) |
-| Section A4 attachments | ÷ `staff.semitonesPerStaffSpace` | ÷ `pitchAxis.axisUnitsPerStaffSpace` (§4.4a) |
+| Section A4 attachments | ÷ `staff.semitonesPerStaffSpace` | ÷ `pitchAxis.axisUnitsPerStaffSpace` (§4.4a); since 1.3.8 relative to the notehead's extent, linear and axis alike (§4.4b) |
 | Section B staff-line thickness | `(pct/100) × (1/sps)` | `(pct/100) × (1/axisUnitsPerStaffSpace)` (§5.3a) |
 | Section C alist | — | optional `(x-offset . N)` field (§6.3) |
 | Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
@@ -137,12 +139,15 @@ scale.x = width  / natural width
 scale.y = height / semitoneHeight
 ```
 
-the variant's path, its hollow cutout and its four attachment points are
-the shape's, with every x multiplied by `scale.x` and every y by `scale.y`.
-Everything else stays the same: the §4.1b path conversion (pre-baked or
-fallback, ÷ `semitonesPerStaffSpace` or ÷ `axisUnitsPerStaffSpace`) and the
-§4.4 / §4.4a attachment conversion. In Section A a comment line names each
-variant's size, and its definitions follow the shape's in A1–A4.
+the variant's path and its hollow cutout are the shape's, with every x
+multiplied by `scale.x` and every y by `scale.y`. Everything else stays the
+same: the §4.1b path conversion (pre-baked or fallback, ÷
+`semitonesPerStaffSpace` or ÷ `axisUnitsPerStaffSpace`). *(1.3.8: the
+variant's four attachment points are the shape's own. They are written
+relative to the registered path's extent (§4.4b), and the scale moves the
+anchor and the extent alike, so it cancels. In 1.3.4–1.3.7 they were scaled
+with the path.)* In Section A a comment line names each variant's size, and
+its definitions follow the shape's in A1–A4.
 
 **Section C.** A pitch class resolved to a sized variant names the variant
 in `shape`, `hollow` and `attachment`. Grouping runs on those symbols, so
@@ -169,6 +174,63 @@ semitone→staff-space conversion, so the shape's engraved size relative to
 the staff space matches what the preview shows.
 
 Format and 4-point model are unchanged.
+
+*(1.3.8: superseded. Attachments are no longer in staff spaces, so neither
+divisor enters; see §4.4b.)*
+
+### 4.4b Stem attachment units (new in 1.3.8, linear and axis configs alike)
+
+This amends v1.2.1 §4.4 and §4.4a (session 33). The engine passes each
+`cnb:register-attachment!` point unchanged to LilyPond's
+`NoteHead.stem-attachment` (`cnb/stems.ly`). LilyPond reads that point
+**relative to the notehead stencil's extent**: −1 is the left (bottom)
+edge, 1 the right (top) edge and 0 the extent's centre. The exporter wrote
+staff spaces, so every exported stem engraved nearer the notehead's centre
+than the preview drew it. The default crotchet's up stem, for example,
+engraved 0.105 staff spaces right of centre instead of 0.393.
+
+The exporter now writes each anchor in those units:
+
+```
+relative = (2a − (min + max)) / (max − min)        per axis
+```
+
+- `a` is the anchor in semitone units, Y up: `lilypondAnchors` as stored,
+  or else `anchors` (native SVG units) ÷ SVG units per semitone, Y negated.
+- `[min, max]` is the exact extent of the path Section A registers for the
+  shape, in the same units. That is the pre-baked `lilypondPath`, or else
+  `svgPath` through the §4.1b fallback normalisation. The extent counts
+  every segment's end points and each curve's true extremes, not its
+  control points, as LilyPond's `make-path-stencil` measures it.
+- Values are rounded to 4 places.
+
+The staff-space divisor (§4.4, §4.4a) and a sized variant's scale (§4.1c)
+change the path and the anchor alike, so they cancel. A sized variant
+registers its shape's points, and an axis config writes the same points as
+a linear one. `lilypondAnchors` stay semitone units in the config. In repeat
+mode the engine's stencil is the group of repeated heads, and LilyPond reads
+the same relative point across the group, as the preview draws it.
+
+LilyPond puts the stem's **edge** on the attachment point: an up stem's
+right edge and a down stem's left edge. Since 1.3.8 the preview does the
+same (`CNBStem.geometry`), so the two stems' anchored edges coincide even
+though their widths differ (the preview's stem thickness is preview-only,
+§5.2a).
+
+**Kite worked check.** The kite path spans ±2 semitones on each axis. Its
+anchors, 1.8 semitones up and the minim's ∓0.73 across, export as the
+engine golden file's `(0 . 0.9)` and `(-0.365 . 0.9)`. The fixture's stem
+rects had been placed so that the old ÷ sps conversion produced those
+numbers. Session 33 moved them to the true anchors, and the export is
+byte-identical.
+
+**Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`): the
+default shape in repeat mode, crotchet and minim, stem up and down. Each
+engraved stem's anchored edge lands within 0.001 staff spaces of the
+preview's.
+
+**1.0.0 exports with stems engraved them too near the notehead's centre
+and should be regenerated.**
 
 ---
 
@@ -669,7 +731,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.7** | **Nov 7, 2026** | **The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated.** |
+| **1.3.8** | **Nov 7, 2026** | **Stem attachment units (session 33): new §4.4b. `cnb:register-attachment!` points are written relative to the registered path's exact extent, the units LilyPond's `NoteHead.stem-attachment` reads, instead of staff spaces, so the §4.4a divisor and the §4.1c attachment scaling no longer enter. The preview now puts a stem's edge on its anchor, as LilyPond does. Output CHANGES for every config with stems: the default, 45deg-369, sized and Twinline baselines were regenerated; the Kite fixture's anchors became true semitone anchors and its export is unchanged. 1.0.0 exports with stems engraved them too near the centre and should be regenerated.** |
+| 1.3.7 | Nov 7, 2026 | The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated. |
 | 1.3.6 | Nov 7, 2026 | Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged. |
 | 1.3.5 | Nov 7, 2026 | The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`. |
 | 1.3.4 | Nov 6, 2026 | Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size. |

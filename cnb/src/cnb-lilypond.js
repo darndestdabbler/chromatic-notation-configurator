@@ -60,6 +60,100 @@ function parseSvgPath(d) {
   return commands;
 }
 
+/**
+ * An SVG path `d` string as LilyPond path commands (moveto, lineto, curveto,
+ * closepath) in the SVG's own units, Y down: absolute M/L/C/Z, with H/V
+ * folded into lineto at the tracked position. Unsupported commands (S, Q,
+ * T, A, relatives) are skipped — the toolkit normalizes paths to absolute
+ * M/L/C/Z before they reach a config.
+ */
+function svgCommands(svgPath) {
+  const commands = [];
+  let curX = 0, curY = 0;
+  for (const { cmd, args } of parseSvgPath(svgPath)) {
+    switch (cmd) {
+      case "M":
+        commands.push({ cmd: "moveto", args: [args[0], args[1]] });
+        curX = args[0]; curY = args[1];
+        break;
+      case "L":
+        commands.push({ cmd: "lineto", args: [args[0], args[1]] });
+        curX = args[0]; curY = args[1];
+        break;
+      case "H":
+        commands.push({ cmd: "lineto", args: [args[0], curY] });
+        curX = args[0];
+        break;
+      case "V":
+        commands.push({ cmd: "lineto", args: [curX, args[0]] });
+        curY = args[0];
+        break;
+      case "C":
+        commands.push({ cmd: "curveto", args: args.slice(0, 6) });
+        curX = args[4]; curY = args[5];
+        break;
+      case "Z":
+      case "z":
+        commands.push({ cmd: "closepath", args: [] });
+        break;
+      default:
+        break;
+    }
+  }
+  return commands;
+}
+
+/**
+ * The exact extent of path commands, as LilyPond's make-path-stencil
+ * measures it: every line segment's end points and every curve's true
+ * extremes (where its derivative is zero), not its control points.
+ * @returns {{x:[number,number], y:[number,number]}}
+ */
+function pathExtent(commands) {
+  const x = [Infinity, -Infinity], y = [Infinity, -Infinity];
+  const add = (px, py) => {
+    x[0] = Math.min(x[0], px); x[1] = Math.max(x[1], px);
+    y[0] = Math.min(y[0], py); y[1] = Math.max(y[1], py);
+  };
+  // Parameters in (0, 1) where one coordinate of a cubic Bézier is extreme.
+  const extremes = (p0, p1, p2, p3) => {
+    const a = p1 - p0, b = p2 - p1, c = p3 - p2;
+    const A = a - 2 * b + c, B = 2 * (b - a), C = a;
+    const roots = Math.abs(A) < 1e-12
+      ? (Math.abs(B) < 1e-12 ? [] : [-C / B])
+      : (() => {
+          const d = B * B - 4 * A * C;
+          if (d < 0) return [];
+          const s = Math.sqrt(d);
+          return [(-B + s) / (2 * A), (-B - s) / (2 * A)];
+        })();
+    return roots.filter(t => t > 0 && t < 1);
+  };
+  const bezier = (p0, p1, p2, p3, t) =>
+    (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
+
+  let cx = 0, cy = 0, ox = 0, oy = 0;
+  for (const { cmd, args } of commands) {
+    if (cmd === "moveto") {
+      [cx, cy] = args; ox = cx; oy = cy;
+    } else if (cmd === "lineto") {
+      add(cx, cy); add(args[0], args[1]);
+      [cx, cy] = args;
+    } else if (cmd === "curveto") {
+      const [x1, y1, x2, y2, x3, y3] = args;
+      add(cx, cy); add(x3, y3);
+      for (const t of [...extremes(cx, x1, x2, x3), ...extremes(cy, y1, y2, y3)]) {
+        add(bezier(cx, x1, x2, x3, t), bezier(cy, y1, y2, y3, t));
+      }
+      cx = x3; cy = y3;
+    } else if (cmd === "closepath") {
+      add(cx, cy); add(ox, oy);
+      cx = ox; cy = oy;
+    }
+  }
+  return { x, y };
+}
+
 // Every config value reaches the .ly through a CNBScheme emitter (audit
 // 2026-11-02, H1): comment text, Scheme strings, symbols, numbers, ratios,
 // versions and path data. Nothing below interpolates raw config text.
@@ -252,61 +346,54 @@ function usedColors(config) {
 }
 
 /**
- * Convert a shape's stem anchors to LilyPond attachment points, in
- * staff-space units (what cnb:register-attachment! consumes).
+ * Convert a shape's stem anchors to LilyPond attachment points, in the
+ * units LilyPond's NoteHead.stem-attachment reads, which the engine passes
+ * cnb:register-attachment! points to unchanged (cnb/stems.ly): each
+ * coordinate a fraction of the notehead stencil's extent, −1 at the
+ * left/bottom edge, 1 at the right/top, 0 at the extent's centre (LY spec
+ * 1.3.8 §4.4b; session 33).
  *
- * shape.lilypondAnchors is canonically in SEMITONE units (the importer's
- * toLilypondAnchors output — SVG units ÷ units-per-semitone, Y-inverted).
- * The staff-space conversion (÷ semitonesPerStaffSpace) happens HERE, at
- * export time, because the target unit depends on the staff config, which
- * can change after a shape is imported (007-s1 discrepancy D5).
- *
- * Fallback for shapes without lilypondAnchors: shape.anchors in native SVG
- * units → ÷ coordScale (SVG units per semitone), Y-inverted → ÷ sps.
- * Both paths therefore emit identical values for the same shape.
+ * The extent is the one Section A registers for the shape: its pre-baked
+ * lilypondPath, else svgPath through the fallback normalisation, both taken
+ * here in SEMITONE units, Y up. The anchor is in the same units:
+ * shape.lilypondAnchors as stored (canonically semitones, the importer's
+ * toLilypondAnchors output), else shape.anchors ÷ SVG units per semitone,
+ * Y negated. The staff-space divisor (÷ sps, or ÷ axisUnitsPerStaffSpace
+ * under a pitch axis) and a sized variant's scale (§4.1c) scale path and
+ * anchor alike, so they cancel: a sized variant registers its shape's points.
  * Returns null for stemless shapes (both anchor sets null).
  *
- * A sized variant (session 22) passes its scale: x and y are multiplied by
- * scale.x and scale.y before rounding.
- *
  * @param {object} shape  config.shapes entry
- * @param {number} sps    staff.semitonesPerStaffSpace
- * @param {{x:number,y:number}|null} [scale]  sized-variant scale
  */
-function attachmentPoints(shape, sps, scale = null) {
-  const spsDiv = sps || 1;
-  const sx = scale ? scale.x : 1;
-  const sy = scale ? scale.y : 1;
-  const round4 = (v) => Math.round(v * 10000) / 10000;
-
-  if (shape.lilypondAnchors) {
-    const semiToStaffSpace = (pt) => ({
-      x: round4((pt.x || 0) * sx / spsDiv),
-      y: round4((pt.y || 0) * sy / spsDiv),
-    });
-    return {
-      crotchetUp:   semiToStaffSpace(shape.lilypondAnchors.crotchetUp   || { x: 0, y: 0 }),
-      crotchetDown: semiToStaffSpace(shape.lilypondAnchors.crotchetDown || { x: 0, y: 0 }),
-      minimUp:      semiToStaffSpace(shape.lilypondAnchors.minimUp      || { x: 0, y: 0 }),
-      minimDown:    semiToStaffSpace(shape.lilypondAnchors.minimDown    || { x: 0, y: 0 }),
-    };
-  }
-  if (!shape.anchors) return null;
-
+function attachmentPoints(shape) {
   const natH = shape.naturalHeight || 1;
-  const semiH = shape.semitoneHeight || natH;
-  const coordScale = natH / semiH;
+  const unitsPerSemitone = natH / (shape.semitoneHeight || natH);
+  const fromSvg = (pt) => ({ x: pt.x / unitsPerSemitone, y: -pt.y / unitsPerSemitone });
 
-  const toLy = (pt) => ({
-    x: round4(pt.x * sx / coordScale / spsDiv),
-    y: round4(-pt.y * sy / coordScale / spsDiv),
-  });
+  let anchors;
+  if (shape.lilypondAnchors) anchors = shape.lilypondAnchors;
+  else if (shape.anchors) {
+    anchors = {};
+    for (const key of ["crotchetUp", "crotchetDown", "minimUp", "minimDown"]) {
+      if (shape.anchors[key]) anchors[key] = fromSvg(shape.anchors[key]);
+    }
+  } else return null;
+
+  const commands = shape.lilypondPath
+    ? (CNBScheme.parsePath(shape.lilypondPath) || [])
+    : svgCommands(shape.svgPath).map(({ cmd, args }) => ({
+        cmd, args: args.map((v, i) => (i % 2 === 0 ? v : -v) / unitsPerSemitone),
+      }));
+  const extent = pathExtent(commands);
+  const relative = (v, [min, max]) =>
+    max > min ? Math.round((2 * (v || 0) - (min + max)) / (max - min) * 10000) / 10000 : 0;
+  const toLy = (pt) => ({ x: relative(pt.x, extent.x), y: relative(pt.y, extent.y) });
 
   return {
-    crotchetUp:   toLy(shape.anchors.crotchetUp   || { x: 0, y: 0 }),
-    crotchetDown: toLy(shape.anchors.crotchetDown || { x: 0, y: 0 }),
-    minimUp:      toLy(shape.anchors.minimUp      || { x: 0, y: 0 }),
-    minimDown:    toLy(shape.anchors.minimDown    || { x: 0, y: 0 }),
+    crotchetUp:   toLy(anchors.crotchetUp   || { x: 0, y: 0 }),
+    crotchetDown: toLy(anchors.crotchetDown || { x: 0, y: 0 }),
+    minimUp:      toLy(anchors.minimUp      || { x: 0, y: 0 }),
+    minimDown:    toLy(anchors.minimDown    || { x: 0, y: 0 }),
   };
 }
 
@@ -599,7 +686,7 @@ export const CNBLilypond = {
    *     (commands, unitsPerSemitone × sps, true).
    *
    * sps is staff.semitonesPerStaffSpace, or pitchAxis.axisUnitsPerStaffSpace
-   * under a pitch axis — the same divisor attachmentPoints() uses.
+   * under a pitch axis.
    *
    * A sized variant (session 22, LY spec §4.1c) passes scale: x coordinates
    * are multiplied by scale.x and y by scale.y as well.
@@ -639,43 +726,7 @@ export const CNBLilypond = {
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
   svgPathToLilypond(svgPath, unitsPerSemitone, sps, scale = null) {
-    const commands = [];
-    let curX = 0, curY = 0;
-
-    for (const { cmd, args } of parseSvgPath(svgPath)) {
-      switch (cmd) {
-        case "M":
-          commands.push({ cmd: "moveto", args: [args[0], args[1]] });
-          curX = args[0]; curY = args[1];
-          break;
-        case "L":
-          commands.push({ cmd: "lineto", args: [args[0], args[1]] });
-          curX = args[0]; curY = args[1];
-          break;
-        case "H":
-          commands.push({ cmd: "lineto", args: [args[0], curY] });
-          curX = args[0];
-          break;
-        case "V":
-          commands.push({ cmd: "lineto", args: [curX, args[0]] });
-          curY = args[0];
-          break;
-        case "C":
-          commands.push({ cmd: "curveto", args: args.slice(0, 6) });
-          curX = args[4]; curY = args[5];
-          break;
-        case "Z":
-        case "z":
-          commands.push({ cmd: "closepath", args: [] });
-          break;
-        default:
-          // Skip unsupported commands (S, Q, T, A, relatives) — the toolkit
-          // normalizes paths to absolute M/L/C/Z before they reach a config.
-          break;
-      }
-    }
-
-    return CNBLilypond.pathToStaffSpace(commands, (unitsPerSemitone || 1) * (sps || 1), true, "svgPath", scale);
+    return CNBLilypond.pathToStaffSpace(svgCommands(svgPath), (unitsPerSemitone || 1) * (sps || 1), true, "svgPath", scale);
   },
 
   /**
@@ -808,10 +859,10 @@ export const CNBLilypond = {
     lines.push("%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     lines.push("");
 
-    // Staff-space divisor for path data and attachments alike: ÷ sps, or
-    // ÷ axisUnitsPerStaffSpace under a pitch axis (v1.3 §4.4a, §4.1b).
+    // Staff-space divisor for path data: ÷ sps, or
+    // ÷ axisUnitsPerStaffSpace under a pitch axis (v1.3 §4.1b).
     const axis = CNBPitchAxis.create(config);
-    const attachSps = axis.enabled
+    const pathSps = axis.enabled
       ? axis.unitsPerStaffSpace
       : (config.staff || {}).semitonesPerStaffSpace || 1;
 
@@ -824,7 +875,7 @@ export const CNBLilypond = {
         lines.push(`%% ${sym}: ${CNBScheme.comment(name)} sized to ${fmtNum(heightSemis, "apply.heightSemis")} × ${fmtNum(widthSemis, "apply.widthSemis")} semitones (height × width)`);
       }
       const natH = shape.naturalHeight || 1;
-      const unitsPerSemitone = natH / (shape.semitoneHeight || natH); // as attachmentPoints()
+      const unitsPerSemitone = natH / (shape.semitoneHeight || natH);
 
       // Prefer the pre-baked LilyPond path from data-lilypond-notehead
       // (semitone units), re-emitted from its parsed numbers in staff-space
@@ -832,18 +883,18 @@ export const CNBLilypond = {
       const toStaffSpace = (text, key) => {
         const commands = CNBScheme.parsePath(text);
         if (!commands) throw new Error(`${field(key)}: not valid LilyPond path data`);
-        return CNBLilypond.pathToStaffSpace(commands, attachSps, false, field(key), scale);
+        return CNBLilypond.pathToStaffSpace(commands, pathSps, false, field(key), scale);
       };
       const pathDef = shape.lilypondPath
         ? toStaffSpace(shape.lilypondPath, "lilypondPath")
-        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, attachSps, scale);
+        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, pathSps, scale);
       lines.push(`#(define cnb:${sym}-path ${pathDef})`);
       lines.push("");
 
       if (shape.lilypondHollowPath || shape.svgHollowPath) {
         const hollowDef = shape.lilypondHollowPath
           ? toStaffSpace(shape.lilypondHollowPath, "lilypondHollowPath")
-          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, attachSps, scale);
+          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, pathSps, scale);
         lines.push(`#(define cnb:${sym}-cutout-path ${hollowDef})`);
         lines.push("");
       }
@@ -866,12 +917,12 @@ export const CNBLilypond = {
       lines.push("");
     }
 
-    // A4. Stem attachment registrations (4-point model), converted to
-    // staff-space units against the current staff config (D5) — under a
-    // pitch axis, ÷ axisUnitsPerStaffSpace instead (v1.3 §4.4a).
+    // A4. Stem attachment registrations (4-point model), in LilyPond's
+    // stem-attachment units relative to the registered path's extent
+    // (LY spec 1.3.8 §4.4b): a sized variant registers its shape's points.
     lines.push("%% --- Register stem attachments ---");
-    for (const { name, sym, scale } of registrations) {
-      const pts = attachmentPoints(shapes[name], attachSps, scale);
+    for (const { name, sym } of registrations) {
+      const pts = attachmentPoints(shapes[name]);
       if (!pts) {
         lines.push(`%% ${sym}: stemless — no attachment registered`);
         lines.push("");

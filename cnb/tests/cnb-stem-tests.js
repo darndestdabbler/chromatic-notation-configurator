@@ -54,8 +54,9 @@ export const tests = [
       const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:20,y:0}, minimDown:{x:-20,y:0} }, semitoneHeight:2 };
       const crotchet = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"up", duration:"crotchet" });
       const minim    = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"up", duration:"minim" });
-      eq(crotchet.x, 10, "crotchetUp anchor x");
-      eq(minim.x, 20, "minimUp anchor x");
+      const half = crotchet.thickness / 2;
+      eq(crotchet.x, 10 - half, "crotchetUp anchor x (right edge on the anchor)");
+      eq(minim.x, 20 - half, "minimUp anchor x");
     }},
 
   { name: "crotchet vs minim anchor selection (down)", fn: () => {
@@ -63,8 +64,9 @@ export const tests = [
       const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:20,y:0}, minimDown:{x:-20,y:0} }, semitoneHeight:2 };
       const crotchet = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"down", duration:"crotchet" });
       const minim    = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"down", duration:"minim" });
-      eq(crotchet.x, -10, "crotchetDown anchor x");
-      eq(minim.x, -20, "minimDown anchor x");
+      const half = crotchet.thickness / 2;
+      eq(crotchet.x, -10 + half, "crotchetDown anchor x (left edge on the anchor)");
+      eq(minim.x, -20 + half, "minimDown anchor x");
     }},
 
   { name: "stem up extends above highest notehead by stemExtension notehead-heights", fn: () => {
@@ -94,6 +96,15 @@ export const tests = [
       eq(up.y1, 100 + (-40 * 0.5), "up: y1 = noteY + anchor.y × scaleFactor");
       const down = CNBStem.geometry(cfg, { shape:s, scaleFactor:0.5, centerX:0, noteYPositions:[100], direction:"down", duration:"crotchet" });
       eq(down.y1, 100 + (40 * 0.5), "down: y1 = noteY + anchor.y × scaleFactor");
+    }},
+
+  { name: "geometry puts the stem's edge on the anchor, as LilyPond does: an up stem's right edge, a down stem's left edge", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:10,y:0}, minimDown:{x:-10,y:0} }, semitoneHeight:2 };
+      const up = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction:"up", duration:"crotchet" });
+      const down = CNBStem.geometry(cfg, { shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction:"down", duration:"crotchet" });
+      eq(up.x + up.thickness / 2, 60, "up: right edge at the anchor");
+      eq(down.x - down.thickness / 2, 40, "down: left edge at the anchor");
     }},
 
   { name: "geometry returns null for a stemless shape with no anchors property", fn: () => {
@@ -147,9 +158,9 @@ export const tests = [
       const opts = { shape:s, scaleFactor:1.5, centerX:50, noteYPositions:[100, 40], direction:"up", duration:"minim" };
       const plain = CNBStem.geometry(cfg, opts);
       eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, widthScale: 1 })), JSON.stringify(plain), "explicit 1 = default");
-      eq(plain.x, 50 + 6 * 1.5, "default x");
+      eq(plain.x, 50 + 6 * 1.5 - plain.thickness / 2, "default x");
       const doubled = CNBStem.geometry(cfg, { ...opts, widthScale: 2 });
-      eq(doubled.x, 50 + 2 * 6 * 1.5, "x offset doubled");
+      eq(doubled.x, 50 + 2 * 6 * 1.5 - plain.thickness / 2, "x offset doubled");
       eq(doubled.y1, plain.y1, "y1 unchanged");
       eq(doubled.y2, plain.y2, "y2 unchanged");
     }},
@@ -160,11 +171,11 @@ export const tests = [
       const plain = CNBStem.geometry(cfg, opts);
       eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, scaleX: 1.5 })), JSON.stringify(plain), "scaleX = scaleFactor is the default");
       const wide = CNBStem.geometry(cfg, { ...opts, scaleX: 3 });
-      eq(wide.x, 50 + 10 * 3, "anchor x follows scaleX");
+      eq(wide.x, 50 + 10 * 3 - plain.thickness / 2, "anchor x follows scaleX");
       eq(wide.y1, plain.y1, "anchor y follows scaleFactor");
       eq(wide.y2, plain.y2, "y2 unchanged");
       const down = CNBStem.geometry(cfg, { ...opts, direction: "down", scaleX: 3, widthScale: 2 });
-      eq(down.x, 50 - 10 * 3 * 2, "scaleX composes with widthScale");
+      eq(down.x, 50 - 10 * 3 * 2 + plain.thickness / 2, "scaleX composes with widthScale");
     }},
 ];
 

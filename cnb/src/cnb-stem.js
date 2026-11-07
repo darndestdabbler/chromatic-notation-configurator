@@ -65,7 +65,15 @@ export const CNBStem = {
     const anchorXpx = anchor.x * scaleX * widthScale;
     const anchorYpx = anchor.y * scaleFactor;
 
-    const stemX = centerX + anchorXpx;
+    const thickness = CNBConfig.pctToPx(
+      config.display.stemThicknessPct,
+      config.display.pxPerSemi
+    );
+
+    // The stem's edge, not its centre, sits on the anchor, as LilyPond
+    // engraves it: an up stem's right edge, a down stem's left edge
+    // (session 33, measured against the engine).
+    const stemX = centerX + anchorXpx + (direction === "up" ? -thickness / 2 : thickness / 2);
 
     const pxPerSemi = (config.display && config.display.pxPerSemi) || 16;
     const noteheadHeightPx = shape.semitoneHeight * pxPerSemi;
@@ -84,11 +92,6 @@ export const CNBStem = {
       y1 = high + anchorYpx;
       y2 = low + extensionPx;
     }
-
-    const thickness = CNBConfig.pctToPx(
-      config.display.stemThicknessPct,
-      config.display.pxPerSemi
-    );
 
     return { x: stemX, y1, y2, thickness };
   },
