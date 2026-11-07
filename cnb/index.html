@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chromatic Notation Configurator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="assets/fonts/oswald.css">
+  <link rel="stylesheet" href="ui/app.css">
+</head>
+<body>
+  <script>
+    // Over file:// the browser blocks the ES module imports below (CORS), so
+    // the editors and preview never load. Say so instead of showing empty panels.
+    if (location.protocol === "file:") {
+      document.body.insertAdjacentHTML("afterbegin",
+        '<div id="file-notice" role="alert">' +
+        '<strong>This page must be served over HTTP.</strong> Opened from disk, ' +
+        'the browser blocks its JavaScript modules, so the panels below stay empty. ' +
+        'Use the configurator online at ' +
+        '<a href="https://configurator.darndestdabbler.org/">https://configurator.darndestdabbler.org/</a>, ' +
+        'or serve the repository locally from its root with ' +
+        '<code>npx serve .</code> or <code>python -m http.server 8000</code> ' +
+        'and open <code>/cnb/index.html</code> on that server.</div>');
+    }
+  </script>
+
+  <!-- Top bar (design §7): the app and config name, the checks, Open, Save, Export. -->
+  <header class="topbar">
+    <h1 class="topbar-app">Chromatic Notation Configurator</h1>
+    <span class="topbar-doc" id="config-name"></span>
+    <span class="topbar-spacer"></span>
+    <span class="topbar-status" id="topbar-status" role="status"></span>
+    <div class="checks">
+      <button type="button" id="checks-indicator" class="checks-indicator ok"
+              aria-expanded="false" aria-controls="checks-list">No problems</button>
+      <div id="checks-list" class="checks-list" role="dialog" aria-label="Checks" hidden></div>
+    </div>
+    <button type="button" id="open-config" class="btn-ghost">Open…</button>
+    <input type="file" id="open-file" accept=".json,application/json" hidden>
+    <button type="button" id="save-config">Save</button>
+    <button type="button" id="export-ly" class="btn-primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <!-- Section list: one panel at a time (design §7). -->
+    <nav class="sidebar" aria-label="Sections">
+      <div class="sidebar-inner">
+        <button type="button" class="section-link" data-section="staff">Staff</button>
+        <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
+        <button type="button" class="section-link" data-section="pitch">Pitch</button>
+        <button type="button" class="section-link" data-section="ledger-lines">Ledger lines</button>
+        <button type="button" class="section-link" data-section="clef">Clef</button>
+        <button type="button" class="section-link" data-section="key-signature">Key signature</button>
+        <hr>
+        <button type="button" class="section-link" data-section="advanced">Advanced</button>
+        <button type="button" class="section-link" data-section="export">Export</button>
+      </div>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <p class="intro">
+          Design a chromatic staff notation: draw the staff, give each notehead
+          its look, then export it for LilyPond.
+        </p>
+
+        <!-- The staff canvas, always visible. -->
+        <section class="card canvas-card" aria-label="Staff canvas">
+          <div id="preview-host"></div>
+        </section>
+
+        <!-- The notehead panel (design §2): under the canvas while a notehead is
+             selected, in the section panel's place, with the rules under it. -->
+        <section class="card notehead-panel-card" id="notehead-panel-card" aria-label="Notehead" hidden>
+          <div id="notehead-panel-host"></div>
+        </section>
+
+        <section class="card panel" data-panel="staff" hidden>
+          <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff lines are, and how they look</span></div>
+          <div class="card-body"><div id="staff-editor-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="noteheads" hidden>
+          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look; the rules follow</span></div>
+          <div class="card-body">
+            <div>
+              <p class="group-title">Rules</p>
+              <div id="rule-list-host"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="pitch" hidden>
+          <div class="card-head"><h2>Pitch</h2><span class="sub">Which pitch sits where on the staff</span></div>
+          <div class="card-body"><div id="pitch-panel-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="ledger-lines" hidden>
+          <div class="card-head"><h2>Ledger lines</h2><span class="sub">Where short lines appear for notes off the staff, and how they look</span></div>
+          <div class="card-body"><div id="ledger-editor-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="clef" hidden>
+          <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
+          <div class="card-body">
+            <div id="clef-preview-host"></div>
+            <div id="clef-editor-host"></div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="key-signature" hidden>
+          <div class="card-head"><h2>Key signature</h2><span class="sub">The keys, and the signature drawn for the key chosen on the staff</span></div>
+          <div class="card-body">
+            <div id="key-signature-preview-host"></div>
+            <div id="key-signature-editor-host"></div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="advanced" hidden>
+          <div class="card-head"><h2>Advanced</h2><span class="sub">Settings a designer rarely needs</span></div>
+          <div class="card-body">
+            <div>
+              <details class="disclosure">
+                <summary>Rules for particular durations or keys<span class="sub">every notehead rule, including those the noteheads write</span></summary>
+                <div class="disclosure-body"><div id="notehead-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Colour palette<span class="sub">all twelve colours at once</span></summary>
+                <div class="disclosure-body"><div id="palette-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Durations and engine</summary>
+                <div class="disclosure-body"><div id="props-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Staff line overrides<span class="sub">one staff line with a look of its own</span></summary>
+                <div class="disclosure-body"><div id="staff-overrides-host"></div></div>
+              </details>
+              <details class="disclosure" id="pitch-axis-map">
+                <summary>Pitch axis map</summary>
+                <div class="disclosure-body"><div id="pitch-axis-editor-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>Pitch range shown<span class="sub">which notes the staff canvas draws</span></summary>
+                <div class="disclosure-body"><div id="preview-range-host"></div></div>
+              </details>
+              <details class="disclosure">
+                <summary>View file (JSON)</summary>
+                <div class="disclosure-body">
+                  <div class="json-actions">
+                    <button type="button" id="copy-json">Copy</button>
+                    <span class="muted small" id="copy-status" role="status"></span>
+                  </div>
+                  <pre class="json-view" id="state-json"></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="export" hidden>
+          <div class="card-head"><h2>Export</h2><span class="sub">The notation's name and the LilyPond file</span></div>
+          <div class="card-body"><div id="config-export-host"></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- The save and open panel is retired from view: Open and Save drive it. -->
+  <div id="config-io-host" hidden></div>
+
+  <script type="module">
+    import { CNBConfig } from "./src/cnb-config.js";
+    import { CNBSvgImporter } from "./ui/svg-importer.js";
+    import { CNBPaletteEditor } from "./ui/palette-editor.js";
+    import { CNBStaffRuleEditor } from "./ui/staff-rule-editor.js";
+    import { CNBNoteheadRuleEditor } from "./ui/notehead-rule-editor.js";
+    import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
+    import { CNBClefEditor } from "./ui/clef-editor.js";
+    import { CNBKeySignatureEditor } from "./ui/key-signature-editor.js";
+    import { CNBPitchAxisEditor } from "./ui/pitch-axis-editor.js";
+    import { CNBConfigIO } from "./ui/config-io.js";
+    import { CNBConfigExport } from "./ui/config-export.js";
+    import { CNBPreviewDisplay } from "./ui/preview-display.js";
+    import { CNBNoteheadPanel } from "./ui/notehead-panel.js";
+    import { CNBPitchPanel } from "./ui/pitch-panel.js";
+    import { CNBPitchModel } from "./ui/pitch-model.js";
+
+    // ── Shared state ─────────────────────────────────────────────────────
+    // The page (UI shell) owns the single shared config object. Editors
+    // write slices into it via onChange; the preview/IO/export panels read
+    // it via getConfig accessors and are redrawn after every change.
+    let appConfig = CNBConfig.createDefault();
+
+    const byId = (id) => document.getElementById(id);
+    const stateJson = byId("state-json");
+
+    // The full config is exposed (not slices) so an external harness can
+    // run direct CNBConfigIO/CNBLilypond calls on the exact same state and
+    // diff them against the downloaded files (the UAT parity checks).
+    function refreshPanel() {
+      stateJson.textContent = JSON.stringify(appConfig, null, 2);
+      byId("config-name").textContent = (appConfig.meta && appConfig.meta.configName) || "Untitled notation";
+    }
+
+    // ── Sections: one panel at a time ────────────────────────────────────
+    // The canvas shows what the open section needs (design §6): the Ledger
+    // lines section marks the ledger spots and the columns that draw them.
+    let previewApi = null;
+    let currentSection = "staff";
+    function showSection(name) {
+      currentSection = name;
+      closeNoteheadPanel();
+      for (const panel of document.querySelectorAll(".panel")) {
+        panel.hidden = panel.dataset.panel !== name;
+      }
+      for (const link of document.querySelectorAll(".section-link")) {
+        const on = link.dataset.section === name;
+        link.classList.toggle("on", on);
+        if (on) link.setAttribute("aria-current", "true");
+        else link.removeAttribute("aria-current");
+      }
+      if (previewApi) {
+        previewApi.setFocus(name);
+        // The Pitch section makes the label strip draggable (design §4.2).
+        previewApi.setPitchMode(name === "pitch");
+      }
+    }
+    for (const link of document.querySelectorAll(".section-link")) {
+      link.onclick = () => showSection(link.dataset.section);
+    }
+
+    // ── The notehead panel (design §2) ───────────────────────────────────
+    // A click on the canvas selects a pitch class (Shift-click adds one) and
+    // puts the notehead panel in the section panel's place; Esc, ✕ or a
+    // section link closes it. The panel writes the whole config through the
+    // look table's inference.
+    let selection = [];
+    let tinted = [];
+    let panelApi = null;
+    const panelCard = byId("notehead-panel-card");
+    const panelHost = byId("notehead-panel-host");
+
+    function refreshMarks() {
+      if (previewApi) previewApi.setMarks({ selected: selection, tinted });
+    }
+
+    function openNoteheadPanel() {
+      // The Noteheads section's rule list stays under the panel (design §2).
+      for (const panel of document.querySelectorAll(".panel")) panel.hidden = panel.dataset.panel !== "noteheads";
+      panelCard.hidden = false;
+      panelHost.textContent = "";
+      panelApi = CNBNoteheadPanel.render(panelHost, {
+        getConfig: () => appConfig,
+        selection,
+        onChange: (config) => {
+          appConfig = config;
+          // A rename or a nudge also moves the staff, ledgers or pitch axis.
+          mountStaffEditor();
+          mountLookEditors();
+          refreshShared({ keepPanel: true });
+        },
+        onClose: () => showSection(currentSection),
+        // Renaming (design §4.1): the selection follows the notehead to its
+        // new name, and the panel is drawn again for it.
+        onRename: (toPc) => {
+          selection = [toPc];
+          openNoteheadPanel();
+        },
+        importControl: drawImporter,
+      });
+      refreshMarks();
+    }
+
+    function closeNoteheadPanel() {
+      if (!panelApi) return;
+      panelApi = null;
+      selection = [];
+      panelHost.textContent = "";
+      panelCard.hidden = true;
+      refreshMarks();
+    }
+
+    function selectNotehead(pc, { add }) {
+      if (!add) selection = [pc];
+      else if (selection.includes(pc)) selection = selection.filter(p => p !== pc);
+      else selection = [...selection, pc];
+      if (selection.length === 0) showSection(currentSection);
+      else openNoteheadPanel();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && panelApi) showSection(currentSection);
+    });
+
+    // ── Checks (design §8.5): the one place validation shows ─────────────
+    const checksIndicator = byId("checks-indicator");
+    const checksList = byId("checks-list");
+    const exportButton = byId("export-ly");
+
+    function plural(n, word) {
+      return n + " " + word + (n === 1 ? "" : "s");
+    }
+
+    function refreshChecks() {
+      let result;
+      try {
+        result = CNBConfigExport.validateForExport(appConfig);
+      } catch (err) {
+        result = { errors: [err.message], warnings: [] };
+      }
+      const { errors, warnings } = result;
+      checksIndicator.className = "checks-indicator " +
+        (errors.length ? "error" : warnings.length ? "warn" : "ok");
+      checksIndicator.textContent = errors.length ? plural(errors.length, "error")
+        : warnings.length ? plural(warnings.length, "warning") : "No problems";
+
+      checksList.textContent = "";
+      const title = document.createElement("h3");
+      title.textContent = "Checks";
+      checksList.appendChild(title);
+      if (errors.length + warnings.length === 0) {
+        const p = document.createElement("p");
+        p.className = "checks-empty";
+        p.textContent = "No problems: this notation exports as it is.";
+        checksList.appendChild(p);
+      }
+      for (const [kind, messages] of [["error", errors], ["warn", warnings]]) {
+        for (const message of messages) {
+          const item = document.createElement("div");
+          item.className = "checks-item " + kind;
+          const text = document.createElement("p");
+          text.textContent = message;
+          item.appendChild(text);
+          checksList.appendChild(item);
+        }
+      }
+
+      // An error that blocks export also shows on the Export button.
+      exportButton.title = errors.length
+        ? "Export is blocked by " + plural(errors.length, "error") + ": " + errors.join(" · ")
+        : "";
+    }
+
+    function setChecksOpen(open) {
+      checksList.hidden = !open;
+      checksIndicator.setAttribute("aria-expanded", String(open));
+    }
+    checksIndicator.onclick = () => setChecksOpen(checksList.hidden);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setChecksOpen(false); });
+    document.addEventListener("click", (e) => {
+      if (!checksList.hidden && !e.target.closest(".checks")) setChecksOpen(false);
+    });
+
+    // ── Top bar status (the results of Open, Save and Export) ────────────
+    const topbarStatus = byId("topbar-status");
+    function setStatus(text, isError = false) {
+      topbarStatus.textContent = text;
+      topbarStatus.title = text;
+      topbarStatus.classList.toggle("error", isError);
+    }
+
+    // ── Panels reading the shared config through accessors ───────────────
+    // The Clef and Key signature panels' partial staffs (design §6), at the
+    // canvas Size with its duration and key, redrawn with every canvas draw.
+    // With no duration selected the canvas draws no staff, and neither do they.
+    let canvasOptions = { durations: ["crotchet"], keys: null };
+    function refreshSectionPreviews() {
+      const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
+      const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
+      const key = (canvasOptions.keys && canvasOptions.keys[0]) || null;
+      for (const [part, id] of [["clef", "clef-preview-host"], ["key-signature", "key-signature-preview-host"]]) {
+        const host = byId(id);
+        host.textContent = "";
+        CNBPreviewDisplay.renderPartial(host, appConfig, { part, size, duration, key });
+      }
+    }
+
+    // ── Pitch (design §3, §4) ────────────────────────────────────────────
+    // The Pitch section, the label strip's drag and a rename all rewrite
+    // the staff, ledgers, pitch axis or rules through the pitch model, so
+    // every editor that reads those re-seeds.
+    function adoptPitchChange(config) {
+      appConfig = config;
+      mountStaffEditor();
+      mountLookEditors();
+      refreshShared();
+    }
+
+    previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
+      getConfig: () => appConfig,
+      rangeHost: byId("preview-range-host"),
+      onSelect: selectNotehead,
+      // Dragging the label strip by d semitones moves the pitch (§4.2).
+      onPitchDrag: (d) => adoptPitchChange(CNBPitchModel.shiftPitch(appConfig, d)),
+      onRender: (options) => {
+        canvasOptions = options;
+        refreshSectionPreviews();
+      },
+    });
+
+    const pitchApi = CNBPitchPanel.render(byId("pitch-panel-host"), {
+      getConfig: () => appConfig,
+      onChange: adoptPitchChange,
+      // A custom pitch axis (§3.5) is edited in Advanced › Pitch axis map.
+      onOpenAdvanced: () => {
+        showSection("advanced");
+        const map = byId("pitch-axis-map");
+        map.open = true;
+        map.scrollIntoView({ block: "nearest" });
+      },
+    });
+    showSection("staff");           // sets the focus, which redraws the partial staffs at the canvas Size
+
+    // ── The Noteheads section's rule list (design §5.4) ──────────────────
+    // Hovering a line tints the canvas columns it covers.
+    function refreshRuleList() {
+      const host = byId("rule-list-host");
+      host.textContent = "";
+      tinted = [];
+      CNBNoteheadPanel.renderRuleList(host, appConfig, {
+        onHover: (pcs) => { tinted = pcs; refreshMarks(); },
+      });
+      refreshMarks();
+    }
+
+    const exportApi = CNBConfigExport.render(byId("config-export-host"), {
+      getConfig: () => appConfig,
+      // The Export section edits the notation's name, file suffix, label
+      // and footnote (design §1, step 6).
+      onMeta: (meta) => {
+        appConfig.meta = meta;
+        refreshShared();
+      },
+    });
+
+    const ioApi = CNBConfigIO.render(byId("config-io-host"), {
+      getConfig: () => appConfig,
+      // Adopt the stamped config so meta.created survives later saves
+      // (Module 17 contract: callback first, then its own redraw).
+      onSave: (stamped) => {
+        appConfig = stamped;
+        refreshShared();
+      },
+      // Replace the shared state with the merged config and re-seed every
+      // editor from it (their vocabularies and values come from the config).
+      // Adoption is all-or-nothing: if an editor or the preview cannot take
+      // the loaded config, the previous one is restored and the error is
+      // thrown back to Module 17, which shows it as a failed load.
+      onLoad: (config) => {
+        const previous = appConfig;
+        try {
+          appConfig = config;
+          mountEditors();
+          refreshShared();
+        } catch (err) {
+          appConfig = previous;
+          mountEditors();
+          refreshShared();
+          throw new Error("this config could not be displayed (" + err.message +
+            ") — the previous config is still loaded");
+        }
+      },
+    });
+
+    /** Module 17's error line, after a failed save or open. */
+    const ioError = () => ioApi.root.querySelector(".cnb-cio-error").textContent;
+
+    byId("save-config").onclick = () => {
+      const built = ioApi.save();
+      if (built) setStatus("Saved as " + built.filename);
+      else setStatus(ioError(), true);
+    };
+
+    const openFile = byId("open-file");
+    byId("open-config").onclick = () => openFile.click();
+    openFile.onchange = () => {
+      const file = openFile.files && openFile.files[0];
+      if (!file) return;
+      file.text().then(
+        (text) => {
+          const result = ioApi.loadText(text, file.name);
+          if (result) setStatus("Opened " + file.name);
+          else setStatus(ioError(), true);
+        },
+        (err) => setStatus("Open failed: could not read the file (" + err.message + ")", true)
+      ).finally(() => { openFile.value = ""; });
+    };
+
+    exportButton.onclick = () => {
+      const result = exportApi.exportLy();
+      if (result) {
+        setStatus("Exported as " + result.filename);
+      } else {
+        const blocked = exportApi.root.querySelector(".cnb-cex-status").textContent;
+        const error = exportApi.root.querySelector(".cnb-cex-error").textContent;
+        setStatus(error || (blocked ? "Export blocked: see the checks" : "Export failed"), true);
+      }
+    };
+
+    // ── View file (JSON) ─────────────────────────────────────────────────
+    byId("copy-json").onclick = () => {
+      const done = (text) => { byId("copy-status").textContent = text; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(stateJson.textContent).then(
+          () => done("Copied."),
+          () => done("Could not copy: select the text instead."));
+      } else {
+        done("Could not copy: select the text instead.");
+      }
+    };
+
+    /** Redraw everything that READS the shared config (not the editors).
+     *  keepPanel: the notehead panel made the change and keeps its own DOM,
+     *  so an open colour picker stays open (session 21's wiring). */
+    function refreshShared({ keepPanel = false } = {}) {
+      refreshPanel();
+      refreshChecks();
+      previewApi.redraw();
+      refreshRuleList();
+      if (panelApi && !keepPanel) panelApi.redraw();
+      pitchApi.redraw();
+      exportApi.redraw();
+      ioApi.redraw();
+    }
+
+    // ── Editors writing config slices ────────────────────────────────────
+    // Re-mounted whenever the whole config is replaced (JSON load) or the
+    // shape vocabulary changes (SVG import), so editor state re-seeds from
+    // the current config. Every editor edit is committed to appConfig
+    // immediately via onChange, so re-mounting never loses edits.
+    function mountEditors() {
+      byId("props-editor-host").textContent = "";
+      byId("clef-editor-host").textContent = "";
+      byId("key-signature-editor-host").textContent = "";
+
+      mountPaletteEditor();
+
+      mountStaffEditor();
+
+      mountNoteheadEditor();
+
+      CNBCommonPropsEditor.render(byId("props-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.durations = slices.durations;
+          appConfig.engine = slices.engine;
+          refreshShared();
+        },
+      });
+
+      // Custom clef (set 009). The editor also hosts the clef glyph import
+      // wiring (session-1 importer, clef kind), so the whole
+      // import → enable → position flow lives in this one panel.
+      CNBClefEditor.render(byId("clef-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.clef = slices.clef;
+          refreshShared();
+        },
+      });
+
+      // Keys & key signature (set 010). The panel writes the whole keys
+      // section (enabled, definitions, keySignature). Key definitions are
+      // a vocabulary the notehead rule editor reads at mount time (its
+      // match.keys pills), so that editor is re-seeded after every keys
+      // change — same rationale as the SVG-import re-mount below.
+      CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.keys = slices.keys;
+          mountNoteheadEditor();
+          refreshShared();
+        },
+      });
+
+      mountPitchAxisEditor();
+    }
+
+    /** The palette editor (Advanced › Colour palette) seeds from the
+     *  palette at mount, so it re-seeds when the notehead panel writes one. */
+    function mountPaletteEditor() {
+      byId("palette-editor-host").textContent = "";
+      CNBPaletteEditor.render(byId("palette-editor-host"), {
+        palette: appConfig.palette,
+        onChange: (palette) => {
+          appConfig.palette = palette;
+          refreshShared();
+        },
+      });
+    }
+
+    /** After a notehead panel change: the editors that read the rules, the
+     *  palette or the shapes re-seed. */
+    function mountLookEditors() {
+      mountPaletteEditor();
+      mountNoteheadEditor();
+      mountPitchAxisEditor();
+    }
+
+    /** Pitch axis (set 014). A null slice means "no section": the editor
+     *  never creates one the user did not ask for (default-off
+     *  byte-identity). A preset also rewrites noteheadRules (its offset
+     *  rule), and the notehead editor's offset row is axis-gated, so that
+     *  editor is re-seeded after every axis change. The axis editor works
+     *  from a copy of the config taken at mount (its preset appends to the
+     *  current rules; its validation reads staff and rules), so it is
+     *  re-seeded in turn when the staff or the notehead rules change. */
+    function mountPitchAxisEditor() {
+      byId("pitch-axis-editor-host").textContent = "";
+      CNBPitchAxisEditor.render(byId("pitch-axis-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          if (slices.pitchAxis) appConfig.pitchAxis = slices.pitchAxis;
+          else delete appConfig.pitchAxis;
+          if (slices.noteheadRules) appConfig.noteheadRules = slices.noteheadRules;
+          mountNoteheadEditor();
+          mountStaffEditor();
+          refreshShared();
+        },
+      });
+    }
+
+    /** The staff editor is mounted once per section (session 26): its staff
+     *  part in Staff, its ledgers part in Ledger lines and its line
+     *  overrides in Advanced. Every mount emits both whole slices from its
+     *  own state, so an edit in one re-seeds the other two (not the one
+     *  being edited, which would lose its focus). The staff part shows the
+     *  export's staff spacing, which depends on the pitch axis, so all
+     *  three re-seed after every axis change (audit 2026-11-02, L1). Edits
+     *  commit to appConfig immediately, so re-mounting loses nothing. */
+    const STAFF_MOUNTS = [
+      ["staff", "staff-editor-host"],
+      ["ledgers", "ledger-editor-host"],
+      ["overrides", "staff-overrides-host"],
+    ];
+    function mountStaffEditor(except = null) {
+      for (const [part, id] of STAFF_MOUNTS) {
+        if (part === except) continue;
+        byId(id).textContent = "";
+        CNBStaffRuleEditor.render(byId(id), {
+          config: appConfig,
+          parts: [part],
+          onChange: (slices) => {
+            appConfig.staff = slices.staff;
+            appConfig.ledgers = slices.ledgers;
+            mountStaffEditor(part);
+            mountPitchAxisEditor();
+            refreshShared();
+          },
+        });
+      }
+    }
+
+    /** The notehead rule editor reads its shape/duration/key vocabularies
+     *  at mount time, so it re-seeds whenever one of them changes. Its own
+     *  edits commit to appConfig immediately, so re-mounting loses nothing. */
+    function mountNoteheadEditor() {
+      byId("notehead-editor-host").textContent = "";
+      CNBNoteheadRuleEditor.render(byId("notehead-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.noteheadRules = slices.noteheadRules;
+          mountPitchAxisEditor();
+          refreshShared();
+        },
+      });
+    }
+
+    // ── SVG shape import (Module 16), in the notehead panel's shape row ──
+    // The panel redraws its shape row after every change, so the last
+    // import's status is kept here and drawn again with the importer. An
+    // imported shape joins the shape thumbnails; a click gives it.
+    const lastImport = { className: "", text: "", warnings: [] };
+
+    function drawImporter(slot) {
+      const control = document.createElement("div");
+      control.id = "svg-importer-host";
+      slot.appendChild(control);
+      const status = document.createElement("div");
+      status.id = "import-status";
+      status.className = lastImport.className;
+      status.textContent = lastImport.text;
+      slot.appendChild(status);
+      const warnings = document.createElement("ul");
+      warnings.id = "import-warnings";
+      for (const w of lastImport.warnings) {
+        const li = document.createElement("li");
+        li.textContent = w;
+        warnings.appendChild(li);
+      }
+      slot.appendChild(warnings);
+      CNBSvgImporter.renderImportControl(control, { onResult: importShape, label: "Import from SVG… (click, or drop a .svg file here)" });
+    }
+
+    function importShape(result) {
+      lastImport.warnings = result.warnings.slice();
+      if (result.error) {
+        lastImport.className = "err";
+        lastImport.text = "Import failed: " + result.error;
+        if (panelApi) panelApi.redraw();
+        return;   // config untouched
+      }
+      const replaced = result.name in appConfig.shapes;
+      const previousShape = appConfig.shapes[result.name];
+      try {
+        appConfig.shapes[result.name] = result.shape;
+        lastImport.className = "ok";
+        lastImport.text = "Imported shape \"" + result.name + "\"" +
+          (replaced ? " (replaced the existing entry with that name)" : "");
+        // The shape vocabulary changed: re-seed the editors (the notehead
+        // rule editor's shape selects read it at mount time).
+        mountEditors();
+        refreshShared();
+      } catch (err) {
+        // The shape could not be displayed: put the previous entry back.
+        if (replaced) appConfig.shapes[result.name] = previousShape;
+        else delete appConfig.shapes[result.name];
+        lastImport.className = "err";
+        lastImport.text = "Import failed: the shape could not be displayed (" + err.message + ")";
+        mountEditors();
+        refreshShared();
+      }
+    }
+
+    mountEditors();
+    refreshRuleList();
+    refreshPanel();
+    refreshChecks();
+  </script>
+</body>
+</html>

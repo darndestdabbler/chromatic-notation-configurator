@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 022 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 022 transcript</h1>
+<p class="stamp">Rendered 2026-11-06T23:30:36.622Z by dabbler-ai-router 3.29.0 at 244632e26dd4255ba89a715bc6189550587670ad.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-06T17:57:26.840-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 22: Each notehead has its own height and width</h3>
+<p><strong>Why.</strong> Every notehead is drawn at its shape's <code>semitoneHeight</code>, at the shape's natural aspect ratio. A palette of very different shapes may need different sizes to look right, and the operator asked (2026-11-06) that a notehead's height and width each be adjustable from 0.25 to 4 semitones: the extremes look wrong, but they let the user make whatever adjustment a design needs. The notehead-first editor (session 19) lists size among the things a click on a notehead sets, so the schema, preview and export built here are what that editor will drive. No engine change is needed: the engine has no size field and builds each stencil from the registered path's numbers in staff-space units, so the exporter can register a scaled variant of a shape per size.</p>
+<ol><li>Register.</li><li>Schema (<code>cnb-config.js</code>): a rule's <code>apply</code> block gains optional <code>heightSemis</code> and <code>widthSemis</code>, absolute sizes in semitones, resolved through the cumulative rule pipeline like <code>hollow</code> and <code>xOffsetStaffSpaces</code>. Absent means the shape's own <code>semitoneHeight</code> and its natural width, so every existing config resolves, previews and exports exactly as before (the preview and export baselines pin it). Validation: a present value must be a finite positive number (error); outside 0.25 to 4 semitones warns. Document the fields in the architecture plan §4.5 and the LY export spec.</li><li>Preview: <code>cnb-notehead.js</code> measures with separate x and y scale factors from the resolved size; the stem anchors, the octave-pair offset (<code>cnb-double-notehead.js</code>), the ledger width derived from notehead width (<code>cnb-ledger-set.js</code>, <code>cnb-card.js</code>) and the key-signature marks (<code>cnb-key-signature.js</code>) all follow the resolved measurement. Unit tests in the file named after each changed source, and a visual check in <code>cnb/test-pages/test-notehead.html</code>.</li><li>Export (<code>cnb-lilypond.js</code>): for each distinct resolved (shape, height, width) that differs from the shape's own size, Section A registers a variant under a derived name (the shape name with a size suffix), with its path, hollow cutout and attachment points scaled by the same x and y factors, and Section C points the pitch classes at it; the resolved size joins the Section C grouping key beside shape, hollow, colour, attachment and x-offset. The spec gains a section for the variant naming and scaling. Pin a sized export against a new baseline, and check the engraved sizes with an engine render through <code>cnb/tests/engine-probe.js</code>, as session 11's notehead-size test does.</li><li>Editor (<code>notehead-rule-editor.js</code>): a rule's apply block gets height and width controls with a &quot;keep aspect ratio&quot; lock, on by default: with the lock on, editing the height rewrites the width at the shape's natural ratio; with it off, the width is free. The shape's natural width shows as a hint beside the field. Keep the controls minimal: the notehead-first editor (session 19) will supersede this panel. Record the browser check in <code>docs/uat-status.md</code>.</li><li>README &quot;Preview-only settings&quot; and the gallery configs: say that size exports, and leave the fixtures' sizes untouched.</li></ol>
+<h2>Work Plan</h2>
+<p>Give each notehead its own height and width. A notehead rule's apply block gains optional heightSemis and widthSemis (absolute sizes in semitones), resolved through CNBConfig.resolveNotehead's cumulative pipeline like hollow and xOffsetStaffSpaces (null when no matching rule sets it, meaning the shape's own semitoneHeight and natural width, each independently). Validation errors on a present value that is not a finite positive number and warns outside 0.25-4 semitones. In the preview, CNBNotehead.measure takes the resolved size and returns separate x and y scale factors; render draws scale(sx, sy) only when they differ, so an unsized config renders byte-identically (the preview and export baselines stay pinned unchanged). The card's stem anchors, ledger width (CNBCard passes the resolved width to CNBLedgerSet, which takes its width from the caller), column width and repeat-mode group, the octave pair (cnb-double-notehead.js) and the key-signature marks all follow the resolved measurement. The exporter registers, for each distinct resolved (shape, height, width) that differs from the shape's own size, a Section A variant named after the shape with a size suffix (-h&lt;height&gt;-w&lt;width&gt;, decimal point written as p), whose path, hollow cutout and attachment points are scaled by the same x and y factors; Section C points the pitch classes at the variant, and the size joins the grouping key. A sized fixture config is pinned against a new export baseline, and an engine-backed test (skipping without LilyPond, via cnb/tests/engine-probe.js) checks the engraved sizes. The notehead rule editor gets height and width controls with a keep-aspect-ratio lock, on by default, and a natural-width hint; the browser check goes in docs/uat-status.md. The architecture plan §4.5, the LY export spec (1.3.4, a section on variant naming and scaling) and the README's Preview-only settings section document that size exports.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/7daf8e8eab507d98dd9bda91f9258a1e08950974"><code>7daf8e8eab507d98dd9bda91f9258a1e08950974</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Schema size fields</td><td><p>cnb/src/cnb-config.js: resolveNotehead returns heightSemis and widthSemis (null by default; a matching rule's apply.heightSemis / apply.widthSemis overwrite them, cumulatively like hollow). validate(): a present apply.heightSemis or apply.widthSemis that is not a finite number &gt; 0 is an error naming the rule; a value outside 0.25 to 4 semitones is a warning naming the rule. Tests in cnb/tests/cnb-config-tests.js: default resolution gives null sizes, cumulative override and inheritance, the error and warning cases; update any test that deep-compares resolveNotehead output.</p></td><td><span class="mono">cnb/src/cnb-config.js</span><br><span class="mono">cnb/tests/cnb-config-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Notehead measure xy</td><td><p>cnb/src/cnb-notehead.js: measure(shape, pxPerSemi, size) takes an optional { heightSemis, widthSemis } and returns { scaleFactor, scaleX, scaleY, pixelWidth, pixelHeight }: scaleY from heightSemis (else the shape's semitoneHeight), scaleX from widthSemis (else equal to the unsized scale), scaleFactor = scaleY; with no size the result equals today's. render accepts optional scaleX/scaleY and writes scale(sx,sy) only when they differ from each other, otherwise scale(scaleFactor) exactly as today. cnb/src/cnb-double-notehead.js: layout measures each note with its size (lowerNote.size / upperNote.size), returns per-note x and y scales, and render passes them on; the offset reference width is the resolved width. cnb/src/cnb-stem.js: geometry takes an optional scaleX (default scaleFactor) for the anchor's x offset. Tests in cnb/tests/cnb-notehead-tests.js, cnb/tests/cnb-double-notehead-tests.js and cnb/tests/cnb-stem-tests.js cover sized and unsized cases (unsized output unchanged).</p></td><td><span class="mono">cnb/src/cnb-notehead.js</span><br><span class="mono">cnb/src/cnb-double-notehead.js</span><br><span class="mono">cnb/src/cnb-stem.js</span><br><span class="mono">cnb/tests/cnb-notehead-tests.js</span><br><span class="mono">cnb/tests/cnb-double-notehead-tests.js</span><br><span class="mono">cnb/tests/cnb-stem-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Card keysig follow size</td><td><p>cnb/src/cnb-card.js: columnWidth, repeatLayout and render measure the notehead with the resolved { heightSemis, widthSemis }, so the ledger width passed to CNBLedgerSet, the column width, the repeated group, the stem anchor (scaleX) and the octave pair all follow the resolved size. cnb/src/cnb-key-signature.js: measure and render size each mark from its resolved notehead. Tests in cnb/tests/cnb-card-tests.js and cnb/tests/cnb-key-signature-tests.js (a sized rule widens/narrows the column, ledger and marks; the stem x follows scaleX); the pinned preview baseline in cnb-collection-tests.js must still pass unchanged. Add a sized-notehead section to cnb/test-pages/test-notehead.html (the same shape at a few heights and widths, aspect kept and stretched) for the visual check.</p></td><td><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/src/cnb-key-signature.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/test-pages/test-notehead.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Export sized variants</td><td><p>cnb/src/cnb-lilypond.js: collect the distinct resolved (shape, heightSemis, widthSemis) over all pitch classes and durations; for each whose size differs from the shape's own (semitoneHeight, naturalWidth / (naturalHeight / semitoneHeight)), Section A defines and registers a variant '&lt;shape&gt;-h&lt;height&gt;-w&lt;width&gt;' (numbers as formatted by the exporter, '.' written 'p') with its path, hollow cutout and attachment points scaled by sx = width / natural width and sy = height / semitoneHeight on top of the existing staff-space conversion; the unsized shape is emitted only where some pitch class uses it at its own size. Section C's shape, hollow and attachment symbols name the variant, and the resolved size joins sectionCKey. Add cnb/fixtures/sized-config.json (the default config with a rule sizing some pitch classes, e.g. sharps 1.5 high by 3 wide) and cnb/fixtures/sized-export-baseline.ly generated from it with cnb/fixtures/export-config.mjs, never by hand. Tests in cnb/tests/cnb-lilypond-tests.js: variant naming and scaling, grouping, unsized configs unchanged (the existing baselines still pass), the sized baseline pinned, and an engine-backed test (skipping without LilyPond) that measures the sized fixture through measureNoteheads and finds each pitch class engraved at its resolved height and width in staff spaces within 5%.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/fixtures/sized-config.json</span><br><span class="mono">cnb/fixtures/sized-export-baseline.ly</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Editor size controls</td><td><p>cnb/ui/notehead-rule-editor.js: the rule builder keeps apply.heightSemis / apply.widthSemis (finite positive numbers, else it throws like the other fields) and stateFromConfig carries them. Each rule's apply block gets a Height row and a Width row (number inputs in semitones, step 0.05, min 0.25, max 4) with a 'Keep aspect ratio' checkbox, on by default and kept in editor state only: with it on, editing the height rewrites the width at the shape's natural ratio (the rule's own shape, else the config's first shape); with it off the width is free. A hint beside the width shows the shape's natural width in semitones. The per-pitch-class preview cells draw the resolved size. Tests in cnb/tests/cnb-notehead-rule-editor-tests.js: build/round-trip, invalid values rejected, the lock on and off, the hint text.</p></td><td><span class="mono">cnb/ui/notehead-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-notehead-rule-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Browser check record</td><td><p>Exercise the size controls in cnb/index.html in Chromium (playwright-core, scratch script outside the tree): enable height on a rule, change it with the lock on and see the width follow and the preview noteheads, ledgers and stems resize; turn the lock off and stretch the width; export and confirm the variant registration appears. Also open cnb/test-pages/test-notehead.html and look at the sized section. Record what was run and seen in a new dated section of docs/uat-status.md for session 22.</p></td><td><span class="mono">docs/uat-status.md</span><br><span class="mono">cnb/index.html</span></td><td><code>node -e process.exit(/session 22/i.test(require('fs').readFileSync('docs/uat-status.md','utf8'))?0:1)</code></td><td>yes</td></tr>
+<tr><td>Docs size exports</td><td><p>docs/CNB-ARCHITECTURE-PLAN-v2.md §4.5: document apply.heightSemis / apply.widthSemis (semitones, absent = the shape's own size, validation range) and the resolved fields. docs/CNB-LY-EXPORT-SPEC-v1_3.md: version 1.3.4, a new section on sized shape variants (when one is registered, the naming rule, the x/y scaling of path, cutout and attachments, Section C pointing at it and the grouping key) and a change-log row; linear and axis output for unsized configs unchanged. README.md, the Preview-only settings section: a sentence that notehead height and width do export (as scaled shape variants). The gallery configs are left untouched.</p></td><td><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const r=fs.readFileSync('README.md','utf8');process.exit(/heightSemis/.test(a)&amp;&amp;/widthSemis/.test(a)&amp;&amp;/1\.3\.4/.test(s)&amp;&amp;/heightSemis/.test(s)&amp;&amp;/height and width/i.test(r)?0:1)</code><br><code>git diff --quiet HEAD -- cnb/assets/examples/gallery</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No engine-repo change: the engine gets no size field; sizing is carried entirely by scaled path/attachment registrations.</li><li>The gallery configs and existing fixtures (default, Kite 4-369, 45deg-369, Twinline compact) are not resized and their export baselines and the preview baseline do not change.</li><li>No notehead-first editor work: the rule-editor controls stay minimal, since session 19's design (built in sessions 25-29) supersedes this panel.</li><li>No new Playwright UAT driver; the browser check is recorded in docs/uat-status.md.</li><li>Stem length (display.stemExtension, in notehead heights of the shape's own semitoneHeight) and stem thickness are not resized with the notehead.</li><li>No release, version bump or CHANGELOG entry: no session before 30 releases.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[22:57:26]</span> <span class="muted">run-started</span> session=022 mode=pull</div>
+<div class="line"><span class="at">[22:57:26]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[23:00:20]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[23:00:20]</span> <span class="muted">plan-accepted</span> steps=[&quot;schema-size-fields&quot;,&quot;notehead-measure-xy&quot;,&quot;card-keysig-follow-size&quot;,&quot;export-sized-variants&quot;,&quot;editor-size-controls&quot;,&quot;browser-check-record&quot;,&quot;docs-size-exports&quot;] non_goals=6</div>
+<div class="line"><span class="at">[23:00:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[23:00:21]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=schema-size-fields</div>
+<div class="line"><span class="at">[23:02:08]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:02:28]</span> <span class="muted">check-passed</span> step=schema-size-fields argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[23:02:29]</span> <span class="muted">report-accepted</span> seq=2 step=schema-size-fields files=[&quot;cnb/src/cnb-config.js&quot;,&quot;cnb/tests/cnb-config-tests.js&quot;] notes=resolveNotehead returns heightSemis/widthSemis (null default, cumulative); validate errors on non-finite/non-positive, warns outside 0.25-4</div>
+<div class="line"><span class="at">[23:02:29]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=notehead-measure-xy</div>
+<div class="line"><span class="at">[23:05:29]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:05:50]</span> <span class="muted">check-passed</span> step=notehead-measure-xy argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[23:05:51]</span> <span class="muted">report-accepted</span> seq=3 step=notehead-measure-xy files=[&quot;cnb/src/cnb-notehead.js&quot;,&quot;cnb/src/cnb-double-notehead.js&quot;,&quot;cnb/src/cnb-stem.js&quot;,&quot;cnb/tests/cnb-notehead-tests.js&quot;,&quot;cnb/tests/cnb-double-notehead-tests.js&quot;,&quot;cnb/tests/cnb-stem-tests.js&quot;] notes=measure takes the resolved size (scaleX/scaleY); render writes scale(sx,sy) only when stretched; double notehead and stem follow</div>
+<div class="line"><span class="at">[23:05:51]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=card-keysig-follow-size</div>
+<div class="line"><span class="at">[23:09:17]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:09:38]</span> <span class="muted">check-passed</span> step=card-keysig-follow-size argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[23:09:39]</span> <span class="muted">report-accepted</span> seq=4 step=card-keysig-follow-size files=[&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/test-pages/test-notehead.html&quot;] notes=card column/ledger/stem/repeat/octave pair and keysig marks measure with the resolved size; sized section on test-notehead.html checked in Chromium</div>
+<div class="line"><span class="at">[23:09:39]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=export-sized-variants</div>
+<div class="line"><span class="at">[23:14:07]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:14:30]</span> <span class="muted">check-passed</span> step=export-sized-variants argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[23:14:30]</span> <span class="muted">report-accepted</span> seq=5 step=export-sized-variants files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/fixtures/sized-config.json&quot;,&quot;cnb/fixtures/sized-export-baseline.ly&quot;] notes=Section A registers sized variants &lt;shape&gt;-h&lt;H&gt;-w&lt;W&gt; with scaled path/cutout/attachments; Section C names them; sized fixture pinned; engine render matches resolved sizes within 5%</div>
+<div class="line"><span class="at">[23:14:30]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=editor-size-controls</div>
+<div class="line"><span class="at">[23:17:29]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:17:51]</span> <span class="muted">check-passed</span> step=editor-size-controls argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[23:17:52]</span> <span class="muted">report-accepted</span> seq=6 step=editor-size-controls files=[&quot;cnb/ui/notehead-rule-editor.js&quot;,&quot;cnb/tests/cnb-notehead-rule-editor-tests.js&quot;] notes=Size row per rule: height/width inputs, keep-aspect-ratio lock (on by default, editor-only), natural-width hint; builder validates; preview cells draw resolved size</div>
+<div class="line"><span class="at">[23:17:52]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=browser-check-record</div>
+<div class="line"><span class="at">[23:21:12]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:21:13]</span> <span class="muted">check-passed</span> step=browser-check-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;process.exit(/session 22/i.test(require('fs').readFileSync('docs/uat-status.md','utf8'))?0:1)&quot;]</div>
+<div class="line"><span class="at">[23:21:15]</span> <span class="muted">report-accepted</span> seq=7 step=browser-check-record files=[&quot;docs/uat-status.md&quot;,&quot;cnb/index.html&quot;] notes=In-app Chromium check 14/14 (size row, lock, preview resize, export variant); size row styled in index.html after the first screenshot showed it unstyled; recorded in uat-status.md</div>
+<div class="line"><span class="at">[23:21:15]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=docs-size-exports</div>
+<div class="line"><span class="at">[23:23:26]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:23:30]</span> <span class="muted">check-passed</span> step=docs-size-exports argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const r=fs.readFileSync('README.md','utf8');process.exit(/heightSemis/.test(a)&amp;&amp;/widthSemis/.test(a)&amp;&amp;/1\\.3\\.4/.test(s)&amp;&amp;/heightSemis/.test(s)&amp;&amp;/height and width/i.test(r)?0:1)&quot;]</div>
+<div class="line"><span class="at">[23:23:30]</span> <span class="muted">check-passed</span> step=docs-size-exports argv=[&quot;git&quot;,&quot;diff&quot;,&quot;--quiet&quot;,&quot;HEAD&quot;,&quot;--&quot;,&quot;cnb/assets/examples/gallery&quot;]</div>
+<div class="line"><span class="at">[23:23:31]</span> <span class="muted">report-accepted</span> seq=8 step=docs-size-exports files=[&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;README.md&quot;] notes=Arch plan 4.5 documents heightSemis/widthSemis; LY spec 1.3.4 adds 4.1c sized shape variants; README says size exports; gallery configs untouched</div>
+<div class="line"><span class="at">[23:23:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:23:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:23:32]</span> <span class="muted">job-started</span> name=verification pid=36796 log=.dabbler/runs/s22/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:24:43]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s22/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:24:43]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[23:24:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[23:24:43]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[23:25:06]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[23:25:06]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[23:25:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[23:25:06]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[23:26:45]</span> <span class="muted">run-resumed</span> session=022 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=schema-size-fields</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=notehead-measure-xy</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=card-keysig-follow-size</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=export-sized-variants</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=editor-size-controls</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;process.exit(/session 22/i.test(require('fs').readFileSync('docs/uat-status.md','utf8'))?0:1)&quot;] owner=browser-check-record</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const r=fs.readFileSync('README.md','utf8');process.exit(/heightSemis/.test(a)&amp;&amp;/widthSemis/.test(a)&amp;&amp;/1\\.3\\.4/.test(s)&amp;&amp;/heightSemis/.test(s)&amp;&amp;/height and width/i.test(r)?0:1)&quot;] owner=docs-size-exports</div>
+<div class="line"><span class="at">[23:28:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;git&quot;,&quot;diff&quot;,&quot;--quiet&quot;,&quot;HEAD&quot;,&quot;--&quot;,&quot;cnb/assets/examples/gallery&quot;] owner=docs-size-exports</div>
+<div class="line"><span class="at">[23:28:32]</span> <span class="muted">report-accepted</span> seq=10 step=fix-round-1 files=[] notes=Size row's ratio/hint now come from the shape the rule resolves to (full rule set at its first matched pc/duration/key); regression test with an earlier rule choosing a 1:1 shape; sized fixture description corrected to 4 semitones (export unchanged)</div>
+<div class="line"><span class="at">[23:28:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:28:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:28:32]</span> <span class="muted">job-started</span> name=verification pid=40588 log=.dabbler/runs/s22/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:28:55]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s22/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:28:55]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[23:28:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[23:28:56]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[23:28:56]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=28684 log=.dabbler/runs/s22/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[23:29:19]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s22/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[23:29:19]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[23:29:19]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=47660 log=.dabbler/runs/s22/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[23:30:12]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s22/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[23:30:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[23:30:20]</span> <span class="muted">landed</span> commit=7daf8e8eab507d98dd9bda91f9258a1e08950974</div>
+<div class="line"><span class="at">[23:30:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[23:30:21]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[23:30:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[23:30:22]</span> <span class="muted">job-started</span> name=close pid=48432 log=.dabbler/runs/s22/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:30:36]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s22/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:30:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The rule editor’s aspect-ratio lock and natural-width hint use the first configured shape instead of the shape the rule actually resolves to when the rule does not itself set `apply.shape`.</td><td>fixed — Size row's ratio/hint now come from the shape the rule resolves to (full rule set at its first matched pc/duration/key); regression test with an earlier rule choosing a 1:1 shape; sized fixture description corrected to 4 semitones (export unchanged)</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The sized fixture’s metadata says that C is “4.5 semitones wide,” but its actual rule is `widthSemis: 4`, and the checked export names the variant `...-w4`. Correct the fixture description to avoid misleading users and future fixture consumers. Evidence: `cnb/fixtures/sized-config.json`, `cnb/fixtures/sized-export-baseline.ly`.</td><td>fixed — Size row's ratio/hint now come from the shape the rule resolves to (full rule set at its first matched pc/duration/key); regression test with an earlier rule choosing a 1:1 shape; sized fixture description corrected to 4 semitones (export unchanged)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Add a regression test for the editor failure above: create shape A and shape B with distinct natural ratios; make an earlier all-PC rule select B and a later all-PC rule contain only size fields; enable Size and edit height under the lock; assert the seeded values, hint, and rewritten width use B. Today’s added tests cover only a rule whose inherited shape is also the first configured shape.</td><td>fixed — Size row's ratio/hint now come from the shape the rule resolves to (full rule set at its first matched pc/duration/key); regression test with an earlier rule choosing a 1:1 shape; sized fixture description corrected to 4 semitones (export unchanged)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>21s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>51s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
