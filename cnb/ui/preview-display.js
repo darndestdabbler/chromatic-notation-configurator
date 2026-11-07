@@ -96,6 +96,14 @@
  * with the classes cnb-pvd-selected and cnb-pvd-tint (in every row, C′ with
  * C) without a redraw, and the marks are put back after every redraw.
  *
+ * Session 28 (pitch, design §4.2): the canvas always draws the collection's
+ * label strip (labelStrip), quiet, and counts it in the row choice.
+ * setPitchMode(true) puts the class cnb-pvd-pitch-mode on the root and a
+ * hint in the toolbar, with no redraw; in pitch mode a pointer drag on a
+ * row's strip moves its labels in whole semitones, and the release calls
+ * opts.onPitchDrag(d), d the semitones dragged, downward positive (the
+ * host applies CNBPitchModel.shiftPitch(config, d)).
+ *
  * Dependencies: Module A (config shape), Module B (pitch labels),
  * Module 10 (card collection).
  */
@@ -118,6 +126,9 @@ function deepClone(v) {
 const SIZES = { small: 9, medium: 11, large: 16 };
 const DEFAULT_SIZE = "medium";
 const SIZE_STORAGE_KEY = "cnb.canvasSize";
+
+/** The toolbar hint in pitch mode (session 28, mock-up 3). */
+const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff";
 
 /** The canvas's label style (design §6.2): plain, compact pitch labels. */
 const EDITOR_LABEL = { fontSize: 15, marginTop: 6, marginBottom: 6, padding: 4, color: "#5b5d63" };
@@ -238,7 +249,7 @@ export const CNBPreviewDisplay = {
    * @returns {1|2}
    */
   rowsFor(config, options, width) {
-    return width >= CNBCollection.minRowWidth(config, { ...options, rows: 1 }) ? 1 : 2;
+    return width >= CNBCollection.minRowWidth(config, { ...options, labelStrip: true, rows: 1 }) ? 1 : 2;
   },
 
   /**
@@ -398,6 +409,9 @@ export const CNBPreviewDisplay = {
     const onSelect = opts.onSelect || null;
     let marks = { selected: [], tinted: [] };   // setMarks, put back after every redraw
     let columns = [];         // the drawn pitch columns (data-pc), for the marks
+    const onPitchDrag = opts.onPitchDrag || null;
+    let pitchMode = false;    // setPitchMode: the label strip is draggable
+    let pitchHint = null;     // the toolbar hint shown in pitch mode
 
     const root = doc.createElement("div");
     root.className = "cnb-preview-display";
@@ -545,7 +559,7 @@ export const CNBPreviewDisplay = {
     /** Below the two-row minimum: mark the preview and suggest a smaller Size. */
     function updateOverflow(config, options) {
       if (!preview) return;
-      const overflow = width < CNBCollection.minRowWidth(config, { ...options, rows: 2 });
+      const overflow = width < CNBCollection.minRowWidth(config, { ...options, labelStrip: true, rows: 2 });
       preview.className = "cnb-pvd-preview" + (overflow ? " cnb-pvd-overflow" : "") +
         (focus === "ledger-lines" ? " cnb-pvd-focus-ledgers" : "");
       sizeHint.textContent = !overflow ? ""
@@ -558,6 +572,8 @@ export const CNBPreviewDisplay = {
     function pitchColumns(el) {
       const out = [];
       for (const child of el.children || []) {
+        // The label strip's labels carry data-pc too; they are not columns.
+        if (child.className === "label-col") continue;
         if (typeof child.getAttribute === "function" && child.getAttribute("data-pc") !== null) out.push(child);
         else out.push(...pitchColumns(child));
       }
@@ -592,6 +608,68 @@ export const CNBPreviewDisplay = {
       applyMarks();
     }
 
+    // ── The label strip in pitch mode (session 28, design §4.2) ───────────
+    /** The descendants of el whose class attribute is cls. */
+    function byClassAttr(el, cls) {
+      const out = [];
+      for (const child of el.children || []) {
+        if (typeof child.getAttribute === "function" && child.getAttribute("class") === cls) out.push(child);
+        else out.push(...byClassAttr(child, cls));
+      }
+      return out;
+    }
+
+    /**
+     * Make each row's label strip draggable in pitch mode. A drag moves the
+     * strip's labels with the pointer in whole semitones of step px
+     * (downward positive), the middle line staying put; the release reports
+     * the semitones moved through opts.onPitchDrag, and Esc, a cancel or no
+     * move puts the labels back.
+     */
+    function wireStrips(step) {
+      for (const slice of preview ? byClassAttr(preview, "label-slice") : []) {
+        const labels = byClassAttr(slice, "pitch-label");
+        let drag = null;
+        const place = (d) => {
+          for (const g of labels) g.setAttribute("transform", d === 0 ? "" : `translate(0 ${d * step})`);
+        };
+        const end = (report) => {
+          if (!drag) return;
+          const d = drag.d;
+          globalThis.removeEventListener?.("keydown", drag.onKey);
+          drag = null;
+          place(0);
+          if (report && d !== 0 && onPitchDrag) onPitchDrag(d);
+        };
+        slice.onpointerdown = (e) => {
+          if (!pitchMode || !e) return;
+          const onKey = (k) => { if (k && k.key === "Escape") end(false); };
+          drag = { startY: e.clientY, d: 0, onKey };
+          globalThis.addEventListener?.("keydown", onKey);
+          if (typeof slice.setPointerCapture === "function" && e.pointerId !== undefined) {
+            try { slice.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+          }
+          if (typeof e.preventDefault === "function") e.preventDefault();
+        };
+        slice.onpointermove = (e) => {
+          if (!drag || !e) return;
+          const d = Math.round((e.clientY - drag.startY) / step) || 0;
+          if (d !== drag.d) {
+            drag.d = d;
+            place(d);
+          }
+        };
+        slice.onpointerup = () => end(true);
+        slice.onpointercancel = () => end(false);
+      }
+    }
+
+    /** The hint and the class for pitch mode, with no redraw. */
+    function applyPitchMode() {
+      setToken(root, "cnb-pvd-pitch-mode", pitchMode);
+      if (pitchHint) pitchHint.textContent = pitchMode ? PITCH_HINT : "";
+    }
+
     function drawPreview() {
       const { config, options } = drawn();
       preview = null;
@@ -603,12 +681,13 @@ export const CNBPreviewDisplay = {
         return;
       }
       rows = CNBPreviewDisplay.rowsFor(config, options, width);
-      const collectionOptions = { ...options, fluid: true, rows };
+      const collectionOptions = { ...options, fluid: true, rows, labelStrip: true };
       if (focus === "ledger-lines") collectionOptions.ledgerSpots = true;
       preview = el("div", "cnb-pvd-preview");
       collection.render(preview, config, collectionOptions);
       root.appendChild(preview);
       wireColumns();
+      wireStrips(config.display.pxPerSemi);
       updateOverflow(config, options);
       onRender(collectionOptions, preview);
     }
@@ -625,9 +704,12 @@ export const CNBPreviewDisplay = {
       controls.appendChild(drawDurations());
       const key = drawKey();
       if (key) controls.appendChild(key);
+      pitchHint = el("span", "cnb-pvd-pitch-hint", "");
+      controls.appendChild(pitchHint);
       controls.appendChild(drawSize());
       root.appendChild(controls);
       drawPreview();
+      applyPitchMode();
     }
 
     const changed = () => redraw();
@@ -685,6 +767,15 @@ export const CNBPreviewDisplay = {
         marks = { selected: selected.slice(), tinted: tinted.slice() };
         applyMarks();
       },
+      /** Pitch mode (session 28, design §4.2): the canvas gets the class
+       *  cnb-pvd-pitch-mode and the toolbar its hint, with no redraw, and a
+       *  drag on a label strip reports opts.onPitchDrag(d). Kept across
+       *  redraws. */
+      setPitchMode: (on) => {
+        pitchMode = !!on;
+        applyPitchMode();
+      },
+      getPitchMode: () => pitchMode,
       redraw,
     };
   },

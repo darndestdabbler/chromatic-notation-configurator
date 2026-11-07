@@ -10,14 +10,18 @@
  * the noteheads.
  *
  * The panel has three columns:
- *   - the first selected notehead drawn alone at the Large size;
+ *   - the first selected notehead drawn alone at the Large size, and, with
+ *     one notehead selected, "This notehead is: C ▾", which renames it
+ *     (session 28, §4.1);
  *   - its look: colour (swatches of the colours in use, None, a colour input,
  *     the colour's colour-blind-safe alternative, Start from a palette),
  *     fill (Solid or Hollow), shape (the config's shapes, then the built-in
  *     ones, then Import from SVG) and size (height and width in semitones,
  *     with an aspect-ratio lock);
- *   - the side step, shown only when the pitch axis puts the notehead on a
- *     neighbour's spot, and Give this look to.
+ *   - with one notehead selected, its nudge (the Pitch section's control,
+ *     session 28) when the pitch axis can show nudges; the side step, shown
+ *     only when the pitch axis puts the notehead on a neighbour's spot; and
+ *     Give this look to.
  * A marker says when a rule for particular durations or keys also changes
  * the notehead (§5.5); those rules are edited in Advanced.
  *
@@ -42,6 +46,8 @@ import { CNBNoteheadInference as I } from "./notehead-inference.js";
 import { CNBBuiltinShapes } from "./builtin-shapes.js";
 import { CNBPaletteEditor } from "./palette-editor.js";
 import { CNBPreviewDisplay } from "./preview-display.js";
+import { CNBPitchModel } from "./pitch-model.js";
+import { CNBPitchPanel } from "./pitch-panel.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ACCIDENTALS = [1, 3, 6, 8, 10];
@@ -265,9 +271,13 @@ export const CNBNoteheadPanel = {
    * @param {HTMLElement} container
    * @param {{getConfig: () => object, selection: number[],
    *          onChange?: (config: object) => void, onClose?: () => void,
+   *          onRename?: (toPc: number) => void,
    *          importControl?: (host: HTMLElement) => void}} opts
    *        importControl draws the host's SVG importer into the shape row;
    *        the host adds the imported shape and calls chooseShape(name).
+   *        onRename (session 28): after a rename has been reported through
+   *        onChange, the new name of the selected notehead, so the host can
+   *        move the selection to it and draw the panel again.
    * @returns {{root: HTMLElement, redraw: () => void, chooseShape: (name: string) => void}}
    */
   render(container, opts = {}) {
@@ -279,6 +289,7 @@ export const CNBNoteheadPanel = {
     const getConfig = opts.getConfig;
     const onChange = opts.onChange || (() => {});
     const onClose = opts.onClose || (() => {});
+    const onRename = opts.onRename || (() => {});
     const importControl = opts.importControl || null;
     const doc = globalThis.document;
     const pc = selection[0];
@@ -541,6 +552,45 @@ export const CNBNoteheadPanel = {
       return group;
     }
 
+    // ── Name and nudge (session 28, design §2, §4.1) ──────────────────────
+    /** "This notehead is: C ▾": renaming moves the names, not the picture. */
+    function drawName() {
+      const group = el("div", "cnb-nhp-group cnb-nhp-name");
+      const label = el("label", "cnb-nhp-field");
+      label.appendChild(el("span", "cnb-nhp-label", "This notehead is:"));
+      const select = el("select", "cnb-nhp-name-select");
+      for (let p = 0; p < 12; p++) {
+        const option = el("option", "", pcName(p));
+        option.value = String(p);
+        if (p === pc) option.selected = true;
+        select.appendChild(option);
+      }
+      select.value = String(pc);
+      select.onchange = (e) => {
+        const to = Number(valueOf(e, select));
+        if (!Number.isInteger(to) || to === pc) return;
+        onChange(CNBPitchModel.renameNotehead(getConfig(), pc, to));
+        onRename(to);
+      };
+      label.appendChild(select);
+      group.appendChild(label);
+      group.appendChild(el("p", "cnb-nhp-hint",
+        "Renaming changes the names only: every notehead keeps its look and its place."));
+      return group;
+    }
+
+    /** The selected notehead's nudge, when the pitch axis can show nudges. */
+    function drawNudge(config) {
+      if (!CNBPitchModel.readNudges(config)) return null;
+      const group = el("div", "cnb-nhp-group cnb-nhp-nudge");
+      group.appendChild(el("p", "cnb-nhp-label", "Nudge"));
+      CNBPitchPanel.nudgeControl(group, { config, pc, onChange: (c) => { onChange(c); draw(); } });
+      group.appendChild(el("p", "cnb-nhp-hint", pc === 0
+        ? "C is the reference: nudges are measured from it. Nudge the others to move them against C."
+        : "Up to a semitone above or below its own place, never past its neighbours."));
+      return group;
+    }
+
     // ── Give this look to ─────────────────────────────────────────────────
     function drawGive() {
       const group = el("div", "cnb-nhp-group cnb-nhp-give");
@@ -600,12 +650,15 @@ export const CNBNoteheadPanel = {
       const body = el("div", "cnb-nhp-body");
       const left = el("div", "cnb-nhp-col cnb-nhp-left");
       left.appendChild(drawCloseUp(config));
+      if (selection.length === 1) left.appendChild(drawName());
       const middle = el("div", "cnb-nhp-col cnb-nhp-look");
       middle.appendChild(drawColour(config, table));
       middle.appendChild(drawFill(table));
       middle.appendChild(drawShape(config, table));
       middle.appendChild(drawSize(config, table));
       const right = el("div", "cnb-nhp-col cnb-nhp-right");
+      const nudge = selection.length === 1 ? drawNudge(config) : null;
+      if (nudge) right.appendChild(nudge);
       const side = drawSideStep(config, table);
       if (side) right.appendChild(side);
       right.appendChild(drawGive());

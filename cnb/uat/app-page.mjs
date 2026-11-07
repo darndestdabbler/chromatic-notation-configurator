@@ -34,14 +34,27 @@ export function canvasConfig(config, size) {
 }
 
 /**
- * Show a section's panel ("staff", "noteheads", "ledger-lines", "clef",
- * "key-signature", "advanced", "export"). Since session 26 the staff
+ * Show a section's panel ("staff", "noteheads", "pitch", "ledger-lines",
+ * "clef", "key-signature", "advanced", "export"). Since session 26 the staff
  * editor is mounted once per section: its pattern and line look in Staff,
  * the ledger rules (Automatic or My own rules) in Ledger lines, and the
  * line overrides in Advanced.
  */
 export async function openSection(page, name) {
   await page.click(`.section-link[data-section="${name}"]`);
+}
+
+/**
+ * Set a form control's value as a user does: the value, then its input and
+ * change events (the panels write on change). Session 28: the Pitch
+ * section's spacing and nudge fields and the notehead panel's name select.
+ */
+export async function setField(page, selector, value) {
+  await page.$eval(selector, (el, v) => {
+    el.value = v;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }, String(value));
 }
 
 /**

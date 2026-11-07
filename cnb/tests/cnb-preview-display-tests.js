@@ -330,7 +330,7 @@ export const tests = [
           onRender: (options, target) => calls.push({ options, target }),
         });
         assertEqual(calls.length, 1, "one render on mount");
-        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1 });
+        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1, labelStrip: true });
         assert(calls[0].target === findOne(api.root, "cnb-pvd-preview"), "target is the preview element");
       });
     },
@@ -578,7 +578,7 @@ export const tests = [
         });
         assertEqual(calls.length, 1);
         assertEqual(calls[0].config, PVD.displayConfig(cfg, "medium"), "the display copy of the shared config");
-        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1 });
+        assertEqual(calls[0].options, { ...PVD.buildOptions(cfg, api.getState()), fluid: true, rows: 1, labelStrip: true });
         assert(calls[0].target === findOne(api.root, "cnb-pvd-preview"), "renders into the preview element");
         assertEqual(findAll(api.root, "pc-col").length, 0, "Module 10 not invoked");
       });
@@ -636,7 +636,7 @@ export const tests = [
     fn: () => {
       const cfg = PVD.displayConfig(CNBConfig.createDefault(), "medium");
       const options = { pitchClasses: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], durations: ["crotchet"], keys: null };
-      const min = CNBCollection.minRowWidth(cfg, { ...options, rows: 1 });
+      const min = CNBCollection.minRowWidth(cfg, { ...options, labelStrip: true, rows: 1 });
       assertEqual(PVD.rowsFor(cfg, options, min), 1, "at the minimum");
       assertEqual(PVD.rowsFor(cfg, options, min - 1), 2, "just below");
       assertEqual(PVD.rowsFor(cfg, options, Infinity), 1, "unknown width");
@@ -680,8 +680,8 @@ export const tests = [
         assertEqual(calls.length, 1, "one render on mount");
         assertEqual(calls[0].rows, 1, "one row before a width is known");
         const drawnCfg = PVD.displayConfig(cfg, "medium");
-        const one = CNBCollection.minRowWidth(drawnCfg, { rows: 1 });
-        const two = CNBCollection.minRowWidth(drawnCfg, { rows: 2 });
+        const one = CNBCollection.minRowWidth(drawnCfg, { rows: 1, labelStrip: true });
+        const two = CNBCollection.minRowWidth(drawnCfg, { rows: 2, labelStrip: true });
         observer.resize(one + 50);
         assertEqual(calls.length, 1, "still one row: no redraw");
         observer.resize(one - 1);
@@ -817,13 +817,108 @@ export const tests = [
         api.redraw();
         assertEqual(marked("cnb-pvd-selected"), "0,12", "after a redraw");
         const drawnCfg = PVD.displayConfig(cfg, "medium");
-        obs.resize(CNBCollection.minRowWidth(drawnCfg, { rows: 1 }) - 1);
+        obs.resize(CNBCollection.minRowWidth(drawnCfg, { rows: 1, labelStrip: true }) - 1);
         assertEqual(api.getRows(), 2, "two rows");
         assertEqual(marked("cnb-pvd-tint"), "1,5", "after the row count changes");
 
         api.setMarks({ selected: [3] });
         assertEqual(marked("cnb-pvd-selected"), "3", "replaced");
         assertEqual(marked("cnb-pvd-tint"), "", "tint cleared");
+      });
+    },
+  },
+  // ── Pitch mode and the label strip (session 28, design §4.2) ──
+  {
+    name: "render: the canvas draws the label strip in every row, and its labels are not columns",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const obs = fakeObserver();
+      withDomStub(container => {
+        const picks = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, ResizeObserver: obs.Ctor,
+          onSelect: (pc) => picks.push(pc) });
+        assertEqual(findAll(api.root, "label-col").length, 1, "one strip on one row");
+        assert(findAllByClassAttr(api.root, "pitch-label").length > 13, "a label per semitone");
+        obs.resize(CNBCollection.minRowWidth(PVD.displayConfig(cfg, "medium"), { rows: 1, labelStrip: true }) - 1);
+        assertEqual(findAll(api.root, "label-col").length, 2, "a strip on each of two rows");
+        api.setMarks({ selected: [0] });
+        assert(findAllByClassAttr(api.root, "pitch-label").every(g => !String(g.className || "").includes("cnb-pvd-selected")),
+          "labels are never marked");
+      });
+    },
+  },
+  {
+    name: "setPitchMode: the class and the hint come and go with no redraw, and survive a redraw",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        let renders = 0;
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, onRender: () => { renders++; } });
+        const hint = () => findOne(api.root, "cnb-pvd-pitch-hint").textContent;
+        const on = () => api.root.className.split(" ").includes("cnb-pvd-pitch-mode");
+        assert(!on() && hint() === "", "off at first");
+        const before = renders;
+        api.setPitchMode(true);
+        assertEqual(renders, before, "no redraw");
+        assert(on(), "class on");
+        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff", "hint");
+        api.redraw();
+        assert(on() && hint() !== "", "kept across a redraw");
+        assertEqual(api.getPitchMode(), true);
+        api.setPitchMode(false);
+        assert(!on() && hint() === "", "off again");
+      });
+    },
+  },
+  {
+    name: "pitch mode: dragging a strip two semitones down reports 2; Esc, no move or pitch mode off report nothing",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const drags = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, onPitchDrag: (d) => drags.push(d) });
+        const step = PVD.SIZES.medium;
+        const slice = () => findAllByClassAttr(api.root, "label-slice")[0];
+        const labels = () => findAllByClassAttr(slice(), "pitch-label");
+        slice().onpointerdown({ clientY: 100 });
+        slice().onpointermove({ clientY: 100 + 2 * step });
+        slice().onpointerup({});
+        assertEqual(drags, [], "outside pitch mode a drag does nothing");
+
+        api.setPitchMode(true);
+        slice().onpointerdown({ clientY: 100 });
+        slice().onpointermove({ clientY: 100 + 2 * step + 3 });
+        assert(labels().every(g => g.getAttribute("transform") === `translate(0 ${2 * step})`), "labels follow, snapped");
+        const middle = findAllByClassAttr(slice(), "staff-middle")[0];
+        assertEqual(middle.getAttribute("transform"), null, "the middle line stays");
+        slice().onpointerup({});
+        assertEqual(drags, [2], "two semitones down");
+        assert(labels().every(g => g.getAttribute("transform") === ""), "labels put back");
+
+        slice().onpointerdown({ clientY: 100 });
+        slice().onpointermove({ clientY: 100 - step });
+        slice().onpointercancel({});
+        slice().onpointerdown({ clientY: 100 });
+        slice().onpointerup({});
+        assertEqual(drags, [2], "a cancel and a release with no move report nothing");
+
+        const listeners = [];
+        const hadAdd = "addEventListener" in globalThis;
+        const prevAdd = globalThis.addEventListener;
+        const prevRemove = globalThis.removeEventListener;
+        globalThis.addEventListener = (type, fn) => listeners.push([type, fn]);
+        globalThis.removeEventListener = () => {};
+        try {
+          slice().onpointerdown({ clientY: 100 });
+          slice().onpointermove({ clientY: 100 + step });
+          listeners.find(([t]) => t === "keydown")[1]({ key: "Escape" });
+          slice().onpointerup({});
+        } finally {
+          if (hadAdd) { globalThis.addEventListener = prevAdd; globalThis.removeEventListener = prevRemove; }
+          else { delete globalThis.addEventListener; delete globalThis.removeEventListener; }
+        }
+        assertEqual(drags, [2], "Esc puts the strip back");
+        assert(labels().every(g => g.getAttribute("transform") === ""), "labels back after Esc");
       });
     },
   },

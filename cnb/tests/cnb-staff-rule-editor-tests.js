@@ -16,7 +16,9 @@ import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBConfigIO } from "../ui/config-io.js";
-import { readFileSync } from "node:fs";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
+import { CNBPitchModel } from "../ui/pitch-model.js";
+import { readFileSync, readdirSync } from "node:fs";
 
 /** The twinline-compact gallery config (pitch axis on, staff midpoint 7). */
 function loadTwinlineCompact() {
@@ -332,6 +334,47 @@ export const tests = [
     },
   },
   {
+    name: "automaticTemplates under a pitch axis: unchanged with no axis; an identity axis gives today's spots (every gallery pattern)",
+    fn: () => {
+      const dir = new URL("../assets/examples/gallery/", import.meta.url);
+      const patterns = [[4, 8], [3, 6, 9]];
+      for (const f of readdirSync(dir).filter(n => n.endsWith(".json"))) {
+        const c = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
+        if (!c.pitchAxis) patterns.push(c.staff.semitonePattern);
+      }
+      for (const pattern of patterns) {
+        const today = JSON.stringify(E.automaticTemplates(pattern));
+        const sps = E.derivedGeometry(pattern).semitonesPerStaffSpace;
+        const linear = CNBPitchAxis.create({ staff: { semitonePattern: pattern, semitonesPerStaffSpace: sps } });
+        assert(JSON.stringify(E.automaticTemplates(pattern, linear)) === today, `${pattern}: a disabled axis changes nothing`);
+        const identity = CNBPitchAxis.create({ staff: {}, pitchAxis: {
+          enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: sps,
+          pitchClasses: [...Array(12).keys()].map(pc => ({ pc, position: pc })) } });
+        assert(JSON.stringify(E.automaticTemplates(pattern, identity)) === today,
+          `${pattern}: the identity axis gives today's spots, got ${JSON.stringify(E.automaticTemplates(pattern, identity))}`);
+      }
+    },
+  },
+  {
+    name: "automaticTemplates under a pitch axis: Twinline gives C and A♯, at stride 7 and in nudge form (session 28)",
+    fn: () => {
+      const stride7 = loadTwinlineCompact();
+      const r = CNBPitchModel.readNudges(stride7);
+      const nudgeForm = CNBPitchModel.writeNudges(stride7, r.nudges, r.staffSpacing);
+      for (const [name, cfg] of [["stride 7", stride7], ["nudge form", nudgeForm]]) {
+        const templates = E.automaticTemplates(cfg.staff.semitonePattern, CNBPitchAxis.create(cfg));
+        assertEqualArrays(templates.map(t => t.semiWithinOctave), [0, 10], `${name}: spots at C and A♯`);
+        assert(templates.every(t => t.triggerMode === "proximity" && t.triggerPCs.length === 0), `${name}: proximity`);
+        const automatic = { ...cfg, ledgers: { ...cfg.ledgers, templates, proximityRule: true } };
+        const state = E.stateFromConfig(automatic);
+        assert(state.ledgerMode === "automatic", `${name}: opens as Automatic`);
+        assert(JSON.stringify(E.applyToConfig(automatic, state).ledgers.templates) === JSON.stringify(templates),
+          `${name}: writes back unchanged`);
+      }
+      assert(E.stateFromConfig(stride7).ledgerMode === "own", "the fixture's override templates stay own rules");
+    },
+  },
+  {
     name: "automatic mode: buildLedgers follows the pattern; a loaded automatic config writes back unchanged",
     fn: () => {
       const config = CNBConfig.createDefault();
@@ -502,8 +545,10 @@ export const tests = [
       const rows = findAll(handle.root, "cnb-sre-derived-row").map(d => d.textContent);
       const exported = CNBLilypond.sectionB(config);
       assert(exported.includes("#(set! cnb:semitones-per-staff-space 2)"), "the export uses the axis unit");
-      assert(rows.includes("Staff spacing: 2 axis units per staff space, from the pitch axis map in Advanced"),
-        "axis unit shown: " + JSON.stringify(rows));
+      // 2 axis units at stride 7 are 12 / 3.5 semitones (design §3.4),
+      // which the Pitch section sets (session 28).
+      assert(rows.includes("Staff spacing: 3.4286 semitones per staff space, set in the Pitch section"),
+        "axis spacing shown: " + JSON.stringify(rows));
       assert(rows.includes("Middle of the staff: G, semitone 7"), "loaded midpoint shown");
     }),
   },

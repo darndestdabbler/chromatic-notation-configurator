@@ -39,12 +39,13 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 25 | The new page | no | 2026-11-07 |
 | 26 | The panels speak to a designer | no | 2026-11-07 |
 | 27 | The notehead panel | no | 2026-11-07 |
-| 28 | Pitch | — | not declared |
+| 28 | Pitch | no | 2026-11-07 |
 | 29 | Loose ends from sessions 2–26 and the v1 sets | — | not declared |
 | 30 | The clef and the key signature reach LilyPond | — | not declared |
 | 31 | The checks speak to a designer | — | not declared |
-| 32 | The UI is stable | — | not declared |
-| 33 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 32 | Two more staves to start from | — | not declared |
+| 33 | The UI is stable | — | not declared |
+| 34 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -256,3 +257,13 @@ Build the notehead panel of the notehead-first editor (design docs/planning/note
 
 - 2026-11-07 — step 'uat-drivers-follow': its files and checks: Running every app driver showed uat-site.mjs also follows the panel: it requires every *-host element to be filled at load, and the notehead panel's host fills only while a notehead is selected. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-07 — step 'uat-record': its files and checks: Judging the screenshots against mock-up 2 found the rule list hidden under an open panel (design 2 lists it there), a head without the look in words, and an empty import status gap and misaligned rule words; the fixes are in index.html, app.css and the panel with its test, and the Kite driver's selection check follows the rule list staying visible. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 28 — Pitch
+
+**Releasable: no.**
+
+Build the Pitch part of the notehead-first editor (design docs/planning/notehead-first-editor-design.md §3, §4) on session 24's pitch model, and settle the three pitch-model questions sessions 24 and 25 left open. First the model. readNudges measures every map's nudges from C's position, so a uniformly shifted map reads as no nudges and C's own nudge is always 0, the reference. Automatic ledger spots follow the staff spacing from the lines as the pitch axis places them, and shiftPitch, writeNudges and renameNotehead keep Automatic ledgers automatic. The exported staff is the pattern over the 24 semitones centred on the middle of the staff, from midpoint − 12 to midpoint + 11, as the operator chose in planning. That is 0–23 for every config with midpoint 12, so only Twinline's export (midpoint 7) changes. Its baseline is regenerated, LY spec 1.3.5 records the change, and a test that renames C to F♯ on the default staff pins it. The canvas keeps drawing C to C′ with every staff line inside its range, so it needs no change, and the design records both decisions. Then the UI. CNBCollection gains a labelStrip option for the fluid canvas: a label column first in each row's 14th column, one pitch-class label per semitone level with its spot, even pitch classes left and odd right, a same-column shared spot joined as "C·D", and the middle of the staff marked. The preview display draws the strip quiet everywhere and, in pitch mode, lets the user drag it by whole semitones, which reports a pitch shift. A new Pitch panel (cnb/ui/pitch-panel.js) holds the middle of the staff, a decimal staff spacing and the twelve nudges with their limits, and falls back to "This file uses a custom pitch axis that nudges can't show" with a way to Advanced › Pitch axis map when readNudges gives null (§3.5). The notehead panel gains "This notehead is: C ▾" (renaming, §4.1) and the selected notehead's nudge. The app gets a Pitch section. Tests go in each module's test file. A UAT driver rebuilds Twinline from nudges and checks it engraves at the fixture's positions, and the screenshot check is judged against mock-up 3.
+
+**Amended after acceptance:**
+
+- 2026-11-07 — step 'uat-record': its files: The full UAT run found uat-key-signature.mjs counting the canvas row's columns without the new label strip, so the driver is fixed in this step; the screenshot judgement's fixes were CSS only, so index.html and pitch-panel.js are not changed. (claude-code (anthropic, claude-opus-5-5))

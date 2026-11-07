@@ -11,7 +11,7 @@
  * retired with the monolith (preserved at tag `legacy-monolith-final`).
  */
 
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
 import { findEngine, measureNoteheads } from "./engine-probe.js";
 import os from "os";
@@ -187,6 +187,39 @@ export const tests = [
       cfg.staff.semitonesPerStaffSpace = 3;
       const pos = CNBLilypond.computeStaffLinePositions(cfg);
       eq(JSON.stringify(pos), JSON.stringify([-6, -4, -2, 2, 4, 6]));
+    }},
+
+  // LY spec 1.3.5 §5.1a: the range is the 24 semitones centred on the
+  // midpoint, which is octaves 0 and 1 whenever the midpoint is 12.
+  { name: "staff-line-positions 1.3.5: every config with midpoint 12 gets the octave-0-and-1 positions", fn: () => {
+      const gallery = path.join(CNB_DIR, "assets", "examples", "gallery");
+      const configs = [["createDefault", CNBConfig.createDefault()]];
+      for (const f of ["kite-4-369-config.json", "45deg-369-config.json", "sized-config.json"]) {
+        configs.push([f, JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", f), "utf8"))]);
+      }
+      for (const f of readdirSync(gallery).filter(n => n.endsWith(".json"))) {
+        configs.push([f, JSON.parse(readFileSync(path.join(gallery, f), "utf8"))]);
+      }
+      let checked = 0;
+      for (const [name, cfg] of configs) {
+        if (cfg.staff.midpoint !== 12) continue;
+        const sps = cfg.pitchAxis && cfg.pitchAxis.enabled ? cfg.pitchAxis.axisUnitsPerStaffSpace : cfg.staff.semitonesPerStaffSpace;
+        const old = [];
+        for (const oct of [0, 1]) for (const s of cfg.staff.semitonePattern) old.push(2 * (s + oct * 12 - 12) / sps);
+        old.sort((a, b) => a - b);
+        eq(JSON.stringify(CNBLilypond.computeStaffLinePositions(cfg)), JSON.stringify(old), name);
+        checked++;
+      }
+      assert(checked >= 20, `checked ${checked} midpoint-12 configs`);
+    }},
+
+  { name: "staff-line-positions 1.3.5: the range follows the midpoint, so a moved pitch keeps the staff", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.staff.midpoint = 6;             // C renamed F♯ (shiftPitch −6)
+      cfg.staff.semitonePattern = [2, 10];
+      eq(JSON.stringify(CNBLilypond.computeStaffLinePositions(cfg)), JSON.stringify([-4, -2, 2, 4]), "midpoint 6");
+      cfg.staff.midpoint = 18;
+      eq(JSON.stringify(CNBLilypond.computeStaffLinePositions(cfg)), JSON.stringify([-4, -2, 2, 4]), "midpoint 18");
     }},
 
   // ── header ─────────────────────────────────────────────────────────────────
@@ -828,15 +861,19 @@ export const tests = [
 
   // ── Pitch axis (set 014 session 3): v1.3 emission, §8a gate lifted ──────
 
-  { name: "pitch axis §5.4a: computeStaffLinePositions reproduces the 013 spike staff '(-3 -1 1 4 6 8)", fn: () => {
+  // The 013 spike engraved '(-3 -1 1 4 6 8), the staff over semitones 0–23.
+  // Since 1.3.5 (§5.1a) the range is centred on the midpoint, semitones
+  // −5…18 for the spike's midpoint 7: G♯ below (−4) replaces G♯ two
+  // octaves up (20), three lines either side of G.
+  { name: "pitch axis §5.4a: the 013 spike staff, centred on its midpoint, is '(-6 -3 -1 1 4 6)", fn: () => {
       const config = spikeAxisConfig();
-      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-3 -1 1 4 6 8", "spike staff positions");
+      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-6 -3 -1 1 4 6", "spike staff positions");
     }},
 
   { name: "pitch axis §5.4a: staff lines collapsing onto one axis position are emitted once", fn: () => {
       const config = spikeAxisConfig();
       config.staff.semitonePattern = [2, 5, 6, 8, 9];   // 5/6 and 8/9 share positions 3 and 5
-      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-3 -1 1 4 6 8", "deduplicated and sorted");
+      eq(CNBLilypond.computeStaffLinePositions(config).join(" "), "-6 -3 -1 1 4 6", "deduplicated and sorted");
     }},
 
   { name: "pitch axis §5.4b: the compiled procedure inlines map, stride, midpoint anchor and axis units; middle C maps to -4", fn: () => {
@@ -921,7 +958,7 @@ export const tests = [
   { name: "pitch axis: generate() exports an enabled axis config (the §8a gate is lifted)", fn: () => {
       const ly = CNBLilypond.generate(spikeAxisConfig());
       contains(ly, "cnb:get-pitch-staff-position", "the hook is emitted");
-      contains(ly, "#(set! cnb:staff-line-positions '(-3 -1 1 4 6 8))", "axis staff");
+      contains(ly, "#(set! cnb:staff-line-positions '(-6 -3 -1 1 4 6))", "axis staff, centred on the midpoint (1.3.5)");
     }},
 
   { name: "pitch axis: disabled or non-boolean-enabled sections export byte-identically to the default, even with xOffsetStaffSpaces rules", fn: () => {

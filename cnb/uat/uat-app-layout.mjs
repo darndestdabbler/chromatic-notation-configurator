@@ -15,6 +15,10 @@
  *     and changes nothing in the config;
  *   - no console or page errors.
  *
+ * Session 28 opens Twinline in the Pitch section (mock-up 3): pitch mode,
+ * a label strip and middle line on every row, no sideways scroll, and it
+ * saves app-pitch-1440.png and app-pitch-1280.png.
+ *
  * Session 26 adds the Ledger lines section to the walk, checks each
  * section's preview (the ledger marks and spots, the Clef and Key
  * signature partial staffs), that the staff editor's three mounts stay in
@@ -47,6 +51,7 @@ import { openSection, selectNotehead } from "./app-page.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const KITE = path.join(ROOT, "cnb", "fixtures", "kite-4-369-config.json");
+const TWINLINE = path.join(ROOT, "cnb", "assets", "examples", "gallery", "twinline-compact.json");
 const PORT = Number(process.env.CNB_UAT_PORT || 8161);
 const SHOT_DIR = process.env.CNB_UAT_SHOTS || path.join(os.tmpdir(), "cnb-uat");
 
@@ -199,7 +204,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 
   // ── One panel at a time ──
   let onePanel = true;
-  for (const name of ["noteheads", "ledger-lines", "clef", "key-signature", "advanced", "export", "staff"]) {
+  for (const name of ["noteheads", "pitch", "ledger-lines", "clef", "key-signature", "advanced", "export", "staff"]) {
     await openSection(page, name);
     const shown = await visiblePanels(page);
     const current = await page.$$eval(".section-link.on", els => els.map(e => e.dataset.section));
@@ -303,6 +308,27 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.keyboard.press("Escape");
   check(`${width}: Esc closes the notehead panel`, await page.isHidden("#notehead-panel-card"));
   await openSection(page, "staff");
+
+  // ── Twinline in the Pitch section (session 28, mock-up 3) ──
+  await page.setInputFiles("#open-file", TWINLINE);
+  await page.waitForFunction(() => document.getElementById("topbar-status").textContent === "Opened twinline-compact.json");
+  await openSection(page, "pitch");
+  l = await layout(page);
+  const strips = await page.evaluate(() => ({
+    pitchMode: document.querySelector(".cnb-preview-display").classList.contains("cnb-pvd-pitch-mode"),
+    strips: document.querySelectorAll(".cnb-pvd-preview .label-col").length,
+    middles: document.querySelectorAll(".cnb-pvd-preview .label-col .staff-middle").length,
+    nudges: document.querySelectorAll(".cnb-pp-nudge").length,
+  }));
+  check(`${width}: Pitch shows Twinline in pitch mode, with a label strip and middle line on each of its ${l.systems} row(s)`,
+    strips.pitchMode && l.systems >= 1 && strips.strips === l.systems && strips.middles === l.systems && strips.nudges === 12,
+    JSON.stringify({ ...strips, systems: l.systems }));
+  check(`${width}: the Pitch section does not make the page scroll sideways`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: path.join(SHOT_DIR, `app-pitch-${width}.png`), fullPage: true });
+  await openSection(page, "staff");
+  check(`${width}: leaving Pitch turns pitch mode off`,
+    !(await page.$eval(".cnb-preview-display", e => e.classList.contains("cnb-pvd-pitch-mode"))));
 
   // ── The kept panels, for the screenshot check (session 26) ──
   if (width === 1440) {

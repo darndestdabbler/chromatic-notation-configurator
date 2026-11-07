@@ -556,7 +556,9 @@ export const CNBLilypond = {
 
   /**
    * Compute cnb:staff-line-positions values from the staff config: expand
-   * semitonePattern across the two-octave card range (octaves 0 and 1),
+   * semitonePattern across the 24 semitones centred on the midpoint
+   * (midpoint − 12 ≤ S < midpoint + 12; octaves 0 and 1 at the default
+   * midpoint 12 — session 28, LY spec 1.3.5 §5.1a),
    * then 2 × (S - midpoint) / semitonesPerStaffSpace — LilyPond staff
    * positions are HALF-staff-spaces from center (LY spec §5.1; engine
    * cnb/config.ly). 4-8 system, midpoint 12, sps 4 → [-4, -2, 2, 4];
@@ -574,27 +576,31 @@ export const CNBLilypond = {
     const pattern = (staff.semitonePattern || []).slice().sort((a, b) => a - b);
     const midpoint = staff.midpoint || 0;
 
+    // The 24 semitones centred on the middle of the staff (LY spec 1.3.5
+    // §5.1a): midpoint − 12 ≤ S < midpoint + 12, which is 0–23 at the
+    // default midpoint 12. So moving the pitch (staff.midpoint and the
+    // pattern together, design §3.1) never brings a line back at the other
+    // edge.
+    const staffSemis = [];
+    for (let oct = Math.floor((midpoint - 12) / 12); oct <= Math.floor((midpoint + 12) / 12); oct++) {
+      for (const s of pattern) {
+        const abs = s + oct * 12;
+        if (abs >= midpoint - 12 && abs < midpoint + 12) staffSemis.push(abs);
+      }
+    }
+
     const axis = CNBPitchAxis.create(config);
     if (axis.enabled) {
+      // Pattern semitones may collapse onto one axis position, so the axis
+      // path deduplicates before it sorts.
       const anchor = axis.positionOfSemi(midpoint);
-      const unique = new Set();
-      for (const oct of [0, 1]) {
-        for (const s of pattern) {
-          unique.add(2 * (axis.positionOfSemi(s + oct * 12) - anchor) / axis.unitsPerStaffSpace);
-        }
-      }
+      const unique = new Set(staffSemis.map(abs =>
+        2 * (axis.positionOfSemi(abs) - anchor) / axis.unitsPerStaffSpace));
       return [...unique].sort((a, b) => a - b);
     }
 
     const sps = staff.semitonesPerStaffSpace || 1;
-
-    const positions = [];
-    for (const oct of [0, 1]) {
-      for (const s of pattern) {
-        positions.push(2 * (s + oct * 12 - midpoint) / sps);
-      }
-    }
-    return positions.sort((a, b) => a - b);
+    return staffSemis.map(abs => 2 * (abs - midpoint) / sps).sort((a, b) => a - b);
   },
 
   /**

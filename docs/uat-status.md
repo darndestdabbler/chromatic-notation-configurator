@@ -17,6 +17,63 @@ suite does not install its prerequisites (`npm install`,
 `npx playwright install chromium firefox`, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Pitch — 2026-11-07 (session 28)
+
+- playwright-core 1.64.1; Chromium `chromium-1248`
+- Windows 11, Node 25.8.1
+- `npm run uat`: **17 of 17 drivers pass**: app layout 59/59, clef 28/28,
+  common properties 24/24, config export 22/22, config IO 19/19, gallery
+  previews, golden path 30/30, hostile input 57/57 (Chromium, Firefox and
+  Edge), imported notehead 13/13, key signature 39/39, Kite pipeline 26/26,
+  notehead panel 13/13, notehead rule editor 34/34, pitch axis, pitch 26/26
+  (new), site 8/8, staff rule editor 29/29.
+- `cnb/uat/uat-app-layout.mjs` writes the screenshots below; at each width
+  it opens Twinline (`twinline-compact.json`) in the Pitch section, as
+  mock-up 3 does.
+
+Session 28 added the label strip in each row's first column, the Pitch
+section (middle of the staff, staff spacing, nudges), renaming and the
+nudge in the notehead panel, and the custom-map fallback (design §3, §4).
+The new driver, `uat-pitch.mjs`, rebuilds Twinline from the default config
+through the UI. In Staff it sets lines on C♯, D, G, A♯ and B. In Ledger
+lines it chooses Automatic. In Pitch it sets the middle of the staff to G,
+which renames the lines D, F, F♯, G♯ and A, then the staff spacing
+3.4286 and the §3.3 nudges. Every semitone from 0 to 23 then engraves at
+the fixture's staff position, and the exported staff-line positions match
+the fixture's, within 0.01 half-space. The five shared pairs sit level on
+the canvas. The Automatic ledger spots follow the nudged lines to C and
+A♯, and the columns that draw ledger lines are the fixture's (C, C♯, A♯,
+B and C′). The driver also checks four more things. Dragging the label
+strip one semitone down makes the middle G♯, and dragging it back makes it
+G. Renaming C to F♯ from the notehead panel on the default config keeps the
+exported staff `'(-4 -2 2 4)` (design §11). The fixture opens with its
+nudges shown and is not rewritten. A map that needs more than ±1 shows the
+custom-map note, whose button opens Advanced › Pitch axis map.
+
+The layout driver gained, at both widths: Twinline in the Pitch section is
+in pitch mode with a label strip and a middle line on every row, nothing
+scrolls sideways, and leaving the section turns pitch mode off.
+`uat-key-signature.mjs` now expects the label strip first in the canvas
+row, before the clef and key signature.
+
+### Judged against mock-up 3 (design §10)
+
+| Screenshot | Judgement |
+|---|---|
+| [Pitch, 1440](uat-shots/session-028/app-pitch-1440.png), [1280](uat-shots/session-028/app-pitch-1280.png) | As mock-up 3: Twinline with the label strip in drag mode on each row (one row at 1440, two at 1280), even pitch classes on the left and odd on the right, shared spots side by side, and the blue middle line at G. The Pitch panel sits under the canvas: Middle of the staff (G) and Staff spacing (3.4286, "An octave takes 3.5 staff spaces") side by side, then the twelve nudges in two rows of six, each with its value, "shares" on the ten shared notes, and its reach shaded on the bar. C is fixed at 0. The toolbar carries the drag hint. Nothing scrolls sideways. |
+| [Default, 1440](uat-shots/session-028/app-default-1440.png), [1280](uat-shots/session-028/app-default-1280.png) | As session 27, with the quiet label strip (grey labels on the inset surface, a hairline on its right) before the staff: one row at 1440, two at 1280. |
+
+Found and fixed in the judgement. The first and last labels of a strip were
+cut in half at the strip's edges: the strip now lets them show in its
+label-height margins. The browser's own slider track hid the shaded reach:
+the nudge bars now draw their own grey track with the reach on it.
+
+Left as it is: the fixture opens at stride 7, where a pitch class's spot
+is one axis unit (11 px at Medium), so the strip's labels sit closer than
+in the mock-up, which drew the nudge form (stride 12, 18.9 px per spot).
+They stay legible, and Large spaces them out. Changing any nudge or the
+spacing rewrites the map in the nudge form (§3.5).
+
 ## The notehead panel — 2026-11-07 (session 27)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`

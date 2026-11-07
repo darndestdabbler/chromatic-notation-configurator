@@ -17,14 +17,19 @@
  *   renameNotehead(config, from, to) → names changed, the picture kept (§4.1)
  *
  * A nudge is a pitch class's offset from its own semitone, −1…+1; its
- * position is pc + nudge. Nudges and spacing are rounded to 4 decimals (the
+ * position is pc + nudge. Nudges are read relative to C, whose nudge is
+ * always 0 (session 28). Nudges and spacing are rounded to 4 decimals (the
  * exporter's precision), and so are the positions written from them, so two
  * pitch classes that share a spot get the same number.
+ *
+ * shiftPitch, writeNudges and renameNotehead keep Automatic ledger lines
+ * automatic for the new staff and pitch axis (session 28, design §1).
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBNoteheadInference } from "./notehead-inference.js";
+import { CNBStaffRuleEditor } from "./staff-rule-editor.js";
 
 const PCS = [...Array(12).keys()];
 const EPS = 1e-9;
@@ -45,10 +50,16 @@ function shiftKeys(overrides, d) {
  * Move the pitch by d semitones and keep the staff where it is on the page
  * (§3.1): the midpoint, the staff pattern, the ledger templates and both
  * line-override maps move by the same d. The pitch-axis map is not touched,
- * so each nudge travels with its pitch class (§4.3).
+ * so each nudge travels with its pitch class (§4.3). Automatic ledger lines
+ * stay automatic (keepAutomaticLedgers).
  */
 function shiftPitch(config, d) {
   if (!Number.isInteger(d)) throw new Error(`shiftPitch: d must be a whole number of semitones, got ${d}`);
+  return keepAutomaticLedgers(config, shiftRaw(config, d));
+}
+
+/** shiftPitch without the Automatic ledger rewrite. */
+function shiftRaw(config, d) {
   const out = CNBConfig.clone(config);
   if (d === 0) return out;
   const staff = out.staff || {};
@@ -71,8 +82,11 @@ function shiftPitch(config, d) {
 /**
  * The nudges and staff spacing a config shows (§3.2–§3.4). With no active
  * pitch axis every nudge is 0 and the spacing is staff.semitonesPerStaffSpace.
- * A stride-12 map reads as position − pc. Any other stride is rescaled to
- * 12 with C fixed at 0 (§3.3), and its spacing is
+ * Every map, stride 12 included, is measured from C's position and rescaled
+ * to stride 12 (§3.3): nudge(pc) = (position(pc) − position(0)) × 12 /
+ * octaveStride − pc. C is the reference, so its nudge always reads 0, and a
+ * map whose positions are all shifted by the same amount (which draws and
+ * engraves the same as no shift) reads as no nudges. The spacing is
  * axisUnitsPerStaffSpace × 12 / octaveStride (§3.4). Null when a nudge
  * falls outside ±1: the map is a custom axis nudges can't show (§3.5).
  */
@@ -83,8 +97,7 @@ function readNudges(config) {
   }
   const stride = axis.octaveStride;
   const pos = PCS.map(pc => axis.positionOfSemi(pc));
-  const origin = stride === 12 ? 0 : pos[0];
-  const nudges = PCS.map(pc => round4((pos[pc] - origin) * 12 / stride - pc));
+  const nudges = PCS.map(pc => round4((pos[pc] - pos[0]) * 12 / stride - pc));
   if (nudges.some(n => Math.abs(n) > 1 + EPS)) return null;
   return { nudges, staffSpacing: round4(axis.unitsPerStaffSpace * 12 / stride) };
 }
@@ -133,7 +146,7 @@ function writeNudges(config, nudges, staffSpacing) {
       pitchClasses: PCS.map(pc => ({ pc, position: round4(pc + nudges[pc]) })),
     };
   }
-  return out;
+  return keepAutomaticLedgers(config, out);
 }
 
 /** The shift, −6…+5 semitones, that takes the name fromPc to toPc. */
@@ -154,7 +167,7 @@ function renameNotehead(config, fromPc, toPc) {
   if (d === 0) return CNBConfig.clone(config);
   const table = CNBNoteheadInference.lookTable(config);
   const rotated = PCS.map(pc => ({ ...table[mod12(pc - d)], pc }));
-  const out = CNBNoteheadInference.writeBack(shiftPitch(config, d), rotated);
+  const out = CNBNoteheadInference.writeBack(shiftRaw(config, d), rotated);
   const axis = CNBPitchAxis.create(config);
   if (axis.enabled) {
     const shift = Math.round(d * axis.octaveStride / 12);
@@ -163,7 +176,29 @@ function renameNotehead(config, fromPc, toPc) {
       position: round4(axis.positionOfSemi(pc - d) + shift),
     }));
   }
-  return out;
+  return keepAutomaticLedgers(config, out);
+}
+
+/**
+ * Automatic ledger lines stay automatic (session 28): when the input's
+ * ledgers are exactly the Automatic spots of its own staff and pitch axis,
+ * the output gets the Automatic spots of its new staff and pitch axis, so
+ * the spots follow the lines as the nudges place them. My own rules are
+ * never rewritten. Changes `after` and returns it.
+ */
+function keepAutomaticLedgers(before, after) {
+  if (!before.ledgers || !after.ledgers) return after;
+  try {
+    const pattern = (before.staff && before.staff.semitonePattern) || [];
+    if (CNBStaffRuleEditor.ledgerModeOf(pattern, before.ledgers, CNBPitchAxis.create(before)) !== "automatic") {
+      return after;
+    }
+    after.ledgers.templates = CNBStaffRuleEditor.automaticTemplates(
+      (after.staff && after.staff.semitonePattern) || [], CNBPitchAxis.create(after));
+  } catch {
+    // A pattern the staff editor cannot read has no Automatic spots.
+  }
+  return after;
 }
 
 export const CNBPitchModel = {

@@ -50,6 +50,7 @@
       <div class="sidebar-inner">
         <button type="button" class="section-link" data-section="staff">Staff</button>
         <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
+        <button type="button" class="section-link" data-section="pitch">Pitch</button>
         <button type="button" class="section-link" data-section="ledger-lines">Ledger lines</button>
         <button type="button" class="section-link" data-section="clef">Clef</button>
         <button type="button" class="section-link" data-section="key-signature">Key signature</button>
@@ -90,6 +91,11 @@
               <div id="rule-list-host"></div>
             </div>
           </div>
+        </section>
+
+        <section class="card panel" data-panel="pitch" hidden>
+          <div class="card-head"><h2>Pitch</h2><span class="sub">Which pitch sits where on the staff</span></div>
+          <div class="card-body"><div id="pitch-panel-host"></div></div>
         </section>
 
         <section class="card panel" data-panel="ledger-lines" hidden>
@@ -133,7 +139,7 @@
                 <summary>Staff line overrides<span class="sub">one staff line with a look of its own</span></summary>
                 <div class="disclosure-body"><div id="staff-overrides-host"></div></div>
               </details>
-              <details class="disclosure">
+              <details class="disclosure" id="pitch-axis-map">
                 <summary>Pitch axis map</summary>
                 <div class="disclosure-body"><div id="pitch-axis-editor-host"></div></div>
               </details>
@@ -180,6 +186,8 @@
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
     import { CNBNoteheadPanel } from "./ui/notehead-panel.js";
+    import { CNBPitchPanel } from "./ui/pitch-panel.js";
+    import { CNBPitchModel } from "./ui/pitch-model.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -215,7 +223,11 @@
         if (on) link.setAttribute("aria-current", "true");
         else link.removeAttribute("aria-current");
       }
-      if (previewApi) previewApi.setFocus(name);
+      if (previewApi) {
+        previewApi.setFocus(name);
+        // The Pitch section makes the label strip draggable (design §4.2).
+        previewApi.setPitchMode(name === "pitch");
+      }
     }
     for (const link of document.querySelectorAll(".section-link")) {
       link.onclick = () => showSection(link.dataset.section);
@@ -246,10 +258,18 @@
         selection,
         onChange: (config) => {
           appConfig = config;
+          // A rename or a nudge also moves the staff, ledgers or pitch axis.
+          mountStaffEditor();
           mountLookEditors();
           refreshShared({ keepPanel: true });
         },
         onClose: () => showSection(currentSection),
+        // Renaming (design §4.1): the selection follows the notehead to its
+        // new name, and the panel is drawn again for it.
+        onRename: (toPc) => {
+          selection = [toPc];
+          openNoteheadPanel();
+        },
         importControl: drawImporter,
       });
       refreshMarks();
@@ -358,13 +378,38 @@
       }
     }
 
+    // ── Pitch (design §3, §4) ────────────────────────────────────────────
+    // The Pitch section, the label strip's drag and a rename all rewrite
+    // the staff, ledgers, pitch axis or rules through the pitch model, so
+    // every editor that reads those re-seeds.
+    function adoptPitchChange(config) {
+      appConfig = config;
+      mountStaffEditor();
+      mountLookEditors();
+      refreshShared();
+    }
+
     previewApi = CNBPreviewDisplay.render(byId("preview-host"), {
       getConfig: () => appConfig,
       rangeHost: byId("preview-range-host"),
       onSelect: selectNotehead,
+      // Dragging the label strip by d semitones moves the pitch (§4.2).
+      onPitchDrag: (d) => adoptPitchChange(CNBPitchModel.shiftPitch(appConfig, d)),
       onRender: (options) => {
         canvasOptions = options;
         refreshSectionPreviews();
+      },
+    });
+
+    const pitchApi = CNBPitchPanel.render(byId("pitch-panel-host"), {
+      getConfig: () => appConfig,
+      onChange: adoptPitchChange,
+      // A custom pitch axis (§3.5) is edited in Advanced › Pitch axis map.
+      onOpenAdvanced: () => {
+        showSection("advanced");
+        const map = byId("pitch-axis-map");
+        map.open = true;
+        map.scrollIntoView({ block: "nearest" });
       },
     });
     showSection("staff");           // sets the focus, which redraws the partial staffs at the canvas Size
@@ -476,6 +521,7 @@
       previewApi.redraw();
       refreshRuleList();
       if (panelApi && !keepPanel) panelApi.redraw();
+      pitchApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
     }

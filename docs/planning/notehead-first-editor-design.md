@@ -63,7 +63,12 @@ under it. The canvas is always visible (§7).
    "at this spot, show a ledger line when one of these pitch classes is
    played" (today's override templates, in today's template editor,
    restyled). Switching to My own rules starts from the automatic positions,
-   so the user edits rather than starts from nothing.
+   so the user edits rather than starts from nothing. Under nudges (§3.2)
+   the Automatic spots follow the lines as the nudges place them: whole
+   staff spacings from each line into the gap before the next, so Twinline
+   in nudge form gets its spots at C and A♯. Moving the pitch, renaming a
+   notehead or changing a nudge rewrites Automatic spots for the new staff,
+   and never touches My own rules *(session 28)*.
 4. **Pitch.** The label strip on the left of the staff (§4.2) says which
    pitch class each spot holds. By default C sits where the staff pattern
    puts it.
@@ -165,6 +170,14 @@ change:
 With every nudge at 0 this is the identity map, which the pitch-axis design
 already proves exports exactly as the linear path.
 
+**Nudges are measured from C** *(session 28)*. Shifting every position by
+the same amount draws and engraves the same staff, so a map has nudges only
+relative to one pitch class. C is that reference: every map, stride 12
+included, is read with the §3.3 formula, and C's nudge always reads 0. A map
+whose positions are all shifted by the same amount therefore reads as no
+nudges. The Pitch section shows C's nudge fixed at 0, and a note is moved
+against C by nudging it, or C against all the others by nudging them.
+
 **No reordering.** Nudges may make neighbours share a spot but may never
 reorder notes. Position must not decrease from one pitch class to the next,
 including across the octave (`11 + nudge(11) ≤ 12 + nudge(0)`). This is the
@@ -223,6 +236,12 @@ stride-7 map that does fit is also kept as it is until the user changes a
 nudge or the spacing. Only then is it rewritten in the stride-12 form,
 which engraves the same positions, though the `.ly` text differs.
 
+Because nudges are measured from C (§3.2), renaming a nudged notehead
+(§4.1) can leave a map that needs more than ±1 from its new C. The picture
+is unchanged, but the map then shows as a custom pitch axis. For example,
+renaming Twinline's C to G puts the old F (+0.14) on the new C, and the old
+C♯ (−1) would need −1.14 from it.
+
 ---
 
 ## 4. Assigning a pitch class
@@ -255,6 +274,14 @@ middle of the staff. Dragging any label moves the whole strip up or down,
 snapping to semitones. Each look stays
 with its pitch class and moves with its label, so the noteheads ride along
 and the staff stays still (A only). The noteheads' looks are not changed.
+
+*(Session 28, as built.)* During the drag the strip's labels follow the
+pointer in whole semitones while the middle-of-the-staff line stays put.
+On release the pitch moves by the semitones dragged. The canvas always shows
+C to C′ (§11), so after the drop the strip and the noteheads are drawn
+back in their places and the staff is drawn moved the other way. Relative
+to the staff, that is the same picture the drag showed. The Pitch section's
+**Middle of the staff** select does the same in one step.
 
 The labels sit one semitone apart, too close to read in one column, so they
 stagger in two columns: **even pitch classes on the left** (C, D, E, F♯,
@@ -793,9 +820,23 @@ file (JSON).
   carries a line past one edge of that range, the line comes back at the
   other edge. Relative to the middle of the staff, the pattern is
   unchanged, but the staff can gain a line at one end and lose one at the
-  other. Session 24's tests pin exact positions only while no line crosses
-  an edge. Session 28 should decide whether the drawn range follows the
-  middle of the staff.
+  other. Session 24's tests pinned exact positions only while no line
+  crossed an edge.
+
+  **Decided in session 28** (operator, 2026-11-07): the **exported** range
+  follows the middle of the staff. The exporter expands the pattern over
+  the 24 semitones from `staff.midpoint − 12` to `staff.midpoint + 11` (LY
+  spec 1.3.5 §5.1a), so every shift and every rename exports the same staff
+  relative to its middle. Renaming C to F♯ on the default staff still
+  exports `'(-4 -2 2 4)`, which a test in
+  `cnb/tests/cnb-pitch-model-tests.js` pins. At midpoint 12 the range is
+  0–23, so every reference config and gallery file exports as before,
+  except Twinline (midpoint 7). Its exported staff becomes
+  `'(-6 -3 -1 1 4 6)`, three lines either side of G instead of two below
+  and four above. The **drawn** range needs no change: the canvas always
+  shows C to C′ and draws every line the pattern puts within that range,
+  so no line wraps. When the pitch moves, the staff is drawn moved against
+  the C-to-C′ frame, and the picture relative to the staff is the same.
 - **Hit targets.** Clicking a notehead needs the card to mark each column
   with its pitch class (a `data-pc` attribute). That is a small change to
   `cnb-card.js`, pinned by the preview baseline.

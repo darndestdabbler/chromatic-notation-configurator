@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.4 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants)
-**Date:** November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.5 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle)
+**Date:** November 7, 2026 (1.3.5); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -47,7 +47,8 @@ re-derivation (design §1.3). The Kite 4-369 round-trip and export-baseline
 pins enforce this. *(1.3.2 exception: path data, for linear and axis configs
 alike — §4.1b. 1.3.4 addition, also for both: sized shape variants for
 rules that set `heightSemis` / `widthSemis`, §4.1c. A config that sets no
-size is unaffected.)*
+size is unaffected. 1.3.5, for both: the staff's range follows its middle,
+§5.1a. A config whose `staff.midpoint` is 12 is unaffected.)*
 
 Summary of additions:
 
@@ -168,6 +169,35 @@ Format and 4-point model are unchanged.
 ---
 
 ## 5. SECTION B — ADDITIONS
+
+### 5.1a The staff's range follows its middle (new in 1.3.5, linear and axis configs alike)
+
+This amends v1.2.1 §5.1, which expanded `staff.semitonePattern` over the
+two-octave card range, semitones 0–23, whatever the midpoint (session 28;
+design `docs/planning/notehead-first-editor-design.md` §11). The exporter
+now expands the pattern over the **24 semitones centred on the middle of
+the staff**:
+
+```
+staff.midpoint − 12  ≤  S  <  staff.midpoint + 12
+```
+
+Each such `S` converts as before: `2 × (S − midpoint) / sps` on the linear
+path, and the §5.4a axis formula, deduplicated, under a pitch axis.
+
+Why: the editor moves the pitch by rewriting `staff.midpoint` and the
+pattern together (design §3.1). With a fixed 0–23 range, a shift that
+carried a line past one edge brought it back at the other, so renaming C to
+F♯ on the default 4-8 staff exported `'(-2 2 4 8)` instead of
+`'(-4 -2 2 4)`. With the range centred, the exported staff is the same set
+of lines relative to its middle for every shift.
+
+Compatibility: at midpoint 12 the range is 0–23, so the default, Kite
+4-369, 45deg-369, the sized fixture and every gallery file except Twinline
+export byte-identically. Twinline (midpoint 7) exports
+`'(-6 -3 -1 1 4 6)` instead of `'(-3 -1 1 4 6 8)`, three lines either side
+of G instead of two below and four above, and its baseline
+(`cnb/fixtures/twinline-compact-export-baseline.ly`) was regenerated.
 
 ### 5.2a Settings not emitted (new in 1.3.3, linear and axis configs alike)
 
@@ -296,7 +326,9 @@ Generation rules:
 stride 7, axis-units-per-staff-space 2, over the two-octave card range:
 §5.4a yields `'(-3 -1 1 4 6 8)` and the procedure sends middle C (semitone
 0) to −4 — byte-for-byte the staff and anchor the session-1 spike rendered
-and measured (s1 record §2.1, §3.1). The stem-direction flip the engine
+and measured (s1 record §2.1, §3.1). *(Since 1.3.5 the range is centred on
+the midpoint, semitones −5…18 here (§5.1a), so the same geometry exports
+`'(-6 -3 -1 1 4 6)`. The anchor and the procedure are unchanged.)* The stem-direction flip the engine
 showed at staff position 0 (s1 §3.3) falls on the midpoint by construction.
 
 #### 5.4c Engine defaults
@@ -466,7 +498,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.4** | **Nov 6, 2026** | **Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size.** |
+| **1.3.5** | **Nov 7, 2026** | **The staff's range follows its middle (session 28): new §5.1a. `cnb:staff-line-positions` expands the pattern over `staff.midpoint − 12 ≤ S < staff.midpoint + 12` instead of semitones 0–23, so a moved pitch keeps the engraved staff. Output is unchanged for every config whose midpoint is 12. Twinline (midpoint 7) now exports `'(-6 -3 -1 1 4 6)`.** |
+| 1.3.4 | Nov 6, 2026 | Sized shape variants (session 22): new §4.1c. A notehead rule's `apply.heightSemis` / `apply.widthSemis` (semitones) export as a scaled variant of the shape, `<shape>-h<H>-w<W>`, with its path, cutout and attachments scaled by width ÷ natural width and height ÷ semitoneHeight. Section C names the variant, so the size joins the grouping key. Output is unchanged for configs that set no size. |
 | 1.3.3 | Nov 3, 2026 | Preview-only settings (session 12, audit 2026-11-02 M1–M3, L2, L3): new §5.2a. `cnb:stem-thickness`, `cnb:default-staff-line-thickness` and `cnb:default-staff-line-color` are no longer emitted. The header lists the preview-only settings, names a palette only when its colors are exported, and drops the `(standard)` / `(cb-safe)` mode, as does the A5 comment. Linear output CHANGES in the header and wherever those settings were set. |
 | 1.3.2 | Nov 3, 2026 | Path units (session 11, audit 2026-11-02 H2/H3): new §4.1b amends v1.2.1 §4.1 for linear and axis configs alike. Pre-baked `data-lilypond-*` paths are semitone units, Y up, emitted ÷ sps (÷ `axisUnitsPerStaffSpace` under an axis) and re-emitted from their numbers. The `svgPathToLilypond` fallback divides by `naturalHeight / semitoneHeight`, negates Y, then applies the same division. Linear output CHANGES for path data, the one exception to the v1.2.1 byte-identity rule. 1.0.0 exports with toolkit or fallback paths were mis-scaled. |
 | 1.3.1 | Oct 31, 2026 | Engine-handoff reconciliation (set 014 session 3, against engine set 008's `configurator-handoff.md`): the §8a gate is lifted (E13-1/E13-2 shipped; engine round-trip in `sessions/session-003/roundtrip/`); §5.4a — `cnb:semitones-per-staff-space` is emitted as `axisUnitsPerStaffSpace` under an axis (handoff §4.1); §5.4c — semitone numbering under the hook (Configurator semitone = engine semitone); new §5.4d — explicit `cnb:keysig-tonic-octave` under an axis, Configurator octave numbering, no −1 offset (handoff §4.2); §6.3 — the landed x-offset mechanism and the corrected cause of the 013 §3.4 absorption (handoff §3). Linear output unchanged. |

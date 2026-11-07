@@ -453,6 +453,89 @@ export const tests = [
       });
     }},
 
+  // ── The label strip (session 28, design §4.2) ──────────────────────────
+
+  { name: "render (fluid, labelStrip): a label per semitone, even left and odd right, outside the staff", fn: () => {
+      const config = CNBConfig.createDefault();
+      withDomStub(container => {
+        const [s] = fluidSystems(CNBCollection.render(container, config, { fluid: true, labelStrip: true }).children[0]);
+        const strip = s.columns.children.find(c => c.className === "label-col");
+        assert(strip, "a label column");
+        eq(strip.style.gridColumn, "1", "the first track");
+        assert(s.columns.style.gridTemplateColumns.startsWith(CNBCollection.LABEL_STRIP_WIDTH + "px repeat(13, "), "strip track first");
+        eq(s.cards[0].style.gridColumn, "2", "cards after the strip");
+        eq(s.bg.style.gridColumn, "2 / span 13", "the staff starts after the strip");
+        const grid = CNBGrid.create(config, CNBCollection.gridRange(DEFAULT_ROW));
+        const { labels, middle } = stripOf(strip);
+        const semis = [];
+        for (let semi = Math.ceil(grid.minSemi); semi <= grid.maxSemi; semi++) semis.push(semi);
+        eq(labels.length, semis.length, "one label per semitone");
+        const names = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+        const leftX = labels.find(l => l.pc === 0).x;
+        const rightX = labels.find(l => l.pc === 1).x;
+        assert(leftX < rightX, "even left of odd");
+        for (const semi of semis) {
+          const l = labels.find(x => x.semi === semi);
+          const pc = ((semi % 12) + 12) % 12;
+          eq(l.text, names[pc], `semitone ${semi} name`);
+          eq(l.y, String(grid.semiToY(semi)), `semitone ${semi} level with its spot`);
+          eq(l.x, pc % 2 === 0 ? leftX : rightX, `semitone ${semi} column`);
+        }
+        eq(middle.getAttribute("y1"), String(grid.semiToY(12)), "the middle of the staff marked");
+      });
+    }},
+
+  { name: "render (fluid, labelStrip): shared spots side by side, and joined as \"C·D\" in one column", fn: () => {
+      const twin = loadViaIO(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "examples", "gallery", "twinline-compact.json"));
+      withDomStub(container => {
+        const [s] = fluidSystems(CNBCollection.render(container, twin, { fluid: true, labelStrip: true }).children[0]);
+        const { labels } = stripOf(s.columns.children.find(c => c.className === "label-col"));
+        const c = labels.find(l => l.semi === 0);
+        const cs = labels.find(l => l.semi === 1);
+        eq(c.y, cs.y, "C and C♯ share a spot");
+        assert(c.x !== cs.x, "in different columns");
+        eq(c.text, "C", "C alone");
+      });
+      const three = CNBConfig.createDefault();
+      three.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
+        pitchClasses: [0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((position, pc) => ({ pc, position })) };
+      withDomStub(container => {
+        const [s] = fluidSystems(CNBCollection.render(container, three, { fluid: true, labelStrip: true }).children[0]);
+        const { labels } = stripOf(s.columns.children.find(c => c.className === "label-col"));
+        const joined = labels.find(l => l.semi === 0);
+        eq(joined.text, "C·D", "C and D, both even, share one label");
+        assert(!labels.some(l => l.semi === 2), "D has no label of its own");
+        eq(labels.find(l => l.semi === 1).text, "C♯", "C♯ beside them");
+      });
+    }},
+
+  { name: "minRowWidth and rows 2 with labelStrip: the strip in every system and in the minimum", fn: () => {
+      const config = CNBConfig.createDefault();
+      for (const rows of [1, 2]) {
+        eq(CNBCollection.minRowWidth(config, { rows, labelStrip: true }),
+          CNBCollection.minRowWidth(config, { rows }) + CNBCollection.LABEL_STRIP_WIDTH, `rows ${rows}: strip counted`);
+      }
+      withDomStub(container => {
+        const systems = fluidSystems(CNBCollection.render(container, config, { fluid: true, rows: 2, labelStrip: true }).children[0]);
+        eq(systems.length, 2, "two systems");
+        for (const s of systems) {
+          assert(s.columns.children.some(c => c.className === "label-col"), "each system has a strip");
+          eq(s.container.style.minWidth, CNBCollection.minRowWidth(config, { rows: 2, labelStrip: true }) + "px", "min width");
+        }
+        eq(systems[1].bg.style.gridColumn, "2 / span 6", "second staff after the strip, ending after C′");
+      });
+    }},
+
+  { name: "render (labelStrip): off, or without fluid, the layout is unchanged", fn: () => {
+      const config = CNBConfig.createDefault();
+      eq(JSON.stringify(renderHash(config, { labelStrip: true })), JSON.stringify(renderHash(config, {})), "fixed layout");
+      withDomStub(container => {
+        const [s] = fluidSystems(CNBCollection.render(container, config, { fluid: true }).children[0]);
+        assert(!s.columns.children.some(c => c.className === "label-col"), "no strip without the option");
+        eq(s.bg.style.gridColumn, "1 / span 13", "staff from the first track");
+      });
+    }},
+
   { name: "render (fluid): several durations each get captioned rows of systems", fn: () => {
       const config = CNBConfig.createDefault();
       withDomStub(container => {
@@ -468,6 +551,18 @@ export const tests = [
 ];
 
 const DEFAULT_ROW = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/** The labels and middle line of a label column's SVG slice. */
+function stripOf(strip) {
+  const slice = strip.children.find(c => c.getAttribute && c.getAttribute("class") === "label-slice");
+  const labels = slice.children.filter(c => c.getAttribute("class") === "pitch-label").map(g => {
+    const text = g.children.find(c => c.tag === "text");
+    return { semi: Number(g.getAttribute("data-semi")), pc: Number(g.getAttribute("data-pc")),
+      text: text.textContent, x: text.getAttribute("x"), y: text.getAttribute("y") };
+  });
+  const middle = slice.children.find(c => c.getAttribute("class") === "staff-middle");
+  return { labels, middle };
+}
 
 /** The fluid systems of one duration row. */
 function fluidSystems(row) {

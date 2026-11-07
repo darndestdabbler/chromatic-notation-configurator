@@ -3,7 +3,8 @@
  * (session 24, design docs/planning/notehead-first-editor-design.md §3, §4)
  *
  * Covers shiftPitch (the staff stays, the labels move), readNudges (linear,
- * Twinline's §3.3 table and §3.4 spacing, the ±1 test of §3.5),
+ * Twinline's §3.3 table and §3.4 spacing, the ±1 test of §3.5, nudges read
+ * relative to C),
  * writeNudges (stride-12 form, the section removed at all zeros, a decimal
  * spacing), nudgeLimits (no reordering, the wrap at B and C), renameDelta
  * and renameNotehead (every spot keeps its look and nudge), and an engine
@@ -15,10 +16,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { CNBPitchModel as P } from "../ui/pitch-model.js";
 import { CNBNoteheadInference } from "../ui/notehead-inference.js";
+import { CNBStaffRuleEditor } from "../ui/staff-rule-editor.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBStaff } from "../src/cnb-staff.js";
 import { findEngine, measureStaffPositions } from "./engine-probe.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -113,11 +116,10 @@ export const tests = [
           deepEq(sortNum(out.staff.semitonePattern), sortNum(cfg.staff.semitonePattern.map(p => mod12(p + d))),
             `${name} d=${d}: each line now holds the pitch class d above`);
           deepEq(foldedLines(out), foldedLines(cfg), `${name} d=${d}: the staff's lines relative to the middle`);
-          // The exporter draws octaves 0–1, so the positions are exactly the
-          // same while no line crosses that window's edge.
-          if (cfg.staff.semitonePattern.every(p => p + d >= 0 && p + d < 12)) {
-            deepEq(CNBLilypond.computeStaffLinePositions(out), lines, `${name} d=${d}: exported staff-line positions`);
-          }
+          // The exporter's range follows the middle of the staff (session 28,
+          // LY spec 1.3.5 §5.1a), so the positions are exactly the same for
+          // every d.
+          deepEq(CNBLilypond.computeStaffLinePositions(out), lines, `${name} d=${d}: exported staff-line positions`);
         }
       }
     }},
@@ -159,6 +161,22 @@ export const tests = [
       cfg.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
         pitchClasses: positions.map((position, pc) => ({ pc, position })) };
       eq(P.readNudges(cfg), null, "D would need −2");
+    }},
+
+  { name: "readNudges: a stride-12 map is read relative to C's position (session 28)", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const nudges = [0.25, 0.25, 0.25, 0.25, -0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25];
+      cfg.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
+        pitchClasses: nudges.map((n, pc) => ({ pc, position: pc + n })) };
+      const r = P.readNudges(cfg);
+      eq(r.nudges[0], 0, "C is the reference");
+      eq(r.nudges[4], -0.75, "E reads −0.75 from C");
+      r.nudges.forEach((n, pc) => { if (pc !== 4) eq(n, 0, `pc ${pc} sits level with C's shift`); });
+    }},
+
+  { name: "readNudges: writeNudges with every nudge 0.5 reads back as zeros (session 24 review)", fn: () => {
+      const out = P.writeNudges(CNBConfig.createDefault(), Array(12).fill(0.5), 4);
+      deepEq(P.readNudges(out), { nudges: ZEROS, staffSpacing: 4 }, "a uniform shift is no nudge");
     }},
 
   // ── writeNudges ──────────────────────────────────────────────────────────
@@ -266,6 +284,26 @@ export const tests = [
       deepEq(P.renameNotehead(fixture("kite-4-369-config.json"), 2, 2), fixture("kite-4-369-config.json"), "no change");
     }},
 
+  { name: "renameNotehead: C to F♯ on the default staff keeps the staff, exported and drawn (session 28, design §11)", fn: () => {
+      const def = CNBConfig.createDefault();
+      const out = P.renameNotehead(def, 0, 6);
+      eq(out.staff.midpoint, 6, "the middle of the staff is now F♯ (d = −6)");
+      deepEq(CNBLilypond.computeStaffLinePositions(out), [-4, -2, 2, 4], "exported staff-line positions");
+      assert(normalize(CNBLilypond.sectionB(out)).includes("#(set! cnb:staff-line-positions '(-4 -2 2 4))"), "Section B");
+      // The canvas draws every line the pattern puts in its range (C to C′
+      // with headroom), so relative to the middle it draws the same lines
+      // wherever its range before and after overlap.
+      const range = { minSemi: -4, maxSemi: 28 };
+      const rel = (cfg) => CNBStaff.getPositions(cfg, range).map(s => s - cfg.staff.midpoint);
+      const before = rel(def);
+      const after = rel(out);
+      const lo = Math.max(range.minSemi - def.staff.midpoint, range.minSemi - out.staff.midpoint);
+      const hi = Math.min(range.maxSemi - def.staff.midpoint, range.maxSemi - out.staff.midpoint);
+      const inBoth = (xs) => xs.filter(x => x >= lo && x <= hi);
+      deepEq(inBoth(after), inBoth(before), "drawn lines relative to the middle");
+      assert(inBoth(before).length >= 4, "the overlap holds the staff");
+    }},
+
   { name: "renameNotehead: every spot keeps its nudge (Twinline, stride 7 and nudge form)", fn: () => {
       const stride7 = twinline();
       const r = P.readNudges(stride7);
@@ -283,9 +321,52 @@ export const tests = [
           deepEq(foldedLines(out), foldedLines(cfg), `stride ${stride} ${from}→${to}: staff lines`);
         }
       }
-      const out = P.renameNotehead(nudgeForm, 0, 7);
-      const d = P.renameDelta(0, 7);
-      deepEq(P.readNudges(out).nudges, r.nudges.map((_, pc) => r.nudges[mod12(pc - d)]), "nudges rotate");
+      // The nudges rotate, read relative to the new C (session 28). Renaming
+      // C to F puts the old G, nudged −0.14, on the new C, so every nudge
+      // reads 0.14 higher.
+      const out = P.renameNotehead(nudgeForm, 0, 5);
+      const d = P.renameDelta(0, 5);
+      const rotated = r.nudges.map((_, pc) => r.nudges[mod12(pc - d)]);
+      P.readNudges(out).nudges.forEach((n, pc) =>
+        near(n, rotated[pc] - rotated[0], 1e-3, `rotated nudge of pc ${pc}, relative to C`));
+      // Renaming C to G puts the old F (+0.14) on the new C, and the old C♯
+      // (−1) then needs −1.14 from it: a custom pitch axis (§3.5).
+      eq(P.readNudges(P.renameNotehead(nudgeForm, 0, 7)), null, "C→G needs more than ±1 from the new C");
+    }},
+
+  // ── Automatic ledger lines follow the nudges (session 28) ───────────────
+
+  { name: "Automatic ledgers stay automatic through a nudge change, a shift and a rename", fn: () => {
+      const auto = (cfg) => CNBStaffRuleEditor.automaticTemplates(cfg.staff.semitonePattern, CNBPitchAxis.create(cfg));
+      const isAuto = (cfg) => CNBStaffRuleEditor.ledgerModeOf(cfg.staff.semitonePattern, cfg.ledgers, CNBPitchAxis.create(cfg)) === "automatic";
+      // Twinline's staff with Automatic ledgers, in linear form first.
+      const cfg = twinline();
+      const r = P.readNudges(cfg);
+      let linear = P.writeNudges(cfg, ZEROS, 4);
+      linear.ledgers = { ...linear.ledgers, templates: auto(linear), proximityRule: true };
+      assert(isAuto(linear), "starts Automatic");
+      const nudged = P.writeNudges(linear, r.nudges, r.staffSpacing);
+      deepEq(nudged.ledgers.templates.map(t => t.semiWithinOctave), [0, 10], "nudged: spots at C and A♯");
+      assert(isAuto(nudged), "nudged: Automatic");
+      for (const d of [-6, -1, 3, 5]) {
+        assert(isAuto(P.shiftPitch(nudged, d)), `shift ${d}: Automatic`);
+      }
+      for (const [from, to] of [[0, 5], [2, 9], [7, 0]]) {
+        assert(isAuto(P.renameNotehead(nudged, from, to)), `rename ${from}→${to}: Automatic`);
+      }
+      assert(isAuto(P.writeNudges(nudged, ZEROS, 4)), "nudges back at 0: Automatic");
+    }},
+
+  { name: "My own ledger rules are never rewritten by a nudge change, a shift or a rename", fn: () => {
+      const cfg = twinline();
+      const own = JSON.stringify(cfg.ledgers.templates);
+      const r = P.readNudges(cfg);
+      deepEq(JSON.stringify(P.writeNudges(cfg, r.nudges, r.staffSpacing).ledgers.templates), own, "writeNudges");
+      const def = CNBConfig.createDefault();
+      const shifted = P.shiftPitch(def, 2);
+      deepEq(shifted.ledgers.templates.map(t => t.semiWithinOctave),
+        def.ledgers.templates.map(t => mod12(t.semiWithinOctave + 2)), "shiftPitch moves them by d, as before");
+      deepEq(P.renameNotehead(def, 0, 2).ledgers.templates, shifted.ledgers.templates, "renameNotehead moves them by d");
     }},
 
   // ── Engine ───────────────────────────────────────────────────────────────

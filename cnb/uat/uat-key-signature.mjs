@@ -459,8 +459,11 @@ cfg = await fullConfig();
 check("COMPOSITION: clef enabled — the preview row is clef-col, then keysig-col, then the 13 cards (clef first, key signature second, left to right)",
   cfg.clef.enabled === true &&
   await page.evaluate(() => {
-    const cols = [...document.querySelectorAll(".cnb-pvd-preview .pc-columns > div")];
-    return cols.length === 15 &&
+    // The label strip (session 28) leads the row, outside the staff; the
+    // clef and key signature follow it.
+    const all = [...document.querySelectorAll(".cnb-pvd-preview .pc-columns > div")];
+    const cols = all.filter(c => !c.className.includes("label-col"));
+    return all[0].className.includes("label-col") && cols.length === 15 &&
       cols[0].className.includes("clef-col") &&
       cols[1].className.includes("keysig-col") &&
       cols.slice(2).every(c => c.className.includes("pc-col"));

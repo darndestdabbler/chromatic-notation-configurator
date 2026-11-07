@@ -587,7 +587,83 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-nhp-give-choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .cnb-nhp-give-option { font-size: 13px; }
 
+/* ── The label strip (session 28, design §4.2, §6.2) ──────────────────── */
+/* Quiet everywhere: plain grey labels on the inset surface with a hairline
+ * on its right, a guide, not notation. In the Pitch section the labels
+ * become chips that drag, and a blue line marks the middle of the staff. */
+.cnb-pvd-preview .label-col { background: var(--surface-2); border-right: 1px solid var(--line); }
+/* Visible: the first and last labels sit at the slice's edges and show in
+ * the strip's label-height spacers instead of being cut in half. */
+.cnb-pvd-preview .label-slice { overflow: visible; touch-action: none; }
+.cnb-pvd-preview .pitch-label text { fill: var(--ink-2); font-family: var(--font); font-size: 11px; }
+.cnb-pvd-preview .pitch-chip { fill: none; stroke: none; }
+.cnb-pvd-preview .staff-middle { stroke: none; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .label-slice { cursor: grab; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .label-slice:active { cursor: grabbing; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-chip { fill: var(--surface); stroke: var(--line); }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-label text { fill: var(--ink); }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .staff-middle { stroke: var(--accent); stroke-width: 1.5; }
+.cnb-pvd-pitch-hint:empty { display: none; }
+.cnb-pvd-pitch-hint { font-size: 12px; color: var(--ink-2); margin-left: auto; }
+.cnb-pvd-pitch-hint:not(:empty) + .cnb-pvd-size { margin-left: var(--space-3); }
+
+/* ── The Pitch section (session 28, design §3, mock-up 3) ─────────────── */
+.cnb-pitch-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.cnb-pp-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+.cnb-pp-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-pp-label, .cnb-nhp-name .cnb-nhp-label {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 0;
+}
+.cnb-pp-middle { max-width: 120px; }
+.cnb-pp-spacing-row { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cnb-pp-spacing { width: 90px; }
+.cnb-pp-unit { font-size: 13px; color: var(--ink-2); }
+.cnb-pp-hint { font-size: 12px; color: var(--ink-2); margin: 0; max-width: 560px; }
+.cnb-pp-error { font-size: 12px; color: var(--error); margin: 0; }
+.cnb-pp-custom {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); border-radius: var(--radius-s); background: var(--warn-soft); color: var(--warn);
+}
+.cnb-pp-custom-text { margin: 0; flex: 1 1 320px; font-size: 13px; }
+.cnb-pp-nudges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.cnb-pp-nudge { display: grid; grid-template-columns: minmax(0, 1fr) 64px; align-items: center; gap: var(--space-1) var(--space-2); }
+.cnb-pp-nudge-head { grid-column: 1 / -1; display: flex; align-items: baseline; gap: var(--space-2); font-size: 13px; }
+.cnb-pp-nudge-name { font-weight: 600; }
+.cnb-pp-nudge-value { margin-left: auto; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cnb-pp-nudge-shares { font-size: 12px; color: var(--accent); }
+/* The bar: a grey track from −1 to +1, the reach its neighbours allow
+ * shaded on it, and the slider's own track transparent so the shading
+ * shows (mock-up 3). */
+.cnb-pp-nudge-bar { position: relative; display: flex; align-items: center; height: 20px; }
+.cnb-pp-nudge-bar::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px;
+  border-radius: 2px; background: var(--line);
+}
+.cnb-pp-nudge-reach {
+  position: absolute; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px;
+  background: #b9c9f3; pointer-events: none;
+}
+.cnb-pp-nudge-slider {
+  position: relative; width: 100%; height: 20px; margin: 0; background: transparent;
+  -webkit-appearance: none; appearance: none;
+}
+.cnb-pp-nudge-slider::-webkit-slider-runnable-track { height: 20px; background: transparent; }
+.cnb-pp-nudge-slider::-moz-range-track { height: 20px; background: transparent; }
+.cnb-pp-nudge-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: 3px;
+  border-radius: 50%; background: var(--surface); border: 2px solid var(--accent);
+}
+.cnb-pp-nudge-slider::-moz-range-thumb {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent);
+}
+.cnb-pp-nudge-slider:disabled::-webkit-slider-thumb { border-color: var(--ink-2); }
+.cnb-pp-nudge-slider:disabled::-moz-range-thumb { border-color: var(--ink-2); }
+.cnb-pp-nudge-field { width: 64px; }
+.cnb-pp-nudge.disabled { opacity: .6; }
+.cnb-nhp-name-select { max-width: 120px; }
+
 @media (max-width: 1180px) {
+  .cnb-pp-nudges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .cnb-nhp-body { grid-template-columns: 180px minmax(0, 1fr); }
   .cnb-nhp-right { grid-column: 1 / -1; }
 }

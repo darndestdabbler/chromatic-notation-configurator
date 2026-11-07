@@ -7,7 +7,8 @@
  * control writes its rules and palette through the inference, the colour
  * input keeps its element on `input` and redraws on `change` (session 21's
  * wiring), Shift-selection edits every selected notehead, Give this look
- * to, the side step's visibility, and the kept-rule marker.
+ * to, the side step's visibility, the kept-rule marker, and (session 28)
+ * renaming a notehead and its nudge.
  */
 
 import { readFileSync } from "fs";
@@ -18,6 +19,7 @@ import { CNBNoteheadInference as I } from "../ui/notehead-inference.js";
 import { CNBBuiltinShapes } from "../ui/builtin-shapes.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
+import { CNBPitchModel as PM } from "../ui/pitch-model.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -117,6 +119,59 @@ function withPanel(config, selection, fn, extra) {
 const resolved = (config, pc) => CNBConfig.resolveNotehead(config, pc, "crotchet", null);
 
 export const tests = [
+
+  // ── Name and nudge (session 28, design §2, §4.1) ────────────────────────
+
+  { name: "name: \"This notehead is\" shows only for one selected notehead, at its name", fn: () => {
+      withPanel(CNBConfig.createDefault(), [2], h => {
+        const select = findOne(h.api.root, "cnb-nhp-name-select");
+        eq(select.value, "2", "D");
+        eq(select.children.length, 12, "the twelve names");
+      });
+      withPanel(CNBConfig.createDefault(), [2, 4], h => {
+        eq(findAll(h.api.root, "cnb-nhp-name-select").length, 0, "no rename for two noteheads");
+      });
+    }},
+
+  { name: "name: renaming C to E keeps every look at its spot and reports E", fn: () => {
+      const before = fixture("kite-4-369-config.json");
+      const renamed = [];
+      withPanel(before, [0], h => {
+        findOne(h.api.root, "cnb-nhp-name-select").onchange({ target: { value: "4" } });
+        eq(h.changes, 1, "one change");
+        deepEq(renamed, [4], "the host moves the selection to E");
+        deepEq(h.config, PM.renameNotehead(before, 0, 4), "renameNotehead");
+        for (let p = 0; p < 12; p++) {
+          const was = resolved(before, p);
+          const now = resolved(h.config, (p + 4) % 12);
+          deepEq([now.shape, now.hollow, now.color], [was.shape, was.hollow, was.color], `the look at old ${p}`);
+        }
+        findOne(h.api.root, "cnb-nhp-name-select").onchange({ target: { value: "0" } });
+        eq(h.changes, 1, "the same name changes nothing");
+      }, { onRename: (to) => renamed.push(to) });
+    }},
+
+  { name: "nudge: one selected notehead gets its nudge with its limits; none for a custom map or two noteheads", fn: () => {
+      const cfg = PM.writeNudges(CNBConfig.createDefault(), [0, 0, -0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4);
+      withPanel(cfg, [1], h => {
+        const group = findOne(h.api.root, "cnb-nhp-nudge");
+        eq(findOne(group, "cnb-pp-nudge-reach").style.width, "75%", "C♯ can go from −1 to D's +0.5");
+        findOne(group, "cnb-pp-nudge-field").onchange({ target: { value: "0.9" } });
+        eq(h.changes, 1, "written");
+        eq(PM.readNudges(h.config).nudges[1], 0.5, "clamped at D");
+        eq(findOne(findOne(h.api.root, "cnb-nhp-nudge"), "cnb-pp-nudge-field").value, "0.5", "redrawn");
+        assert(findAll(h.api.root, "cnb-nhp-side").length === 1, "now sharing D's spot: the side step shows");
+      });
+      withPanel(cfg, [1, 3], h => {
+        eq(findAll(h.api.root, "cnb-nhp-nudge").length, 0, "no nudge for two noteheads");
+      });
+      const custom = CNBConfig.createDefault();
+      custom.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
+        pitchClasses: [0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((position, pc) => ({ pc, position })) };
+      withPanel(custom, [5], h => {
+        eq(findAll(h.api.root, "cnb-nhp-nudge").length, 0, "no nudge for a custom map");
+      });
+    }},
 
   // ── Pure helpers ──────────────────────────────────────────────────────
 

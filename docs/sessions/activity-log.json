@@ -378,6 +378,21 @@
       "what": "step 'uat-record': its files and checks",
       "reason": "Judging the screenshots against mock-up 2 found the rule list hidden under an open panel (design 2 lists it there), a head without the look in words, and an empty import status gap and misaligned rule words; the fixes are in index.html, app.css and the panel with its test, and the Kite driver's selection check follows the rule list staying visible.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 28,
+      "dateTime": "2026-11-07T07:05:22.528000-05:00",
+      "task": "Build the Pitch part of the notehead-first editor (design docs/planning/notehead-first-editor-design.md \u00a73, \u00a74) on session 24's pitch model, and settle the three pitch-model questions sessions 24 and 25 left open. First the model. readNudges measures every map's nudges from C's position, so a uniformly shifted map reads as no nudges and C's own nudge is always 0, the reference. Automatic ledger spots follow the staff spacing from the lines as the pitch axis places them, and shiftPitch, writeNudges and renameNotehead keep Automatic ledgers automatic. The exported staff is the pattern over the 24 semitones centred on the middle of the staff, from midpoint \u2212 12 to midpoint + 11, as the operator chose in planning. That is 0\u201323 for every config with midpoint 12, so only Twinline's export (midpoint 7) changes. Its baseline is regenerated, LY spec 1.3.5 records the change, and a test that renames C to F\u266f on the default staff pins it. The canvas keeps drawing C to C\u2032 with every staff line inside its range, so it needs no change, and the design records both decisions. Then the UI. CNBCollection gains a labelStrip option for the fluid canvas: a label column first in each row's 14th column, one pitch-class label per semitone level with its spot, even pitch classes left and odd right, a same-column shared spot joined as \"C\u00b7D\", and the middle of the staff marked. The preview display draws the strip quiet everywhere and, in pitch mode, lets the user drag it by whole semitones, which reports a pitch shift. A new Pitch panel (cnb/ui/pitch-panel.js) holds the middle of the staff, a decimal staff spacing and the twelve nudges with their limits, and falls back to \"This file uses a custom pitch axis that nudges can't show\" with a way to Advanced \u203a Pitch axis map when readNudges gives null (\u00a73.5). The notehead panel gains \"This notehead is: C \u25be\" (renaming, \u00a74.1) and the selected notehead's nudge. The app gets a Pitch section. Tests go in each module's test file. A UAT driver rebuilds Twinline from nudges and checks it engraves at the fixture's positions, and the screenshot check is judged against mock-up 3.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 28,
+      "dateTime": "2026-11-07T07:40:10.490000-05:00",
+      "what": "step 'uat-record': its files",
+      "reason": "The full UAT run found uat-key-signature.mjs counting the canvas row's columns without the new label strip, so the driver is fixed in this step; the screenshot judgement's fixes were CSS only, so index.html and pitch-panel.js are not changed.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

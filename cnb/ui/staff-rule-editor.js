@@ -37,7 +37,9 @@
  *     spacing continues past its lines, with the proximity rule on; a
  *     config opens in it only when its ledgers are exactly that, so
  *     opening and saving changes nothing. Anything else is "own" (My own
- *     rules), today's template list.
+ *     rules), today's template list. Since session 28 the automatic spots
+ *     follow the lines as the config's pitch axis places them (the nudges
+ *     of the Pitch section), kept in the state as `pitchAxis`.
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
  *     range (semis 0–24), i.e. 12, for every pattern — both plan examples
  *     (4-8 and 3-6-9) use it and the card/stem modules assume it. That
@@ -63,6 +65,7 @@
  *     templates:      [{ semiWithinOctave, triggerPCs, triggerMode }],
  *     proximityRule:  boolean,
  *     ledgerMode:     "automatic" | "own",  // automatic: templates from the pattern
+ *     pitchAxis:      object | null,        // the config's, read only (places the automatic spots)
  *     ledgerDefaults: { thicknessPct, widthMultiplier, style, color, roundedEnds },
  *     ledgerOverrides:{ ... }                                   // passthrough
  *   }
@@ -174,6 +177,43 @@ function patternOf(state) {
   return preset.pattern.slice();
 }
 
+/** The pitch axis an editor state was loaded with (disabled when none). */
+function axisOf(state) {
+  return CNBPitchAxis.create({ staff: {}, pitchAxis: state.pitchAxis || undefined });
+}
+
+/** automaticTemplates under an enabled pitch axis (session 28). */
+function axisAutomaticTemplates(cleaned, axis) {
+  const TOL = 1e-3;
+  const oct = axis.octaveStride;
+  const space = axis.unitsPerStaffSpace;
+  if (!(space > 0) || !(oct > 0)) return [];
+  const pos = [...Array(12).keys()].map(pc => axis.positionOfSemi(pc));
+  const same = (a, b) => {
+    const d = (((a - b) % oct) + oct) % oct;
+    return Math.min(d, oct - d) < TOL;
+  };
+  const lines = [];
+  for (const s of cleaned) if (!lines.some(l => same(l, pos[s]))) lines.push(pos[s]);
+  lines.sort((a, b) => a - b);
+  const spots = [];
+  lines.forEach((a, i) => {
+    const b = i + 1 < lines.length ? lines[i + 1] : lines[0] + oct;
+    for (let x = a + space; x < b - TOL; x += space) spots.push(x);
+    for (let x = b - space; x > a + TOL; x -= space) spots.push(x);
+  });
+  const out = [];
+  const taken = [];
+  for (let pc = 0; pc < 12; pc++) {
+    const p = pos[pc];
+    if (lines.some(l => same(l, p)) || taken.some(t => same(t, p))) continue;
+    if (!spots.some(x => same(x, p))) continue;
+    taken.push(p);
+    out.push({ semiWithinOctave: pc, triggerPCs: [], triggerMode: "proximity" });
+  }
+  return out;
+}
+
 /** Drop override entries that carry no fields. */
 function pruneOverrides(overrides) {
   const out = {};
@@ -200,12 +240,22 @@ export const CNBStaffRuleEditor = {
    * is a multiple of the staff spacing (derivedGeometry's), ascending. So
    * the staff's own spacing continues into its gaps and beyond its outer
    * lines: 4-8 and 3-6-9 both give C. An empty pattern gives none.
+   *
+   * Under an enabled pitch axis (session 28) the spots follow the lines as
+   * the axis places them: from each staff line, whole staff spacings
+   * (axis.unitsPerStaffSpace) into the gap before the next line, cyclic
+   * over the axis octave. Each spot gets one template, at the lowest pitch
+   * class that sits there (within 0.001) and is not on a staff line.
+   * Twinline, at stride 7 or in nudge form, gives C and A♯.
    * @param {number[]} pattern  semitone-within-octave positions (0–11)
+   * @param {object} [axis]  a CNBPitchAxis; with none, or a disabled one,
+   *                         the spots are as above
    * @returns {Array<{semiWithinOctave:number, triggerPCs:number[], triggerMode:"proximity"}>}
    */
-  automaticTemplates(pattern) {
+  automaticTemplates(pattern, axis) {
     const cleaned = sanitizePattern(pattern);
     if (cleaned.length === 0) return [];
+    if (axis && axis.enabled) return axisAutomaticTemplates(cleaned, axis);
     const sps = CNBStaffRuleEditor.derivedGeometry(cleaned).semitonesPerStaffSpace;
     const out = [];
     for (let p = 0; p < 12; p++) {
@@ -222,12 +272,13 @@ export const CNBStaffRuleEditor = {
    * proximity rule is on, so writing them back changes nothing; else "own".
    * @param {number[]} pattern
    * @param {object} ledgers  config.ledgers
+   * @param {object} [axis]   the config's CNBPitchAxis, as for automaticTemplates
    * @returns {"automatic"|"own"}
    */
-  ledgerModeOf(pattern, ledgers) {
+  ledgerModeOf(pattern, ledgers, axis) {
     const l = ledgers || {};
     if (l.proximityRule === false) return "own";
-    const auto = JSON.stringify(CNBStaffRuleEditor.automaticTemplates(pattern));
+    const auto = JSON.stringify(CNBStaffRuleEditor.automaticTemplates(pattern, axis));
     const loaded = JSON.stringify((l.templates || []).map(t => ({
       semiWithinOctave: t.semiWithinOctave,
       triggerPCs: t.triggerPCs || [],
@@ -321,7 +372,7 @@ export const CNBStaffRuleEditor = {
   buildLedgers(state) {
     if (state.ledgerMode === "automatic") {
       return {
-        templates: CNBStaffRuleEditor.automaticTemplates(patternOf(state)),
+        templates: CNBStaffRuleEditor.automaticTemplates(patternOf(state), axisOf(state)),
         proximityRule: true,
         lineDefaults: deepClone(state.ledgerDefaults),
         lineOverrides: deepClone(state.ledgerOverrides || {}),
@@ -406,7 +457,10 @@ export const CNBStaffRuleEditor = {
         triggerMode: t.triggerMode,
       })),
       proximityRule: ledgers.proximityRule !== false,
-      ledgerMode: CNBStaffRuleEditor.ledgerModeOf(pattern, ledgers),
+      // The config's pitch axis, which places the Automatic spots
+      // (session 28). The editor does not edit it.
+      pitchAxis: config && config.pitchAxis ? deepClone(config.pitchAxis) : null,
+      ledgerMode: CNBStaffRuleEditor.ledgerModeOf(pattern, ledgers, CNBPitchAxis.create(config || {})),
       ledgerDefaults: {
         thicknessPct: 40, widthMultiplier: 2.0, style: "solid",
         color: "#000000", roundedEnds: true,
@@ -602,8 +656,11 @@ export const CNBStaffRuleEditor = {
         return wrap;
       }
       const axis = CNBPitchAxis.create(cfg);
+      // Under a pitch axis the spacing is the Pitch section's, in semitones
+      // (design §3.4: axis units × 12 / octave stride).
       wrap.appendChild(el("div", "cnb-sre-derived-row", axis.enabled
-        ? "Staff spacing: " + axis.unitsPerStaffSpace + " axis units per staff space, from the pitch axis map in Advanced"
+        ? "Staff spacing: " + Math.round(axis.unitsPerStaffSpace * 12 / axis.octaveStride * 1e4) / 1e4 +
+          " semitones per staff space, set in the Pitch section"
         : "Staff spacing: " + cfg.staff.semitonesPerStaffSpace + " semitones per staff space"));
       const mid = cfg.staff.midpoint;
       wrap.appendChild(el("div", "cnb-sre-derived-row",
@@ -719,7 +776,7 @@ export const CNBStaffRuleEditor = {
           if (state.ledgerMode === mode) return;
           // Either way the list starts from the automatic spots: switching
           // to My own rules edits them rather than starting from nothing.
-          state.templates = CNBStaffRuleEditor.automaticTemplates(patternOf(state));
+          state.templates = CNBStaffRuleEditor.automaticTemplates(patternOf(state), axisOf(state));
           if (mode === "automatic") state.proximityRule = true;
           state.ledgerMode = mode;
           changed();

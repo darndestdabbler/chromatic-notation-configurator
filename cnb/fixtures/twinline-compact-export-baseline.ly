@@ -67,7 +67,7 @@
 
 %% Staff geometry
 #(set! cnb:semitones-per-staff-space 2)
-#(set! cnb:staff-line-positions '(-3 -1 1 4 6 8))
+#(set! cnb:staff-line-positions '(-6 -3 -1 1 4 6))
 
 %% Pitch axis (pitch-class-map-v1) — 12 pitch classes on 7 positions/octave
 %% map [0 0 1 2 2 3 3 4 5 5 6 6] · octave stride 7

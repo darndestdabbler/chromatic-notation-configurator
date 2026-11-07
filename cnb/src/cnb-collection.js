@@ -33,7 +33,11 @@
  * narrowest row, so the page can choose one row or two. Off, the layout
  * above is unchanged.
  *
- * Dependencies: Modules A, 1, 3, 9.
+ * Session 28 (design §4.2): the labelStrip option puts a label column
+ * (div.label-col) first in each fluid system, outside the staff, with one
+ * pitch-class label per semitone level with the spot it names.
+ *
+ * Dependencies: Modules A, B, 1, 3, 9.
  */
 
 import { CNBGrid } from "./cnb-grid.js";
@@ -42,6 +46,7 @@ import { CNBCard } from "./cnb-card.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
 import { CNBClef } from "./cnb-clef.js";
 import { CNBKeySignature } from "./cnb-key-signature.js";
+import { CNBMusic } from "./cnb-music.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -80,6 +85,78 @@ function gutterColumn(grid, { className, sliceClass, width, renderInto }) {
 const SYSTEM_GAP_PX = 24;
 
 /**
+ * The label strip (session 28, design §4.2): two 26 px columns of labels,
+ * even pitch classes left and odd right, with 4 px either side.
+ */
+const LABEL_COL_PX = 26;
+const LABEL_STRIP_PX = 4 + 2 * LABEL_COL_PX + 4;
+
+/** A pitch class's name, C to B with ♯ (CNBMusic.pcLabel). */
+function pcName(pc) {
+  const l = CNBMusic.pcLabel(pc);
+  return l.text + (l.sharp ? "♯" : "");
+}
+
+/**
+ * Fill the label strip's SVG slice: one label per semitone of the grid
+ * range, level with the spot it names (grid.semiToY, so a pitch axis
+ * places it), in the left column for an even pitch class and the right for
+ * an odd one. Labels in one column that share a drawn spot (three
+ * neighbours on one spot under a pitch axis) are one label, "C·D". Each
+ * label is a g.pitch-label (data-semi: its lowest semitone, data-pc) with a
+ * rect.pitch-chip behind its text; line.staff-middle marks the middle of
+ * the staff. The page styles both (quiet, or chips in its Pitch section).
+ */
+function renderLabelStrip(svg, grid, config) {
+  const groups = new Map();
+  for (let semi = Math.ceil(grid.minSemi); semi <= grid.maxSemi; semi++) {
+    const pc = CNBMusic.pitchClass(semi);
+    const y = grid.semiToY(semi);
+    const key = `${pc % 2}:${Math.round(y * 100)}`;
+    if (!groups.has(key)) groups.set(key, { semi, pc, y, names: [] });
+    groups.get(key).names.push(pcName(pc));
+  }
+  const chipH = Math.min(14, Math.max(8, 2 * grid.pxPerSemi - 2));
+  for (const { semi, pc, y, names } of groups.values()) {
+    const cx = 4 + (pc % 2) * LABEL_COL_PX + LABEL_COL_PX / 2;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "pitch-label");
+    g.setAttribute("data-semi", String(semi));
+    g.setAttribute("data-pc", String(pc));
+    const chip = document.createElementNS(NS, "rect");
+    chip.setAttribute("class", "pitch-chip");
+    chip.setAttribute("x", String(cx - LABEL_COL_PX / 2 + 1));
+    chip.setAttribute("y", String(y - chipH / 2));
+    chip.setAttribute("width", String(LABEL_COL_PX - 2));
+    chip.setAttribute("height", String(chipH));
+    chip.setAttribute("rx", "3");
+    chip.setAttribute("fill", "none");
+    g.appendChild(chip);
+    const text = document.createElementNS(NS, "text");
+    text.setAttribute("x", String(cx));
+    text.setAttribute("y", String(y));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "central");
+    text.setAttribute("font-size", "11");
+    text.setAttribute("fill", "#777777");
+    text.textContent = names.join("·");
+    g.appendChild(text);
+    svg.appendChild(g);
+  }
+  const mid = config.staff && config.staff.midpoint;
+  if (Number.isFinite(mid)) {
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("class", "staff-middle");
+    line.setAttribute("x1", "0");
+    line.setAttribute("x2", String(LABEL_STRIP_PX));
+    line.setAttribute("y1", String(grid.semiToY(mid)));
+    line.setAttribute("y2", String(grid.semiToY(mid)));
+    line.setAttribute("stroke", "none");
+    svg.appendChild(line);
+  }
+}
+
+/**
  * The fluid grid's column minimum: the widest column the shown cards need
  * (any pitch class, any shown duration), rounded up, plus 2 px either side.
  * Column widths do not depend on the grid's semitone range, so one grid
@@ -109,12 +186,21 @@ function splitSystems(pitchClasses, rows) {
  * system's own columns, so its lines (drawn to 100%) end after its last
  * card, and the cards are placed explicitly beside it.
  */
-function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots }) {
+function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots, labelStrip }) {
   const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
   const keySigGutterWidth = CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key);
+  const stripWidth = labelStrip ? LABEL_STRIP_PX : 0;
 
   const gutters = [];
+  if (labelStrip) {
+    gutters.push(gutterColumn(grid, {
+      className: "label-col",
+      sliceClass: "label-slice",
+      width: LABEL_STRIP_PX,
+      renderInto: svg => renderLabelStrip(svg, grid, config),
+    }));
+  }
   if (clefGutterWidth > 0) {
     gutters.push(gutterColumn(grid, {
       className: "clef-col",
@@ -136,7 +222,7 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
   container.className = "preview-container";
   container.style.position = "relative";
   container.style.display = "block";
-  container.style.minWidth = (clefGutterWidth + keySigGutterWidth + slots * colMin) + "px";
+  container.style.minWidth = (stripWidth + clefGutterWidth + keySigGutterWidth + slots * colMin) + "px";
   container.style.background = config.display?.card?.background ?? "#FFFFFF";
   if (!first) container.style.marginTop = SYSTEM_GAP_PX + "px";
 
@@ -155,7 +241,10 @@ function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin,
   bg.setAttribute("height", String(grid.svgHeight));
   bg.style.display = "block";
   bg.style.gridRow = "1";
-  bg.style.gridColumn = `1 / span ${gutters.length + pitchClasses.length}`;
+  // The staff runs behind the clef and key-signature gutters but not the
+  // label strip, which sits outside the staff on its left (design §4.2).
+  const firstStaffTrack = labelStrip ? 2 : 1;
+  bg.style.gridColumn = `${firstStaffTrack} / span ${gutters.length - (firstStaffTrack - 1) + pitchClasses.length}`;
   bg.style.alignSelf = "start";
   bg.style.marginTop = grid.topLabelHeight + "px";
   if (config.display?.debugGrid) {
@@ -215,14 +304,14 @@ function renderLedgerSpots(bg, grid, config) {
 }
 
 /** One fluid duration row: an optional caption, then one system or two. */
-function renderFluidRow(config, { pitchClasses, duration, key, showCaption, rows, colMin, ledgerSpots }) {
+function renderFluidRow(config, { pitchClasses, duration, key, showCaption, rows, colMin, ledgerSpots, labelStrip }) {
   const row = document.createElement("div");
   row.className = "cnb-duration-row";
   if (showCaption) row.appendChild(durationCaption(config, duration));
   const systems = splitSystems(pitchClasses, rows);
   systems.forEach((pcs, i) => {
     row.appendChild(renderFluidSystem(config, {
-      pitchClasses: pcs, duration, key, slots: systems[0].length, colMin, first: i === 0, ledgerSpots,
+      pitchClasses: pcs, duration, key, slots: systems[0].length, colMin, first: i === 0, ledgerSpots, labelStrip,
     }));
   });
   return row;
@@ -336,14 +425,14 @@ export const CNBCollection = {
 
   /**
    * The narrowest width a fluid row can take (session 25, design §6.1):
-   * the clef and key-signature gutters plus one column minimum (the widest
+   * the label strip (with labelStrip), the clef and key-signature gutters plus one column minimum (the widest
    * column the shown cards need, rounded up, plus 2 px either side) per
    * slot. One row has a slot per pitch class; two rows have ceil(n / 2).
    * The page code compares the canvas width with it to choose the rows.
    *
    * @param {object} config
    * @param {{pitchClasses?:number[], durations?:string[], keys?:string[]|null,
-   *          rows?:1|2}} [options]  as for render()
+   *          rows?:1|2, labelStrip?:boolean}} [options]  as for render()
    * @returns {number} px
    */
   minRowWidth(config, options = {}) {
@@ -353,10 +442,14 @@ export const CNBCollection = {
     const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
     const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
     const slots = splitSystems(pitchClasses, options.rows)[0].length;
-    return CNBClef.gutterWidth(config, grid.pxPerSemi) +
+    return (options.labelStrip === true ? LABEL_STRIP_PX : 0) +
+      CNBClef.gutterWidth(config, grid.pxPerSemi) +
       CNBKeySignature.gutterWidth(config, grid.pxPerSemi, key) +
       slots * colMin;
   },
+
+  /** The label strip's width in px (session 28): 4 + 2 × 26 + 4. */
+  LABEL_STRIP_WIDTH: LABEL_STRIP_PX,
 
   /**
    * Render a collection of octave-chord cards and append it to container.
@@ -364,7 +457,7 @@ export const CNBCollection = {
    * @param {HTMLElement} container
    * @param {object} config
    * @param {{pitchClasses?:number[], durations?:string[], keys?:string[]|null,
-   *          fluid?:boolean, rows?:1|2, ledgerSpots?:boolean}} [options]
+   *          fluid?:boolean, rows?:1|2, ledgerSpots?:boolean, labelStrip?:boolean}} [options]
    *        pitchClasses defaults to the full chromatic row 0–12;
    *        durations defaults to ["crotchet"], one row per entry;
    *        keys[0] selects the key shown in the key-signature gutter
@@ -375,8 +468,11 @@ export const CNBCollection = {
    *        the pitch classes into two systems, C to F♯ and G to C′ for the
    *        full row, on the same column grid. ledgerSpots (fluid only,
    *        session 26) draws every candidate ledger spot as a faint
-   *        line.ledger-spot under each system's staff lines. With fluid
-   *        off the layout is the fixed one, unchanged.
+   *        line.ledger-spot under each system's staff lines. labelStrip
+   *        (fluid only, session 28, design §4.2) puts div.label-col first in
+   *        each system: one pitch-class label per semitone level with its
+   *        spot and the middle of the staff marked, outside the staff. With
+   *        fluid off the layout is the fixed one, unchanged.
    * @returns {HTMLDivElement} the div.cnb-preview element
    */
   render(container, config, options = {}) {
@@ -400,6 +496,7 @@ export const CNBCollection = {
           rows,
           colMin,
           ledgerSpots: options.ledgerSpots === true,
+          labelStrip: options.labelStrip === true,
         }));
       }
       container.appendChild(root);
