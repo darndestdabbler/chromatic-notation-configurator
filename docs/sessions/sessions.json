@@ -748,9 +748,9 @@
     {
       "number": 36,
       "title": "Rough edges from the rebuilds",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-08T06:32:15.433000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-08T08:25:42.134000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
