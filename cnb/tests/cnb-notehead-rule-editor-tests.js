@@ -589,10 +589,10 @@ export const tests = [
       findAll(card1b, "cnb-nre-color-mode")[0].onchange({ target: { value: "custom" } });
       assert(lastSlices.noteheadRules[1].apply.color === "#000000", "custom mode starts at black");
       const card1c = findByAttr(handle.root, "data-rule-index", "1")[0];
-      findAll(card1c, "cnb-nre-color-input")[0].oninput({ target: { value: "#cc0000" } });
-      assert(lastSlices.noteheadRules[1].apply.color === "#cc0000", "hex edited");
-      // The panel (and its resolved strip) redraws when the picker closes.
+      // The hex applies, and the panel (and its resolved strip) redraws,
+      // when the picker closes.
       findAll(card1c, "cnb-nre-color-input")[0].onchange({ target: { value: "#cc0000" } });
+      assert(lastSlices.noteheadRules[1].apply.color === "#cc0000", "hex edited");
       swatch = findAll(findAll(handle.root, "cnb-nre-resolved-cell")[1], "cnb-nre-resolved-swatch")[0];
       assert(swatch.getAttribute("data-color") === "#cc0000", "strip shows the rule hex");
 
@@ -602,7 +602,7 @@ export const tests = [
     }),
   },
   {
-    name: "render: color input — `input` emits without redrawing (the picker stays open); `change` redraws",
+    name: "render: color input applies once (session 36) — a drag (`input`) writes nothing; `change` emits once and redraws",
     fn: () => withDomStub((container) => {
       let lastSlices = null;
       let emits = 0;
@@ -611,11 +611,10 @@ export const tests = [
       const handle = E.render(container, { config, onChange: (slices) => { lastSlices = slices; emits++; } });
       const input = () => findAll(findByAttr(handle.root, "data-rule-index", "1")[0], "cnb-nre-color-input")[0];
       const before = input();
-      before.oninput({ target: { value: "#00ff00" } });
-      assert(emits === 1 && lastSlices.noteheadRules[1].apply.color === "#00ff00", "input emits the new color");
-      assert(input() === before, "input leaves the same element in the DOM");
+      assert(typeof before.oninput !== "function", "a drag step has no handler: only the field's swatch changes");
+      assert(emits === 0, "nothing written before change");
       before.onchange({ target: { value: "#0000ff" } });
-      assert(emits === 2 && lastSlices.noteheadRules[1].apply.color === "#0000ff", "change emits");
+      assert(emits === 1 && lastSlices.noteheadRules[1].apply.color === "#0000ff", "change emits once");
       assert(input() !== before, "change redraws");
     }),
   },

@@ -42,7 +42,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection, selectNotehead, setField } from "./app-page.mjs";
+import { openSection, selectNotehead, setField, useDownloads } from "./app-page.mjs";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBConfigIO } from "../ui/config-io.js";
@@ -194,6 +194,7 @@ const lowerHeadY = () => page.$$eval(".cnb-pvd-preview .pc-col", cols => {
 const ledgerColumns = () => page.$$eval(".cnb-pvd-preview .pc-col", cols =>
   cols.filter(c => c.dataset.ledgers !== "0").map(c => Number(c.dataset.pc)));
 
+await useDownloads(page);
 await page.goto(`http://localhost:${PORT}/cnb/index.html`);
 await page.waitForSelector(".cnb-pvd-preview .pc-col");
 

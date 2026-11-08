@@ -25,9 +25,14 @@
  * A marker says when a rule for particular durations or keys also changes
  * the notehead (§5.5); those rules are edited in Advanced.
  *
- * Colour inputs follow session 21's wiring: `input` updates the look and
- * calls onChange without a redraw, so the open picker stays open; `change`
- * redraws.
+ * Colour inputs apply once (session 36): while the designer drags, `input`
+ * only tints the close-up notehead (the field shows its own colour) and
+ * writes nothing; `change`, when the picker closes, writes the colour
+ * through onChange and redraws. So a drag no longer leaves a Scheme name
+ * for every colour it passed through; the page cuts the names of colours
+ * no longer used when it saves (CNBPaletteEditor.usedSchemeSymbols). Not
+ * here: a config opened with its own names would lose the name of a colour
+ * the designer is about to give again, and the export with it.
  *
  * renderRuleList (session 27, design §5.4) draws the Noteheads section's
  * rule list in words, read-only, from ruleLines.
@@ -328,7 +333,7 @@ export const CNBNoteheadPanel = {
     }
 
     /** A colour for the selection; a new colour also gets its Scheme symbol. */
-    function setColour(hex, { redraw = true } = {}) {
+    function setColour(hex) {
       const color = hex === null ? null : hex.toLowerCase();
       let config = getConfig();
       if (color && color !== "#000000") {
@@ -339,7 +344,21 @@ export const CNBNoteheadPanel = {
         }
       }
       const table = I.lookTable(getConfig()).map(row => (selection.includes(row.pc) ? { ...row, color } : row));
-      commit(table, { config, redraw });
+      commit(table, { config });
+    }
+
+    /** While a colour field is dragged (session 36): only the close-up's
+     *  noteheads take the colour; nothing is written or redrawn. */
+    let closeUp = null;
+    function tintCloseUp(hex) {
+      const visit = (node) => {
+        for (const child of node.children || []) {
+          const tag = String(child.tagName || child.tag || "").toLowerCase();
+          if (tag === "path" && child.getAttribute("fill") !== "white") child.setAttribute("fill", hex);
+          visit(child);
+        }
+      };
+      if (closeUp) visit(closeUp);
     }
 
     function chooseShape(name) {
@@ -355,6 +374,7 @@ export const CNBNoteheadPanel = {
       if (drawn.clef) drawn.clef = { ...drawn.clef, enabled: false };
       if (drawn.keys) drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };
       CNBCollection.render(wrap, drawn, { pitchClasses: [pc], durations: ["crotchet"], fluid: true, rows: 1 });
+      closeUp = wrap;
       return wrap;
     }
 
@@ -383,7 +403,9 @@ export const CNBNoteheadPanel = {
       const input = el("input", "cnb-nhp-color-input");
       input.type = "color";
       input.value = current || "#000000";
-      input.oninput = (e) => setColour(valueOf(e, input), { redraw: false });
+      // A drag only tints the close-up; the colour applies when it ends
+      // (session 36), so the canvas redraws once and keeps up.
+      input.oninput = (e) => tintCloseUp(valueOf(e, input));
       input.onchange = (e) => setColour(valueOf(e, input));
       pick.appendChild(input);
       group.appendChild(pick);
@@ -395,12 +417,13 @@ export const CNBNoteheadPanel = {
         const tInput = el("input", "cnb-nhp-twin-input");
         tInput.type = "color";
         tInput.value = cb ? cb.hex : current;
-        const setTwin = (e, redraw) => {
+        // The close-up shows the twin only while the colour-blind preview is on.
+        const showsTwin = !!(config.palette && config.palette.useCBSafe);
+        tInput.oninput = (e) => { if (showsTwin) tintCloseUp(valueOf(e, tInput)); };
+        tInput.onchange = (e) => {
           onChange(CNBNoteheadPanel.withTwin(getConfig(), current, valueOf(e, tInput)));
-          if (redraw) draw();
+          draw();
         };
-        tInput.oninput = (e) => setTwin(e, false);
-        tInput.onchange = (e) => setTwin(e, true);
         twin.appendChild(tInput);
         group.appendChild(twin);
       }

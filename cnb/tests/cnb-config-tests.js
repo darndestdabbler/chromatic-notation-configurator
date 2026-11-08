@@ -140,6 +140,32 @@ export const tests = [
     // Default shape has lilypondPath:null
     assert(result.warnings.some(w => w.includes("lilypondPath")), "should warn about missing lilypondPath");
   }},
+  { name: "validate: a shape nothing uses does not warn about its paths (session 36)", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    const own = { ...cfg.shapes["crotchet-minim"], lilypondPath: "'((moveto 0 1) (lineto 1 0) (closepath))" };
+    cfg.shapes.mine = own;
+    cfg.noteheadRules[0].apply.shape = "mine";          // the built-in shape stays, unused
+    const warnings = CNBConfig.validate(cfg).warnings;
+    assert(!warnings.some(w => w.includes('"crotchet-minim"')), "unused shape silent: " + JSON.stringify(warnings));
+    assert(!warnings.some(w => w.includes('"mine" has no lilypondPath')), "the used shape has its path");
+    cfg.shapes.mine = { ...own, lilypondPath: null };
+    assert(CNBConfig.validate(cfg).warnings.some(w => w.startsWith('Shape "mine" has no lilypondPath')), "a used shape still warns");
+  }},
+  { name: "validate: a shape used only for one duration, or only in one key with keys on, still warns", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    cfg.shapes["crotchet-minim"].lilypondPath = "'((moveto 0 1) (lineto 1 0) (closepath))";
+    cfg.shapes.spare = { ...cfg.shapes["crotchet-minim"], lilypondPath: null };
+    const warns = () => CNBConfig.validate(cfg).warnings.some(w => w.startsWith('Shape "spare" has no lilypondPath'));
+    assert(!warns(), "unused: silent");
+    cfg.noteheadRules.push({ name: "Breve", priority: 5, match: { pitchClasses: "all", durations: ["breve"], keys: "all" }, apply: { shape: "spare" } });
+    assert(warns(), "used by the breve: warns");
+    cfg.noteheadRules.pop();
+    cfg.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
+    cfg.noteheadRules.push({ name: "In G", priority: 5, match: { pitchClasses: [6], durations: "all", keys: ["G"] }, apply: { shape: "spare" } });
+    assert(!warns(), "keys off: the key's rule draws nothing, silent");
+    cfg.keys.enabled = true;
+    assert(warns(), "keys on: used in G, warns");
+  }},
   { name: "validate: CB-safe palette shorter than primary → warning", fn: () => {
     const cfg = CNBConfig.createDefault();
     cfg.palette.colors = [
@@ -630,7 +656,9 @@ export const tests = [
     assert(CNBConfig.validate(notArray).errors.some(e => e.includes("keys.definitions must be an array")), "array error");
     const empty = keysigConfig();
     empty.keys.definitions = [];
-    assert(CNBConfig.validate(empty).warnings.some(w => w.includes("keys.definitions is empty")), "empty warning");
+    assert(!CNBConfig.validate(empty).warnings.some(w => w.includes("keys.definitions")) &&
+      CNBConfig.validate(empty).errors.length === 0,
+      "no definitions is fine: the canvas draws the key picked there (session 36)");
     const noName = keysigConfig();
     noName.keys.definitions = [{ pitchClasses: [0, 2, 4] }];
     assert(CNBConfig.validate(noName).errors.some(e => e.includes("has no name")), "name error");

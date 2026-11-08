@@ -543,6 +543,35 @@ export const CNBPaletteEditor = {
   },
 
   /**
+   * The config with palette.schemeSymbols cut to the colours it uses
+   * (session 36): the notehead rules' colours and the palette's colours and
+   * colour-blind colours, compared without regard to case. A colour tried
+   * and then replaced leaves no name behind. The export looks up only used
+   * colours, so its output does not change. The input is not changed; a
+   * config with nothing to cut comes back as it is.
+   * @param {object} config
+   * @returns {object}
+   */
+  usedSchemeSymbols(config) {
+    const palette = config && config.palette;
+    if (!palette || !palette.schemeSymbols) return config;
+    const used = new Set();
+    for (const rule of config.noteheadRules || []) {
+      const color = rule && rule.apply && rule.apply.color;
+      if (typeof color === "string") used.add(color.toLowerCase());
+    }
+    for (const entry of [...(palette.colors || []), ...(palette.cbSafeColors || [])]) {
+      if (entry && typeof entry.hex === "string") used.add(entry.hex.toLowerCase());
+    }
+    const kept = {};
+    for (const [hex, symbol] of Object.entries(palette.schemeSymbols)) {
+      if (used.has(hex.toLowerCase())) kept[hex] = symbol;
+    }
+    if (Object.keys(kept).length === Object.keys(palette.schemeSymbols).length) return config;
+    return { ...config, palette: { ...palette, schemeSymbols: kept } };
+  },
+
+  /**
    * Build a Module A `config.palette` object (architecture plan §4.6) from
    * an editor selection. Pure function.
    *
@@ -823,15 +852,14 @@ export const CNBPaletteEditor = {
         const input = el("input", "cnb-pal-custom-input");
         input.type = "color";
         input.value = hex;
-        // A redraw would destroy the input that owns the open picker and
-        // close it, so a drag step or typed digit (`input`) only emits;
-        // closing the picker (`change`) redraws (session 21).
-        const setColor = (e) => {
+        // A drag step or typed digit (`input`) changes only the field's own
+        // swatch; the colour applies once, when the picker closes (`change`,
+        // session 36), so the page redraws once rather than on every step.
+        input.onchange = (e) => {
           state.customColors[idx] = (e && e.target && e.target.value) || input.value;
           state.source = "custom";
+          changed();
         };
-        input.oninput = (e) => { setColor(e); emit(); };
-        input.onchange = (e) => { setColor(e); changed(); };
         cell.appendChild(input);
 
         const remove = el("button", "cnb-pal-custom-remove", "×");

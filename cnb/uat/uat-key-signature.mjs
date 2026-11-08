@@ -48,7 +48,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
+import { useCanvasSize, useDownloads, canvasConfig, openSection, setField } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -177,6 +177,7 @@ page.on("pageerror", e => consoleErrors.push(String(e)));
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
 // The canvas draws at Small, where the full row fits one row (design §6.1).
 await useCanvasSize(page, "small");
+await useDownloads(page);
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-key-signature-editor", { state: "attached" });
 await openSection(page, "key-signature");
@@ -262,10 +263,13 @@ let cfg = await fullConfig();
 check("DEFAULT-OFF: state panel shows the schema default keys section",
   JSON.stringify(cfg.keys) === JSON.stringify(CNBConfig.createDefault().keys),
   JSON.stringify(cfg.keys));
-check("DEFAULT-OFF: the preview reserves NO keysig gutter (no .keysig-col), shows 13 cards, and no Key control (keys disabled)",
+check("DEFAULT-OFF: the preview reserves NO keysig gutter (no .keysig-col) and shows 13 cards; the key and mode picker shows C major, with the button that turns the signature on (session 36)",
   (await keysigColCount()) === 0 &&
   await page.$$eval(".cnb-pvd-preview .pc-col", els => els.length === 13) &&
-  await page.evaluate(() => !document.querySelector(".cnb-pvd-key")));
+  await page.evaluate(() =>
+    document.querySelector(".cnb-pvd-key-tonic").value === "0" &&
+    document.querySelector(".cnb-pvd-key-mode").value === "major" &&
+    !!document.querySelector(".cnb-pvd-signature-on")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-initial.png"), fullPage: true });
 
 // ── STEP 1: enable keys (the master gate) ───────────────────────────────────
@@ -280,11 +284,10 @@ check("ENABLE KEYS: editor validation shows Config valid ✓ and the definitions
   await page.evaluate(() =>
     !!document.querySelector(".cnb-key-signature-editor .cnb-kse-valid") &&
     !!document.querySelector(".cnb-kse-empty")));
-check("ENABLE KEYS: the preview's Key control appears with the explicit empty-definitions state (disabled select + note — set-006 s3 pattern)",
+check("ENABLE KEYS: with none defined, the toolbar says so in a designer's words, naming no config path (session 36)",
   await page.evaluate(() =>
-    !!document.querySelector(".cnb-pvd-key") &&
-    document.querySelector(".cnb-pvd-key-select").disabled &&
-    document.querySelector(".cnb-pvd-key-note").textContent.includes("definitions is empty")));
+    document.querySelector(".cnb-pvd-key-note").textContent ===
+      "No keys are defined yet, so no notehead rule can be for a particular key."));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-keys-enabled.png"), fullPage: true });
 
 // ── STEP 2: define keys (add, duplicate check, rename, tonic resolution) ────
@@ -316,12 +319,8 @@ check("DEFINE: 'D Dorian' resolves tonic D from the name (same pitch-class set a
   await page.evaluate(() =>
     document.querySelector('.cnb-kse-def-row[data-def-index="1"] .cnb-kse-def-tonic-hint')
       .textContent === "tonic D (from name)"));
-check("DEFINE: the preview's Key select now offers both definitions",
-  await page.evaluate(() => {
-    const select = document.querySelector(".cnb-pvd-key-select");
-    const values = [...select.querySelectorAll("option")].map(o => o.value);
-    return !select.disabled && values.includes("C") && values.includes("D Dorian");
-  }));
+check("DEFINE: with keys defined, the toolbar's note is gone",
+  await page.evaluate(() => !document.querySelector(".cnb-pvd-key-note")));
 
 // ── STEP 3: enable the key signature ────────────────────────────────────────
 await page.check(".cnb-kse-sig-enable-check");
@@ -329,12 +328,17 @@ cfg = await fullConfig();
 check("ENABLE SIGNATURE: keys.keySignature.enabled true in the shared config, validation still valid",
   cfg.keys.keySignature.enabled === true &&
   await page.evaluate(() => !!document.querySelector(".cnb-key-signature-editor .cnb-kse-valid")));
-check("ENABLE SIGNATURE: with NO key selected the preview still reserves no keysig gutter (the displayed key is example data — s1 D5)",
-  (await keysigColCount()) === 0);
-await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-sig-enabled-no-key.png"), fullPage: true });
+check("ENABLE SIGNATURE: the picked key's signature draws at once (C major, picked by default; session 36), and the button that turns it on is gone",
+  (await keysigColCount()) >= 1 &&
+  await page.evaluate(() => !document.querySelector(".cnb-pvd-signature-on")));
 
-// ── STEP 4: select the displayed key in the preview ─────────────────────────
-await page.selectOption(".cnb-pvd-key-select", "C");
+// ── STEP 4: the key picked on the staff ─────────────────────────────────────
+/** Pick a key and mode in the canvas toolbar (session 36). */
+async function pickKey(tonic, mode) {
+  await setField(page, ".cnb-pvd-key-tonic", tonic);
+  await setField(page, ".cnb-pvd-key-mode", mode);
+}
+await pickKey(0, "major");
 cfg = await fullConfig();
 // The fluid canvas stretches its columns, so the gutter is a CSS track that
 // keeps the engine's spacing at any width (session 34): measured as drawn,
@@ -423,7 +427,7 @@ check("KEY SELECTION: ledger lines render beneath the marks (at least one ledger
 }
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-C.png"), fullPage: true });
 
-await page.selectOption(".cnb-pvd-key-select", "D Dorian");
+await pickKey(2, "dorian");
 cfg = await fullConfig();
 expected = expectedMarks(cfg, "D Dorian");
 actual = await renderedMarks();
@@ -432,7 +436,19 @@ check("KEY SELECTION: switching to D Dorian re-anchors the signature on tonic D 
   CNBKeySignature.signatureSemis(cfg, "D Dorian")[0] === 2,
   `actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-d-dorian.png"), fullPage: true });
-await page.selectOption(".cnb-pvd-key-select", "C");
+{
+  // A key nobody defined draws too: F♯ major's signature starts on F♯.
+  await pickKey(6, "major");
+  const fsharp = { ...cfg, keys: { ...cfg.keys, definitions: [...cfg.keys.definitions,
+    { name: "F♯ major", pitchClasses: [1, 3, 5, 6, 8, 10, 11], tonicPc: 6 }] } };
+  const want = expectedMarks(fsharp, "F♯ major");
+  const got = await renderedMarks();
+  check("KEY SELECTION: a key nobody defined (F♯ major) draws its signature from F♯; the config gains no definition",
+    want && want.length === 8 && marksMatch(got, want) &&
+    (await fullConfig()).keys.definitions.length === 2,
+    `actual=${JSON.stringify(got)} expected=${JSON.stringify(want)}`);
+}
+await pickKey(0, "major");
 
 // ── STEP 5: mark style + placement/separator controls ───────────────────────
 // One implemented style (notehead-chords); the task owner deferred simple-mark

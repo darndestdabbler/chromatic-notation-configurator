@@ -18,6 +18,34 @@ function deepEq(a, b, msg) {
 }
 
 export const tests = [
+  // ── modes and scales (session 36) ──
+  { name: "MODES: the seven modes LilyPond's \key names, seven degrees each from 0", fn: () => {
+    deepEq(Object.keys(CNBMusic.MODES), ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"], "names");
+    for (const [name, steps] of Object.entries(CNBMusic.MODES)) {
+      eq(steps.length, 7, name + " has seven degrees");
+      eq(steps[0], 0, name + " starts on the tonic");
+    }
+  }},
+  { name: "scale: degrees ascending from the tonic; the relative keys share pitch classes", fn: () => {
+    deepEq(CNBMusic.scale(0, "major"), [0, 2, 4, 5, 7, 9, 11], "C major");
+    deepEq(CNBMusic.scale(7, "major"), [7, 9, 11, 0, 2, 4, 6], "G major");
+    deepEq(CNBMusic.scale(9, "minor"), [9, 11, 0, 2, 4, 5, 7], "A minor");
+    deepEq(CNBMusic.scale(2, "dorian"), [2, 4, 5, 7, 9, 11, 0], "D dorian");
+    const sorted = (a) => a.slice().sort((x, y) => x - y);
+    deepEq(sorted(CNBMusic.scale(9, "minor")), sorted(CNBMusic.scale(0, "major")), "A minor = C major's set");
+    deepEq(sorted(CNBMusic.scale(5, "lydian")), sorted(CNBMusic.scale(0, "major")), "F lydian = C major's set");
+    deepEq(sorted(CNBMusic.scale(11, "locrian")), sorted(CNBMusic.scale(0, "major")), "B locrian = C major's set");
+  }},
+  { name: "scale: throws on a bad tonic or an unknown mode", fn: () => {
+    for (const bad of [-1, 12, 1.5, "C", null]) {
+      let threw = false;
+      try { CNBMusic.scale(bad, "major"); } catch { threw = true; }
+      assert(threw, "tonic " + JSON.stringify(bad));
+    }
+    let threw = false;
+    try { CNBMusic.scale(0, "ionian-ish"); } catch (e) { threw = /unknown mode/.test(e.message); }
+    assert(threw, "unknown mode");
+  }},
 
   // ── pitchClass ────────────────────────────────────────────────────────────
   { name: "pitchClass(0) = 0",   fn: () => eq(CNBMusic.pitchClass(0),   0) },

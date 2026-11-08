@@ -266,18 +266,30 @@ export const tests = [
       });
     }},
 
-  { name: "colour: input keeps the picker's element and emits; change redraws (session 21 wiring)", fn: () => {
+  { name: "colour: a drag (input) only tints the close-up; the colour applies once, on change (session 36)", fn: () => {
       withPanel(CNBConfig.createDefault(), [2], (h) => {
+        /** The fills of the close-up's notehead paths (not the hollow cut-outs). */
+        const fills = () => {
+          const out = [];
+          const visit = (n) => { for (const c of n.children || []) { if (c.tag === "path" && c.attrs.fill !== "white") out.push(c.attrs.fill); visit(c); } };
+          visit(findOne(h.api.root, "cnb-nhp-closeup"));
+          return out;
+        };
+        assert(fills().length > 0 && fills().every(f => f === "#000000"), "the close-up starts black");
         const input = findOne(h.api.root, "cnb-nhp-color-input");
         input.oninput({ target: { value: "#ff0000" } });
-        eq(h.changes, 1, "onChange on input");
+        eq(h.changes, 0, "no onChange while dragging");
+        assert(fills().every(f => f === "#ff0000"), "the close-up's noteheads take the colour");
         eq(findOne(h.api.root, "cnb-nhp-color-input"), input, "same element after input");
-        eq(CNBConfig.resolveColor(h.config, 2), "#ff0000", "D is red");
-        eq(h.config.palette.schemeSymbols["#ff0000"], "red-ff0000", "new colour gets its Scheme symbol");
-        input.onchange({ target: { value: "#00ff00" } });
-        eq(h.changes, 2, "onChange on change");
+        eq(CNBConfig.resolveColor(h.config, 2), null, "nothing written yet");
+        input.onchange({ target: { value: "#ff0000" } });
+        eq(h.changes, 1, "onChange once, on change");
         assert(findOne(h.api.root, "cnb-nhp-color-input") !== input, "redrawn on change");
+        eq(CNBConfig.resolveColor(h.config, 2), "#ff0000", "D is red");
+        eq(h.config.palette.schemeSymbols["#ff0000"], "red-ff0000", "the colour gets its Scheme symbol");
+        findOne(h.api.root, "cnb-nhp-color-input").onchange({ target: { value: "#00ff00" } });
         eq(CNBConfig.resolveColor(h.config, 2), "#00ff00", "D is green");
+        eq(h.config.palette.schemeSymbols["#00ff00"], "green-00ff00", "and green its name");
       });
     }},
 
@@ -300,7 +312,10 @@ export const tests = [
         const twin = findOne(h.api.root, "cnb-nhp-twin-input");
         eq(twin.value, "#cc79a7", "starts at the current twin");
         twin.oninput({ target: { value: "#0072b2" } });
+        eq(h.changes, 0, "a drag writes nothing (session 36)");
         eq(findOne(h.api.root, "cnb-nhp-twin-input"), twin, "same element after input");
+        twin.onchange({ target: { value: "#0072b2" } });
+        eq(h.changes, 1, "the twin applies once, on change");
         deepEq(h.config.palette.cbSafeColors.filter(c => c.hex === "#0072b2").map(c => c.pc), [1, 4, 7, 10], "rose's twins");
       });
     }},

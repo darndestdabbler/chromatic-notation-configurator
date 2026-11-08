@@ -22,7 +22,42 @@ const PC_LABELS = [
   { text: "B",  sharp: false },
 ];
 
+/**
+ * The seven modes LilyPond's \key names (\major, \minor, \dorian, …), as
+ * semitones above the tonic, ascending (session 36). LilyPond also accepts
+ * \ionian and eolian, which are \major and \minor.
+ */
+const MODES = {
+  major:      [0, 2, 4, 5, 7, 9, 11],
+  minor:      [0, 2, 3, 5, 7, 8, 10],
+  dorian:     [0, 2, 3, 5, 7, 9, 10],
+  phrygian:   [0, 1, 3, 5, 7, 8, 10],
+  lydian:     [0, 2, 4, 6, 7, 9, 11],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  locrian:    [0, 1, 3, 5, 6, 8, 10],
+};
+
 export const CNBMusic = {
+
+  MODES,
+
+  /**
+   * The pitch classes of a key: its mode's degrees from the tonic,
+   * ascending from the tonic. scale(7, "major") = [7, 9, 11, 0, 2, 4, 6].
+   * Throws on a tonic outside 0–11 or a mode not in MODES.
+   * @param {number} tonicPc  0–11
+   * @param {string} mode     a MODES name
+   * @returns {number[]}
+   */
+  scale(tonicPc, mode) {
+    if (!Number.isInteger(tonicPc) || tonicPc < 0 || tonicPc > 11) {
+      throw new Error(`scale: tonic must be a pitch class 0–11 (got ${JSON.stringify(tonicPc)})`);
+    }
+    if (!Object.hasOwn(MODES, mode)) {
+      throw new Error(`scale: unknown mode ${JSON.stringify(mode)} (one of ${Object.keys(MODES).join(", ")})`);
+    }
+    return MODES[mode].map(step => (tonicPc + step) % 12);
+  },
 
   /**
    * Pitch class from absolute semitone. Always returns 0–11.

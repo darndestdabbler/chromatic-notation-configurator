@@ -251,6 +251,8 @@ for (const route of ROUTES) {
     const input = document.querySelector(sel);
     input.value = "#123456";
     input.dispatchEvent(new Event("input", { bubbles: true }));
+    // The colour applies when the picker closes (session 36).
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }, `${rule(0)} .cnb-nre-color-input`);
   const after = await headHeights(page);
   cfg = await fullConfig(page);

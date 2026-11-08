@@ -26,18 +26,13 @@
  *     duration restores the selection. Deselecting every pill is allowed:
  *     the preview area then shows an explicit .cnb-pvd-empty message
  *     instead of a collection — an honest empty state, not a guessed row.
- *   - Key selection renders whenever config.keys.enabled is true (spec
- *     step 1: "(if keys.enabled) key selection"). With key definitions
- *     present, the chosen key is passed to CNBCollection.render() as
- *     options.keys = [name]; Module 10 accepts the option but renders key
- *     rows with key = null (deferred per architecture plan §5 Module 10
- *     "Key rows (future)"), and the visible .cnb-pvd-key-note states
- *     exactly that so the control never overclaims what the preview
- *     shows. When keys are enabled but config.keys.definitions is empty,
- *     the section stays visible with a disabled "(none)" select and an
- *     explicit note that there is nothing to select yet. A selected key
- *     that the current config no longer defines is retained in state and
- *     pruned at build time, like durations.
+ *   - The key is a tonic and a mode (session 36): a key and mode picker,
+ *     shown whatever the config, over the twelve tonics and the seven modes
+ *     LilyPond's \key names (CNBMusic.MODES). The pick is example data,
+ *     like the durations: withKey() gives the drawn copy of the config the
+ *     picked key as a definition, so the signature draws for it, and
+ *     options.keys = [its name]. With keys off there is no key (the export
+ *     applies none either).
  *   - Module 19 does not own config state — the host does ("the UI shell
  *     owns state") — so render() takes a `getConfig` accessor (Modules
  *     17/18 contract) and the host calls the returned redraw() whenever the
@@ -57,9 +52,10 @@
  *   ├── div.cnb-pvd-controls
  *   │   ├── div.cnb-pvd-range      (from/to selects over PCs 0–12)
  *   │   ├── div.cnb-pvd-durations  (one toggle pill per duration name)
- *   │   └── div.cnb-pvd-key        (only when keys.enabled: select +
- *   │                               deferral note, or a disabled select +
- *   │                               empty-definitions note)
+ *   │   └── div.cnb-pvd-key        (tonic and mode selects; the button that
+ *   │                               turns the signature on, while it is
+ *   │                               off; a note when keys are on and none
+ *   │                               is defined)
  *   ├── div.cnb-pvd-empty          (message when no duration is selected;
  *   │                               absent otherwise)
  *   └── div.cnb-pvd-preview        (Module 10 output; absent when empty)
@@ -104,7 +100,19 @@
  * opts.onPitchDrag(d), d the semitones dragged, downward positive (the
  * host applies CNBPitchModel.shiftPitch(config, d)).
  *
- * Dependencies: Module A (config shape), Module B (pitch labels),
+ * Session 36 (the rebuilds' rough edges): beside the duration buttons, when
+ * the host passes opts.onRepresentationMode, a two-way choice between each
+ * duration's own shape and repeated heads (durations.representationMode,
+ * REPRESENTATION_CHOICES); a click on the other one calls
+ * opts.onRepresentationMode("shape" | "repeat") and the host writes it.
+ *
+ * Session 36 also turns the key select into the key and mode picker (see
+ * the scope decisions above). While the signature is off and the host
+ * passes opts.onSignatureOn, a button beside the picker asks the host to
+ * turn on the default signature (keys.enabled, keys.keySignature.enabled,
+ * the scale stack).
+ *
+ * Dependencies: Module A (config shape), Module B (pitch labels, modes),
  * Module 10 (card collection).
  */
 
@@ -126,6 +134,30 @@ function deepClone(v) {
 const SIZES = { small: 9, medium: 11, large: 16 };
 const DEFAULT_SIZE = "medium";
 const SIZE_STORAGE_KEY = "cnb.canvasSize";
+
+/** The choice beside the duration buttons (session 36), in the designer's
+ *  words: durations.representationMode → its label. */
+const REPRESENTATION_CHOICES = {
+  shape: "Its own shape for each duration",
+  repeat: "Repeat the notehead",
+};
+/** The engine's repeat counts (CNBCard.repeatCount), shown with the choice. */
+const REPEAT_HINT = "Repeated: minim ×2, semibreve and breve ×4";
+
+/** The key picker's tonics and the key shown first (session 36). */
+const TONIC_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+const DEFAULT_KEY = { tonic: 0, mode: "major" };
+
+/** The sorted, distinct pitch classes of a list, as a comparable string. */
+function pcSet(pcs) {
+  return [...new Set(pcs.map(CNBMusic.pitchClass))].sort((a, b) => a - b).join(" ");
+}
+
+/** Throws unless key is { tonic: 0–11, mode: a CNBMusic.MODES name }. */
+function checkKey(key) {
+  if (!isPlainObject(key)) throw new Error(`state.key must be { tonic, mode } (got ${JSON.stringify(key)})`);
+  CNBMusic.scale(key.tonic, key.mode);
+}
 
 /** The toolbar hint in pitch mode (session 28, mock-up 3). */
 const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff";
@@ -150,6 +182,10 @@ export const CNBPreviewDisplay = {
   DEFAULT_SIZE,
   SIZE_STORAGE_KEY,
   EDITOR_LABEL,
+  REPRESENTATION_CHOICES,
+  REPEAT_HINT,
+  TONIC_NAMES,
+  DEFAULT_KEY,
 
   /**
    * The remembered Size: the stored name when it is one of SIZES, else
@@ -215,7 +251,8 @@ export const CNBPreviewDisplay = {
    * @param {HTMLElement} host
    * @param {object} config
    * @param {{part:"clef"|"key-signature", size?:"small"|"medium"|"large",
-   *          duration?:string|null, key?:string|null}} opts
+   *          duration?:string|null, key?:{tonic:number, mode:string}|null}} opts
+   *        key: the key picked on the canvas (withKey), or null for none
    * @returns {HTMLDivElement|null} the div.cnb-pvd-partial, or null when
    *          duration is null
    */
@@ -224,7 +261,8 @@ export const CNBPreviewDisplay = {
       throw new Error(`renderPartial: part must be "clef" or "key-signature" (got ${JSON.stringify(part)})`);
     }
     if (duration === null) return null;
-    const drawn = CNBPreviewDisplay.displayConfig(config, size);
+    const picked = CNBPreviewDisplay.withKey(config, key);
+    const drawn = CNBPreviewDisplay.displayConfig(picked.config, size);
     if (part === "clef" && drawn.keys) {
       drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };
     }
@@ -236,7 +274,7 @@ export const CNBPreviewDisplay = {
     CNBCollection.render(wrap, drawn, {
       pitchClasses: CNBPreviewDisplay.PARTIAL_PCS,
       durations: [duration],
-      keys: key ? [key] : null,
+      keys: picked.name ? [picked.name] : null,
       fluid: true,
       rows: 1,
     });
@@ -281,15 +319,33 @@ export const CNBPreviewDisplay = {
   },
 
   /**
-   * Key names available for selection: the config's key definitions when
-   * config.keys.enabled is true, else [] (no key control is shown).
+   * The config with the key picked on the canvas (session 36): with keys
+   * on, its keys.definitions carry the picked key, under the name of the
+   * defined key the export engraves for those pitch classes (LY spec 1.3.9
+   * §6.4: the first in definition order that a rule names, else the first
+   * with them) and with the picked tonic, or, when none is defined, a new
+   * definition named for it ("D dorian"). The signature and the key-scoped
+   * rules then draw as engraved. With keys off, or no key, the config comes
+   * back as it is and the name is null. The input is not changed.
    * @param {object} config
-   * @returns {string[]}
+   * @param {{tonic:number, mode:string}|null} key
+   * @returns {{config: object, name: string|null}}
    */
-  keyNames(config) {
+  withKey(config, key) {
     const keys = (config || {}).keys || {};
-    if (!keys.enabled) return [];
-    return (keys.definitions || []).map(k => k.name).filter(Boolean);
+    if (key === null || key === undefined || !keys.enabled) return { config, name: null };
+    checkKey(key);
+    const pcs = CNBMusic.scale(key.tonic, key.mode).sort((a, b) => a - b);
+    const set = pcSet(pcs);
+    const defs = Array.isArray(keys.definitions) ? keys.definitions : [];
+    const sameSet = (d) => isPlainObject(d) && Array.isArray(d.pitchClasses) && pcSet(d.pitchClasses) === set;
+    const named = new Set((config.noteheadRules || [])
+      .flatMap(r => (r && r.match && Array.isArray(r.match.keys)) ? r.match.keys : []));
+    const match = defs.find(d => sameSet(d) && named.has(d.name)) || defs.find(sameSet);
+    const name = match ? match.name : `${TONIC_NAMES[key.tonic]} ${key.mode}`;
+    const picked = { ...(match || { pitchClasses: pcs }), name, tonicPc: key.tonic };
+    const definitions = match ? defs.map(d => (d === match ? picked : d)) : [...defs, picked];
+    return { config: { ...config, keys: { ...keys, definitions } }, name };
   },
 
   /**
@@ -318,17 +374,17 @@ export const CNBPreviewDisplay = {
 
   /**
    * Initial display state for a config: the full chromatic row 0–12 with
-   * the config's first duration (Module 10's default single row) and no
-   * key selected.
+   * the config's first duration (Module 10's default single row) and the
+   * key of C major.
    * @param {object} config
-   * @returns {{fromPc:number, toPc:number, durations:string[], key:string|null}}
+   * @returns {{fromPc:number, toPc:number, durations:string[], key:{tonic:number, mode:string}}}
    */
   defaultState(config) {
     return {
       fromPc: PC_MIN,
       toPc: PC_MAX,
       durations: [CNBPreviewDisplay.durationNames(config)[0]],
-      key: null,
+      key: { ...DEFAULT_KEY },
     };
   },
 
@@ -340,10 +396,11 @@ export const CNBPreviewDisplay = {
    *   - durations = state.durations ∩ the config's current duration
    *     vocabulary, in vocabulary order (may be EMPTY — the caller decides
    *     what an empty preview looks like; render() shows .cnb-pvd-empty);
-   *   - keys = [state.key] when keys are enabled and the key is currently
-   *     defined, else null.
+   *   - keys = [the picked key's name] (withKey) when keys are enabled,
+   *     else null. state.key is { tonic, mode } or null (no key); anything
+   *     else throws.
    * @param {object} config
-   * @param {{fromPc:number, toPc:number, durations:string[], key:string|null}} state
+   * @param {{fromPc:number, toPc:number, durations:string[], key:{tonic:number, mode:string}|null}} state
    * @returns {{pitchClasses:number[], durations:string[], keys:string[]|null}}
    */
   buildOptions(config, state) {
@@ -353,17 +410,13 @@ export const CNBPreviewDisplay = {
     if (!Array.isArray(state.durations)) {
       throw new Error(`state.durations must be an array (got ${JSON.stringify(state.durations)})`);
     }
-    if (state.key !== null && state.key !== undefined && typeof state.key !== "string") {
-      throw new Error(`state.key must be a string or null (got ${JSON.stringify(state.key)})`);
-    }
+    if (state.key !== null && state.key !== undefined) checkKey(state.key);
     const vocab = CNBPreviewDisplay.durationNames(config);
-    const keys = CNBPreviewDisplay.keyNames(config);
+    const { name } = CNBPreviewDisplay.withKey(config, state.key ?? null);
     return {
       pitchClasses: CNBPreviewDisplay.buildPitchClasses(state.fromPc, state.toPc),
-      durations: vocab.filter(name => state.durations.includes(name)),
-      keys: (state.key !== null && state.key !== undefined && keys.includes(state.key))
-        ? [state.key]
-        : null,
+      durations: vocab.filter(d => state.durations.includes(d)),
+      keys: name ? [name] : null,
     };
   },
 
@@ -382,10 +435,21 @@ export const CNBPreviewDisplay = {
    *   - collection: injection seam for the collection renderer (defaults
    *     to Module 10's CNBCollection; tests may pass a recorder). Must
    *     expose render(container, config, options).
+   *   - onRepresentationMode(mode) (session 36): when given, the toolbar
+   *     draws the choice between each duration's own shape ("shape") and
+   *     repeated heads ("repeat") beside the duration buttons, and a click
+   *     on the one not in the config reports it; the host writes
+   *     durations.representationMode and calls redraw().
+   *   - onSignatureOn() (session 36): when given, while the key signature
+   *     is off, a button beside the key picker asks the host to turn on the
+   *     default signature (the scale stack); the host writes the config and
+   *     calls redraw().
    *
    * @param {HTMLElement} container
    * @param {{getConfig: () => object, onRender?: Function,
-   *          collection?: {render: Function}}} opts
+   *          collection?: {render: Function},
+   *          onRepresentationMode?: (mode: "shape"|"repeat") => void,
+   *          onSignatureOn?: () => void}} opts
    * @returns {{root: HTMLElement, getState: () => object,
    *            setState: (partial: object) => void,
    *            getOptions: () => object, redraw: () => void}}
@@ -413,6 +477,8 @@ export const CNBPreviewDisplay = {
     let marks = { selected: [], tinted: [] };   // setMarks, put back after every redraw
     let columns = [];         // the drawn pitch columns (data-pc), for the marks
     const onPitchDrag = opts.onPitchDrag || null;
+    const onRepresentationMode = opts.onRepresentationMode || null;
+    const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
     let pitchHint = null;     // the toolbar hint shown in pitch mode
 
@@ -480,52 +546,80 @@ export const CNBPreviewDisplay = {
         };
         wrap.appendChild(pill);
       }
+      if (onRepresentationMode) wrap.appendChild(drawRepresentation());
       return wrap;
     }
 
-    // ── Key selection (whenever the config enables keys) ──────────────────
+    // ── Shapes or repeated heads (session 36) ─────────────────────────────
+    function drawRepresentation() {
+      const current = ((getConfig() || {}).durations || {}).representationMode === "repeat" ? "repeat" : "shape";
+      const wrap = el("div", "cnb-pvd-repeat");
+      const group = el("div", "cnb-pvd-repeat-options");
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Longer durations");
+      for (const [mode, label] of Object.entries(REPRESENTATION_CHOICES)) {
+        const on = mode === current;
+        const button = el("button", "cnb-pvd-repeat-option" + (on ? " on" : ""), label);
+        button.type = "button";
+        button.setAttribute("data-mode", mode);
+        button.setAttribute("aria-pressed", String(on));
+        button.onclick = () => { if (!on) onRepresentationMode(mode); };
+        group.appendChild(button);
+      }
+      wrap.appendChild(group);
+      wrap.appendChild(el("span", "cnb-pvd-repeat-hint", REPEAT_HINT));
+      return wrap;
+    }
+
+    // ── The key and mode picker (session 36) ──────────────────────────────
     function drawKey() {
-      const config = getConfig();
-      if (!(((config || {}).keys || {}).enabled)) return null;
-      const names = CNBPreviewDisplay.keyNames(config);
-      const signatureOn = !!((config.keys.keySignature || {}).enabled);
+      const keys = (getConfig() || {}).keys || {};
+      const signatureOn = !!(keys.enabled && (keys.keySignature || {}).enabled);
+      const key = state.key || DEFAULT_KEY;
       const wrap = el("div", "cnb-pvd-key");
       wrap.appendChild(el("span", "cnb-pvd-key-label", "Key"));
-      const select = el("select", "cnb-pvd-key-select");
-      const none = el("option", "", "(none)");
-      none.value = "";
-      select.appendChild(none);
-      for (const name of names) {
-        const option = el("option", "", name);
-        option.value = name;
-        if (name === state.key) option.selected = true;
-        select.appendChild(option);
-      }
-      select.value = names.includes(state.key) ? state.key : "";
-      if (names.length === 0) {
-        // Keys enabled but nothing defined: keep the section visible and
-        // explain the empty state instead of hiding the control.
-        select.disabled = true;
-        wrap.appendChild(select);
-        wrap.appendChild(el("span", "cnb-pvd-key-note",
-          "Keys are enabled but config.keys.definitions is empty — " +
-          "nothing to select yet." +
-          (signatureOn ? " No key is defined, so no key signature draws." : "")));
-        return wrap;
-      }
-      select.onchange = (e) => {
-        const v = valueFrom(e, select);
-        state.key = v === "" ? null : v;
+
+      const tonic = el("select", "cnb-pvd-key-tonic");
+      tonic.setAttribute("aria-label", "Key");
+      TONIC_NAMES.forEach((text, pc) => {
+        const option = el("option", "", text);
+        option.value = String(pc);
+        if (pc === key.tonic) option.selected = true;
+        tonic.appendChild(option);
+      });
+      tonic.value = String(key.tonic);
+      tonic.onchange = (e) => {
+        state.key = { ...key, tonic: parseInt(valueFrom(e, tonic), 10) };
         changed();
       };
-      wrap.appendChild(select);
-      if (signatureOn && !names.includes(state.key)) {
-        wrap.appendChild(el("span", "cnb-pvd-key-note cnb-pvd-key-none",
-          "No key is selected, so no key signature draws."));
+      wrap.appendChild(tonic);
+
+      const mode = el("select", "cnb-pvd-key-mode");
+      mode.setAttribute("aria-label", "Mode");
+      for (const name of Object.keys(CNBMusic.MODES)) {
+        const option = el("option", "", name);
+        option.value = name;
+        if (name === key.mode) option.selected = true;
+        mode.appendChild(option);
       }
-      wrap.appendChild(el("span", "cnb-pvd-key-note",
-        "Key rows are deferred in the card collection (plan §5 Module 10) — " +
-        "the selection is passed through but cards render key-neutral."));
+      mode.value = key.mode;
+      mode.onchange = (e) => {
+        state.key = { ...key, mode: valueFrom(e, mode) };
+        changed();
+      };
+      wrap.appendChild(mode);
+
+      if (!signatureOn && onSignatureOn) {
+        const on = el("button", "cnb-pvd-signature-on", "Show the key signature");
+        on.type = "button";
+        on.title = "The scale stack: the key's scale as stacked noteheads, as the engine engraves it";
+        on.onclick = () => onSignatureOn();
+        wrap.appendChild(on);
+      }
+      if (keys.enabled && !(Array.isArray(keys.definitions) && keys.definitions.length)) {
+        wrap.appendChild(el("span", "cnb-pvd-key-note",
+          "No keys are defined yet, so no notehead rule can be for a particular key."));
+      }
       return wrap;
     }
 
@@ -555,7 +649,8 @@ export const CNBPreviewDisplay = {
     // ── Preview area ──────────────────────────────────────────────────────
     /** The drawn config and the collection options for the current state. */
     function drawn() {
-      const config = CNBPreviewDisplay.displayConfig(getConfig(), size);
+      const picked = CNBPreviewDisplay.withKey(getConfig(), state.key);
+      const config = CNBPreviewDisplay.displayConfig(picked.config, size);
       return { config, options: CNBPreviewDisplay.buildOptions(config, state) };
     }
 
@@ -705,8 +800,7 @@ export const CNBPreviewDisplay = {
         controls.appendChild(drawRange());
       }
       controls.appendChild(drawDurations());
-      const key = drawKey();
-      if (key) controls.appendChild(key);
+      controls.appendChild(drawKey());
       pitchHint = el("span", "cnb-pvd-pitch-hint", "");
       controls.appendChild(pitchHint);
       controls.appendChild(drawSize());

@@ -46,7 +46,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, canvasConfig, openSection } from "./app-page.mjs";
+import { useCanvasSize, useDownloads, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -176,6 +176,7 @@ page.on("pageerror", e => consoleErrors.push(String(e)));
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
 // The canvas draws at Small, where the full row fits one row (design §6.1).
 await useCanvasSize(page, "small");
+await useDownloads(page);
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-clef-editor", { state: "attached" });
 await openSection(page, "clef");

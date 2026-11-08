@@ -247,6 +247,33 @@ function firstShapeName(config) {
 }
 
 /** True if the rule's match block covers this (pc, duration, key). */
+/**
+ * The shapes some notehead uses: those resolved for any pitch class, any
+ * duration definition (crotchet when there are none) and no key, or, with
+ * keys on, any defined key. Resolutions that fail are skipped (other checks
+ * report them).
+ */
+function usedShapeNames(config) {
+  const isPlainObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+  const durations = (((config.durations || {}).definitions) || []).map(d => d && d.name).filter(Boolean);
+  const keysSec = isPlainObject(config.keys) ? config.keys : {};
+  const keys = [null];
+  if (keysSec.enabled && Array.isArray(keysSec.definitions)) {
+    for (const def of keysSec.definitions) if (isPlainObject(def) && def.name) keys.push(def.name);
+  }
+  const used = new Set();
+  for (const duration of durations.length ? durations : ["crotchet"]) {
+    for (const key of keys) {
+      for (let pc = 0; pc < 12; pc++) {
+        try {
+          used.add(CNBConfig.resolveNotehead(config, pc, duration, key).shape);
+        } catch (_) { /* reported elsewhere */ }
+      }
+    }
+  }
+  return used;
+}
+
 function ruleMatches(rule, pc, duration, key) {
   const m = rule.match;
   const pcMatch  = m.pitchClasses === "all" || (Array.isArray(m.pitchClasses) && m.pitchClasses.includes(pc));
@@ -497,10 +524,9 @@ export const CNBConfig = {
           !Array.isArray(keysSection.definitions)) {
         errors.push("keys.definitions must be an array of key definitions");
       } else {
+        // No definitions is fine (session 36): the canvas draws the key
+        // picked there, and the engine the score's \key.
         const keyDefs = keysSection.definitions || [];
-        if (keyDefs.length === 0) {
-          warnings.push("keys.keySignature is enabled but keys.definitions is empty — there is no key to render");
-        }
         keyDefs.forEach((def, i) => {
           if (!isPlainObject(def)) {
             errors.push(`keys.definitions[${i}] must be an object`);
@@ -792,9 +818,16 @@ export const CNBConfig = {
       }
     }
 
-    // W3. Any shape has lilypondPath: null
+    // W3. A shape some notehead uses has lilypondPath: null. A shape nothing
+    //     uses is not exported, so it does not warn (session 36): the
+    //     shapes resolved for every pitch class and duration, with no key
+    //     and, with keys on, each defined key (the export's key branches).
+    const used = usedShapeNames(config);
     for (const [name, shape] of Object.entries(shapes)) {
-      if (shape.lilypondPath === null || shape.lilypondPath === undefined) {
+      // Read first: a shape entry that is not an object still throws here,
+      // which config-io reports as a schema error.
+      const missing = shape.lilypondPath === null || shape.lilypondPath === undefined;
+      if (missing && used.has(name)) {
         warnings.push(`Shape "${name}" has no lilypondPath (will use fallback SVG conversion at export)`);
       }
     }

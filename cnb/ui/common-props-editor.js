@@ -17,12 +17,16 @@
  *     them here could dangle shape references that Module A's validate()
  *     does not check. The definitions ride through editor state and builds
  *     unchanged (deep-cloned).
- *   - `representationMode` ("shape" | "repeat") is the editable duration
- *     setting. There are no repeat counts: the preview and the export both
- *     draw the engine's fixed counts (CNBCard.repeatCount — minim ×2,
- *     semibreve ×4, breve ×4; session 18), so `durations.repeatCounts` left
- *     the editor in session 34, and a config that carries it loses it when
- *     the editor builds the durations slice.
+ *   - `representationMode` ("shape" | "repeat") rides through the editor
+ *     state and the durations slice unchanged: since session 36 it is
+ *     chosen on the staff canvas, beside the duration buttons (Module 19),
+ *     and this editor draws no control for it. The host re-seeds the
+ *     editor when the canvas changes it. There are no repeat counts: the
+ *     preview and the export both draw the engine's fixed counts
+ *     (CNBCard.repeatCount — minim ×2, semibreve ×4, breve ×4; session 18),
+ *     so `durations.repeatCounts` left the editor in session 34, and a
+ *     config that carries it loses it when the editor builds the durations
+ *     slice.
  *   - All plan §4.10 engine fields are editable. `defaultMagnify` stays a
  *     STRING to preserve fractions (plan §4.10); accepted forms are an
  *     integer ("2"), a decimal ("1.75") or a fraction with a nonzero
@@ -56,7 +60,7 @@
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
  *     definitions:        [...],                    // read-only passthrough
- *     representationMode: "shape" | "repeat",
+ *     representationMode: "shape" | "repeat",       // passthrough (session 36)
  *     engine:             { lilypondVersion, falseHollow, multinotePadding,
  *                           defaultMagnify, indent, collisionThreshold,
  *                           useAccessibleColors }
@@ -98,20 +102,6 @@ const ENGINE_DEFAULTS = {
   useAccessibleColors: false,
 };
 
-const REPRESENTATION_MODES = {
-  shape: {
-    label: "Distinct shapes per duration",
-    help: "Each duration definition renders with its own notehead treatment. " +
-      "The exporter's Section C emits (repeat . #f) on every clause (LY spec §6.1).",
-  },
-  repeat: {
-    label: "Repeat the base notehead",
-    help: "Longer durations are engraved by repeating the base-duration notehead " +
-      "(minim ×2, semibreve ×4, breve ×4), as the preview shows. The exporter's Section C emits (repeat . #t) on every " +
-      "clause (LY spec §6.1).",
-  },
-};
-
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
 function deepClone(v) {
@@ -129,7 +119,6 @@ function isValidMagnify(str) {
 export const CNBCommonPropsEditor = {
 
   ENGINE_DEFAULTS,
-  REPRESENTATION_MODES,
 
   /**
    * Build a ready `config.durations` slice (plan §4.8) from editor state.
@@ -219,7 +208,6 @@ export const CNBCommonPropsEditor = {
    * Structure (all styling left to the host via class hooks):
    *   div.cnb-common-props-editor
    *   ├── div.cnb-cpe-durations   (read-only duration definition rows)
-   *   ├── div.cnb-cpe-mode        (representationMode options + inline help)
    *   ├── div.cnb-cpe-engine      (plan §4.10 fields + emit-if-changed badges)
    *   └── div.cnb-cpe-validation  (CNBConfig.validate pass-through)
    *
@@ -289,23 +277,6 @@ export const CNBCommonPropsEditor = {
         row.setAttribute("data-duration", def.name);
         wrap.appendChild(row);
       }
-      return wrap;
-    }
-
-    // ── Representation mode ──────────────────────────────────────────────
-    function drawMode() {
-      const wrap = el("div", "cnb-cpe-section cnb-cpe-mode");
-      wrap.appendChild(el("div", "cnb-cpe-title", "Duration representation mode"));
-      for (const [key, def] of Object.entries(REPRESENTATION_MODES)) {
-        const opt = el("div", "cnb-cpe-mode-option" +
-          (state.representationMode === key ? " selected" : ""),
-          key + " — " + def.label);
-        opt.setAttribute("data-mode", key);
-        opt.onclick = () => { state.representationMode = key; changed(); };
-        wrap.appendChild(opt);
-      }
-      wrap.appendChild(el("div", "cnb-cpe-mode-help",
-        REPRESENTATION_MODES[state.representationMode].help));
       return wrap;
     }
 
@@ -432,7 +403,6 @@ export const CNBCommonPropsEditor = {
     function redraw() {
       root.textContent = "";   // clears children on real DOM and on the test stub
       root.appendChild(drawDurations());
-      root.appendChild(drawMode());
       root.appendChild(drawEngine());
       root.appendChild(drawValidation());
     }

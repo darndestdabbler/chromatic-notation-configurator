@@ -26,6 +26,20 @@ export async function useCanvasSize(page, size) {
 }
 
 /**
+ * Before the page loads: take away the browser's save dialog
+ * (showSaveFilePicker), so that Save and Export download their files, as
+ * they do in a browser without one, and the driver captures them with
+ * waitForEvent("download"). Chromium has the dialog (session 36); a
+ * headless run cannot answer it. Call it after newPage() and before goto().
+ */
+export async function useDownloads(page) {
+  await page.addInitScript(() => {
+    try { delete window.showSaveFilePicker; } catch { /* not deletable */ }
+    if (typeof window.showSaveFilePicker === "function") window.showSaveFilePicker = undefined;
+  });
+}
+
+/**
  * The config as the canvas draws it at a Size: the same display copy the
  * preview renders (px per semitone from the Size, no column padding).
  */

@@ -36,7 +36,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection, selectNotehead } from "./app-page.mjs";
+import { openSection, selectNotehead, useDownloads } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -152,6 +152,7 @@ const consoleErrors = [];
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
 page.on("pageerror", e => consoleErrors.push(String(e)));
+await useDownloads(page);
 await page.goto(`http://localhost:${PORT}/cnb/index.html`);
 await page.waitForSelector(".cnb-pvd-preview .pc-col");
 
@@ -230,10 +231,12 @@ await page.evaluate(() => {
   input.value = "#50b4e9";
   input.dispatchEvent(new Event("input", { bubbles: true }));
 });
-check("COLOUR: an input event keeps the colour input's element (the picker stays open) and the canvas follows",
+check("COLOUR: a drag step (input) keeps the colour input's element (the picker stays open) and tints the close-up only; the canvas and the config wait (session 36)",
   await page.evaluate(() => window.__colourInput === document.querySelector(".cnb-nhp-color-input") &&
     window.__colourInput.isConnected) &&
-  await page.$$eval('.cnb-pvd-preview .pc-col[data-pc="0"] path[fill="#50b4e9"]', els => els.length > 0));
+  await page.$$eval('.cnb-nhp-closeup path[fill="#50b4e9"]', els => els.length > 0) &&
+  await page.$$eval('.cnb-pvd-preview .pc-col[data-pc="0"] path[fill="#50b4e9"]', els => els.length === 0) &&
+  (await state()).palette.colors.every(c => c.hex.toLowerCase() !== "#50b4e9"));
 await pickColour("#50b4e9");
 await give("every-3", "colour");
 await selectNotehead(page, 1);

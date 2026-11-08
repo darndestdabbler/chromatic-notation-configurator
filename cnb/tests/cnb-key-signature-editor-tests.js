@@ -330,19 +330,19 @@ export const tests = [
       });
   } },
 
-  { name: "render: signature status note — no key defined, else the preview's Key control picks it; absent when off", fn: () => {
+  { name: "render: signature status note — the key and mode picked on the staff, defined or not (session 36); absent when off", fn: () => {
       withDomStub((container) => {
         const config = keysConfig();
         config.keys.definitions = [];
         const api = E.render(container, { config });
         let status = findAll(api.root, "cnb-kse-sig-status");
         eq(status.length, 1, "status shown");
-        assert(status[0].textContent.includes("No key is defined, so no key signature draws"), "no-definition text");
+        eq(status[0].textContent, "The signature draws for the key and mode picked on the staff.", "with no key defined");
 
         findAll(api.root, "cnb-kse-def-add")[0].onclick();
         status = findAll(api.root, "cnb-kse-sig-status");
         eq(status.length, 1, "status still shown");
-        assert(status[0].textContent.includes("the staff's Key menu"), "selector text");
+        eq(status[0].textContent, "The signature draws for the key and mode picked on the staff.", "with a key defined");
 
         api.setState({ keySignature: { ...api.getState().keySignature, enabled: false } });
         eq(findAll(api.root, "cnb-kse-sig-status").length, 0, "no status while the signature is off");
@@ -426,18 +426,16 @@ export const tests = [
       });
   } },
 
-  { name: "render: separator color — `input` emits without redrawing (the picker stays open); `change` redraws", fn: () => {
+  { name: "render: separator color applies once (session 36) — a drag (`input`) writes nothing; `change` emits once and redraws", fn: () => {
       withDomStub((container) => {
         let last = null;
         let emits = 0;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; emits++; } });
         const before = findAll(api.root, "cnb-kse-sep-color")[0];
-        before.oninput({ target: { value: "#112233" } });
-        eq(emits, 1, "input emits");
-        eq(last.keys.keySignature.separator.color, "#112233", "input writes the color");
-        assert(findAll(api.root, "cnb-kse-sep-color")[0] === before, "input leaves the same element in the DOM");
+        assert(typeof before.oninput !== "function", "a drag step has no handler: only the field's swatch changes");
+        eq(emits, 0, "nothing written before change");
         before.onchange({ target: { value: "#445566" } });
-        eq(emits, 2, "change emits");
+        eq(emits, 1, "change emits once");
         eq(last.keys.keySignature.separator.color, "#445566", "change writes the color");
         assert(findAll(api.root, "cnb-kse-sep-color")[0] !== before, "change redraws");
       });
@@ -552,7 +550,7 @@ export const tests = [
 
         const color = findAll(api.root, "cnb-kse-sep-color")[0];
         color.value = "#112233";
-        color.oninput();
+        color.onchange();
         eq(last.keys.keySignature.separator.color, "#112233", "color written");
 
         const thickness = findAll(api.root, "cnb-kse-sep-thickness")[0];

@@ -2,13 +2,13 @@
  * cnb-preview-display-tests.js — Unit tests for Module 19 (Preview Display)
  *
  * Covers the pure helpers (pcOptionLabel, durationNames with the Modules
- * 11/18 fallback, keyNames gated on keys.enabled, buildPitchClasses with
+ * 11/18 fallback, withKey (session 36), buildPitchClasses with
  * every throw branch, defaultState, buildOptions with the prune-at-build
  * rules and its throw branches) and the render() UI driven against a stub
  * DOM: control structure, the live Module 10 preview (real CNBCollection
  * under the stub), duration pill toggling down to the explicit empty
- * state, the range endpoint-drag rule, key selection with the deferral
- * note (including the enabled-but-no-definitions visible empty state),
+ * state, the range endpoint-drag rule, the key and mode picker and the
+ * button that turns the signature on (session 36),
  * setState validation, redraw() following host config changes (duration
  * vocabulary and background staff geometry, the latter cross-checked
  * against CNBStaff.getPositions), and the collection injection seam.
@@ -161,23 +161,58 @@ export const tests = [
     },
   },
 
-  // ── keyNames ──
+  // ── withKey (session 36) ──
   {
-    name: "keyNames: [] when keys are disabled (default config) even if definitions exist",
+    name: "withKey: with keys off, or no key, the config comes back as it is and the name is null",
     fn: () => {
-      assertEqual(PVD.keyNames(CNBConfig.createDefault()), [], "default config");
-      const cfg = keyedConfig();
-      cfg.keys.enabled = false;
-      assertEqual(PVD.keyNames(cfg), [], "disabled with definitions");
+      const cfg = CNBConfig.createDefault();
+      const out = PVD.withKey(cfg, { tonic: 7, mode: "major" });
+      assert(out.config === cfg && out.name === null, "keys off");
+      const keyed = keyedConfig();
+      const none = PVD.withKey(keyed, null);
+      assert(none.config === keyed && none.name === null, "no key");
     },
   },
   {
-    name: "keyNames: definition names when keys.enabled; [] when enabled without definitions",
+    name: "withKey: a defined key with the picked pitch classes lends its name, with the picked tonic; the input is not changed",
     fn: () => {
-      assertEqual(PVD.keyNames(keyedConfig()), ["C", "G"]);
       const cfg = keyedConfig();
-      cfg.keys.definitions = [];
-      assertEqual(PVD.keyNames(cfg), []);
+      const before = JSON.stringify(cfg);
+      const g = PVD.withKey(cfg, { tonic: 7, mode: "major" });
+      assertEqual(g.name, "G", "G major is the defined G");
+      assertEqual(g.config.keys.definitions.map(d => [d.name, d.tonicPc ?? null]), [["C", null], ["G", 7]]);
+      const e = PVD.withKey(cfg, { tonic: 4, mode: "minor" });
+      assertEqual(e.name, "G", "E minor has G major's pitch classes");
+      assertEqual(e.config.keys.definitions[1].tonicPc, 4, "drawn from E");
+      assertEqual(JSON.stringify(cfg), before, "input unchanged");
+    },
+  },
+  {
+    name: "withKey: the definition a rule names wins among those sharing the pitch classes (LY spec §6.4)",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.definitions.push({ name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7], tonicPc: 9 });
+      assertEqual(PVD.withKey(cfg, { tonic: 0, mode: "major" }).name, "C", "no rule names either: the first");
+      cfg.noteheadRules.push({ name: "In A minor", priority: 5,
+        match: { pitchClasses: [0], durations: "all", keys: ["A minor"] }, apply: { hollow: true } });
+      assertEqual(PVD.withKey(cfg, { tonic: 0, mode: "major" }).name, "A minor", "the one a rule names");
+    },
+  },
+  {
+    name: "withKey: a key nobody defined is added under its own name; a bad key throws",
+    fn: () => {
+      const cfg = keyedConfig();
+      const d = PVD.withKey(cfg, { tonic: 2, mode: "dorian" });
+      assertEqual(d.name, "C", "D dorian has C major's pitch classes");
+      const fs = PVD.withKey(cfg, { tonic: 6, mode: "major" });
+      assertEqual(fs.name, "F♯ major");
+      assertEqual(fs.config.keys.definitions[2], { pitchClasses: [1, 3, 5, 6, 8, 10, 11], name: "F♯ major", tonicPc: 6 });
+      const empty = keyedConfig();
+      empty.keys.definitions = [];
+      assertEqual(PVD.withKey(empty, { tonic: 3, mode: "minor" }).name, "E♭ minor", "no definitions at all");
+      assertThrows(() => PVD.withKey(cfg, { tonic: 12, mode: "major" }), "tonic");
+      assertThrows(() => PVD.withKey(cfg, { tonic: 0, mode: "bebop" }), "unknown mode");
+      assertThrows(() => PVD.withKey(cfg, "G"), "must be { tonic, mode }");
     },
   },
 
@@ -206,10 +241,10 @@ export const tests = [
 
   // ── defaultState ──
   {
-    name: "defaultState: full chromatic row, first config duration, no key",
+    name: "defaultState: full chromatic row, first config duration, C major",
     fn: () => {
       assertEqual(PVD.defaultState(CNBConfig.createDefault()),
-        { fromPc: 0, toPc: 12, durations: ["crotchet"], key: null });
+        { fromPc: 0, toPc: 12, durations: ["crotchet"], key: { tonic: 0, mode: "major" } });
     },
   },
   {
@@ -249,25 +284,28 @@ export const tests = [
     },
   },
   {
-    name: "buildOptions: key passes through only when keys.enabled AND currently defined",
+    name: "buildOptions: keys = [the picked key's name] with keys on, null with keys off or no key",
     fn: () => {
-      const state = { fromPc: 0, toPc: 12, durations: ["crotchet"], key: "G" };
-      assertEqual(PVD.buildOptions(keyedConfig(), state).keys, ["G"], "enabled + defined");
-      const undefinedKey = keyedConfig();
-      undefinedKey.keys.definitions = [{ name: "C", pitchClasses: [0] }];
-      assertEqual(PVD.buildOptions(undefinedKey, state).keys, null, "key no longer defined");
+      const state = { fromPc: 0, toPc: 12, durations: ["crotchet"], key: { tonic: 7, mode: "major" } };
+      assertEqual(PVD.buildOptions(keyedConfig(), state).keys, ["G"], "a defined key");
+      const other = keyedConfig();
+      other.keys.definitions = [{ name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] }];
+      assertEqual(PVD.buildOptions(other, state).keys, ["G major"], "a key nobody defined");
       assertEqual(PVD.buildOptions(CNBConfig.createDefault(), state).keys, null, "keys disabled");
+      assertEqual(PVD.buildOptions(keyedConfig(), { ...state, key: null }).keys, null, "no key");
     },
   },
   {
-    name: "buildOptions: throws on malformed state (non-object, non-array durations, non-string key, inverted range)",
+    name: "buildOptions: throws on malformed state (non-object, non-array durations, a key that is not { tonic, mode }, inverted range)",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       assertThrows(() => PVD.buildOptions(cfg, null), "must be an object");
       assertThrows(() => PVD.buildOptions(cfg, { fromPc: 0, toPc: 12, durations: "crotchet", key: null }),
         "must be an array");
       assertThrows(() => PVD.buildOptions(cfg, { fromPc: 0, toPc: 12, durations: [], key: 3 }),
-        "must be a string or null");
+        "must be { tonic, mode }");
+      assertThrows(() => PVD.buildOptions(cfg, { fromPc: 0, toPc: 12, durations: [], key: { tonic: 0, mode: "x" } }),
+        "unknown mode");
       assertThrows(() => PVD.buildOptions(cfg, { fromPc: 9, toPc: 2, durations: [], key: null }),
         "inverted");
     },
@@ -283,7 +321,7 @@ export const tests = [
     },
   },
   {
-    name: "render: root appended; controls hold two 13-option range selects and one pill per config duration; no key section when keys are disabled",
+    name: "render: root appended; controls hold two 13-option range selects, one pill per config duration and the key picker",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       withDomStub(container => {
@@ -300,7 +338,7 @@ export const tests = [
         assertEqual(pills.map(p => p.getAttribute("data-duration")),
           ["crotchet", "minim", "semibreve", "breve"]);
         assertEqual(pills.filter(p => p.className.includes(" on")).length, 1, "only crotchet on");
-        assertEqual(findAll(api.root, "cnb-pvd-key").length, 0, "no key section");
+        assertEqual(findAll(api.root, "cnb-pvd-key").length, 1, "the key picker, whatever the config (session 36)");
       });
     },
   },
@@ -378,6 +416,62 @@ export const tests = [
     },
   },
 
+  // ── render: shapes or repeated heads (session 36) ──
+  {
+    name: "render: without onRepresentationMode there is no shape/repeat choice",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        assertEqual(findAll(api.root, "cnb-pvd-repeat").length, 0, "no choice");
+      });
+    },
+  },
+  {
+    name: "render: onRepresentationMode draws the choice beside the duration buttons, in a designer's words, with the engine's counts",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {} });
+        const durations = findOne(api.root, "cnb-pvd-durations");
+        const choice = findOne(durations, "cnb-pvd-repeat", "inside the durations group");
+        const options = findAll(choice, "cnb-pvd-repeat-option");
+        assertEqual(options.map(o => [o.getAttribute("data-mode"), o.textContent]),
+          [["shape", "Its own shape for each duration"], ["repeat", "Repeat the notehead"]]);
+        assertEqual(options.map(o => o.className.includes(" on")), [true, false], "the config's mode is on");
+        assertEqual(options.map(o => o.getAttribute("aria-pressed")), ["true", "false"]);
+        assertEqual(findOne(choice, "cnb-pvd-repeat-hint").textContent,
+          "Repeated: minim ×2, semibreve and breve ×4");
+      });
+    },
+  },
+  {
+    name: "render: a click on the other choice reports it; the host writes the mode and the redraw shows it on",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const reported = [];
+        let api = null;
+        api = PVD.render(container, {
+          getConfig: () => cfg,
+          onRepresentationMode: (mode) => {
+            reported.push(mode);
+            cfg.durations.representationMode = mode;
+            api.redraw();
+          },
+        });
+        const option = (mode) => findAll(api.root, "cnb-pvd-repeat-option")
+          .find(o => o.getAttribute("data-mode") === mode);
+        option("shape").onclick();
+        assertEqual(reported, [], "the mode already on reports nothing");
+        option("repeat").onclick();
+        assertEqual(reported, ["repeat"], "repeat reported");
+        assert(option("repeat").className.includes(" on") && !option("shape").className.includes(" on"),
+          "repeat on after the redraw");
+      });
+    },
+  },
+
   // ── render: pitch range ──
   {
     name: "render: narrowing the range re-renders with fewer cards",
@@ -411,86 +505,91 @@ export const tests = [
     },
   },
 
-  // ── render: key selection ──
+  // ── render: the key and mode picker (session 36) ──
   {
-    name: "render: key section appears when keys.enabled — (none) + definitions, deferral note, selection passes through options.keys",
+    name: "render: the key and mode picker — twelve tonics and the seven modes, C major first; a pick passes through options.keys",
     fn: () => {
       const cfg = keyedConfig();
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg });
         const keyWrap = findOne(api.root, "cnb-pvd-key");
-        const select = findOne(keyWrap, "cnb-pvd-key-select");
-        assertEqual(select.children.map(o => o.textContent), ["(none)", "C", "G"]);
-        const note = findOne(keyWrap, "cnb-pvd-key-note");
-        assert(note.textContent.includes("deferred"), "deferral note visible");
-        assertEqual(api.getOptions().keys, null, "no key selected initially");
-        findOne(api.root, "cnb-pvd-key-select").onchange({ target: { value: "G" } });
-        assertEqual(api.getState().key, "G");
+        const tonic = findOne(keyWrap, "cnb-pvd-key-tonic");
+        const mode = findOne(keyWrap, "cnb-pvd-key-mode");
+        assertEqual(tonic.children.map(o => o.textContent),
+          ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"]);
+        assertEqual(mode.children.map(o => o.textContent),
+          ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]);
+        assertEqual([tonic.value, mode.value], ["0", "major"], "C major first");
+        assertEqual(api.getOptions().keys, ["C"], "the defined C");
+        findOne(api.root, "cnb-pvd-key-tonic").onchange({ target: { value: "7" } });
+        assertEqual(api.getState().key, { tonic: 7, mode: "major" });
         assertEqual(api.getOptions().keys, ["G"]);
-        findOne(api.root, "cnb-pvd-key-select").onchange({ target: { value: "" } });
-        assertEqual(api.getState().key, null);
-        assertEqual(api.getOptions().keys, null);
+        findOne(api.root, "cnb-pvd-key-mode").onchange({ target: { value: "mixolydian" } });
+        assertEqual(api.getState().key, { tonic: 7, mode: "mixolydian" });
+        assertEqual(api.getOptions().keys, ["C"], "G mixolydian has C major's pitch classes");
+        assertEqual(findAll(api.root, "cnb-pvd-key-note").length, 0, "no developer note");
       });
     },
   },
   {
-    name: "render: keys enabled with EMPTY definitions — section stays visible with a disabled (none) select and an explicit empty-definitions note; options.keys null",
+    name: "render: the picked key's signature draws, a key nobody defined included; the config is not changed",
     fn: () => {
       const cfg = keyedConfig();
-      cfg.keys.definitions = [];
+      cfg.keys.keySignature = { ...CNBConfig.createDefault().keys.keySignature, enabled: true };
+      const before = JSON.stringify(cfg);
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg });
-        const keyWrap = findOne(api.root, "cnb-pvd-key");
-        const select = findOne(keyWrap, "cnb-pvd-key-select");
-        assertEqual(select.children.map(o => o.textContent), ["(none)"], "only the (none) option");
-        assert(select.disabled === true, "select disabled");
-        const note = findOne(keyWrap, "cnb-pvd-key-note");
-        assert(note.textContent.includes("nothing to select yet"), "empty-definitions note visible");
-        assertEqual(api.getOptions().keys, null);
+        assertEqual(findAll(api.root, "keysig-col").length, 1, "C major's signature");
+        api.setState({ key: { tonic: 6, mode: "major" } });
+        assertEqual(findAll(api.root, "keysig-col").length, 1, "F♯ major's signature, though no key F♯ is defined");
+        assertEqual(api.getOptions().keys, ["F♯ major"]);
       });
+      assertEqual(JSON.stringify(cfg), before, "the config is not changed");
     },
   },
   {
-    name: "render: key signature enabled — the key note says no signature draws with no key defined, or with (none) selected",
+    name: "render: with keys on and none defined the toolbar says so in a designer's words",
     fn: () => {
       const cfg = keyedConfig();
-      cfg.keys.keySignature = { enabled: true };
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg });
-        const none = findOne(api.root, "cnb-pvd-key-none");
-        assert(none.textContent.includes("No key is selected, so no key signature draws"), "(none) note visible");
-        findOne(api.root, "cnb-pvd-key-select").onchange({ target: { value: "C" } });
-        assertEqual(findAll(api.root, "cnb-pvd-key-none").length, 0, "note gone once a key is selected");
-      });
       cfg.keys.definitions = [];
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg });
         const note = findOne(api.root, "cnb-pvd-key-note");
-        assert(note.textContent.includes("No key is defined, so no key signature draws"), "no-definition note visible");
-      });
-      cfg.keys.keySignature.enabled = false;
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg });
-        assert(!findOne(api.root, "cnb-pvd-key-note").textContent.includes("key signature"), "silent while the signature is off");
+        assertEqual(note.textContent, "No keys are defined yet, so no notehead rule can be for a particular key.");
+        assert(!note.textContent.includes("config."), "no config path");
+        cfg.keys.enabled = false;
+        api.redraw();
+        assertEqual(findAll(api.root, "cnb-pvd-key-note").length, 0, "keys off: no note");
+        assertEqual(api.getOptions().keys, null, "keys off: no key");
       });
     },
   },
   {
-    name: "render: a selected key survives the config disabling keys (section hidden, keys null) and returns when re-enabled",
+    name: "render: while the signature is off, one button asks the host to turn it on; it goes once the signature is on",
     fn: () => {
-      const cfg = keyedConfig();
+      const cfg = CNBConfig.createDefault();
       withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg });
-        findOne(api.root, "cnb-pvd-key-select").onchange({ target: { value: "C" } });
-        cfg.keys.enabled = false;
-        api.redraw();
-        assertEqual(findAll(api.root, "cnb-pvd-key").length, 0, "section hidden");
-        assertEqual(api.getOptions().keys, null, "pruned at build");
-        assertEqual(api.getState().key, "C", "retained in state");
-        cfg.keys.enabled = true;
-        api.redraw();
-        assertEqual(findOne(api.root, "cnb-pvd-key-select").value, "C", "selection restored");
-        assertEqual(api.getOptions().keys, ["C"]);
+        assertEqual(findAll(PVD.render(container, { getConfig: () => cfg }).root, "cnb-pvd-signature-on").length, 0,
+          "no button without onSignatureOn");
+      });
+      withDomStub(container => {
+        let calls = 0;
+        let api = null;
+        api = PVD.render(container, {
+          getConfig: () => cfg,
+          onSignatureOn: () => {
+            calls++;
+            cfg.keys.enabled = true;
+            cfg.keys.keySignature.enabled = true;
+            api.redraw();
+          },
+        });
+        const button = findOne(api.root, "cnb-pvd-signature-on");
+        assertEqual(button.textContent, "Show the key signature");
+        button.onclick();
+        assertEqual(calls, 1, "reported");
+        assertEqual(findAll(api.root, "cnb-pvd-signature-on").length, 0, "gone once on");
+        assertEqual(findAll(api.root, "keysig-col").length, 1, "C major's signature draws");
       });
     },
   },
@@ -503,7 +602,7 @@ export const tests = [
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg });
         api.setState({ fromPc: 2, toPc: 6, durations: ["minim"] });
-        assertEqual(api.getState(), { fromPc: 2, toPc: 6, durations: ["minim"], key: null });
+        assertEqual(api.getState(), { fromPc: 2, toPc: 6, durations: ["minim"], key: { tonic: 0, mode: "major" } });
         assertEqual(findAll(api.root, "pc-col").length, 5, "redrawn from new state");
         assertThrows(() => api.setState({ fromPc: 9 }), "inverted", "9 > 6 rejected");
         assertEqual(api.getState().fromPc, 2, "state untouched after rejected setState");
@@ -520,7 +619,7 @@ export const tests = [
         const s = api.getState();
         s.durations.length = 0;
         s.fromPc = 11;
-        assertEqual(api.getState(), { fromPc: 0, toPc: 12, durations: ["crotchet"], key: null });
+        assertEqual(api.getState(), { fromPc: 0, toPc: 12, durations: ["crotchet"], key: { tonic: 0, mode: "major" } });
       });
     },
   },
@@ -931,7 +1030,7 @@ export const tests = [
         glyphs: { num: { kind: "text", text: "4", textHeightSemis: 5, anchorSemi: 20 } } };
       const before = JSON.stringify(cfg);
       withDomStub(container => {
-        const wrap = PVD.renderPartial(container, cfg, { part: "clef", size: "large", key: "G" });
+        const wrap = PVD.renderPartial(container, cfg, { part: "clef", size: "large", key: { tonic: 7, mode: "major" } });
         assertEqual(wrap.className, "cnb-pvd-partial", "wrapper class");
         assert(container.children.includes(wrap), "appended to the host");
         assertEqual(findAll(wrap, "pc-col").map(c => c.getAttribute("data-pc")).join(","), "0,1,2", "C, C♯ and D");
@@ -950,13 +1049,13 @@ export const tests = [
       cfg.clef = { enabled: true, active: "num", gutter: { paddingH: 8 },
         glyphs: { num: { kind: "text", text: "4", textHeightSemis: 5, anchorSemi: 20 } } };
       withDomStub(container => {
-        const wrap = PVD.renderPartial(container, cfg, { part: "key-signature", size: "medium", key: "G" });
+        const wrap = PVD.renderPartial(container, cfg, { part: "key-signature", size: "medium", key: { tonic: 7, mode: "major" } });
         assertEqual(findAll(wrap, "keysig-col").length, 1, "the key signature gutter");
         assertEqual(findAll(wrap, "clef-col").length, 0, "no clef");
         assertEqual(findAll(wrap, "pc-col").length, 3, "three columns");
         const none = PVD.renderPartial(container, cfg, { part: "key-signature", key: null });
         assertEqual(findAll(none, "keysig-col").length, 0, "no key chosen: no signature");
-        const minim = PVD.renderPartial(container, cfg, { part: "key-signature", key: "G", duration: "minim" });
+        const minim = PVD.renderPartial(container, cfg, { part: "key-signature", key: { tonic: 2, mode: "dorian" }, duration: "minim" });
         assertEqual(findAll(minim, "pc-col").length, 3, "a given duration draws too");
         assertThrows(() => PVD.renderPartial(container, cfg, { part: "staff" }), "part", "unknown part");
       });
@@ -969,7 +1068,7 @@ export const tests = [
       for (const part of ["clef", "key-signature"]) {
         withDomStub(container => {
           const before = container.children.length;
-          assertEqual(PVD.renderPartial(container, cfg, { part, key: "G", duration: null }), null, `${part}: returns null`);
+          assertEqual(PVD.renderPartial(container, cfg, { part, key: { tonic: 7, mode: "major" }, duration: null }), null, `${part}: returns null`);
           assertEqual(container.children.length, before, `${part}: the host stays empty`);
         });
       }

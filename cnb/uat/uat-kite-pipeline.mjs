@@ -60,7 +60,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
+import { useCanvasSize, useDownloads, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -175,6 +175,7 @@ page.on("pageerror", e => consoleErrors.push(String(e)));
 
 // The canvas draws at Small, where the full row fits one row (design §6.1).
 await useCanvasSize(page, "small");
+await useDownloads(page);
 await page.goto(`http://localhost:${PORT}/cnb/index.html`);
 await page.waitForSelector(".cnb-preview-display");
 
@@ -258,9 +259,8 @@ check("AUTHOR/import (D5 fixed): imported lilypondAnchors agree with the fixture
 // ── A2: staff pattern 3-6-9 (Module 13) ─────────────────────────────────────
 await openSection(page, "staff");
 await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');
-// ── A3: repeat representation mode (Module 15) ──────────────────────────────
-await openAdvanced(page, "Durations and engine");
-await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
+// ── A3: repeated heads, beside the duration buttons (session 36) ────────────
+await page.click('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]');
 cfg = await fullConfig();
 check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat mode reach the shared config",
   JSON.stringify(cfg.staff.semitonePattern) === "[3,6,9]" &&
@@ -285,6 +285,8 @@ for (let i = 0; i < 3; i++) {
     const input = document.querySelectorAll(".cnb-pal-custom-input")[idx];
     input.value = hex;
     input.dispatchEvent(new Event("input", { bubbles: true }));
+    // The colour applies when the picker closes (session 36).
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }, [i, KITE_POOL[i]]);
 }
 cfg = await fullConfig();
@@ -418,7 +420,7 @@ check("LOAD: shared config adopted the Kite 4-369 system (pattern [3,6,9], sps 3
 check("LOAD: editors re-seeded — 3-6-9 staff pattern and repeat mode show selected, 3 rule cards",
   await page.evaluate(() =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
-    document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected") &&
+    document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
     document.querySelectorAll(".cnb-nre-rule-card").length === 3));
 
 // ── STEP 2: the preview renders the loaded system ────────────────────────────

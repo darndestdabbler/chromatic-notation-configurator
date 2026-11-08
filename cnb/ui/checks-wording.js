@@ -140,8 +140,6 @@ const TABLE = [
   [/^keys\.keySignature\.enabled is true but keys\.enabled is false/, () => ({
     text: "The key signature is on but keys are off, so no signature is drawn.",
     link: sectionLink("key-signature", ".cnb-kse-keys-enable-check") })],
-  [/^keys\.keySignature is enabled but keys\.definitions is empty/, () => ({
-    text: "The key signature is on but no keys are defined, so there is none to draw.", link: sectionLink("key-signature") })],
   [/^Key definition "(.*)" has no tonicPc and its name does not begin with a note letter/, ([, k]) => ({
     text: `The key “${k}” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.`,
     link: sectionLink("key-signature") })],

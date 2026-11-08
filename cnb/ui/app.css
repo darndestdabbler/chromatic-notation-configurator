@@ -201,16 +201,21 @@ summary:focus-visible, [tabindex]:focus-visible {
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
 }
 .cnb-pvd-range-to { font-size: 13px; color: var(--ink-2); }
-.cnb-pvd-size-options { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
-.cnb-pvd-size-option {
+.cnb-pvd-size-options, .cnb-pvd-repeat-options { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.cnb-pvd-size-option, .cnb-pvd-repeat-option {
   min-height: 26px; padding: 0 var(--space-2); font-size: 12px;
   border: 0; border-right: 1px solid var(--line); border-radius: 0;
 }
-.cnb-pvd-size-option:last-child { border-right: 0; }
-.cnb-pvd-size-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cnb-pvd-size-option:last-child, .cnb-pvd-repeat-option:last-child { border-right: 0; }
+.cnb-pvd-size-option.on, .cnb-pvd-repeat-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+/* Shapes or repeated heads (session 36), beside the duration buttons. */
+.cnb-pvd-repeat { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: var(--space-2); }
+.cnb-pvd-repeat-hint { font-size: 12px; color: var(--ink-2); }
 .cnb-pvd-size-hint:empty { display: none; }
 .cnb-pvd-size-hint { font-size: 12px; color: var(--warn); }
 .cnb-pvd-key-note { font-size: 12px; color: var(--ink-2); max-width: 360px; }
+/* The key and mode picker's button that turns the signature on (session 36). */
+.cnb-pvd-signature-on { min-height: 26px; padding: 0 var(--space-2); font-size: 12px; }
 .cnb-pvd-empty { padding: var(--space-4); font-size: 13px; color: var(--warn); }
 
 /* The staff: scrolls inside its own card only below the two-row minimum,

@@ -356,7 +356,7 @@ export const tests = [
 
   // ── render() against the DOM stub ──
   {
-    name: "render: structure — definitions (read-only), mode, engine, validation; no repeat counts (session 34)",
+    name: "render: structure — definitions (read-only), engine, validation; no repeat counts (session 34), no mode control (session 36)",
     fn: () => withDomStub((container) => {
       const handle = E.render(container);
       const root = handle.root;
@@ -366,7 +366,9 @@ export const tests = [
         ["crotchet", "minim", "semibreve", "breve"], "definition order");
       assert(findAll(defRows[0], "input").length === 0 &&
              defRows[0].children.length === 0, "definition rows carry no inputs (read-only)");
-      assert(findAll(root, "cnb-cpe-mode-option").length === 2, "2 mode options");
+      for (const cls of ["cnb-cpe-mode", "cnb-cpe-mode-option", "cnb-cpe-mode-help"]) {
+        assert(findAll(root, cls).length === 0, `no ${cls}: the mode is chosen on the canvas`);
+      }
       for (const cls of ["cnb-cpe-repeats", "cnb-cpe-repeat-row", "cnb-cpe-repeat-count"]) {
         assert(findAll(root, cls).length === 0, `no ${cls}: the engine's counts are fixed`);
       }
@@ -375,30 +377,15 @@ export const tests = [
     }),
   },
   {
-    name: "render: mode toggle — click repeat → slice and selected class",
+    name: "render: the config's mode rides through every slice unchanged (session 36)",
     fn: () => withDomStub((container) => {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.representationMode = "repeat";
       let last = null;
-      const handle = E.render(container, { onChange: (slices) => { last = slices; } });
-      const repeatOpt = findAll(handle.root, "cnb-cpe-mode-option")
-        .find(o => o.attrs["data-mode"] === "repeat");
-      repeatOpt.onclick();
-      assert(last.durations.representationMode === "repeat", "slice mode");
-      const opts = findAll(handle.root, "cnb-cpe-mode-option");
-      assert(opts.find(o => o.attrs["data-mode"] === "repeat").className.includes("selected"),
-        "repeat selected");
-      assert(!opts.find(o => o.attrs["data-mode"] === "shape").className.includes("selected"),
-        "shape deselected");
-    }),
-  },
-  {
-    name: "render: mode help text names the exporter's repeat field for both modes",
-    fn: () => withDomStub((container) => {
-      const handle = E.render(container);
-      const helpText = () => findAll(handle.root, "cnb-cpe-mode-help")[0].textContent;
-      assert(helpText().includes("(repeat . #f)"), "shape help");
-      findAll(handle.root, "cnb-cpe-mode-option")
-        .find(o => o.attrs["data-mode"] === "repeat").onclick();
-      assert(helpText().includes("(repeat . #t)"), "repeat help");
+      const handle = E.render(container, { config: cfg, onChange: (slices) => { last = slices; } });
+      findAll(handle.root, "cnb-cpe-false-hollow")[0].onchange({ target: { checked: true } });
+      assert(last.durations.representationMode === "repeat", "an engine edit keeps the mode");
+      assert(!("REPRESENTATION_MODES" in E), "the mode vocabulary left the editor");
     }),
   },
   {
@@ -479,9 +466,6 @@ export const tests = [
       const handle = E.render(container, { config: cfg });
       assert(handle.getDurations().representationMode === "repeat", "mode seeded");
       assert(handle.getEngine().indent === 7, "engine seeded");
-      const opts = findAll(handle.root, "cnb-cpe-mode-option");
-      assert(opts.find(o => o.attrs["data-mode"] === "repeat").className.includes("selected"),
-        "repeat option selected");
     }),
   },
 

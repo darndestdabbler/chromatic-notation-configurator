@@ -21,6 +21,58 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Rough edges from the rebuilds — 2026-11-08 (session 36)
+
+Five of the rough edges session 35 found (below), the ones planned for
+session 36, are fixed:
+
+| Rough edge | Fixed |
+|---|---|
+| Save and Export have no save location | Both open the browser's save dialog where it has one (`showSaveFilePicker`, Chrome and Edge), suggesting the file names they used before, and download where it has none (Firefox). The top bar names the file as saved, or says the save was cancelled (`cnb/ui/save-file.js`). |
+| Repeat mode is hard to find | The choice sits beside the duration buttons on the canvas: "Its own shape for each duration" or "Repeat the notehead", with the counts (minim ×2, semibreve and breve ×4). It left Advanced → Durations and engine, with its developer help. |
+| Dragging in a colour field lags and stores every value | Every colour field (notehead panel, its colour-blind twin, palette, rules, key-signature bar) applies its colour once, when the picker closes. While dragging, only the field changes, and in the notehead panel the close-up notehead. Save keeps a Scheme name only for colours the config uses (`CNBPaletteEditor.usedSchemeSymbols`), so the files saved from now on lose names like `#500000`. |
+| The unused default shape warns | The "no LilyPond path" warning names only shapes some notehead uses, for any pitch class, duration and (keys on) key. |
+| The canvas shows no key signature by default | The canvas toolbar has a key and mode picker (C major first). The picked key's signature draws whether or not a key with those notes is defined; when one is, it lends its name, so rules for it draw as engraved (LY spec §6.4). "Show the key signature" turns keys and the scale stack on. With keys on and none defined, the toolbar says "No keys are defined yet, so no notehead rule can be for a particular key." The warning that a signature has no defined key went with it. |
+
+Save does not cut the names of unused colours as each colour is applied,
+only when the file is saved: a config opened with names of its own would
+otherwise lose the name of a colour about to be given again, and its export
+would change (the notehead-panel driver's Kite rebuild caught this).
+
+### Drivers changed
+
+- `app-page.mjs` gains `useDownloads(page)`, which removes the save dialog
+  before the page loads. Chromium has the dialog and a headless run cannot
+  answer it, so the drivers that capture Save and Export downloads call it
+  (clef editor, golden path, key signature, Kite pipeline, notehead panel,
+  pitch). The golden path then installs a stand-in dialog and checks that
+  Save and Export ask it for the usual names and file types, write the
+  same bytes, report the chosen names, and write nothing when cancelled;
+  and that Save drops an unused colour name from a config opened with one.
+- The golden path and Kite pipeline choose repeat mode on the canvas. The
+  durations-and-engine, config-export and config-io test pages gain their
+  own mode toggle, which their drivers use.
+- The notehead panel driver checks that a drag only tints the close-up; the
+  imported-notehead, Kite pipeline and rule editor drivers close the picker
+  (`change`) to apply a colour.
+- The key signature, app layout and golden path drivers use the key and
+  mode picker. The app layout turns the signature on with the canvas
+  button; the key signature driver also draws F♯ major, which no key
+  defines.
+
+### Full UAT
+
+- playwright-core 1.64.1; Chromium `chromium-1248`, Firefox, Edge
+- Windows 11, Node 25.8.1
+- Run by hand this session, after each step's changes: the drivers each
+  step touched, and `node cnb/uat/run-uat.mjs` after steps 4 and 5:
+  **17 of 17 drivers passed**. The suite runs whole again at close.
+- Judged by eye from the app-layout screenshots: the repeat choice sits
+  after the duration buttons on the toolbar's first line at 1280 and 1440;
+  the key picker starts the second line, beside Size; with the signature
+  turned on from the canvas, Kite 4-369 draws C major's scale stack on the
+  canvas and in the Key signature panel.
+
 ## Two rebuilds by hand — 2026-11-08 (session 35)
 
 The operator rebuilt Kite 4-369 and 45deg-369 from scratch in the app, from

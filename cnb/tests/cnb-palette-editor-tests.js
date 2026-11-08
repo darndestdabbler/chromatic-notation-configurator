@@ -84,6 +84,45 @@ const customSel = (colors, extra = {}) => ({
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 export const tests = [
+  // ── usedSchemeSymbols (session 36) ──
+  {
+    name: "usedSchemeSymbols: keeps the names of rule, palette and colour-blind colours (any case) and drops the rest",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.palette = {
+        name: "Mine",
+        colors: [{ pc: 0, hex: "#1B9E77", name: "Shamrock" }],
+        cbSafeColors: [{ pc: 0, hex: "#0072b2", name: "Blue" }],
+        useCBSafe: false,
+        schemeSymbols: {
+          "#1b9e77": "shamrock-1b9e77", "#0072B2": "blue-0072b2", "#cc0000": "red-cc0000",
+          "#500000": "maroon-500000", "#50b402": "green-50b402",
+        },
+      };
+      cfg.noteheadRules.push({ name: "Red D", priority: 5, match: { pitchClasses: [2], durations: "all", keys: "all" }, apply: { color: "#CC0000" } });
+      const before = JSON.stringify(cfg);
+      const out = P.usedSchemeSymbols(cfg);
+      assert(JSON.stringify(out.palette.schemeSymbols) ===
+        JSON.stringify({ "#1b9e77": "shamrock-1b9e77", "#0072B2": "blue-0072b2", "#cc0000": "red-cc0000" }),
+        "the used names: " + JSON.stringify(out.palette.schemeSymbols));
+      assert(JSON.stringify(cfg) === before, "the input is not changed");
+      assert(out.noteheadRules === cfg.noteheadRules && out.palette.colors === cfg.palette.colors, "the rest is shared");
+    },
+  },
+  {
+    name: "usedSchemeSymbols: a config with nothing to cut, or no palette, comes back as it is; the export does not change",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      assert(P.usedSchemeSymbols(cfg) === cfg, "nothing to cut");
+      const bare = { ...cfg };
+      delete bare.palette;
+      assert(P.usedSchemeSymbols(bare) === bare, "no palette");
+      cfg.palette = { ...cfg.palette, schemeSymbols: { "#500000": "maroon-500000" } };
+      cfg.noteheadRules.push({ name: "Green", priority: 5, match: { pitchClasses: [4], durations: "all", keys: "all" }, apply: { color: "#00ff00" } });
+      cfg.palette.schemeSymbols["#00ff00"] = "green-00ff00";
+      assert(CNBLilypond.generate(P.usedSchemeSymbols(cfg)) === CNBLilypond.generate(cfg), "same export");
+    },
+  },
 
   // ── Color math ──
   {
@@ -507,7 +546,7 @@ export const tests = [
       const handle = P.render(container, { selection: customSel(["#FF0000"]) });
       // Edit
       const input = findAll(handle.root, "cnb-pal-custom-input")[0];
-      input.oninput({ target: { value: "#00ff00" } });
+      input.onchange({ target: { value: "#00ff00" } });
       assert(handle.getSelection().customColors[0] === "#00ff00", "edit applies");
       // Remove blocked at one color
       findAll(handle.root, "cnb-pal-custom-remove")[0].onclick();
@@ -522,7 +561,7 @@ export const tests = [
     }),
   },
   {
-    name: "render: custom color input — `input` emits without redrawing (the picker stays open); `change` redraws",
+    name: "render: custom color input applies once (session 36) — a drag (`input`) writes nothing; `change` emits once and redraws",
     fn: () => withHtmlStub((container) => {
       let got = null;
       let emits = 0;
@@ -533,12 +572,10 @@ export const tests = [
       const before = findAll(handle.root, "cnb-pal-custom-input")[0];
       const names = () => findAll(handle.root, "cnb-pal-custom-names")[0].textContent;
       const namesBefore = names();
-      before.oninput({ target: { value: "#00ff00" } });
-      assert(emits === 1 && got.sel.customColors[0] === "#00ff00", "input emits the new color");
-      assert(findAll(handle.root, "cnb-pal-custom-input")[0] === before, "input leaves the same element in the DOM");
-      assert(names() === namesBefore, "derived names wait for the picker to close");
+      assert(typeof before.oninput !== "function", "a drag step has no handler: only the field's swatch changes");
+      assert(emits === 0 && handle.getSelection().customColors[0] === "#FF0000", "nothing written before change");
       before.onchange({ target: { value: "#00ff00" } });
-      assert(emits === 2 && got.sel.customColors[0] === "#00ff00", "change emits");
+      assert(emits === 1 && got.sel.customColors[0] === "#00ff00", "change emits once");
       assert(findAll(handle.root, "cnb-pal-custom-input")[0] !== before, "change redraws");
       assert(names() !== namesBefore, "nearest-color names catch up on change");
     }),

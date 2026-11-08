@@ -45,14 +45,14 @@
       border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
     }
 
-    .cnb-cpe-mode-option {
-      font-size: 13px; color: #444; padding: 7px 10px; margin-bottom: 5px;
+    /* The page's own mode toggle: the app chooses the mode on the canvas. */
+    #mode-toggle button {
+      font-size: 13px; color: #444; padding: 7px 10px; margin: 0 5px 10px 0;
       border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
     }
-    .cnb-cpe-mode-option.selected {
+    #mode-toggle button.selected {
       border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
     }
-    .cnb-cpe-mode-help { font-size: 11px; color: #888; max-width: 460px; margin-top: 4px; }
 
     /* "inactive" only dims — the rows stay visible and editable in shape mode */
     .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
@@ -83,7 +83,10 @@
   <h1>CNB Common Properties Editor — Module 15 Visual Test</h1>
   <p>
     Edit the global duration/representation settings (plan §4.8) and the
-    LilyPond engine block (plan §4.10). The representation-mode toggle drives
+    LilyPond engine block (plan §4.10). The editor draws no control for the
+    representation mode, which the app chooses on the staff canvas (session
+    36); this page's own toggle sets it through the editor's setState, and it
+    drives
     the Module 10 (Card Collection) preview below: "shape" renders one
     captioned row per duration definition; "repeat" keeps the rows, whose cards
     draw each duration's repeated heads as the engine engraves them, plus a
@@ -94,6 +97,11 @@
   </p>
 
   <div class="card">
+    <h2>Representation mode (this page's toggle)</h2>
+    <div id="mode-toggle">
+      <button type="button" data-mode="shape">shape</button>
+      <button type="button" data-mode="repeat">repeat</button>
+    </div>
     <h2>Common properties editor</h2>
     <div id="editor-host"></div>
   </div>
@@ -148,6 +156,10 @@
         "Section C repeat field: " +
         (sectionC.includes("(repeat     . #t)") ? "(repeat . #t)" : "(repeat . #f)");
 
+      for (const b of document.querySelectorAll("#mode-toggle button")) {
+        b.classList.toggle("selected", b.dataset.mode === config.durations.representationMode);
+      }
+
       const host = document.getElementById("preview-host");
       host.textContent = "";
       CNBCommonPropsEditor.renderPreview(host, config, { pitchClasses: PREVIEW_PCS });
@@ -157,6 +169,9 @@
       document.getElementById("editor-host"),
       { config, onChange: (slices) => refresh(slices) }
     );
+    for (const b of document.querySelectorAll("#mode-toggle button")) {
+      b.onclick = () => handle.setState({ representationMode: b.dataset.mode });
+    }
     refresh({ durations: handle.getDurations(), engine: handle.getEngine() });
   </script>
 </body>

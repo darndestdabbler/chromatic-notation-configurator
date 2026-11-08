@@ -164,7 +164,7 @@ const statePanel = async () => JSON.parse(await page.textContent("#state-json"))
 const status = async () => page.textContent(".cnb-cio-status");
 const errorArea = async () => page.textContent(".cnb-cio-error");
 const modeSelected = async (mode) => page.evaluate((mode) =>
-  document.querySelector(`.cnb-cpe-mode-option[data-mode="${mode}"]`).classList.contains("selected"), mode);
+  document.querySelector(`#mode-toggle button[data-mode="${mode}"]`).classList.contains("selected"), mode);
 const multinotePadding = async () => page.evaluate(() =>
   document.querySelector(".cnb-cpe-multinote-padding").value);
 const falseHollowChecked = async () => page.evaluate(() =>
@@ -191,7 +191,7 @@ check("EDITOR (Module 15) mounted on the shared config", await modeSelected("sha
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s1-initial.png"), fullPage: true });
 
 // ── Edit the config through the set-005 editor ──────────────────────────────
-await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
+await page.click('#mode-toggle button[data-mode="repeat"]');   // the editor's setState (session 36)
 await setTextInput(".cnb-cpe-multinote-padding", "-0.25");
 await page.click(".cnb-cpe-false-hollow");
 st = await statePanel();

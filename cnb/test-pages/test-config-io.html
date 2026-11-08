@@ -64,14 +64,15 @@
       font-size: 12px; color: #555; padding: 5px 8px; margin-bottom: 4px;
       border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
     }
-    .cnb-cpe-mode-option {
-      font-size: 13px; color: #444; padding: 7px 10px; margin-bottom: 5px;
+    /* The page's own mode toggle: the app chooses the mode on the canvas
+       (session 36), and the editor draws no control for it. */
+    #mode-toggle button {
+      font-size: 13px; color: #444; padding: 7px 10px; margin: 0 5px 10px 0;
       border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
     }
-    .cnb-cpe-mode-option.selected {
+    #mode-toggle button.selected {
       border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
     }
-    .cnb-cpe-mode-help { font-size: 11px; color: #888; max-width: 460px; margin-top: 4px; }
     .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
     .cnb-cpe-engine-label { width: 150px; flex: none; }
     .cnb-cpe-engine-row input[type="text"], .cnb-cpe-engine-row input[type="number"] {
@@ -110,6 +111,10 @@
 
   <div class="card">
     <h2>Common properties editor (Module 15, edits the shared config)</h2>
+    <div id="mode-toggle">
+      <button type="button" data-mode="shape">shape</button>
+      <button type="button" data-mode="repeat">repeat</button>
+    </div>
     <div id="editor-host"></div>
   </div>
 
@@ -135,11 +140,15 @@
         engine: appConfig.engine,
         shapeNames: Object.keys(appConfig.shapes),
       }, null, 2);
+      for (const b of document.querySelectorAll("#mode-toggle button")) {
+        b.classList.toggle("selected", b.dataset.mode === appConfig.durations.representationMode);
+      }
     }
 
+    let editorApi = null;
     function mountEditor() {
       editorHost.textContent = "";
-      CNBCommonPropsEditor.render(editorHost, {
+      editorApi = CNBCommonPropsEditor.render(editorHost, {
         config: appConfig,
         onChange: (slices) => {
           appConfig.durations = slices.durations;
@@ -155,6 +164,10 @@
       onSave: (stamped) => { appConfig = stamped; refreshPanel(); },
       onLoad: (config) => { appConfig = config; mountEditor(); refreshPanel(); },
     });
+
+    for (const b of document.querySelectorAll("#mode-toggle button")) {
+      b.onclick = () => editorApi.setState({ representationMode: b.dataset.mode });
+    }
 
     mountEditor();
     refreshPanel();

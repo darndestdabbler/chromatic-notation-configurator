@@ -208,8 +208,6 @@ export const tests = [
         "The notation has no label, so a score that prints it prints nothing.", open("export", '[data-meta="notationLabel"] input'));
       check(c => { c.keys.keySignature.enabled = true; }, "keys.keySignature.enabled is true",
         "The key signature is on but keys are off, so no signature is drawn.", open("key-signature", ".cnb-kse-keys-enable-check"));
-      check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; }, "keys.keySignature is enabled",
-        "The key signature is on but no keys are defined, so there is none to draw.", open("key-signature"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.definitions = [{ name: "Mode 1", pitchClasses: [0, 2] }]; }, "Key definition \"Mode 1\" has no tonicPc",
         "The key “Mode 1” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.", open("key-signature"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.definitions = [{ name: "D", pitchClasses: [] }]; }, "Key definition \"D\" needs",

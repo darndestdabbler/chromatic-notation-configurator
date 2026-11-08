@@ -612,9 +612,9 @@ export const CNBNoteheadRuleEditor = {
             const color = el("input", "cnb-nre-color-input");
             color.type = "color";
             color.value = rule.apply.color;
-            // `input` only emits: a redraw would close the open picker.
-            // Closing it (`change`) redraws (session 21).
-            color.oninput = (e) => { rule.apply.color = valueFrom(e, color); emit(); };
+            // A drag (`input`) changes only the field's own swatch; the
+            // colour applies once, when the picker closes (`change`,
+            // session 36).
             color.onchange = (e) => { rule.apply.color = valueFrom(e, color); changed(); };
             wrap.appendChild(color);
           }

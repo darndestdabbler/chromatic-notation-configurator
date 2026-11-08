@@ -47,7 +47,15 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 33 | Stems engrave where the preview draws them | no | 2026-11-07 |
 | 34 | The preview draws what the engine engraves | no | 2026-11-07 |
 | 35 | The UI is stable | no | 2026-11-07 |
-| 36 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 36 | Rough edges from the rebuilds | no | 2026-11-08 |
+| 37 | Colours chosen directly | — | not declared |
+| 38 | Selecting several noteheads, found at once | — | not declared |
+| 39 | Undo and redo | — | not declared |
+| 40 | The UI is stable | — | not declared |
+| 41 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 42 | Designing the key-signature designer | — | not declared |
+| 43 | Published schemas and partial configs | — | not declared |
+| 44 | Clefs to pick from | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -339,3 +347,15 @@ Make the new UI stable for the 1.1.0 release. The operator rebuilds Kite 4-369 a
 
 - 2026-11-08 — step 'uat-and-declaration': its checks: The operator's rebuild found rough edges they chose to plan as sessions 36-39 before the release, so they do not declare the UI stable today; the declaration moves to session 40 (The UI is stable). The step still runs the full UAT and records it, and now records that the declaration moved. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-08 — step 'uat-and-declaration': its files: While capturing the README screenshot it turned out the canvas already selects several noteheads with Shift+click (index.html, notehead-panel.js); the operator did not know. Session 38 as planned would rebuild what exists, so the plan and the session-35 findings must say the gap is discoverability. The last step is the remaining one that can carry that correction. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 36 — Rough edges from the rebuilds
+
+**Releasable: no.**
+
+Smooth the rough edges the operator found rebuilding Kite 4-369 and 45deg-369 in session 35 (docs/uat-status.md). Item 1, registration, was done when the session started. Save and Export for LilyPond open the browser's save dialog where it has one (showSaveFilePicker, in Chrome and Edge), suggesting the file names they use today, and keep today's download where it has none (Firefox); the top bar reports the name chosen, or that the save was cancelled. The choice between distinct shapes per duration and repeated heads moves from Advanced -> Durations and engine to the canvas toolbar beside the duration buttons, in a designer's words. Every colour field (notehead panel colour and its colour-blind twin, palette editor, rule editor, key-signature bar) changes only its swatch, and in the notehead panel the close-up notehead, while the designer drags, and applies the colour once when the drag ends; palette.schemeSymbols keeps names only for colours the config uses, pruned when a colour is applied and when the config is saved. Validation's warnings about a shape's paths name only shapes some notehead uses. The canvas toolbar gets a key and mode picker (a tonic and one of the seven modes LilyPond's \key names) that draws the chosen key's signature, using the defined key the export engraves for that pitch-class set when there is one, plus one button that turns on the default signature (the scale stack); its messages are in a designer's words, and the validation warning that a signature has no defined key to draw goes, since the picker always supplies one. Unit tests and the browser UAT drivers follow each change, and the README and docs/uat-status.md record the result.
+
+**Amended after acceptance:**
+
+- 2026-11-08 — step 'colour-fields-apply-once': its files: Three more drivers set a colour with an input event alone and now also fire change (imported-notehead, kite-pipeline) or had a stale comment (notehead-rule-editor); golden-path gains the check that Save drops unused colour names. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-08 — step 'unused-shape-quiet': its files: Running the drivers for this step's warnings found two test pages and their drivers that still clicked the representation-mode control step repeat-mode-on-canvas removed; they gain the page-owned mode toggle test-common-props-editor.html already has. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-08 — step 'signature-on-canvas': its files: The Key signature editor's status note and empty-keys note said a signature needs a key chosen in the old Key menu or a defined key; with the picker neither is true, so both are reworded and its test updated. (claude-code (anthropic, claude-opus-5-5))

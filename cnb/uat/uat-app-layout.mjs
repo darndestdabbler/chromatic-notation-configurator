@@ -390,14 +390,21 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-clef-glyph.png"), fullPage: true });
 
     await openSection(page, "key-signature");
-    await page.check(".cnb-kse-keys-enable-check");
-    await page.click(".cnb-kse-def-add");                  // C major, the new-definition template
-    await page.check(".cnb-kse-sig-enable-check");
-    await page.selectOption(".cnb-pvd-key-select", "C");   // the key, chosen on the canvas
+    // One button on the canvas turns on the default signature (session 36),
+    // drawn for the key picked there (C major), with no key defined.
+    await page.click(".canvas-card .cnb-pvd-signature-on");
     await page.waitForTimeout(100);
     const keysigGutter = await gutterWidth("key-signature-preview-host", "keysig-col");
-    check("1440: with keys and a signature on and C chosen on the canvas, the Key signature panel's partial staff draws the signature in its gutter",
-      keysigGutter > 0 && (await page.$$eval("#key-signature-preview-host .keysig-col .cnb-key-signature-separator", els => els.length)) === 1,
+    const keysOn = JSON.parse(await page.textContent("#state-json")).keys;
+    check("1440: the canvas button turns keys and the scale-stack signature on, the Key signature panel follows, and its partial staff draws C major's signature in its gutter",
+      keysOn.enabled === true && keysOn.keySignature.enabled === true && keysOn.keySignature.style === "notehead-chords" &&
+      keysOn.definitions.length === 0 &&
+      await page.evaluate(() =>
+        document.querySelector(".cnb-kse-keys-enable-check").checked &&
+        document.querySelector(".cnb-kse-sig-enable-check").checked &&
+        !document.querySelector(".canvas-card .cnb-pvd-signature-on")) &&
+      keysigGutter > 0 && (await page.$$eval("#key-signature-preview-host .keysig-col .cnb-key-signature-separator", els => els.length)) === 1 &&
+      (await page.$$eval(".canvas-card .cnb-pvd-preview .keysig-col", els => els.length)) >= 1,
       String(keysigGutter));
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-key-signature-key.png"), fullPage: true });
     await openSection(page, "staff");

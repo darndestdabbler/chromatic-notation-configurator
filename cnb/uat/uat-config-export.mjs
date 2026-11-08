@@ -178,7 +178,7 @@ const errorArea = async () => page.textContent(".cnb-cex-error");
 const filenamePreview = async () => page.textContent(".cnb-cex-filename");
 const verrorTexts = async () => page.$$eval(".cnb-cex-verror", els => els.map(e => e.textContent));
 const modeSelected = async (mode) => page.evaluate((mode) =>
-  document.querySelector(`.cnb-cpe-mode-option[data-mode="${mode}"]`).classList.contains("selected"), mode);
+  document.querySelector(`#mode-toggle button[data-mode="${mode}"]`).classList.contains("selected"), mode);
 
 // ── Initial state ────────────────────────────────────────────────────────────
 check('PAGE title contains "Config Export"', (await page.title()).includes("Config Export"));
@@ -194,14 +194,14 @@ check("EDITORS (Modules 12 + 13 + 15) mounted on the shared config",
   await page.evaluate(() =>
     !!document.querySelector(".cnb-palette-editor") &&
     !!document.querySelector(".cnb-sre-pattern-option.selected") &&
-    !!document.querySelector('.cnb-cpe-mode-option[data-mode="shape"]')) &&
+    !!document.querySelector(".cnb-common-props-editor")) &&
   await modeSelected("shape"));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s2-initial.png"), fullPage: true });
 
 // ── Configure a valid notation system through the sets 004–005 editors ──────
 await page.click('.cnb-pal-option[data-preset-key="dark2-3"]');   // Module 12 (set 004)
 await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');   // Module 13
-await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');            // Module 15
+await page.click('#mode-toggle button[data-mode="repeat"]');   // Module 15's setState (session 36)
 cfg = await fullConfig();
 check("EDIT: Dark2 3-color palette reaches the shared config (12 per-PC colors, scheme symbols)",
   cfg.palette.colors.length === 12 &&

@@ -51,6 +51,7 @@ const TEST_FILES = [
   "./cnb-pitch-panel-tests.js",
   "./cnb-config-io-tests.js",
   "./cnb-config-export-tests.js",
+  "./cnb-save-file-tests.js",
   "./cnb-checks-wording-tests.js",
   "./cnb-preview-display-tests.js",
   "./check-gallery-examples.js",

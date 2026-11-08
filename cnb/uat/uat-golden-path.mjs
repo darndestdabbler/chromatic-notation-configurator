@@ -41,7 +41,7 @@
  */
 import http from "http";
 import os from "os";
-import { readFile, mkdir } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -49,7 +49,7 @@ import { createRequire } from "module";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
-import { useCanvasSize, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
+import { useCanvasSize, useDownloads, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -200,6 +200,7 @@ page.on("pageerror", e => consoleErrors.push(String(e)));
 const URL_PATH = `http://localhost:${PORT}/cnb/index.html`;
 // The canvas draws at Small, where the full row fits one row (design §6.1).
 await useCanvasSize(page, "small");
+await useDownloads(page);
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-preview-display");
 
@@ -221,13 +222,14 @@ check("ASSEMBLY: the seven always-mounted module roots on one page (Modules 12�
     !!document.querySelector(".cnb-staff-rule-editor") &&
     !!document.querySelector(".cnb-notehead-rule-editor") &&
     !!document.querySelector(".cnb-common-props-editor")));
-check("PREVIEW: full chromatic row on load — 13 cards, one caption-less duration row, 4 duration pills (crotchet on), no key control (keys disabled)",
+check("PREVIEW: full chromatic row on load — 13 cards, one caption-less duration row, 4 duration pills (crotchet on), the key picker at C major (session 36)",
   (await cardCount()) === 13 && (await captionCount()) === 0 &&
   await page.evaluate(() =>
     document.querySelectorAll(".cnb-pvd-duration-pill").length === 4 &&
     document.querySelectorAll(".cnb-pvd-duration-pill.on").length === 1 &&
     document.querySelector('.cnb-pvd-duration-pill[data-duration="crotchet"]').classList.contains("on") &&
-    !document.querySelector(".cnb-pvd-key")),
+    document.querySelector(".cnb-pvd-key-tonic").value === "0" &&
+    document.querySelector(".cnb-pvd-key-mode").value === "major"),
   `cards=${await cardCount()}`);
 let cfg = await fullConfig();
 check("STATE PANEL: full default config exposed (4-8 pattern, one shape, shape mode)",
@@ -311,14 +313,14 @@ check("NOTEHEAD RULE: the preview re-rendered live — noteheads now draw the im
       .some(p => (p.getAttribute("d") || "").startsWith("M 120 0 C 120 -55"))));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-rule.png"), fullPage: true });
 
-// ── STEP 5: common properties (set 005, Module 15) ──────────────────────────
-await openAdvanced(page, "Durations and engine");
-await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
+// ── STEP 5: repeated heads, chosen beside the duration buttons (session 36) ─
+await page.click('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]');
 cfg = await fullConfig();
-check("COMMON PROPS: repeat representation mode reaches the shared config and shows selected",
+check("REPEAT MODE: chosen on the canvas, it reaches the shared config and shows on; Advanced › Durations and engine has no mode control",
   cfg.durations.representationMode === "repeat" &&
   await page.evaluate(() =>
-    document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected")));
+    document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
+    !document.querySelector("#props-editor-host .cnb-cpe-mode-option")));
 
 // ── STEP 6: exercise the Module 19 preview controls ─────────────────────────
 // The pitch range sits in Advanced since session 25 (design §9).
@@ -383,7 +385,7 @@ check("LOAD: every editor re-seeded from the loaded config (3-6-9 selected, Dark
   await page.evaluate(() =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
     document.querySelector('.cnb-pal-option[data-preset-key="dark2-3"]').classList.contains("selected") &&
-    document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected") &&
+    document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
     document.querySelectorAll(".cnb-nre-rule-card").length === 3) &&
   (await cardCount()) === 13);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-loaded.png"), fullPage: true });
@@ -416,6 +418,78 @@ check('EXPORT: status "Exported as default48.ly" with the valid badge, no error 
     !!document.querySelector(".cnb-cex-valid") &&
     document.querySelectorAll(".cnb-cex-verror").length === 0));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-exported.png"), fullPage: true });
+
+// ── STEP 9b: the save dialog (session 36) ───────────────────────────────────
+// Chromium has a save dialog, which this driver removes before the page
+// loads (useDownloads) so that the steps above capture real downloads. A
+// stand-in dialog now records what Save and Export ask it for and write,
+// and saves under a name of the designer's choosing.
+await page.evaluate(() => {
+  window.__saves = [];
+  window.__cancelNext = false;
+  window.showSaveFilePicker = async (options) => {
+    if (window.__cancelNext) {
+      window.__cancelNext = false;
+      throw new DOMException("The user aborted a request.", "AbortError");
+    }
+    const entry = { options, text: "", closed: false };
+    window.__saves.push(entry);
+    const ext = options.types[0].accept[Object.keys(options.types[0].accept)[0]][0];
+    return {
+      name: "chosen-name" + ext,
+      async createWritable() {
+        return { async write(t) { entry.text += t; }, async close() { entry.closed = true; } };
+      },
+    };
+  };
+});
+const topbarStatus = () => page.textContent("#topbar-status");
+// The saved config again, carrying the name of a colour it does not use
+// (as every colour a drag passed through used to leave one): Save drops it.
+const junkPath = path.join(SHOT_DIR, "uat-036-unused-colour-name.cnb.json");
+await writeFile(junkPath, JSON.stringify({
+  ...savedJson,
+  palette: { ...savedJson.palette, schemeSymbols: { ...savedJson.palette.schemeSymbols, "#500000": "maroon-500000" } },
+}));
+await page.setInputFiles("#open-file", junkPath);
+await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Opened "));
+check("SAVE: the opened config carries the unused colour name #500000",
+  "#500000" in (await fullConfig()).palette.schemeSymbols);
+await page.click("#save-config");
+await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Saved as "));
+let dialogSave = await page.evaluate(() => window.__saves[0]);
+cfg = await fullConfig();
+check('SAVE DIALOG: Save opens the save dialog suggesting "default-4-8-system.cnb.json" as a JSON file',
+  dialogSave.options.suggestedName === "default-4-8-system.cnb.json" &&
+  JSON.stringify(dialogSave.options.types[0].accept) === JSON.stringify({ "application/json": [".json"] }),
+  JSON.stringify(dialogSave.options));
+check("SAVE DIALOG: the file written is the saved config (deep-equal to the live state), and closed",
+  dialogSave.closed && JSON.stringify(JSON.parse(dialogSave.text)) === JSON.stringify(cfg));
+check("SAVE: only the colours the config uses keep a Scheme name — #500000's is gone from the file and the live state (session 36)",
+  !("#500000" in JSON.parse(dialogSave.text).palette.schemeSymbols) && !("#500000" in cfg.palette.schemeSymbols) &&
+  JSON.stringify(Object.keys(JSON.parse(dialogSave.text).palette.schemeSymbols).sort()) ===
+    JSON.stringify(Object.keys(savedJson.palette.schemeSymbols).sort()));
+check('SAVE DIALOG: the top bar names the file as the designer chose it ("Saved as chosen-name.json")',
+  (await topbarStatus()) === "Saved as chosen-name.json", await topbarStatus());
+
+await page.click("#export-ly");
+await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Exported as "));
+dialogSave = await page.evaluate(() => window.__saves[1]);
+check('SAVE DIALOG: Export opens the save dialog suggesting "default48.ly" as a .ly file',
+  dialogSave.options.suggestedName === "default48.ly" &&
+  JSON.stringify(dialogSave.options.types[0].accept) === JSON.stringify({ "text/plain": [".ly"] }),
+  JSON.stringify(dialogSave.options));
+check("SAVE DIALOG: the .ly written is byte-identical to a direct CNBLilypond.generate() call, and closed",
+  dialogSave.closed && dialogSave.text === CNBLilypond.generate(cfg));
+check('SAVE DIALOG: the top bar reads "Exported as chosen-name.ly"',
+  (await topbarStatus()) === "Exported as chosen-name.ly", await topbarStatus());
+
+await page.evaluate(() => { window.__cancelNext = true; });
+await page.click("#save-config");
+await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Not saved"));
+check("SAVE DIALOG: cancelling the dialog writes nothing and the top bar says the save was cancelled",
+  (await page.evaluate(() => window.__saves.length)) === 2 &&
+  (await topbarStatus()) === "Not saved: the save was cancelled.", await topbarStatus());
 
 // ── STEP 10: no errors ───────────────────────────────────────────────────────
 check("NO console or page errors across the whole golden path", consoleErrors.length === 0,

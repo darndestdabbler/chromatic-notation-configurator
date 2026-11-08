@@ -188,10 +188,10 @@ check("DEFINITIONS list has 4 read-only rows in definition order",
       '["crotchet","minim","semibreve","breve"]' &&
       rows.every(r => r.querySelectorAll("input,select,button").length === 0);
   }));
-check('MODE "shape" selected; help text names (repeat . #f)',
+check("NO MODE CONTROL in the editor: the app chooses the mode on the canvas (session 36); the page's toggle shows shape",
   await page.evaluate(() =>
-    document.querySelector('.cnb-cpe-mode-option[data-mode="shape"]').classList.contains("selected") &&
-    document.querySelector(".cnb-cpe-mode-help").textContent.includes("(repeat . #f)")));
+    !document.querySelector("#editor-host .cnb-cpe-mode, #editor-host .cnb-cpe-mode-option") &&
+    document.querySelector('#mode-toggle button[data-mode="shape"]').classList.contains("selected")));
 check("NO REPEAT COUNTS section: the preview and the engine draw fixed counts (session 34)",
   await page.evaluate(() => !document.querySelector(".cnb-cpe-repeats, .cnb-cpe-repeat-count")));
 check("ENGINE block has 7 rows; false-hollow badge reads default-omitted; no stem thickness row (the preview draws the engine's stem)",
@@ -217,11 +217,10 @@ check("VALIDATION shows Config valid", await page.evaluate(() => !!document.quer
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-initial.png"), fullPage: true });
 
 // ── Toggle representation mode to "repeat" ──────────────────────────────────
-await page.click('.cnb-cpe-mode-option[data-mode="repeat"]');
-check('TOGGLE REPEAT: option selected; help text names (repeat . #t)',
+await page.click('#mode-toggle button[data-mode="repeat"]');
+check("TOGGLE REPEAT: the page's toggle shows repeat (set through the editor's setState)",
   await page.evaluate(() =>
-    document.querySelector('.cnb-cpe-mode-option[data-mode="repeat"]').classList.contains("selected") &&
-    document.querySelector(".cnb-cpe-mode-help").textContent.includes("(repeat . #t)")));
+    document.querySelector('#mode-toggle button[data-mode="repeat"]').classList.contains("selected")));
 check("TOGGLE REPEAT: 4 captioned rows; each card draws the engine's repeated heads (crotchet 1, minim 2, semibreve 4, breve 4 octave pairs)",
   (await rowCount()) === 4 && (await captionCount()) === 4 &&
   JSON.stringify([await headsInFirstCard(0), await headsInFirstCard(1), await headsInFirstCard(2), await headsInFirstCard(3)]) ===
@@ -255,7 +254,7 @@ check('MAGNIFY "3/2": JSON follows; Section B emits #(set! cnb:default-magnify 3
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s3-engine.png"), fullPage: true });
 
 // ── Back to shape mode ───────────────────────────────────────────────────────
-await page.click('.cnb-cpe-mode-option[data-mode="shape"]');
+await page.click('#mode-toggle button[data-mode="shape"]');
 j = await readJson();
 check("BACK TO SHAPE: 4 preview rows restored, legend gone, repeat field #f",
   (await rowCount()) === 4 &&

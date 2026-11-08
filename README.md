@@ -168,7 +168,15 @@ open.
 
 ### 3. Design the notation system
 
-The page is the staff canvas, with one section at a time beside it:
+The page is the staff canvas, with one section at a time beside it. Above
+the staff, the canvas toolbar chooses what it shows: the durations, and
+beside them whether longer durations get **Its own shape for each
+duration** or **Repeat the notehead** (as the engine engraves them: minim
+×2, semibreve and breve ×4); and the **Key**, a tonic and a mode (major,
+minor and the church modes LilyPond's `\key` names), whose signature the
+staff draws. While the signature is off, **Show the key signature** turns
+it on, as the scale stack: the key's scale as stacked noteheads, as the
+engine engraves it.
 
 - **Staff** — pick a staff pattern (which semitones within the octave
   carry lines, e.g. 4-8 or 3-6-9).
@@ -181,13 +189,12 @@ The page is the staff canvas, with one section at a time beside it:
   move a note up to a semitone from its place.
 - **Ledger lines** — Automatic, or your own rules for which notes get
   which ledgers.
-- **Clef** and **Key signature** — an imported clef glyph or a text clef,
-  and the keys with the signature drawn for the key chosen on the staff.
+- **Clef** and **Key signature** — an imported clef glyph or a text clef;
+  the signature's look; and the keys a notehead rule can be for. The
+  signature draws for the key picked on the staff, defined here or not.
 - **Advanced** — rules for particular durations or keys, the colour palette
   (with its colorblind-safe alternative, which the exported file can switch
-  to at render time), durations and engine settings (among them whether
-  longer durations get their own shapes or repeat the notehead, as the
-  engine engraves them: minim ×2, semibreve and breve ×4), the pitch axis
+  to at render time), the duration list and engine settings, the pitch axis
   map, the pitch range shown, and the file as JSON.
 
 The canvas redraws live from the same JSON config the export reads.
@@ -197,7 +204,12 @@ The canvas redraws live from the same JSON config the export reads.
 - **Save** keeps an editable design as JSON (**Open…** loads it back any
   time).
 - **Export for LilyPond** produces the LilyPond configuration file,
-  validated first; the checks in the top bar list what blocks it. The
+  validated first; the checks in the top bar list what blocks it.
+- Both open the browser's save dialog where it has one (Chrome and Edge),
+  suggesting the file's usual name, so you choose the folder and the name;
+  a browser without one (Firefox) downloads the file under that name. The
+  top bar names the file as saved.
+- The
   **Export** section holds the notation's name, label and footnote. The
   export follows [CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md).
 

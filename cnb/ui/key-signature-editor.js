@@ -395,7 +395,7 @@ export const CNBKeySignatureEditor = {
 
       if (state.definitions.length === 0) {
         wrap.appendChild(el("div", "cnb-kse-empty",
-          "No keys yet: add one to draw its signature."));
+          "No keys yet: the staff draws the key picked there. Add one to give a notehead rule a key."));
       }
 
       state.definitions.forEach((def, index) => {
@@ -485,13 +485,11 @@ export const CNBKeySignatureEditor = {
         "Show the key signature after the clef"));
       wrap.appendChild(enable);
 
-      // Why nothing draws (session 18): the signature needs a defined key,
-      // and the preview draws the one its Key control selects.
+      // Which key draws (session 36): the one picked on the staff, whether
+      // or not a key is defined here.
       if (state.enabled && state.keySignature.enabled) {
-        wrap.appendChild(el("div", "cnb-kse-sig-status", state.definitions.length === 0
-          ? "No key is defined, so no key signature draws. Add a key above."
-          : "The signature draws for the key chosen in the staff's Key menu. " +
-            "With (none) chosen, no signature draws."));
+        wrap.appendChild(el("div", "cnb-kse-sig-status",
+          "The signature draws for the key and mode picked on the staff."));
       }
 
       wrap.appendChild(drawStyle());
@@ -619,14 +617,12 @@ export const CNBKeySignatureEditor = {
       color.type = "color";
       color.value = state.keySignature.separator.color;
       color.title = "Colour";
-      // `input` only emits: a redraw would close the open picker. Closing
-      // it (`change`) redraws (session 21).
-      const setColor = (e, then) => {
+      // A drag (`input`) changes only the field's own swatch; the colour
+      // applies once, when the picker closes (`change`, session 36).
+      color.onchange = (e) => {
         const v = String(valueFrom(e, color));
-        if (isValidHex(v)) { state.keySignature.separator.color = v; then(); }
+        if (isValidHex(v)) { state.keySignature.separator.color = v; changed(); }
       };
-      color.oninput = (e) => setColor(e, emit);
-      color.onchange = (e) => setColor(e, changed);
       row.appendChild(control(color));
 
       const thickness = el("input", "cnb-kse-sep-thickness");

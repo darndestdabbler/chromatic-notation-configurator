@@ -183,6 +183,7 @@
     import { CNBPitchPanel } from "./ui/pitch-panel.js";
     import { CNBPitchModel } from "./ui/pitch-model.js";
     import { CNBChecksWording } from "./ui/checks-wording.js";
+    import { CNBSaveFile } from "./ui/save-file.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -418,7 +419,8 @@
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
       const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
-      const key = (canvasOptions.keys && canvasOptions.keys[0]) || null;
+      // The key picked on the canvas (session 36), drawn as it is there.
+      const key = previewApi ? previewApi.getState().key : null;
       for (const [part, id] of [["clef", "clef-preview-host"], ["key-signature", "key-signature-preview-host"]]) {
         const host = byId(id);
         host.textContent = "";
@@ -447,6 +449,29 @@
         canvasOptions = options;
         refreshSectionPreviews();
       },
+      // Shapes or repeated heads, beside the duration buttons (session 36).
+      onRepresentationMode: (mode) => {
+        appConfig.durations = { ...appConfig.durations, representationMode: mode };
+        mountPropsEditor();
+        refreshShared();
+      },
+      // One button turns on the default signature, the scale stack (session 36).
+      onSignatureOn: () => {
+        const keys = appConfig.keys || {};
+        appConfig.keys = {
+          ...keys,
+          enabled: true,
+          keySignature: {
+            ...CNBConfig.createDefault().keys.keySignature,
+            ...(keys.keySignature || {}),
+            enabled: true,
+            style: "notehead-chords",
+          },
+        };
+        mountKeySignatureEditor();
+        mountNoteheadEditor();
+        refreshShared();
+      },
     });
 
     const pitchApi = CNBPitchPanel.render(byId("pitch-panel-host"), {
@@ -474,8 +499,28 @@
       refreshMarks();
     }
 
+    // ── Saving where the designer chooses (session 36) ───────────────────
+    // Save and Export hand their file to CNBSaveFile, which opens the
+    // browser's save dialog where it has one and downloads otherwise. The
+    // dialog opens within the click; the name chosen arrives later.
+    let pendingSave = null;
+    function deliver(file) {
+      pendingSave = CNBSaveFile.saveFile(file);
+    }
+    /** The top bar's line once the file is written, under the name chosen. */
+    function reportSave(verb) {
+      const pending = pendingSave;
+      pendingSave = null;
+      pending.then(
+        (name) => setStatus(name ? verb + " as " + name : "Not saved: the save was cancelled."),
+        (err) => setStatus(verb === "Saved" ? "Save failed: " + err.message : "Export failed: " + err.message, true));
+    }
+
     const exportApi = CNBConfigExport.render(byId("config-export-host"), {
       getConfig: () => appConfig,
+      download: ({ filename, ly }) => deliver({
+        filename, text: ly, type: "text/plain", description: "LilyPond file", extension: ".ly",
+      }),
       // The Export section edits the notation's name, file suffix, label
       // and footnote (design §1, step 6).
       onMeta: (meta) => {
@@ -486,6 +531,9 @@
 
     const ioApi = CNBConfigIO.render(byId("config-io-host"), {
       getConfig: () => appConfig,
+      download: ({ filename, json }) => deliver({
+        filename, text: json, type: "application/json", description: "Notation config", extension: ".json",
+      }),
       // Adopt the stamped config so meta.created survives later saves
       // (Module 17 contract: callback first, then its own redraw).
       onSave: (stamped) => {
@@ -517,8 +565,10 @@
     const ioError = () => ioApi.root.querySelector(".cnb-cio-error").textContent;
 
     byId("save-config").onclick = () => {
+      // Only the colours the config uses keep a Scheme name (session 36).
+      appConfig = CNBPaletteEditor.usedSchemeSymbols(appConfig);
       const built = ioApi.save();
-      if (built) setStatus("Saved as " + built.filename);
+      if (built) reportSave("Saved");
       else setStatus(ioError(), true);
     };
 
@@ -540,7 +590,7 @@
     exportButton.onclick = () => {
       const result = exportApi.exportLy();
       if (result) {
-        setStatus("Exported as " + result.filename);
+        reportSave("Exported");
       } else {
         const blocked = exportApi.root.querySelector(".cnb-cex-status").textContent;
         const error = exportApi.root.querySelector(".cnb-cex-error").textContent;
@@ -561,8 +611,7 @@
     };
 
     /** Redraw everything that READS the shared config (not the editors).
-     *  keepPanel: the notehead panel made the change and keeps its own DOM,
-     *  so an open colour picker stays open (session 21's wiring). */
+     *  keepPanel: the notehead panel made the change and draws itself. */
     function refreshShared({ keepPanel = false } = {}) {
       refreshPanel();
       refreshChecks();
@@ -580,9 +629,7 @@
     // the current config. Every editor edit is committed to appConfig
     // immediately via onChange, so re-mounting never loses edits.
     function mountEditors() {
-      byId("props-editor-host").textContent = "";
       byId("clef-editor-host").textContent = "";
-      byId("key-signature-editor-host").textContent = "";
 
       mountPaletteEditor();
 
@@ -590,14 +637,7 @@
 
       mountNoteheadEditor();
 
-      CNBCommonPropsEditor.render(byId("props-editor-host"), {
-        config: appConfig,
-        onChange: (slices) => {
-          appConfig.durations = slices.durations;
-          appConfig.engine = slices.engine;
-          refreshShared();
-        },
-      });
+      mountPropsEditor();
 
       // Custom clef (set 009). The editor also hosts the clef glyph import
       // wiring (session-1 importer, clef kind), so the whole
@@ -610,11 +650,19 @@
         },
       });
 
-      // Keys & key signature (set 010). The panel writes the whole keys
-      // section (enabled, definitions, keySignature). Key definitions are
-      // a vocabulary the notehead rule editor reads at mount time (its
-      // match.keys pills), so that editor is re-seeded after every keys
-      // change — same rationale as the SVG-import re-mount below.
+      mountKeySignatureEditor();
+
+      mountPitchAxisEditor();
+    }
+
+    /** Keys & key signature (set 010). The panel writes the whole keys
+     *  section (enabled, definitions, keySignature). Key definitions are a
+     *  vocabulary the notehead rule editor reads at mount time (its
+     *  match.keys pills), so that editor is re-seeded after every keys
+     *  change — same rationale as the SVG-import re-mount below. The canvas
+     *  can turn the signature on (session 36), so it re-seeds this one. */
+    function mountKeySignatureEditor() {
+      byId("key-signature-editor-host").textContent = "";
       CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
         config: appConfig,
         onChange: (slices) => {
@@ -623,8 +671,20 @@
           refreshShared();
         },
       });
+    }
 
-      mountPitchAxisEditor();
+    /** Advanced › Durations and engine. It carries the representation mode
+     *  through from its mount, so it re-seeds when the canvas changes it. */
+    function mountPropsEditor() {
+      byId("props-editor-host").textContent = "";
+      CNBCommonPropsEditor.render(byId("props-editor-host"), {
+        config: appConfig,
+        onChange: (slices) => {
+          appConfig.durations = slices.durations;
+          appConfig.engine = slices.engine;
+          refreshShared();
+        },
+      });
     }
 
     /** The palette editor (Advanced › Colour palette) seeds from the
