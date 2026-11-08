@@ -523,6 +523,29 @@
       "what": "step 'docs': its files",
       "reason": "The \"Limits kept on purpose\" list that names the in-gap ledger difference is in session-plan.md (After 1.1.0), not the README; it also calls architecture \u00a711 question 8 moot because stem thickness was preview-only, which this session settles.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-07T18:33:31.426000-05:00",
+      "task": "Make the new UI stable for the 1.1.0 release. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the app and, on the way, checks every colour picker by hand (drag in the field, type a full hex value), the check session 21 left owed; the findings are recorded in docs/uat-status.md. The rough edges found are fixed here when small (already known: the Staff and Ledger lines panel subtitles still promise 'how they look', which session 34 removed), and any large one is planned in session-plan.md as a session before 36. The README is brought in line with the new UI: the walkthrough names the new sections (Staff, Noteheads, Pitch, Ledger lines, Clef, Key signature, Advanced, Export) instead of the old editor names, the stale 'per-line styling' and staff 'line styling' claims go, the repeat counts are no longer introduced as a setting that changes the preview (session 18 review), the 'Preview-only settings' list matches the Export section's sentence, and a screenshot of the new page is added. The full browser UAT runs and its result, with the operator's declaration that the UI is stable, is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-08T05:55:55.416000-05:00",
+      "what": "step 'uat-and-declaration': its checks",
+      "reason": "The operator's rebuild found rough edges they chose to plan as sessions 36-39 before the release, so they do not declare the UI stable today; the declaration moves to session 40 (The UI is stable). The step still runs the full UAT and records it, and now records that the declaration moved.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-08T06:03:55.166000-05:00",
+      "what": "step 'uat-and-declaration': its files",
+      "reason": "While capturing the README screenshot it turned out the canvas already selects several noteheads with Shift+click (index.html, notehead-panel.js); the operator did not know. Session 38 as planned would rebuild what exists, so the plan and the session-35 findings must say the gap is discoverability. The last step is the remaining one that can carry that correction.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

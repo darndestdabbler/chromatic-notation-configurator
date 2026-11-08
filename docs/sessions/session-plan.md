@@ -974,6 +974,19 @@ engine can take, are exported. The three gaps only the engine can close
 a pitch axis) are planned as session 24 of the engine repository. The
 release stays 1.1.0: no config stops loading.
 
+**Plan amended 2026-11-08, during session 35:** four sessions inserted
+before "The UI is stable", and a 1.2.0 program after the release
+(operator). The operator's rebuilds of Kite 4-369 and 45deg-369 found rough
+edges they chose to plan rather than fix in session 35
+(`docs/uat-status.md`, session 35): sessions 36–39 take them, "The UI is
+stable" moves to 40 and the release to 41. The release stays 1.1.0: no
+config stops loading, and session 37 reads the palettes of older configs
+into their noteheads. Three larger ideas from the same review (a
+key-signature designer, published component schemas with partial-config
+import, and clefs to pick from) are planned as sessions 42 on, toward
+1.2.0, a minor version, since each adds a feature and none breaks a
+config.
+
 ### Session 23: The look table and rule inference
 
 **Why.** The notehead-first editor edits one table, a look per pitch class,
@@ -1435,18 +1448,155 @@ key-signature gutter all change the preview and nothing on the page
    it no longer introduces the unused repeat counts as settings that change
    the preview (session 18 review). The full UAT runs.
 4. The operator declares the UI stable, which is the condition for
-   session 36.
+   session 36. *(Amended during session 35: the rough edges went to
+   sessions 36–39, so the declaration moves to session 40.)*
 
-### Session 36: Release 1.1.0 (release: 1.1.0)
+### Session 36: Rough edges from the rebuilds
+
+**Why.** The operator's rebuilds in session 35 (`docs/uat-status.md`).
+
+1. Register.
+2. **Save where the designer chooses.** Save and Export .ly open the
+   browser's save dialog where it has one (Chrome and Edge), suggesting the
+   name they use today; a browser without one (Firefox) keeps the
+   download.
+3. **Repeat mode where the durations are.** The choice between distinct
+   shapes per duration and repeated heads sits beside the duration buttons
+   on the staff, in a designer's words, and leaves Advanced → Durations and
+   engine.
+4. **Colour fields apply once.** While a designer drags in a colour field,
+   only the swatch and the notehead change; the colour is applied when the
+   drag ends. Only the colours a config uses keep a name in
+   `palette.schemeSymbols`.
+5. **An unused shape does not warn.** Validation's warnings about a shape's
+   paths name only shapes some notehead uses.
+6. **The signature on the staff.** The canvas has a key and mode picker and
+   draws the chosen key's signature. One button turns on the default
+   signature, the scale stack (the stacked notehead chords the engine
+   draws). Its messages are in a designer's words: with keys on and none
+   defined it says so without naming `config.keys.definitions`.
+
+### Session 37: Colours chosen directly
+
+**Why.** Palettes are more than a designer needs (operator, 2026-11-08):
+many systems stay black, and a colour-blind variant is simply a second
+config.
+
+1. Register.
+2. A notehead's colour is chosen on the notehead (or its rule) and carried
+   there; the config has no palette to fill. Palettes become suggestions a
+   designer can apply from help, colour-blind-safe sets among them.
+3. The colour-blind alternative and the export's accessible-colour branch
+   go: a variant is a config saved under another name (session 36's save
+   dialog). The exporter registers the colours the noteheads use. No engine
+   change: `cnb:use-accessible-colors` is simply never set.
+4. A config with a palette still loads, its colours moved onto the
+   noteheads, so it previews and exports as before. The baselines and the
+   LY spec say what changed.
+
+### Session 38: Selecting several noteheads, found at once
+
+**Why.** The operator gave each notehead its look in turn, not knowing the
+canvas already selects several with Shift+click and the notehead panel's
+"Give this look to" copies a look to many (session 35,
+`docs/uat-status.md`).
+
+1. Register.
+2. The canvas and the Noteheads section say how to select several
+   noteheads; Ctrl+click selects as Shift+click does, and a selection can
+   be cleared in one move. "Give this look to" says what it does before it
+   is used.
+3. The operator tries it on a fresh rebuild of Kite 4-369 and judges
+   whether it is now found without being told.
+
+### Session 39: Undo and redo
+
+**Why.** A wrong change can only be put right by hand (operator,
+2026-11-08).
+
+1. Register.
+2. Undo and redo of every change to the config, several levels, with
+   buttons and Ctrl+Z / Ctrl+Shift+Z. A colour drag or a typed value is one
+   step. Opening a config is a step too.
+
+### Session 40: The UI is stable
+
+**Why.** The release waits for a stable UI (operator, 2026-11-06).
+
+1. Register.
+2. The operator tries sessions 36–39 in the app. Rough edges found are
+   fixed here, or planned as sessions before 41 if they are large.
+3. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+4. The operator declares the UI stable, which is the condition for
+   session 41.
+
+### Session 41: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
 1. Register.
 2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
-   renamed to 1.1.0, and add the notehead-first editor, and the clef and
-   key-signature export, to the entry.
+   renamed to 1.1.0, and add the notehead-first editor, the clef and
+   key-signature export, and sessions 36–39, to the entry.
 3. The tag deploys the site. Confirm it is up and that the README and the
    `file://` notice link work.
+
+---
+
+## Toward 1.2.0
+
+Planned with the operator on 2026-11-08. Release version proposed: 1.2.0,
+a minor version, since each item adds a feature and none breaks a config.
+The release session is numbered once session 42 has said how many sessions
+the key-signature designer takes.
+
+### Session 42: Designing the key-signature designer
+
+**Why.** A signature should be as easy to design as the noteheads, and
+reach Clairnote's, traditional ones and the scale stack alike (operator,
+2026-11-08).
+
+1. Register.
+2. A design document only, no code: the designer starts from the scale
+   stack with real noteheads and ledgers, and for a key a designer selects
+   marks and swaps their shape or colour. It settles whether changes are
+   made per key or by rule, and the toggles: only the degrees traditional
+   notation alters or the whole scale, monochrome, and a notehead with
+   ledger and stem or a free symbol with neither. It names the engine work
+   (the mark-list hook of the engine backlog §2.3).
+3. The design goes to a cross-provider consult (GPT and Gemini) before the
+   operator approves it, and it plans the sessions that build it.
+
+### Session 43: Published schemas and partial configs
+
+**Why.** With a published schema for each part of a config, a designer can
+have an AI write that part and import it (operator, 2026-11-08).
+
+1. Register.
+2. One JSON Schema for each component (noteheads and their rules, staff
+   and ledgers, clef, key signature) and one for the whole config,
+   versioned, in the repository and on the site at stable addresses. A test
+   holds the schemas and `CNBConfig.validate` to the same answer for every
+   fixture, every gallery config and a set of bad samples.
+3. Open imports a partial config into its own section, says what it will
+   change first, and validates it as any config is.
+4. The AI-assisted workflow guide gains a prompt for each component, with
+   the schema's address.
+
+### Session 44: Clefs to pick from
+
+**Why.** The engine's dozenal clef is not drawn in the preview, and the
+standard clefs take an import to use (operator, 2026-11-08).
+
+1. Register.
+2. The preview draws the dozenal clef, and buttons choose it or a standard
+   clef (treble, bass, alto), each placed at the pitch it marks, from
+   glyphs whose licence allows it (Bravura, SIL OFL, for example).
+
+### Sessions 45 and on: The key-signature designer
+
+As session 42 plans them, with their engine work.
 
 ---
 
@@ -1478,7 +1628,7 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
 - **Key signatures made of custom symbols, in the Clairnote style** (set
   010 s2 notes D11, D12 and its design consult; record 40). The engine
   backlog §2.3 says to reopen a mark-list rendering hook when this is
-  scheduled.
+  scheduled. *Planned since 2026-11-08 as session 42 and on.*
 - **Gallery fidelity** (`reproduction-report.md`):
   - Gap A, a ledger rule that hides a ledger when a staff line lies between
     it and the note, which would let the Clairnote SN/DN, Chromatic Lyre

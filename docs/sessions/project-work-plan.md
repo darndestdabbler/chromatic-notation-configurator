@@ -46,7 +46,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 32 | Two more staves to start from | no | 2026-11-07 |
 | 33 | Stems engrave where the preview draws them | no | 2026-11-07 |
 | 34 | The preview draws what the engine engraves | no | 2026-11-07 |
-| 35 | The UI is stable | — | not declared |
+| 35 | The UI is stable | no | 2026-11-07 |
 | 36 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -328,3 +328,14 @@ Close, on the Configurator's side, every gap where the preview draws something t
 - 2026-11-07 — step 'key-scoped-rules': its files: The export panel's test pinned the retired M3 warning (a key-scoped rule is not exported); it changes to the rule exporting without a warning. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-07 — step 'gutter-and-repeat-counts': its files: With the gutter and repeat counts gone the export header and the export panel name only the colour-blind toggle as preview-only (config-export.js and its test, deferred here from key-scoped-rules), and the removed controls' CSS goes from app.css and two more test pages. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-07 — step 'docs': its files: The "Limits kept on purpose" list that names the in-gap ledger difference is in session-plan.md (After 1.1.0), not the README; it also calls architecture §11 question 8 moot because stem thickness was preview-only, which this session settles. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 35 — The UI is stable
+
+**Releasable: no.**
+
+Make the new UI stable for the 1.1.0 release. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the app and, on the way, checks every colour picker by hand (drag in the field, type a full hex value), the check session 21 left owed; the findings are recorded in docs/uat-status.md. The rough edges found are fixed here when small (already known: the Staff and Ledger lines panel subtitles still promise 'how they look', which session 34 removed), and any large one is planned in session-plan.md as a session before 36. The README is brought in line with the new UI: the walkthrough names the new sections (Staff, Noteheads, Pitch, Ledger lines, Clef, Key signature, Advanced, Export) instead of the old editor names, the stale 'per-line styling' and staff 'line styling' claims go, the repeat counts are no longer introduced as a setting that changes the preview (session 18 review), the 'Preview-only settings' list matches the Export section's sentence, and a screenshot of the new page is added. The full browser UAT runs and its result, with the operator's declaration that the UI is stable, is recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-08 — step 'uat-and-declaration': its checks: The operator's rebuild found rough edges they chose to plan as sessions 36-39 before the release, so they do not declare the UI stable today; the declaration moves to session 40 (The UI is stable). The step still runs the full UAT and records it, and now records that the declaration moved. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-08 — step 'uat-and-declaration': its files: While capturing the README screenshot it turned out the canvas already selects several noteheads with Shift+click (index.html, notehead-panel.js); the operator did not know. Session 38 as planned would rebuild what exists, so the plan and the session-35 findings must say the gap is discoverability. The last step is the remaining one that can carry that correction. (claude-code (anthropic, claude-opus-5-5))

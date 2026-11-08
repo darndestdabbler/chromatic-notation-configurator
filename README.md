@@ -6,14 +6,17 @@ A browser-based tool for designing custom chromatic music notation systems. The 
 
 The Configurator is the design environment where notation creators make creative decisions:
 
+- **Give each notehead its look** — click it on the staff and choose its
+  colour, fill, shape and size; the looks are kept as cumulative rules
 - **Import notehead shapes** from SVGs produced by the Music Glyph Toolkit
-- **Assign shapes to pitch classes** with cumulative rules (shape, hollow, color)
 - **Configure staff geometry** — any number of lines at any semitone positions
-- **Configure ledger lines** — proximity-based and override rules, per-line styling
+- **Configure ledger lines** — automatic, or your own rules for which notes get them
 - **Select color palettes** with automatic colorblind-safe alternatives
-- **Preview your notation** as a row of octave-chord cards
+- **Preview your notation** on a staff of octave chords, as the engine engraves it
 - **Export `.ly` config files** that the ChromaticNotationBase engine consumes
 - **Save/load configurations** as JSON for iterative design
+
+![The Configurator with Kite 4-369 open: the staff canvas, and under it the notehead panel for D](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -151,8 +154,9 @@ the [engine repository's README](https://github.com/darndestdabbler/lilypond-chr
 
 ### 2. Import the shape into the Configurator
 
-Open the app (see Usage above) and load your SVG in the **Shape
-Importer** panel. The importer extracts the SVG paths, the LilyPond
+Open the app (see Usage above), click a notehead on the staff, and use
+**Import from SVG…** in the notehead panel's Shape row (click it, or drop
+the `.svg` on it). The importer extracts the SVG paths, the LilyPond
 paths, and the stem anchors, including the minim pair when present
 (stored in semitone units; the exporter converts them to staff-space
 units at export time). Warnings are shown for shapes missing
@@ -164,26 +168,38 @@ open.
 
 ### 3. Design the notation system
 
-- **Staff/Ledger Rule Editor** — pick a staff pattern (which semitones
-  within the octave carry lines, e.g. 4-8 or 3-6-9) and ledger templates.
-  The derived panel shows the exact LilyPond geometry the export will
-  emit.
-- **Common Properties** — durations and representation mode (distinct
-  shapes per duration, or repeat-count noteheads).
-- **Palette Editor** — pick or author a palette; every palette carries a
-  colorblind-safe alternative that the exported file can switch to at
-  render time.
-- **Notehead Rule Editor** — cumulative, priority-ordered rules assigning
-  shape / hollow / color per pitch class.
+The page is the staff canvas, with one section at a time beside it:
 
-The preview re-renders live from the same JSON config the export reads.
+- **Staff** — pick a staff pattern (which semitones within the octave
+  carry lines, e.g. 4-8 or 3-6-9).
+- **Noteheads** — click a notehead on the staff (Shift+click adds more) to
+  open the notehead panel: colour, fill, shape, size and nudge, and **Give
+  this look to** all, every other, every third … of the noteheads, or the
+  accidentals or naturals. The section lists the rules the looks are kept
+  as.
+- **Pitch** — the middle of the staff, the staff spacing, and nudges that
+  move a note up to a semitone from its place.
+- **Ledger lines** — Automatic, or your own rules for which notes get
+  which ledgers.
+- **Clef** and **Key signature** — an imported clef glyph or a text clef,
+  and the keys with the signature drawn for the key chosen on the staff.
+- **Advanced** — rules for particular durations or keys, the colour palette
+  (with its colorblind-safe alternative, which the exported file can switch
+  to at render time), durations and engine settings (among them whether
+  longer durations get their own shapes or repeat the notehead, as the
+  engine engraves them: minim ×2, semibreve and breve ×4), the pitch axis
+  map, the pitch range shown, and the file as JSON.
+
+The canvas redraws live from the same JSON config the export reads.
 
 ### 4. Save and export
 
-- **Save JSON** to keep an editable design (load it back any time).
-- **Export .ly** produces the LilyPond configuration file (validated
-  first; blocking errors are listed in the panel). The export follows
-  [CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md).
+- **Save** keeps an editable design as JSON (**Open…** loads it back any
+  time).
+- **Export for LilyPond** produces the LilyPond configuration file,
+  validated first; the checks in the top bar list what blocks it. The
+  **Export** section holds the notation's name, label and footnote. The
+  export follows [CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md).
 
 ### 5. Render it with the engine
 
@@ -302,12 +318,15 @@ Two engine behaviours apply only when `pitchAxis` is enabled
 
 ### Preview-only settings
 
-One setting changes the preview but not the export, and the export header
-says so:
+As the Export section says, one setting changes the preview but not the
+export, and the export header says so too:
 
 - **The CB-safe toggle.** The export carries both palettes. A score selects
   the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
   before `\include`.
+
+Off-key marks are kept in the file but neither drawn in the preview nor
+exported yet.
 
 Everything else the preview shows is exported, or drawn as the engine
 engraves it (session 34, LY export spec 1.3.9):
@@ -323,10 +342,11 @@ engraves it (session 34, LY export spec 1.3.9):
   length, staff lines 0.1, ledgers 0.2 with rounded ends and 1.5 notehead
   widths long, all black and solid. They have no settings.
 - **The key signature's spacing is the engine's**, and has no setting.
-- **Repeat counts are fixed.** In repeat mode the preview draws what the
-  engine engraves: minim ×2, semibreve ×4 and breve ×4, each head edge to
-  edge with the multinote padding (`engine.multinotePadding`, in staff
-  spaces) between them.
+- **Repeated heads are the engine's.** When longer durations repeat the
+  notehead, the preview draws what the engine engraves: minim ×2,
+  semibreve ×4 and breve ×4, each head edge to edge with the multinote
+  padding (`engine.multinotePadding`, in staff spaces) between them. How
+  many heads there are is not a setting.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem
@@ -387,6 +407,8 @@ example data in, DOM nodes out:
 
 | Module | Purpose |
 |--------|---------|
+| Notehead Panel | The selected noteheads' look: colour, fill, shape, size, nudge |
+| Pitch Panel | The middle of the staff, the staff spacing and the nudges |
 | SVG Shape Importer | Reads Music Glyph Toolkit SVGs, extracts paths and anchors |
 | Palette Editor | Color palette selection with CB-safe toggle |
 | Staff/Ledger Rule Editor | Staff pattern and ledger template configuration |
@@ -406,7 +428,7 @@ See [CNB-ARCHITECTURE-PLAN-v2.md](docs/CNB-ARCHITECTURE-PLAN-v2.md) for the comp
 The Configurator's native format is a JSON configuration that defines a complete notation system:
 
 - **Shapes** — Notehead geometries with SVG paths, LilyPond paths, and stem anchors
-- **Staff** — Semitone pattern, line styling (thickness as % of semitone height)
+- **Staff** — Semitone pattern, middle and staff spacing
 - **Pitch Axis** (optional) — Maps pitch classes onto staff positions for compact staves
 - **Ledgers** — Templates with proximity and override trigger rules
 - **Notehead Rules** — Cumulative rules assigning shape, hollow, color by pitch/duration/key

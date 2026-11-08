@@ -21,6 +21,82 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Two rebuilds by hand — 2026-11-08 (session 35)
+
+The operator rebuilt Kite 4-369 and 45deg-369 from scratch in the app, from
+the default page, with the checked-in notehead SVGs
+(`cnb/fixtures/kite-down.svg`, `kite-up.svg`, `45deg.svg`). The two
+rebuilt configs were exported headlessly
+(`node cnb/fixtures/export-config.mjs`) and diffed against the exports of
+`cnb/fixtures/kite-4-369-config.json` and `45deg-369-config.json`. The
+shapes, the 3-6-9 staff, the hollows and the colours of every pitch class
+engrave the same. The other differences are the operator's choices: the
+name, label and footnote (left at the default's), Kite with no ledger
+lines (C is the only notehead that floats with 4-semitone heads on 3-6-9,
+so none are needed), 45deg's own sky blue and no key signature, Kite's
+false-hollow engine flag off, and both in shape mode rather than repeat
+mode.
+
+The colour pickers were checked by hand, the check session 21 left owed.
+Typing a full hex value works; dragging in the field lags (below). The
+key-signature bar's picker was not tried.
+
+### Rough edges found
+
+None is fixed in this session: the operator chose to plan them as sessions
+36–39, before the release (now session 41). The one fix made here is the
+Staff and Ledger lines subtitles, which still promised "how they look"
+after session 34 removed the look settings.
+
+| Found | What happens | Planned |
+|---|---|---|
+| Save and Export .ly have no save location | Both are plain browser downloads, named from the config's name, into the downloads folder. The operator renamed the files by hand. | 36 |
+| Repeat mode is hard to find | The operator expected the minim, semibreve and breve to show repeated heads, as the fixtures do. A new config is in "Distinct shapes per duration", and the choice is only under Advanced → Durations and engine, with help written for developers ("Section C emits (repeat . #f)"). | 36 |
+| Dragging in a colour field lags and stores every value | Each value of a drag is applied, so the canvas redraws throughout and the marker lags well behind the cursor. Each value also adds a colour name to `palette.schemeSymbols`: the two rebuilt files carry about 17 unused ones (`#500000`, `#50b402`, `#cc7901`, …). None is exported. | 36 |
+| The unused default shape warns | The built-in Crotchet–Minim shape stays in the config after the designer's own shapes replace it, and validation warns that it has no LilyPond path, though nothing uses it and it is not exported. | 36 |
+| The canvas shows no key signature by default | A signature is drawn only for a key selected on the staff. The operator wants it drawn as the key and mode are chosen, and the default (the scale stack) a click away. | 36 |
+| Palettes are more than a designer needs | Colours picked on noteheads leave the palette named "None", so the export header reads `Color palette: None` above the colours it registers, and the empty colour-blind palette raises a warning. The operator's decision: a designer chooses colours directly, palettes become suggestions, and a colour-blind variant is a second config made with Save As. | 37 |
+| One notehead at a time | The operator gave each notehead its look in turn. The app can already change several at once, but does not say so (below). | 38 |
+| No undo | A wrong change can only be put right by hand. | 39 |
+
+Larger ideas from the same review go to the 1.2.0 program after the
+release (session plan): a key-signature designer that works like the
+notehead designer, designed first with a cross-provider consult; published
+schemas for each component of a config, so a designer can have an AI write
+part of one and import it; and clefs to pick from, the dozenal clef drawn
+in the preview among them.
+
+Two more, found while capturing the README picture
+([`images/configurator.png`](images/configurator.png), Kite 4-369 with D
+selected):
+
+- **Several noteheads can already be changed at once, but nothing says
+  so.** Shift+click on the staff adds a notehead to the selection, and the
+  notehead panel then changes them together; its "Give this look to"
+  buttons (All, Every other, Every 3rd, 4th and 6th, The accidentals, The
+  naturals) copy a look to many. The operator did not find either. Session
+  38 is therefore about making them discoverable, not building them.
+- **The canvas toolbar speaks to a developer** when keys are on with none
+  defined (the 45deg-369 fixture): "Keys are enabled but
+  config.keys.definitions is empty — nothing to select yet." Planned for
+  session 36, with the key and mode picker.
+
+### Full UAT
+
+- playwright-core 1.64.1; Chromium `chromium-1248`, Firefox, Edge
+- Windows 11, Node 25.8.1
+- `node cnb/uat/run-uat.mjs`: **17 of 17 drivers passed**, 446 checks and
+  no failures, and the gallery driver captured 18 of 18 previews.
+
+### Not declared stable
+
+The operator did not declare the UI stable in this session: they chose to
+plan the rough edges above as sessions 36–39 before the release (operator,
+2026-11-08: "I think that we should create additional sessions to cover
+these things"; "split it that way; clefs can wait for 1.2.0"). The
+operator is to declare the UI stable in session 40, "The UI is stable",
+and the release moves to session 41.
+
 ## Two more staves to start from — 2026-11-07 (session 32)
 
 - playwright-core 1.64.1; Chromium `chromium-1248`
