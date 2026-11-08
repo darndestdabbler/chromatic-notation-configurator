@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 016 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 016 transcript</h1>
+<p class="stamp">Rendered 2026-11-06T02:07:07.191Z by dabbler-ai-router 3.29.0 at 9c1e9ac110cde09ba31e889df10c4be08f68dd70.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-05T06:41:55.938-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 16: A second reference notation, 45deg-369</h3>
+<p><strong>Why.</strong> Kite 4-369 reads as radical. The operator designed 45deg-369 as the gentler alternative: the same 3-6-9 staff and 3 semitones per space, 4-semitone ellipses tilted 45°, the same three-colour cycle over a solid/hollow alternation (period 6), and stems attached on the head's vertical centre line at the edge of the hole, 1.65 semitones above the centre for up stems and below it for down stems (toolkit export <code>(0.0 . 1.6491)</code> / <code>(0.0 . -1.6495)</code>, semitone units), so a stem never crosses the hollow. Decided 2026-11-05; the earlier centre anchor <code>(0 . 0)</code> was dropped. The operator authors the shapes and the design by hand (<code>D:\projects\chromatic-notation-musicxml-and-45deg-plan.md</code>, §3) and hands over, uncommitted in <code>cnb/fixtures/</code>: <code>45deg.svg</code> (one toolkit SVG carrying both the <code>notehead</code> and the <code>hollow</code> path, anchors as above, no minim pair so minims use the crotchet anchors; solid or hollow is the rules' choice per pitch class, as with Kite), <code>45deg-369-config.json</code> and <code>45deg-369-from-configurator.ly</code>. The operator's step-by-step guide is <code>D:\Projects\chromatic-notation-45deg-walkthrough.md</code>; a headless reference copy of the SVG is in <code>D:\Projects%deg-reference\</code>. This session makes them a checked-in, test-gated fixture like Kite's. It needs engine session 17 (anchors anywhere inside the head) on the engine's trunk for step 3.</p>
+<ol><li>Register.</li><li>Commit the SVG and the JSON. Replace the one-fixture driver with <code>cnb/fixtures/export-config.mjs &lt;config.json&gt; [out.ly]</code> (the same <code>CNBLilypond.generate()</code> call), and keep <code>export-kite-4-369.mjs</code> as a wrapper that calls it, because the umbrella's pipeline names it. Export <code>45deg-369-export-baseline.ly</code>. In <code>cnb-lilypond-tests.js</code>, mirror the Kite byte-identical baseline test for 45deg-369; in <code>cnb-collection-tests.js</code>, add the config to the collection. In <code>cnb-svg-importer-tests.js</code>, prove that the fixture imports with the anchors the toolkit wrote into it, up <code>(0, 1.649)</code> and down <code>(0, -1.650)</code> in semitone units with the minim pair equal to the crotchet pair, and that the export writes each divided by the staff's 3 semitones per space (<code>0.5497</code> and <code>-0.5498</code>, to the exporter's rounding). Read the expected numbers from the fixture's rects in the test rather than hard-coding them twice.</li><li>Round trip: <code>cnb/fixtures/joy-to-the-world-45deg.ly</code> (the Kite round-trip score with the include changed) engraves through the engine at 1.2.0 or later with exit 0 and no <code>error:</code> line, as a test that runs when <code>lilypond</code> is on <code>PATH</code> and skips with a reason otherwise. README &quot;A worked example, checked in&quot; lists both fixtures and says Kite is the golden one and 45deg-369 the reference alternative. If the preview cannot draw a stem from an anchor inside the head, say so under &quot;Preview-only settings&quot;. Add the fixture to the <code>CHANGELOG.md</code> 1.0.2 entry session 15 opened, and set <code>version.json</code> to <code>1.0.2</code>.</li></ol>
+<h2>Work Plan</h2>
+<p>Make 45deg-369 a checked-in, test-gated reference notation beside Kite 4-369, and plan the follow-on work from the operator's 2026-11-05 Configurator feedback. The operator handed over cnb/fixtures/45deg-369-config.json and 45deg-369-from-configurator.ly made in the app; on the operator's instruction this session corrects the config where it departs from the design (the shape is imported from the committed cnb/fixtures/45deg.svg and named 45deg instead of draft-notehead, the unused crotchet-minim shape is removed, and the meta block gets the 45deg-369 name, suffix, label and footnote instead of the default 4-8 system's), keeping the staff, the operator's empty ledger templates, the #56b3e9 blue, the keys section and the repeat mode as the operator made them. The hand-exported .ly is superseded by an export from the corrected config and is not committed. The one-fixture export driver becomes cnb/fixtures/export-config.mjs &lt;config.json&gt; [out.ly], with export-kite-4-369.mjs kept as a wrapper the umbrella pipeline names; 45deg-369-export-baseline.ly is pinned byte-identically as Kite's is; the importer tests prove the fixture imports with the toolkit's anchors (up (0, 1.649), down (0, -1.650), minim pair equal to crotchet pair) read from the SVG's rects and that the export divides them by 3; the config joins the preview baseline probes; joy-to-the-world-45deg.ly engraves through the engine (1.2.0 or later) as a test that skips with a reason when lilypond or the engine is absent. README, CHANGELOG 1.0.2 and version.json 1.0.2 follow. Finally, sessions 18-21 are added to the session plan after the 1.0.2 release: the notehead-height preview bug, a preview of repeated noteheads and multinote padding, a 1.1.0 release, and a design session for a notehead-first editor with rule inference.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/085b1403cdf3c68ddc27dc83036b5e1ead98913b"><code>085b1403cdf3c68ddc27dc83036b5e1ead98913b</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Correct config</td><td><p>Correct cnb/fixtures/45deg-369-config.json: replace the draft-notehead shape with the shape CNBSvgImporter builds from cnb/fixtures/45deg.svg, named 45deg (rule 'Default' applies shape 45deg; rename it 'Default (45deg, solid)'), remove the unused crotchet-minim shape, and set meta.configName '45deg-369', fileSuffix '-45deg-369', notationLabel '45deg-369', a notationFootnote in Kite's form ('*45deg-369 Notation: notehead height = 4 semitones, ellipses tilted 45°; staff lines at +/- 3, 6 &amp; 9 semitones; stems from the edge of the hole') and a matching description. Leave every other field as the operator made it. Delete the superseded, untracked cnb/fixtures/45deg-369-from-configurator.ly. In cnb/tests/cnb-svg-importer-tests.js add: fixtures/45deg.svg imports to exactly the config's 45deg shape (as the Kite test does); it imports with the anchors read from the SVG's stem-up / stem-down rects (bottom-centre / top-centre, ÷ 100, Y up), up (0, 1.649) and down (0, -1.650) to the importer's rounding, minim pair equal to the crotchet pair; and CNBLilypond.generate(config) registers each divided by the staff's 3 semitones per space (0.5497 and -0.5498, to the exporter's rounding). The expected numbers come from the fixture's rect attributes in the test, not hard-coded twice.</p></td><td><span class="mono">cnb/fixtures/45deg-369-config.json</span><br><span class="mono">cnb/fixtures/45deg-369-from-configurator.ly</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node -e const c=JSON.parse(require('fs').readFileSync('cnb/fixtures/45deg-369-config.json','utf8'));const ok=Object.keys(c.shapes).join()==='ellipse-45deg'&amp;&amp;c.noteheadRules[0].apply.shape==='ellipse-45deg'&amp;&amp;c.meta.fileSuffix==='-45deg-369'&amp;&amp;c.meta.configName==='45deg-369'&amp;&amp;!require('fs').existsSync('cnb/fixtures/45deg-369-from-configurator.ly');process.exit(ok?0:1)</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Export driver and baseline</td><td><p>Replace the one-fixture driver with cnb/fixtures/export-config.mjs &lt;config.json&gt; [out.ly]: the same validate-then-CNBLilypond.generate() logic, the config path taken from the command line, a usage error (exit 2) without one. Reduce export-kite-4-369.mjs to a wrapper that runs it on kite-4-369-config.json with the same optional out file, so its command line and output are unchanged. Export cnb/fixtures/45deg-369-export-baseline.ly with the new driver. In cnb/tests/cnb-lilypond-tests.js mirror the Kite byte-identical baseline test for 45deg-369.</p></td><td><span class="mono">cnb/fixtures/export-config.mjs</span><br><span class="mono">cnb/fixtures/export-kite-4-369.mjs</span><br><span class="mono">cnb/fixtures/45deg-369-export-baseline.ly</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/fixtures/export-config.mjs cnb/fixtures/45deg-369-config.json</code><br><code>node cnb/fixtures/export-kite-4-369.mjs</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Preview probe</td><td><p>In cnb/tests/cnb-collection-tests.js add the 45deg-369 config to previewProbes() beside kite-4-369, and add its hash to cnb/fixtures/preview-baseline.json (captured with capturePreviewBaseline(); every existing probe's entry stays byte-identical).</p></td><td><span class="mono">cnb/tests/cnb-collection-tests.js</span><br><span class="mono">cnb/fixtures/preview-baseline.json</span></td><td><code>node -e const b=JSON.parse(require('fs').readFileSync('cnb/fixtures/preview-baseline.json','utf8'));process.exit(b.probes.some(p=&gt;p.id==='45deg-369')?0:1)</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Engine round trip</td><td><p>Add cnb/fixtures/joy-to-the-world-45deg.ly: the Kite round-trip score (joy-to-the-world-configurator.ly) with its header comment adjusted and its include changed to the checked-in 45deg-369-export-baseline.ly. In cnb/tests/cnb-lilypond-tests.js add a test that engraves it through the engine with findEngine() from engine-probe.js (output to a temp directory): it requires the engine's version.json to read 1.2.0 or later, and passes when lilypond exits 0 with no 'error:' line; it skips with the reason when lilypond or the engine is not found.</p></td><td><span class="mono">cnb/fixtures/joy-to-the-world-45deg.ly</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/fixtures/45deg-369-config.json</span><br><span class="mono">cnb/fixtures/45deg-369-export-baseline.ly</span></td><td><code>node -e const t=require('fs').readFileSync('cnb/fixtures/joy-to-the-world-45deg.ly','utf8');process.exit(t.includes('\\include &quot;45deg-369-export-baseline.ly&quot;')?0:1)</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs and version</td><td><p>README 'A worked example, checked in' lists both fixtures and says Kite 4-369 is the golden one (matched to the engine's golden score) and 45deg-369 the reference alternative, naming its files and the export-config.mjs driver. Check whether the preview draws a stem from an anchor inside the head (the 45deg anchors sit 1.65 semitones from the centre, inside a 4-semitone head); if it cannot, say so under 'Preview-only settings'. Add the 45deg-369 fixture to the CHANGELOG.md 1.0.2 entry, and set version.json to 1.0.2.</p></td><td><span class="mono">README.md</span><br><span class="mono">CHANGELOG.md</span><br><span class="mono">version.json</span></td><td><code>node -e const fs=require('fs');const v=JSON.parse(fs.readFileSync('version.json','utf8')).version;const c=fs.readFileSync('CHANGELOG.md','utf8');const r=fs.readFileSync('README.md','utf8');const e=c.split('## 1.0.1')[0];process.exit(v==='1.0.2'&amp;&amp;e.includes('45deg-369')&amp;&amp;r.includes('45deg-369')?0:1)</code></td><td>yes</td></tr>
+<tr><td>Plan follow on sessions</td><td><p>Append to docs/sessions/session-plan.md, after session 17 (release 1.0.2), the sessions the operator asked for on 2026-11-05, each with a Why and numbered What in the file's style: Session 18, the preview draws an imported notehead at the wrong height (about 3 semitones instead of 4 for 45deg) until an unrelated edit such as a colour change redraws it: reproduce it in a UAT driver, fix it, pin it with a test. Session 19, the preview shows what repeat mode engraves: repeated noteheads per duration (architecture §11 open question 3) with the engine's multinote padding, and the key-signature panel says when keys are enabled but none is defined or selected, so nothing draws. Session 20, release 1.1.0 (minor: a new preview capability). Session 21, design only, for operator approval: a notehead-first editor. The staff editor stays as it is; once the staff exists the preview shows 13 placeholder noteheads (C to C') with ledgers from the default proximity rule, which the user can replace with their own ledger rules; clicking a notehead sets its colour (an earlier colour or a new one), solid or hollow, shape (imported plus defaults), pitch class (relabelling one notehead re-labels all the others by their relative vertical position) and pitch-axis position; an inference algorithm turns the per-notehead choices into notehead rules (periods of 1, 2, 3, 4, 6 or 12 semitones, the accidentals, else explicit pitch classes), so users define noteheads, not rules; each panel gets a preview, partial or full staff as it needs; the document says which existing panels and modules it retires or hides, and implementation sessions are planned after approval. Propose versions with each release.</p></td><td><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node -e const t=require('fs').readFileSync('docs/sessions/session-plan.md','utf8');process.exit(['### Session 18','### Session 19','### Session 20','### Session 21','(release: 1.1.0)'].every(s=&gt;t.includes(s))?0:1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to cnb/fixtures/45deg.svg: it is already committed with the hole-edge anchors.</li><li>No change to the operator's design choices beyond the corrections named in the task: ledger templates, palette colours, keys and repeat mode stay as handed over.</li><li>45deg-369-from-configurator.ly is not committed; the baseline exported from the corrected config replaces it.</li><li>No change to the Kite fixture, its baseline or its expected numbers; export-kite-4-369.mjs keeps its command line and output.</li><li>No preview code change for stems that start inside the head: if the preview cannot draw one, the README says so under Preview-only settings.</li><li>The sessions added to the plan (18-21) are planned only, not started: no fix for the notehead-height bug, no repeat-mode preview and no editor redesign in this session.</li><li>No MusicXML import screenshots or umbrella guide pictures; those belong to the umbrella's walkthrough session.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[11:41:55]</span> <span class="muted">run-started</span> session=016 mode=pull</div>
+<div class="line"><span class="at">[11:41:55]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[01:57:26]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[01:57:26]</span> <span class="muted">plan-accepted</span> steps=[&quot;correct-config&quot;,&quot;export-driver-and-baseline&quot;,&quot;preview-probe&quot;,&quot;engine-round-trip&quot;,&quot;docs-and-version&quot;,&quot;plan-follow-on-sessions&quot;] non_goals=7</div>
+<div class="line"><span class="at">[01:57:27]</span> <span class="muted">mechanic-called</span> stop=tree model=claude-fable-5-1</div>
+<div class="line"><span class="at">[01:57:30]</span> <span class="muted">mechanic-handed-back</span> stop=tree</div>
+<div class="line"><span class="at">[01:57:42]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">plan</span> mode=pull after=tree</div>
+<div class="line"><span class="at">[01:57:42]</span> <span class="muted">plan-accepted</span> steps=[&quot;correct-config&quot;,&quot;export-driver-and-baseline&quot;,&quot;preview-probe&quot;,&quot;engine-round-trip&quot;,&quot;docs-and-version&quot;,&quot;plan-follow-on-sessions&quot;] non_goals=7</div>
+<div class="line"><span class="at">[01:57:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[01:57:43]</span> <span class="good">progress-resumed</span> past=tree from=plan phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[01:57:43]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=correct-config</div>
+<div class="line"><span class="at">[02:00:32]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:00:40]</span> <span class="muted">check-passed</span> step=correct-config argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const c=JSON.parse(require('fs').readFileSync('cnb/fixtures/45deg-369-config.json','utf8'));const ok=Object.keys(c.shapes).join()==='ellipse-45deg'&amp;&amp;c.noteheadRules[0].apply.shape==='ellipse-45deg'&amp;&amp;c.meta.fileSuffix==='-45deg-369'&amp;&amp;c.meta.configName==='45deg-369'&amp;&amp;!require('fs').existsSync('cnb/fixtures/45deg-369-from-configurator.ly');process.exit(ok?0:1)&quot;]</div>
+<div class="line"><span class="at">[02:00:40]</span> <span class="muted">check-passed</span> step=correct-config argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[02:00:41]</span> <span class="muted">report-accepted</span> seq=2 step=correct-config files=[&quot;cnb/fixtures/45deg-369-config.json&quot;,&quot;cnb/fixtures/45deg-369-from-configurator.ly&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=Shape imported from 45deg.svg and named ellipse-45deg (validation rejects '45deg': not a Scheme symbol; check amended on the record); crotchet-minim removed; meta set; superseded export deleted; importer tests pin the shape, the rect-derived anchors and their ÷3 export.</div>
+<div class="line"><span class="at">[02:00:41]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=export-driver-and-baseline</div>
+<div class="line"><span class="at">[02:01:27]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:01:36]</span> <span class="muted">check-passed</span> step=export-driver-and-baseline argv=[&quot;node&quot;,&quot;cnb/fixtures/export-config.mjs&quot;,&quot;cnb/fixtures/45deg-369-config.json&quot;]</div>
+<div class="line"><span class="at">[02:01:36]</span> <span class="muted">check-passed</span> step=export-driver-and-baseline argv=[&quot;node&quot;,&quot;cnb/fixtures/export-kite-4-369.mjs&quot;]</div>
+<div class="line"><span class="at">[02:01:36]</span> <span class="muted">check-passed</span> step=export-driver-and-baseline argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[02:01:36]</span> <span class="muted">report-accepted</span> seq=3 step=export-driver-and-baseline files=[&quot;cnb/fixtures/export-config.mjs&quot;,&quot;cnb/fixtures/export-kite-4-369.mjs&quot;,&quot;cnb/fixtures/45deg-369-export-baseline.ly&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=export-config.mjs &lt;config.json&gt; [out.ly] (exit 2 usage); Kite wrapper output verified identical to before (stdout and file, Date line aside); 45deg-369 baseline exported and pinned byte-identically.</div>
+<div class="line"><span class="at">[02:01:36]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=preview-probe</div>
+<div class="line"><span class="at">[02:02:13]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:02:21]</span> <span class="muted">check-passed</span> step=preview-probe argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const b=JSON.parse(require('fs').readFileSync('cnb/fixtures/preview-baseline.json','utf8'));process.exit(b.probes.some(p=&gt;p.id==='45deg-369')?0:1)&quot;]</div>
+<div class="line"><span class="at">[02:02:21]</span> <span class="muted">check-passed</span> step=preview-probe argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[02:02:22]</span> <span class="muted">report-accepted</span> seq=4 step=preview-probe files=[&quot;cnb/tests/cnb-collection-tests.js&quot;,&quot;cnb/fixtures/preview-baseline.json&quot;] notes=45deg-369 added to previewProbes() after kite-4-369; its hash captured with capturePreviewBaseline() and inserted, every existing entry unchanged (verified against the capture).</div>
+<div class="line"><span class="at">[02:02:22]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=engine-round-trip</div>
+<div class="line"><span class="at">[02:04:06]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:04:16]</span> <span class="muted">check-passed</span> step=engine-round-trip argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('cnb/fixtures/joy-to-the-world-45deg.ly','utf8');process.exit(t.includes('\\\\include \&quot;45deg-369-export-baseline.ly\&quot;')?0:1)&quot;]</div>
+<div class="line"><span class="at">[02:04:16]</span> <span class="muted">check-passed</span> step=engine-round-trip argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[02:04:17]</span> <span class="muted">report-accepted</span> seq=5 step=engine-round-trip files=[&quot;cnb/fixtures/joy-to-the-world-45deg.ly&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/fixtures/45deg-369-config.json&quot;,&quot;cnb/fixtures/45deg-369-export-baseline.ly&quot;] notes=joy-to-the-world-45deg.ly includes the checked-in baseline; the engine test (version.json &gt;= 1.2.0, exit 0, no error:) ran against engine 1.2.0 and passed. A PNG render showed the footnote overflowing the page, so it was shortened to Kite's length and the baseline re-exported (files amended on the record).</div>
+<div class="line"><span class="at">[02:04:17]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs-and-version</div>
+<div class="line"><span class="at">[02:04:50]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:04:51]</span> <span class="muted">check-passed</span> step=docs-and-version argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const v=JSON.parse(fs.readFileSync('version.json','utf8')).version;const c=fs.readFileSync('CHANGELOG.md','utf8');const r=fs.readFileSync('README.md','utf8');const e=c.split('## 1.0.1')[0];process.exit(v==='1.0.2'&amp;&amp;e.includes('45deg-369')&amp;&amp;r.includes('45deg-369')?0:1)&quot;]</div>
+<div class="line"><span class="at">[02:04:51]</span> <span class="muted">report-accepted</span> seq=6 step=docs-and-version files=[&quot;README.md&quot;,&quot;CHANGELOG.md&quot;,&quot;version.json&quot;] notes=README worked example lists Kite (golden) and 45deg-369 (reference alternative) plus export-config.mjs; no Preview-only note needed: CNBStem.geometry draws from the anchor wherever it lies in the head; CHANGELOG 1.0.2 gains the fixture; version.json 1.0.2.</div>
+<div class="line"><span class="at">[02:04:51]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=plan-follow-on-sessions</div>
+<div class="line"><span class="at">[02:05:22]</span> <span class="muted">run-resumed</span> session=016 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[02:05:23]</span> <span class="muted">check-passed</span> step=plan-follow-on-sessions argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/sessions/session-plan.md','utf8');process.exit(['### Session 18','### Session 19','### Session 20','### Session 21','(release: 1.1.0)'].every(s=&gt;t.includes(s))?0:1)&quot;]</div>
+<div class="line"><span class="at">[02:05:23]</span> <span class="muted">report-accepted</span> seq=7 step=plan-follow-on-sessions files=[&quot;docs/sessions/session-plan.md&quot;] notes=Sessions 18 (notehead height bug), 19 (repeat-mode preview, multinote padding, empty-keys notice), 20 (release 1.1.0) and 21 (notehead-first editor design, for approval) appended after session 17.</div>
+<div class="line"><span class="at">[02:05:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[02:05:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[02:05:24]</span> <span class="muted">job-started</span> name=verification pid=45940 log=.dabbler/runs/s16/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[02:06:07]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s16/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[02:06:07]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[02:06:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[02:06:07]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[02:06:07]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=11692 log=.dabbler/runs/s16/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[02:06:17]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s16/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[02:06:17]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[02:06:17]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=3284 log=.dabbler/runs/s16/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[02:06:54]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s16/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[02:06:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[02:06:58]</span> <span class="muted">landed</span> commit=085b1403cdf3c68ddc27dc83036b5e1ead98913b</div>
+<div class="line"><span class="at">[02:06:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[02:06:58]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[02:06:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[02:06:59]</span> <span class="muted">job-started</span> name=close pid=45124 log=.dabbler/runs/s16/driver/jobs/close.log</div>
+<div class="line"><span class="at">[02:07:07]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s16/driver/jobs/close.log</div>
+<div class="line"><span class="at">[02:07:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The work plan explicitly says the imported shape should be “named `45deg` instead of `draft-notehead`,” but the config key is `ellipse-45deg` (and exports `cnb:ellipse-45deg-*`). All rules and generated output consistently use that key, so no functional failure is shown, but it does not exactly implement the requested fixture name.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>36s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

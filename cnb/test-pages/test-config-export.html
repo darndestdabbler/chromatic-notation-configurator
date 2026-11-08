@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Config Export Test — Module 18</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 640px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 560px;
+      max-height: 480px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    /* ── Config export panel host styling (module ships structure only) ── */
+    .cnb-cex-export-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+      font-size: 12px; color: #555;
+    }
+    .cnb-cex-export {
+      font: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer;
+      border: 1px solid #2b6cb0; border-radius: 6px; background: #eaf2fb; color: #1a4e85;
+    }
+    .cnb-cex-filename { font-family: monospace; font-size: 12px; color: #777; }
+    .cnb-cex-filename-error { color: #c62828; font-family: inherit; }
+    .cnb-cex-status { font-size: 12px; color: #2e7d32; margin: 8px 0 2px; min-height: 15px; }
+    .cnb-cex-status-blocked { color: #b45309; }
+    .cnb-cex-error  { font-size: 12px; color: #c62828; margin: 2px 0; min-height: 15px; }
+    .cnb-cex-validation { margin-top: 8px; font-size: 12px; line-height: 1.6; }
+    .cnb-cex-valid    { color: #2e7d32; }
+    .cnb-cex-verror   { color: #c62828; }
+    .cnb-cex-vwarning { color: #b45309; }
+
+    /* ── Staff rule editor host styling (same as its own test page) ── */
+    .cnb-sre-section { margin-bottom: 16px; }
+    .cnb-sre-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-sre-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+    .cnb-sre-pattern-option {
+      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
+      margin-bottom: 4px; cursor: pointer; font-size: 13px; color: #444;
+    }
+    .cnb-sre-pattern-option:hover { border-color: #bbb; }
+    .cnb-sre-pattern-option.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-sre-custom-pcs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .cnb-sre-pc-toggle, .cnb-sre-trigger-pill {
+      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
+      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
+      color: #888; cursor: pointer;
+    }
+    .cnb-sre-pc-toggle.on, .cnb-sre-trigger-pill.on {
+      background: #2b6cb0; border-color: #2b6cb0; color: white;
+    }
+    .cnb-sre-derived {
+      font-size: 12px; color: #555; background: #f8f8f8;
+      border: 1px solid #eee; border-radius: 6px;
+      padding: 8px 10px; margin-bottom: 16px; line-height: 1.6;
+    }
+    .cnb-sre-derived-error { color: #c62828; }
+    .cnb-sre-template-row {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 6px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
+    }
+    .cnb-sre-template-pos, .cnb-sre-template-mode {
+      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-sre-template-triggers { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+    .cnb-sre-template-triggers.inactive { opacity: 0.35; }
+    .cnb-sre-template-remove {
+      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-sre-template-add {
+      font: inherit; font-size: 12px; padding: 5px 10px;
+      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-sre-proximity {
+      display: flex; align-items: center; gap: 8px; font-size: 12px;
+      color: #444; margin: 12px 0; cursor: pointer;
+    }
+    .cnb-sre-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-sre-valid { color: #2e7d32; }
+    .cnb-sre-error { color: #c62828; }
+    .cnb-sre-warning { color: #b45309; }
+
+    /* ── Palette editor host styling (same as its own test page) ── */
+    .cnb-pal-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .cnb-pal-tab {
+      font: inherit; font-size: 13px; padding: 6px 14px;
+      border: 1px solid #ccc; border-radius: 6px;
+      background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-tab.active { background: #eff6fc; border-color: #2b6cb0; color: #2b6cb0; font-weight: 600; }
+    .cnb-pal-size-group { margin-bottom: 8px; }
+    .cnb-pal-size-label { font-size: 11px; color: #999; margin: 6px 0 3px; text-transform: uppercase; }
+    .cnb-pal-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
+      margin-bottom: 4px; cursor: pointer; font-size: 13px;
+    }
+    .cnb-pal-option:hover { border-color: #bbb; }
+    .cnb-pal-option.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-pal-option-swatches { display: flex; gap: 3px; }
+    .cnb-pal-swatch {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+    .cnb-pal-option-name { color: #444; }
+    .cnb-pal-custom { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px; margin: 12px 0; }
+    .cnb-pal-custom.selected { border-color: #2b6cb0; background: #eff6fc; }
+    .cnb-pal-custom-select {
+      font: inherit; font-size: 13px; padding: 4px 10px;
+      border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-custom-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .cnb-pal-custom-cell { display: flex; align-items: center; gap: 2px; }
+    .cnb-pal-custom-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+    .cnb-pal-custom-remove, .cnb-pal-custom-add {
+      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-pal-custom-names { font-size: 11px; color: #888; margin-top: 6px; }
+    .cnb-pal-warning { font-size: 11px; color: #b45309; margin: 6px 0; }
+    .cnb-pal-cb-match { margin: 12px 0; }
+    .cnb-pal-cb-match-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+    .cnb-pal-cb-match-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 3px; }
+    .cnb-pal-cb-match-arrow { color: #aaa; }
+    .cnb-pal-cb-match-de { color: #999; font-size: 11px; }
+    .cnb-pal-cb-match-empty { font-size: 11px; color: #aaa; }
+    .cnb-pal-cb-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0; cursor: pointer; }
+    .cnb-pal-preview { margin: 12px 0; }
+    .cnb-pal-preview-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+    .cnb-pal-preview-strip { display: flex; gap: 4px; }
+    .cnb-pal-preview-cell { text-align: center; }
+    .cnb-pal-preview-label { font-size: 11px; color: #666; margin-bottom: 2px; }
+    .cnb-pal-preview-swatch { width: 24px; height: 24px; }
+    .cnb-pal-attribution { font-size: 10px; color: #aaa; margin-top: 14px; max-width: 480px; }
+
+    /* ── Common properties editor host styling (same as its own test page) ── */
+    .cnb-cpe-section { margin-bottom: 16px; }
+    .cnb-cpe-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-cpe-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+    .cnb-cpe-def-row {
+      font-size: 12px; color: #555; padding: 5px 8px; margin-bottom: 4px;
+      border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
+    }
+    /* The page's own mode toggle: the app chooses the mode on the canvas
+       (session 36), and the editor draws no control for it. */
+    #mode-toggle button {
+      font-size: 13px; color: #444; padding: 7px 10px; margin: 0 5px 10px 0;
+      border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    #mode-toggle button.selected {
+      border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
+    }
+    .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
+    .cnb-cpe-engine-label { width: 150px; flex: none; }
+    .cnb-cpe-engine-row input[type="text"], .cnb-cpe-engine-row input[type="number"] {
+      font: inherit; font-size: 12px; padding: 3px 6px; width: 80px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-cpe-badge { font-size: 10px; color: #999; font-style: italic; }
+    .cnb-cpe-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-cpe-valid { color: #2e7d32; }
+    .cnb-cpe-error { color: #c62828; }
+    .cnb-cpe-warning { color: #b45309; }
+  </style>
+</head>
+<body>
+  <h1>CNB Config Export (LilyPond) — Module 18 Visual Test</h1>
+  <p>
+    The UI-shell wiring this page hosts is the session-set 006 integration
+    pattern: one shared <code>config</code> object owned by the page, edited
+    through the Palette Editor (Module 12, set 004), the Staff/Ledger Rule
+    Editor (Module 13) and the Common Properties Editor (Module 15, both
+    set 005), and exported through Module 18. The export button validates first (LY spec §8) — blocking
+    errors are listed with the reason export is blocked, warnings never
+    block — then downloads <code>CNBLilypond.generate(config)</code>
+    verbatim as a <code>.ly</code> file named per
+    <code>meta.fileSuffix</code>/<code>meta.configName</code>.
+  </p>
+
+  <div class="card">
+    <h2>Export (Module 18)</h2>
+    <div id="config-export-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Palette editor (Module 12, edits the shared config)</h2>
+    <div id="palette-editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Staff/ledger rule editor (Module 13, edits the shared config)</h2>
+    <div id="staff-editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Common properties editor (Module 15, edits the shared config)</h2>
+    <div id="mode-toggle">
+      <button type="button" data-mode="shape">shape</button>
+      <button type="button" data-mode="repeat">repeat</button>
+    </div>
+    <div id="props-editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Shared config state (full config, live)</h2>
+    <pre id="state-json"></pre>
+  </div>
+
+  <script type="module">
+    import { CNBConfig } from "../src/cnb-config.js";
+    import { CNBPaletteEditor } from "../ui/palette-editor.js";
+    import { CNBStaffRuleEditor } from "../ui/staff-rule-editor.js";
+    import { CNBCommonPropsEditor } from "../ui/common-props-editor.js";
+    import { CNBConfigExport } from "../ui/config-export.js";
+
+    // The page (UI shell) owns the single shared config state object;
+    // the modules stay pure and report changes through callbacks.
+    const appConfig = CNBConfig.createDefault();
+
+    const stateJson = document.getElementById("state-json");
+    // The full config is shown (not slices) so an external harness can run
+    // a direct CNBLilypond.generate() on the exact same state and diff it
+    // against the downloaded file (spec step 3's parity check).
+    function refreshPanel() {
+      stateJson.textContent = JSON.stringify(appConfig, null, 2);
+      for (const b of document.querySelectorAll("#mode-toggle button")) {
+        b.classList.toggle("selected", b.dataset.mode === appConfig.durations.representationMode);
+      }
+    }
+
+    const exportApi = CNBConfigExport.render(
+      document.getElementById("config-export-host"),
+      { getConfig: () => appConfig }
+    );
+
+    CNBPaletteEditor.render(document.getElementById("palette-editor-host"), {
+      palette: appConfig.palette,
+      onChange: (palette) => {
+        appConfig.palette = palette;
+        refreshPanel();
+        exportApi.redraw();
+      },
+    });
+
+    CNBStaffRuleEditor.render(document.getElementById("staff-editor-host"), {
+      config: appConfig,
+      onChange: (slices) => {
+        appConfig.staff = slices.staff;
+        appConfig.ledgers = slices.ledgers;
+        refreshPanel();
+        // Keep the export panel's filename preview/validation in step with
+        // the shared state (the panel reads getConfig() on redraw).
+        exportApi.redraw();
+      },
+    });
+
+    const propsApi = CNBCommonPropsEditor.render(document.getElementById("props-editor-host"), {
+      config: appConfig,
+      onChange: (slices) => {
+        appConfig.durations = slices.durations;
+        appConfig.engine = slices.engine;
+        refreshPanel();
+        exportApi.redraw();
+      },
+    });
+
+    for (const b of document.querySelectorAll("#mode-toggle button")) {
+      b.onclick = () => propsApi.setState({ representationMode: b.dataset.mode });
+    }
+
+    refreshPanel();
+  </script>
+</body>
+</html>
