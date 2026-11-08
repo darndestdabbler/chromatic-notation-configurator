@@ -109,13 +109,13 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
 const SIGNATURE_DURATION = "crotchet";
 
 /** Concrete notehead resolution — same concretion rule as
- *  CNBCard.resolveNotehead (explicit rule color wins, else palette color,
- *  else black), pinned against it by a parity unit test. */
+ *  CNBCard.resolveNotehead (the rules' colour, else black), pinned against
+ *  it by a parity unit test. */
 function resolveMark(config, pc, keyName) {
   const resolved = CNBConfig.resolveNotehead(config, pc, SIGNATURE_DURATION, keyName);
   return {
     ...resolved,
-    color: resolved.color ?? CNBConfig.resolveColor(config, pc) ?? "#000000",
+    color: resolved.color ?? "#000000",
   };
 }
 

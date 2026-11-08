@@ -25,10 +25,11 @@
  *     matching resolveNotehead's own tie behavior), so arbitrary incoming
  *     priorities (e.g. 5/10) round-trip to the same *resolution semantics*
  *     even though the numbers are renumbered.
- *   - Legacy color rules picked a hex from the active palette. Module A
- *     encodes "use the palette" as `color: null` and an explicit hex as an
- *     override (§4.5). The editor exposes both: color mode "palette"
- *     (emits null) or "custom" (emits the hex from the color input).
+ *   - Legacy color rules picked a hex from the active palette. A config
+ *     has no palette since session 37: a notehead's colour lives on its
+ *     rules, and `color: null` is none, drawn black. The editor exposes
+ *     both: color mode "none" (emits null) or "custom" (emits the hex from
+ *     the color input).
  *   - Legacy blocked deleting the last rule with an alert(). Here removal
  *     is always allowed; an empty rule list simply fails Module A
  *     validation ("PC n is not covered by any notehead rule") which the
@@ -191,7 +192,7 @@ export const CNBNoteheadRuleEditor = {
       if (apply.color !== undefined) {
         if (apply.color !== null && !isValidHex(apply.color)) {
           throw new Error(
-            `Rule ${i + 1} has invalid apply.color ${JSON.stringify(apply.color)} — must be null (palette) or #RRGGBB`);
+            `Rule ${i + 1} has invalid apply.color ${JSON.stringify(apply.color)} — must be null (none) or #RRGGBB`);
         }
         out.apply.color = apply.color;
       }
@@ -279,9 +280,8 @@ export const CNBNoteheadRuleEditor = {
 
   /**
    * Resolve all 12 pitch classes through Module A for one duration/key and
-   * attach the effective display color (explicit rule hex, else the
-   * palette color for the PC, else black — the same precedence the plan
-   * gives the preview renderer and §4.5 gives the exporter's default).
+   * attach the effective display color (the rule hex, else black — what
+   * the preview renderer draws and the exporter registers).
    *
    * @param {object} config        full CNB config (rules already applied)
    * @param {string} duration      e.g. "crotchet"
@@ -294,9 +294,7 @@ export const CNBNoteheadRuleEditor = {
     const out = [];
     for (let pc = 0; pc < 12; pc++) {
       const r = CNBConfig.resolveNotehead(config, pc, duration, key);
-      const effectiveColor = r.color !== null && r.color !== undefined
-        ? r.color
-        : (CNBConfig.resolveColor(config, pc) || "#000000");
+      const effectiveColor = r.color ?? "#000000";
       out.push({ pc, label: PC_LABELS[pc], ...r, effectiveColor });
     }
     return out;
@@ -590,21 +588,21 @@ export const CNBNoteheadRuleEditor = {
       apply.appendChild(applyRow("cnb-nre-apply-color", "Color",
         rule.apply.color !== undefined,
         (on) => {
-          if (on) rule.apply.color = null;      // palette mode by default
+          if (on) rule.apply.color = null;      // none (black) by default
           else delete rule.apply.color;
         },
         () => {
           const wrap = el("span", "cnb-nre-color-control");
           const mode = el("select", "cnb-nre-color-mode");
-          for (const [value, text] of [["palette", "From palette"], ["custom", "Custom hex"]]) {
+          for (const [value, text] of [["none", "None (black)"], ["custom", "Custom hex"]]) {
             const o = el("option", null, text);
             o.value = value;
             if ((value === "custom") === (rule.apply.color !== null)) o.selected = true;
             mode.appendChild(o);
           }
-          mode.value = rule.apply.color === null ? "palette" : "custom";
+          mode.value = rule.apply.color === null ? "none" : "custom";
           mode.onchange = (e) => {
-            rule.apply.color = valueFrom(e, mode) === "palette" ? null : "#000000";
+            rule.apply.color = valueFrom(e, mode) === "none" ? null : "#000000";
             changed();
           };
           wrap.appendChild(mode);
@@ -859,7 +857,7 @@ export const CNBNoteheadRuleEditor = {
         const swatch = el("div", "cnb-nre-resolved-swatch");
         swatch.setAttribute("data-color", r.effectiveColor);
         swatch.title = r.color === null
-          ? `palette → ${r.effectiveColor}`
+          ? "none (black)"
           : `rule color ${r.effectiveColor}`;
         if (swatch.style) swatch.style.background = r.effectiveColor;
         cell.appendChild(swatch);

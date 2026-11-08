@@ -45,12 +45,12 @@
 </p>
 <div class="card" id="full-row"></div>
 
-<h1>Palette colors + duration rows</h1>
+<h1>Rule colors + duration rows</h1>
 <p>
-  A 12-color palette with two duration rows (crotchet, minim) — one captioned
+  Twelve rule colors (one rule per pitch class) with two duration rows (crotchet, minim) — one captioned
   row per duration, sharing the column layout.
 </p>
-<div class="card" id="palette-rows"></div>
+<div class="card" id="color-rows"></div>
 
 <h1>3-6-9 staff pattern</h1>
 <p>
@@ -76,14 +76,17 @@
     CNBConfig.createDefault()
   );
 
-  // ── 2. Palette colors, two duration rows ──────────────────────────────────
+  // ── 2. Rule colors, two duration rows ─────────────────────────────────────
   const colored = CNBConfig.createDefault();
-  colored.palette.colors = [
+  [
     "#e6194b", "#f58231", "#ffb300", "#bfa000", "#3cb44b", "#469990",
     "#42d4f4", "#4363d8", "#911eb4", "#f032e6", "#a05195", "#808000",
-  ].map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+  ].forEach((hex, pc) => colored.noteheadRules.push({
+    name: `PC${pc}`, priority: 2 + pc,
+    match: { pitchClasses: [pc], durations: "all", keys: "all" }, apply: { color: hex },
+  }));
   CNBCollection.render(
-    document.getElementById("palette-rows"),
+    document.getElementById("color-rows"),
     colored,
     { durations: ["crotchet", "minim"] }
   );

@@ -42,9 +42,9 @@
  * uses its own notehead shape). The engine settings feed Section B's
  * emit-if-changed block (LY spec §5.2): values equal to the engine defaults
  * are omitted from the export; `lilypondVersion` is always emitted as the
- * `\version` header; `useAccessibleColors` is a runtime flag that is never
- * emitted — the generated file's Section A conditional reads it when the
- * user sets it before `\include`.
+ * `\version` header. (`useAccessibleColors` is retired since session 37: the
+ * export has no colour-blind branch, so a config that carries it loads and
+ * the editor drops it.)
  *
  * Validation policy (same split as verified Modules 13/14): the render() UI
  * only commits values that pass the field's own rules (unparsable or
@@ -62,8 +62,7 @@
  *     definitions:        [...],                    // read-only passthrough
  *     representationMode: "shape" | "repeat",       // passthrough (session 36)
  *     engine:             { lilypondVersion, falseHollow, multinotePadding,
- *                           defaultMagnify, indent, collisionThreshold,
- *                           useAccessibleColors }
+ *                           defaultMagnify, indent, collisionThreshold }
  *   }
  *
  * Rendering contract (same as Modules 12–14): render() builds plain DOM via
@@ -99,7 +98,6 @@ const ENGINE_DEFAULTS = {
   defaultMagnify: "7/4",
   indent: 0,
   collisionThreshold: 2,
-  useAccessibleColors: false,
 };
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
@@ -166,7 +164,6 @@ export const CNBCommonPropsEditor = {
       defaultMagnify: e.defaultMagnify,
       indent: e.indent,
       collisionThreshold: e.collisionThreshold,
-      useAccessibleColors: !!e.useAccessibleColors,
     };
   },
 
@@ -368,12 +365,6 @@ export const CNBCommonPropsEditor = {
           state.engine.collisionThreshold = v; changed();
         }),
         emitBadge("collisionThreshold")));
-
-      wrap.appendChild(engineRow("Use accessible colors", "cnb-cpe-row-accessible",
-        boolInput("cnb-cpe-accessible", !!state.engine.useAccessibleColors, (v) => {
-          state.engine.useAccessibleColors = v; changed();
-        }),
-        "runtime flag — not exported; set before \\include"));
 
       return wrap;
     }

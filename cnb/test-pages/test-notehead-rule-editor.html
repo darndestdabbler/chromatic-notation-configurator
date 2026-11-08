@@ -126,9 +126,9 @@
     (<code>CNBConfig.resolveNotehead</code>). The resolved strip inside the
     editor, the notehead preview row below (drawn through Module 6), and the
     live <code>config.noteheadRules</code> JSON all update on every change.
-    The host config carries a second shape ("Diamond"), a small palette, and
-    two key definitions (C, G) so shape, palette-color and key-match rules
-    all have something to select.
+    The host config carries a second shape ("Diamond") and two key
+    definitions (C, G) so shape and key-match rules have something to
+    select; a rule's colour is none (black) or a hex of its own.
   </p>
 
   <div class="card">
@@ -170,19 +170,6 @@
       { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
       { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] },
     ];
-
-    // A small palette so "From palette" color rules are visible.
-    config.palette = {
-      name: "Demo",
-      colors: Array.from({ length: 12 }, (_, pc) => ({
-        pc,
-        hex: ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"][pc % 4],
-        name: ["Shamrock", "Orange", "Lilac", "Pink"][pc % 4],
-      })),
-      cbSafeColors: [],
-      useCBSafe: false,
-      schemeSymbols: {},
-    };
 
     function refresh(slices) {
       config.noteheadRules = slices.noteheadRules;

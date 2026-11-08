@@ -77,8 +77,42 @@
   },
   "noteheadRules": [
     {
-      "name": "Default (ellipse-45deg, solid)",
+      "name": "Colour Puce",
       "priority": 0,
+      "match": {
+        "pitchClasses": [
+          1,
+          4,
+          7,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "color": "#cc79a7"
+      }
+    },
+    {
+      "name": "Colour Sky Blue",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "color": "#56b3e9"
+      }
+    },
+    {
+      "name": "Default (ellipse-45deg, solid)",
+      "priority": 2,
       "match": {
         "pitchClasses": "all",
         "durations": "all",
@@ -87,13 +121,12 @@
       "apply": {
         "shape": "ellipse-45deg",
         "hollow": false,
-        "color": null,
         "offKeyMark": false
       }
     },
     {
       "name": "Every other pitch is hollow",
-      "priority": 1,
+      "priority": 3,
       "match": {
         "pitchClasses": [
           1,
@@ -111,139 +144,6 @@
       }
     }
   ],
-  "palette": {
-    "name": "Custom · 3 colors",
-    "colors": [
-      {
-        "pc": 0,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 1,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 2,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 3,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 4,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 5,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 6,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 7,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 8,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 9,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 10,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 11,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      }
-    ],
-    "cbSafeColors": [
-      {
-        "pc": 0,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 1,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 2,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 3,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 4,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 5,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 6,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 7,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 8,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      },
-      {
-        "pc": 9,
-        "hex": "#000000",
-        "name": "Black"
-      },
-      {
-        "pc": 10,
-        "hex": "#cc79a7",
-        "name": "Puce"
-      },
-      {
-        "pc": 11,
-        "hex": "#56b3e9",
-        "name": "Sky Blue"
-      }
-    ],
-    "useCBSafe": true,
-    "schemeSymbols": {
-      "#000000": "black-000000",
-      "#cc79a7": "puce-cc79a7",
-      "#56b3e9": "sky-blue-56b3e9"
-    }
-  },
   "display": {
     "pxPerSemi": 16,
     "stemThicknessPct": 26,
@@ -350,8 +250,7 @@
     "defaultMagnify": "7/4",
     "indent": 0,
     "collisionThreshold": 2,
-    "stemThickness": null,
-    "useAccessibleColors": false
+    "stemThickness": null
   },
   "meta": {
     "configName": "45deg-369",

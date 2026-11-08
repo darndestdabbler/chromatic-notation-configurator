@@ -48,7 +48,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 34 | The preview draws what the engine engraves | no | 2026-11-07 |
 | 35 | The UI is stable | no | 2026-11-07 |
 | 36 | Rough edges from the rebuilds | no | 2026-11-08 |
-| 37 | Colours chosen directly | — | not declared |
+| 37 | Colours chosen directly | no | 2026-11-08 |
 | 38 | Selecting several noteheads, found at once | — | not declared |
 | 39 | Undo and redo | — | not declared |
 | 40 | The UI is stable | — | not declared |
@@ -359,3 +359,15 @@ Smooth the rough edges the operator found rebuilding Kite 4-369 and 45deg-369 in
 - 2026-11-08 — step 'colour-fields-apply-once': its files: Three more drivers set a colour with an input event alone and now also fire change (imported-notehead, kite-pipeline) or had a stale comment (notehead-rule-editor); golden-path gains the check that Save drops unused colour names. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-08 — step 'unused-shape-quiet': its files: Running the drivers for this step's warnings found two test pages and their drivers that still clicked the representation-mode control step repeat-mode-on-canvas removed; they gain the page-owned mode toggle test-common-props-editor.html already has. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-08 — step 'signature-on-canvas': its files: The Key signature editor's status note and empty-keys note said a signature needs a key chosen in the old Key menu or a defined key; with the picker neither is true, so both are reworded and its test updated. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 37 — Colours chosen directly
+
+**Releasable: no.**
+
+Session 37 moves colour from the palette onto the noteheads. Item 1, registration, was done when the session started. A notehead's colour is a notehead rule's apply.color. The look-table inference writes colour as rules, the way it writes shape, fill, size and side step, and null now means none (black). The config loses its palette: createDefault has none, CNBConfig.resolveColor and the palette validation go, and the preview draws the resolved colour or black. A config that still carries a palette is converted when it loads (new CNBConfig.paletteToRules, called by CNBConfigIO.mergeLoaded), so it previews and exports as before. Its primary colours become colour rules below every existing rule, so explicit rule colours still win. Explicit color:null fields are dropped, and the palette and its colour-blind set go. The colour-blind alternative goes everywhere: the notehead panel's twin field, palette.useCBSafe, engine.useAccessibleColors and its editor row, and the export's cnb:use-accessible-colors branch. A colour-blind variant is a config saved under another name with session 36's save dialog. The Advanced › Colour palette editor is retired. Its curated sets, colour-blind-safe ones among them, become suggestions in a help disclosure in the notehead panel's Colour group, which a designer can apply. The colour naming the exporter needs moves from the palette editor into cnb/src/cnb-color.js. The exporter then registers the colours the resolved noteheads use, unconditionally, named from their hex (nearestColorName → toSchemeSymbol), with no palette.schemeSymbols. The fixtures are converted, the five export baselines regenerated, the test pages and UAT drivers follow, and LY spec 1.3.10, the architecture plan, the README and CLAUDE.md say what changed.
+
+**Amended after acceptance:**
+
+- 2026-11-08 — step 'colour-on-noteheads': its files: createDefault losing its palette and validation no longer checking palette.schemeSymbols break two exporter tests now: the comment-escape test writes the default palette's name, and the hostile payload for palette.schemeSymbols expects validation to reject it. Both are removed here so the step's suite stays green; the rest of the exporter's palette handling stays in export-colours. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-08 — step 'uat-drivers': its files: The whole UAT suite, run after the planned drivers were updated, failed in two more: uat-common-props-editor counts seven engine rows (the retired accessible-colours row made six), and uat-imported-notehead picks the Kite fixture's rule 0 as its Default, which the converted fixture's colour rules now precede. Both are one-line consequences of export-colours. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-08 — step 'uat-drivers': its checks: Syntax checks for the two drivers added to the step's files, as for the others. (claude-code (anthropic, claude-opus-5-5))

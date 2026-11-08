@@ -3,8 +3,8 @@
  * (session 27, design docs/planning/notehead-first-editor-design.md §2, §5.4)
  *
  * Covers the pure helpers (giveTargets, applyLook, sharesSpot,
- * keptRulesFor, withTwin) and the panel driven against a stub DOM: each
- * control writes its rules and palette through the inference, the colour
+ * keptRulesFor) and the panel driven against a stub DOM: each control
+ * writes its rules through the inference (colour too, session 37), the colour
  * input keeps its element on `input` and redraws on `change` (session 21's
  * wiring), Shift-selection edits every selected notehead, Give this look
  * to, the side step's visibility, the kept-rule marker, and (session 28)
@@ -37,9 +37,13 @@ function deepEq(a, b, msg) {
   if (ja !== jb) throw new Error(`${msg || "deepEq"}: expected ${jb}, got ${ja}`);
 }
 
+/** A fixture as the app loads it: a palette it still carries is on its noteheads. */
 function fixture(name) {
-  return JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", name), "utf8"));
+  return CNBConfigIO.loadFromText(readFileSync(path.join(CNB_DIR, "fixtures", name), "utf8")).config;
 }
+
+/** The colour a pitch class is drawn in: its rules' colour, or null (black). */
+const colourOf = (config, pc) => CNBConfig.resolveNotehead(config, pc, "crotchet", null).color;
 
 function twinline() {
   const text = readFileSync(path.join(CNB_DIR, "assets", "examples", "gallery", "twinline-compact.json"), "utf8");
@@ -216,14 +220,6 @@ export const tests = [
       deepEq(P.keptRulesFor(config, 1).map(r => r.name), ["All minims"], "C♯");
     }},
 
-  { name: "withTwin: every pitch class of the colour gets the twin", fn: () => {
-      const kite = fixture("kite-4-369-config.json");
-      const out = P.withTwin(kite, "#CC79A7", "#0072b2");
-      deepEq(out.palette.cbSafeColors.filter(c => c.hex === "#0072b2").map(c => c.pc), [1, 4, 7, 10], "rose's pitch classes");
-      eq(out.palette.cbSafeColors.find(c => c.pc === 0).hex, "#50b4e9", "others kept");
-      eq(kite.palette.cbSafeColors.find(c => c.pc === 1).hex, "#cc79a7", "input unchanged");
-    }},
-
   // ── The panel ─────────────────────────────────────────────────────────
 
   { name: "render: requires getConfig and a selection", fn: () => {
@@ -235,9 +231,9 @@ export const tests = [
       });
     }},
 
-  { name: "summary: the look in words, with the palette's colour name or black", fn: () => {
+  { name: "summary: the look in words, with the colour's nearest name or black", fn: () => {
       const kite = fixture("kite-4-369-config.json");
-      eq(P.summary(kite, I.lookTable(kite)[1]), "kite up · hollow · rose", "Kite C♯");
+      eq(P.summary(kite, I.lookTable(kite)[1]), "kite up · hollow · puce", "Kite C♯");
       const def = CNBConfig.createDefault();
       eq(P.summary(def, I.lookTable(def)[0]), "crotchet minim · solid · black", "default C");
     }},
@@ -281,55 +277,55 @@ export const tests = [
         eq(h.changes, 0, "no onChange while dragging");
         assert(fills().every(f => f === "#ff0000"), "the close-up's noteheads take the colour");
         eq(findOne(h.api.root, "cnb-nhp-color-input"), input, "same element after input");
-        eq(CNBConfig.resolveColor(h.config, 2), null, "nothing written yet");
+        eq(colourOf(h.config, 2), null, "nothing written yet");
         input.onchange({ target: { value: "#ff0000" } });
         eq(h.changes, 1, "onChange once, on change");
         assert(findOne(h.api.root, "cnb-nhp-color-input") !== input, "redrawn on change");
-        eq(CNBConfig.resolveColor(h.config, 2), "#ff0000", "D is red");
-        eq(h.config.palette.schemeSymbols["#ff0000"], "red-ff0000", "the colour gets its Scheme symbol");
+        eq(colourOf(h.config, 2), "#ff0000", "D is red");
+        assert(!("palette" in h.config), "no palette written (session 37)");
         findOne(h.api.root, "cnb-nhp-color-input").onchange({ target: { value: "#00ff00" } });
-        eq(CNBConfig.resolveColor(h.config, 2), "#00ff00", "D is green");
-        eq(h.config.palette.schemeSymbols["#00ff00"], "green-00ff00", "and green its name");
+        eq(colourOf(h.config, 2), "#00ff00", "D is green");
       });
     }},
 
-  { name: "colour: a swatch in use, and None, which takes the colour back out of the palette", fn: () => {
+  { name: "colour: a swatch in use, and None, which takes the colour back off the notehead", fn: () => {
       withPanel(fixture("kite-4-369-config.json"), [0], (h) => {
         const swatches = findAll(h.api.root, "cnb-nhp-swatch").map(s => s.getAttribute("data-color"));
-        deepEq(swatches, ["none", "#50b4e9", "#cc79a7", "#000000"], "None, then the colours in use");
+        deepEq(swatches, ["none", "#50b4e9", "#cc79a7"], "None, then the colours in use");
         byData(h.api.root, "cnb-nhp-swatch", "data-color", "#cc79a7").onclick();
-        eq(h.config.palette.colors.find(c => c.pc === 0).hex, "#cc79a7", "C is rose");
+        eq(colourOf(h.config, 0), "#cc79a7", "C is puce");
         byData(h.api.root, "cnb-nhp-swatch", "data-color", "none").onclick();
-        assert(!h.config.palette.colors.some(c => c.pc === 0), "C has no palette colour");
-        assert(!h.config.palette.cbSafeColors.some(c => c.pc === 0), "nor a twin");
+        eq(colourOf(h.config, 0), null, "C has no colour");
+        eq(colourOf(h.config, 3), "#50b4e9", "D♯ keeps its colour");
         assert(byData(h.api.root, "cnb-nhp-swatch", "data-color", "none").className.includes(" on"), "None shown on");
-        eq(findAll(h.api.root, "cnb-nhp-twin").length, 0, "no twin control for none");
       });
     }},
 
-  { name: "colour: the colour-blind-safe alternative is written for every pitch class of the colour", fn: () => {
+  { name: "colour: no colour-blind alternative and no palette select (session 37)", fn: () => {
       withPanel(fixture("kite-4-369-config.json"), [1], (h) => {
-        const twin = findOne(h.api.root, "cnb-nhp-twin-input");
-        eq(twin.value, "#cc79a7", "starts at the current twin");
-        twin.oninput({ target: { value: "#0072b2" } });
-        eq(h.changes, 0, "a drag writes nothing (session 36)");
-        eq(findOne(h.api.root, "cnb-nhp-twin-input"), twin, "same element after input");
-        twin.onchange({ target: { value: "#0072b2" } });
-        eq(h.changes, 1, "the twin applies once, on change");
-        deepEq(h.config.palette.cbSafeColors.filter(c => c.hex === "#0072b2").map(c => c.pc), [1, 4, 7, 10], "rose's twins");
+        eq(findAll(h.api.root, "cnb-nhp-twin").length, 0, "no twin control");
+        eq(findAll(h.api.root, "cnb-nhp-preset").length, 0, "no palette select");
       });
     }},
 
-  { name: "colour: Start from a palette fills all twelve colours from a preset", fn: () => {
+  { name: "colour: Suggested colours lists the sets and Apply colours the twelve noteheads", fn: () => {
       withPanel(CNBConfig.createDefault(), [0], (h) => {
-        const select = findOne(h.api.root, "cnb-nhp-preset");
-        select.onchange({ target: { value: "dark2-3" } });
-        const colors = h.config.palette.colors;
-        eq(colors.length, 12, "twelve colours");
-        eq(colors[0].hex, colors[3].hex, "the three colours cycle");
-        assert(colors[0].hex !== colors[1].hex, "distinct neighbours");
-        eq(CNBConfig.resolveColor(h.config, 4), colors[4].hex, "drawn");
-        assert(h.config.noteheadRules.every(r => r.apply.color === undefined), "no colour rules");
+        const help = findOne(h.api.root, "cnb-nhp-suggest");
+        eq(help.tag, "details", "a help disclosure");
+        assert(/another name/.test(findOne(help, "cnb-nhp-suggest-note").textContent), "says how to make a colour-blind version");
+        const sets = findAll(help, "cnb-nhp-suggest-set");
+        eq(sets.length, 12, "twelve sets");
+        const labels = sets.map(s => findOne(s, "cnb-nhp-suggest-label").textContent);
+        assert(labels.filter(l => l.startsWith("Colour-blind safe")).length === 6, "colour-blind-safe sets marked");
+        const dark3 = sets.find(s => s.getAttribute("data-set") === "dark2-3");
+        eq(findAll(dark3, "cnb-nhp-suggest-swatch").length, 3, "its swatches");
+        findOne(dark3, "cnb-nhp-suggest-apply").onclick();
+        eq(h.changes, 1, "one change");
+        const colours = [...Array(12).keys()].map(pc => colourOf(h.config, pc));
+        deepEq(colours.slice(0, 3), ["#1b9e77", "#d95f02", "#7570b3"], "teal, orange, lilac");
+        eq(colours[3], colours[0], "the three colours cycle");
+        assert(!("palette" in h.config), "no palette written");
+        assert(h.config.noteheadRules.every(I.ownsRule), "only inferred rules");
       });
     }},
 
@@ -407,12 +403,12 @@ export const tests = [
         byData(h.api.root, "cnb-nhp-give-option", "data-give", "all").onclick();
         assert([...Array(12).keys()].every(pc => resolved(h.config, pc).hollow), "all hollow");
         eq(resolved(h.config, 0).shape, "kite-down", "shape not copied");
-        eq(CNBConfig.resolveColor(h.config, 0), "#50b4e9", "colour not copied");
+        eq(colourOf(h.config, 0), "#50b4e9", "colour not copied");
       });
       withPanel(CNBConfig.createDefault(), [2], (h) => {
         findOne(h.api.root, "cnb-nhp-color-input").onchange({ target: { value: "#0000ff" } });
         byData(h.api.root, "cnb-nhp-give-option", "data-give", "every-3").onclick();
-        deepEq([...Array(12).keys()].filter(pc => CNBConfig.resolveColor(h.config, pc) === "#0000ff"), [2, 5, 8, 11], "every 3rd from D");
+        deepEq([...Array(12).keys()].filter(pc => colourOf(h.config, pc) === "#0000ff"), [2, 5, 8, 11], "every 3rd from D");
       });
     }},
 
@@ -429,10 +425,10 @@ export const tests = [
           "Fill: solid, with hollow every 2 semitones from C♯",
           "Size: each shape at its own size",
           "Side step: none everywhere",
-          "Colour: every 3 semitones, skyblue, rose, black",
+          "Colour: every 3 semitones, sky blue, puce, none",
         ], "words");
         eq(findOne(lines[0], "cnb-nhp-rule-marks").children.filter(c => c.tag === "svg").length, 2, "two shape thumbnails");
-        deepEq(findAll(lines[4], "cnb-nhp-rule-swatch").map(s => s.style.background), ["#50b4e9", "#cc79a7", "#000000"], "swatches");
+        deepEq(findAll(lines[4], "cnb-nhp-rule-swatch").map(s => s.style.background || "none"), ["#50b4e9", "#cc79a7", "none"], "swatches, black as none");
       });
     }},
 

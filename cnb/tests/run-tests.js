@@ -22,6 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const TEST_FILES = [
   "./cnb-music-tests.js",
+  "./cnb-color-tests.js",
   "./cnb-config-tests.js",
   "./cnb-pitch-axis-tests.js",
   "./cnb-grid-tests.js",
@@ -37,7 +38,6 @@ const TEST_FILES = [
   "./cnb-scheme-tests.js",
   "./cnb-lilypond-tests.js",
   "./cnb-svg-importer-tests.js",
-  "./cnb-palette-editor-tests.js",
   "./cnb-staff-rule-editor-tests.js",
   "./cnb-notehead-rule-editor-tests.js",
   "./cnb-common-props-editor-tests.js",
@@ -45,6 +45,7 @@ const TEST_FILES = [
   "./cnb-key-signature-editor-tests.js",
   "./cnb-pitch-axis-editor-tests.js",
   "./cnb-notehead-inference-tests.js",
+  "./cnb-colour-sets-tests.js",
   "./cnb-builtin-shapes-tests.js",
   "./cnb-notehead-panel-tests.js",
   "./cnb-pitch-model-tests.js",

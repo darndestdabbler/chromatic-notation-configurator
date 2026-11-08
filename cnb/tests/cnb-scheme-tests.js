@@ -70,7 +70,7 @@ export const tests = [
   }},
   { name: "symbol returns a valid symbol unchanged", fn: () => eq(CNBScheme.symbol("kite-up", "f"), "kite-up") },
   { name: "symbol throws naming the field", fn: () => {
-    throwsNaming(() => CNBScheme.symbol("x) (system \"ls\")", "palette.schemeSymbols"), "palette.schemeSymbols", "payload");
+    throwsNaming(() => CNBScheme.symbol("x) (system \"ls\")", "clef.glyphs"), "clef.glyphs", "payload");
     throwsNaming(() => CNBScheme.symbol("", "shapes"), "shapes", "empty");
   }},
 

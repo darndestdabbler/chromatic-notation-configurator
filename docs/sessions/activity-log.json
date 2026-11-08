@@ -577,6 +577,37 @@
       "what": "step 'signature-on-canvas': its files",
       "reason": "The Key signature editor's status note and empty-keys note said a signature needs a key chosen in the old Key menu or a defined key; with the picker neither is true, so both are reworded and its test updated.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T08:51:16.238000-05:00",
+      "task": "Session 37 moves colour from the palette onto the noteheads. Item 1, registration, was done when the session started. A notehead's colour is a notehead rule's apply.color. The look-table inference writes colour as rules, the way it writes shape, fill, size and side step, and null now means none (black). The config loses its palette: createDefault has none, CNBConfig.resolveColor and the palette validation go, and the preview draws the resolved colour or black. A config that still carries a palette is converted when it loads (new CNBConfig.paletteToRules, called by CNBConfigIO.mergeLoaded), so it previews and exports as before. Its primary colours become colour rules below every existing rule, so explicit rule colours still win. Explicit color:null fields are dropped, and the palette and its colour-blind set go. The colour-blind alternative goes everywhere: the notehead panel's twin field, palette.useCBSafe, engine.useAccessibleColors and its editor row, and the export's cnb:use-accessible-colors branch. A colour-blind variant is a config saved under another name with session 36's save dialog. The Advanced \u203a Colour palette editor is retired. Its curated sets, colour-blind-safe ones among them, become suggestions in a help disclosure in the notehead panel's Colour group, which a designer can apply. The colour naming the exporter needs moves from the palette editor into cnb/src/cnb-color.js. The exporter then registers the colours the resolved noteheads use, unconditionally, named from their hex (nearestColorName \u2192 toSchemeSymbol), with no palette.schemeSymbols. The fixtures are converted, the five export baselines regenerated, the test pages and UAT drivers follow, and LY spec 1.3.10, the architecture plan, the README and CLAUDE.md say what changed.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T09:25:17.980000-05:00",
+      "what": "step 'colour-on-noteheads': its files",
+      "reason": "createDefault losing its palette and validation no longer checking palette.schemeSymbols break two exporter tests now: the comment-escape test writes the default palette's name, and the hostile payload for palette.schemeSymbols expects validation to reject it. Both are removed here so the step's suite stays green; the rest of the exporter's palette handling stays in export-colours.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T10:20:04.581000-05:00",
+      "what": "step 'uat-drivers': its files",
+      "reason": "The whole UAT suite, run after the planned drivers were updated, failed in two more: uat-common-props-editor counts seven engine rows (the retired accessible-colours row made six), and uat-imported-notehead picks the Kite fixture's rule 0 as its Default, which the converted fixture's colour rules now precede. Both are one-line consequences of export-colours.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T10:20:06.730000-05:00",
+      "what": "step 'uat-drivers': its checks",
+      "reason": "Syntax checks for the two drivers added to the step's files, as for the others.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

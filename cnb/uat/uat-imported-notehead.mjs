@@ -187,6 +187,13 @@ async function importByDrop(page) {
 
 const rule = (i) => `.cnb-nre-rule-card[data-rule-index="${i}"]`;
 
+/** The rule editor's index of the Default (the rule for every pitch class):
+ *  the Kite fixture's colour rules sit below it (session 37). */
+const defaultRule = async (page) => {
+  const rules = (await fullConfig(page)).noteheadRules.slice().sort((a, b) => a.priority - b.priority);
+  return rules.findIndex(r => r.match.pitchClasses === "all" && r.apply.shape !== undefined);
+};
+
 const ROUTES = [
   {
     name: "Kite config, file input, Default rule",
@@ -196,7 +203,11 @@ const ROUTES = [
         JSON.parse(document.getElementById("state-json").textContent).shapes["kite-up"] !== undefined);
     },
     importShape: importByInput,
-    apply: async (page) => { await page.selectOption(`${rule(0)} .cnb-nre-shape-select`, "45deg"); return 0; },
+    apply: async (page) => {
+      const idx = await defaultRule(page);
+      await page.selectOption(`${rule(idx)} .cnb-nre-shape-select`, "45deg");
+      return idx;
+    },
   },
   {
     name: "default config, file input, Default rule",

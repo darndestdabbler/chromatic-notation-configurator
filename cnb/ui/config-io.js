@@ -30,15 +30,18 @@
  *     custom shape would come back with the default "crotchet-minim" shape
  *     re-added). mergeLoaded() therefore REPLACES, not merges, each
  *     open-keyed map section that the loaded file provides — the list is
- *     REPLACE_PATHS below (shapes, palette.schemeSymbols, keys.offKeyMark,
- *     clef.glyphs — the last added with the set-009 clef section; the
- *     line-override maps and durations.repeatCounts left in session 34). Fixed-schema objects (staff, display,
+ *     REPLACE_PATHS below (shapes, keys.offKeyMark, clef.glyphs — the last
+ *     added with the set-009 clef section; the line-override maps and
+ *     durations.repeatCounts left in session 34, palette.schemeSymbols in
+ *     session 37). Fixed-schema objects (staff, display,
  *     engine, meta, …) still merge field-by-field so older files gain new
  *     fields' defaults, and arrays already replace wholesale in Module A.
  *   - Loading NEVER blocks on validation: a config with validation errors
  *     still loads (the user needs it in the editors to fix it), and the
  *     errors/warnings are surfaced in the UI and handed to onLoad().
  *     Blocking on errors is Module 18's job (export), per LY spec §8.
+ *   - A config saved with a palette (before session 37) loads with its
+ *     colours moved onto the noteheads (CNBConfig.paletteToRules).
  *   - A malformed FILE is user input, not a caller bug: parseConfigFile()
  *     throws descriptive errors (non-string input, invalid JSON, non-object
  *     root) and render()'s load path catches them, shows the message in
@@ -77,7 +80,6 @@ import { CNBConfig } from "../src/cnb-config.js";
  */
 const REPLACE_PATHS = [
   ["shapes"],
-  ["palette", "schemeSymbols"],
   ["keys", "offKeyMark"],
   ["clef", "glyphs"],
 ];
@@ -272,7 +274,7 @@ export const CNBConfigIO = {
         `Config file version ${JSON.stringify(parsed.version)} differs from schema ` +
         `version ${CNBConfig.VERSION} — merged over current defaults`);
     }
-    const config = CNBConfig.merge(CNBConfig.createDefault(), parsed);
+    let config = CNBConfig.merge(CNBConfig.createDefault(), parsed);
     for (const pathKeys of REPLACE_PATHS) {
       const provided = getPath(parsed, pathKeys);
       // Replace only when the file provides an actual map object; a null or
@@ -284,6 +286,9 @@ export const CNBConfigIO = {
     // A wrong-kinded section (an older or foreign save) is rejected here,
     // naming the field, rather than crashing the editors after adoption.
     checkKinds(CNBConfig.createDefault(), config);
+    // A config saved with a palette has its colours moved onto the
+    // noteheads (session 37), so it previews and exports as before.
+    config = CNBConfig.paletteToRules(config);
     let validation;
     try {
       validation = CNBConfig.validate(config);

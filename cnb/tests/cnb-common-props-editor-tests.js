@@ -101,7 +101,6 @@ export const tests = [
         defaultMagnify: "7/4",
         indent: 0,
         collisionThreshold: 2,
-        useAccessibleColors: false,
       }, "engine defaults");
     },
   },
@@ -251,13 +250,14 @@ export const tests = [
     },
   },
   {
-    name: "buildEngine: falseHollow / useAccessibleColors coerce to booleans",
+    name: "buildEngine: falseHollow coerces to a boolean; the retired useAccessibleColors is dropped (session 37)",
     fn: () => {
       const s = defaultState();
       s.engine.falseHollow = 1;
-      s.engine.useAccessibleColors = undefined;
+      s.engine.useAccessibleColors = true;
       const out = E.buildEngine(s);
-      assert(out.falseHollow === true && out.useAccessibleColors === false, "coerced");
+      assert(out.falseHollow === true, "coerced");
+      assert(!("useAccessibleColors" in out), "not built");
     },
   },
 
@@ -313,7 +313,6 @@ export const tests = [
         defaultMagnify: "3/2",
         indent: 5,
         collisionThreshold: 1,
-        useAccessibleColors: true,
       };
       assertEqual(E.stateFromConfig(E.applyToConfig(CNBConfig.createDefault(), s)), s, "state");
     },
@@ -372,7 +371,7 @@ export const tests = [
       for (const cls of ["cnb-cpe-repeats", "cnb-cpe-repeat-row", "cnb-cpe-repeat-count"]) {
         assert(findAll(root, cls).length === 0, `no ${cls}: the engine's counts are fixed`);
       }
-      assert(findAll(root, "cnb-cpe-engine-row").length === 7, "7 engine rows (§4.10 fields but the stem thickness, session 34)");
+      assert(findAll(root, "cnb-cpe-engine-row").length === 6, "6 engine rows (§4.10 fields but the stem thickness, session 34, and accessible colours, session 37)");
       assert(findAll(root, "cnb-cpe-valid").length === 1, "validation valid");
     }),
   },

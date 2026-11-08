@@ -49,11 +49,11 @@
 </p>
 <div class="card" id="a-minor"></div>
 
-<h1>A major — hollow sharps and palette colors (debug grid)</h1>
+<h1>A major — hollow sharps and rule colors (debug grid)</h1>
 <p>
   A major (3 sharps) with the default "sharps are hollow" rule and a
-  Dark2-style palette. Expected: C♯, F♯, G♯ signature noteheads render
-  hollow; every notehead takes its pitch class's palette color — the
+  Dark2-style color rule per pitch class. Expected: C♯, F♯, G♯ signature
+  noteheads render hollow; every notehead takes its pitch class's color — the
   signature resolves through the same rule pipeline as the cards.
 </p>
 <div class="card" id="a-major"></div>
@@ -78,7 +78,7 @@
 <p>
   <code>style: "dot"</code>: one filled circle per scale degree at the same
   grid positions, single column, colored by the same notehead color
-  resolution (palette applied here), separator bar retained.
+  resolution (rule colors applied here), separator bar retained.
 </p>
 <div class="card" id="dot-style"></div>
 
@@ -109,6 +109,14 @@
                  "#E6AB02", "#A6761D", "#666666", "#1F78B4", "#33A02C",
                  "#FB9A99", "#B2DF8A"];
 
+  /** One colour rule per pitch class (a notehead's colour lives on its rules). */
+  function colourRules(c) {
+    DARK2.forEach((hex, pc) => c.noteheadRules.push({
+      name: "PC" + pc, priority: 2 + pc,
+      match: { pitchClasses: [pc], durations: "all", keys: "all" }, apply: { color: hex },
+    }));
+  }
+
   function withKeysig(definitions, configure = () => {}) {
     const config = CNBConfig.createDefault();
     config.keys.enabled = true;
@@ -134,12 +142,12 @@
     { ...SUBSET, keys: ["A minor"] }
   );
 
-  // ── 3. A major: hollow sharps + palette colors ────────────────────────────
+  // ── 3. A major: hollow sharps + rule colors ───────────────────────────────
   CNBCollection.render(
     document.getElementById("a-major"),
     withKeysig([A_MAJOR], c => {
       c.display.debugGrid = true;
-      c.palette.colors = DARK2.map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+      colourRules(c);
     }),
     { ...SUBSET, keys: ["A"] }
   );
@@ -189,7 +197,7 @@
     withKeysig([C_MAJOR], c => {
       c.display.debugGrid = true;
       c.keys.keySignature.style = "dot";
-      c.palette.colors = DARK2.map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+      colourRules(c);
     }),
     { ...SUBSET, keys: ["C"] }
   );

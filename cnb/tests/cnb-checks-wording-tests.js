@@ -127,18 +127,10 @@ export const tests = [
     },
   },
   {
-    name: "describe: noteheads with no colour name the ones drawn black",
+    name: "describe: a black notation gets no colour message (session 37: many systems stay black)",
     fn: () => {
-      const all = describeFirst(CNBConfig.createDefault(), "Some pitch classes have no color");
-      eq(all.text, "No notehead has a colour of its own, so every notehead is drawn black.", "default wording");
-      eq(all.link, { label: "Select the noteheads", target: { kind: "noteheads", pcs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] } }, "default link");
-
-      const c = CNBConfig.createDefault();
-      c.noteheadRules.push({ name: "Most red", priority: 9,
-        match: { pitchClasses: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], durations: "all", keys: "all" }, apply: { color: "#ff0000" } });
-      const some = describeFirst(c, "Some pitch classes have no color");
-      eq(some.text, "C and C♯ have no colour, so they are drawn black.", "partial wording");
-      eq(some.link.target.pcs, [0, 1], "partial pcs");
+      const { warnings } = CNBConfig.validate(CNBConfig.createDefault());
+      assert(!warnings.some(w => /colou?r|palette/i.test(w)), JSON.stringify(warnings));
     },
   },
   {
@@ -182,7 +174,7 @@ export const tests = [
     },
   },
   {
-    name: "describe: staff, export, key, clef, axis and palette messages open their section",
+    name: "describe: staff, export, key, clef and axis messages open their section",
     fn: () => {
       const open = (section, control) => {
         const names = { staff: "Staff", export: "Export", "key-signature": "Key signature", clef: "Clef", advanced: "Advanced", "ledger-lines": "Ledger lines" };
@@ -225,13 +217,6 @@ export const tests = [
         "Clef text entry \"t\" has no text", "The text clef “t” has no text.", open("clef"));
       check(c => { c.clef.enabled = true; c.clef.active = "t"; c.clef.glyphs.t = { kind: "text", text: "4", textHeightSemis: 0, anchorSemi: 10 }; },
         "Clef text entry \"t\" needs", "The text clef “t” needs a height above 0.", open("clef"));
-      check(c => { c.palette.colors = [{ pc: 1, hex: "blue" }]; c.palette.cbSafeColors = [{ pc: 1, hex: "#0000ff" }]; },
-        "Palette color for PC 1", "C♯'s palette colour, “blue”, is not a colour like #1b9e77.", open("advanced", "#colour-palette"));
-      check(c => { c.palette.colors = [{ pc: 1, hex: "#0000ff" }]; c.palette.cbSafeColors = [{ pc: 1, hex: "navy" }]; },
-        "CB-safe palette color for PC 1", "C♯'s colour-blind-safe palette colour, “navy”, is not a colour like #1b9e77.", open("advanced", "#colour-palette"));
-      check(c => { c.palette.colors = [{ pc: 0, hex: "#ff0000" }, { pc: 1, hex: "#00ff00" }]; c.palette.cbSafeColors = [{ pc: 0, hex: "#ff0000" }]; },
-        "CB-safe palette has", "The colour-blind-safe palette has 1 colours for the palette's 2, so some notes have no safe colour.",
-        open("advanced", "#colour-palette"));
     },
   },
   {

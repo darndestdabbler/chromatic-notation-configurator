@@ -38,6 +38,7 @@ Visual test pages: `cnb/test-pages/test-{module}.html`
 ### Foundation
 - `cnb-config.js` — Config schema, validation, defaults, notehead rule resolution
 - `cnb-music.js` — Pitch class math, note names, octave arithmetic
+- `cnb-color.js` — Colour math and colour names (nearest name, Scheme symbol from a hex)
 - `cnb-pitch-axis.js` — Module 24: sole owner of the pitch → staff-position map (`pitchAxis`); identity when absent or disabled
 
 ### Rendering (bottom → top)
@@ -71,6 +72,7 @@ export const tests = [
 - **Thickness** is expressed as % of semitone height (thicknessPct), converted to px for preview or absolute units for LilyPond
 - **4-point stem anchors:** crotchetUp, crotchetDown, minimUp, minimDown — accounts for stem width (~1/5 semitone)
 - **Notehead rules** are cumulative, priority-ordered. Higher priority overrides lower. Partial apply blocks inherit from previous match.
+- **Colour lives on the notehead rules** (`apply.color`, `null` = black). There is no palette; a saved one is moved onto the rules on load (`CNBConfig.paletteToRules`), and a colour-blind version is a second config.
 - **Ledger display** has no "outside staff" hard gate. Proximity and override rules handle gaps within the staff (e.g., 3-6-9 system).
 - **Ledger rules are octave-aware** — a ledger in octave 0 only responds to noteheads in octave 0
 
@@ -84,11 +86,11 @@ export const tests = [
 
 ## LilyPond Export Key Points
 
-- Section A: named definitions (paths, hollows, attachments, colors with CB-safe conditional block)
+- Section A: named definitions (paths, hollows, attachments, and each colour the noteheads use, registered once with no colour-blind branch)
 - Section B: engine settings (emit-if-changed pattern — skip values at defaults)
 - Section C: `cnb:get-notehead-config` procedure with `memv`/`cond` grouping
 - Staff-line-positions conversion (half-staff-spaces): `2 × (semi - midpoint) / semitonesPerStaffSpace`
-- Color symbols: generated via `nearestColorName()` → `toSchemeSymbol()` (e.g., `shamrock-1b9e77`)
+- Color symbols: named from the hex via `nearestColorName()` → `toSchemeSymbol()` in `cnb/src/cnb-color.js` (e.g., `shamrock-1b9e77`)
 - `repeat` field: `#t` when representationMode is "repeat", `#f` when using distinct shapes per duration
 
 ## Session Workflow

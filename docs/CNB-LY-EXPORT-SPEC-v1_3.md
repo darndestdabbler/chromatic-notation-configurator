@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.9 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules)
-**Date:** November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.10 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads)
+**Date:** November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -55,7 +55,9 @@ gains `cnb:keysig-style 'none`. 1.3.8, for both: stem attachments in
 LilyPond's relative units, §4.4b. Every config with stems exports new
 attachment values. 1.3.9, for both: the ledger lines, §5.7, which every
 config's export gains, and the key dispatch, §6.4, which only a config with
-keys on and a key-scoped rule gains.)*
+keys on and a key-scoped rule gains. 1.3.10, for both: colours on the
+noteheads, §4.5a. Every config's header loses its palette lines, and a
+config with colours registers them without the accessible branch.)*
 
 Summary of additions:
 
@@ -67,6 +69,7 @@ Summary of additions:
 | Section C alist | — | optional `(x-offset . N)` field (§6.3) |
 | Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
 | Ledger lines and key-scoped rules (1.3.9, linear and axis alike) | the engine's own ledgers; Section C resolved with no key | `cnb:ledgers-by-semitone` and NoteHead overrides (§5.7); Section C dispatch on the key (§6.4) |
+| Section A5 colours (1.3.10, linear and axis alike) | palette colours, with a `cnb:use-accessible-colors` branch | each colour the noteheads use, once, named from its hex; no branch (§4.5a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -235,6 +238,53 @@ preview's.
 **1.0.0 exports with stems engraved them too near the notehead's centre
 and should be regenerated.**
 
+### 4.5a Colours on the noteheads (new in 1.3.10, linear and axis configs alike)
+
+This amends v1.2.1 §4.5 (session 37). A config has no palette: a
+notehead's colour is its rules' `apply.color`, and `null` (or no rule
+setting one) is none, drawn and exported black. A colour-blind version of
+a notation is a second config, the same one saved under another name with
+other colours, so the export has no accessible branch.
+
+**Section A5** registers each distinct colour the resolved noteheads use
+(every pitch class × duration, and with keys on each key branch of §6.4),
+once, in first-use order, compared without regard to case, and black when
+some notehead is black:
+
+```lilypond
+%% --- Register colors ---
+#(cnb:register-color! 'sky-blue-50b4e9 "#50b4e9")
+#(cnb:register-color! 'puce-cc79a7 "#cc79a7")
+#(cnb:register-color! 'black-000000 "#000000")
+```
+
+- **The symbol is named from the hex**, the nearest colour name and the
+  hex (`nearestColorName` → `toSchemeSymbol`, `cnb/src/cnb-color.js`):
+  `#1b9e77` → `shamrock-1b9e77`. `palette.schemeSymbols` is gone, so a
+  colour has one name in every export. Section C's `(color . …)` names
+  the same symbol.
+- **No `#(if (and (defined? 'cnb:use-accessible-colors) …))` block.** The
+  exporter never writes or reads `cnb:use-accessible-colors`, and nothing
+  changes in the engine: the variable simply stays unset.
+- **A palette in a saved config** is moved onto the noteheads when the
+  config loads (`CNBConfig.paletteToRules`, called by
+  `CNBConfigIO.mergeLoaded`). Each distinct non-black colour of
+  `palette.colors` becomes a rule for its pitch classes, below every
+  existing rule, so an explicit rule colour still wins, and rules' explicit
+  `color: null` ("use the palette") is dropped. The primary colours are
+  the ones carried, because they are what the export engraved by default.
+  The colour-blind set, `useCBSafe` and `schemeSymbols` are dropped. The
+  config previews and exports the same colours as before.
+- **Retired settings:** `palette` and `engine.useAccessibleColors`. A
+  config that carries them still loads, and neither is read or emitted.
+
+**Baselines.** The five export baselines (default, Kite 4-369, 45deg-369,
+sized, Twinline compact) were regenerated, and the three fixture configs
+with palettes were converted. The colours are the same. What changes is the
+header (§5.2a), the A5 block above, and Kite's symbol names (its palette
+had named them `skyblue-50b4e9` and `rose-cc79a7`; they are now
+`sky-blue-50b4e9` and `puce-cc79a7`).
+
 ---
 
 ## 5. SECTION B — ADDITIONS
@@ -283,10 +333,11 @@ are never emitted:
   they were no-ops. §5.3a below therefore describes a conversion that is no
   longer emitted.
 
-**Since 1.3.9 the only preview-only setting is `palette.useCBSafe`** (the
-colour-blind preview toggle): the export carries both palettes, and the
-score selects one. The header says so in a comment. The rest of the old
-list (session 34) is either exported or no longer a setting:
+**Since 1.3.10 nothing is preview-only.** The last such setting,
+`palette.useCBSafe` (the colour-blind preview toggle of 1.3.9), went with
+the palette (§4.5a), and the header no longer lists preview-only settings.
+The rest of the old list (session 34) is either exported or no longer a
+setting:
 
 - **Exported:** ledger rules (§5.7) and key-scoped notehead rules (§6.4).
 - **Drawn by the preview as the engine engraves them, and retired as
@@ -304,10 +355,9 @@ list (session 34) is either exported or no longer a setting:
   and none is read or emitted. Validation check 10 (§8) went with the line
   overrides.
 
-The header's color-palette line names the palette only when Section A
-registers colors taken from it. Otherwise it reads
-`none (no palette colors are exported)`. Neither the header nor the A5
-comment states a cb-safe mode. The score selects the accessible branch with
+Since 1.3.10 the header has no color-palette line (1.3.3–1.3.9 named the
+palette there when Section A registered its colours, and otherwise wrote
+`none (no palette colors are exported)`), and no comment names
 `cnb:use-accessible-colors`.
 
 ### 5.3a Staff/Ledger Line Thickness under a pitch axis
@@ -857,7 +907,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.9** | **Nov 7, 2026** | **Ledger lines and key-scoped rules (session 34): new §5.7 and §6.4. Section B writes `cnb:ledgers-by-semitone`, the preview's ledgers for every pitch it draws, and a `\layout` block gives each notehead its pitch's entry through `NoteHead.ledger-positions` / `no-ledgers`, so in-gap ledgers engrave; it is keyed by pitch because the engine rounds the position its ledger rule sees. Section C dispatches on the key's sorted pitch classes, one branch per key a rule names, with keys on. §5.2a: the only preview-only setting is the colour-blind toggle; the preview draws stems, staff lines, ledgers, the key signature's spacing and the repeat counts as the engine does, and their settings are retired. §8 check 10 is retired. Output CHANGES for every config (the ledger block and the header); the five export baselines were regenerated.** |
+| **1.3.10** | **Nov 8, 2026** | **Colours on the noteheads (session 37): new §4.5a. A config has no palette: a notehead's colour is its rules' `apply.color`. Section A5 registers each colour the resolved noteheads use, once, named from its hex (`nearestColorName` → `toSchemeSymbol`), with no `cnb:use-accessible-colors` branch; the engine is unchanged and the variable is never set. A saved palette is moved onto the noteheads on load (`CNBConfig.paletteToRules`). §5.2a: nothing is preview-only, and the header loses its palette and preview-only lines. `palette` and `engine.useAccessibleColors` are retired. Output CHANGES for every config (the header) and every config with colours (A5, and the symbol names where a palette had named them); the five export baselines were regenerated.** |
+| 1.3.9 | Nov 7, 2026 | Ledger lines and key-scoped rules (session 34): new §5.7 and §6.4. Section B writes `cnb:ledgers-by-semitone`, the preview's ledgers for every pitch it draws, and a `\layout` block gives each notehead its pitch's entry through `NoteHead.ledger-positions` / `no-ledgers`, so in-gap ledgers engrave; it is keyed by pitch because the engine rounds the position its ledger rule sees. Section C dispatches on the key's sorted pitch classes, one branch per key a rule names, with keys on. §5.2a: the only preview-only setting is the colour-blind toggle; the preview draws stems, staff lines, ledgers, the key signature's spacing and the repeat counts as the engine does, and their settings are retired. §8 check 10 is retired. Output CHANGES for every config (the ledger block and the header); the five export baselines were regenerated. |
 | 1.3.8 | Nov 7, 2026 | Stem attachment units (session 33): new §4.4b. `cnb:register-attachment!` points are written relative to the registered path's exact extent, the units LilyPond's `NoteHead.stem-attachment` reads, instead of staff spaces, so the §4.4a divisor and the §4.1c attachment scaling no longer enter. The preview now puts a stem's edge on its anchor, as LilyPond does. Output CHANGES for every config with stems: the default, 45deg-369, sized and Twinline baselines were regenerated; the Kite fixture's anchors became true semitone anchors and its export is unchanged. 1.0.0 exports with stems engraved them too near the centre and should be regenerated. |
 | 1.3.7 | Nov 7, 2026 | The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated. |
 | 1.3.6 | Nov 7, 2026 | Engine behaviours under a pitch axis (session 29): new §5.4e records two from engine handoff 008 §5. Collision analysis rounds axis positions to whole numbers, and LilyPond drops the down-stem head's dots for dotted notes in two voices at one axis position. Documentation only: export output is unchanged. |

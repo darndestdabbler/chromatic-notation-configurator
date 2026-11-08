@@ -108,13 +108,6 @@ const TABLE = [
     text: `${noteName(+pc)} has no notehead: no rule gives it a look.`, link: noteheadLink([+pc]) })],
   [/^PC (\d+) resolves to hollow but shape "(.*)" has no svgHollowPath$/, ([, pc, s]) => ({
     text: `${noteName(+pc)} is hollow, but its shape, “${s}”, has no hollow drawn inside it, so it shows solid.`, link: noteheadLink([+pc]) })],
-  [/^Some pitch classes have no color rule and no palette — will render black$/, (m, c) => {
-    const pcs = pcsWhere(c, (r, pc) => (r.color ?? CNBConfig.resolveColor(c, pc)) === null);
-    const text = pcs.length === 12 ? "No notehead has a colour of its own, so every notehead is drawn black."
-      : pcs.length > 0 ? `${listNames(pcs)} ${pcs.length === 1 ? "has" : "have"} no colour, so ${pcs.length === 1 ? "it is" : "they are"} drawn black.`
-      : "Some noteheads have no colour, so they are drawn black.";
-    return { text, link: noteheadLink(pcs) };
-  }],
   [/^Shape "(.*)" has no lilypondPath \(will use fallback SVG conversion at export\)$/, ([, s], c) => ({
     text: `The “${s}” shape has no LilyPond drawing of its own, so the export traces its SVG outline.`, link: noteheadLink(pcsUsingShape(c, s)) })],
   [/^Shape "(.*)" has no path data \(lilypondPath or svgPath\)$/, ([, s], c) => ({
@@ -167,12 +160,6 @@ const TABLE = [
       link: sectionLink("advanced", "#pitch-axis-map"),
     };
   }],
-  [/^(CB-safe )?[Pp]alette color for PC (\d+) has invalid hex "(.*)"$/, ([, cb, pc, h]) => ({
-    text: `${noteName(+pc)}'s ${cb ? "colour-blind-safe " : ""}palette colour, “${h}”, is not a colour like #1b9e77.`,
-    link: sectionLink("advanced", "#colour-palette") })],
-  [/^CB-safe palette has (\d+) entries but primary palette has (\d+)$/, ([, cb, primary]) => ({
-    text: `The colour-blind-safe palette has ${cb} colours for the palette's ${primary}, so some notes have no safe colour.`,
-    link: sectionLink("advanced", "#colour-palette") })],
 ];
 
 export const CNBChecksWording = {

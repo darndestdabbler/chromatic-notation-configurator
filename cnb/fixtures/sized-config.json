@@ -93,7 +93,6 @@
       "apply": {
         "shape": "crotchet-minim",
         "hollow": false,
-        "color": null,
         "offKeyMark": false
       }
     },
@@ -149,13 +148,6 @@
       }
     }
   ],
-  "palette": {
-    "name": "None",
-    "colors": [],
-    "cbSafeColors": [],
-    "useCBSafe": false,
-    "schemeSymbols": {}
-  },
   "display": {
     "pxPerSemi": 16,
     "stemThicknessPct": 26,
@@ -262,8 +254,7 @@
     "defaultMagnify": "7/4",
     "indent": 0,
     "collisionThreshold": 2,
-    "stemThickness": null,
-    "useAccessibleColors": false
+    "stemThickness": null
   },
   "meta": {
     "configName": "Sized noteheads",

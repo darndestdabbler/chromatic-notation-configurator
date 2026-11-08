@@ -62,22 +62,22 @@ export const tests = [
       eq(CNBCard.resolveNotehead(config, 0, "crotchet", null).shape, "crotchet-minim", "shape");
     }},
 
-  { name: "resolveNotehead: color falls back to black with no palette and no rule color", fn: () => {
+  { name: "resolveNotehead: color falls back to black with no rule color", fn: () => {
       const { config } = fixture();
       eq(CNBCard.resolveNotehead(config, 0, "crotchet", null).color, "#000000", "fallback color");
     }},
 
-  { name: "resolveNotehead: palette color used when rule color is null", fn: () => {
+  { name: "resolveNotehead: a leftover palette is not read (session 37)", fn: () => {
       const { config } = fixture();
-      config.palette.colors = [{ pc: 0, hex: "#FF0000", name: "Red" }];
-      eq(CNBCard.resolveNotehead(config, 0, "crotchet", null).color, "#FF0000", "palette color");
+      config.palette = { colors: [{ pc: 0, hex: "#FF0000", name: "Red" }] };
+      eq(CNBCard.resolveNotehead(config, 0, "crotchet", null).color, "#000000", "black");
     }},
 
-  { name: "resolveNotehead: explicit rule color overrides the palette", fn: () => {
+  { name: "resolveNotehead: a later rule's colour overrides an earlier one", fn: () => {
       const { config } = fixture();
-      config.palette.colors = [{ pc: 0, hex: "#FF0000", name: "Red" }];
+      config.noteheadRules.push({ name: "Colour", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#FF0000" } });
       config.noteheadRules.push({
-        name: "C is blue", priority: 2,
+        name: "C is blue", priority: 3,
         match: { pitchClasses: [0], durations: "all", keys: "all" },
         apply: { color: "#0000FF" },
       });
@@ -86,7 +86,7 @@ export const tests = [
 
   { name: "resolveNotehead: pc 12 (upper C) normalizes to pitch class 0", fn: () => {
       const { config } = fixture();
-      config.palette.colors = [{ pc: 0, hex: "#FF0000", name: "Red" }];
+      config.noteheadRules.push({ name: "Colour", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#FF0000" } });
       eq(CNBCard.resolveNotehead(config, 12, "crotchet", null).color, "#FF0000", "pc 12 → pc 0");
     }},
 
@@ -335,7 +335,7 @@ export const tests = [
 
   { name: "render: resolved color reaches both notehead fills", fn: () => {
       const { config, grid } = fixture();
-      config.palette.colors = [{ pc: 5, hex: "#1B9E77", name: "Shamrock" }];
+      config.noteheadRules.push({ name: "Colour", priority: 2, match: { pitchClasses: [5], durations: "all", keys: "all" }, apply: { color: "#1B9E77" } });
       withDomStub(container => {
         const col = CNBCard.render(container, grid, config, { pc: 5, duration: "crotchet" });
         const { noteheads } = dissect(col);

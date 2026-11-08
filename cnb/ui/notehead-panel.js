@@ -6,15 +6,14 @@
  * §2). It edits the look of the selected noteheads, and every change goes
  * through the look table and its inference (notehead-inference.js): the
  * panel changes the rows of the selected pitch classes and hands the host
- * writeBack(config, table), so the rules and the palette always follow from
- * the noteheads.
+ * writeBack(config, table), so the rules always follow from the noteheads.
  *
  * The panel has three columns:
  *   - the first selected notehead drawn alone at the Large size, and, with
  *     one notehead selected, "This notehead is: C ▾", which renames it
  *     (session 28, §4.1);
  *   - its look: colour (swatches of the colours in use, None, a colour input,
- *     the colour's colour-blind-safe alternative, Start from a palette),
+ *     and the Suggested colours help, session 37),
  *     fill (Solid or Hollow), shape (the config's shapes, then the built-in
  *     ones, then Import from SVG) and size (height and width in semitones,
  *     with an aspect-ratio lock);
@@ -28,11 +27,12 @@
  * Colour inputs apply once (session 36): while the designer drags, `input`
  * only tints the close-up notehead (the field shows its own colour) and
  * writes nothing; `change`, when the picker closes, writes the colour
- * through onChange and redraws. So a drag no longer leaves a Scheme name
- * for every colour it passed through; the page cuts the names of colours
- * no longer used when it saves (CNBPaletteEditor.usedSchemeSymbols). Not
- * here: a config opened with its own names would lose the name of a colour
- * the designer is about to give again, and the export with it.
+ * through onChange and redraws.
+ *
+ * Colour lives on the noteheads (session 37): the config has no palette,
+ * and the curated sets (colour-sets.js) are suggestions, applied from the
+ * Suggested colours help. A colour-blind version is the config saved under
+ * another name with other colours.
  *
  * renderRuleList (session 27, design §5.4) draws the Noteheads section's
  * rule list in words, read-only, from ruleLines.
@@ -49,7 +49,8 @@ import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBNoteheadInference as I } from "./notehead-inference.js";
 import { CNBBuiltinShapes } from "./builtin-shapes.js";
-import { CNBPaletteEditor } from "./palette-editor.js";
+import { CNBColor } from "../src/cnb-color.js";
+import { CNBColourSets } from "./colour-sets.js";
 import { CNBPreviewDisplay } from "./preview-display.js";
 import { CNBPitchModel } from "./pitch-model.js";
 import { CNBPitchPanel } from "./pitch-panel.js";
@@ -178,15 +179,14 @@ export const CNBNoteheadPanel = {
 
   /**
    * A look in words, for the panel's head: "kite up · hollow · rose". The
-   * colour is its palette name, else its nearest colour name, else "black".
+   * colour is its nearest colour name, else "black".
    * @param {object} config
    * @param {object} row  a look-table row
    * @returns {string}
    */
   summary(config, row) {
     const hex = row.color && row.color.toLowerCase();
-    const entry = hex && ((config.palette && config.palette.colors) || []).find(c => c.hex.toLowerCase() === hex);
-    const colour = !hex ? "black" : (entry && entry.name ? entry.name : CNBPaletteEditor.baseColorName(hex)).toLowerCase();
+    const colour = !hex ? "black" : CNBColor.baseColorName(hex).toLowerCase();
     return [row.shape.replace(/-/g, " "), row.hollow ? "hollow" : "solid", colour].join(" · ");
   },
 
@@ -200,28 +200,6 @@ export const CNBNoteheadPanel = {
   keptRulesFor(config, pc) {
     return (config.noteheadRules || []).filter(r => !I.ownsRule(r) &&
       (r.match.pitchClasses === "all" || (r.match.pitchClasses || []).includes(pc)));
-  },
-
-  /**
-   * The config with a colour-blind-safe alternative for one colour: every
-   * pitch class whose palette colour is hex gets twin in
-   * palette.cbSafeColors. The input is not changed.
-   * @param {object} config
-   * @param {string} hex
-   * @param {string} twin
-   * @returns {object}
-   */
-  withTwin(config, hex, twin) {
-    const palette = config.palette || { colors: [] };
-    const cb = (palette.cbSafeColors || []).slice();
-    for (const c of palette.colors || []) {
-      if (c.hex.toLowerCase() !== hex.toLowerCase()) continue;
-      const entry = { pc: c.pc, hex: twin, name: CNBPaletteEditor.baseColorName(twin) };
-      const i = cb.findIndex(e => e.pc === c.pc);
-      if (i >= 0) cb[i] = entry;
-      else cb.push(entry);
-    }
-    return { ...config, palette: { ...palette, cbSafeColors: cb } };
   },
 
   /**
@@ -332,19 +310,11 @@ export const CNBNoteheadPanel = {
       commit(table, options);
     }
 
-    /** A colour for the selection; a new colour also gets its Scheme symbol. */
+    /** A colour for the selection (null: none, drawn black). */
     function setColour(hex) {
       const color = hex === null ? null : hex.toLowerCase();
-      let config = getConfig();
-      if (color && color !== "#000000") {
-        const symbols = (config.palette && config.palette.schemeSymbols) || {};
-        if (!Object.keys(symbols).some(k => k.toLowerCase() === color)) {
-          const palette = config.palette || { colors: [] };
-          config = { ...config, palette: { ...palette, schemeSymbols: { ...symbols, [color]: CNBPaletteEditor.colorSchemeSymbol(color) } } };
-        }
-      }
       const table = I.lookTable(getConfig()).map(row => (selection.includes(row.pc) ? { ...row, color } : row));
-      commit(table, { config });
+      commit(table);
     }
 
     /** While a colour field is dragged (session 36): only the close-up's
@@ -392,7 +362,7 @@ export const CNBNoteheadPanel = {
       for (const hex of coloursInUse(table)) {
         const s = button("cnb-nhp-swatch" + (hex === current ? " on" : ""), "", () => setColour(hex));
         s.style.background = hex;
-        s.title = CNBPaletteEditor.baseColorName(hex);
+        s.title = CNBColor.baseColorName(hex);
         s.setAttribute("data-color", hex);
         swatches.appendChild(s);
       }
@@ -410,51 +380,37 @@ export const CNBNoteheadPanel = {
       pick.appendChild(input);
       group.appendChild(pick);
 
-      if (current) {
-        const cb = ((config.palette && config.palette.cbSafeColors) || []).find(c => c.pc === pc);
-        const twin = el("label", "cnb-nhp-pick cnb-nhp-twin");
-        twin.appendChild(el("span", "", "Colour-blind-safe alternative"));
-        const tInput = el("input", "cnb-nhp-twin-input");
-        tInput.type = "color";
-        tInput.value = cb ? cb.hex : current;
-        // The close-up shows the twin only while the colour-blind preview is on.
-        const showsTwin = !!(config.palette && config.palette.useCBSafe);
-        tInput.oninput = (e) => { if (showsTwin) tintCloseUp(valueOf(e, tInput)); };
-        tInput.onchange = (e) => {
-          onChange(CNBNoteheadPanel.withTwin(getConfig(), current, valueOf(e, tInput)));
-          draw();
-        };
-        twin.appendChild(tInput);
-        group.appendChild(twin);
-      }
-
-      const presets = el("select", "cnb-nhp-preset");
-      const first = el("option", "", "Start from a palette…");
-      first.value = "";
-      presets.appendChild(first);
-      for (const [key, info] of Object.entries(CNBPaletteEditor.PALETTE_PRESET_KEYS)) {
-        const o = el("option", "", info.label);
-        o.value = key;
-        presets.appendChild(o);
-      }
-      presets.value = "";
-      presets.onchange = (e) => {
-        const key = valueOf(e, presets);
-        const info = CNBPaletteEditor.PALETTE_PRESET_KEYS[key];
-        if (!info) return;
-        const palette = CNBPaletteEditor.buildPalette({
-          source: "preset", family: info.family, presetKey: key, customColors: [], useCBSafe: false,
-        });
-        const base = getConfig();
-        const config = { ...base, palette: { ...(base.palette || {}), ...palette } };
-        const table = I.lookTable(base).map(r => {
-          const entry = palette.colors.find(c => c.pc === r.pc);
-          return { ...r, color: entry ? entry.hex : null };
-        });
-        commit(table, { config });
-      };
-      group.appendChild(presets);
+      group.appendChild(drawSuggestions());
       return group;
+    }
+
+    /** The Suggested colours help (session 37): the curated sets, each
+     *  with its swatches and an Apply that colours the twelve noteheads. */
+    function drawSuggestions() {
+      const help = el("details", "cnb-nhp-suggest");
+      help.appendChild(el("summary", "", "Suggested colours"));
+      help.appendChild(el("p", "cnb-nhp-suggest-note",
+        "Sets to start from, cycled over the twelve noteheads. Those marked colour-blind safe stay " +
+        "distinct for most colour-blind readers. For a colour-blind version of your notation, save " +
+        "it under another name and give that copy other colours."));
+      const list = el("ul", "cnb-nhp-suggest-sets");
+      for (const set of CNBColourSets.SETS) {
+        const item = el("li", "cnb-nhp-suggest-set");
+        item.setAttribute("data-set", set.key);
+        const strip = el("span", "cnb-nhp-suggest-swatches");
+        for (const c of set.colors) {
+          const s = el("span", "cnb-nhp-suggest-swatch");
+          s.style.background = c.hex;
+          s.title = c.name;
+          strip.appendChild(s);
+        }
+        item.appendChild(strip);
+        item.appendChild(el("span", "cnb-nhp-suggest-label", set.label));
+        item.appendChild(button("cnb-nhp-suggest-apply", "Apply", () => commit(CNBColourSets.apply(I.lookTable(getConfig()), set.key))));
+        list.appendChild(item);
+      }
+      help.appendChild(list);
+      return help;
     }
 
     // ── Fill ──────────────────────────────────────────────────────────────

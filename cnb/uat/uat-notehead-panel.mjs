@@ -5,10 +5,9 @@
  * Builds the Kite 4-369 looks by clicking noteheads, and checks the export
  * equals the fixture's baseline byte for byte. It opens cnb/index.html with
  * the Kite 4-369 fixture stripped of its looks: the notehead rules reduced
- * to the Default (kite down, solid) and the palette's colours and
- * colour-blind twins cleared. The staff, ledgers, shapes, the palette's name
- * and Scheme symbols, and meta are kept. Then, on the canvas and in the
- * notehead panel:
+ * to the Default (kite down, solid), its colour rules among those removed
+ * (a notehead's colour lives on its rules, session 37). The staff, ledgers,
+ * shapes and meta are kept. Then, on the canvas and in the notehead panel:
  *
  *   1. C♯ → kite up, and Give this look to › Every 4th (shape only):
  *      C♯, F, A. D, Shift-click F♯ and A♯ → kite up.
@@ -37,6 +36,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { openSection, selectNotehead, useDownloads } from "./app-page.mjs";
+import { CNBConfig } from "../src/cnb-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -141,9 +141,7 @@ function check(label, cond, detail = "") {
 // ── The Kite fixture without its looks ──────────────────────────────────────
 const kite = JSON.parse(await readFile(path.join(FIXTURES, "kite-4-369-config.json"), "utf8"));
 const blank = JSON.parse(JSON.stringify(kite));
-blank.noteheadRules = [kite.noteheadRules[0]];          // Default: kite down, solid
-blank.palette.colors = [];
-blank.palette.cbSafeColors = [];
+blank.noteheadRules = [kite.noteheadRules.find(r => r.match.pitchClasses === "all")];   // Default: kite down, solid
 const baseline = await readFile(path.join(FIXTURES, "kite-4-369-export-baseline.ly"), "utf8");
 const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
 
@@ -236,7 +234,7 @@ check("COLOUR: a drag step (input) keeps the colour input's element (the picker 
     window.__colourInput.isConnected) &&
   await page.$$eval('.cnb-nhp-closeup path[fill="#50b4e9"]', els => els.length > 0) &&
   await page.$$eval('.cnb-pvd-preview .pc-col[data-pc="0"] path[fill="#50b4e9"]', els => els.length === 0) &&
-  (await state()).palette.colors.every(c => c.hex.toLowerCase() !== "#50b4e9"));
+  (await state()).noteheadRules.every(r => r.apply.color === undefined));
 await pickColour("#50b4e9");
 await give("every-3", "colour");
 await selectNotehead(page, 1);
@@ -248,11 +246,13 @@ await give("every-3", "colour");
 await page.screenshot({ path: path.join(SHOT_DIR, "notehead-panel-kite.png"), fullPage: true });
 
 cfg = await state();
-check("PALETTE: the twelve colours equal the fixture's",
-  cfg.palette.colors.length === 12 &&
-  kite.palette.colors.every(c => cfg.palette.colors.find(e => e.pc === c.pc)?.hex.toLowerCase() === c.hex.toLowerCase()),
-  JSON.stringify(cfg.palette.colors.map(c => c.hex)));
-check("RULES: no colour is written as a rule", cfg.noteheadRules.every(r => r.apply.color === undefined));
+const colours = (c) => [...Array(12).keys()].map(pc =>
+  (CNBConfig.resolveNotehead(c, pc, "crotchet", null).color || "#000000").toLowerCase());
+check("COLOURS: the twelve colours, on the notehead rules, equal the fixture's",
+  JSON.stringify(colours(cfg)) === JSON.stringify(colours(kite)),
+  JSON.stringify(colours(cfg)));
+check("RULES: the colours are written as rules, and the config has no palette (session 37)",
+  !("palette" in cfg) && cfg.noteheadRules.some(r => r.apply.color === "#cc79a7"));
 
 // ── The rule list and its hover tint ────────────────────────────────────────
 await page.keyboard.press("Escape");

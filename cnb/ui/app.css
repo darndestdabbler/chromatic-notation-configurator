@@ -285,8 +285,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 /* The editors' own validation lists: the checks list says it once. */
 .cnb-cio-validation, .cnb-cex-validation, .cnb-sre-validation, .cnb-nre-validation,
-.cnb-cpe-validation, .cnb-cle-validation, .cnb-kse-validation, .cnb-pae-validation,
-.cnb-pal-warning { display: none; }
+.cnb-cpe-validation, .cnb-cle-validation, .cnb-kse-validation, .cnb-pae-validation { display: none; }
 
 /* ── Panels: Advanced and View file (JSON) ─────────────────────────────── */
 .disclosure { border: 1px solid var(--line); border-radius: var(--radius-s); }
@@ -311,18 +310,18 @@ summary:focus-visible, [tabindex]:focus-visible {
 /* ── Editor host styling (moved from index.html; restyled in session 26) ─ */
 /* Shared shapes: section titles, hints, option rows, small icon buttons. */
 .cnb-sre-title, .cnb-nre-title, .cnb-cpe-title, .cnb-cle-title, .cnb-kse-title, .cnb-kse-subtitle,
-.cnb-pae-title, .cnb-pal-size-label, .cnb-pal-cb-match-title, .cnb-pal-preview-title {
+.cnb-pae-title {
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   color: var(--ink-2); margin: 0 0 var(--space-2);
 }
 .cnb-kse-subtitle { margin-top: var(--space-3); }
 .cnb-sre-hint, .cnb-nre-apply-hint, .cnb-cpe-hint, .cnb-cle-hint, .cnb-kse-hint, .cnb-pae-hint,
-.cnb-cpe-mode-help, .cnb-nre-size-hint, .cnb-pal-attribution {
+.cnb-cpe-mode-help, .cnb-nre-size-hint {
   font-size: 12px; color: var(--ink-2); margin-bottom: var(--space-2); max-width: 560px;
 }
 .cnb-sre-section, .cnb-cpe-section, .cnb-cle-section, .cnb-kse-section, .cnb-pae-section { margin-bottom: var(--space-4); }
 
-.cnb-pal-option, .cnb-sre-pattern-option, .cnb-cle-glyph-option, .cnb-cpe-mode-option, .cnb-kse-style-option {
+.cnb-sre-pattern-option, .cnb-cle-glyph-option, .cnb-cpe-mode-option, .cnb-kse-style-option {
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-2) var(--space-3); margin-bottom: var(--space-1);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
@@ -330,15 +329,15 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 .cnb-cle-glyph-option { justify-content: space-between; }
 .cnb-kse-style-option { flex-direction: column; align-items: flex-start; gap: 2px; max-width: 560px; }
-.cnb-pal-option:hover, .cnb-sre-pattern-option:hover, .cnb-cle-glyph-option:hover,
+.cnb-sre-pattern-option:hover, .cnb-cle-glyph-option:hover,
 .cnb-cpe-mode-option:hover, .cnb-kse-style-option:hover { border-color: #cfccc4; }
-.cnb-pal-option.selected, .cnb-sre-pattern-option.selected, .cnb-cle-glyph-option.selected,
-.cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected, .cnb-pal-custom.selected {
+.cnb-sre-pattern-option.selected, .cnb-cle-glyph-option.selected,
+.cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected {
   border-color: var(--accent); background: var(--accent-soft);
 }
 .cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected .cnb-kse-style-label { color: var(--accent); font-weight: 600; }
 
-.cnb-sre-template-remove, .cnb-pal-custom-remove, .cnb-pal-custom-add, .cnb-kse-def-remove,
+.cnb-sre-template-remove, .cnb-kse-def-remove,
 .cnb-nre-rule-up, .cnb-nre-rule-down, .cnb-nre-rule-remove {
   min-height: 28px; min-width: 28px; padding: 0;
 }
@@ -347,7 +346,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Check-box rows. */
-.cnb-pal-cb-toggle, .cnb-sre-proximity,
+.cnb-sre-proximity,
 .cnb-cle-enable, .cnb-kse-keys-enable, .cnb-kse-sig-enable, .cnb-kse-octave-auto, .cnb-kse-sep-enable,
 .cnb-pae-enable, .cnb-nre-apply-toggle, .cnb-nre-size-lock-label {
   display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
@@ -367,7 +366,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-pae-label { width: 240px; flex: none; color: var(--ink-2); }
 .cnb-pae-pc-name { width: 32px; flex: none; color: var(--ink-2); }
 .cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-kse-def-tonic-hint,
-.cnb-cle-glyph-detail, .cnb-kse-style-detail, .cnb-pal-custom-names, .cnb-pal-cb-match-de {
+.cnb-cle-glyph-detail, .cnb-kse-style-detail {
   font-size: 12px; color: var(--ink-2);
 }
 .cnb-cpe-badge, .cnb-badge {
@@ -428,23 +427,6 @@ summary:focus-visible, [tabindex]:focus-visible {
 #import-status.ok { color: var(--ok); }
 #import-status.err { color: var(--error); }
 #import-warnings { font-size: 13px; color: var(--warn); margin: var(--space-1) 0 0; padding-left: 18px; }
-
-/* Palette editor (Module 12). */
-.cnb-pal-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
-.cnb-pal-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.cnb-pal-size-group { margin-bottom: var(--space-2); }
-.cnb-pal-option-swatches, .cnb-pal-preview-strip { display: flex; gap: 3px; }
-.cnb-pal-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); }
-.cnb-pal-custom { border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-3); margin: var(--space-3) 0; }
-.cnb-pal-custom-colors { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
-.cnb-pal-custom-cell { display: flex; align-items: center; gap: 2px; }
-.cnb-pal-cb-match, .cnb-pal-preview { margin: var(--space-3) 0; }
-.cnb-pal-cb-match-row { display: flex; align-items: center; gap: var(--space-2); font-size: 13px; margin-bottom: 3px; }
-.cnb-pal-cb-match-arrow, .cnb-pal-cb-match-empty { color: var(--ink-2); font-size: 12px; }
-.cnb-pal-cb-toggle { margin: var(--space-3) 0; }
-.cnb-pal-preview-cell { text-align: center; }
-.cnb-pal-preview-label { font-size: 12px; color: var(--ink-2); margin-bottom: 2px; }
-.cnb-pal-preview-swatch { width: 24px; height: 24px; }
 
 /* Staff and ledger editor (Module 13). */
 .cnb-sre-custom-pcs, .cnb-sre-template-triggers, .cnb-nre-pills, .cnb-kse-def-pcs {
@@ -575,7 +557,16 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock, .cnb-nhp-give-part {
   display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--ink-2);
 }
-.cnb-nhp-preset { max-width: 220px; }
+/* Suggested colours (session 37): a help disclosure in the Colour group. */
+.cnb-nhp-suggest { flex-basis: 100%; font-size: 13px; }
+.cnb-nhp-suggest > summary { cursor: pointer; color: var(--accent); }
+.cnb-nhp-suggest-note { color: var(--ink-2); margin: var(--space-2) 0; max-width: 520px; }
+.cnb-nhp-suggest-sets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cnb-nhp-suggest-set { display: flex; align-items: center; gap: var(--space-2); }
+.cnb-nhp-suggest-swatches { display: inline-flex; gap: 2px; width: 150px; flex: none; }
+.cnb-nhp-suggest-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.15); }
+.cnb-nhp-suggest-label { flex: 1; color: var(--ink-2); }
+.cnb-nhp-suggest-apply { min-height: 26px; font-size: 12px; }
 .cnb-nhp-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
 .cnb-nhp-segmented > button { min-height: 30px; border: 0; border-right: 1px solid var(--line); border-radius: 0; font-size: 13px; }
 .cnb-nhp-segmented > button:last-child { border-right: 0; }

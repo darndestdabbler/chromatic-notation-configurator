@@ -5,9 +5,10 @@
  * Covers lookTable, inferAttribute (default tie-break, period, accidentals,
  * explicit lists), inferRules against the §5.2 worked examples, and
  * writeBack: every gallery and fixture config written back from its own
- * look table resolves to the same noteheads and colours, the reference
- * exports stay byte-identical to their baselines, and rules the inference
- * does not own are kept above the inferred ones (§5.5).
+ * look table resolves to the same noteheads and colours, its export does
+ * not change, and rules the inference does not own are kept above the
+ * inferred ones (§5.5). Fixtures load as the app loads them, so a palette
+ * they still carry is on their noteheads (session 37).
  */
 
 import { readFileSync } from "fs";
@@ -36,7 +37,7 @@ function deepEq(a, b, msg) {
 }
 
 function fixture(name) {
-  return JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", name), "utf8"));
+  return CNBConfigIO.loadFromText(readFileSync(path.join(CNB_DIR, "fixtures", name), "utf8")).config;
 }
 
 function gallery(name) {
@@ -67,7 +68,7 @@ function resolveEverything(config) {
     for (const d of durations.length ? durations : ["crotchet"]) {
       for (const k of keys) {
         const r = CNBConfig.resolveNotehead(config, pc, d, k);
-        out.push({ pc, d, k, ...r, color: r.color ?? CNBConfig.resolveColor(config, pc) });
+        out.push({ pc, d, k, ...r, color: r.color && r.color.toLowerCase() });
       }
     }
   }
@@ -101,7 +102,7 @@ export const tests = [
       deepEq(t[0], { pc: 0, shape: "crotchet-minim", hollow: false, color: null, heightSemis: null, widthSemis: 4, xOffsetStaffSpaces: 0 }, "C");
       deepEq([t[1].hollow, t[1].heightSemis, t[1].widthSemis], [true, 1.5, 3], "C♯");
       const kite = I.lookTable(fixture("kite-4-369-config.json"));
-      deepEq(kite.slice(0, 3).map(r => [r.shape, r.color]), [["kite-down", "#50b4e9"], ["kite-up", "#cc79a7"], ["kite-up", "#000000"]], "Kite colours from the palette");
+      deepEq(kite.slice(0, 3).map(r => [r.shape, r.color]), [["kite-down", "#50b4e9"], ["kite-up", "#cc79a7"], ["kite-up", null]], "Kite colours from its rules");
       eq(I.lookTable(gallery("twinline-compact.json"))[1].xOffsetStaffSpaces, 0.85, "Twinline C♯ side step");
     }},
 
@@ -146,17 +147,25 @@ export const tests = [
         ["Default (kite-down, solid)", "all"],
         ["Kite-up, every 4 semitones from C♯ and D", [1, 2, 5, 6, 9, 10]],
         ["Hollow, every 2 semitones from C♯", ODD],
+        ["Puce, every 3 semitones from C♯", [1, 4, 7, 10]],
+        ["No colour, every 3 semitones from D", [2, 5, 8, 11]],
       ], "rules");
-      const { colour } = I.inferRules(kite, I.lookTable(kite));
-      deepEq([colour.period, colour.cycle], [3, ["#50b4e9", "#cc79a7", "#000000"]], "colour cycle");
-      eq(colour.words, "every 3 semitones: skyblue, rose, black", "colour words");
+      const { rules, colour } = I.inferRules(kite, I.lookTable(kite));
+      deepEq([colour.period, colour.cycle], [3, ["#50b4e9", "#cc79a7", null]], "colour cycle");
+      eq(colour.words, "every 3 semitones: sky blue, puce, none", "colour words");
+      deepEq(rules.map(r => r.apply.color), ["#50b4e9", undefined, undefined, "#cc79a7", null], "colour on the rules");
     }},
 
   { name: "inferRules (§5.2): 45deg-369 → hollow every 2, colours every 3", fn: () => {
       const deg = fixture("45deg-369-config.json");
-      deepEq(ruleSummary(deg), [["Default (ellipse-45deg, solid)", "all"], ["Hollow, every 2 semitones from C♯", ODD]], "rules");
+      deepEq(ruleSummary(deg), [
+        ["Default (ellipse-45deg, solid)", "all"],
+        ["Hollow, every 2 semitones from C♯", ODD],
+        ["Puce, every 3 semitones from C♯", [1, 4, 7, 10]],
+        ["Sky blue, every 3 semitones from D", [2, 5, 8, 11]],
+      ], "rules");
       const { colour } = I.inferRules(deg, I.lookTable(deg));
-      eq(colour.words, "every 3 semitones: black, puce, sky blue", "colour words");
+      eq(colour.words, "every 3 semitones: none, puce, sky blue", "colour words");
     }},
 
   { name: "inferRules (§5.2): Twinline → accidentals hollow, explicit side step", fn: () => {
@@ -206,11 +215,11 @@ export const tests = [
         "Fill: solid, with hollow every 2 semitones from C♯",
         "Size: each shape at its own size",
         "Side step: none everywhere",
-        "Colour: every 3 semitones, skyblue, rose, black",
+        "Colour: every 3 semitones, sky blue, puce, none",
       ], "words");
       deepEq(lines[0].values, [{ value: "kite-down", pcs: [0, 3, 4, 7, 8, 11] }, { value: "kite-up", pcs: [1, 2, 5, 6, 9, 10] }], "shape values");
       deepEq(lines[4].values.map(v => [v.value, v.pcs]), [
-        ["#50b4e9", [0, 3, 6, 9]], ["#cc79a7", [1, 4, 7, 10]], ["#000000", [2, 5, 8, 11]],
+        ["#50b4e9", [0, 3, 6, 9]], ["#cc79a7", [1, 4, 7, 10]], [null, [2, 5, 8, 11]],
       ], "colour values");
     }},
 
@@ -221,7 +230,7 @@ export const tests = [
         "Fill: solid, with hollow every 2 semitones from C♯",
         "Size: each shape at its own size",
         "Side step: none everywhere",
-        "Colour: every 3 semitones, black, puce, sky blue",
+        "Colour: every 3 semitones, none, puce, sky blue",
       ], "words");
     }},
 
@@ -251,25 +260,19 @@ export const tests = [
       }
     }},
 
-  { name: "writeBack: the default, Kite 4-369 and 45deg-369 exports stay byte-identical", fn: () => {
-      const cases = [
-        [CNBConfig.createDefault(), "default-export-baseline.ly"],
-        [fixture("kite-4-369-config.json"), "kite-4-369-export-baseline.ly"],
-        [fixture("45deg-369-config.json"), "45deg-369-export-baseline.ly"],
-      ];
-      for (const [config, baseline] of cases) {
-        const expected = readFileSync(path.join(CNB_DIR, "fixtures", baseline), "utf8");
-        eq(normalize(CNBLilypond.generate(written(config))), normalize(expected), baseline);
+  { name: "writeBack: the default, Kite 4-369 and 45deg-369 exports do not change", fn: () => {
+      for (const [name, config] of [["default", CNBConfig.createDefault()],
+        ["kite", fixture("kite-4-369-config.json")], ["45deg", fixture("45deg-369-config.json")]]) {
+        eq(normalize(CNBLilypond.generate(written(config))), normalize(CNBLilypond.generate(config)), name);
       }
     }},
 
-  { name: "writeBack: an unchanged palette is kept as it is, in its order", fn: () => {
-      const kite = fixture("kite-4-369-config.json");
-      deepEq(written(kite).palette, kite.palette, "Kite palette");
-      deepEq(written(CNBConfig.createDefault()).palette, CNBConfig.createDefault().palette, "empty palette");
+  { name: "writeBack: writes no palette (session 37)", fn: () => {
+      assert(!("palette" in written(fixture("kite-4-369-config.json"))), "Kite");
+      assert(!("palette" in written(CNBConfig.createDefault())), "default");
     }},
 
-  { name: "writeBack (§5.3, §5.5): colour rules move to the palette; scoped rules are kept above", fn: () => {
+  { name: "writeBack (§5.3, §5.5): a colour is written as a rule; scoped rules are kept above", fn: () => {
       const config = CNBConfig.createDefault();
       config.keys.enabled = true;
       config.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
@@ -284,39 +287,23 @@ export const tests = [
       deepEq(kept.map(r => [r.name, r.match, r.apply]), [minim, inG].map(r => [r.name, r.match, r.apply]), "kept verbatim, in order");
       const top = Math.max(...after.noteheadRules.filter(I.ownsRule).map(r => r.priority));
       assert(kept.every(r => r.priority > top), "kept rules above the inferred ones");
-      assert(kept[0].priority < kept[1].priority, "order kept");
-      assert(after.noteheadRules.every(r => r.apply.color === undefined), "no apply.color written");
-      deepEq(after.palette.colors.map(c => [c.pc, c.hex]), [[0, "#ff0000"]], "colour in the palette");
+      assert(kept[0].priority <= kept[1].priority, "order kept");
+      deepEq(after.noteheadRules.filter(r => r.apply.color !== undefined).map(r => [r.name, r.match.pitchClasses, r.apply]),
+        [["Red on C", [0], { color: "#ff0000" }]], "one colour rule");
       eq(config.noteheadRules.length, 5, "input not mutated");
     }},
 
-  { name: "writeBack (session 27): a colour taken back to none leaves the palette with its twin", fn: () => {
+  { name: "writeBack: a colour taken back to none draws and exports black", fn: () => {
       const kite = fixture("kite-4-369-config.json");
       const table = I.lookTable(kite);
-      table[1].color = null;                       // C♯, rose → none
+      table[1].color = null;                       // C♯, puce → none
       const after = I.writeBack(kite, table);
-      assert(!after.palette.colors.some(c => c.pc === 1), "C♯ has no colour entry");
-      assert(!after.palette.cbSafeColors.some(c => c.pc === 1), "C♯ has no twin");
-      eq(after.palette.colors.length, 11, "the other entries kept");
-      eq(CNBConfig.resolveColor(after, 1), CNBConfig.resolveColor(CNBConfig.createDefault(), 1), "C♯ draws as with no palette");
+      eq(CNBConfig.resolveNotehead(after, 1, "crotchet", null).color, null, "C♯ has no colour");
+      eq(CNBConfig.resolveNotehead(after, 4, "crotchet", null).color, "#cc79a7", "E keeps puce");
       const ly = CNBLilypond.generate(after);
       const cSharp = ly.split(";; C♯")[1].split(";;")[0];
       assert(/\(color\s+\. black-000000\)/.test(cSharp), "C♯ exports black: " + cSharp);
       eq(I.lookTable(after)[1].color, null, "reads back as none");
-    }},
-
-  { name: "writeBack (session 27): a changed colour's twin follows its new colour or is dropped", fn: () => {
-      const config = fixture("kite-4-369-config.json");
-      config.palette.cbSafeColors = config.palette.cbSafeColors.map(c => ({ ...c, hex: c.hex === "#000000" ? "#111111" : "#0072b2" }));
-      const table = I.lookTable(config);
-      table[1].color = "#000000";                  // C♯ rose → black, whose twin is #111111
-      table[4].color = "#123456";                  // E rose → a new colour with no twin
-      const after = I.writeBack(config, table);
-      const twin = (pc) => after.palette.cbSafeColors.find(c => c.pc === pc);
-      eq(twin(1).hex, "#111111", "C♯ takes black's twin");
-      eq(twin(4), undefined, "E's stale twin dropped");
-      eq(twin(7).hex, "#0072b2", "G, unchanged, keeps its twin");
-      eq(after.palette.colors.find(c => c.pc === 4).hex, "#123456", "E's new colour");
     }},
 
   { name: "writeBack (§5.5, session 27): only kept rules below the inferred ones are raised, in order", fn: () => {

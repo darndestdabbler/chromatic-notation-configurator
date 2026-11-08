@@ -110,7 +110,12 @@ function customConfig() {
     match: { pitchClasses: "all", durations: "all", keys: "all" },
     apply: { shape: "kite-up", hollow: false, color: null, offKeyMark: false },
   }];
-  cfg.palette.schemeSymbols = { "#1B9E77": "shamrock-1b9e77" };
+  cfg.noteheadRules.push({
+    name: "Shamrock C",
+    priority: 1,
+    match: { pitchClasses: [0], durations: "all", keys: "all" },
+    apply: { color: "#1b9e77" },
+  });
   cfg.durations.repeatCounts = { minim: 2 };
   return cfg;
 }
@@ -290,15 +295,12 @@ export const tests = [
         version: "1.0",
         shapes: { "kite-up": { displayName: "Kite Up" } },
         durations: { repeatCounts: { minim: 2 } },
-        palette: { schemeSymbols: { "#123456": "x-123456" } },
       };
       const { config } = IO.mergeLoaded(parsed);
       assertEqual(Object.keys(config.shapes), ["kite-up"], "default shape not resurrected");
       assertEqual(config.durations.repeatCounts, { minim: 2 }, "default repeat counts not resurrected");
-      assertEqual(config.palette.schemeSymbols, { "#123456": "x-123456" }, "schemeSymbols replaced");
       // Fixed-schema neighbors still merged from defaults:
       assertEqual(config.durations.representationMode, "shape", "sibling field from defaults");
-      assertEqual(config.palette.name, "None", "sibling field from defaults");
     },
   },
   {
@@ -306,6 +308,24 @@ export const tests = [
     fn: () => {
       const { config } = IO.mergeLoaded({ version: "1.0" });
       assertEqual(config, CNBConfig.createDefault(), "empty file → pure defaults");
+    },
+  },
+  {
+    name: "mergeLoaded: a config saved with a palette loads with its colours on the noteheads (session 37)",
+    fn: () => {
+      const { config, validation } = IO.mergeLoaded({
+        version: "1.0",
+        palette: {
+          name: "Two", useCBSafe: true, schemeSymbols: { "#1b9e77": "shamrock-1b9e77" },
+          colors: [{ pc: 0, hex: "#1b9e77", name: "Shamrock" }, { pc: 1, hex: "#000000" }],
+          cbSafeColors: [{ pc: 0, hex: "#0077bb" }],
+        },
+      });
+      assert(!("palette" in config), "no palette after load");
+      assertEqual(CNBConfig.resolveNotehead(config, 0, "crotchet", null).color, "#1b9e77", "C keeps its colour");
+      assertEqual(CNBConfig.resolveNotehead(config, 1, "crotchet", null).color, null, "black stays none");
+      assertEqual(validation.errors, [], "valid");
+      assert(!IO.REPLACE_PATHS.some(p => p[0] === "palette"), "no palette map in REPLACE_PATHS");
     },
   },
   {
@@ -345,9 +365,9 @@ export const tests = [
   {
     name: "mergeLoaded: a null/wrong-typed map section falls back to merge behavior (defaults kept)",
     fn: () => {
-      const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, palette: { schemeSymbols: null } });
+      const { config } = IO.mergeLoaded({ version: "1.0", shapes: null, clef: { glyphs: null } });
       assertEqual(config.shapes, CNBConfig.createDefault().shapes, "null shapes → default shapes kept");
-      assertEqual(config.palette.schemeSymbols, {}, "null symbols → default kept");
+      assertEqual(config.clef.glyphs, {}, "null glyphs → default kept");
     },
   },
   {
@@ -698,8 +718,8 @@ export const tests = [
         '"staff.semitonePattern" should be an array, got a string', "string for array");
       assertThrows(() => IO.mergeLoaded({ noteheadRules: {} }),
         '"noteheadRules" should be an array, got an object', "object for array");
-      assertThrows(() => IO.mergeLoaded({ palette: { colors: "red" } }),
-        '"palette.colors" should be an array', "nested");
+      assertThrows(() => IO.mergeLoaded({ clef: { gutter: "wide" } }),
+        '"clef.gutter" should be an object', "nested");
       assertThrows(() => IO.mergeLoaded({ display: { pxPerSemi: "big" } }),
         '"display.pxPerSemi" should be a number, got a string', "number field");
       assertThrows(() => IO.mergeLoaded({ engine: { falseHollow: "no" } }),

@@ -250,7 +250,7 @@ export const tests = [
       assert(!v.warnings.some(w => w.includes('Rule "F♯ red in G major"')),
         "no warning names the rule: " + JSON.stringify(v.warnings));
       const ly = CNBLilypond.generate(cfg);
-      assert(ly.includes("(cnb:register-color! 'color-ff0000 \"#FF0000\")") && ly.includes(";; Key G major"),
+      assert(ly.includes("(cnb:register-color! 'red-ff0000 \"#FF0000\")") && ly.includes(";; Key G major"),
         "the rule's colour and its key's branch are in the export");
     },
   },
@@ -376,13 +376,14 @@ export const tests = [
       // One sentence, naming what the exporter's header lists, and saying
       // the clef and the rest of the key signature export (session 30).
       assertEqual(EX.PREVIEW_ONLY_SENTENCE.split(/[.!?](\s|$)/).filter(s => s && s.trim()).length, 1, "a single sentence");
-      for (const s of ["colour-blind", "everything else is exported or drawn here as LilyPond draws it"]) {
+      for (const s of ["Everything shown here is exported or drawn here as LilyPond draws it", "off-key marks"]) {
         assert(EX.PREVIEW_ONLY_SENTENCE.includes(s), `names ${s}`);
       }
       for (const s of ["stem thickness", "spacing", "repeat counts", "particular key", "ledger"]) {
         assert(!EX.PREVIEW_ONLY_SENTENCE.includes(s), `${s} is no longer preview-only (session 34)`);
       }
       assert(!EX.PREVIEW_ONLY_SENTENCE.includes("placement, bar"), "placement and the bar are no longer preview-only");
+      assert(!/colou?r-?blind/i.test(EX.PREVIEW_ONLY_SENTENCE), "no colour-blind switch to name (session 37)");
       api.exportLy();   // download throws without opts.download: the sentence survives a redraw
       assertEqual(findAll(api.root, "cnb-cex-preview-only").length, 1, "still one after a redraw");
     }),

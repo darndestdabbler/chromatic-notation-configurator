@@ -105,58 +105,9 @@
     .cnb-sre-error { color: #c62828; }
     .cnb-sre-warning { color: #b45309; }
 
-    /* ── Palette editor host styling (same as its own test page) ── */
-    .cnb-pal-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    .cnb-pal-tab {
-      font: inherit; font-size: 13px; padding: 6px 14px;
-      border: 1px solid #ccc; border-radius: 6px;
-      background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-tab.active { background: #eff6fc; border-color: #2b6cb0; color: #2b6cb0; font-weight: 600; }
-    .cnb-pal-size-group { margin-bottom: 8px; }
-    .cnb-pal-size-label { font-size: 11px; color: #999; margin: 6px 0 3px; text-transform: uppercase; }
-    .cnb-pal-option {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
-      margin-bottom: 4px; cursor: pointer; font-size: 13px;
-    }
-    .cnb-pal-option:hover { border-color: #bbb; }
-    .cnb-pal-option.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-pal-option-swatches { display: flex; gap: 3px; }
-    .cnb-pal-swatch {
-      width: 18px; height: 18px; border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.15);
-    }
-    .cnb-pal-option-name { color: #444; }
-    .cnb-pal-custom { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px; margin: 12px 0; }
-    .cnb-pal-custom.selected { border-color: #2b6cb0; background: #eff6fc; }
-    .cnb-pal-custom-select {
-      font: inherit; font-size: 13px; padding: 4px 10px;
-      border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-custom-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .cnb-pal-custom-cell { display: flex; align-items: center; gap: 2px; }
-    .cnb-pal-custom-input { width: 34px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
-    .cnb-pal-custom-remove, .cnb-pal-custom-add {
-      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
-      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
-    }
-    .cnb-pal-custom-names { font-size: 11px; color: #888; margin-top: 6px; }
-    .cnb-pal-warning { font-size: 11px; color: #b45309; margin: 6px 0; }
-    .cnb-pal-cb-match { margin: 12px 0; }
-    .cnb-pal-cb-match-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
-    .cnb-pal-cb-match-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 3px; }
-    .cnb-pal-cb-match-arrow { color: #aaa; }
-    .cnb-pal-cb-match-de { color: #999; font-size: 11px; }
-    .cnb-pal-cb-match-empty { font-size: 11px; color: #aaa; }
-    .cnb-pal-cb-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0; cursor: pointer; }
-    .cnb-pal-preview { margin: 12px 0; }
-    .cnb-pal-preview-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 4px; }
-    .cnb-pal-preview-strip { display: flex; gap: 4px; }
-    .cnb-pal-preview-cell { text-align: center; }
-    .cnb-pal-preview-label { font-size: 11px; color: #666; margin-bottom: 2px; }
-    .cnb-pal-preview-swatch { width: 24px; height: 24px; }
-    .cnb-pal-attribution { font-size: 10px; color: #aaa; margin-top: 14px; max-width: 480px; }
+    /* ── Suggested colour sets (session 37) ── */
+    #colour-sets { display: flex; flex-wrap: wrap; gap: 6px; }
+    #colour-sets button { font: inherit; font-size: 13px; padding: 4px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer; }
 
     /* ── Common properties editor host styling (same as its own test page) ── */
     .cnb-cpe-section { margin-bottom: 16px; }
@@ -193,7 +144,8 @@
   <p>
     The UI-shell wiring this page hosts is the session-set 006 integration
     pattern: one shared <code>config</code> object owned by the page, edited
-    through the Palette Editor (Module 12, set 004), the Staff/Ledger Rule
+    through the suggested colour sets (written onto the notehead rules,
+    session 37), the Staff/Ledger Rule
     Editor (Module 13) and the Common Properties Editor (Module 15, both
     set 005), and exported through Module 18. The export button validates first (LY spec §8) — blocking
     errors are listed with the reason export is blocked, warnings never
@@ -208,8 +160,8 @@
   </div>
 
   <div class="card">
-    <h2>Palette editor (Module 12, edits the shared config)</h2>
-    <div id="palette-editor-host"></div>
+    <h2>Suggested colours (written onto the notehead rules)</h2>
+    <div id="colour-sets"></div>
   </div>
 
   <div class="card">
@@ -233,7 +185,8 @@
 
   <script type="module">
     import { CNBConfig } from "../src/cnb-config.js";
-    import { CNBPaletteEditor } from "../ui/palette-editor.js";
+    import { CNBColourSets } from "../ui/colour-sets.js";
+    import { CNBNoteheadInference } from "../ui/notehead-inference.js";
     import { CNBStaffRuleEditor } from "../ui/staff-rule-editor.js";
     import { CNBCommonPropsEditor } from "../ui/common-props-editor.js";
     import { CNBConfigExport } from "../ui/config-export.js";
@@ -258,14 +211,22 @@
       { getConfig: () => appConfig }
     );
 
-    CNBPaletteEditor.render(document.getElementById("palette-editor-host"), {
-      palette: appConfig.palette,
-      onChange: (palette) => {
-        appConfig.palette = palette;
+    // A notehead's colour lives on its rules (session 37): applying a set
+    // colours the twelve noteheads through the look table, as the notehead
+    // panel's Suggested colours does.
+    for (const set of CNBColourSets.SETS) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.set = set.key;
+      b.textContent = set.label;
+      b.onclick = () => {
+        const table = CNBColourSets.apply(CNBNoteheadInference.lookTable(appConfig), set.key);
+        appConfig.noteheadRules = CNBNoteheadInference.writeBack(appConfig, table).noteheadRules;
         refreshPanel();
         exportApi.redraw();
-      },
-    });
+      };
+      document.getElementById("colour-sets").appendChild(b);
+    }
 
     CNBStaffRuleEditor.render(document.getElementById("staff-editor-host"), {
       config: appConfig,

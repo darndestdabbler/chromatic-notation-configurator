@@ -12,10 +12,11 @@
  *       data-lilypond-* and stem placemarker rects) via Module 16.
  *   A2. Select the 3-6-9 staff pattern via Module 13.
  *   A3. Select repeat representation mode via Module 15.
- *   A4. Author the custom CB-safe 3-color palette (skyblue/rose/black,
- *       per-PC cycling pool) via Module 12.
  *   A5. Author the three Kite rules via Module 14 (default → kite-down;
  *       hollow on odd PCs; kite-up on PCs 1,2,5,6,9,10).
+ *   A4. Then give the noteheads the Kite colours (skyblue/rose/black,
+ *       every 3 semitones) in the notehead panel: a notehead's colour
+ *       lives on its rules since session 37.
  *   A6. Export via Module 18 and compare against the fixture-driven
  *       export: identical staff geometry, whitespace-normalized-identical
  *       path definitions, identical Section C (shape, hollow, attachment,
@@ -188,7 +189,7 @@ const norm = (s) => s.replace(/\s+/g, " ").trim();
 // Section C extraction: pc → { shape, hollow, attach, colorHex-or-symbol }.
 // Color symbols carry the hex as a suffix (toSchemeSymbol), so mapping
 // equality is judged on the hex suffix (naming prefix differs between the
-// fixture's stored schemeSymbols and nearestColorName on a custom palette).
+// fixture's names and nearestColorName on colours chosen in the panel).
 function sectionCMap(ly) {
   const map = {};
   const clauseRe = /\(\(?= pc (\d+)\)[\s\S]*?\(shape\s+\.\s+([\w-]+)\)[\s\S]*?\(color\s+\.\s+([\w-]+)\)[\s\S]*?\(hollow\s+\.\s+([\w#f-]+)\)[\s\S]*?\(attachment\s+\.\s+([\w#f-]+)\)/g;
@@ -268,35 +269,6 @@ check("AUTHOR/staff+mode: 3-6-9 (pattern [3,6,9], sps 3, midpoint 12) and repeat
   cfg.staff.midpoint === 12 &&
   cfg.durations.representationMode === "repeat");
 
-// ── A4: custom CB-safe palette, 3-color cycling pool (Module 12) ────────────
-// Since session 27 the palette and rule editors sit in Advanced.
-await openAdvanced(page, "Colour palette");
-await page.click(".cnb-pal-tab:has-text('Colorblind-safe')");
-await page.click(".cnb-pal-custom-select");
-// Normalize the custom pool to exactly 3 cells, then set the Kite colors.
-await page.evaluate(() => {
-  const cells = () => document.querySelectorAll(".cnb-pal-custom-cell").length;
-  while (cells() > 3) document.querySelector(".cnb-pal-custom-remove").click();
-  while (cells() < 3) document.querySelector(".cnb-pal-custom-add").click();
-});
-const KITE_POOL = ["#50b4e9", "#cc79a7", "#000000"];
-for (let i = 0; i < 3; i++) {
-  await page.evaluate(([idx, hex]) => {
-    const input = document.querySelectorAll(".cnb-pal-custom-input")[idx];
-    input.value = hex;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    // The colour applies when the picker closes (session 36).
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  }, [i, KITE_POOL[i]]);
-}
-cfg = await fullConfig();
-check("AUTHOR/palette: custom CB-safe pool cycles per-PC exactly like the fixture — all 12 primary hexes match, and cbSafeColors is the identity mapping",
-  cfg.palette.colors.length === 12 &&
-  cfg.palette.colors.every((c, pc) =>
-    c.hex.toLowerCase() === fixtureJson.palette.colors[pc].hex.toLowerCase()) &&
-  cfg.palette.cbSafeColors.every((c, pc) => c.hex === cfg.palette.colors[pc].hex),
-  JSON.stringify((cfg.palette.colors || []).slice(0, 4)));
-
 // ── A5: the three Kite rules (Module 14) ────────────────────────────────────
 // Rule 0 (Default): point its shape at kite-down.
 await openAdvanced(page, "Rules for particular durations or keys");
@@ -338,6 +310,30 @@ check("AUTHOR/rules: 3 rules in the shared config with the Kite match sets (holl
 }
 check("AUTHOR: engine.falseHollow remains at its default (false) — no engine-settings editor exists in the as-built UI (set-005 verified CPE scope: durations + representation mode); the fixture supplies it for the release-gate artifact",
   cfg.engine.falseHollow === false && fixtureJson.engine.falseHollow === true);
+// ── A4: the Kite colours on the noteheads (notehead panel, session 37) ──────
+// Every 3 semitones from C skyblue, from C♯ rose, from D none (black).
+for (const [hex, pcs] of [["#50b4e9", [0, 3, 6, 9]], ["#cc79a7", [1, 4, 7, 10]]]) {
+  await selectNotehead(page, pcs[0]);
+  for (const pc of pcs.slice(1)) await selectNotehead(page, pc, { add: true });
+  await page.evaluate((value) => {
+    const input = document.querySelector(".cnb-nhp-color-input");
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    // The colour applies when the picker closes (session 36).
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, hex);
+}
+cfg = await fullConfig();
+{
+  const { CNBConfig } = await import("../src/cnb-config.js");
+  const colours = (c) => [...Array(12).keys()].map(pc => {
+    const r = CNBConfig.resolveNotehead(c, pc, "crotchet", null);
+    return [r.color && r.color.toLowerCase(), r.shape, r.hollow];
+  });
+  check("AUTHOR/colours: the noteheads carry the Kite colours on their rules, as the fixture resolves them, with shape and fill kept, and no palette",
+    !("palette" in cfg) && JSON.stringify(colours(cfg)) === JSON.stringify(colours(fixtureJson)),
+    JSON.stringify(colours(cfg).map(c => c[0])));
+}
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-007-s1-authored.png"), fullPage: true });
 
 // ── A6: export the AUTHORED system and compare with the fixture export ──────
@@ -407,21 +403,21 @@ check("LOAD: config-io reports the fixture loaded and valid",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
 
 cfg = await fullConfig();
-check("LOAD: shared config adopted the Kite 4-369 system (pattern [3,6,9], sps 3, midpoint 12, repeat mode, falseHollow, both kite shapes, 3 rules)",
+check("LOAD: shared config adopted the Kite 4-369 system (pattern [3,6,9], sps 3, midpoint 12, repeat mode, falseHollow, both kite shapes, its 5 rules: the 3 Kite rules and 2 colour rules)",
   JSON.stringify(cfg.staff.semitonePattern) === "[3,6,9]" &&
   cfg.staff.semitonesPerStaffSpace === 3 &&
   cfg.staff.midpoint === 12 &&
   cfg.durations.representationMode === "repeat" &&
   cfg.engine.falseHollow === true &&
   !!cfg.shapes["kite-up"] && !!cfg.shapes["kite-down"] &&
-  cfg.noteheadRules.length === 3,
+  cfg.noteheadRules.length === 5 && cfg.noteheadRules.length === fixtureJson.noteheadRules.length,
   JSON.stringify({ pattern: cfg.staff.semitonePattern, mode: cfg.durations.representationMode }));
 
-check("LOAD: editors re-seeded — 3-6-9 staff pattern and repeat mode show selected, 3 rule cards",
+check("LOAD: editors re-seeded — 3-6-9 staff pattern and repeat mode show selected, 5 rule cards",
   await page.evaluate(() =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
     document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
-    document.querySelectorAll(".cnb-nre-rule-card").length === 3));
+    document.querySelectorAll(".cnb-nre-rule-card").length === 5));
 
 // ── STEP 2: the preview renders the loaded system ────────────────────────────
 const expectedLines = CNBStaff.getPositions(cfg, CNBCollection.gridRange(
@@ -431,7 +427,7 @@ check(`PREVIEW: full chromatic row (13 cards) with ${expectedLines} staff lines 
   await page.$$eval(".cnb-pvd-preview .staff-lines-bg line",
     (els, n) => els.length === n, expectedLines),
   `cards=${await cardCount()}`);
-check("PREVIEW: kite noteheads drawn with the baked palette — skyblue #50b4e9 and rose #cc79a7 fills present",
+check("PREVIEW: kite noteheads drawn in the fixture's rule colours — skyblue #50b4e9 and rose #cc79a7 fills present",
   await page.evaluate(() =>
     [...document.querySelectorAll(".cnb-pvd-preview path")]
       .some(p => (p.getAttribute("fill") || "").toLowerCase() === "#50b4e9") &&
@@ -470,15 +466,16 @@ check("PARITY: downloaded .ly is byte-identical to generate() on the fixture fil
   fromFixture !== null && fromFixture === exported,
   fixtureErr || `lengths ${exported.length} vs ${fromFixture ? fromFixture.length : "n/a"}`);
 
-check("EXPORT CONTENT: Kite system reached the .ly — procedure model on (D1), both kite paths, 3-6-9 geometry, false-hollow, repeat #t clauses, baked skyblue/rose colors",
+check("EXPORT CONTENT: Kite system reached the .ly — procedure model on (D1), both kite paths, 3-6-9 geometry, false-hollow, repeat #t clauses, the skyblue/rose colours (named from their hex, session 37)",
   exported.includes("#(set! cnb:use-procedure-model #t)") &&
   exported.includes("cnb:register-path! 'kite-up") &&
   exported.includes("cnb:register-path! 'kite-down") &&
   exported.includes("cnb:semitones-per-staff-space 3") &&
   exported.includes("cnb:false-hollow #t") &&
   /\(repeat\s+\. #t\)/.test(exported) &&
-  exported.includes("skyblue-50b4e9") &&
-  exported.includes("rose-cc79a7"),
+  exported.includes(`#(cnb:register-color! 'sky-blue-50b4e9 "#50b4e9")`) &&
+  exported.includes(`#(cnb:register-color! 'puce-cc79a7 "#cc79a7")`) &&
+  !exported.includes("cnb:use-accessible-colors"),
   exported.slice(0, 200));
 
 check("NO console or page errors across the pipeline",

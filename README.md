@@ -11,7 +11,9 @@ The Configurator is the design environment where notation creators make creative
 - **Import notehead shapes** from SVGs produced by the Music Glyph Toolkit
 - **Configure staff geometry** — any number of lines at any semitone positions
 - **Configure ledger lines** — automatic, or your own rules for which notes get them
-- **Select color palettes** with automatic colorblind-safe alternatives
+- **Colour noteheads directly**, or start from suggested colour sets
+  (colour-blind-safe ones among them); a colour-blind version of a
+  notation is simply a second config saved under another name
 - **Preview your notation** on a staff of octave chords, as the engine engraves it
 - **Export `.ly` config files** that the ChromaticNotationBase engine consumes
 - **Save/load configurations** as JSON for iterative design
@@ -181,7 +183,8 @@ engine engraves it.
 - **Staff** — pick a staff pattern (which semitones within the octave
   carry lines, e.g. 4-8 or 3-6-9).
 - **Noteheads** — click a notehead on the staff (Shift+click adds more) to
-  open the notehead panel: colour, fill, shape, size and nudge, and **Give
+  open the notehead panel: colour (with **Suggested colours** to start
+  from), fill, shape, size and nudge, and **Give
   this look to** all, every other, every third … of the noteheads, or the
   accidentals or naturals. The section lists the rules the looks are kept
   as.
@@ -192,10 +195,9 @@ engine engraves it.
 - **Clef** and **Key signature** — an imported clef glyph or a text clef;
   the signature's look; and the keys a notehead rule can be for. The
   signature draws for the key picked on the staff, defined here or not.
-- **Advanced** — rules for particular durations or keys, the colour palette
-  (with its colorblind-safe alternative, which the exported file can switch
-  to at render time), the duration list and engine settings, the pitch axis
-  map, the pitch range shown, and the file as JSON.
+- **Advanced** — rules for particular durations or keys, the duration list
+  and engine settings, the pitch axis map, the pitch range shown, and the
+  file as JSON.
 
 The canvas redraws live from the same JSON config the export reads.
 
@@ -230,8 +232,7 @@ config:
 then run `lilypond -dbackend=svg my-score.ly` with LilyPond 2.24.x or
 2.26.x (the engine supports 2.26 from its 1.1.0; other versions are
 untested). See the
-engine README for engine installation, options (e.g.
-`cnb:use-accessible-colors`), and its test tooling.
+engine README for engine installation, options, and its test tooling.
 
 ### A worked example, checked in
 
@@ -330,18 +331,14 @@ Two engine behaviours apply only when `pitchAxis` is enabled
 
 ### Preview-only settings
 
-As the Export section says, one setting changes the preview but not the
-export, and the export header says so too:
+None, since session 37 (LY export spec 1.3.10): the colour-blind preview
+toggle went with the palette. A notehead's colour is on its rules, and the
+export registers the colours the noteheads use; a colour-blind version is a
+second config. Off-key marks are kept in the file but neither drawn in the
+preview nor exported yet.
 
-- **The CB-safe toggle.** The export carries both palettes. A score selects
-  the colorblind-safe one by setting `cnb:use-accessible-colors` to `#t`
-  before `\include`.
-
-Off-key marks are kept in the file but neither drawn in the preview nor
-exported yet.
-
-Everything else the preview shows is exported, or drawn as the engine
-engraves it (session 34, LY export spec 1.3.9):
+Everything the preview shows is exported, or drawn as the engine engraves
+it (session 34, LY export spec 1.3.9):
 
 - **Ledger rules export.** Every notehead the preview draws engraves the
   ledgers the preview draws for it, in-gap ledgers included (§5.7).
@@ -419,10 +416,9 @@ example data in, DOM nodes out:
 
 | Module | Purpose |
 |--------|---------|
-| Notehead Panel | The selected noteheads' look: colour, fill, shape, size, nudge |
+| Notehead Panel | The selected noteheads' look: colour (and the suggested colour sets), fill, shape, size, nudge |
 | Pitch Panel | The middle of the staff, the staff spacing and the nudges |
 | SVG Shape Importer | Reads Music Glyph Toolkit SVGs, extracts paths and anchors |
-| Palette Editor | Color palette selection with CB-safe toggle |
 | Staff/Ledger Rule Editor | Staff pattern and ledger template configuration |
 | Notehead Rule Editor | Shape/hollow/color rules by pitch, duration, key |
 | Common Properties Editor | Durations, representation mode, engine settings, metadata |
@@ -443,8 +439,7 @@ The Configurator's native format is a JSON configuration that defines a complete
 - **Staff** — Semitone pattern, middle and staff spacing
 - **Pitch Axis** (optional) — Maps pitch classes onto staff positions for compact staves
 - **Ledgers** — Templates with proximity and override trigger rules
-- **Notehead Rules** — Cumulative rules assigning shape, hollow, color by pitch/duration/key
-- **Palette** — Color palette with automatic colorblind-safe alternatives
+- **Notehead Rules** — Cumulative rules assigning shape, hollow, colour by pitch/duration/key (a notehead's colour lives here; there is no palette)
 - **Durations** — Duration definitions and representation mode
 - **Keys** — Key definitions and key-signature settings
 - **Clef** — Custom clef glyphs

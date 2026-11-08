@@ -10,7 +10,7 @@
  * replaced by the compiled DSL output once that pipeline lands.)
  *
  * Flow (spec step 3, the full golden path): import an SVG shape (set 004,
- * Module 16) → pick a palette (set 004, Module 12) → add notehead/staff
+ * Module 16) → colour the noteheads with a suggested set (session 37) → add notehead/staff
  * rules (set 005, Modules 14/13) → adjust common properties (set 005,
  * Module 15) → preview the full chromatic row and exercise the Module 19
  * range/duration controls → save the config (Module 17, real download
@@ -41,7 +41,7 @@
  */
 import http from "http";
 import os from "os";
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { readFile, mkdir } from "fs/promises";
 import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -213,12 +213,12 @@ const staffLineCount = async () =>
 // ── STEP 0: initial assembly ────────────────────────────────────────────────
 check('PAGE title is "Chromatic Notation Configurator"',
   (await page.title()) === "Chromatic Notation Configurator", await page.title());
-check("ASSEMBLY: the seven always-mounted module roots on one page (Modules 12–15, 17–19; the SVG importer opens with a notehead, session 27)",
+check("ASSEMBLY: the six always-mounted module roots on one page (Modules 13–15, 17–19; the SVG importer opens with a notehead, session 27; the palette editor retired in session 37)",
   await page.evaluate(() =>
     !!document.querySelector(".cnb-preview-display") &&
     !!document.querySelector(".cnb-config-io") &&
     !!document.querySelector(".cnb-config-export") &&
-    !!document.querySelector(".cnb-palette-editor") &&
+    !document.querySelector(".cnb-palette-editor") &&
     !!document.querySelector(".cnb-staff-rule-editor") &&
     !!document.querySelector(".cnb-notehead-rule-editor") &&
     !!document.querySelector(".cnb-common-props-editor")));
@@ -266,18 +266,28 @@ check("IMPORT: the notehead rule editor re-seeded — its shape selects now offe
       .some(o => o.value === "uat-ellipse")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-imported.png"), fullPage: true });
 
-// ── STEP 2: pick a palette (set 004, Module 12; Advanced since session 27) ──
-await openAdvanced(page, "Colour palette");
-await page.click('.cnb-pal-option[data-preset-key="dark2-3"]');
+// ── STEP 2: colour the noteheads with a suggested set (session 37) ─────────
+// The notehead panel, open on C since step 1, has the Suggested colours help.
+await page.click(".cnb-nhp-suggest > summary");
+await page.click('.cnb-nhp-suggest-set[data-set="dark2-3"] .cnb-nhp-suggest-apply');
 cfg = await fullConfig();
-check("PALETTE: Dark2 3-color preset reaches the shared config (12 per-PC colors, first #1b9e77, scheme symbols)",
-  cfg.palette.colors.length === 12 &&
-  cfg.palette.colors[0].hex.toLowerCase() === "#1b9e77" &&
-  Object.keys(cfg.palette.schemeSymbols || {}).length > 0,
-  JSON.stringify({ n: cfg.palette.colors.length, first: cfg.palette.colors[0] }));
-check("PALETTE: the preview re-rendered live — noteheads now carry the palette fill #1b9e77",
+const colourOf = (c, pc) => {
+  let color = null;
+  for (const r of c.noteheadRules.slice().sort((a, b) => a.priority - b.priority)) {
+    const m = r.match;
+    if ((m.pitchClasses === "all" || m.pitchClasses.includes(pc)) && m.durations === "all" && m.keys === "all" &&
+        r.apply.color !== undefined) color = r.apply.color;
+  }
+  return color;
+};
+check("COLOURS: the Dark2 3-colour set reaches the notehead rules (C #1b9e77, C♯ #d95f02, D #7570b3, cycling), with no palette",
+  !("palette" in cfg) &&
+  JSON.stringify([0, 1, 2, 3].map(pc => colourOf(cfg, pc))) === JSON.stringify(["#1b9e77", "#d95f02", "#7570b3", "#1b9e77"]),
+  JSON.stringify(cfg.noteheadRules.map(r => [r.name, r.apply.color])));
+check("COLOURS: the preview re-rendered live — noteheads now carry the fill #1b9e77",
   await page.$$eval('.cnb-pvd-preview path[fill="#1b9e77"]', els => els.length > 0));
-await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-palette.png"), fullPage: true });
+const colourRules = cfg.noteheadRules.length;
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-037-colours.png"), fullPage: true });
 
 // ── STEP 3: staff rules (set 005, Module 13) ────────────────────────────────
 await openSection(page, "staff");
@@ -299,14 +309,14 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-staff.png"), fullP
 // ── STEP 4: add a notehead rule (set 005, Module 14; Advanced since session 27)
 await openAdvanced(page, "Rules for particular durations or keys");
 await page.click(".cnb-nre-rule-add");
-await page.check('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-shape input');
-await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-shape-select', "uat-ellipse");
+await page.check(`.cnb-nre-rule-card[data-rule-index="${colourRules}"] .cnb-nre-apply-shape input`);
+await page.selectOption(`.cnb-nre-rule-card[data-rule-index="${colourRules}"] .cnb-nre-shape-select`, "uat-ellipse");
 cfg = await fullConfig();
-check("NOTEHEAD RULE: added rule 3 (match all, apply shape uat-ellipse) reaches the shared config",
-  cfg.noteheadRules.length === 3 &&
-  cfg.noteheadRules[2].apply.shape === "uat-ellipse" &&
-  cfg.noteheadRules[2].match.pitchClasses === "all",
-  JSON.stringify(cfg.noteheadRules[2]));
+check(`NOTEHEAD RULE: added rule ${colourRules + 1} (match all, apply shape uat-ellipse) reaches the shared config`,
+  cfg.noteheadRules.length === colourRules + 1 &&
+  cfg.noteheadRules[colourRules].apply.shape === "uat-ellipse" &&
+  cfg.noteheadRules[colourRules].match.pitchClasses === "all",
+  JSON.stringify(cfg.noteheadRules[colourRules]));
 check("NOTEHEAD RULE: the preview re-rendered live — noteheads now draw the imported ellipse path",
   await page.evaluate(() =>
     [...document.querySelectorAll(".cnb-pvd-preview path")]
@@ -365,12 +375,12 @@ check("SAVE: timestamps stamped per plan §4.11 — meta.created and meta.modifi
 check("SAVE: the shell ADOPTED the stamped config — the live state panel is deep-equal to the downloaded file",
   JSON.stringify(cfg) === JSON.stringify(savedJson),
   `panel ${JSON.stringify(cfg.meta)} vs file ${JSON.stringify(savedJson.meta)}`);
-check("SAVE: everything configured this session is in the file (uat-ellipse shape, 12 palette colors, [3,6,9], repeat mode, 3 rules)",
+check("SAVE: everything configured this session is in the file (uat-ellipse shape, the rule colours, [3,6,9], repeat mode, the added rule)",
   !!savedJson.shapes["uat-ellipse"] &&
-  savedJson.palette.colors.length === 12 &&
+  !("palette" in savedJson) && colourOf(savedJson, 0) === "#1b9e77" &&
   JSON.stringify(savedJson.staff.semitonePattern) === "[3,6,9]" &&
   savedJson.durations.representationMode === "repeat" &&
-  savedJson.noteheadRules.length === 3);
+  savedJson.noteheadRules.length === colourRules + 1);
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ───────────────
 await page.setInputFiles("#open-file", savedPath);
@@ -381,12 +391,12 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check("LOAD: every editor re-seeded from the loaded config (3-6-9 selected, Dark2-3 selected, repeat selected, 3 rule cards) and the preview still shows 13 cards",
-  await page.evaluate(() =>
+check(`LOAD: every editor re-seeded from the loaded config (3-6-9 selected, repeat selected, ${colourRules + 1} rule cards) and the preview still shows 13 cards in the rule colours`,
+  await page.evaluate((n) =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
-    document.querySelector('.cnb-pal-option[data-preset-key="dark2-3"]').classList.contains("selected") &&
     document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
-    document.querySelectorAll(".cnb-nre-rule-card").length === 3) &&
+    document.querySelectorAll(".cnb-nre-rule-card").length === n &&
+    document.querySelectorAll('.cnb-pvd-preview path[fill="#1b9e77"]').length > 0, colourRules + 1) &&
   (await cardCount()) === 13);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-loaded.png"), fullPage: true });
 
@@ -407,11 +417,12 @@ try { direct = CNBLilypond.generate(cfg); } catch (err) { directErr = err.messag
 check("EXPORT PARITY: downloaded .ly is byte-identical to a direct CNBLilypond.generate() call on the same config (run in Node, independent of the browser)",
   direct !== null && direct === exported,
   directErr || `lengths ${exported.length} vs ${direct ? direct.length : "n/a"}`);
-check("EXPORT: the whole session's configuration reached the .ly — imported shape registered, 3-6-9 geometry, repeat clauses, palette colors",
+check("EXPORT: the whole session's configuration reached the .ly — imported shape registered, 3-6-9 geometry, repeat clauses, the rule colours",
   exported.includes("cnb:register-path! 'uat-ellipse") &&
   exported.includes("cnb:semitones-per-staff-space 3") &&
   /\(repeat\s+\. #t\)/.test(exported) &&
-  exported.includes("shamrock-1b9e77"));
+  exported.includes("#(cnb:register-color! 'shamrock-1b9e77 \"#1b9e77\")") &&
+  !exported.includes("cnb:use-accessible-colors"));
 check('EXPORT: status "Exported as default48.ly" with the valid badge, no error rows',
   (await page.textContent(".cnb-cex-status")).includes("Exported as default48.ly") &&
   await page.evaluate(() =>
@@ -444,17 +455,6 @@ await page.evaluate(() => {
   };
 });
 const topbarStatus = () => page.textContent("#topbar-status");
-// The saved config again, carrying the name of a colour it does not use
-// (as every colour a drag passed through used to leave one): Save drops it.
-const junkPath = path.join(SHOT_DIR, "uat-036-unused-colour-name.cnb.json");
-await writeFile(junkPath, JSON.stringify({
-  ...savedJson,
-  palette: { ...savedJson.palette, schemeSymbols: { ...savedJson.palette.schemeSymbols, "#500000": "maroon-500000" } },
-}));
-await page.setInputFiles("#open-file", junkPath);
-await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Opened "));
-check("SAVE: the opened config carries the unused colour name #500000",
-  "#500000" in (await fullConfig()).palette.schemeSymbols);
 await page.click("#save-config");
 await page.waitForFunction(() => document.getElementById("topbar-status").textContent.startsWith("Saved as "));
 let dialogSave = await page.evaluate(() => window.__saves[0]);
@@ -465,10 +465,6 @@ check('SAVE DIALOG: Save opens the save dialog suggesting "default-4-8-system.cn
   JSON.stringify(dialogSave.options));
 check("SAVE DIALOG: the file written is the saved config (deep-equal to the live state), and closed",
   dialogSave.closed && JSON.stringify(JSON.parse(dialogSave.text)) === JSON.stringify(cfg));
-check("SAVE: only the colours the config uses keep a Scheme name — #500000's is gone from the file and the live state (session 36)",
-  !("#500000" in JSON.parse(dialogSave.text).palette.schemeSymbols) && !("#500000" in cfg.palette.schemeSymbols) &&
-  JSON.stringify(Object.keys(JSON.parse(dialogSave.text).palette.schemeSymbols).sort()) ===
-    JSON.stringify(Object.keys(savedJson.palette.schemeSymbols).sort()));
 check('SAVE DIALOG: the top bar names the file as the designer chose it ("Saved as chosen-name.json")',
   (await topbarStatus()) === "Saved as chosen-name.json", await topbarStatus());
 

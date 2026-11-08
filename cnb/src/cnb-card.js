@@ -163,8 +163,8 @@ export const CNBCard = {
   /**
    * Resolve the effective notehead render config for (pc, duration, key).
    * Delegates rule walking to CNBConfig.resolveNotehead, then makes the
-   * color concrete: an explicit rule color wins, otherwise the palette color
-   * for the pitch class, otherwise black. pc may be 0–12 (normalized).
+   * color concrete: the rules' colour, otherwise black (a notehead's colour
+   * lives only on its rules, session 37). pc may be 0–12 (normalized).
    *
    * @param {object} config
    * @param {number} pc        0–12
@@ -178,7 +178,7 @@ export const CNBCard = {
     const resolved = CNBConfig.resolveNotehead(config, normalized, duration, key);
     return {
       ...resolved,
-      color: resolved.color ?? CNBConfig.resolveColor(config, normalized) ?? "#000000",
+      color: resolved.color ?? "#000000",
     };
   },
 

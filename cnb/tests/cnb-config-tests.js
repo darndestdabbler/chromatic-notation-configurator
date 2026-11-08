@@ -2,7 +2,10 @@
  * cnb-config-tests.js — Unit tests for Module A (Config Schema)
  */
 
+import { readFileSync } from "fs";
 import { CNBConfig } from "../src/cnb-config.js";
+
+const KITE_FIXTURE = new URL("../fixtures/kite-4-369-config.json", import.meta.url);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -120,12 +123,20 @@ export const tests = [
     assert(!result.valid, "should be invalid");
     assert(result.errors.some(e => e.includes("11")), "should mention PC 11 as uncovered");
   }},
-  { name: "validate: bad hex in palette → error", fn: () => {
+  { name: "validate: bad hex in a rule colour → error", fn: () => {
     const cfg = CNBConfig.createDefault();
-    cfg.palette.colors = [{ pc: 0, hex: "BADHEX", name: "Bad" }];
+    cfg.noteheadRules[1].apply.color = "BADHEX";
     const result = CNBConfig.validate(cfg);
     assert(!result.valid, "should be invalid");
     assert(result.errors.some(e => e.includes("BADHEX")), "should mention BADHEX");
+  }},
+  { name: "createDefault: no palette; validate reads none (session 37)", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    assert(!("palette" in cfg), "no palette section");
+    cfg.palette = { colors: [{ pc: 0, hex: "BADHEX" }], cbSafeColors: [], schemeSymbols: { "#1B9E77": "x) (" } };
+    const result = CNBConfig.validate(cfg);
+    assert(!result.errors.some(e => /palette|BADHEX/i.test(e)), JSON.stringify(result.errors));
+    assert(!result.warnings.some(w => /palette/i.test(w)), JSON.stringify(result.warnings));
   }},
 
   // ── validate — warnings ───────────────────────────────────────────────────
@@ -165,18 +176,6 @@ export const tests = [
     assert(!warns(), "keys off: the key's rule draws nothing, silent");
     cfg.keys.enabled = true;
     assert(warns(), "keys on: used in G, warns");
-  }},
-  { name: "validate: CB-safe palette shorter than primary → warning", fn: () => {
-    const cfg = CNBConfig.createDefault();
-    cfg.palette.colors = [
-      { pc: 0, hex: "#FF0000", name: "Red" },
-      { pc: 1, hex: "#00FF00", name: "Green" },
-    ];
-    cfg.palette.cbSafeColors = [
-      { pc: 0, hex: "#CC0000", name: "DarkRed" },
-    ];
-    const result = CNBConfig.validate(cfg);
-    assert(result.warnings.some(w => w.includes("CB-safe")), "should warn about shorter CB-safe palette");
   }},
 
   // ── merge ─────────────────────────────────────────────────────────────────
@@ -371,33 +370,74 @@ export const tests = [
     }
   }},
 
-  // ── resolveColor ──────────────────────────────────────────────────────────
-  { name: "resolveColor: no palette → null", fn: () => {
-    const cfg = CNBConfig.createDefault(); // palette.colors is empty
-    eq(CNBConfig.resolveColor(cfg, 0), null);
-  }},
-  { name: "resolveColor: with primary palette returns correct hex", fn: () => {
+  // ── paletteToRules (session 37) ───────────────────────────────────────────
+  { name: "paletteToRules: a config without a palette comes back as it is", fn: () => {
     const cfg = CNBConfig.createDefault();
-    cfg.palette.colors = [
-      { pc: 0, hex: "#FF0000", name: "Red" },
-      { pc: 1, hex: "#00FF00", name: "Green" },
-    ];
-    eq(CNBConfig.resolveColor(cfg, 0), "#FF0000");
-    eq(CNBConfig.resolveColor(cfg, 1), "#00FF00");
+    assert(CNBConfig.paletteToRules(cfg) === cfg, "same object");
   }},
-  { name: "resolveColor: useCBSafe returns CB-safe hex", fn: () => {
+  { name: "paletteToRules: each non-black colour becomes a rule below every existing rule; the palette goes", fn: () => {
     const cfg = CNBConfig.createDefault();
-    cfg.palette.colors = [{ pc: 0, hex: "#FF0000", name: "Red" }];
-    cfg.palette.cbSafeColors = [{ pc: 0, hex: "#CC0000", name: "DarkRed" }];
-    cfg.palette.useCBSafe = false;
-    eq(CNBConfig.resolveColor(cfg, 0), "#FF0000", "primary without CB-safe");
-    cfg.palette.useCBSafe = true;
-    eq(CNBConfig.resolveColor(cfg, 0), "#CC0000", "CB-safe when toggled");
+    cfg.palette = {
+      name: "Two", useCBSafe: true, schemeSymbols: {},
+      colors: [{ pc: 0, hex: "#FF0000", name: "Red" }, { pc: 1, hex: "#00ff00" }, { pc: 2, hex: "#ff0000" }, { pc: 3, hex: "#000000" }],
+      cbSafeColors: [{ pc: 0, hex: "#CC0000" }],
+    };
+    const before = JSON.stringify(cfg);
+    const out = CNBConfig.paletteToRules(cfg);
+    eq(JSON.stringify(cfg), before, "input unchanged");
+    assert(!("palette" in out), "palette gone");
+    eq(out.noteheadRules.length, 4, "two colour rules added");
+    deepEq(out.noteheadRules[0], { name: "Colour Red", priority: 0, match: { pitchClasses: [0, 2], durations: "all", keys: "all" }, apply: { color: "#FF0000" } }, "red rule");
+    deepEq(out.noteheadRules[1].match.pitchClasses, [1], "green pcs");
+    eq(out.noteheadRules[1].name, "Colour #00ff00", "unnamed colour named by hex");
+    eq(out.noteheadRules[2].name, "Default", "existing rules follow");
+    deepEq(out.noteheadRules.map(r => r.priority), [0, 1, 2, 3], "existing raised above, order kept");
+    for (let pc = 0; pc < 12; pc++) {
+      const want = { 0: "#FF0000", 1: "#00ff00", 2: "#FF0000" }[pc] ?? null;
+      eq(CNBConfig.resolveNotehead(out, pc, "crotchet", null).color, want, `pc ${pc} (primary colours, not the colour-blind set)`);
+    }
   }},
-  { name: "resolveColor: PC not in palette → null", fn: () => {
+  { name: "paletteToRules: an explicit rule colour still wins; color:null (use the palette) is dropped", fn: () => {
     const cfg = CNBConfig.createDefault();
-    cfg.palette.colors = [{ pc: 0, hex: "#FF0000", name: "Red" }];
-    eq(CNBConfig.resolveColor(cfg, 5), null, "PC 5 not in palette");
+    cfg.palette = { colors: [{ pc: 0, hex: "#ff0000" }, { pc: 1, hex: "#ff0000" }] };
+    cfg.noteheadRules.push({ name: "Blue C", priority: 5, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#0000ff" } });
+    const out = CNBConfig.paletteToRules(cfg);
+    eq(CNBConfig.resolveNotehead(out, 0, "crotchet", null).color, "#0000ff", "explicit wins");
+    eq(CNBConfig.resolveNotehead(out, 1, "crotchet", null).color, "#ff0000", "palette shows through the Default's color:null");
+    assert(!("color" in out.noteheadRules.find(r => r.name === "Default").apply), "color:null dropped");
+  }},
+  { name: "paletteToRules: Kite 4-369 previews as before for every pitch class × duration", fn: () => {
+    // The fixture as saved before session 37: its colours in a palette (the
+    // colour-blind set the same), the Default saying color:null ("use the
+    // palette"), and no colour rules.
+    const converted = JSON.parse(readFileSync(KITE_FIXTURE, "utf8"));
+    const kite = CNBConfig.clone(converted);
+    kite.noteheadRules = kite.noteheadRules.filter(r => !(Object.keys(r.apply).length === 1 && "color" in r.apply));
+    kite.noteheadRules.find(r => r.match.pitchClasses === "all").apply.color = null;
+    const colors = [...Array(12).keys()].map(pc => ({ pc, hex: CNBConfig.resolveNotehead(converted, pc, "crotchet", null).color || "#000000" }));
+    kite.palette = { name: "Kite CB-safe (skyblue/rose/black)", colors, cbSafeColors: colors, useCBSafe: false,
+      schemeSymbols: { "#50b4e9": "skyblue-50b4e9", "#cc79a7": "rose-cc79a7" } };
+    eq(new Set(colors.map(c => c.hex)).size, 3, "three colours, black among them");
+    const was = (pc, d) => {
+      const c = CNBConfig.resolveNotehead(kite, pc, d, null).color;
+      if (c !== null) return c;
+      const e = kite.palette.colors.find(x => x.pc === pc);
+      return e && e.hex.toLowerCase() !== "#000000" ? e.hex : null;
+    };
+    const out = CNBConfig.paletteToRules(kite);
+    for (const { name } of kite.durations.definitions) {
+      for (let pc = 0; pc < 12; pc++) {
+        const got = CNBConfig.resolveNotehead(out, pc, name, null);
+        eq(got.color, was(pc, name), `pc ${pc} ${name}`);
+        const old = CNBConfig.resolveNotehead(kite, pc, name, null);
+        assert(got.shape === old.shape && got.hollow === old.hollow, `pc ${pc} ${name} look kept`);
+      }
+    }
+    const looks = (rules) => rules.map(r => [r.match, r.apply]);
+    deepEq(looks(out.noteheadRules), looks(converted.noteheadRules), "the converted fixture's rules, in order");
+  }},
+  { name: "createDefault: the engine has no useAccessibleColors (retired, session 37)", fn: () => {
+    assert(!("useAccessibleColors" in CNBConfig.createDefault().engine), "retired");
   }},
 
   // ── pctToPx ───────────────────────────────────────────────────────────────
@@ -939,7 +979,6 @@ export const tests = [
       ["staff.midpoint", (c) => { c.staff.midpoint = "12"; }],
       ["staff.semitonesPerStaffSpace", (c) => { c.staff.semitonesPerStaffSpace = "4) (display 1"; }],
       ['Duration "crotchet" lilypondDuration', (c) => { c.durations.definitions[0].lilypondDuration = "3)"; }],
-      ['palette.schemeSymbols["#1B9E77"]', (c) => { c.palette.schemeSymbols = { "#1B9E77": 'x) (display "X") (quote' }; }],
       ['Shape "crotchet-minim" lilypondPath', (c) => { shape(c).lilypondPath = `'()) (system "calc") (define x '()`; }],
       ['Shape "crotchet-minim" lilypondHollowPath', (c) => { shape(c).lilypondHollowPath = "'((moveto 0 0) #(display 1))"; }],
       ['Shape "crotchet-minim" anchors.crotchetUp.x', (c) => { shape(c).anchors.crotchetUp.x = "1"; }],
@@ -959,7 +998,6 @@ export const tests = [
     const cfg = CNBConfig.createDefault();
     cfg.engine.lilypondVersion = "2.25.10";
     cfg.engine.defaultMagnify = "8/5";
-    cfg.palette.schemeSymbols = { "#1B9E77": "shamrock-1b9e77" };
     cfg.shapes["crotchet-minim"].lilypondPath = "'( (moveto 0 1) (lineto 1 0) (closepath))";
     cfg.shapes["crotchet-minim"].lilypondAnchors = { crotchetUp: { x: 0.7, y: 0 }, minimUp: { x: 1, y: null } };
     cfg.meta.notationLabel = 'Any text\n#(display "fine in a comment")';

@@ -10,7 +10,8 @@
  * replaced by the compiled DSL output once that pipeline lands.)
  *
  * Flow (spec step 3): configure a valid notation system through the
- * sets 004–005 editors (Module 12 palette → Dark2 3-color preset;
+ * sets 004–005 editors (the Dark2 3-colour suggestion, written onto the
+ * notehead rules since session 37;
  * Module 13 staff rules → 3-6-9 system; Module 15 common properties →
  * repeat representation mode), click export, confirm a
  * .ly file downloads and its contents match a direct
@@ -190,24 +191,25 @@ let cfg = await fullConfig();
 check("STATE PANEL: full default config exposed (4-8 pattern, shape mode, fileSuffix -Default48)",
   JSON.stringify(cfg.staff.semitonePattern) === "[4,8]" &&
   cfg.durations.representationMode === "shape" && cfg.meta.fileSuffix === "-Default48");
-check("EDITORS (Modules 12 + 13 + 15) mounted on the shared config",
+check("EDITORS (colour sets + Modules 13 + 15) mounted on the shared config",
   await page.evaluate(() =>
-    !!document.querySelector(".cnb-palette-editor") &&
+    !!document.querySelector('#colour-sets button[data-set="dark2-3"]') &&
     !!document.querySelector(".cnb-sre-pattern-option.selected") &&
     !!document.querySelector(".cnb-common-props-editor")) &&
   await modeSelected("shape"));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s2-initial.png"), fullPage: true });
 
 // ── Configure a valid notation system through the sets 004–005 editors ──────
-await page.click('.cnb-pal-option[data-preset-key="dark2-3"]');   // Module 12 (set 004)
+await page.click('#colour-sets button[data-set="dark2-3"]');   // suggested colours (session 37)
 await page.click('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]');   // Module 13
 await page.click('#mode-toggle button[data-mode="repeat"]');   // Module 15's setState (session 36)
 cfg = await fullConfig();
-check("EDIT: Dark2 3-color palette reaches the shared config (12 per-PC colors, scheme symbols)",
-  cfg.palette.colors.length === 12 &&
-  cfg.palette.colors[0].hex.toLowerCase() === "#1b9e77" &&
-  Object.keys(cfg.palette.schemeSymbols || {}).length > 0,
-  JSON.stringify({ n: cfg.palette.colors.length, first: cfg.palette.colors[0] }));
+check("EDIT: the Dark2 3-colour set reaches the notehead rules (C #1b9e77, no palette)",
+  !("palette" in cfg) &&
+  cfg.noteheadRules.some(r => r.apply.color === "#1b9e77" &&
+    (r.match.pitchClasses === "all" || r.match.pitchClasses.includes(0))) &&
+  cfg.noteheadRules.some(r => r.apply.color === "#d95f02"),
+  JSON.stringify(cfg.noteheadRules.map(r => [r.name, r.apply.color])));
 check("EDIT: 3-6-9 staff system + repeat mode reach the shared config",
   JSON.stringify(cfg.staff.semitonePattern) === "[3,6,9]" &&
   cfg.staff.semitonesPerStaffSpace === 3 &&
@@ -234,7 +236,7 @@ check("EXPORT: 3-6-9 staff geometry reached Section B (sps 3, positions from the
   exported.includes("cnb:staff-line-positions"));
 check("EXPORT: repeat representation mode reached Section C ((repeat . #t) clauses)",
   /\(repeat\s+\. #t\)/.test(exported));
-check("EXPORT: the set-004 palette reached Section A (cnb:register-color! shamrock-1b9e77)",
+check("EXPORT: the rule colours reached Section A (cnb:register-color! shamrock-1b9e77)",
   exported.includes("cnb:register-color!") && exported.includes("shamrock-1b9e77"));
 check('EXPORT: status line reads "Exported as default48.ly"; error area empty',
   (await status()).includes("Exported as default48.ly") && (await errorArea()) === "");

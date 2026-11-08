@@ -55,12 +55,13 @@
 </p>
 <div class="row" id="row-durations"></div>
 
-<h1>Palette colors</h1>
+<h1>Rule colors</h1>
 <p>
-  A 12-color palette applied via <code>CNBCard.resolveNotehead</code>'s
-  palette fallback (no explicit color rules). Sharps stay hollow.
+  Twelve colors, one notehead rule per pitch class, resolved by
+  <code>CNBCard.resolveNotehead</code> (a notehead's colour lives on its
+  rules). Sharps stay hollow.
 </p>
-<div class="row" id="row-palette"></div>
+<div class="row" id="row-colors"></div>
 
 <script type="module">
   import { CNBConfig } from "../src/cnb-config.js";
@@ -126,15 +127,18 @@
     demoCard("row-durations", config, { pc: 0, duration }, caption);
   }
 
-  // ── Row 3: palette colors ─────────────────────────────────────────────────
+  // ── Row 3: rule colors ────────────────────────────────────────────────────
   const colored = CNBConfig.createDefault();
-  colored.palette.colors = [
+  [
     "#e6194b", "#f58231", "#ffb300", "#bfa000", "#3cb44b", "#469990",
     "#42d4f4", "#4363d8", "#911eb4", "#f032e6", "#a05195", "#808000",
-  ].map((hex, pc) => ({ pc, hex, name: `PC${pc}` }));
+  ].forEach((hex, pc) => colored.noteheadRules.push({
+    name: `PC${pc}`, priority: 2 + pc,
+    match: { pitchClasses: [pc], durations: "all", keys: "all" }, apply: { color: hex },
+  }));
   for (const pc of [0, 2, 4, 6, 9, 11]) {
-    demoCard("row-palette", colored, { pc, duration: "crotchet" },
-      `PC ${pc} — palette color`);
+    demoCard("row-colors", colored, { pc, duration: "crotchet" },
+      `PC ${pc} — rule color`);
   }
 </script>
 

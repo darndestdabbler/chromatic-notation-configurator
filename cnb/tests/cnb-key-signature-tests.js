@@ -361,9 +361,10 @@ export const tests = [
   { name: "render: notehead hollow/color parity with CNBCard.resolveNotehead (A major exercises hollow sharps)", fn: () => {
       withSvgStub(svg => {
         const config = keysigConfig([A_MAJOR]);
-        config.palette.colors = Array.from({ length: 12 }, (_, pc) => ({
-          pc, hex: `#1000${pc.toString(16).padStart(2, "0")}`.toUpperCase(), name: `PC${pc}`,
-        }));
+        for (let pc = 0; pc < 12; pc++) {
+          config.noteheadRules.push({ name: `PC${pc}`, priority: 2, match: { pitchClasses: [pc], durations: "all", keys: "all" },
+            apply: { color: `#1000${pc.toString(16).padStart(2, "0")}`.toUpperCase() } });
+        }
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "A");
         const semis = CNBKeySignature.signatureSemis(config, "A");

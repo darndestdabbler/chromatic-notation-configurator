@@ -125,10 +125,6 @@
                 <summary>Rules for particular durations or keys<span class="sub">every notehead rule, including those the noteheads write</span></summary>
                 <div class="disclosure-body"><div id="notehead-editor-host"></div></div>
               </details>
-              <details class="disclosure" id="colour-palette">
-                <summary>Colour palette<span class="sub">all twelve colours at once</span></summary>
-                <div class="disclosure-body"><div id="palette-editor-host"></div></div>
-              </details>
               <details class="disclosure">
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
@@ -169,7 +165,6 @@
   <script type="module">
     import { CNBConfig } from "./src/cnb-config.js";
     import { CNBSvgImporter } from "./ui/svg-importer.js";
-    import { CNBPaletteEditor } from "./ui/palette-editor.js";
     import { CNBStaffRuleEditor } from "./ui/staff-rule-editor.js";
     import { CNBNoteheadRuleEditor } from "./ui/notehead-rule-editor.js";
     import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
@@ -565,8 +560,6 @@
     const ioError = () => ioApi.root.querySelector(".cnb-cio-error").textContent;
 
     byId("save-config").onclick = () => {
-      // Only the colours the config uses keep a Scheme name (session 36).
-      appConfig = CNBPaletteEditor.usedSchemeSymbols(appConfig);
       const built = ioApi.save();
       if (built) reportSave("Saved");
       else setStatus(ioError(), true);
@@ -631,8 +624,6 @@
     function mountEditors() {
       byId("clef-editor-host").textContent = "";
 
-      mountPaletteEditor();
-
       mountStaffEditor();
 
       mountNoteheadEditor();
@@ -687,23 +678,9 @@
       });
     }
 
-    /** The palette editor (Advanced › Colour palette) seeds from the
-     *  palette at mount, so it re-seeds when the notehead panel writes one. */
-    function mountPaletteEditor() {
-      byId("palette-editor-host").textContent = "";
-      CNBPaletteEditor.render(byId("palette-editor-host"), {
-        palette: appConfig.palette,
-        onChange: (palette) => {
-          appConfig.palette = palette;
-          refreshShared();
-        },
-      });
-    }
-
-    /** After a notehead panel change: the editors that read the rules, the
-     *  palette or the shapes re-seed. */
+    /** After a notehead panel change: the editors that read the rules or
+     *  the shapes re-seed. */
     function mountLookEditors() {
-      mountPaletteEditor();
       mountNoteheadEditor();
       mountPitchAxisEditor();
     }

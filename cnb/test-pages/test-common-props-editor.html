@@ -126,19 +126,12 @@
 
     const config = CNBConfig.createDefault();
 
-    // A small palette so the preview noteheads are colored (visual only —
-    // Module 15 does not touch the palette).
-    config.palette = {
-      name: "Demo",
-      colors: Array.from({ length: 12 }, (_, pc) => ({
-        pc,
-        hex: ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"][pc % 4],
-        name: ["Shamrock", "Orange", "Lilac", "Pink"][pc % 4],
-      })),
-      cbSafeColors: [],
-      useCBSafe: false,
-      schemeSymbols: {},
-    };
+    // Colour rules so the preview noteheads are colored (visual only —
+    // Module 15 does not touch the notehead rules).
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"].forEach((hex, i) => config.noteheadRules.push({
+      name: "Colour " + hex, priority: 2 + i,
+      match: { pitchClasses: [i, i + 4, i + 8], durations: "all", keys: "all" }, apply: { color: hex },
+    }));
 
     const PREVIEW_PCS = [0, 2, 4, 5, 7, 9, 11];
 

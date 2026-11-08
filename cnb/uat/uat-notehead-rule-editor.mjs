@@ -204,8 +204,8 @@ check("PREVIEW ROW has 12 notehead cells (Module 6 rendering)",
     document.querySelectorAll("#preview-host .cnb-nre-preview-cell svg").length === 12));
 check("PREVIEW C is 1 path (solid), C♯ is 2 paths (hollow cutout)",
   (await previewPathCount(0)) === 1 && (await previewPathCount(1)) === 2);
-check("PREVIEW palette colors: C #1b9e77, D #7570b3 (color:null → palette)",
-  (await previewFill(0)) === "#1b9e77" && (await previewFill(2)) === "#7570b3");
+check("PREVIEW colours: no rule gives one, so C and D are black (no palette since session 37)",
+  (await previewFill(0)) === "#000000" && (await previewFill(2)) === "#000000");
 let j = await readJson();
 check("JSON PANEL 2 rules, priorities [0,1], second rule apply is hollow-only",
   j.length === 2 && j[0].priority === 0 && j[1].priority === 1 &&
@@ -252,7 +252,10 @@ check("SELECT DIAMOND: preview C path is the diamond geometry",
 
 await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-apply-color-check');
 j = await readJson();
-check("ENABLE COLOR: palette mode emits color null", j[2].apply.color === null);
+check("ENABLE COLOR: none (black) emits color null, and the mode shows None",
+  j[2].apply.color === null &&
+  await page.$eval('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-color-mode', el => el.value === "none" &&
+    [...el.options].map(o => o.value).join(",") === "none,custom"));
 await page.selectOption('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-color-mode', "custom");
 await page.evaluate(() => {
   const inp = document.querySelector('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-color-input');
@@ -274,9 +277,9 @@ await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-dur-pill[data
 j = await readJson();
 check("NARROW DURATIONS: clicking crotchet while \"all\" leaves [minim, semibreve, breve]",
   JSON.stringify(j[2].match.durations) === '["minim","semibreve","breve"]');
-check("NARROW DURATIONS: crotchet strip reverts to Crotchet–Minim + palette color",
-  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#1b9e77" &&
-  (await previewFill(0)) === "#1b9e77");
+check("NARROW DURATIONS: crotchet strip reverts to Crotchet–Minim, black",
+  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#000000" &&
+  (await previewFill(0)) === "#000000");
 await page.selectOption(".cnb-nre-resolved-duration", "minim");
 check("SWITCH STRIP TO MINIM: diamond + #cc0000 apply again (rule matches minim)",
   (await stripShape(0)) === "Diamond" && (await stripSwatch(0)) === "#cc0000" &&
@@ -309,7 +312,7 @@ j = await readJson();
 check('NARROW KEYS: clicking "C" while "All" leaves ["G"]',
   JSON.stringify(j[2].match.keys) === '["G"]');
 check("NARROW KEYS: with (no key) context the rule stops matching — minim strip reverts",
-  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#1b9e77" &&
+  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#000000" &&
   (await stripMark(0)) === "false" &&
   await page.evaluate(() =>
     document.querySelectorAll("#preview-host .cnb-nre-preview-mark").length === 0));
@@ -324,7 +327,7 @@ await page.click('.cnb-nre-rule-card[data-rule-index="2"] .cnb-nre-rule-remove')
 j = await readJson();
 check("REMOVE RULE: back to 2 rules; minim resolution reverts to the defaults",
   (await cardCount()) === 2 && j.length === 2 &&
-  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#1b9e77");
+  (await stripShape(0)) === "Crotchet–Minim" && (await stripSwatch(0)) === "#000000");
 check("REMOVE RULE: validation still Config valid",
   await page.evaluate(() => !!document.querySelector(".cnb-nre-valid")));
 

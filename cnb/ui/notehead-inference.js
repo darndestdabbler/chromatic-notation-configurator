@@ -10,12 +10,12 @@
  *   inferRules(config, table)→ the named rules, plus colour's pattern in words
  *   ruleLines(config, table) → the rule list in words, one line per attribute
  *                              (§5.4, session 27)
- *   writeBack(config, table) → a new config whose rules and palette are
- *                              written from the table (§5.1, §5.3, §5.5)
+ *   writeBack(config, table) → a new config whose rules are written from
+ *                              the table (§5.1, §5.3, §5.5)
  *
  * A look row: { pc, shape, hollow, color, heightSemis, widthSemis,
- * xOffsetStaffSpaces }. color is the primary colour (the rule's apply.color,
- * else palette.colors), or null for none. heightSemis / widthSemis null mean
+ * xOffsetStaffSpaces }. color is the rules' apply.color, or null for none
+ * (drawn black). heightSemis / widthSemis null mean
  * the shape's own size, as in CNBConfig.resolveNotehead.
  *
  * Owned and kept rules. The table is per pitch class only, so it is read
@@ -25,15 +25,14 @@
  * every inferred rule keeps its priority, a lower one is raised just above
  * them, and their order never changes (session 27).
  *
- * Colour (§5.3, session 27). A colour taken back to none removes the pitch
- * class's palette.colors entry and its palette.cbSafeColors twin, so it
- * draws and exports black. A changed colour takes the twin an unchanged
- * pitch class of that colour already has, else its stale twin is dropped.
+ * Colour (session 37). A notehead's colour lives on its rules, as its
+ * shape and fill do: the Default carries the most common colour when it is
+ * not none, and each other colour gets a rule ({color: null} for none).
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBMusic } from "../src/cnb-music.js";
-import { CNBPaletteEditor } from "./palette-editor.js";
+import { CNBColor } from "../src/cnb-color.js";
 
 const PERIODS = [1, 2, 3, 4, 6];
 const ACCIDENTALS = [1, 3, 6, 8, 10];
@@ -65,18 +64,16 @@ function ownsRule(rule) {
   return m.durations === "all" && m.keys === "all" && !a.offKeyMark;
 }
 
-/** The look table: one row per pitch class, from the owned rules and the palette. */
+/** The look table: one row per pitch class, from the owned rules. */
 function lookTable(config) {
   const owned = { ...config, noteheadRules: (config.noteheadRules || []).filter(ownsRule) };
-  const colors = (config.palette && config.palette.colors) || [];
   return PCS.map(pc => {
     const r = CNBConfig.resolveNotehead(owned, pc, "crotchet", null);
-    const entry = colors.find(c => c.pc === pc);
     return {
       pc,
       shape: r.shape,
       hollow: !!r.hollow,
-      color: r.color ?? (entry ? entry.hex : null),
+      color: r.color ?? null,
       heightSemis: r.heightSemis,
       widthSemis: r.widthSemis,
       xOffsetStaffSpaces: r.xOffsetStaffSpaces || 0,
@@ -138,10 +135,9 @@ function sizeApply(key, table) {
   return apply;
 }
 
-function colourName(config, hex) {
-  const entry = ((config.palette && config.palette.colors) || [])
-    .find(c => c.hex.toLowerCase() === hex);
-  return (entry && entry.name ? entry.name : CNBPaletteEditor.baseColorName(hex)).toLowerCase();
+/** "sky blue" for #87ceeb: the nearest colour name, lower case. */
+function colourName(hex) {
+  return CNBColor.baseColorName(hex).toLowerCase();
 }
 
 /**
@@ -149,22 +145,28 @@ function colourName(config, hex) {
  * one rule per non-default value of shape, fill, size and side step. Size
  * and side step default to the shape's own size and to no step, because a
  * rule cannot set "the shape's own size" (null is not a valid heightSemis)
- * and a zero side step is never written. Also returns colour's inference
- * with its words for the rule list; colour itself goes to the palette.
+ * and a zero side step is never written. Colour (session 37) defaults to
+ * its most common value: the Default carries it unless it is none, and each
+ * other colour gets a rule, {color: null} for none. Also returns colour's
+ * inference with its words for the rule list.
  */
 function inferRules(config, table) {
-  const { shape, fill, size, side } = attributes(table);
+  const { shape, fill, size, side, colour } = attributes(table);
 
+  const defApply = { shape: shape.def, hollow: fill.def };
+  if (colour.def !== null) defApply.color = colour.def;
   const rules = [rule(`Default (${shape.def}, ${fill.def ? "hollow" : "solid"})`, "all",
-    { shape: shape.def, hollow: fill.def })];
+    defApply)];
   for (const g of shape.groups) rules.push(rule(ruleName(capitalise(g.value), g), g.pcs, { shape: g.value }));
   for (const g of fill.groups) rules.push(rule(ruleName(g.value ? "Hollow" : "Solid", g), g.pcs, { hollow: g.value }));
   for (const g of size.groups) rules.push(rule(ruleName(sizeWords(g.value), g), g.pcs, sizeApply(g.value, table)));
   for (const g of side.groups) rules.push(rule(ruleName(`Side step ${g.value}`, g), g.pcs, { xOffsetStaffSpaces: g.value }));
+  for (const g of colour.groups) {
+    rules.push(rule(ruleName(g.value === null ? "No colour" : capitalise(colourName(g.value)), g), g.pcs, { color: g.value }));
+  }
   rules.forEach((r, i) => { r.priority = i; });
 
-  const colour = attributes(table).colour;
-  const named = colour.cycle.map(hex => (hex === null ? "none" : colourName(config, hex)));
+  const named = colour.cycle.map(hex => (hex === null ? "none" : colourName(hex)));
   colour.words = colour.period === 1 ? `${named[0]} everywhere`
     : colour.period < 12 ? `every ${colour.period} semitones: ${named.join(", ")}`
     : `one per pitch class: ${named.join(", ")}`;
@@ -234,56 +236,6 @@ function listWords(items) {
   return items.length <= 1 ? items.join("") : items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
 }
 
-const sameHex = (a, b) => a.toLowerCase() === b.toLowerCase();
-
-/**
- * palette.colors and palette.cbSafeColors written from the table. An
- * unchanged entry is kept as it is, in its order. A colour taken back to
- * none (null, drawn black) removes the pitch class's entry and its twin. A
- * changed colour takes the twin that an unchanged pitch class of the same
- * colour already has, else its stale twin is dropped.
- */
-function writePalette(palette, table) {
-  const colors = (palette.colors || []).slice();
-  const cbSafe = (palette.cbSafeColors || []).slice();
-  const entryOf = (list, pc) => list.findIndex(c => c.pc === pc);
-  const changed = table.filter(row => {
-    const i = entryOf(colors, row.pc);
-    return row.color === null ? i >= 0 : !(i >= 0 && sameHex(colors[i].hex, row.color));
-  });
-  const twinOf = (hex) => {
-    for (const row of table) {
-      if (changed.includes(row) || row.color === null || !sameHex(row.color, hex)) continue;
-      const t = cbSafe[entryOf(cbSafe, row.pc)];
-      if (t) return t;
-    }
-    return null;
-  };
-  const twins = new Map(changed.map(row => [row.pc, row.color === null ? null : twinOf(row.color)]));
-  for (const row of changed) {
-    const i = entryOf(colors, row.pc);
-    if (row.color === null) {
-      colors.splice(i, 1);
-    } else {
-      const entry = { pc: row.pc, hex: row.color, name: CNBPaletteEditor.baseColorName(row.color) };
-      if (i >= 0) colors[i] = { ...colors[i], ...entry };
-      else colors.push(entry);
-    }
-    const j = entryOf(cbSafe, row.pc);
-    const twin = twins.get(row.pc);
-    if (twin) {
-      const entry = { ...twin, pc: row.pc };
-      if (j >= 0) cbSafe[j] = entry;
-      else cbSafe.push(entry);
-    } else if (j >= 0) {
-      cbSafe.splice(j, 1);
-    }
-  }
-  const out = { ...palette, colors };
-  if (palette.cbSafeColors || cbSafe.length) out.cbSafeColors = cbSafe;
-  return out;
-}
-
 /**
  * The kept rules above the inferred ones (§5.5). A kept rule that already
  * sits above every inferred rule keeps its priority; a lower one is raised
@@ -303,17 +255,13 @@ function keptAbove(kept, inferredCount) {
 
 /**
  * A new config written from a look table: the inferred rules, the kept
- * rules above them (keptAbove), and colour in the palette (writePalette).
- * Nothing else changes.
+ * rules above them (keptAbove). Nothing else changes.
  */
 function writeBack(config, table) {
   const out = CNBConfig.clone(config);
   const { rules } = inferRules(config, table);
   const kept = (out.noteheadRules || []).filter(r => !ownsRule(r));
   out.noteheadRules = [...rules, ...keptAbove(kept, rules.length)];
-  if (out.palette || table.some(r => r.color !== null)) {
-    out.palette = writePalette(out.palette || { colors: [] }, table);
-  }
   return out;
 }
 

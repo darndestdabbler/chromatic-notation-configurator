@@ -74,14 +74,6 @@ function buildDefault() {
       },
     ],
 
-    palette: {
-      name: "None",
-      colors: [],
-      cbSafeColors: [],
-      useCBSafe: false,
-      schemeSymbols: {},
-    },
-
     display: {
       pxPerSemi: 16,
       label: {
@@ -191,7 +183,6 @@ function buildDefault() {
       defaultMagnify: "7/4",
       indent: 0,
       collisionThreshold: 2,
-      useAccessibleColors: false,
     },
 
     meta: {
@@ -343,8 +334,8 @@ export const CNBConfig = {
       }
     }
 
-    // 3. Explicit color hex values in rules must be valid (covers palette hex check per spec)
-    //    Config.palette.colors[].hex must also be valid
+    // 3. Explicit color hex values in rules must be valid. A notehead's
+    //    colour lives only on its rules (session 37): null is none, black.
     for (const rule of rules) {
       if (rule.apply && rule.apply.color !== null && rule.apply.color !== undefined) {
         if (!isValidHex(rule.apply.color)) {
@@ -365,18 +356,6 @@ export const CNBConfig = {
         } else if (v < 0.25 || v > 4) {
           warnings.push(`Rule "${rule.name || "(unnamed)"}" apply.${field} is ${v} semitones, outside the usual 0.25–4`);
         }
-      }
-    }
-
-    const palette = config.palette || {};
-    for (const entry of (palette.colors || [])) {
-      if (!isValidHex(entry.hex)) {
-        errors.push(`Palette color for PC ${entry.pc} has invalid hex "${entry.hex}"`);
-      }
-    }
-    for (const entry of (palette.cbSafeColors || [])) {
-      if (!isValidHex(entry.hex)) {
-        errors.push(`CB-safe palette color for PC ${entry.pc} has invalid hex "${entry.hex}"`);
       }
     }
 
@@ -410,7 +389,7 @@ export const CNBConfig = {
     }
 
     // 7. All color hex values match #RRGGBB — covered in check 3 above for
-    //    rules/palette. Staff and ledger lines have no colour: the preview
+    //    rules. Staff and ledger lines have no colour: the preview
     //    draws them as the engine does, black (session 34).
 
     // 8. Clef checks (set 009) — only when the clef is enabled, so configs
@@ -682,8 +661,8 @@ export const CNBConfig = {
               try {
                 const a = CNBConfig.resolveNotehead(config, pcs[i], "crotchet", null);
                 const b = CNBConfig.resolveNotehead(config, pcs[j], "crotchet", null);
-                const colorA = a.color ?? CNBConfig.resolveColor(config, pcs[i]);
-                const colorB = b.color ?? CNBConfig.resolveColor(config, pcs[j]);
+                const colorA = (a.color || "#000000").toLowerCase();
+                const colorB = (b.color || "#000000").toLowerCase();
                 if (a.shape === b.shape && a.hollow === b.hollow && colorA === colorB &&
                     a.xOffsetStaffSpaces === b.xOffsetStaffSpaces) {
                   warnings.push(`Shared axis position ${posKey}: pitch classes ${pcs[i]} and ${pcs[j]} resolve to indistinguishable noteheads (same shape, hollow, color, and xOffsetStaffSpaces) — the notation cannot disambiguate them`);
@@ -741,14 +720,6 @@ export const CNBConfig = {
     for (const def of Array.isArray(durationDefs) ? durationDefs : []) {
       if (def && present(def.lilypondDuration) && !CNBScheme.isNumber(def.lilypondDuration)) {
         numberError(`Duration "${def.name}" lilypondDuration`, def.lilypondDuration);
-      }
-    }
-
-    if (isPlainObject(palette.schemeSymbols)) {
-      for (const [hex, sym] of Object.entries(palette.schemeSymbols)) {
-        if (!CNBScheme.isSymbol(sym)) {
-          errors.push(`palette.schemeSymbols[${JSON.stringify(hex)}] must be a Scheme symbol matching ^[a-z][a-z0-9-]*$ (got ${JSON.stringify(sym)})`);
-        }
       }
     }
 
@@ -832,21 +803,6 @@ export const CNBConfig = {
       }
     }
 
-    // W4. Some PCs have color:null and palette is empty
-    const hasColors = (palette.colors || []).length > 0;
-    if (!hasColors) {
-      let anyColorNull = false;
-      for (let pc = 0; pc < 12; pc++) {
-        try {
-          const resolved = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
-          if (resolved.color === null) { anyColorNull = true; break; }
-        } catch (_) { /* skip */ }
-      }
-      if (anyColorNull) {
-        warnings.push("Some pitch classes have no color rule and no palette — will render black");
-      }
-    }
-
     // W6. Key definitions the engraving cannot tell apart (session 34, LY
     //     spec 1.3.9 §6.4). Section C dispatches on the key's pitch classes,
     //     all the engine passes, so definitions sharing a set engrave alike:
@@ -886,13 +842,6 @@ export const CNBConfig = {
       const mark = rule.apply.offKeyMark;
       if (mark === undefined || mark === false) continue;
       warnings.push(`Rule "${rule.name || "(unnamed)"}" sets an off-key mark (${JSON.stringify(mark)}), which is not drawn in the preview or exported yet`);
-    }
-
-    // W5. CB-safe palette has fewer entries than primary palette
-    const primaryCount  = (palette.colors || []).length;
-    const cbSafeCount   = (palette.cbSafeColors || []).length;
-    if (primaryCount > 0 && cbSafeCount < primaryCount) {
-      warnings.push(`CB-safe palette has ${cbSafeCount} entries but primary palette has ${primaryCount}`);
     }
 
     return {
@@ -979,20 +928,59 @@ export const CNBConfig = {
   },
 
   /**
-   * Get the effective display color for a pitch class.
-   * Respects config.palette.useCBSafe to choose between primary and CB-safe colors.
-   * Returns hex string (e.g. "#FF0000") or null if no palette is configured.
+   * A config saved with a palette, its colours moved onto the noteheads
+   * (session 37). A notehead's colour lives only on its rules, so a palette
+   * is converted when a config loads:
+   *
+   *   - each distinct non-black colour of palette.colors (the primary
+   *     colours, which the export engraved by default; useCBSafe and the
+   *     colour-blind set are dropped) becomes one rule matching the pitch
+   *     classes the palette gave it, every duration and key, with
+   *     apply.color, listed and prioritised below every existing rule, whose
+   *     order is kept. An explicit rule colour therefore still wins.
+   *   - rules' explicit color:null ("use the palette") is dropped, so the
+   *     palette's colour shows through as before.
+   *   - the palette section goes.
+   *
+   * A config without a palette comes back as it is. The input is not
+   * changed.
    * @param {object} config
-   * @param {number} pc  0–11
-   * @returns {string|null}
+   * @returns {object}
    */
-  resolveColor(config, pc) {
-    const palette = config.palette || {};
-    const useCB   = !!palette.useCBSafe;
-    const colors  = useCB ? (palette.cbSafeColors || []) : (palette.colors || []);
-    if (colors.length === 0) return null;
-    const entry = colors.find(c => c.pc === pc);
-    return entry ? entry.hex : null;
+  paletteToRules(config) {
+    if (!config || config.palette === undefined) return config;
+    const out = deepClone(config);
+    const isPlainObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+    const colors = (isPlainObject(out.palette) && Array.isArray(out.palette.colors)) ? out.palette.colors : [];
+    delete out.palette;
+
+    const groups = new Map();       // lower-case hex → { hex, name, pcs }
+    for (const entry of colors) {
+      if (!entry || typeof entry.hex !== "string" || !Number.isInteger(entry.pc)) continue;
+      const key = entry.hex.toLowerCase();
+      if (key === "#000000") continue;
+      if (!groups.has(key)) groups.set(key, { hex: entry.hex, name: entry.name, pcs: [] });
+      const g = groups.get(key);
+      if (!g.pcs.includes(entry.pc)) g.pcs.push(entry.pc);
+    }
+
+    const rules = Array.isArray(out.noteheadRules) ? out.noteheadRules : [];
+    for (const rule of rules) {
+      if (rule && isPlainObject(rule.apply) && rule.apply.color === null) delete rule.apply.color;
+    }
+    if (groups.size === 0) return out;
+
+    const priorities = rules.map(r => (r && r.priority) || 0);
+    const low = priorities.length ? Math.min(...priorities) : 0;
+    const added = [...groups.values()].map((g, i) => ({
+      name: `Colour ${g.name || g.hex}`,
+      priority: low + i,
+      match: { pitchClasses: g.pcs.sort((a, b) => a - b), durations: "all", keys: "all" },
+      apply: { color: g.hex },
+    }));
+    for (const rule of rules) if (rule) rule.priority = ((rule.priority) || 0) + added.length;
+    out.noteheadRules = [...added, ...rules];
+    return out;
   },
 
   /**

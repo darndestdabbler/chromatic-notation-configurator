@@ -85,10 +85,10 @@ export async function selectNotehead(page, pc, { add = false } = {}) {
 
 /**
  * Show Advanced and open its disclosure whose summary starts with `title`
- * ("Rules for particular durations or keys", "Colour palette", "Durations
- * and engine", "Staff line overrides", "Pitch axis map", "Pitch range
- * shown", "View file (JSON)"). Since session 27 the notehead rule editor
- * and the palette editor live here.
+ * ("Rules for particular durations or keys", "Durations and engine",
+ * "Staff line overrides", "Pitch axis map", "Pitch range shown", "View
+ * file (JSON)"). Since session 27 the notehead rule editor lives here; the
+ * palette editor that sat beside it was retired in session 37.
  */
 export async function openAdvanced(page, title) {
   await openSection(page, "advanced");

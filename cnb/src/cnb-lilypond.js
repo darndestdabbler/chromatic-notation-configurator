@@ -16,6 +16,7 @@
  */
 
 import { CNBConfig } from "./cnb-config.js";
+import { CNBColor } from "./cnb-color.js";
 import { CNBClef } from "./cnb-clef.js";
 import { CNBMusic } from "./cnb-music.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
@@ -199,8 +200,9 @@ function durationNames(config) {
 /**
  * Resolve every (pc × duration) combination through the notehead rules.
  * Returns a flat array of { pc, duration, shape, hollow, color, heightSemis,
- * widthSemis } where color is the rule's explicit hex or null (= use palette
- * / default black) and the sizes are null unless a rule sets them.
+ * widthSemis } where color is the rules' hex or null (black: a notehead's
+ * colour lives only on its rules, session 37) and the sizes are null unless
+ * a rule sets them.
  */
 function resolveAll(config) {
   const results = [];
@@ -317,66 +319,33 @@ function usedShapes(config) {
   return [...used].sort();
 }
 
-/** Palette entry hex for a pc from an entries array, or null. */
-function paletteHexFor(entries, pc) {
-  const entry = (entries || []).find(c => c.pc === pc);
-  return entry ? entry.hex : null;
-}
-
 /**
- * Scheme symbol for a color hex. Prefers config.palette.schemeSymbols
- * (generated via nearestColorName at palette-selection time so symbols stay
- * consistent between exports); falls back to "color-<hex>" when the map has
- * no entry — the cnb modules carry no color-naming library of their own.
+ * Scheme symbol for a color hex, named from the hex (session 37):
+ * nearestColorName → toSchemeSymbol, e.g. "#1b9e77" → "shamrock-1b9e77".
  */
-function colorSymbolFor(config, hex) {
-  const symbols = (config.palette && config.palette.schemeSymbols) || {};
-  const field = (key) => `palette.schemeSymbols[${JSON.stringify(key)}]`;
-  if (symbols[hex]) return CNBScheme.symbol(symbols[hex], field(hex));
-  const lower = hex.toLowerCase();
-  for (const [key, sym] of Object.entries(symbols)) {
-    if (key.toLowerCase() === lower) return CNBScheme.symbol(sym, field(key));
-  }
-  return CNBScheme.symbol(CNBLilypond.toSchemeSymbol("color", hex), `color ${JSON.stringify(hex)}`);
+function colorSymbolFor(hex) {
+  return CNBScheme.symbol(CNBColor.schemeSymbol(hex), `color ${JSON.stringify(hex)}`);
 }
 
+/** True when a resolved colour draws black (none, or #000000). */
+const isBlack = (hex) => !hex || hex.toLowerCase() === "#000000";
+
 /**
- * Collect the unique non-black colors used by the resolved notehead configs,
- * in first-use (pc) order. Each entry carries the primary hex, its CB-safe
- * alternative (palette pairing by pc, identity when unknown), and its symbol.
- * Also reports whether default black is used by any pc.
+ * The distinct non-black colours the resolved noteheads use, in first-use
+ * order, each { hex, symbol }, compared without regard to case; and whether
+ * any notehead is black.
  */
 function usedColors(config) {
-  const palette = config.palette || {};
-
-  // Map primary palette hex → CB-safe hex, paired by pitch class.
-  const cbByHex = {};
-  for (const entry of (palette.colors || [])) {
-    const cb = paletteHexFor(palette.cbSafeColors, entry.pc);
-    cbByHex[entry.hex.toLowerCase()] = cb || entry.hex;
-  }
-
   const colors = [];
   const seen = new Set();
   let hasBlack = false;
-
   for (const r of resolveAll(config)) {
-    // Effective export color: explicit rule hex, else palette primary, else black.
-    const hex = r.color !== null ? r.color : paletteHexFor(palette.colors, r.pc);
-    if (!hex || hex.toLowerCase() === "#000000") {
-      hasBlack = true;
-      continue;
-    }
-    const lower = hex.toLowerCase();
+    if (isBlack(r.color)) { hasBlack = true; continue; }
+    const lower = r.color.toLowerCase();
     if (seen.has(lower)) continue;
     seen.add(lower);
-    colors.push({
-      hex,
-      cbHex: cbByHex[lower] || hex,
-      symbol: colorSymbolFor(config, hex),
-    });
+    colors.push({ hex: r.color, symbol: colorSymbolFor(r.color) });
   }
-
   return { colors, hasBlack };
 }
 
@@ -432,35 +401,6 @@ function attachmentPoints(shape) {
   };
 }
 
-/**
- * The palette name for header/Section A comments, or null when the export
- * registers no color taken from the palette (audit 2026-11-02, L2: the
- * header never claims a palette the export does not carry). A palette color
- * is carried when some pitch class resolves to no explicit rule color and
- * the palette gives it a non-black hex. palette.useCBSafe is a preview
- * toggle and does not enter: the score selects the accessible branch with
- * cnb:use-accessible-colors.
- */
-function carriedPaletteName(config) {
-  const palette = config.palette || {};
-  const carried = resolveAll(config).some(r => {
-    if (r.color !== null) return false;
-    const hex = paletteHexFor(palette.colors, r.pc);
-    return !!hex && hex.toLowerCase() !== "#000000";
-  });
-  return carried ? (palette.name || "Unnamed palette") : null;
-}
-
-/**
- * Header comment lines naming what the preview shows but the export leaves
- * out (audit 2026-11-02, M1-M3, L2, L3). Since session 34 the preview draws
- * everything else as the engine engraves it, or the export carries it.
- */
-const PREVIEW_ONLY_COMMENT = [
-  "%% Preview-only (not exported): the CB-safe preview toggle. A score",
-  "%% selects the accessible colours with cnb:use-accessible-colors.",
-];
-
 /** LilyPond duration number for a named duration, or null when unknown. */
 function durationLyNumber(config, name) {
   const defs = (config.durations && config.durations.definitions) || [];
@@ -473,7 +413,7 @@ function durationLyNumber(config, name) {
  * Mirrors legacy generateSectionC's per-group symbol derivation:
  *   hollow  → "<shape>-cutout" only when the shape actually has hollow path data
  *   attach  → "<shape>-attach" only when the shape has stem anchors
- *   color   → explicit rule hex, else palette primary for the pc, else black
+ *   color   → the rules' hex, else black
  * A notehead resolved to a size other than its shape's own names the sized
  * variant (registrationFor) in shape, hollow and attachment, so the size is
  * part of the grouping key through those symbols (session 22).
@@ -489,11 +429,7 @@ function sectionCFields(config, r) {
   const hasAnchors = !!(shape && (shape.lilypondAnchors || shape.anchors));
   const attachSym = hasAnchors ? `${shapeSym}-attach` : "#f";
 
-  const palette = config.palette || {};
-  const hex = r.color !== null ? r.color : paletteHexFor(palette.colors, r.pc);
-  const colorSym = (!hex || hex.toLowerCase() === "#000000")
-    ? "black-000000"
-    : colorSymbolFor(config, hex);
+  const colorSym = isBlack(r.color) ? "black-000000" : colorSymbolFor(r.color);
 
   return { shapeSym, colorSym, hollowSym, attachSym };
 }
@@ -859,7 +795,6 @@ export const CNBLilypond = {
   header(config) {
     const meta = config.meta || {};
     const engine = config.engine || {};
-    const paletteName = carriedPaletteName(config);
     const rule = "%% " + "%".repeat(76);
 
     const lines = [];
@@ -877,16 +812,6 @@ export const CNBLilypond = {
       lines.push(`%% Source: ${CNBScheme.comment(meta.configName)}.json`);
     }
     lines.push("%%");
-    if (paletteName !== null) {
-      lines.push(`%% Color palette: ${CNBScheme.comment(paletteName)}`);
-      lines.push("%% Set cnb:use-accessible-colors to #t before \\include to use");
-      lines.push("%% the colorblind-safe alternative palette.");
-    } else {
-      lines.push("%% Color palette: none (no palette colors are exported)");
-    }
-    lines.push("%%");
-    lines.push(...PREVIEW_ONLY_COMMENT);
-    lines.push("%%");
     lines.push(rule);
     lines.push("");
 
@@ -897,7 +822,7 @@ export const CNBLilypond = {
    * Generate Section A — named definitions (LY spec §4):
    * A1 path definitions, A2 path registrations, A3 hollow cutout
    * registrations, A4 stem attachment registrations (4-point model),
-   * A5 color registrations with the cnb:use-accessible-colors conditional.
+   * A5 color registrations: the colours the noteheads use (session 37).
    * A1–A4 run over the used registrations: each used shape at its own size,
    * and each sized variant (session 22, LY spec §4.1c) with its path, cutout
    * and attachments scaled.
@@ -993,39 +918,16 @@ export const CNBLilypond = {
       lines.push("");
     }
 
-    // A5. Color registrations — with accessible color switching (LY spec §4.5)
+    // A5. Color registrations (LY spec 1.3.10 §4.5a): each colour the
+    // resolved noteheads use, once, named from its hex. There is no
+    // accessible branch: a colour-blind variant is a config of its own.
     const { colors, hasBlack } = usedColors(config);
-    if (colors.length > 0) {
-      const paletteName = carriedPaletteName(config);
-      lines.push("%% Color registrations");
-      lines.push(`%% Primary palette: ${paletteName !== null ? CNBScheme.comment(paletteName) : "none (rule colors only)"}`);
-      lines.push("%% Accessible palette: CB-safe alternative from the palette");
-      lines.push("%%");
-      lines.push("%% Usage: Set cnb:use-accessible-colors to #t before \\include");
-      lines.push("%% to activate the colorblind-safe alternative.");
-      lines.push("");
-
-      lines.push("#(if (and (defined? 'cnb:use-accessible-colors) cnb:use-accessible-colors)");
-      lines.push("  (begin");
-      lines.push("    ;; Accessible (colorblind-safe) palette");
-      for (const c of colors) {
-        lines.push(`    (cnb:register-color! '${c.symbol} ${CNBScheme.string(c.cbHex)})`);
-      }
-      lines.push("  )");
-      lines.push("  (begin");
-      lines.push("    ;; Primary palette");
-      for (const c of colors) {
-        lines.push(`    (cnb:register-color! '${c.symbol} ${CNBScheme.string(c.hex)})`);
-      }
-      lines.push("  ))");
-      lines.push("");
+    if (colors.length > 0 || hasBlack) lines.push("%% --- Register colors ---");
+    for (const c of colors) {
+      lines.push(`#(cnb:register-color! '${c.symbol} ${CNBScheme.string(c.hex)})`);
     }
-
-    // Default black is identical in both branches — register unconditionally.
-    if (hasBlack) {
-      lines.push(`#(cnb:register-color! 'black-000000 "#000000")`);
-      lines.push("");
-    }
+    if (hasBlack) lines.push(`#(cnb:register-color! 'black-000000 "#000000")`);
+    if (colors.length > 0 || hasBlack) lines.push("");
 
     // A6. Clef glyph registration (LY spec 1.3.7 §5.5)
     lines.push(...clefRegistrationLines(config));

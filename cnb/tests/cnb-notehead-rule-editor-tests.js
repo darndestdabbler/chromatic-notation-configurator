@@ -7,7 +7,7 @@
  * (round-tripped on every branch: "all" vs explicit lists, full-12 lists
  * not collapsed, sparse apply combos, offKeyMark/keys passthrough,
  * arbitrary-priority normalization), resolveAll against Module A's
- * resolveNotehead + resolveColor precedence, reordering semantics, the
+ * resolveNotehead (the rule colour, else black), reordering semantics, the
  * render() UI driven against a stub DOM, and renderResolvedPreview()
  * against the SVG stub.
  */
@@ -108,7 +108,7 @@ function defaultState() {
   return E.stateFromConfig(CNBConfig.createDefault());
 }
 
-/** Default config extended with a second shape and a small palette. */
+/** Default config extended with a second shape and two keys. */
 function richConfig() {
   const config = CNBConfig.createDefault();
   config.shapes["diamond"] = {
@@ -122,13 +122,6 @@ function richConfig() {
     lilypondPath: null,
     lilypondHollowPath: null,
     lilypondAnchors: null,
-  };
-  config.palette = {
-    name: "Demo",
-    colors: [{ pc: 0, hex: "#1b9e77", name: "Shamrock" }, { pc: 1, hex: "#d95f02", name: "Orange" }],
-    cbSafeColors: [],
-    useCBSafe: false,
-    schemeSymbols: {},
   };
   config.keys.definitions = [
     { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] },
@@ -203,7 +196,7 @@ export const tests = [
       assertThrows(() => E.buildRules(rule("#GGGGGG")), "non-hex digits");
       assertThrows(() => E.buildRules(rule("cc0000")), "missing #");
       assert(E.buildRules(rule("#AbCdEf"))[0].apply.color === "#AbCdEf", "mixed-case hex accepted");
-      assert(E.buildRules(rule(null))[0].apply.color === null, "null (palette) accepted");
+      assert(E.buildRules(rule(null))[0].apply.color === null, "null (none) accepted");
     },
   },
   {
@@ -322,16 +315,16 @@ export const tests = [
     },
   },
   {
-    name: "round-trip: explicit color hex and color:null (palette) both survive",
+    name: "round-trip: explicit color hex and color:null (none) both survive",
     fn: () => {
       const config = CNBConfig.createDefault();
       config.noteheadRules.push(
         { name: "Hex", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#cc0000" } },
-        { name: "Pal", priority: 3, match: { pitchClasses: [1], durations: "all", keys: "all" }, apply: { color: null } },
+        { name: "None", priority: 3, match: { pitchClasses: [1], durations: "all", keys: "all" }, apply: { color: null } },
       );
       const applied = E.applyToConfig(config, E.stateFromConfig(config));
       assert(applied.noteheadRules[2].apply.color === "#cc0000", "hex kept");
-      assert(applied.noteheadRules[3].apply.color === null, "null kept (palette mode)");
+      assert(applied.noteheadRules[3].apply.color === null, "null kept (none)");
     },
   },
 
@@ -344,15 +337,16 @@ export const tests = [
       for (const r of resolved) {
         assert(r.shape === "crotchet-minim", `pc ${r.pc} shape`);
         assert(r.hollow === [1, 3, 6, 8, 10].includes(r.pc), `pc ${r.pc} hollow`);
-        assert(r.effectiveColor === "#000000", `pc ${r.pc} black without palette`);
+        assert(r.effectiveColor === "#000000", `pc ${r.pc} black without a colour rule`);
       }
       assert(resolved[1].label === "C♯", "labels attached");
     },
   },
   {
-    name: "resolveAll: effective color precedence — explicit hex > palette > black",
+    name: "resolveAll: effective color — the rule hex, else black (no palette since session 37)",
     fn: () => {
-      const config = richConfig();   // palette covers PCs 0 and 1
+      const config = richConfig();
+      config.palette = { colors: [{ pc: 1, hex: "#d95f02" }] };   // a leftover palette is not read
       config.noteheadRules.push({
         name: "Red C", priority: 2,
         match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#cc0000" },
@@ -360,8 +354,8 @@ export const tests = [
       const resolved = E.resolveAll(config, "crotchet", null);
       assert(resolved[0].effectiveColor === "#cc0000", "explicit rule hex wins for C");
       assert(resolved[0].color === "#cc0000", "raw resolved color kept");
-      assert(resolved[1].effectiveColor === "#d95f02", "palette color for C♯ (color null)");
-      assert(resolved[2].effectiveColor === "#000000", "black when PC not in palette");
+      assert(resolved[1].effectiveColor === "#000000", "black for C♯ (no rule colour)");
+      assert(resolved[2].effectiveColor === "#000000", "black for D");
     },
   },
   {
@@ -573,17 +567,19 @@ export const tests = [
     }),
   },
   {
-    name: "render: color toggle defaults to palette mode (null); custom mode edits a hex",
+    name: "render: color toggle defaults to none (null, black); custom mode edits a hex",
     fn: () => withDomStub((container) => {
       let lastSlices = null;
       const config = richConfig();
       const handle = E.render(container, { config, onChange: (slices) => { lastSlices = slices; } });
       const card1 = findByAttr(handle.root, "data-rule-index", "1")[0];
       findAll(card1, "cnb-nre-apply-color-check")[0].onchange({ target: { checked: true } });
-      assert(lastSlices.noteheadRules[1].apply.color === null, "palette mode emits null");
-      // C♯ is in the demo palette → effective color comes from it.
+      assert(lastSlices.noteheadRules[1].apply.color === null, "none emits null");
+      const mode = findAll(findByAttr(handle.root, "data-rule-index", "1")[0], "cnb-nre-color-mode")[0];
+      assert(mode.value === "none", "mode shows none");
       let swatch = findAll(findAll(handle.root, "cnb-nre-resolved-cell")[1], "cnb-nre-resolved-swatch")[0];
-      assert(swatch.getAttribute("data-color") === "#d95f02", "palette color in strip");
+      assert(swatch.getAttribute("data-color") === "#000000", "black in strip");
+      assert(swatch.title === "none (black)", swatch.title);
 
       const card1b = findByAttr(handle.root, "data-rule-index", "1")[0];
       findAll(card1b, "cnb-nre-color-mode")[0].onchange({ target: { value: "custom" } });
@@ -597,8 +593,8 @@ export const tests = [
       assert(swatch.getAttribute("data-color") === "#cc0000", "strip shows the rule hex");
 
       const card1d = findByAttr(handle.root, "data-rule-index", "1")[0];
-      findAll(card1d, "cnb-nre-color-mode")[0].onchange({ target: { value: "palette" } });
-      assert(lastSlices.noteheadRules[1].apply.color === null, "back to palette mode");
+      findAll(card1d, "cnb-nre-color-mode")[0].onchange({ target: { value: "none" } });
+      assert(lastSlices.noteheadRules[1].apply.color === null, "back to none");
     }),
   },
   {
@@ -815,10 +811,11 @@ export const tests = [
   {
     name: "renderResolvedPreview: notehead color and labels come from the resolution",
     fn: () => withDomStub((container) => {
-      const config = richConfig();   // palette: PC0 shamrock, PC1 orange
+      const config = richConfig();
+      config.noteheadRules.push({ name: "Shamrock C", priority: 2, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { color: "#1b9e77" } });
       const out = E.renderResolvedPreview(container, config, { duration: "crotchet" });
       const fillOf = (cell) => cell.svg.children[0].children[0].getAttribute("fill");
-      assert(fillOf(out.cells[0]) === "#1b9e77", "C uses its palette color");
+      assert(fillOf(out.cells[0]) === "#1b9e77", "C uses its rule colour");
       assert(fillOf(out.cells[2]) === "#000000", "D falls back to black");
       const labels = findAll(out.row, "cnb-nre-preview-label").map(l => l.textContent);
       assertEqualJson(labels.slice(0, 3), ["C", "C♯", "D"], "PC labels");
