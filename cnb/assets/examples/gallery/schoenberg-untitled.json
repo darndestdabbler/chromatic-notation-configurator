@@ -1,0 +1,222 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "oval-slash-left": {
+      "displayName": "Oval, slash left (/o)",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z M -270 80 L -70 -80 L -46 -50 L -246 110 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 300,
+      "naturalWidth": 540,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "oval-slash-through": {
+      "displayName": "Oval, slash through (𝜙)",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z M -17 -150 L 17 -150 L 17 150 L -17 150 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 300,
+      "naturalWidth": 540,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "oval-slash-right": {
+      "displayName": "Oval, slash right (o/)",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z M 46 -50 L 246 -110 L 270 -80 L 70 80 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 300,
+      "naturalWidth": 540,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 157.2926,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -157.2934,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      0,
+      4,
+      8
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 4,
+    "lineOverrides": {
+      "0": {
+        "thicknessPct": 40
+      }
+    }
+  },
+  "ledgers": {
+    "templates": []
+  },
+  "noteheadRules": [
+    {
+      "name": "On-line notes (plain)",
+      "priority": 0,
+      "match": {
+        "pitchClasses": [
+          0,
+          4,
+          8
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "crotchet-minim",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    },
+    {
+      "name": "First elevation above line (slash left /o)",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          5,
+          9
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "oval-slash-left"
+      }
+    },
+    {
+      "name": "Second elevation (slash through 𝜙)",
+      "priority": 2,
+      "match": {
+        "pitchClasses": [
+          2,
+          6,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "oval-slash-through"
+      }
+    },
+    {
+      "name": "Third elevation below next line (slash right o/)",
+      "priority": 3,
+      "match": {
+        "pitchClasses": [
+          3,
+          7,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "oval-slash-right"
+      }
+    }
+  ],
+  "meta": {
+    "configName": "Schoenberg Untitled (reproduction study)",
+    "fileSuffix": "-SchoenbergUntitled",
+    "notationLabel": "Untitled (Schoenberg) — reproduction study",
+    "notationFootnote": "",
+    "author": "Arnold Schoenberg",
+    "description": "Reproduction study — inspired by Arnold Schoenberg's untitled system (1924). Major-third staff at C/E/G# with bold C lines; the three inter-line elevations are marked by a slash on the left (/o), through the centre (𝜙), and on the right (o/), baked into per-pitch-class oval variants (operator UAT reference shapes o, /o, 𝜙, o/). Slash geometry is an approximation of the published marks. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "Untitled (Arnold Schoenberg)",
+    "systemCreator": "Arnold Schoenberg",
+    "systemYear": 1924,
+    "sourceUrl": "https://musicnotation.org/system/untitled-by-arnold-schoenberg/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}
