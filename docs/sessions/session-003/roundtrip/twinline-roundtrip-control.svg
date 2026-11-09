@@ -1,0 +1,793 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2" width="184.76mm" height="297.00mm" viewBox="0.0000 -0.0000 105.1363 169.0094">
+<style type="text/css">
+<![CDATA[
+tspan { white-space: pre; }
+]]>
+</style>
+<g id="staff-symbol" data-type="staff-symbol">
+<g transform="translate(2.8453, 6.0453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+<g transform="translate(2.8453, 7.0453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+<g transform="translate(2.8453, 8.0453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+<g transform="translate(2.8453, 9.5453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+<g transform="translate(2.8453, 10.5453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+<g transform="translate(2.8453, 11.5453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="0" x2="99.3358" y2="0"/>
+</g>
+</g>
+<g id="bl-3" data-type="barline" data-measure="3">
+<g transform="translate(31.7079, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-8" data-type="barline" data-measure="8">
+<g transform="translate(80.2425, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-7" data-type="barline" data-measure="7">
+<g transform="translate(73.4214, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-2" data-type="barline" data-measure="2">
+<g transform="translate(21.1131, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-6" data-type="barline" data-measure="6">
+<g transform="translate(62.9883, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-9" data-type="barline" data-measure="9">
+<g transform="translate(91.1678, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-4" data-type="barline" data-measure="4">
+<g transform="translate(42.1823, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-10" data-type="barline" data-measure="10">
+<g transform="translate(102.0411, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="bl-5" data-type="barline" data-measure="5">
+<g transform="translate(52.5853, 10.0453)">
+<rect x="0.0000" y="-4.0000" width="0.1900" height="5.5000" ry="0.0000" fill="currentColor"/>
+</g>
+</g>
+<g id="st-6-0.500-0" data-type="stem" data-measure="6" data-beat="0.500" data-voice="0">
+<g transform="translate(68.6730, 10.0453)">
+<rect x="-0.0650" y="-4.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-6-0.250-0" data-type="stem" data-measure="6" data-beat="0.250" data-voice="0">
+<g transform="translate(66.3420, 10.0453)">
+<rect x="-0.0650" y="-3.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-6-0.750-0" data-type="stem" data-measure="6" data-beat="0.750" data-voice="0">
+<g transform="translate(71.0041, 10.0453)">
+<rect x="-0.0650" y="-4.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-5-0.250-0" data-type="stem" data-measure="5" data-beat="0.250" data-voice="0">
+<g transform="translate(55.9389, 10.0453)">
+<rect x="-0.0650" y="-2.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-5-0.000-0" data-type="stem" data-measure="5" data-beat="0.000" data-voice="0">
+<g transform="translate(53.6079, 10.0453)">
+<rect x="-0.0650" y="-2.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-6-0.000-0" data-type="stem" data-measure="6" data-beat="0.000" data-voice="0">
+<g transform="translate(64.0109, 10.0453)">
+<rect x="-0.0650" y="-3.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-5-0.750-0" data-type="stem" data-measure="5" data-beat="0.750" data-voice="0">
+<g transform="translate(60.6011, 10.0453)">
+<rect x="-0.0650" y="-3.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-5-0.500-0" data-type="stem" data-measure="5" data-beat="0.500" data-voice="0">
+<g transform="translate(58.2700, 10.0453)">
+<rect x="-0.0650" y="-2.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-9-0.250-0" data-type="stem" data-measure="9" data-beat="0.250" data-voice="0">
+<g transform="translate(95.0114, 10.0453)">
+<rect x="-0.0650" y="-1.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-9-0.000-0" data-type="stem" data-measure="9" data-beat="0.000" data-voice="0">
+<g transform="translate(92.6803, 10.0453)">
+<rect x="-0.0650" y="-0.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="rs-9-0.500-0" data-type="rest" data-measure="9" data-beat="0.500" data-voice="0" data-duration="1">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:69:70">
+<g transform="translate(97.6430, 10.5453)">
+<path transform="scale(0.0040, -0.0040)" d="M365 0h-355c-6 0 -10 4 -10 10v136c0 6 4 10 10 10h355c6 0 10 -4 10 -10v-136c0 -6 -4 -10 -10 -10z" fill="currentColor"/>
+</g>
+</a>
+</g>
+<g id="st-8-0.000-0" data-type="stem" data-measure="8" data-beat="0.000" data-voice="0">
+<g transform="translate(81.8661, 10.0453)">
+<rect x="-0.0650" y="-1.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-8-0.750-0" data-type="stem" data-measure="8" data-beat="0.750" data-voice="0">
+<g transform="translate(88.6734, 10.0453)">
+<rect x="-0.0650" y="-0.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-8-0.500-0" data-type="stem" data-measure="8" data-beat="0.500" data-voice="0">
+<g transform="translate(86.5283, 10.0453)">
+<rect x="-0.0650" y="-3.0000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-8-0.250-0" data-type="stem" data-measure="8" data-beat="0.250" data-voice="0">
+<g transform="translate(84.1972, 10.0453)">
+<rect x="-0.0650" y="-2.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-1-0.500-0" data-type="stem" data-measure="1" data-beat="0.500" data-voice="0">
+<g transform="translate(16.5072, 10.0453)">
+<rect x="-0.0650" y="-2.0000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-2-0.750-0" data-type="stem" data-measure="2" data-beat="0.750" data-voice="0">
+<g transform="translate(29.1778, 10.0453)">
+<rect x="-0.0650" y="0.0789" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-1-0.750-0" data-type="stem" data-measure="1" data-beat="0.750" data-voice="0">
+<g transform="translate(18.8383, 10.0453)">
+<rect x="-0.0650" y="-2.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-3-0.000-0" data-type="stem" data-measure="3" data-beat="0.000" data-voice="0">
+<g transform="translate(32.7304, 10.0453)">
+<rect x="-0.0650" y="-0.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-3-0.250-0" data-type="stem" data-measure="3" data-beat="0.250" data-voice="0">
+<g transform="translate(35.0615, 10.0453)">
+<rect x="-0.0650" y="-0.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-2-0.000-0" data-type="stem" data-measure="2" data-beat="0.000" data-voice="0">
+<g transform="translate(22.7367, 10.0453)">
+<rect x="-0.0650" y="-2.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-2-0.250-0" data-type="stem" data-measure="2" data-beat="0.250" data-voice="0">
+<g transform="translate(25.0678, 10.0453)">
+<rect x="-0.0650" y="-3.0000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-4-0.750-0" data-type="stem" data-measure="4" data-beat="0.750" data-voice="0">
+<g transform="translate(50.1981, 10.0453)">
+<rect x="-0.0650" y="-2.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-2-0.500-0" data-type="stem" data-measure="2" data-beat="0.500" data-voice="0">
+<g transform="translate(27.3989, 10.0453)">
+<rect x="-0.0650" y="-3.0000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="ks-1" data-type="key-signature" data-measure="1">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:15:4:5">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(100.0000%, 83.1373%, 16.4706%)">
+<g transform="translate(7.7783, 16.0453)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.4000" stroke="currentColor" x1="0" y1="0" x2="0" y2="-12"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 10.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 8.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 7.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 7.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 6.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 10.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 8.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 7.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(7.1453, 7.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(8.4114, 6.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="st-4-0.000-0" data-type="stem" data-measure="4" data-beat="0.000" data-voice="0">
+<g transform="translate(43.2048, 10.0453)">
+<rect x="-0.0650" y="-1.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-1-0.000-0" data-type="stem" data-measure="1" data-beat="0.000" data-voice="0">
+<g transform="translate(11.8450, 10.0453)">
+<rect x="-0.0650" y="-1.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="cl-1" data-type="clef" data-measure="1">
+<g transform="scale(1.0089, 1.3452)">
+<g transform="translate(4.7057, 8.2109)">
+<text font-family="serif" font-weight="bold" font-size="2.2001" text-anchor="start" fill="currentColor">
+<tspan>0</tspan>
+</text>
+</g>
+</g>
+<g transform="scale(1.0089, 2.0178)">
+<g transform="translate(3.6131, 5.7217)">
+<text font-family="serif" font-weight="bold" font-size="2.2001" text-anchor="start" fill="currentColor">
+<tspan>5</tspan>
+</text>
+</g>
+</g>
+</g>
+<g id="st-4-0.250-0" data-type="stem" data-measure="4" data-beat="0.250" data-voice="0">
+<g transform="translate(45.5359, 10.0453)">
+<rect x="-0.0650" y="-1.4211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-4-0.500-0" data-type="stem" data-measure="4" data-beat="0.500" data-voice="0">
+<g transform="translate(47.8670, 10.0453)">
+<rect x="-0.0650" y="-1.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g transform="translate(2.7853, 8.7953)">
+<rect x="0.0000" y="-2.8000" width="0.1600" height="5.6000" ry="0.0500" fill="currentColor"/>
+</g>
+<g id="st-3-0.500-0" data-type="stem" data-measure="3" data-beat="0.500" data-voice="0">
+<g transform="translate(37.3926, 10.0453)">
+<rect x="-0.0650" y="-0.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-3-0.750-0" data-type="stem" data-measure="3" data-beat="0.750" data-voice="0">
+<g transform="translate(39.7237, 10.0453)">
+<rect x="-0.0650" y="-0.9211" width="0.1300" height="3.4211" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="st-1-0.250-0" data-type="stem" data-measure="1" data-beat="0.250" data-voice="0">
+<g transform="translate(14.1761, 10.0453)">
+<rect x="-0.0650" y="-1.5000" width="0.1300" height="3.4210" ry="0.0400" fill="currentColor"/>
+</g>
+</g>
+<g id="ll-1-0.000-0" data-type="ledger-line" data-measure="1" data-beat="0.000" data-voice="0">
+<g transform="translate(2.8453, 5.0453)">
+<rect x="71.7166" y="-0.1000" width="1.8991" height="0.2000" ry="0.1000" fill="currentColor"/>
+</g>
+</g>
+<g id="nh-8-0.500-65-0" data-type="notehead" data-measure="8" data-beat="0.500" data-midi="65" data-pitch-class="5" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:26:27">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(86.2277, 10.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-1-0.250-61-0" data-type="notehead" data-measure="1" data-beat="0.250" data-midi="61" data-pitch-class="1" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:8:9">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(13.8755, 12.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.500-66-0" data-type="notehead" data-measure="8" data-beat="0.500" data-midi="66" data-pitch-class="6" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:29:30">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(86.7178, 10.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-4-0.750-75-0" data-type="notehead" data-measure="4" data-beat="0.750" data-midi="75" data-pitch-class="3" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:18:19">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(50.4986, 7.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-1-0.000-60-0" data-type="notehead" data-measure="1" data-beat="0.000" data-midi="60" data-pitch-class="0" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:4:5">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(11.5444, 12.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-1-0.500-62-0" data-type="notehead" data-measure="1" data-beat="0.500" data-midi="62" data-pitch-class="2" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:13:14">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(16.2066, 11.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-9-0.250-72-0" data-type="notehead" data-measure="9" data-beat="0.250" data-midi="72" data-pitch-class="0" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:58:59">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(94.8219, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-9-0.250-73-0" data-type="notehead" data-measure="9" data-beat="0.250" data-midi="73" data-pitch-class="1" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:62:63">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(95.3119, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-2-0.000-64-0" data-type="notehead" data-measure="2" data-beat="0.000" data-midi="64" data-pitch-class="4" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:23:24">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(22.4361, 11.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.750-68-0" data-type="notehead" data-measure="8" data-beat="0.750" data-midi="68" data-pitch-class="8" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:36:37">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(88.4838, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.750-69-0" data-type="notehead" data-measure="8" data-beat="0.750" data-midi="69" data-pitch-class="9" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:41:42">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(88.9739, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-1-0.750-63-0" data-type="notehead" data-measure="1" data-beat="0.750" data-midi="63" data-pitch-class="3" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:16:17">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(18.5377, 11.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-9-0.000-71-0" data-type="notehead" data-measure="9" data-beat="0.000" data-midi="71" data-pitch-class="11" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:53:54">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(92.9808, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-9-0.000-70-0" data-type="notehead" data-measure="9" data-beat="0.000" data-midi="70" data-pitch-class="10" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:48:49">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(92.4908, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-6-0.000-80-0" data-type="notehead" data-measure="6" data-beat="0.000" data-midi="80" data-pitch-class="8" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:46:47">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(64.3114, 6.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-3-0.000-68-0" data-type="notehead" data-measure="3" data-beat="0.000" data-midi="68" data-pitch-class="8" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:39:40">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(33.0309, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-7-0.000-84-0" data-type="notehead" data-measure="7" data-beat="0.000" data-midi="84" data-pitch-class="0" data-voice="0" data-duration="0">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:18:4:5">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(75.5114, 5.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-6-0.750-83-0" data-type="notehead" data-measure="6" data-beat="0.750" data-midi="83" data-pitch-class="11" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:62:63">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(71.3046, 5.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-6-0.500-82-0" data-type="notehead" data-measure="6" data-beat="0.500" data-midi="82" data-pitch-class="10" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:56:57">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(68.9736, 5.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-6-0.250-81-0" data-type="notehead" data-measure="6" data-beat="0.250" data-midi="81" data-pitch-class="9" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:52:53">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(66.6425, 6.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-3-0.250-69-0" data-type="notehead" data-measure="3" data-beat="0.250" data-midi="69" data-pitch-class="9" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:44:45">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(35.3620, 9.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-3-0.500-70-0" data-type="notehead" data-measure="3" data-beat="0.500" data-midi="70" data-pitch-class="10" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:47:48">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(37.6931, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-3-0.750-71-0" data-type="notehead" data-measure="3" data-beat="0.750" data-midi="71" data-pitch-class="11" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:52:53">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(40.0242, 9.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.250-64-0" data-type="notehead" data-measure="8" data-beat="0.250" data-midi="64" data-pitch-class="4" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:21:22">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(84.3867, 11.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-5-0.750-79-0" data-type="notehead" data-measure="5" data-beat="0.750" data-midi="79" data-pitch-class="7" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:40:41">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(60.9016, 6.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-4-0.000-72-0" data-type="notehead" data-measure="4" data-beat="0.000" data-midi="72" data-pitch-class="0" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:4:5">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(43.5053, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-5-0.500-78-0" data-type="notehead" data-measure="5" data-beat="0.500" data-midi="78" data-pitch-class="6" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:34:35">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(58.5705, 7.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-5-0.250-77-0" data-type="notehead" data-measure="5" data-beat="0.250" data-midi="77" data-pitch-class="5" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:30:31">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(56.2394, 7.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-4-0.250-73-0" data-type="notehead" data-measure="4" data-beat="0.250" data-midi="73" data-pitch-class="1" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:8:9">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(45.8364, 8.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-4-0.500-74-0" data-type="notehead" data-measure="4" data-beat="0.500" data-midi="74" data-pitch-class="2" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:14:15">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(48.1675, 8.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-5-0.000-76-0" data-type="notehead" data-measure="5" data-beat="0.000" data-midi="76" data-pitch-class="4" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:17:26:27">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(53.9084, 7.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-2-0.500-66-0" data-type="notehead" data-measure="2" data-beat="0.500" data-midi="66" data-pitch-class="6" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:29:30">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(27.0983, 10.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-2-0.750-67-0" data-type="notehead" data-measure="2" data-beat="0.750" data-midi="67" data-pitch-class="7" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:34:35">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(29.4783, 10.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.250-63-0" data-type="notehead" data-measure="8" data-beat="0.250" data-midi="63" data-pitch-class="3" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:16:17">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(83.8966, 11.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.000-61-0" data-type="notehead" data-measure="8" data-beat="0.000" data-midi="61" data-pitch-class="1" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:8:9">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(82.0556, 12.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995zM0.5004 -0.2495C0.4303 -0.3804 0.1681 -0.3143 -0.0915 -0.1849C-0.3512 -0.0555 -0.5732 0.1120 -0.5006 0.2495C-0.4279 0.3871 -0.1503 0.3039 0.0908 0.1842C0.3319 0.0645 0.5706 -0.1187 0.5004 -0.2495z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-2-0.250-65-0" data-type="notehead" data-measure="2" data-beat="0.250" data-midi="65" data-pitch-class="5" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:16:26:27">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(24.7672, 10.5453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g id="nh-8-0.000-60-0" data-type="notehead" data-measure="8" data-beat="0.000" data-midi="60" data-pitch-class="0" data-voice="0" data-duration="2">
+<a style="color:inherit;" xlink:href="textedit://D:/Projects/chromatic-notation-configurator/docs/sessions/session-003/roundtrip/twinline-roundtrip-control-score.ly:19:5:6">
+<g transform="scale(1.0000, 1.0000)">
+<g color="rgb(0.0000%, 0.0000%, 0.0000%)">
+<g transform="translate(81.5656, 12.0453)">
+<path stroke-width="0.0001" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.6005 -0.2995C0.7108 -0.0783 0.5312 0.2350 0.1995 0.4004C-0.1322 0.5658 -0.4904 0.5206 -0.6007 0.2994C-0.6536 0.1932 -0.6411 0.0598 -0.5659 -0.0714C-0.4907 -0.2026 -0.3590 -0.3210 -0.1997 -0.4004C-0.0404 -0.4798 0.1334 -0.5138 0.2834 -0.4949C0.4335 -0.4759 0.5476 -0.4056 0.6005 -0.2995z"/>
+</g>
+</g>
+</g>
+</a>
+</g>
+<g transform="translate(34.5701, 165.1202)">
+<a xlink:href="https://lilypond.org/">
+<rect x="0.0000" y="-0.4748" width="50.3614" height="2.0024" fill="none" stroke="none" stroke-width="0.0"/>
+</a>
+</g>
+<g transform="translate(34.5701, 165.1202)">
+<text font-family="serif" font-size="2.2001" text-anchor="start" fill="currentColor">
+<tspan>Music engraving by LilyPond 2.24.2—www.lilypond.org</tspan>
+</text>
+</g>
+</svg>
