@@ -412,6 +412,30 @@ export const tests = [
       });
     }},
 
+  { name: "selecting several (session 38): the head's hint and the Close title, for one notehead and for several", fn: () => {
+      withPanel(CNBConfig.createDefault(), [1], (h) => {
+        eq(findOne(h.api.root, "cnb-nhp-select-hint").textContent,
+          "Shift+click or Ctrl+click more noteheads on the staff to change them together.", "one");
+        eq(findOne(h.api.root, "cnb-nhp-close").title, "Close and clear the selection (Esc)", "close title");
+      });
+      withPanel(CNBConfig.createDefault(), [0, 4], (h) => {
+        eq(findOne(h.api.root, "cnb-nhp-select-hint").textContent,
+          "Shift+click or Ctrl+click a selected notehead to drop it. Esc or Close clears the selection.", "several");
+      });
+    }},
+
+  { name: "Give this look to (session 38): says what it copies, and each button names its noteheads", fn: () => {
+      withPanel(CNBConfig.createDefault(), [4, 0], (h) => {
+        eq(findOne(h.api.root, "cnb-nhp-give-hint").textContent,
+          "Copies the ticked parts of E's look to the noteheads chosen below.", "the first selected notehead's look");
+        const title = (kind) => byData(h.api.root, "cnb-nhp-give-option", "data-give", kind).title;
+        eq(title("every-4"), "C, E and G♯", "every 4th from E");
+        eq(title("every-6"), "E and A♯", "every 6th from E");
+        eq(title("accidentals"), "C♯, D♯, F♯, G♯ and A♯", "the accidentals");
+        eq(title("all"), "C, C♯, D, D♯, E, F, F♯, G, G♯, A, A♯ and B", "all");
+      });
+    }},
+
   // ── The rule list (§5.4) ──────────────────────────────────────────────
 
   { name: "renderRuleList: Kite's lines in words, with thumbnails and swatches", fn: () => {

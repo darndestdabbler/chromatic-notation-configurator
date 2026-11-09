@@ -87,7 +87,9 @@
  *
  * Session 27 (selecting noteheads, design §2, §5.4): a click on a canvas
  * column (its data-pc; C′ is pitch class 0) calls opts.onSelect(pc,
- * { add }), add being true for a Shift-click; the page owns the selection.
+ * { add }), add being true for a Shift-click (since session 38 a Ctrl- or
+ * Cmd-click too); the page owns the selection. With an onSelect, the
+ * toolbar's hint says how to select (SELECT_HINT) outside pitch mode.
  * setMarks({ selected, tinted }) marks the columns of those pitch classes
  * with the classes cnb-pvd-selected and cnb-pvd-tint (in every row, C′ with
  * C) without a redraw, and the marks are put back after every redraw.
@@ -161,6 +163,8 @@ function checkKey(key) {
 
 /** The toolbar hint in pitch mode (session 28, mock-up 3). */
 const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff";
+/** The toolbar hint when noteheads can be selected (session 38). */
+const SELECT_HINT = "Click a notehead to give it a look; Shift+click or Ctrl+click to select several";
 
 /** The canvas's label style (design §6.2): plain, compact pitch labels. */
 const EDITOR_LABEL = { fontSize: 15, marginTop: 6, marginBottom: 6, padding: 4, color: "#5b5d63" };
@@ -184,6 +188,7 @@ export const CNBPreviewDisplay = {
   EDITOR_LABEL,
   REPRESENTATION_CHOICES,
   REPEAT_HINT,
+  SELECT_HINT,
   TONIC_NAMES,
   DEFAULT_KEY,
 
@@ -700,7 +705,7 @@ export const CNBPreviewDisplay = {
       if (onSelect) {
         for (const col of columns) {
           const pc = Number(col.getAttribute("data-pc")) % 12;
-          col.onclick = (e) => onSelect(pc, { add: !!(e && e.shiftKey) });
+          col.onclick = (e) => onSelect(pc, { add: !!(e && (e.shiftKey || e.ctrlKey || e.metaKey)) });
         }
       }
       applyMarks();
@@ -762,10 +767,11 @@ export const CNBPreviewDisplay = {
       }
     }
 
-    /** The hint and the class for pitch mode, with no redraw. */
+    /** The hint and the class for pitch mode, with no redraw; outside it,
+     *  the selection hint when noteheads can be selected. */
     function applyPitchMode() {
       setToken(root, "cnb-pvd-pitch-mode", pitchMode);
-      if (pitchHint) pitchHint.textContent = pitchMode ? PITCH_HINT : "";
+      if (pitchHint) pitchHint.textContent = pitchMode ? PITCH_HINT : onSelect ? SELECT_HINT : "";
     }
 
     function drawPreview() {

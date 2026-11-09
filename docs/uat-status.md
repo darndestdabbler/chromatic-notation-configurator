@@ -21,6 +21,48 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Selecting several noteheads — 2026-11-09 (session 38)
+
+Session 35 found that the operator gave each notehead its look in turn,
+not knowing the canvas selects several. Session 38 made it say so:
+
+- The canvas toolbar reads "Click a notehead to give it a look; Shift+click
+  or Ctrl+click to select several" (outside pitch mode), and the Noteheads
+  section's subtitle says the same. Ctrl+click (Cmd+click on a Mac) selects
+  as Shift+click does.
+- Under the notehead panel's head, a hint says how to add noteheads, and
+  with several selected how to drop one, and that Esc or Close clears the
+  selection. The Close button's tooltip says it clears the selection.
+- Give this look to says it copies the ticked parts of the selected
+  notehead's look to the noteheads chosen below, and each of its buttons
+  names in its tooltip the noteheads it would change ("C, E and G♯").
+
+**The operator's trial.** The operator rebuilt Kite 4-369 from a fresh page
+with the multi-selection and Give this look to, and **found both from the
+new hints, unaided** (operator, 2026-11-09: "Yes, found unaided"). The
+notehead configuration "seems OK".
+
+### Found along the way
+
+| Found | What happens | Planned |
+|---|---|---|
+| The page loads unstyled under `npx serve` | The README suggests `npx serve .` and `/cnb/index.html`. `serve` redirects that address to `/cnb` with no trailing slash, so every script and stylesheet is looked for one folder too high and fails to load: the operator saw a page of plain buttons. `http://localhost:3000/cnb/` (trailing slash) works. | 42 (README) |
+| The notehead's height is judged before the staff is set | The operator read the Kite notehead as 3 semitones tall on the default 4-8 staff. It is drawn at its 4 semitones (the staff's lines, 4 semitones apart, are as tall), but the kite's wide edge is 3 semitones from its long point. The operator's remedy is the workflow below, which starts from the notehead height. | 39 |
+| The workflow's order | The operator asked for the sections in the order a notation is designed: a conventional notehead on the 4-8 staff, the general notehead height, the staff, the ledger lines, the selected noteheads' shape, colour, fill and size, the key signature, and the clef. | 39 |
+| Stems sit half a stem off centre | Since session 33 a stem's edge sits on its anchor, as LilyPond's does, so the Kite stems, drawn centred in the SVG, preview and engrave off centre. The operator's choice, the one session 33 left open: a stem goes where the SVG's stem rect puts it (centred for Kite and 45deg), and the default notehead's stems take the conventional positions, up on the right and down on the left. | 40 |
+
+The operator chose to plan both before the release (operator, 2026-11-09:
+"Both before 1.1.0"): sessions 39 and 40 are inserted, undo moves to 41,
+"The UI is stable" to 42 and the release to 43.
+
+### Drivers changed
+
+- `uat-notehead-panel.mjs` checks the toolbar's hint, the panel's hints for
+  one and for several noteheads, Ctrl-click adding and dropping a notehead,
+  Give this look to's line and the Every 4th tooltip, and Esc clearing the
+  selection. Run by hand: 19 of 19 checks passed, and `uat-app-layout.mjs`
+  71 of 71 with the longer toolbar hint. The suite runs whole at close.
+
 ## Rough edges from the rebuilds — 2026-11-08 (session 36)
 
 Five of the rough edges session 35 found (below), the ones planned for

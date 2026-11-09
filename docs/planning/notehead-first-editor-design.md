@@ -113,8 +113,12 @@ to more noteheads at once: **All**, **Every other**, **Every
 3rd**, **Every 4th**, **Every 6th** (each starting from the selected pitch
 class), **The accidentals** and **The naturals**. The user chooses which
 parts of the look to copy (colour, fill, shape, size). A Shift-click on the
-canvas adds a notehead to the selection, and the panel then edits all the
-selected noteheads together. This is how a designer says "every third note
+canvas adds a notehead to the selection (a Ctrl-click or Cmd-click too,
+since session 38), and the panel then edits all the selected noteheads
+together. Esc or Close clears the selection. Since session 38 the canvas
+and the panel say how: the canvas toolbar's hint, a hint under the panel's
+head on adding, dropping and clearing, a line saying what Give this look to
+copies, and each of its buttons naming the noteheads it would change. This is how a designer says "every third note
 is blue" without writing a rule. The inference (§5) then finds the same
 pattern again.
 

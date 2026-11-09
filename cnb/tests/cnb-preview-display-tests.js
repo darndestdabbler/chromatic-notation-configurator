@@ -871,7 +871,7 @@ export const tests = [
   },
   // ── Selection and marks (session 27, design §2, §5.4) ──
   {
-    name: "render: a click on a column selects its pitch class, Shift-click adds, and C′ is C",
+    name: "render: a click on a column selects its pitch class, Shift-, Ctrl- or Cmd-click adds, and C′ is C",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       withDomStub(container => {
@@ -881,8 +881,10 @@ export const tests = [
         const col = (pc) => findAll(api.root, "pc-col").find(c => c.getAttribute("data-pc") === String(pc));
         col(1).onclick({ shiftKey: false });
         col(4).onclick({ shiftKey: true });
+        col(5).onclick({ ctrlKey: true });
+        col(6).onclick({ metaKey: true });
         col(12).onclick({});
-        assertEqual(picks, [[1, false], [4, true], [0, false]], "picks");
+        assertEqual(picks, [[1, false], [4, true], [5, true], [6, true], [0, false]], "picks");
       });
     },
   },
@@ -966,6 +968,23 @@ export const tests = [
         assertEqual(api.getPitchMode(), true);
         api.setPitchMode(false);
         assert(!on() && hint() === "", "off again");
+      });
+    },
+  },
+  {
+    name: "the selection hint: shown with onSelect outside pitch mode, giving way to the pitch hint",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, onSelect: () => {} });
+        const hint = () => findOne(api.root, "cnb-pvd-pitch-hint").textContent;
+        assertEqual(hint(), "Click a notehead to give it a look; Shift+click or Ctrl+click to select several", "selection hint");
+        assertEqual(hint(), PVD.SELECT_HINT);
+        api.setPitchMode(true);
+        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff", "pitch hint");
+        api.setPitchMode(false);
+        api.redraw();
+        assertEqual(hint(), PVD.SELECT_HINT, "back after pitch mode and a redraw");
       });
     },
   },

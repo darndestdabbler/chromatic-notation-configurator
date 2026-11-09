@@ -49,7 +49,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 35 | The UI is stable | no | 2026-11-07 |
 | 36 | Rough edges from the rebuilds | no | 2026-11-08 |
 | 37 | Colours chosen directly | no | 2026-11-08 |
-| 38 | Selecting several noteheads, found at once | — | not declared |
+| 38 | Selecting several noteheads, found at once | no | 2026-11-08 |
 | 39 | Undo and redo | — | not declared |
 | 40 | The UI is stable | — | not declared |
 | 41 | Release 1.1.0 (release: 1.1.0) | — | not declared |
@@ -371,3 +371,13 @@ Session 37 moves colour from the palette onto the noteheads. Item 1, registratio
 - 2026-11-08 — step 'colour-on-noteheads': its files: createDefault losing its palette and validation no longer checking palette.schemeSymbols break two exporter tests now: the comment-escape test writes the default palette's name, and the hostile payload for palette.schemeSymbols expects validation to reject it. Both are removed here so the step's suite stays green; the rest of the exporter's palette handling stays in export-colours. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-08 — step 'uat-drivers': its files: The whole UAT suite, run after the planned drivers were updated, failed in two more: uat-common-props-editor counts seven engine rows (the retired accessible-colours row made six), and uat-imported-notehead picks the Kite fixture's rule 0 as its Default, which the converted fixture's colour rules now precede. Both are one-line consequences of export-colours. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-08 — step 'uat-drivers': its checks: Syntax checks for the two drivers added to the step's files, as for the others. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 38 — Selecting several noteheads, found at once
+
+**Releasable: no.**
+
+Session 38 makes the existing ways of changing several noteheads at once easy to find; item 1, registration, was done when the session started. The canvas already selects several noteheads with Shift+click, and the notehead panel's Give this look to copies a look to many, but the operator did not find either (session 35, docs/uat-status.md). The canvas toolbar gets a hint, shown whenever it is not in pitch mode: click a notehead to give it a look, Shift+click or Ctrl+click to select several. Ctrl+click (and Cmd+click on a Mac) selects as Shift+click does. The Noteheads section's subtitle says the same. The notehead panel's head says how to add noteheads to the selection, and with several selected how to drop one, and that Esc or Close clears the selection in one move; the Close button's tooltip says it clears the selection. Give this look to gets a line saying it copies the ticked parts of the selected notehead's look to the noteheads chosen below, and each of its buttons names in its tooltip the noteheads it would change. Unit tests and the notehead-panel UAT driver follow, the README and the editor design say how to select several, and the operator rebuilds Kite 4-369 from a fresh page and judges whether the selection and Give this look to are now found without being told, recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-09 — step 'operator-trial': its files: The operator asked for two new sessions before 1.1.0 (workflow order; stems placed as the SVG specifies), inserted into the session plan as sessions 39 and 40 (claude-code (anthropic, claude-opus-5-5))

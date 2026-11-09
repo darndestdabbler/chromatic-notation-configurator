@@ -608,6 +608,21 @@
       "what": "step 'uat-drivers': its checks",
       "reason": "Syntax checks for the two drivers added to the step's files, as for the others.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 38,
+      "dateTime": "2026-11-08T13:46:11.015000-05:00",
+      "task": "Session 38 makes the existing ways of changing several noteheads at once easy to find; item 1, registration, was done when the session started. The canvas already selects several noteheads with Shift+click, and the notehead panel's Give this look to copies a look to many, but the operator did not find either (session 35, docs/uat-status.md). The canvas toolbar gets a hint, shown whenever it is not in pitch mode: click a notehead to give it a look, Shift+click or Ctrl+click to select several. Ctrl+click (and Cmd+click on a Mac) selects as Shift+click does. The Noteheads section's subtitle says the same. The notehead panel's head says how to add noteheads to the selection, and with several selected how to drop one, and that Esc or Close clears the selection in one move; the Close button's tooltip says it clears the selection. Give this look to gets a line saying it copies the ticked parts of the selected notehead's look to the noteheads chosen below, and each of its buttons names in its tooltip the noteheads it would change. Unit tests and the notehead-panel UAT driver follow, the README and the editor design say how to select several, and the operator rebuilds Kite 4-369 from a fresh page and judges whether the selection and Give this look to are now found without being told, recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 38,
+      "dateTime": "2026-11-09T04:41:46.483000-05:00",
+      "what": "step 'operator-trial': its files",
+      "reason": "The operator asked for two new sessions before 1.1.0 (workflow order; stems placed as the SVG specifies), inserted into the session plan as sessions 39 and 40",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

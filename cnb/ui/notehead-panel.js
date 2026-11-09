@@ -24,6 +24,11 @@
  * A marker says when a rule for particular durations or keys also changes
  * the notehead (§5.5); those rules are edited in Advanced.
  *
+ * The panel says how to use it on many noteheads (session 38): a hint under
+ * the head on adding (Shift+click or Ctrl+click) and clearing the selection,
+ * a line saying what Give this look to copies, and each of its buttons
+ * naming in its title the noteheads it would change.
+ *
  * Colour inputs apply once (session 36): while the designer drags, `input`
  * only tints the close-up notehead (the field shows its own colour) and
  * writes nothing; `change`, when the picker closes, writes the colour
@@ -574,6 +579,8 @@ export const CNBNoteheadPanel = {
     function drawGive() {
       const group = el("div", "cnb-nhp-group cnb-nhp-give");
       group.appendChild(el("p", "cnb-nhp-label", "Give this look to"));
+      group.appendChild(el("p", "cnb-nhp-hint cnb-nhp-give-hint",
+        `Copies the ticked parts of ${pcName(pc)}'s look to the noteheads chosen below.`));
       const which = el("div", "cnb-nhp-give-parts");
       for (const part of PARTS) {
         const label = el("label", "cnb-nhp-give-part");
@@ -598,6 +605,7 @@ export const CNBNoteheadPanel = {
           commit(CNBNoteheadPanel.applyLook(table, targets, table[pc], parts));
         });
         b.setAttribute("data-give", kind);
+        b.title = listNames(CNBNoteheadPanel.giveTargets(pc, kind));
         choices.appendChild(b);
       }
       group.appendChild(choices);
@@ -615,10 +623,14 @@ export const CNBNoteheadPanel = {
       head.appendChild(el("h2", "cnb-nhp-title", title));
       head.appendChild(el("span", "cnb-nhp-summary", CNBNoteheadPanel.summary(config, table[pc])));
       const close = button("cnb-nhp-close", "Close ✕", () => onClose());
-      close.title = "Close (Esc)";
+      close.title = "Close and clear the selection (Esc)";
       close.setAttribute("aria-label", "Close");
       head.appendChild(close);
       root.appendChild(head);
+      // How to select several (session 38).
+      root.appendChild(el("p", "cnb-nhp-hint cnb-nhp-select-hint", selection.length === 1
+        ? "Shift+click or Ctrl+click more noteheads on the staff to change them together."
+        : "Shift+click or Ctrl+click a selected notehead to drop it. Esc or Close clears the selection."));
 
       const kept = CNBNoteheadPanel.keptRulesFor(config, pc).length;
       if (kept) {

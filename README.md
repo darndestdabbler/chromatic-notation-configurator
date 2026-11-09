@@ -182,7 +182,8 @@ engine engraves it.
 
 - **Staff** — pick a staff pattern (which semitones within the octave
   carry lines, e.g. 4-8 or 3-6-9).
-- **Noteheads** — click a notehead on the staff (Shift+click adds more) to
+- **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
+  selects several, and Esc clears the selection) to
   open the notehead panel: colour (with **Suggested colours** to start
   from), fill, shape, size and nudge, and **Give
   this look to** all, every other, every third … of the noteheads, or the

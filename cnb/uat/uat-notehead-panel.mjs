@@ -15,6 +15,10 @@
  *   3. C, C♯ and D → sky-blue, rose and black through the colour input,
  *      each given to Every 3rd (colour only).
  *
+ * First (session 38) it checks the help for selecting several: the
+ * toolbar's hint, the panel's hint, Ctrl-click adding and dropping a
+ * notehead, Give this look to's line and a button's title, and Esc.
+ *
  * Along the way it checks the selection marks, that the colour input's
  * element survives an `input` event (session 21's wiring), the rule list's
  * words and its hover tint, and that the downloaded .ly equals
@@ -171,6 +175,37 @@ check("START: the rule list shows one look everywhere",
     ["Shape: kite down everywhere", "Fill: solid everywhere", "Size: each shape at its own size",
       "Side step: none everywhere", "Colour: none everywhere"]),
   JSON.stringify(await ruleWords()));
+
+// ── Selecting several, found without being told (session 38) ───────────────
+check("HELP: the canvas toolbar says how to select several",
+  (await page.textContent(".cnb-pvd-pitch-hint")) ===
+    "Click a notehead to give it a look; Shift+click or Ctrl+click to select several",
+  await page.textContent(".cnb-pvd-pitch-hint"));
+const ctrlClick = (pc) => page.click(`.canvas-card .cnb-pvd-preview .pc-col[data-pc="${pc}"]`, { modifiers: ["Control"] });
+await selectNotehead(page, 4);
+check("HELP: with one notehead, the panel says how to add more",
+  (await page.textContent(".cnb-nhp-select-hint")) ===
+    "Shift+click or Ctrl+click more noteheads on the staff to change them together.",
+  await page.textContent(".cnb-nhp-select-hint"));
+await ctrlClick(7);
+await page.waitForFunction(() => document.querySelector(".cnb-nhp-title")?.textContent === "E and G (2 noteheads)");
+check("CTRL-CLICK: adds G to E's selection, as Shift-click does",
+  JSON.stringify(await marked("cnb-pvd-selected")) === "[4,7]" &&
+  (await page.textContent(".cnb-nhp-select-hint")) ===
+    "Shift+click or Ctrl+click a selected notehead to drop it. Esc or Close clears the selection.",
+  JSON.stringify(await marked("cnb-pvd-selected")));
+await ctrlClick(7);
+await page.waitForFunction(() => document.querySelector(".cnb-nhp-title")?.textContent === "E");
+check("CTRL-CLICK: a second Ctrl-click drops G", JSON.stringify(await marked("cnb-pvd-selected")) === "[4]",
+  JSON.stringify(await marked("cnb-pvd-selected")));
+check("HELP: Give this look to says what it copies, and Every 4th names its noteheads",
+  (await page.textContent(".cnb-nhp-give-hint")) ===
+    "Copies the ticked parts of E's look to the noteheads chosen below." &&
+  (await page.getAttribute('.cnb-nhp-give-option[data-give="every-4"]', "title")) === "C, E and G♯",
+  await page.getAttribute('.cnb-nhp-give-option[data-give="every-4"]', "title"));
+await page.keyboard.press("Escape");
+check("HELP: Esc clears the selection", (await marked("cnb-pvd-selected")).length === 0 &&
+  !(await page.isVisible("#notehead-panel-card")));
 
 /** Give this look to, copying only the named part. */
 async function give(kind, part) {

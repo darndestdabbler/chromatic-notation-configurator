@@ -987,6 +987,15 @@ import, and clefs to pick from) are planned as sessions 42 on, toward
 1.2.0, a minor version, since each adds a feature and none breaks a
 config.
 
+**Plan amended 2026-11-09, during session 38:** two sessions inserted
+before undo (operator). The operator's rebuild of Kite 4-369 in session 38
+(`docs/uat-status.md`, session 38) asked for the workflow in the order a
+notation is designed, starting from the notehead's height (session 39),
+and for stems placed where the notehead's SVG puts them (session 40), the
+choice session 33 left to the operator. Undo moves to 41, "The UI is
+stable" to 42 and the release to 43, and the 1.2.0 sessions to 44 on. The
+release stays 1.1.0.
+
 ### Session 23: The look table and rule inference
 
 **Why.** The notehead-first editor edits one table, a look per pitch class,
@@ -1509,7 +1518,41 @@ canvas already selects several with Shift+click and the notehead panel's
 3. The operator tries it on a fresh rebuild of Kite 4-369 and judges
    whether it is now found without being told.
 
-### Session 39: Undo and redo
+### Session 39: The workflow in the order a notation is designed
+
+**Why.** In the session-38 rebuild the operator judged a notehead's height
+against the staff before they had set either, and asked for the sections in
+the order a designer settles them, each step resting on the last (operator,
+2026-11-09).
+
+1. Register.
+2. The page starts, as now, from a conventional notehead on the 4-8 staff.
+   The first step sets the general notehead height, for every notehead, on
+   that staff, and the notehead drawn is that height.
+3. The sections follow in this order: notehead height, Staff, Ledger lines,
+   Noteheads (the shape, colour, fill and size of selected noteheads), Key
+   signature, Clef. Pitch stays beside Staff, and Advanced and Export stay
+   last.
+
+### Session 40: Stems where the notehead's SVG puts them
+
+**Why.** Since session 33 a stem's edge sits on its anchor, as LilyPond's
+does, so a stem drawn centred in the notehead's SVG (Kite 4-369, 45deg-369)
+previews and engraves half a stem off centre. Session 33 left this to the
+operator, who chose: a stem goes where the SVG's stem rect puts it, and the
+default notehead's stems take the conventional positions, up on the right
+and down on the left (operator, 2026-11-09).
+
+1. Register.
+2. A stem rect in an imported SVG places the stem itself, in the preview
+   and in the engraving: the Kite and 45deg stems are centred.
+3. The default notehead's up stem is on its right and its down stem on its
+   left, in the preview and the engraving. The operator may supply the
+   positions.
+4. The fixtures and export baselines follow, with an engine round trip,
+   and the LY spec records the change.
+
+### Session 41: Undo and redo
 
 **Why.** A wrong change can only be put right by hand (operator,
 2026-11-08).
@@ -1519,26 +1562,26 @@ canvas already selects several with Shift+click and the notehead panel's
    buttons and Ctrl+Z / Ctrl+Shift+Z. A colour drag or a typed value is one
    step. Opening a config is a step too.
 
-### Session 40: The UI is stable
+### Session 42: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06).
 
 1. Register.
-2. The operator tries sessions 36–39 in the app. Rough edges found are
-   fixed here, or planned as sessions before 41 if they are large.
+2. The operator tries sessions 36–41 in the app. Rough edges found are
+   fixed here, or planned as sessions before 43 if they are large.
 3. The README's text and picture follow the UI as it now is. The full UAT
    runs.
 4. The operator declares the UI stable, which is the condition for
-   session 41.
+   session 43.
 
-### Session 41: Release 1.1.0 (release: 1.1.0)
+### Session 43: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
 1. Register.
 2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
    renamed to 1.1.0, and add the notehead-first editor, the clef and
-   key-signature export, and sessions 36–39, to the entry.
+   key-signature export, and sessions 36–41, to the entry.
 3. The tag deploys the site. Confirm it is up and that the README and the
    `file://` notice link work.
 
@@ -1548,10 +1591,10 @@ canvas already selects several with Shift+click and the notehead panel's
 
 Planned with the operator on 2026-11-08. Release version proposed: 1.2.0,
 a minor version, since each item adds a feature and none breaks a config.
-The release session is numbered once session 42 has said how many sessions
+The release session is numbered once session 44 has said how many sessions
 the key-signature designer takes.
 
-### Session 42: Designing the key-signature designer
+### Session 44: Designing the key-signature designer
 
 **Why.** A signature should be as easy to design as the noteheads, and
 reach Clairnote's, traditional ones and the scale stack alike (operator,
@@ -1568,7 +1611,7 @@ reach Clairnote's, traditional ones and the scale stack alike (operator,
 3. The design goes to a cross-provider consult (GPT and Gemini) before the
    operator approves it, and it plans the sessions that build it.
 
-### Session 43: Published schemas and partial configs
+### Session 45: Published schemas and partial configs
 
 **Why.** With a published schema for each part of a config, a designer can
 have an AI write that part and import it (operator, 2026-11-08).
@@ -1584,7 +1627,7 @@ have an AI write that part and import it (operator, 2026-11-08).
 4. The AI-assisted workflow guide gains a prompt for each component, with
    the schema's address.
 
-### Session 44: Clefs to pick from
+### Session 46: Clefs to pick from
 
 **Why.** The engine's dozenal clef is not drawn in the preview, and the
 standard clefs take an import to use (operator, 2026-11-08).
@@ -1594,9 +1637,9 @@ standard clefs take an import to use (operator, 2026-11-08).
    clef (treble, bass, alto), each placed at the pitch it marks, from
    glyphs whose licence allows it (Bravura, SIL OFL, for example).
 
-### Sessions 45 and on: The key-signature designer
+### Sessions 47 and on: The key-signature designer
 
-As session 42 plans them, with their engine work.
+As session 44 plans them, with their engine work.
 
 ---
 
@@ -1628,7 +1671,8 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
 - **Key signatures made of custom symbols, in the Clairnote style** (set
   010 s2 notes D11, D12 and its design consult; record 40). The engine
   backlog §2.3 says to reopen a mark-list rendering hook when this is
-  scheduled. *Planned since 2026-11-08 as session 42 and on.*
+  scheduled. *Planned since 2026-11-08 as session 42 and on; since
+  2026-11-09, 44 and on.*
 - **Gallery fidelity** (`reproduction-report.md`):
   - Gap A, a ledger rule that hides a ledger when a staff line lies between
     it and the note, which would let the Clairnote SN/DN, Chromatic Lyre
