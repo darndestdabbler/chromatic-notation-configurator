@@ -45,10 +45,10 @@
 %% --- Register stem attachments ---
 #(cnb:register-attachment! 'ellipse-45deg-attach
    (list
-     (cons 'crotchet-up   '(0 . 0.8246))
-     (cons 'crotchet-down '(0 . -0.8247))
-     (cons 'minim-up      '(0 . 0.8246))
-     (cons 'minim-down    '(0 . -0.8247))))
+     (cons 'crotchet-up   '(0.0975 . 0.8246))
+     (cons 'crotchet-down '(-0.0975 . -0.8247))
+     (cons 'minim-up      '(0.0975 . 0.8246))
+     (cons 'minim-down    '(-0.0975 . -0.8247))))
 
 %% --- Register colors ---
 #(cnb:register-color! 'puce-cc79a7 "#cc79a7")

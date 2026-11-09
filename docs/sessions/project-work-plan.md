@@ -51,7 +51,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 37 | Colours chosen directly | no | 2026-11-08 |
 | 38 | Selecting several noteheads, found at once | no | 2026-11-08 |
 | 39 | The workflow in the order a notation is designed | no | 2026-11-09 |
-| 40 | Stems where the notehead's SVG puts them | — | not declared |
+| 40 | Stems where the notehead's SVG puts them | no | 2026-11-09 |
 | 41 | Undo and redo | — | not declared |
 | 42 | The UI is stable | — | not declared |
 | 43 | Release 1.1.0 (release: 1.1.0) | — | not declared |
@@ -394,3 +394,13 @@ Put the page's sections in the order a notation is designed, starting from the g
 
 - 2026-11-09 — step 'general-height': its files: A size every notehead shares is written by the inference as a separate rule over all twelve pitch classes ('every 1 semitones from C'), not on the Default; the Default must carry the general height, as it carries the most common colour, so the inference changes too. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-09 — step 'section-order': its files: On the page the Notehead height control's reset button sat flush against the field's unit; giving the control the panel's existing cnb-nhp-group class spaces it with the page's own styles. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 40 — Stems where the notehead's SVG puts them
+
+**Releasable: no.**
+
+Make a shape's stem anchor the stem's own position rather than the place its edge sits. The importer already reads an anchor as the centre of the SVG's stem rect, so the preview now draws the stem centred on its anchor (CNBStem.geometry drops the half-thickness inward shift), and the export writes each cnb:register-attachment! point as the anchor moved outward by half the engine's stem thickness (0.065 staff spaces, in semitones by semitonesPerStaffSpace or axisUnitsPerStaffSpace), because LilyPond puts the stem's edge on that point; preview and engraving keep the same edge in repeat mode and for sized variants, whose attachment points are then computed at the variant's scale. The Kite 4-369 and 45deg-369 stems, whose rects are drawn centred, therefore preview and engrave centred. The default crotchet-minim notehead's anchors move so that on its default staff (4 semitones per staff space) the up stem's right edge is on the notehead's right extent and the down stem's left edge on its left extent, heights unchanged; the default config, the gallery files and the sized fixture that carry that shape take the new anchors. The five export baselines and the preview baseline are regenerated, the engine round trip in cnb/tests/cnb-card-tests.js also pins each stem's x for the default, Kite and 45deg fixtures, and LY spec 1.3.11 and the architecture plan record the change.
+
+**Amended after acceptance:**
+
+- 2026-11-09 — step 'stem-centre': its files: Two more tests pin exported attachment numbers: the 45deg.svg import test (cnb-svg-importer-tests.js) and the minim-pair export test (cnb-config-export-tests.js). (claude-code (anthropic, claude-opus-5-5))

@@ -857,8 +857,12 @@ export const tests = [
       const { config } = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8"));
       // The export writes them relative to the notehead's extent, LilyPond's
       // stem-attachment units (session 33): the ellipse fills its 4 × 4-semitone
-      // box, so each anchor is divided by the half extent, 2 semitones.
+      // box, so each anchor is divided by the half extent, 2 semitones. The
+      // anchor is the stem's centre and LilyPond puts its edge on the point,
+      // so x moves half the 0.13-staff-space stem outward first (session 40).
       const half = 2;
+      const halfStem = 0.13 / 2 * config.staff.semitonesPerStaffSpace;
+      for (const [p, side] of [[up, 1], [down, -1]]) p.x += side * halfStem;
       const out = CNBLilypond.generate(config);
       const pair = "'\\(([^ )]+) \\. ([^ )]+)\\)";
       const m = new RegExp(`register-attachment! 'ellipse-45deg-attach[\\s\\S]*?'crotchet-up\\s+${pair}[\\s\\S]*?'crotchet-down\\s+${pair}` +

@@ -622,14 +622,16 @@ export const tests = [
         assert(m, `${key} attachment emitted`);
         return m[1].trim();
       };
-      // minimUp (0.8, 0.3) and minimDown (-0.8, -0.25) in semitones, written
-      // relative to the oval's ±1.2 × ±1 semitone extent (session 33).
+      // minimUp (0.8, 0.3) and minimDown (-0.8, -0.25) in semitones, x moved
+      // half the 0.13-staff-space stem outward (0.26 semitones at sps 4,
+      // session 40), written relative to the oval's ±1.2 × ±1 semitone
+      // extent (session 33).
       assert(pair("minim-up") !== pair("crotchet-up"), "minim-up differs from crotchet-up");
       assert(pair("minim-down") !== pair("crotchet-down"), "minim-down differs from crotchet-down");
       const [ux, uy] = pair("minim-up").split(" . ").map(Number);
       const [dx, dy] = pair("minim-down").split(" . ").map(Number);
-      assert(Math.abs(ux - 0.6667) < 1e-4 && Math.abs(uy - 0.3) < 1e-4, "minim-up value: " + pair("minim-up"));
-      assert(Math.abs(dx + 0.6667) < 1e-4 && Math.abs(dy + 0.25) < 1e-4, "minim-down value: " + pair("minim-down"));
+      assert(Math.abs(ux - 0.8833) < 1e-4 && Math.abs(uy - 0.3) < 1e-4, "minim-up value: " + pair("minim-up"));
+      assert(Math.abs(dx + 0.8833) < 1e-4 && Math.abs(dy + 0.25) < 1e-4, "minim-down value: " + pair("minim-down"));
     },
   },
 

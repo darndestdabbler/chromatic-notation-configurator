@@ -164,15 +164,16 @@ shapes: {
     semitoneHeight: 2.724,                        // from data-semitone-height
 
     // ── Stem attachment points (4-point model) ──
-    // In native SVG units. These account for stem width (~1/5 semitone).
-    // Inkscape extension sets these via data-stem-up-x/y, data-stem-down-x/y.
-    // Crotchet and minim may differ because hollow noteheads have different
-    // visual weight at the attachment point.
+    // In native SVG units. Each is where the STEM'S CENTRE goes (session
+    // 40): the importer reads it at the end-centre of the SVG's stem rect,
+    // so a rect drawn centred on the notehead centres the stem. Crotchet and
+    // minim may differ because hollow noteheads have different visual
+    // weight at the attachment point.
     anchors: {
-      crotchetUp:   { x: 157.29, y: -43.00 },
-      crotchetDown: { x: -157.29, y: 43.00 },
-      minimUp:      { x: 157.29, y: -43.00 },    // may differ from crotchet
-      minimDown:    { x: -157.29, y: 43.00 }      // may differ from crotchet
+      crotchetUp:   { x: 146.43, y: -43.00 },
+      crotchetDown: { x: -146.43, y: 43.00 },
+      minimUp:      { x: 146.43, y: -43.00 },    // may differ from crotchet
+      minimDown:    { x: -146.43, y: 43.00 }      // may differ from crotchet
     },
 
     // ── LilyPond data (for export) ──
@@ -189,10 +190,12 @@ shapes: {
     // Converted from SVG units at import time (÷ SVG-units-per-semitone,
     // Y-inverted). At EXPORT time the exporter writes each point relative
     // to the registered path's extent (−1 … 1 across it), the units
-    // LilyPond's NoteHead.stem-attachment reads, so neither the staff's
-    // semitones per staff space nor a sized variant's scale enters
-    // (LY spec 1.3.8 §4.4b, session 33; staff spaces before that, which
-    // engraved stems too near the notehead's centre).
+    // LilyPond's NoteHead.stem-attachment reads (LY spec 1.3.8 §4.4b,
+    // session 33; staff spaces before that, which engraved stems too near
+    // the notehead's centre). LilyPond puts the stem's EDGE on that point,
+    // so each x is the anchor moved half the engine's 0.13-staff-space stem
+    // outward, which the staff space and a sized variant's scale enter
+    // (LY spec 1.3.11 §4.4c, session 40).
     lilypondAnchors: {
       crotchetUp:   { x: 0.6889, y: 0 },
       crotchetDown: { x: -0.6889, y: 0 },
@@ -220,6 +223,7 @@ shapes: {
 - `semitoneHeight` determines the rendered size. Scale factor = `(semitoneHeight × pxPerSemi) / naturalHeight`.
 - `anchors` is `null` for stemless shapes. The stem module handles this (no stem drawn).
 - The 4-point anchor model (crotchet-up/down, minim-up/down) accounts for the fact that stem width (~1/5 semitone) affects where the stem visually attaches to filled vs. hollow noteheads. Inkscape extension output provides these.
+- **An anchor is the stem's centre (session 40).** The preview draws the stem centred on it and the export writes the attachment half a stem outward of it, where LilyPond puts the stem's edge (LY spec §4.4c), so a stem goes where the SVG's stem rect puts it: the Kite 4-369 and 45deg-369 stems are centred. The default notehead's anchors (±146.426) put the up stem's right edge and the down stem's left edge on its sides on its staff of 4 semitones per staff space; each gallery file sets them for its own staff, so its stems sit on the sides too. A config saved earlier keeps its stored anchors, which now place the stem's centre.
 - `hollowPath` overlay uses white fill. Known limitation: only works on white/solid backgrounds.
 - `lilypondPath` and `lilypondHollowPath` are the pre-baked LilyPond-format paths from `data-lilypond-notehead` / `data-lilypond-hollow` SVG attributes. They are stored in semitone units, Y up. When they are available, the exporter re-emits them from their parsed numbers, divided by the staff's semitones per staff space (or `axisUnitsPerStaffSpace` under a pitch axis). When null, it falls back to converting `svgPath` with the toolkit's normalisation: ÷ SVG units per semitone, Y negated, then the same division (LY spec v1.3 §4.1b; corrected in session 11 for audit 2026-11-02 H2/H3, because earlier exports used them verbatim and were mis-scaled).
 
@@ -228,7 +232,7 @@ shapes: {
 |---|---|---|
 | `shapes[name].lilypondPath` or `svgPath` (converted) | A1 | `#(define cnb:{name}-path ...)` |
 | `shapes[name].lilypondHollowPath` or `svgHollowPath` (converted) | A3 | `#(define cnb:{name}-cutout-path ...)` |
-| `shapes[name].lilypondAnchors` (or `anchors`), relative to the registered path's extent (LY spec §4.4b) | A4 | `#(cnb:register-attachment! ...)` |
+| `shapes[name].lilypondAnchors` (or `anchors`), half a stem outward, relative to the registered path's extent (LY spec §4.4b, §4.4c) | A4 | `#(cnb:register-attachment! ...)` |
 | (shape name) | A2 | `#(cnb:register-path! '{name} ...)` |
 
 ### 4.3 Staff Lines
@@ -504,7 +508,7 @@ display: {
 }
 ```
 
-**Design note on stems (session 34):** the preview draws LilyPond's stem, which the engine leaves at its defaults: 0.13 staff spaces thick and LilyPond's length past the far notehead (Module 8). Its edge, not its centre, sits on the anchor (session 33), as LilyPond's does, so the stem meets the notehead where the engraving's does.
+**Design note on stems (session 34):** the preview draws LilyPond's stem, which the engine leaves at its defaults: 0.13 staff spaces thick and LilyPond's length past the far notehead (Module 8). Its centre sits on the anchor (session 40), and the export writes the attachment half a stem outward, where LilyPond puts the stem's edge, so the stem meets the notehead where the engraving's does.
 
 ### 4.8 Duration Settings
 
@@ -1300,12 +1304,18 @@ length    = 3.5 staff spaces past the far notehead's centre, crotchet and minim,
 ```
 The engine sets `no-stem-extend`, so no stem is carried to the middle line. `display.stemThicknessPct`, `display.stemExtension` and `engine.stemThickness` are retired. An engine round trip in `cnb/tests/cnb-card-tests.js` pins the direction, thickness and both ends of every card's stem, crotchet and minim, for the default and Kite fixtures, within 0.001 staff spaces.
 
-**The stem's edge sits on the anchor (session 33).** LilyPond puts an up
-stem's right edge and a down stem's left edge on the attachment point, and
-the preview does the same: the stem's centre is half its thickness inward
-of the anchor. The engraved and previewed stems then meet the notehead at
-the same place (an engine round trip in
-`cnb/tests/cnb-card-tests.js` measures it within 0.001 staff spaces).
+**The stem's centre sits on the anchor (session 40).** The anchor is where
+the SVG's stem rect puts the stem, so the preview draws a one-head stem
+centred on it. LilyPond puts an up stem's right edge and a down stem's left
+edge on the attachment point, so the export writes that point half the
+stem's 0.13 staff spaces outward of the anchor (LY spec §4.4c). Across a
+repeated group LilyPond scales the point with the group, and the preview
+places the anchored edge at the same scaled point, its centre half a stem
+inward. The engraved and previewed stems then sit at the same place (an
+engine round trip in `cnb/tests/cnb-card-tests.js` measures the centre
+within 0.001 staff spaces for the default, Kite and 45deg-369 fixtures).
+From session 33 to 39 the anchor was the stem's edge, so a stem drawn
+centred in its SVG previewed and engraved half a stem off centre.
 
 **Test cases:**
 - Stem up: X on right side, extends above upper notehead
@@ -1745,7 +1755,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | A1. Path def | `#(define cnb:{name}-path ...)` | `shapes[name].lilypondPath` (preferred) or `svgPathToLilypond(shapes[name].svgPath)` |
 | A2. Path reg | `#(cnb:register-path! ...)` | Shape name from `shapes` keys |
 | A3. Hollow def + reg | `#(define cnb:{name}-cutout-path ...)` | `shapes[name].lilypondHollowPath` or converted |
-| A4. Attachment reg | `#(cnb:register-attachment! ...)` | `shapes[name].lilypondAnchors` (or `anchors`), written relative to the registered path's extent, LilyPond's stem-attachment units (LY spec 1.3.8 §4.4b) |
+| A4. Attachment reg | `#(cnb:register-attachment! ...)` | `shapes[name].lilypondAnchors` (or `anchors`), each x moved half a stem outward (the anchor is the stem's centre, LY spec 1.3.11 §4.4c), written relative to the registered path's extent, LilyPond's stem-attachment units (LY spec 1.3.8 §4.4b) |
 | A5. Color reg | `#(cnb:register-color! ...)` | each distinct resolved `apply.color`, named from its hex (LY spec 1.3.10 §4.5a); no accessible branch |
 | A6. Off-key mark | `#(cnb:register-off-key-mark! ...)` | `keys.offKeyMark` (future) |
 
@@ -1886,11 +1896,11 @@ Complete default config for development and testing.
       naturalHeight: 272.4,
       naturalWidth: 344.852,
       semitoneHeight: 2.724,
-      anchors: {
-        crotchetUp:   { x: 157.2926, y: -42.9985 },
-        crotchetDown: { x: -157.2934, y: 43.0027 },
-        minimUp:      { x: 157.2926, y: -42.9985 },
-        minimDown:    { x: -157.2934, y: 43.0027 }
+      anchors: {                      // the stems' centres (session 40)
+        crotchetUp:   { x: 146.426, y: -42.9985 },
+        crotchetDown: { x: -146.4267, y: 43.0027 },
+        minimUp:      { x: 146.426, y: -42.9985 },
+        minimDown:    { x: -146.4267, y: 43.0027 }
       },
       lilypondPath: null,
       lilypondHollowPath: null,

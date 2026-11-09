@@ -58,9 +58,8 @@ export const tests = [
       const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:20,y:0}, minimDown:{x:-20,y:0} }, semitoneHeight:2 };
       const crotchet = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"up", duration:"crotchet" });
       const minim    = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"up", duration:"minim" });
-      const half = crotchet.thickness / 2;
-      eq(crotchet.x, 10 - half, "crotchetUp anchor x (right edge on the anchor)");
-      eq(minim.x, 20 - half, "minimUp anchor x");
+      approx(crotchet.x, 10, "crotchetUp anchor x (the stem's centre on the anchor)");
+      approx(minim.x, 20, "minimUp anchor x");
     }},
 
   { name: "crotchet vs minim anchor selection (down)", fn: () => {
@@ -68,9 +67,8 @@ export const tests = [
       const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:20,y:0}, minimDown:{x:-20,y:0} }, semitoneHeight:2 };
       const crotchet = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"down", duration:"crotchet" });
       const minim    = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:0, noteYPositions:[0], direction:"down", duration:"minim" });
-      const half = crotchet.thickness / 2;
-      eq(crotchet.x, -10 + half, "crotchetDown anchor x (left edge on the anchor)");
-      eq(minim.x, -20 + half, "minimDown anchor x");
+      approx(crotchet.x, -10, "crotchetDown anchor x (the stem's centre on the anchor)");
+      approx(minim.x, -20, "minimDown anchor x");
     }},
 
   // The engine's stem (session 34). On the default grid the middle line is at
@@ -115,13 +113,18 @@ export const tests = [
       eq(down.y1, 100 + (40 * 0.5), "down: y1 = noteY + anchor.y × scaleFactor");
     }},
 
-  { name: "geometry puts the stem's edge on the anchor, as LilyPond does: an up stem's right edge, a down stem's left edge", fn: () => {
+  { name: "geometry centres the stem on the anchor, as the SVG's stem rect draws it (session 40): a centred anchor centres the stem", fn: () => {
       const cfg = CNBConfig.createDefault();
-      const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:10,y:0}, minimDown:{x:-10,y:0} }, semitoneHeight:2 };
-      const up = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction:"up", duration:"crotchet" });
-      const down = CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction:"down", duration:"crotchet" });
-      eq(up.x + up.thickness / 2, 60, "up: right edge at the anchor");
-      eq(down.x - down.thickness / 2, 40, "down: left edge at the anchor");
+      const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:0,y:0}, minimDown:{x:0,y:0} }, semitoneHeight:2 };
+      const at = (direction, duration) => CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction, duration });
+      approx(at("up", "crotchet").x, 60, "up: centre on the anchor");
+      approx(at("down", "crotchet").x, 40, "down: centre on the anchor");
+      approx(at("up", "minim").x, 50, "a centred anchor centres an up stem");
+      approx(at("down", "minim").x, 50, "and a down stem");
+    }},
+
+  { name: "THICKNESS is the engine's stem, 0.13 staff spaces", fn: () => {
+      eq(CNBStem.THICKNESS, 0.13);
     }},
 
   { name: "geometry returns null for a stemless shape with no anchors property", fn: () => {
@@ -216,15 +219,16 @@ export const tests = [
       eq(axis.enabled, false, "inactive axis");
       eq(CNBStem.direction([8], 9, axis), "up", "linear result");
     }},
-  { name: "geometry widthScale: default 1 is unchanged; 2 doubles the anchor's x offset only", fn: () => {
+  { name: "geometry widthScale: default 1 is unchanged; 2 doubles the anchored edge's x offset, as LilyPond scales the attachment across the group", fn: () => {
       const cfg = CNBConfig.createDefault();
       const s = { anchors: { crotchetUp:{x:10,y:-4}, crotchetDown:{x:-10,y:4}, minimUp:{x:6,y:-4}, minimDown:{x:-6,y:4} }, semitoneHeight:2 };
       const opts = { gridContext: grid(cfg), shape:s, scaleFactor:1.5, centerX:50, noteYPositions:[100, 40], direction:"up", duration:"minim" };
       const plain = CNBStem.geometry(cfg, opts);
+      const half = plain.thickness / 2;
       eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, widthScale: 1 })), JSON.stringify(plain), "explicit 1 = default");
-      eq(plain.x, 50 + 6 * 1.5 - plain.thickness / 2, "default x");
+      approx(plain.x, 50 + 6 * 1.5, "default x: the centre on the anchor");
       const doubled = CNBStem.geometry(cfg, { ...opts, widthScale: 2 });
-      eq(doubled.x, 50 + 2 * 6 * 1.5 - plain.thickness / 2, "x offset doubled");
+      approx(doubled.x + half, 50 + 2 * (6 * 1.5 + half), "the right edge's offset doubled");
       eq(doubled.y1, plain.y1, "y1 unchanged");
       eq(doubled.y2, plain.y2, "y2 unchanged");
     }},
@@ -235,11 +239,12 @@ export const tests = [
       const plain = CNBStem.geometry(cfg, opts);
       eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, scaleX: 1.5 })), JSON.stringify(plain), "scaleX = scaleFactor is the default");
       const wide = CNBStem.geometry(cfg, { ...opts, scaleX: 3 });
-      eq(wide.x, 50 + 10 * 3 - plain.thickness / 2, "anchor x follows scaleX");
+      approx(wide.x, 50 + 10 * 3, "anchor x follows scaleX");
       eq(wide.y1, plain.y1, "anchor y follows scaleFactor");
       eq(wide.y2, plain.y2, "y2 unchanged");
+      const half = plain.thickness / 2;
       const down = CNBStem.geometry(cfg, { ...opts, direction: "down", scaleX: 3, widthScale: 2 });
-      eq(down.x, 50 - 10 * 3 * 2 + plain.thickness / 2, "scaleX composes with widthScale");
+      approx(down.x - half, 50 + 2 * (-10 * 3 - half), "scaleX composes with widthScale (the left edge)");
     }},
 ];
 

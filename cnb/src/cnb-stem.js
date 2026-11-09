@@ -20,6 +20,9 @@ const STEM_LENGTH = 7;
 const STEM_SHORTEN = 2;
 
 export const CNBStem = {
+  /** The engine's stem thickness, in staff spaces (session 34). */
+  THICKNESS: STEM_THICKNESS,
+
   /**
    * Decide stem direction based on chord semitone average vs staff midpoint.
    * With an enabled axis (set 014, design §2.5) the chord's axis-position
@@ -75,17 +78,22 @@ export const CNBStem = {
     const anchor = shape.anchors[key];
     if (!anchor) return null;
 
-    const anchorXpx = anchor.x * scaleX * widthScale;
     const anchorYpx = anchor.y * scaleFactor;
 
     // The engine's stem (session 34), in staff spaces.
     const pxPerHalfSpace = CNBStaff.staffSpacePx(config, gridContext) / 2;
     const thickness = STEM_THICKNESS * 2 * pxPerHalfSpace;
 
-    // The stem's edge, not its centre, sits on the anchor, as LilyPond
-    // engraves it: an up stem's right edge, a down stem's left edge
-    // (session 33, measured against the engine).
-    const stemX = centerX + anchorXpx + (direction === "up" ? -thickness / 2 : thickness / 2);
+    // The anchor is the stem's centre, as the SVG's stem rect draws it
+    // (session 40). LilyPond puts the stem's edge (an up stem's right, a
+    // down stem's left) on the attachment point, which the export writes
+    // half a stem outward of the anchor, relative to the notehead's extent
+    // (LY spec §4.4c). Across a repeated group that edge scales with the
+    // group, so the preview places the edge the same way and the centre
+    // half a stem inward of it: for one head, the centre is on the anchor.
+    const side = direction === "up" ? 1 : -1;
+    const edgeX = centerX + (anchor.x * scaleX + side * thickness / 2) * widthScale;
+    const stemX = edgeX - side * thickness / 2;
 
     const low = Math.max(...noteYPositions);
     const high = Math.min(...noteYPositions);

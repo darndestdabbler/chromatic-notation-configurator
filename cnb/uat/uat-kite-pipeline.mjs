@@ -381,11 +381,15 @@ check("AUTHOR/export: authored colors registered with the exact Kite hexes (symb
   /\(cnb:register-color! '[\w-]*50b4e9 "#50b4e9"\)/.test(authored) &&
   /\(cnb:register-color! '[\w-]*cc79a7 "#cc79a7"\)/.test(authored) &&
   authored.includes(`#(cnb:register-color! 'black-000000 "#000000")`));
-check("AUTHOR/export (D5, D6 closed): authored attachments emit the engine reference's relative stem-attachment units ('(0 . 0.9)) and the reference's distinct minim x-offsets ('(-0.365 . 0.9)), as the fixture export does",
-  authored.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
-  authored.includes("(cons 'minim-up      '(-0.365 . 0.9))") &&
-  fixtureExport.includes("(cons 'crotchet-up   '(0 . 0.9))") &&
-  fixtureExport.includes("(cons 'minim-up      '(-0.365 . 0.9))"));
+// Session 40: the anchor is the stem's centre, so each attachment is written
+// half the engine's 0.13-staff-space stem outward (0.195 semitones at sps 3,
+// relative to the kite's ±2-semitone extent): the centred crotchet stem is
+// '(0.0975 . 0.9) and the minim's -0.73 is '(-0.2675 . 0.9) (LY spec §4.4c).
+check("AUTHOR/export (D5, D6 closed): authored attachments emit relative stem-attachment units with the stems centred where the rects put them ('(0.0975 . 0.9)) and the distinct minim x-offsets ('(-0.2675 . 0.9)), as the fixture export does",
+  authored.includes("(cons 'crotchet-up   '(0.0975 . 0.9))") &&
+  authored.includes("(cons 'minim-up      '(-0.2675 . 0.9))") &&
+  fixtureExport.includes("(cons 'crotchet-up   '(0.0975 . 0.9))") &&
+  fixtureExport.includes("(cons 'minim-up      '(-0.2675 . 0.9))"));
 check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:false-hollow (engine default #f) and keeps the default config's meta (no meta editor exists to change it); the fixture export sets the Kite values for all three",
   !authored.includes("cnb:false-hollow") &&
   authored.includes('#(set! cnb:file-suffix "-Default48")') &&

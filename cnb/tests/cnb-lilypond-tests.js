@@ -508,7 +508,9 @@ export const tests = [
 
   { name: "baselines: the Kite 4-369 export still exports byte-identically to kite-4-369-export-baseline.ly", fn: () => {
       // Captured before session 11's path-unit change: the export set 007
-      // matched to the engine's golden score, which the rebuilt fixture must reproduce.
+      // matched to the engine's golden score, which the rebuilt fixture must
+      // reproduce, except its stem attachments, which since session 40 centre
+      // the stems where the SVG's stem rects draw them.
       const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
       const baseline = readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-export-baseline.ly"), "utf8");
       const config = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"));
@@ -561,17 +563,47 @@ export const tests = [
 
   // ── Section A: attachments ─────────────────────────────────────────────────
 
-  { name: "sectionA writes SVG anchors relative to the registered path's extent (LilyPond's stem-attachment units)", fn: () => {
+  { name: "sectionA writes SVG anchors half a stem outward, relative to the registered path's extent (LilyPond's stem-attachment units)", fn: () => {
       // The default shape's path spans about ±172.4 × ±136.2 SVG units (its
-      // curves' true extremes), so the anchor (157.2926, −42.9985) is 0.9122
-      // of the half width right and 0.3157 of the half height up, whatever
-      // the staff's sps (session 33, LY spec 1.3.8 §4.4b).
-      const out = CNBLilypond.sectionA(CNBConfig.createDefault());
+      // curves' true extremes). The anchor (146.426, −42.9985) is the stem's
+      // centre; LilyPond puts the stem's edge on the attachment point, so x
+      // moves outward by half the 0.13-staff-space stem, 0.26 semitones at
+      // sps 4: (146.426 + 26) / 172.426 = 1, the notehead's right edge
+      // (session 40). Y is 0.3157 of the half height up (session 33, LY spec
+      // §4.4b, §4.4c). At sps 3 the half stem is 19.5 units.
+      const cfg = CNBConfig.createDefault();
+      const out = CNBLilypond.sectionA(cfg);
       contains(out, "#(cnb:register-attachment! 'crotchet-minim-attach");
-      contains(out, "(cons 'crotchet-up   '(0.9122 . 0.3157))");
-      contains(out, "(cons 'crotchet-down '(-0.9122 . -0.3157))");
-      contains(out, "(cons 'minim-up      '(0.9122 . 0.3157))");
-      contains(out, "(cons 'minim-down    '(-0.9122 . -0.3157))");
+      contains(out, "(cons 'crotchet-up   '(1 . 0.3157))");
+      contains(out, "(cons 'crotchet-down '(-1 . -0.3157))");
+      contains(out, "(cons 'minim-up      '(1 . 0.3157))");
+      contains(out, "(cons 'minim-down    '(-1 . -0.3157))");
+      cfg.staff.semitonesPerStaffSpace = 3;
+      contains(CNBLilypond.sectionA(cfg), "(cons 'crotchet-up   '(0.9623 . 0.3157))", "(146.426 + 19.5) / 172.426");
+    }},
+
+  { name: "every shipped config that draws the default notehead attaches its stems on its sides, up at x 1, down at x −1 (session 40)", fn: () => {
+      // Each gallery file sets the default notehead's anchors for its own
+      // staff (its semitones, or axis units, per staff space).
+      const gallery = path.join(CNB_DIR, "assets", "examples", "gallery");
+      const configs = [["default", CNBConfig.createDefault()],
+        ["sized-config.json", JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"))]];
+      for (const f of readdirSync(gallery).filter(n => n.endsWith(".json")).sort()) {
+        configs.push([f, CNBConfigIO.loadFromText(readFileSync(path.join(gallery, f), "utf8")).config]);
+      }
+      const failures = [];
+      let checked = 0;
+      for (const [label, config] of configs) {
+        const block = /#\(cnb:register-attachment! 'crotchet-minim-attach[\s\S]*?\)\)\)\)/.exec(CNBLilypond.sectionA(config));
+        if (!block) continue;                       // the default notehead is not drawn
+        checked++;
+        for (const [key, x] of [["crotchet-up", 1], ["crotchet-down", -1], ["minim-up", 1], ["minim-down", -1]]) {
+          const m = new RegExp(`'${key}\\s+'\\((\\S+) \\. `).exec(block[0]);
+          if (!m || Number(m[1]) !== x) failures.push(`${label} ${key}: x ${m && m[1]}, want ${x}`);
+        }
+      }
+      assert(checked >= 15, `the default notehead is drawn by ${checked} configs`);
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
   { name: "attachmentPoints measures a curve's true extremes, not its control points", fn: () => {
@@ -585,17 +617,41 @@ export const tests = [
           minimUp: { x: 0, y: 0 }, minimDown: { x: 3, y: 0.75 },
         },
       };
-      const pts = _internals.attachmentPoints(shape);
+      // A stem of no thickness (staff space 0), so x reads the anchor alone.
+      const pts = _internals.attachmentPoints(shape, null, 0);
       eq(JSON.stringify(pts.crotchetUp), JSON.stringify({ x: 1, y: 1 }), "corner");
       eq(JSON.stringify(pts.crotchetDown), JSON.stringify({ x: 0, y: 0 }), "centre");
       eq(JSON.stringify(pts.minimUp), JSON.stringify({ x: -1, y: -1 }), "origin corner");
       eq(JSON.stringify(pts.minimDown), JSON.stringify({ x: 0.5, y: -0.5 }), "inside");
     }},
 
+  { name: "attachmentPoints moves x half the engine's stem outward (session 40), not scaled with a sized variant", fn: () => {
+      // The extent is x −2…2. A staff space of 4 semitones makes half the
+      // 0.13 stem 0.26 semitones: an up stem's edge right of the anchor, a
+      // down stem's left of it. At scale.x 2 the extent doubles and the half
+      // stem does not; y is the anchor's alone.
+      const shape = {
+        naturalHeight: 4, semitoneHeight: 4,
+        lilypondPath: "'((moveto 0 2) (lineto 2 0) (lineto 0 -2) (lineto -2 0) (closepath))",
+        lilypondAnchors: {
+          crotchetUp: { x: 0, y: 1 }, crotchetDown: { x: 0, y: -1 },
+          minimUp: { x: 1, y: 1 }, minimDown: { x: -1, y: -1 },
+        },
+      };
+      const pts = _internals.attachmentPoints(shape, null, 4);
+      eq(JSON.stringify(pts.crotchetUp), JSON.stringify({ x: 0.13, y: 0.5 }), "centred up: 0.26 / 2");
+      eq(JSON.stringify(pts.crotchetDown), JSON.stringify({ x: -0.13, y: -0.5 }), "centred down");
+      eq(JSON.stringify(pts.minimUp), JSON.stringify({ x: 0.63, y: 0.5 }), "(1 + 0.26) / 2");
+      const sized = _internals.attachmentPoints(shape, { x: 2, y: 3 }, 4);
+      eq(JSON.stringify(sized.crotchetUp), JSON.stringify({ x: 0.065, y: 0.5 }), "sized: 0.26 / 4");
+      eq(JSON.stringify(sized.minimUp), JSON.stringify({ x: 0.565, y: 0.5 }), "sized: (2 + 0.26) / 4");
+    }},
+
   { name: "sectionA prefers lilypondAnchors (semitone units), relative to the pre-baked path's extent", fn: () => {
-      // Kite reference values: the kite path spans ±2 semitones each way, so
-      // 1.8 semitones up is the engine's 0.9 and minim x ∓0.73 is ∓0.365, at
-      // any sps (session 33).
+      // Kite values: the kite path spans ±2 semitones each way, so 1.8
+      // semitones up is 0.9. X is the anchor moved half the 0.13-staff-space
+      // stem outward, 0.195 semitones at sps 3 (session 40): a centred
+      // crotchet anchor is ±0.0975, the minim's ∓0.73 is ∓(0.73 − 0.195) / 2.
       const cfg = CNBConfig.createDefault();
       cfg.staff.semitonePattern = [3, 6, 9];
       cfg.staff.semitonesPerStaffSpace = 3;
@@ -607,10 +663,10 @@ export const tests = [
         minimDown:    { x: 0.73,  y: -1.8 },
       };
       const out = CNBLilypond.sectionA(cfg);
-      contains(out, "(cons 'crotchet-up   '(0 . 0.9))");
-      contains(out, "(cons 'crotchet-down '(0 . -0.9))");
-      contains(out, "(cons 'minim-up      '(-0.365 . 0.9))");
-      contains(out, "(cons 'minim-down    '(0.365 . -0.9))");
+      contains(out, "(cons 'crotchet-up   '(0.0975 . 0.9))");
+      contains(out, "(cons 'crotchet-down '(-0.0975 . -0.9))");
+      contains(out, "(cons 'minim-up      '(-0.2675 . 0.9))");
+      contains(out, "(cons 'minim-down    '(0.2675 . -0.9))");
     }},
 
   { name: "sectionA marks stemless shapes and skips attachment registration", fn: () => {
@@ -1159,14 +1215,17 @@ export const tests = [
       lacks(b, "cnb:default-staff-line-thickness", "no staff-line styling (M2)");
     }},
 
-  { name: "pitch axis: attachment points do not depend on axisUnitsPerStaffSpace (relative units, LY spec 1.3.8 §4.4b)", fn: () => {
+  { name: "pitch axis: an attachment's half stem is in axis units per staff space (LY spec §4.4c), its anchor relative to the extent", fn: () => {
       const config = spikeAxisConfig();
-      const block = (cfg) => /#\(cnb:register-attachment![\s\S]*?\)\)\)\)/.exec(CNBLilypond.sectionA(cfg))[0];
-      const axis2 = block(config);
+      const shape = config.shapes["crotchet-minim"];
+      const up = (cfg) => /\(cons 'crotchet-up   '\(([^)]*)\)\)/.exec(CNBLilypond.sectionA(cfg))[1];
+      const want = (units) => _internals.fmtPair(_internals.attachmentPoints(shape, null, units).crotchetUp);
+      eq(up(config), want(2), "axis units 2");
       config.pitchAxis.axisUnitsPerStaffSpace = 4;
-      eq(block(config), axis2, "axis units 2 and 4");
+      eq(up(config), want(4), "axis units 4");
+      assert(want(2) !== want(4), "a wider staff space, a wider half stem");
       config.pitchAxis.enabled = false;
-      eq(block(config), axis2, "linear");
+      eq(up(config), want(config.staff.semitonesPerStaffSpace), "linear: semitones per staff space");
     }},
 
   { name: "pitch axis: explicit cnb:keysig-tonic-octave — placement.tonicOctave when integer, else the auto octave for a C tonic (handoff 008 §4.2)", fn: () => {
@@ -1353,7 +1412,7 @@ export const tests = [
       eq(hOnly.scale.x, 1, "height only: x unscaled");
     }},
 
-  { name: "sized variants: Section A scales the path and cutout of each variant and keeps its shape's relative attachments", fn: () => {
+  { name: "sized variants: Section A scales the path and cutout of each variant and computes its attachments at its scale", fn: () => {
       const cfg = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "sized-config.json"), "utf8"));
       const a = CNBLilypond.sectionA(cfg);
       const shape = cfg.shapes["crotchet-minim"];
@@ -1366,8 +1425,10 @@ export const tests = [
         contains(a, `#(cnb:register-path! '${reg.sym} cnb:${reg.sym}-path)`, `${reg.sym} registered`);
         contains(a, `#(cnb:register-hollow! '${reg.sym}-cutout cnb:${reg.sym}-cutout-path)`, `${reg.sym} cutout registered`);
         // Attachments are relative to the path's extent, which scales with
-        // the anchor: a variant registers its shape's own points.
-        const pts = _internals.attachmentPoints(shape);
+        // the anchor, but the half stem added to x does not (session 40):
+        // a variant's points are computed at its scale.
+        const pts = _internals.attachmentPoints(shape, reg.scale, sps);
+        assert(pts.crotchetUp.x !== _internals.attachmentPoints(shape, null, sps).crotchetUp.x, `${reg.sym}: x differs from the shape's`);
         contains(a, `#(cnb:register-attachment! '${reg.sym}-attach\n   (list\n     (cons 'crotchet-up   '(${_internals.fmtPair(pts.crotchetUp)}))`, `${reg.sym} attachment value`);
       }
       contains(a, "#(cnb:register-path! 'crotchet-minim cnb:crotchet-minim-path)", "the unsized shape is still used (D, E, F, G, A, B)");

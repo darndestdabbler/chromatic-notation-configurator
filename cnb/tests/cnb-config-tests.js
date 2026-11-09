@@ -139,6 +139,17 @@ export const tests = [
     assert(!result.warnings.some(w => /palette/i.test(w)), JSON.stringify(result.warnings));
   }},
 
+  { name: "createDefault: the default notehead's stems are on its sides — the export attaches up at x 1, down at x −1 (session 40)", fn: async () => {
+    // LilyPond reads an attachment relative to the notehead's extent, so x 1
+    // puts the up stem's right edge on the notehead's right edge.
+    const { CNBLilypond } = await import("../src/cnb-lilypond.js");
+    const out = CNBLilypond.sectionA(CNBConfig.createDefault());
+    for (const [key, x] of [["crotchet-up  ", 1], ["crotchet-down", -1], ["minim-up     ", 1], ["minim-down   ", -1]]) {
+      const m = new RegExp(`\\(cons '${key} '\\((\\S+) \\. `).exec(out);
+      assert(m && Number(m[1]) === x, `${key.trim()}: x ${m && m[1]}, want ${x}`);
+    }
+  }},
+
   // ── validate — warnings ───────────────────────────────────────────────────
   { name: "validate: empty notationLabel → warning", fn: () => {
     const cfg = CNBConfig.createDefault();

@@ -29,12 +29,16 @@ function buildDefault() {
         naturalWidth: 344.852,
         semitoneHeight: 2.724,
 
-        // 4-point stem anchor model (in native SVG units)
+        // 4-point stem anchor model (in native SVG units): each is the
+        // stem's centre (session 40). On the default staff, 4 semitones per
+        // staff space, half the engine's 0.13-staff-space stem is 26 units,
+        // so the up stem's right edge is on the path's right extent
+        // (172.426) and the down stem's left edge on its left (−172.4267).
         anchors: {
-          crotchetUp:   { x: 157.2926,  y: -42.9985 },
-          crotchetDown: { x: -157.2934, y:  43.0027 },
-          minimUp:      { x: 157.2926,  y: -42.9985 },
-          minimDown:    { x: -157.2934, y:  43.0027 },
+          crotchetUp:   { x: 146.426,   y: -42.9985 },
+          crotchetDown: { x: -146.4267, y:  43.0027 },
+          minimUp:      { x: 146.426,   y: -42.9985 },
+          minimDown:    { x: -146.4267, y:  43.0027 },
         },
 
         // LilyPond data (for export — null = fallback conversion at export time)

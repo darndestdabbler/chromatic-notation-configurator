@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.10 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads)
-**Date:** November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.11 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them)
+**Date:** November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -57,14 +57,16 @@ attachment values. 1.3.9, for both: the ledger lines, §5.7, which every
 config's export gains, and the key dispatch, §6.4, which only a config with
 keys on and a key-scoped rule gains. 1.3.10, for both: colours on the
 noteheads, §4.5a. Every config's header loses its palette lines, and a
-config with colours registers them without the accessible branch.)*
+config with colours registers them without the accessible branch. 1.3.11,
+for both: an anchor is the stem's centre, §4.4c. Every config with stems
+exports new attachment values.)*
 
 Summary of additions:
 
 | Area | v1.2.1 | v1.3 (only when `pitchAxis.enabled`) |
 |---|---|---|
 | Section B staff geometry | linear `cnb:staff-line-positions` formula | axis formula (§5.4a) + the compiled pitch-axis procedure (§5.4b) |
-| Section A4 attachments | ÷ `staff.semitonesPerStaffSpace` | ÷ `pitchAxis.axisUnitsPerStaffSpace` (§4.4a); since 1.3.8 relative to the notehead's extent, linear and axis alike (§4.4b) |
+| Section A4 attachments | ÷ `staff.semitonesPerStaffSpace` | ÷ `pitchAxis.axisUnitsPerStaffSpace` (§4.4a); since 1.3.8 relative to the notehead's extent, linear and axis alike (§4.4b); since 1.3.11 half a stem outward of the anchor, the stem's centre (§4.4c) |
 | Section B staff-line thickness | `(pct/100) × (1/sps)` | `(pct/100) × (1/axisUnitsPerStaffSpace)` (§5.3a) |
 | Section C alist | — | optional `(x-offset . N)` field (§6.3) |
 | Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
@@ -152,7 +154,8 @@ same: the §4.1b path conversion (pre-baked or fallback, ÷
 variant's four attachment points are the shape's own. They are written
 relative to the registered path's extent (§4.4b), and the scale moves the
 anchor and the extent alike, so it cancels. In 1.3.4–1.3.7 they were scaled
-with the path.)* In Section A a comment line names each variant's size, and
+with the path. 1.3.11: the half stem added to each point's x does not scale,
+so a variant's points are computed at its scale, §4.4c.)* In Section A a comment line names each variant's size, and
 its definitions follow the shape's in A1–A4.
 
 **Section C.** A pitch class resolved to a sized variant names the variant
@@ -221,14 +224,17 @@ LilyPond puts the stem's **edge** on the attachment point: an up stem's
 right edge and a down stem's left edge. Since 1.3.8 the preview does the
 same (`CNBStem.geometry`), so the two stems' anchored edges coincide even
 though their widths differ (the preview's stem thickness is preview-only,
-§5.2a).
+§5.2a). *(1.3.11: the anchor became the stem's centre and the point is
+written half a stem outward of it, §4.4c. The two stems are the same
+width since 1.3.9.)*
 
 **Kite worked check.** The kite path spans ±2 semitones on each axis. Its
 anchors, 1.8 semitones up and the minim's ∓0.73 across, export as the
 engine golden file's `(0 . 0.9)` and `(-0.365 . 0.9)`. The fixture's stem
 rects had been placed so that the old ÷ sps conversion produced those
 numbers. Session 33 moved them to the true anchors, and the export is
-byte-identical.
+byte-identical. *(1.3.11: the crotchet stems are centred, §4.4c, so the
+export no longer matches the golden file's x.)*
 
 **Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`): the
 default shape in repeat mode, crotchet and minim, stem up and down. Each
@@ -237,6 +243,64 @@ preview's.
 
 **1.0.0 exports with stems engraved them too near the notehead's centre
 and should be regenerated.**
+
+### 4.4c The anchor is the stem's centre (new in 1.3.11, linear and axis configs alike)
+
+This amends §4.4b (session 40). A shape's stem anchor is where the
+**stem's centre** goes, as the SVG's stem rect draws it: the importer reads
+each anchor at the rect's end-centre, unchanged, so a rect drawn centred on
+the notehead centres the stem. In 1.3.8–1.3.10 the anchor was the stem's
+edge, so a centred rect (Kite 4-369, 45deg-369) previewed and engraved half
+a stem off centre.
+
+LilyPond still puts the stem's edge on the attachment point, so the
+exporter writes each point half the engine's stem outward of the anchor:
+
+```
+x = relative(a.x × scale.x + side × 0.065 × sps)       side +1 up, −1 down
+y = relative(a.y)
+```
+
+- `relative` is §4.4b's, against the extent of the path Section A
+  registers, a sized variant's included.
+- 0.065 staff spaces is half the engine's 0.13-staff-space stem
+  (`CNBStem.THICKNESS`), in semitones by `sps`: `staff.semitonesPerStaffSpace`,
+  or `pitchAxis.axisUnitsPerStaffSpace` under a pitch axis. The staff space
+  therefore no longer cancels from x.
+- The half stem does not scale with a sized variant (§4.1c), so a variant's
+  points are computed at its `scale.x` rather than copied from its shape.
+  Y is the anchor's alone, as in §4.4b.
+
+The preview draws a one-head stem centred on its anchor. Across a repeated
+group, LilyPond reads the attachment across the group's extent, so the
+preview places the anchored edge at the same scaled point and the centre
+half a stem inward of it, and the two still coincide.
+
+**The default notehead's stems sit on its sides.** Its anchors are
+x ±146.426 SVG units (the path's extent is ±172.426): on its staff of 4
+semitones per staff space, the up stem's right edge is on the notehead's
+right edge and the down stem's left edge on its left, crotchet and minim.
+The default export writes `(1 . 0.3157)` / `(-1 . -0.3157)`. The half stem
+is measured in staff spaces, so a staff with other spacing needs other
+anchors: each gallery file that carries the default notehead sets them for
+its own staff (its semitones, or axis units, per staff space), so every one
+exports `(±1 . …)` and draws the stems' outer edges on the notehead's sides
+(Schoenberg's slashed ovals on the oval's sides). A config made from the
+default that changes the staff's spacing keeps the default's anchors, and
+its stems' edges sit a little outside (wider spaces) or inside (narrower)
+the sides.
+
+**Exports that change:** every config with stems. Kite 4-369 writes
+`(0.0975 . 0.9)` and the minim's `(-0.2675 . 0.9)`, so its crotchet stems
+are centred and its export no longer matches the engine golden file's x;
+45deg-369 writes `(0.0975 . 0.8246)`. The five export baselines were
+regenerated. **1.0.0 exports with stems, and exports made while 1.1.0 was in
+development, should be regenerated.**
+
+**Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`): for
+every card's octave chord, crotchet and minim, on the default, Kite 4-369
+and 45deg-369 fixtures, the engraved stem's centre lands within 0.001 staff
+spaces of the preview's, as do its width and ends.
 
 ### 4.5a Colours on the noteheads (new in 1.3.10, linear and axis configs alike)
 
@@ -907,7 +971,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.10** | **Nov 8, 2026** | **Colours on the noteheads (session 37): new §4.5a. A config has no palette: a notehead's colour is its rules' `apply.color`. Section A5 registers each colour the resolved noteheads use, once, named from its hex (`nearestColorName` → `toSchemeSymbol`), with no `cnb:use-accessible-colors` branch; the engine is unchanged and the variable is never set. A saved palette is moved onto the noteheads on load (`CNBConfig.paletteToRules`). §5.2a: nothing is preview-only, and the header loses its palette and preview-only lines. `palette` and `engine.useAccessibleColors` are retired. Output CHANGES for every config (the header) and every config with colours (A5, and the symbol names where a palette had named them); the five export baselines were regenerated.** |
+| **1.3.11** | **Nov 9, 2026** | **Stems where the notehead's SVG puts them (session 40): new §4.4c. A stem anchor is the stem's centre, as the SVG's stem rect draws it, so the Kite 4-369 and 45deg-369 stems are centred. Each `cnb:register-attachment!` point's x is the anchor moved half the engine's 0.13-staff-space stem outward, relative to the registered extent; a sized variant's points are computed at its scale. The default notehead's anchors move to ±146.426 SVG units, so on its staff the up stem's right edge and the down stem's left edge are on its sides (`(1 . 0.3157)`); each gallery file sets them for its own staff. Output CHANGES for every config with stems; the five export baselines were regenerated.** |
+| 1.3.10 | Nov 8, 2026 | Colours on the noteheads (session 37): new §4.5a. A config has no palette: a notehead's colour is its rules' `apply.color`. Section A5 registers each colour the resolved noteheads use, once, named from its hex (`nearestColorName` → `toSchemeSymbol`), with no `cnb:use-accessible-colors` branch; the engine is unchanged and the variable is never set. A saved palette is moved onto the noteheads on load (`CNBConfig.paletteToRules`). §5.2a: nothing is preview-only, and the header loses its palette and preview-only lines. `palette` and `engine.useAccessibleColors` are retired. Output CHANGES for every config (the header) and every config with colours (A5, and the symbol names where a palette had named them); the five export baselines were regenerated. |
 | 1.3.9 | Nov 7, 2026 | Ledger lines and key-scoped rules (session 34): new §5.7 and §6.4. Section B writes `cnb:ledgers-by-semitone`, the preview's ledgers for every pitch it draws, and a `\layout` block gives each notehead its pitch's entry through `NoteHead.ledger-positions` / `no-ledgers`, so in-gap ledgers engrave; it is keyed by pitch because the engine rounds the position its ledger rule sees. Section C dispatches on the key's sorted pitch classes, one branch per key a rule names, with keys on. §5.2a: the only preview-only setting is the colour-blind toggle; the preview draws stems, staff lines, ledgers, the key signature's spacing and the repeat counts as the engine does, and their settings are retired. §8 check 10 is retired. Output CHANGES for every config (the ledger block and the header); the five export baselines were regenerated. |
 | 1.3.8 | Nov 7, 2026 | Stem attachment units (session 33): new §4.4b. `cnb:register-attachment!` points are written relative to the registered path's exact extent, the units LilyPond's `NoteHead.stem-attachment` reads, instead of staff spaces, so the §4.4a divisor and the §4.1c attachment scaling no longer enter. The preview now puts a stem's edge on its anchor, as LilyPond does. Output CHANGES for every config with stems: the default, 45deg-369, sized and Twinline baselines were regenerated; the Kite fixture's anchors became true semitone anchors and its export is unchanged. 1.0.0 exports with stems engraved them too near the centre and should be regenerated. |
 | 1.3.7 | Nov 7, 2026 | The clef and the key signature (session 30, engine handoffs 005 §5 and 006 §3): new §5.5 and §5.6. `cnb:clef-style` is always written: `'none` when no clef is shown (the default config included), `'custom` with a `cnb:register-clef!` glyph, or `'text` with a styled markup. A shown clef also gets its gutter in semitones. `cnb:keysig-style 'none` is written unless keys and the signature are on, and then the bar's colour, thickness (0 when off) and extent and a linear explicit tonic octave (no offset, measured) are written emit-if-changed. Output CHANGES for every config; the five export baselines were regenerated. |

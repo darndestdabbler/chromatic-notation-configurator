@@ -22,6 +22,7 @@ import { CNBMusic } from "./cnb-music.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 import { CNBScheme } from "./cnb-scheme.js";
 import { CNBStaff } from "./cnb-staff.js";
+import { CNBStem } from "./cnb-stem.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
@@ -363,13 +364,22 @@ function usedColors(config) {
  * shape.lilypondAnchors as stored (canonically semitones, the importer's
  * toLilypondAnchors output), else shape.anchors ÷ SVG units per semitone,
  * Y negated. The staff-space divisor (÷ sps, or ÷ axisUnitsPerStaffSpace
- * under a pitch axis) and a sized variant's scale (§4.1c) scale path and
- * anchor alike, so they cancel: a sized variant registers its shape's points.
+ * under a pitch axis) scales path and anchor alike, so it cancels.
+ *
+ * The anchor is the stem's centre, as the SVG's stem rect draws it (session
+ * 40, LY spec §4.4c), and LilyPond puts the stem's edge on the attachment
+ * point (an up stem's right edge, a down stem's left), so each point's x is
+ * the anchor moved outward by half the engine's stem (CNBStem.THICKNESS
+ * staff spaces). That half stem does not scale with a sized variant (§4.1c),
+ * so a variant's points are computed at its scale. Y is the anchor's.
  * Returns null for stemless shapes (both anchor sets null).
  *
  * @param {object} shape  config.shapes entry
+ * @param {{x:number,y:number}|null} scale  a sized variant's scale, or null
+ * @param {number} staffSpaceSemis  one staff space in semitones (sps, or
+ *        axisUnitsPerStaffSpace under a pitch axis)
  */
-function attachmentPoints(shape) {
+function attachmentPoints(shape, scale, staffSpaceSemis) {
   const natH = shape.naturalHeight || 1;
   const unitsPerSemitone = natH / (shape.semitoneHeight || natH);
   const fromSvg = (pt) => ({ x: pt.x / unitsPerSemitone, y: -pt.y / unitsPerSemitone });
@@ -389,15 +399,20 @@ function attachmentPoints(shape) {
         cmd, args: args.map((v, i) => (i % 2 === 0 ? v : -v) / unitsPerSemitone),
       }));
   const extent = pathExtent(commands);
-  const relative = (v, [min, max]) =>
-    max > min ? Math.round((2 * (v || 0) - (min + max)) / (max - min) * 10000) / 10000 : 0;
-  const toLy = (pt) => ({ x: relative(pt.x, extent.x), y: relative(pt.y, extent.y) });
+  const sx = scale ? scale.x : 1;
+  const halfStem = CNBStem.THICKNESS / 2 * staffSpaceSemis;
+  const relative = (v, [min, max], k = 1) =>
+    max > min ? Math.round((2 * v - (min + max) * k) / ((max - min) * k) * 10000) / 10000 : 0;
+  const toLy = (pt, side) => ({
+    x: relative((pt.x || 0) * sx + side * halfStem, extent.x, sx),
+    y: relative(pt.y || 0, extent.y),
+  });
 
   return {
-    crotchetUp:   toLy(anchors.crotchetUp   || { x: 0, y: 0 }),
-    crotchetDown: toLy(anchors.crotchetDown || { x: 0, y: 0 }),
-    minimUp:      toLy(anchors.minimUp      || { x: 0, y: 0 }),
-    minimDown:    toLy(anchors.minimDown    || { x: 0, y: 0 }),
+    crotchetUp:   toLy(anchors.crotchetUp   || { x: 0, y: 0 }, 1),
+    crotchetDown: toLy(anchors.crotchetDown || { x: 0, y: 0 }, -1),
+    minimUp:      toLy(anchors.minimUp      || { x: 0, y: 0 }, 1),
+    minimDown:    toLy(anchors.minimDown    || { x: 0, y: 0 }, -1),
   };
 }
 
@@ -899,10 +914,10 @@ export const CNBLilypond = {
 
     // A4. Stem attachment registrations (4-point model), in LilyPond's
     // stem-attachment units relative to the registered path's extent
-    // (LY spec 1.3.8 §4.4b): a sized variant registers its shape's points.
+    // (LY spec 1.3.8 §4.4b), half a stem outward of the anchor (§4.4c).
     lines.push("%% --- Register stem attachments ---");
-    for (const { name, sym } of registrations) {
-      const pts = attachmentPoints(shapes[name]);
+    for (const { name, sym, scale } of registrations) {
+      const pts = attachmentPoints(shapes[name], scale, pathSps);
       if (!pts) {
         lines.push(`%% ${sym}: stemless — no attachment registered`);
         lines.push("");

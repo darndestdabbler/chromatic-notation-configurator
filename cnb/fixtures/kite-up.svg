@@ -7,10 +7,11 @@
        output for these paths, format_scheme(parse_and_normalize(d)) wrapped as
        the toolkit writes them: SEMITONE units, Y up (SVG units / 100, Y
        negated). The exporter divides them by the staff's semitones per staff
-       space. Session 33: the stem rects mark the engine reference's attachment
-       (0 . 0.9) / minim (-0.365 . 0.9), which LilyPond reads relative to
-       the 4 x 4-semitone notehead: y -/+180 SVG units = +/-1.8 semitones,
-       minim x -/+73 SVG units = -/+0.73 semitones.
+       space. Session 40: a stem goes where its rect puts it, centred on the
+       rect, so the crotchet rects, centred on x 0, centre the crotchet stems,
+       and the minim rects centre the minim stems at x -/+73 SVG units
+       (-/+0.73 semitones). The rects' ends, y -/+180 SVG units (+/-1.8
+       semitones), are where the stems start.
        cnb/fixtures/rebuild-kite-shapes.mjs rebuilds kite-4-369-config.json's
        shapes from this file through the importer. -->
   <g id="layer1">

@@ -646,6 +646,21 @@
       "what": "step 'section-order': its files",
       "reason": "On the page the Notehead height control's reset button sat flush against the field's unit; giving the control the panel's existing cnb-nhp-group class spaces it with the page's own styles.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 40,
+      "dateTime": "2026-11-09T05:58:18.806000-05:00",
+      "task": "Make a shape's stem anchor the stem's own position rather than the place its edge sits. The importer already reads an anchor as the centre of the SVG's stem rect, so the preview now draws the stem centred on its anchor (CNBStem.geometry drops the half-thickness inward shift), and the export writes each cnb:register-attachment! point as the anchor moved outward by half the engine's stem thickness (0.065 staff spaces, in semitones by semitonesPerStaffSpace or axisUnitsPerStaffSpace), because LilyPond puts the stem's edge on that point; preview and engraving keep the same edge in repeat mode and for sized variants, whose attachment points are then computed at the variant's scale. The Kite 4-369 and 45deg-369 stems, whose rects are drawn centred, therefore preview and engrave centred. The default crotchet-minim notehead's anchors move so that on its default staff (4 semitones per staff space) the up stem's right edge is on the notehead's right extent and the down stem's left edge on its left extent, heights unchanged; the default config, the gallery files and the sized fixture that carry that shape take the new anchors. The five export baselines and the preview baseline are regenerated, the engine round trip in cnb/tests/cnb-card-tests.js also pins each stem's x for the default, Kite and 45deg fixtures, and LY spec 1.3.11 and the architecture plan record the change.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 40,
+      "dateTime": "2026-11-09T06:10:46.831000-05:00",
+      "what": "step 'stem-centre': its files",
+      "reason": "Two more tests pin exported attachment numbers: the 45deg.svg import test (cnb-svg-importer-tests.js) and the minim-pair export test (cnb-config-export-tests.js).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

@@ -44,10 +44,10 @@
 %% --- Register stem attachments ---
 #(cnb:register-attachment! 'crotchet-minim-attach
    (list
-     (cons 'crotchet-up   '(0.9122 . 0.3157))
-     (cons 'crotchet-down '(-0.9122 . -0.3157))
-     (cons 'minim-up      '(0.9122 . 0.3157))
-     (cons 'minim-down    '(-0.9122 . -0.3157))))
+     (cons 'crotchet-up   '(1 . 0.3157))
+     (cons 'crotchet-down '(-1 . -0.3157))
+     (cons 'minim-up      '(1 . 0.3157))
+     (cons 'minim-down    '(-1 . -0.3157))))
 
 %% --- Register colors ---
 #(cnb:register-color! 'black-000000 "#000000")
