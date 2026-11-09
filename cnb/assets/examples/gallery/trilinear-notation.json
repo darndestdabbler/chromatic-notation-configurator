@@ -1,0 +1,216 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "x-head": {
+      "displayName": "X notehead",
+      "svgPath": "M -140 -110 L -110 -140 L 140 110 L 110 140 Z M 110 -140 L 140 -110 L -110 140 L -140 110 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 280,
+      "naturalWidth": 280,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -60
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 60
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -60
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 60
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "circle-head": {
+      "displayName": "Circle (O)",
+      "svgPath": "M 140 0 C 140 77.3 77.3 140 0 140 C -77.3 140 -140 77.3 -140 0 C -140 -77.3 -77.3 -140 0 -140 C 77.3 -140 140 -77.3 140 0 Z",
+      "svgHollowPath": "M 92 0 C 92 50.8 50.8 92 0 92 C -50.8 92 -92 50.8 -92 0 C -92 -50.8 -50.8 -92 0 -92 C 50.8 -92 92 -50.8 92 0 Z",
+      "naturalHeight": 280,
+      "naturalWidth": 280,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -60
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 60
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -60
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 60
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "tri-left": {
+      "displayName": "Left-pointing triangle (◁)",
+      "svgPath": "M -160 0 L 160 -140 L 160 140 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 280,
+      "naturalWidth": 320,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -60
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 60
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -60
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 60
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      4,
+      7,
+      10
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 3,
+    "lineOverrides": {}
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 1,
+        "triggerPCs": [
+          0,
+          1
+        ],
+        "triggerMode": "override"
+      }
+    ]
+  },
+  "noteheadRules": [
+    {
+      "name": "Below-line dim-7th set (X heads)",
+      "priority": 0,
+      "match": {
+        "pitchClasses": [
+          0,
+          3,
+          6,
+          9
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "x-head",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    },
+    {
+      "name": "On-line dim-7th set (hollow O circle)",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          4,
+          7,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "circle-head",
+        "hollow": true
+      }
+    },
+    {
+      "name": "Above-line dim-7th set (◁ triangles)",
+      "priority": 2,
+      "match": {
+        "pitchClasses": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "tri-left",
+        "hollow": false
+      }
+    }
+  ],
+  "meta": {
+    "configName": "Trilinear Notation (reproduction study)",
+    "fileSuffix": "-Trilinear",
+    "notationLabel": "Trilinear Notation — reproduction study",
+    "notationFootnote": "",
+    "author": "José A. Sotorrio",
+    "description": "Reproduction study — inspired by Trilinear Notation (José A. Sotorrio, 2017; basic version). Minor-third staff at E/G/A# with a C# ledger shown for C and C# (operator effective-ledger rule); three notehead glyphs cycle by diminished-7th set in the operator's x/circle/triangle sequence: X on the below-line set {C,D#,F#,A}, the always-hollow real CIRCLE (O, a ring — not a conventional oval) on the on-line set {C#,E,G,A#}, and left-pointing ◁ triangles on the above-line set {D,F,G#,B}. The X and ◁ glyphs are geometric approximations. Duration is stem-flag-only with a direction-dependent half-note tick (E3, unimplemented) — documented as a deviation. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "Trilinear Notation",
+    "systemCreator": "José A. Sotorrio",
+    "systemYear": 2017,
+    "sourceUrl": "https://musicnotation.org/system/trilinear-notation-jose-sotorrio/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}

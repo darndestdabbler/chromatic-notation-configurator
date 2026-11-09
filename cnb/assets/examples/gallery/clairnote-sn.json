@@ -1,0 +1,156 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      4,
+      8
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 4,
+    "lineOverrides": {}
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 0,
+        "triggerPCs": [
+          0,
+          1,
+          2
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 2,
+        "triggerPCs": [
+          2
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 6,
+        "triggerPCs": [
+          6
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 10,
+        "triggerPCs": [
+          10
+        ],
+        "triggerMode": "override"
+      }
+    ]
+  },
+  "noteheadRules": [
+    {
+      "name": "Default",
+      "priority": 0,
+      "match": {
+        "pitchClasses": "all",
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "crotchet-minim",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    }
+  ],
+  "keys": {
+    "enabled": true,
+    "definitions": [
+      {
+        "name": "G",
+        "pitchClasses": [
+          7,
+          9,
+          11,
+          0,
+          2,
+          4,
+          6
+        ]
+      },
+      {
+        "name": "D",
+        "pitchClasses": [
+          2,
+          4,
+          6,
+          7,
+          9,
+          11,
+          1
+        ]
+      }
+    ],
+    "offKeyMark": {},
+    "keySignature": {
+      "enabled": true,
+      "style": "notehead-chords",
+      "placement": {
+        "rule": "scale-from-tonic",
+        "tonicOctave": null
+      },
+      "separator": {
+        "enabled": true,
+        "color": "#ffd42a",
+        "thicknessPct": 160,
+        "extentSemis": 12
+      },
+      "gutter": {
+        "paddingH": 12
+      }
+    }
+  },
+  "meta": {
+    "configName": "Clairnote SN (reproduction study)",
+    "fileSuffix": "-ClairnoteSN",
+    "notationLabel": "Clairnote SN — reproduction study",
+    "notationFootnote": "",
+    "author": "Paul Morris",
+    "description": "Reproduction study — inspired by Clairnote SN (Paul Morris, 2018). Major-third 2-line staff at E/G#; the internal floating ledgers for D/F#/A# plus the C ledger are override templates (per the operator reference). The C ledger shows for C/C#/D; the operator's rule also lists A#/B, but those sit below the C-boundary where the platform's C-aligned ledger regions would place the ledger at the wrong (lower) C across an intervening staff line, so they are trimmed and the limitation is documented as a gap. Uniform duration-carrying ovals. Clairnote's alternative key signatures (E2) are exercised via the platform's notehead-chords signature (set 010, itself inspired by Clairnote DN's stacked signatures) — this follows Clairnote's stacked-signature layout design but is NOT identical to Clairnote's specific accidental-sign signatures. Clairnote's alternative CLEF form is not shown in the sources, so no clef is authored (omission); its alternative accidental signs need the unimplemented accidental enhancement (E4) — documented deviation. Design CC BY-SA 4.0; no code ported from clairnote.ly. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "Clairnote SN",
+    "systemCreator": "Paul Morris",
+    "systemYear": 2018,
+    "sourceUrl": "https://musicnotation.org/system/clairnote-sn-paul-morris/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}

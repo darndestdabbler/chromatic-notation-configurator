@@ -1,0 +1,218 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "slant": {
+      "displayName": "Oval slanted",
+      "svgPath": "M 204.364 -81.573 C 204.280 -21.336 112.702 64.016 -0.178 109.065 C -113.054 154.113 -204.493 141.801 -204.410 81.565 C -204.367 52.639 -182.796 16.303 -144.435 -19.448 C -106.077 -55.199 -54.073 -87.438 0.133 -109.072 C 54.340 -130.706 106.309 -139.962 144.610 -134.804 C 182.912 -129.647 204.404 -110.499 204.364 -81.573 Z",
+      "svgHollowPath": "M 170.300 -67.977 C 171.582 -32.322 81.624 17.577 -0.355 50.184 C -82.333 82.792 -169.285 105.433 -170.345 67.971 C -171.406 30.509 -88.102 -15.128 0.251 -50.371 C 88.606 -85.615 169.018 -103.633 170.300 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 430,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -60
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 60
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -60
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 60
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "flat-oval": {
+      "displayName": "Flat oval",
+      "svgPath": "M 168 0 C 168 44.6 93.9 80.8 0 80.8 C -93.9 80.8 -168 44.6 -168 0 C -168 -44.6 -93.9 -80.8 0 -80.8 C 93.9 -80.8 168 -44.6 168 0 Z",
+      "svgHollowPath": "M 126 0 C 126 27.3 70.4 49.4 0 49.4 C -70.4 49.4 -126 27.3 -126 0 C -126 -27.3 -70.4 -49.4 0 -49.4 C 70.4 -49.4 126 -27.3 126 0 Z",
+      "naturalHeight": 161.6,
+      "naturalWidth": 336,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 155,
+          "y": 0
+        },
+        "crotchetDown": {
+          "x": -155,
+          "y": 0
+        },
+        "minimUp": {
+          "x": 155,
+          "y": 0
+        },
+        "minimDown": {
+          "x": -155,
+          "y": 0
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      2,
+      8
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 6,
+    "lineOverrides": {}
+  },
+  "ledgers": {
+    "templates": []
+  },
+  "noteheadRules": [
+    {
+      "name": "Whole-tone set A — slanted",
+      "priority": 0,
+      "match": {
+        "pitchClasses": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "slant",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    },
+    {
+      "name": "Whole-tone set B — flat oval",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "flat-oval"
+      }
+    },
+    {
+      "name": "Naturals — solid",
+      "priority": 2,
+      "match": {
+        "pitchClasses": [
+          0,
+          2,
+          4,
+          5,
+          7,
+          9,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": false
+      }
+    },
+    {
+      "name": "Black-key notes — hollow",
+      "priority": 3,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": true
+      }
+    }
+  ],
+  "clef": {
+    "enabled": true,
+    "active": "register-label",
+    "glyphs": {
+      "register-label": {
+        "displayName": "Register label \"D\"",
+        "kind": "text",
+        "text": "D",
+        "textHeightSemis": 3,
+        "anchorSemi": 26,
+        "fontFamily": "Georgia, serif",
+        "color": "#000000"
+      }
+    },
+    "gutter": {
+      "paddingH": 12
+    }
+  },
+  "meta": {
+    "configName": "Express Stave 6-6 Jazz Font (reproduction study)",
+    "fileSuffix": "-ExpressJazz66",
+    "notationLabel": "Express Stave, 6-6 Jazz Font — reproduction study",
+    "notationFootnote": "",
+    "author": "John Keller",
+    "description": "Reproduction study — inspired by Express Stave, 6-6 Jazz Font (John Keller, 2009). Same tritone D/G# staff and inverse-7-5 solid/hollow fill as the Pianoforte version, with an added subtle 6-6 pattern via notehead SHAPE — one whole-tone set slanted, the other a flat (horizontal) oval (per the operator reference; the flat set uses a distinct flat-oval glyph, not a conventional notehead). The slant glyph is the default oval sheared 0.5 (geometric approximation). Keller's custom D clef (E1) is exercised in register-label (text) mode showing 'D'; the published clef glyph is deferred as an asset. Same continuous-grid D-ledger deviation as the Pianoforte fixture; half/whole side strokes not in this single-duration preview. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "Express Stave, 6-6 Jazz Font",
+    "systemCreator": "John Keller",
+    "systemYear": 2009,
+    "sourceUrl": "https://musicnotation.org/system/express-stave-6-6-jazz-font-by-john-keller/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      6,
+      8,
+      10
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 2,
+    "lineOverrides": {}
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 0,
+        "triggerPCs": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 2,
+        "triggerPCs": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 4,
+        "triggerPCs": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "triggerMode": "override"
+      }
+    ]
+  },
+  "noteheadRules": [
+    {
+      "name": "Default",
+      "priority": 0,
+      "match": {
+        "pitchClasses": "all",
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "crotchet-minim",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    }
+  ],
+  "meta": {
+    "configName": "6-6 Trigram Notation (reproduction study)",
+    "fileSuffix": "-Trigram66",
+    "notationLabel": "6-6 Trigram Notation — reproduction study",
+    "notationFootnote": "",
+    "author": "Richard Parncutt",
+    "description": "Reproduction study — inspired by 6-6 Trigram Notation (Richard Parncutt, 1990). Three staff lines per octave on the black-key group F#/G#/A#; C/D/E render on ledger lines. Documented Tier-3 partial: the platform shows a ledger only between a note and the nearest staff line, so the published GROUPED far-side ledger stacks (C/D/E drawn as a group of three above, below, and between the staff groups) are not reproduced — the named gap. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "6-6 Trigram Notation",
+    "systemCreator": "Richard Parncutt",
+    "systemYear": 1990,
+    "sourceUrl": "https://musicnotation.org/system/6-6-trigram-notation-by-richard-parncutt/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}
