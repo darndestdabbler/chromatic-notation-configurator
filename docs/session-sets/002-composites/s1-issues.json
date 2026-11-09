@@ -1,0 +1,28 @@
+{
+  "session": 1,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "Missing direct unit coverage for the public render() APIs of Modules 5 and 7",
+      "location": "cnb/tests/cnb-ledger-set-tests.js, cnb/tests/cnb-double-notehead-tests.js",
+      "resolution": "Added cnb/tests/svg-stub.js (minimal DOM stub) and 10 new render() tests: 6 for CNBLedgerSet.render (group/rect counts, y/thickness/centerX attributes, lineOverrides styling, empty group on staff line, default opts, viewport-cropping invariance) and 4 for CNBDoubleNotehead.render (returned groups and draw order, transform positions from layout, hollow overlay, default color).",
+      "status": "fixed"
+    },
+    {
+      "id": 2,
+      "summary": "Summary claimed DOM-stub render checks that were not part of the registered suites",
+      "location": "verification round-1 prompt 'Other changes' section",
+      "resolution": "The ad-hoc scratchpad checks are now real registered tests (issue 1), so the claim and the suites agree. Totals: 179 passing (44 new this session).",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "summary": "Double-notehead suite tested only the layout() helper, not the required render() contract",
+      "location": "cnb/tests/cnb-double-notehead-tests.js",
+      "resolution": "Kept layout() tests and added direct render() contract tests asserting the {lowerG, upperG, lowerY, upperY} return shape and DOM output.",
+      "status": "fixed"
+    }
+  ]
+}

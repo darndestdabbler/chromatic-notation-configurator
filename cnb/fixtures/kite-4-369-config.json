@@ -1,0 +1,219 @@
+{
+  "_comment": [
+    "Session-set 007 fixture: Kite 4-369 notation system reproduced in the",
+    "Configurator config schema, matching the engine repo's golden baseline",
+    "(lilypond-chromatic-notation-base/Kite-4-369-Notation-Procedure.ly as",
+    "included by joy-to-the-world.ly, with the score-level CB-safe color",
+    "overrides baked in: skyblue #50b4e9 / rose #cc79a7 / black #000000).",
+    "PC table (from the engine reference file, all cycles octave-invariant):",
+    "  shape:  semitone mod 4 = 0|3 -> kite-down, 1|2 -> kite-up",
+    "  hollow: odd semitones hollow",
+    "  color:  semitone mod 3 = 0 skyblue, 1 rose, 2 black",
+    "lilypondAnchors are in SEMITONE units (canonical, per 007-s2 D5 fix);",
+    "the exporter writes them relative to the notehead path's extent, the",
+    "units LilyPond's stem-attachment reads (session 33), emitting the",
+    "engine reference's 0.9 / 0.365 from 1.8 / 0.73 semitones.",
+    "lilypondPath / lilypondHollowPath are SEMITONE units too (toolkit output),",
+    "emitted / 3 (session 11, audit H2). The shapes are not hand-edited:",
+    "cnb/fixtures/rebuild-kite-shapes.mjs imports kite-up.svg / kite-down.svg."
+  ],
+  "version": "1.0",
+
+  "shapes": {
+    "kite-up": {
+      "displayName": "Kite (up)",
+      "svgPath": "M 0 -200 L 200 -100 L 0 200 L -200 -100 L 0 -200 Z",
+      "svgHollowPath": "M 100 -100 L 0 100 L -100 -100 L 100 -100 Z",
+      "naturalHeight": 400,
+      "naturalWidth": 400,
+      "semitoneHeight": 4,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -180
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 180
+        },
+        "minimUp": {
+          "x": -73,
+          "y": -180
+        },
+        "minimDown": {
+          "x": 73,
+          "y": 180
+        }
+      },
+      "lilypondPath": "'(\n    (moveto 0 2)\n    (lineto 2 1)\n    (lineto 0 -2)\n    (lineto -2 1)\n    (lineto 0 2)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto 1 1)\n    (lineto 0 -1)\n    (lineto -1 1)\n    (lineto 1 1)\n    (closepath))",
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": 1.8
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": -1.8
+        },
+        "minimUp": {
+          "x": -0.73,
+          "y": 1.8
+        },
+        "minimDown": {
+          "x": 0.73,
+          "y": -1.8
+        }
+      }
+    },
+    "kite-down": {
+      "displayName": "Kite (down)",
+      "svgPath": "M 0 200 L -200 100 L 0 -200 L 200 100 L 0 200 Z",
+      "svgHollowPath": "M -100 100 L 0 -100 L 100 100 L -100 100 Z",
+      "naturalHeight": 400,
+      "naturalWidth": 400,
+      "semitoneHeight": 4,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -180
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 180
+        },
+        "minimUp": {
+          "x": -73,
+          "y": -180
+        },
+        "minimDown": {
+          "x": 73,
+          "y": 180
+        }
+      },
+      "lilypondPath": "'(\n    (moveto 0 -2)\n    (lineto -2 -1)\n    (lineto 0 2)\n    (lineto 2 -1)\n    (lineto 0 -2)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto -1 -1)\n    (lineto 0 1)\n    (lineto 1 -1)\n    (lineto -1 -1)\n    (closepath))",
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": 1.8
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": -1.8
+        },
+        "minimUp": {
+          "x": -0.73,
+          "y": 1.8
+        },
+        "minimDown": {
+          "x": 0.73,
+          "y": -1.8
+        }
+      }
+    }
+  },
+
+  "staff": {
+    "semitonePattern": [3, 6, 9],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 3,
+    "lineDefaults": { "thicknessPct": 20, "style": "solid", "color": "#000000" },
+    "lineOverrides": {}
+  },
+
+  "ledgers": {
+    "templates": [
+      { "semiWithinOctave": 0, "triggerPCs": [0, 1, 2], "triggerMode": "override" }
+    ],
+    "proximityRule": true,
+    "lineDefaults": { "thicknessPct": 40, "widthMultiplier": 2.0, "style": "solid", "color": "#000000", "roundedEnds": true },
+    "lineOverrides": {}
+  },
+
+  "noteheadRules": [
+    {
+      "name": "Colour Skyblue",
+      "priority": 0,
+      "match": { "pitchClasses": [0, 3, 6, 9], "durations": "all", "keys": "all" },
+      "apply": { "color": "#50b4e9" }
+    },
+    {
+      "name": "Colour Rose",
+      "priority": 1,
+      "match": { "pitchClasses": [1, 4, 7, 10], "durations": "all", "keys": "all" },
+      "apply": { "color": "#cc79a7" }
+    },
+    {
+      "name": "Default (kite-down, solid)",
+      "priority": 2,
+      "match": { "pitchClasses": "all", "durations": "all", "keys": "all" },
+      "apply": { "shape": "kite-down", "hollow": false, "offKeyMark": false }
+    },
+    {
+      "name": "Kite-up shapes (semitone mod 4 = 1 or 2)",
+      "priority": 3,
+      "match": { "pitchClasses": [1, 2, 5, 6, 9, 10], "durations": "all", "keys": "all" },
+      "apply": { "shape": "kite-up" }
+    },
+    {
+      "name": "Odd semitones hollow",
+      "priority": 4,
+      "match": { "pitchClasses": [1, 3, 5, 7, 9, 11], "durations": "all", "keys": "all" },
+      "apply": { "hollow": true }
+    }
+  ],
+
+  "display": {
+    "pxPerSemi": 16,
+    "stemThicknessPct": 26,
+    "stemExtension": 2.5,
+    "label": {
+      "fontFamily": "Oswald",
+      "fontSize": 22,
+      "fontWeight": 400,
+      "color": "#555555",
+      "marginTop": 14,
+      "marginBottom": 14,
+      "padding": 6,
+      "sharpStyle": { "fontSize": 0.75, "raise": -0.15 }
+    },
+    "column": { "paddingH": 16 },
+    "card": { "background": "#FFFFFF", "borderRadius": 6, "shadow": "0 2px 12px rgba(0,0,0,0.12)" },
+    "debugGrid": false
+  },
+
+  "durations": {
+    "definitions": [
+      { "name": "crotchet",  "displayName": "Crotchet (Quarter)",   "lilypondDuration": 3, "defaultShape": "kite-down", "defaultHollow": false, "hasStem": true },
+      { "name": "minim",     "displayName": "Minim (Half)",         "lilypondDuration": 2, "defaultShape": "kite-down", "defaultHollow": false, "hasStem": true },
+      { "name": "semibreve", "displayName": "Semibreve (Whole)",    "lilypondDuration": 1, "defaultShape": "kite-down", "defaultHollow": false, "hasStem": false },
+      { "name": "breve",     "displayName": "Breve (Double Whole)", "lilypondDuration": 0, "defaultShape": "kite-down", "defaultHollow": false, "hasStem": false }
+    ],
+    "representationMode": "repeat",
+    "repeatCounts": { "minim": 2, "semibreve": 4, "breve": 8 }
+  },
+
+  "keys": { "enabled": false, "definitions": [], "offKeyMark": {} },
+
+  "engine": {
+    "lilypondVersion": "2.24.2",
+    "falseHollow": true,
+    "multinotePadding": -0.5,
+    "defaultMagnify": "7/4",
+    "indent": 0,
+    "collisionThreshold": 2,
+    "stemThickness": null
+  },
+
+  "meta": {
+    "configName": "Kite 4-369 (Configurator)",
+    "fileSuffix": "-Kite-4-369-Procedure",
+    "notationLabel": "Kite 4-369 (Procedure)",
+    "notationFootnote": "*4-369 Notation: notehead height = 4 semitones; staff lines at +/- 3, 6 & 9 semitones",
+    "author": "",
+    "description": "Kite 4-369 golden-baseline reproduction: diamond noteheads, 3-color cycle, alternating solid/hollow, staff lines at +/- 3, 6, 9 semitones.",
+    "created": "2026-07-05",
+    "modified": "2026-07-05"
+  }
+}
