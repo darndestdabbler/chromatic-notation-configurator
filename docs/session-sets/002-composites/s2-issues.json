@@ -1,0 +1,28 @@
+{
+  "session": 2,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "render() APIs mutate a passed container instead of only returning a node ('not pure')",
+      "location": "cnb/src/cnb-card.js, cnb/src/cnb-collection.js and their tests",
+      "resolution": "Not a defect. The render(container, ...) -> element signature is the architecture plan's own API contract (CNB-ARCHITECTURE-PLAN-v2 §5, Modules 9 and 10: 'CNBCard.render(container, gridContext, config, {...}) → HTMLDivElement', 'CNBCollection.render(container, config, {...}) → HTMLDivElement') and matches every previously-verified rendering module (CNBStaff.render(svgParent, ...), CNBLedgerSet.render(svgParent, ...), CNBNotehead.render(svgParent, ...)). The project's 'pure functions' principle (CLAUDE.md: 'Config in, DOM nodes out. No global state, no event listeners') constrains global state and listeners, not appending to the caller-supplied parent. Changing the signature would deviate from the plan and from the sibling modules verified in set 001 and session 1.",
+      "status": "not-a-defect"
+    },
+    {
+      "id": 2,
+      "summary": "Sharp-offset fallback (?? -0.15) alleged sign-wrong versus the 'upward offset' comment",
+      "location": "cnb/src/cnb-card.js buildLabel()",
+      "resolution": "The fallback value is correct: it deliberately mirrors the schema default sharpStyle.raise = -0.15 defined twice in CNB-ARCHITECTURE-PLAN-v2 (§4.7 display settings and Appendix A default config), so a partial label config renders identically to the full default config. A fallback of +0.15 would make a config that omits sharpStyle render differently from the documented default. The genuinely misleading part was the comment, which is now rewritten to state the sign convention and that the fallback mirrors the schema default.",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "summary": "Response summary miscounted the added tests (claimed 18 card + 9 collection = 27; actual 20 + 9 = 29)",
+      "location": "verification round-1 prompt summary and commit message",
+      "resolution": "Correct: cnb-card-tests.js has 20 tests and cnb-collection-tests.js has 9, so 29 new tests were added this session (suite total 208 is unchanged and was always accurate). Record corrected here and in the round-2 prompt; the code and registered suites were never inconsistent.",
+      "status": "fixed"
+    }
+  ]
+}
