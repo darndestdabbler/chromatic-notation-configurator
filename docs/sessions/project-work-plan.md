@@ -50,12 +50,14 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 36 | Rough edges from the rebuilds | no | 2026-11-08 |
 | 37 | Colours chosen directly | no | 2026-11-08 |
 | 38 | Selecting several noteheads, found at once | no | 2026-11-08 |
-| 39 | Undo and redo | — | not declared |
-| 40 | The UI is stable | — | not declared |
-| 41 | Release 1.1.0 (release: 1.1.0) | — | not declared |
-| 42 | Designing the key-signature designer | — | not declared |
-| 43 | Published schemas and partial configs | — | not declared |
-| 44 | Clefs to pick from | — | not declared |
+| 39 | The workflow in the order a notation is designed | no | 2026-11-09 |
+| 40 | Stems where the notehead's SVG puts them | — | not declared |
+| 41 | Undo and redo | — | not declared |
+| 42 | The UI is stable | — | not declared |
+| 43 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 44 | Designing the key-signature designer | — | not declared |
+| 45 | Published schemas and partial configs | — | not declared |
+| 46 | Clefs to pick from | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -381,3 +383,14 @@ Session 38 makes the existing ways of changing several noteheads at once easy to
 **Amended after acceptance:**
 
 - 2026-11-09 — step 'operator-trial': its files: The operator asked for two new sessions before 1.1.0 (workflow order; stems placed as the SVG specifies), inserted into the session plan as sessions 39 and 40 (claude-code (anthropic, claude-opus-5-5))
+
+### Session 39 — The workflow in the order a notation is designed
+
+**Releasable: no.**
+
+Put the page's sections in the order a notation is designed, starting from the general notehead height. The page still starts from the default config (the conventional crotchet-minim notehead on the 4-8 staff), but opens on a new first section, Notehead height, whose one field sets the height in semitones of every notehead (the width follows at each shape's own ratio), written through the look table so the Default rule carries it and the canvas draws the noteheads at that height. The notehead panel module gains the pure generalHeight(config) and setGeneralHeight(config, height) and the small renderGeneralHeight control, with unit tests. index.html then lists and stacks the sections as Notehead height, Staff, Pitch (beside Staff), Ledger lines, Noteheads, Key signature, Clef, then Advanced and Export, and opens on Notehead height. The UAT drivers follow the new first section and check that setting the height draws the noteheads that tall, and the README, the design's flow and docs/uat-status.md describe the new order.
+
+**Amended after acceptance:**
+
+- 2026-11-09 — step 'general-height': its files: A size every notehead shares is written by the inference as a separate rule over all twelve pitch classes ('every 1 semitones from C'), not on the Default; the Default must carry the general height, as it carries the most common colour, so the inference changes too. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-09 — step 'section-order': its files: On the page the Notehead height control's reset button sat flush against the field's unit; giving the control the panel's existing cnb-nhp-group class spaces it with the page's own styles. (claude-code (anthropic, claude-opus-5-5))

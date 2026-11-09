@@ -28,6 +28,11 @@
  * Colour (session 37). A notehead's colour lives on its rules, as its
  * shape and fill do: the Default carries the most common colour when it is
  * not none, and each other colour gets a rule ({color: null} for none).
+ *
+ * Size (session 39). When no notehead is at its shape's own size, the
+ * Default carries the most common size (the general notehead height), and
+ * each other size gets a rule. Otherwise the default is the shape's own
+ * size, which a rule cannot set, and each set size gets a rule.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
@@ -52,6 +57,7 @@ function listNames(pcs) {
 const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 const sizeKey = (row) => `${row.heightSemis}|${row.widthSemis}`;
+const OWN_SIZE = "null|null";
 
 function capitalise(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -142,10 +148,11 @@ function colourName(hex) {
 
 /**
  * The inferred rules for a look table, in priority order: the Default, then
- * one rule per non-default value of shape, fill, size and side step. Size
- * and side step default to the shape's own size and to no step, because a
- * rule cannot set "the shape's own size" (null is not a valid heightSemis)
- * and a zero side step is never written. Colour (session 37) defaults to
+ * one rule per non-default value of shape, fill, size and side step. The
+ * side step defaults to no step, which is never written. Size defaults to
+ * the shape's own size whenever a notehead is at it, because a rule cannot
+ * set "the shape's own size" (null is not a valid heightSemis); else to its
+ * most common value, which the Default carries (session 39). Colour (session 37) defaults to
  * its most common value: the Default carries it unless it is none, and each
  * other colour gets a rule, {color: null} for none. Also returns colour's
  * inference with its words for the rule list.
@@ -155,6 +162,7 @@ function inferRules(config, table) {
 
   const defApply = { shape: shape.def, hollow: fill.def };
   if (colour.def !== null) defApply.color = colour.def;
+  if (size.def !== OWN_SIZE) Object.assign(defApply, sizeApply(size.def, table));
   const rules = [rule(`Default (${shape.def}, ${fill.def ? "hollow" : "solid"})`, "all",
     defApply)];
   for (const g of shape.groups) rules.push(rule(ruleName(capitalise(g.value), g), g.pcs, { shape: g.value }));
@@ -174,12 +182,13 @@ function inferRules(config, table) {
   return { rules, colour };
 }
 
-/** Each attribute's inference (§5.1). Size and side step have fixed defaults (see inferRules). */
+/** Each attribute's inference (§5.1). The side step has a fixed default, and
+ *  size one while any notehead is at its shape's own size (see inferRules). */
 function attributes(table) {
   return {
     shape: inferAttribute(table.map(r => r.shape)),
     fill: inferAttribute(table.map(r => r.hollow)),
-    size: inferAttribute(table.map(sizeKey), "null|null"),
+    size: inferAttribute(table.map(sizeKey), table.some(r => sizeKey(r) === OWN_SIZE) ? OWN_SIZE : undefined),
     side: inferAttribute(table.map(r => r.xOffsetStaffSpaces), 0),
     colour: inferAttribute(table.map(r => (r.color === null ? null : r.color.toLowerCase()))),
   };
@@ -214,8 +223,9 @@ function ruleLines(config, table) {
     const [h, w] = key.split("|");
     return { heightSemis: h === "null" ? null : Number(h), widthSemis: w === "null" ? null : Number(w) };
   };
-  const size = line("size", "Size", a.size, "the shape's own", k => sizeWords(k).toLowerCase(), sizeValue);
-  if (!a.size.groups.length) size.words = "Size: each shape at its own size";
+  const sizeDef = a.size.def === OWN_SIZE ? "the shape's own" : sizeWords(a.size.def).toLowerCase();
+  const size = line("size", "Size", a.size, sizeDef, k => sizeWords(k).toLowerCase(), sizeValue);
+  if (!a.size.groups.length && a.size.def === OWN_SIZE) size.words = "Size: each shape at its own size";
   const lines = [
     line("shape", "Shape", a.shape, shapeWords(a.shape.def), shapeWords),
     line("fill", "Fill", a.fill, a.fill.def ? "hollow" : "solid", v => (v ? "hollow" : "solid")),

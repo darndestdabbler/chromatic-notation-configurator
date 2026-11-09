@@ -21,6 +21,31 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The workflow in the order a notation is designed — 2026-11-09 (session 39)
+
+In the session-38 rebuild the operator judged a notehead's height against
+the staff before setting either, and asked for the sections in the order a
+designer settles them. Session 39:
+
+- The page still starts from the conventional notehead on the 4-8 staff,
+  and now opens on a new first section, **Notehead height**: one field
+  sets every notehead's height in semitones, each keeping its shape's
+  proportions, and **The shape's own height** puts them back. The height
+  is written through the look table, so the Default rule carries it (the
+  inference now puts a size every notehead shares on the Default, as it
+  does the most common colour).
+- The section list reads Notehead height, Staff, Pitch, Ledger lines,
+  Noteheads, Key signature, Clef, then Advanced and Export. Every section
+  stays reachable at any time.
+
+**What the UAT checks.** `uat-app-layout.mjs`, at 1440 and 1280 px: the
+page opens on the Notehead height panel alone; the section list is in that
+order; a height of 4 semitones is on the Default rule with the width at the
+shape's ratio and no other size rule; every one of the 26 canvas noteheads
+is drawn 4 semitones tall (its box 44 px at Medium); The shape's own height
+writes no size; and each section still shows its own panel. `npm run uat`
+passes 17 of 17 drivers.
+
 ## Selecting several noteheads — 2026-11-09 (session 38)
 
 Session 35 found that the operator gave each notehead its look in turn,

@@ -208,6 +208,103 @@ export const CNBNoteheadPanel = {
   },
 
   /**
+   * The general notehead height (session 39): the most common height the
+   * noteheads are drawn at, in semitones (a notehead with no size set is at
+   * its shape's own semitoneHeight). Ties go to C's.
+   * @param {object} config
+   * @returns {number}
+   */
+  generalHeight(config) {
+    const heights = I.lookTable(config).map(r => r.heightSemis ?? shapeOf(config, r.shape).semitoneHeight);
+    let best = heights[0];
+    const count = (h) => heights.filter(x => x === h).length;
+    for (const h of heights) if (count(h) > count(best)) best = h;
+    return best;
+  },
+
+  /**
+   * A new config with every notehead at this height, in semitones, and its
+   * width at its shape's own proportions (session 39). A size equal to the
+   * shape's own is written as none; null puts every notehead at its
+   * shape's own size. Written through the look table, so the Default rule
+   * carries the height. The input is not changed.
+   * @param {object} config
+   * @param {number|null} height
+   * @returns {object}
+   */
+  setGeneralHeight(config, height) {
+    const table = I.lookTable(config).map(row => {
+      if (height === null) return { ...row, heightSemis: null, widthSemis: null };
+      const shape = shapeOf(config, row.shape);
+      const own = ownSize(shape);
+      const h = round4(height);
+      const w = round4(height * shape.naturalWidth / shape.naturalHeight);
+      return { ...row, heightSemis: h === round4(own.height) ? null : h, widthSemis: w === own.width ? null : w };
+    });
+    return I.writeBack(config, table);
+  },
+
+  /**
+   * The Notehead height section's control (session 39): one Height field in
+   * semitones, which sets every notehead's height (setGeneralHeight), and a
+   * button for the shapes' own heights. Each edit reports the new config
+   * through onChange. Appended to container as a div.cnb-nhp-general.
+   * @param {HTMLElement} container
+   * @param {{getConfig: () => object, onChange?: (config: object) => void}} opts
+   * @returns {{root: HTMLElement, redraw: () => void}}
+   */
+  renderGeneralHeight(container, opts = {}) {
+    if (typeof opts.getConfig !== "function") {
+      throw new Error("CNBNoteheadPanel.renderGeneralHeight requires opts.getConfig — the host owns config state");
+    }
+    const { getConfig } = opts;
+    const onChange = opts.onChange || (() => {});
+    const doc = globalThis.document;
+    const el = (tag, className, text) => {
+      const e = doc.createElement(tag);
+      if (className) e.className = className;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    };
+    const root = el("div", "cnb-nhp-group cnb-nhp-general");
+
+    function draw() {
+      root.textContent = "";
+      const wrap = el("label", "cnb-nhp-field");
+      wrap.appendChild(el("span", "", "Height"));
+      const input = el("input", "cnb-nhp-general-height");
+      input.type = "number";
+      input.min = "0.25";
+      input.max = "4";
+      input.step = "0.05";
+      input.value = String(round4(CNBNoteheadPanel.generalHeight(getConfig())));
+      input.onchange = (e) => {
+        const v = Number(e && e.target && e.target.value !== undefined ? e.target.value : input.value);
+        if (!(Number.isFinite(v) && v > 0)) return;
+        onChange(CNBNoteheadPanel.setGeneralHeight(getConfig(), v));
+        draw();
+      };
+      wrap.appendChild(input);
+      wrap.appendChild(el("span", "cnb-nhp-unit", "semitones"));
+      root.appendChild(wrap);
+      const reset = el("button", "cnb-nhp-general-reset", "The shape's own height");
+      reset.type = "button";
+      reset.onclick = () => {
+        onChange(CNBNoteheadPanel.setGeneralHeight(getConfig(), null));
+        draw();
+      };
+      root.appendChild(reset);
+      root.appendChild(el("p", "cnb-nhp-hint",
+        "Every notehead's height, in semitones on the staff; each keeps its shape's proportions. " +
+        "Set this first: the staff, the ledger lines and each notehead's own size are judged against it."));
+    }
+
+    container.appendChild(root);
+    draw();
+    return { root, redraw: draw };
+  },
+
+  /**
    * The Noteheads section's rule list (design §5.4): one read-only line per
    * attribute from ruleLines, in words, with swatches for the colours and
    * thumbnails for the shapes. Hovering a line calls onHover with the pitch

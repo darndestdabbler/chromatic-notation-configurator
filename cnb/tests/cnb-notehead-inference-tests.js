@@ -191,6 +191,30 @@ export const tests = [
       for (const r of rules) deepEq([r.match.durations, r.match.keys], ["all", "all"], r.name);
     }},
 
+  { name: "inferRules (session 39): a size every notehead shares is carried by the Default; one at its own size keeps the fixed default", fn: () => {
+      const c = CNBConfig.createDefault();
+      const shared = I.lookTable(c).map(r => ({ ...r, heightSemis: 4, widthSemis: 5 }));
+      deepEq(I.inferRules(c, shared).rules.map(r => [r.name, r.apply]), [
+        ["Default (crotchet-minim, solid)", { shape: "crotchet-minim", hollow: false, heightSemis: 4, widthSemis: 5 }],
+        ["Hollow on the accidentals", { hollow: true }],
+      ], "shared size on the Default");
+      eq(I.ruleLines(c, shared).find(l => l.attribute === "size").words,
+        "Size: height 4, width 5 semitones everywhere", "in words");
+      const mixed = shared.map(r => (r.pc === 0 ? { ...r, heightSemis: 2 } : r));
+      deepEq(I.inferRules(c, mixed).rules.map(r => r.apply), [
+        { shape: "crotchet-minim", hollow: false, heightSemis: 4, widthSemis: 5 },
+        { hollow: true },
+        { heightSemis: 2, widthSemis: 5 },
+      ], "the most common size on the Default, the other as a rule");
+      const own = shared.map(r => (r.pc === 0 ? { ...r, heightSemis: null, widthSemis: null } : r));
+      const rules = I.inferRules(c, own).rules;
+      eq("heightSemis" in rules[0].apply, false, "a notehead at its own size: the Default sets no size");
+      for (let pc = 0; pc < 12; pc++) {
+        const r = CNBConfig.resolveNotehead(I.writeBack(c, own), pc, "crotchet", null);
+        eq(r.heightSemis, pc === 0 ? null : 4, `resolved height of ${pc}`);
+      }
+    }},
+
   // ── ruleLines: the rule list in words (§5.4, session 27) ──────────────
 
   { name: "ruleLines (§5.2): default 4-8 → one line per attribute, each at its default where uniform", fn: () => {

@@ -43,6 +43,12 @@
  * default config with Automatic ledgers, chooses the 2-4-6-8-10 and
  * 3-5-7-9 presets in turn, and saves panel-staff-<preset>.png for each.
  *
+ * Session 39: the page opens on Notehead height and lists the sections in
+ * the order a notation is designed (Notehead height, Staff, Pitch, Ledger
+ * lines, Noteheads, Key signature, Clef, then Advanced and Export). Setting
+ * the height to 4 semitones puts it on the Default rule and draws every
+ * canvas notehead's box 4 semitones tall; The shape's own height clears it.
+ *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
  * exit 2 = missing dependency, 1 = check failure, 0 = all passed).
@@ -58,7 +64,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection, selectNotehead } from "./app-page.mjs";
+import { openSection, selectNotehead, setField, canvasConfig } from "./app-page.mjs";
 import { CNBConfig } from "../src/cnb-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -197,6 +203,10 @@ async function layout(page) {
   }));
 }
 
+/** The section list, in the order a notation is designed (session 39). */
+const SECTIONS = ["notehead-height", "staff", "pitch", "ledger-lines", "noteheads",
+  "key-signature", "clef", "advanced", "export"];
+
 const visiblePanels = (page) => page.$$eval(".panel", els =>
   els.filter(e => !e.hidden).map(e => e.dataset.panel));
 
@@ -214,13 +224,36 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     l.systems === EXPECTED_ROWS.default[width] && l.cards === 13 && !l.overflow, JSON.stringify(l));
   check(`${width}: the page does not scroll sideways (default config)`,
     l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
-  check(`${width}: the Staff section's panel is the only one shown`,
-    JSON.stringify(await visiblePanels(page)) === '["staff"]', JSON.stringify(await visiblePanels(page)));
+  check(`${width}: the page opens on Notehead height, its panel the only one shown`,
+    JSON.stringify(await visiblePanels(page)) === '["notehead-height"]', JSON.stringify(await visiblePanels(page)));
+  const links = await page.$$eval(".section-link", els => els.map(e => e.dataset.section));
+  check(`${width}: the sections are listed in the order a notation is designed (session 39)`,
+    JSON.stringify(links) === JSON.stringify(SECTIONS), JSON.stringify(links));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-default-${width}.png`), fullPage: true });
+
+  // ── The general notehead height (session 39) ──
+  await setField(page, ".cnb-nhp-general-height", "4");
+  const sized = JSON.parse(await page.textContent("#state-json"));
+  const def = sized.noteheadRules.find(r => r.match.pitchClasses === "all");
+  check(`${width}: a height of 4 semitones is carried by the Default rule, the width at the shape's ratio`,
+    def.apply.heightSemis === 4 && def.apply.widthSemis === Math.round(4 * 344.852 / 272.4 * 1e4) / 1e4 &&
+    sized.noteheadRules.filter(r => "heightSemis" in r.apply).length === 1, JSON.stringify(def.apply));
+  const want = 4 * canvasConfig(sized, "medium").display.pxPerSemi;
+  const boxes = await page.evaluate((naturalHeight) =>
+    [...document.querySelectorAll(".cnb-pvd-preview .note-slice > g:not(.cnb-ledger-set) > path:first-child")]
+      .map(p => p.getBoundingClientRect().height / p.getBBox().height * naturalHeight), 272.4);
+  check(`${width}: every canvas notehead is drawn 4 semitones tall (${want} px at Medium)`,
+    boxes.length === 26 && boxes.every(h => Math.abs(h - want) < 0.5),
+    `${boxes.length} heads, ${Math.min(...boxes).toFixed(2)}–${Math.max(...boxes).toFixed(2)} px`);
+  await page.click(".cnb-nhp-general-reset");
+  const reset = JSON.parse(await page.textContent("#state-json"));
+  check(`${width}: The shape's own height writes no size`,
+    reset.noteheadRules.every(r => !("heightSemis" in r.apply) && !("widthSemis" in r.apply)) &&
+    (await page.inputValue(".cnb-nhp-general-height")) === "2.724");
 
   // ── One panel at a time ──
   let onePanel = true;
-  for (const name of ["noteheads", "pitch", "ledger-lines", "clef", "key-signature", "advanced", "export", "staff"]) {
+  for (const name of [...SECTIONS.slice(1), SECTIONS[0]]) {
     await openSection(page, name);
     const shown = await visiblePanels(page);
     const current = await page.$$eval(".section-link.on", els => els.map(e => e.dataset.section));

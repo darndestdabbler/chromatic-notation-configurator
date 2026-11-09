@@ -43,15 +43,17 @@
   </header>
 
   <div class="shell">
-    <!-- Section list: one panel at a time (design §7). -->
+    <!-- Section list: one panel at a time (design §7), in the order a
+         notation is designed, each step resting on the last (session 39). -->
     <nav class="sidebar" aria-label="Sections">
       <div class="sidebar-inner">
+        <button type="button" class="section-link" data-section="notehead-height">Notehead height</button>
         <button type="button" class="section-link" data-section="staff">Staff</button>
-        <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
         <button type="button" class="section-link" data-section="pitch">Pitch</button>
         <button type="button" class="section-link" data-section="ledger-lines">Ledger lines</button>
-        <button type="button" class="section-link" data-section="clef">Clef</button>
+        <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
         <button type="button" class="section-link" data-section="key-signature">Key signature</button>
+        <button type="button" class="section-link" data-section="clef">Clef</button>
         <hr>
         <button type="button" class="section-link" data-section="advanced">Advanced</button>
         <button type="button" class="section-link" data-section="export">Export</button>
@@ -61,8 +63,9 @@
     <main class="main">
       <div class="main-inner">
         <p class="intro">
-          Design a chromatic staff notation: draw the staff, give each notehead
-          its look, then export it for LilyPond.
+          Design a chromatic staff notation in the order of the sections: set the
+          notehead height, draw the staff and its ledger lines, give each notehead
+          its look, add a key signature and a clef, then export it for LilyPond.
         </p>
 
         <!-- The staff canvas, always visible. -->
@@ -76,19 +79,14 @@
           <div id="notehead-panel-host"></div>
         </section>
 
+        <section class="card panel" data-panel="notehead-height" hidden>
+          <div class="card-head"><h2>Notehead height</h2><span class="sub">How tall every notehead is, set first</span></div>
+          <div class="card-body"><div id="notehead-height-host"></div></div>
+        </section>
+
         <section class="card panel" data-panel="staff" hidden>
           <div class="card-head"><h2>Staff</h2><span class="sub">Where the staff lines are</span></div>
           <div class="card-body"><div id="staff-editor-host"></div></div>
-        </section>
-
-        <section class="card panel" data-panel="noteheads" hidden>
-          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several); the rules follow</span></div>
-          <div class="card-body">
-            <div>
-              <p class="group-title">Rules</p>
-              <div id="rule-list-host"></div>
-            </div>
-          </div>
         </section>
 
         <section class="card panel" data-panel="pitch" hidden>
@@ -101,11 +99,13 @@
           <div class="card-body"><div id="ledger-editor-host"></div></div>
         </section>
 
-        <section class="card panel" data-panel="clef" hidden>
-          <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
+        <section class="card panel" data-panel="noteheads" hidden>
+          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several); the rules follow</span></div>
           <div class="card-body">
-            <div id="clef-preview-host"></div>
-            <div id="clef-editor-host"></div>
+            <div>
+              <p class="group-title">Rules</p>
+              <div id="rule-list-host"></div>
+            </div>
           </div>
         </section>
 
@@ -114,6 +114,14 @@
           <div class="card-body">
             <div id="key-signature-preview-host"></div>
             <div id="key-signature-editor-host"></div>
+          </div>
+        </section>
+
+        <section class="card panel" data-panel="clef" hidden>
+          <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
+          <div class="card-body">
+            <div id="clef-preview-host"></div>
+            <div id="clef-editor-host"></div>
           </div>
         </section>
 
@@ -201,7 +209,7 @@
     // The canvas shows what the open section needs (design §6): the Ledger
     // lines section marks the ledger spots and the columns that draw them.
     let previewApi = null;
-    let currentSection = "staff";
+    let currentSection = "notehead-height";
     function showSection(name) {
       currentSection = name;
       closeNoteheadPanel();
@@ -480,7 +488,21 @@
         map.scrollIntoView({ block: "nearest" });
       },
     });
-    showSection("staff");           // sets the focus, which redraws the partial staffs at the canvas Size
+
+    // ── Notehead height (session 39): the first section, every notehead's
+    // height, written to the rules through the look table ──────────────
+    const heightApi = CNBNoteheadPanel.renderGeneralHeight(byId("notehead-height-host"), {
+      getConfig: () => appConfig,
+      onChange: (config) => {
+        appConfig = config;
+        mountLookEditors();
+        refreshShared();
+      },
+    });
+
+    // The page opens on the first section; this sets the focus, which
+    // redraws the partial staffs at the canvas Size.
+    showSection("notehead-height");
 
     // ── The Noteheads section's rule list (design §5.4) ──────────────────
     // Hovering a line tints the canvas columns it covers.
@@ -612,6 +634,7 @@
       refreshRuleList();
       if (panelApi && !keepPanel) panelApi.redraw();
       pitchApi.redraw();
+      heightApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
     }

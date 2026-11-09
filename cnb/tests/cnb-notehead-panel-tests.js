@@ -472,6 +472,62 @@ export const tests = [
       });
     }},
 
+  { name: "generalHeight: the default notehead is at its shape's own 2.724 semitones; the most common height wins", fn: () => {
+      eq(P.generalHeight(CNBConfig.createDefault()), 2.724, "default");
+      const config = CNBConfig.createDefault();
+      config.noteheadRules.push({ name: "C small", priority: 5, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { heightSemis: 1.5 } });
+      eq(P.generalHeight(config), 2.724, "one notehead sized: the others' height");
+    }},
+
+  { name: "setGeneralHeight: every notehead at the height, the width at the shape's ratio, carried by the Default rule", fn: () => {
+      const config = CNBConfig.createDefault();
+      const before = JSON.stringify(config);
+      const out = P.setGeneralHeight(config, 4);
+      eq(JSON.stringify(config), before, "input unchanged");
+      const width = Math.round(4 * 344.852 / 272.4 * 1e4) / 1e4;
+      for (let pc = 0; pc < 12; pc++) {
+        const r = CNBConfig.resolveNotehead(out, pc, "crotchet", null);
+        eq(r.heightSemis, 4, `height of ${pc}`);
+        eq(r.widthSemis, width, `width of ${pc}`);
+      }
+      const def = out.noteheadRules.find(r => r.match.pitchClasses === "all");
+      eq(def.apply.heightSemis, 4, "the Default carries the height");
+      eq(def.apply.widthSemis, width, "and the width");
+      eq(out.noteheadRules.filter(r => "heightSemis" in r.apply).length, 1, "no other size rule");
+      eq(P.generalHeight(out), 4, "reads back");
+      eq(CNBConfig.validate(out).errors.length, 0, "valid");
+    }},
+
+  { name: "setGeneralHeight: the shape's own height, or null, clears every size", fn: () => {
+      const sized = P.setGeneralHeight(CNBConfig.createDefault(), 4);
+      for (const out of [P.setGeneralHeight(sized, 2.724), P.setGeneralHeight(sized, null)]) {
+        eq(out.noteheadRules.filter(r => "heightSemis" in r.apply || "widthSemis" in r.apply).length, 0, "no size written");
+        eq(CNBConfig.resolveNotehead(out, 0, "crotchet", null).heightSemis, null, "C at its own size");
+      }
+    }},
+
+  { name: "renderGeneralHeight: the field shows the height, and a change or the reset reports the new config", fn: () => {
+      withDomStub(container => {
+        let config = CNBConfig.createDefault();
+        let changes = 0;
+        const api = P.renderGeneralHeight(container, { getConfig: () => config, onChange: (c) => { config = c; changes++; } });
+        const input = () => findOne(api.root, "cnb-nhp-general-height");
+        eq(input().value, "2.724", "starts at the shape's own height");
+        input().onchange({ target: { value: "4" } });
+        eq(changes, 1, "one change");
+        eq(CNBConfig.resolveNotehead(config, 7, "crotchet", null).heightSemis, 4, "G at 4");
+        eq(input().value, "4", "redrawn at 4");
+        input().onchange({ target: { value: "-1" } });
+        eq(changes, 1, "a height that is not positive writes nothing");
+        findOne(api.root, "cnb-nhp-general-reset").onclick();
+        eq(changes, 2, "the reset reports");
+        eq(CNBConfig.resolveNotehead(config, 7, "crotchet", null).heightSemis, null, "G at its own size");
+        let threw = false;
+        try { P.renderGeneralHeight(container, {}); } catch { threw = true; }
+        assert(threw, "requires getConfig");
+      });
+    }},
+
   { name: "the marker names the rules for particular durations or keys that change this notehead", fn: () => {
       const config = CNBConfig.createDefault();
       config.noteheadRules.push({ name: "Minim C", priority: 5, match: { pitchClasses: [0], durations: ["minim"], keys: "all" }, apply: { hollow: true } });

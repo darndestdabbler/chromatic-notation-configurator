@@ -180,8 +180,19 @@ staff draws. While the signature is off, **Show the key signature** turns
 it on, as the scale stack: the key's scale as stacked noteheads, as the
 engine engraves it.
 
+The sections are listed in the order a notation is designed, each step
+resting on the last, and the page opens on the first. It starts from a
+conventional notehead on the 4-8 staff.
+
+- **Notehead height** — how tall every notehead is, in semitones; each
+  keeps its shape's proportions. Set it first: the staff, the ledger lines
+  and each notehead's own size are judged against it.
 - **Staff** — pick a staff pattern (which semitones within the octave
   carry lines, e.g. 4-8 or 3-6-9).
+- **Pitch** — the middle of the staff, the staff spacing, and nudges that
+  move a note up to a semitone from its place.
+- **Ledger lines** — Automatic, or your own rules for which notes get
+  which ledgers.
 - **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
   selects several, and Esc clears the selection) to
   open the notehead panel: colour (with **Suggested colours** to start
@@ -189,13 +200,9 @@ engine engraves it.
   this look to** all, every other, every third … of the noteheads, or the
   accidentals or naturals. The section lists the rules the looks are kept
   as.
-- **Pitch** — the middle of the staff, the staff spacing, and nudges that
-  move a note up to a semitone from its place.
-- **Ledger lines** — Automatic, or your own rules for which notes get
-  which ledgers.
-- **Clef** and **Key signature** — an imported clef glyph or a text clef;
-  the signature's look; and the keys a notehead rule can be for. The
-  signature draws for the key picked on the staff, defined here or not.
+- **Key signature** and **Clef** — the signature's look, and the keys a
+  notehead rule can be for (the signature draws for the key picked on the
+  staff, defined here or not); an imported clef glyph or a text clef.
 - **Advanced** — rules for particular durations or keys, the duration list
   and engine settings, the pitch axis map, the pitch range shown, and the
   file as JSON.

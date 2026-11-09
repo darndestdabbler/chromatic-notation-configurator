@@ -623,6 +623,29 @@
       "what": "step 'operator-trial': its files",
       "reason": "The operator asked for two new sessions before 1.1.0 (workflow order; stems placed as the SVG specifies), inserted into the session plan as sessions 39 and 40",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T04:57:54.753000-05:00",
+      "task": "Put the page's sections in the order a notation is designed, starting from the general notehead height. The page still starts from the default config (the conventional crotchet-minim notehead on the 4-8 staff), but opens on a new first section, Notehead height, whose one field sets the height in semitones of every notehead (the width follows at each shape's own ratio), written through the look table so the Default rule carries it and the canvas draws the noteheads at that height. The notehead panel module gains the pure generalHeight(config) and setGeneralHeight(config, height) and the small renderGeneralHeight control, with unit tests. index.html then lists and stacks the sections as Notehead height, Staff, Pitch (beside Staff), Ledger lines, Noteheads, Key signature, Clef, then Advanced and Export, and opens on Notehead height. The UAT drivers follow the new first section and check that setting the height draws the noteheads that tall, and the README, the design's flow and docs/uat-status.md describe the new order.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T04:59:16.755000-05:00",
+      "what": "step 'general-height': its files",
+      "reason": "A size every notehead shares is written by the inference as a separate rule over all twelve pitch classes ('every 1 semitones from C'), not on the Default; the Default must carry the general height, as it carries the most common colour, so the inference changes too.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T05:09:44.858000-05:00",
+      "what": "step 'section-order': its files",
+      "reason": "On the page the Notehead height control's reset button sat flush against the field's unit; giving the control the panel's existing cnb-nhp-group class spaces it with the page's own styles.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

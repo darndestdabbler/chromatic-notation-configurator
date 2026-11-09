@@ -46,6 +46,13 @@ The page is one screen: a top bar, a section list on the left, and the
 **staff canvas** in the middle with the panel for the current section
 under it. The canvas is always visible (§7).
 
+*(Session 39: the page now opens on a first section, **Notehead height**,
+which sets every notehead's height in semitones on the default 4-8 staff,
+carried by the Default rule. The section list follows the order a notation
+is designed: Notehead height, Staff, Pitch, Ledger lines, Noteheads, Key
+signature, Clef, then Advanced and Export. Every section stays reachable
+at any time. The steps below keep their original numbering.)*
+
 1. **Staff.** The staff editor stays as it is today: choose a pattern (4-8,
    3-6-9 or custom pitch classes), with line thickness, colour and style.
    Only its styling and wording change (§8).
