@@ -858,9 +858,9 @@
     {
       "number": 41,
       "title": "Undo and redo",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-09T07:00:56.144000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-09T07:26:58.073000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
