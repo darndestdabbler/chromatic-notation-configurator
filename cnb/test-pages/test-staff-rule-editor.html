@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Staff/Ledger Rule Editor Test — Module 13</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 620px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 520px;
+      max-height: 480px;
+      overflow: auto;
+      margin: 0;
+    }
+    #preview-host { overflow-x: auto; max-width: 860px; }
+
+    /* ── Staff rule editor host styling (module ships structure only) ── */
+    .cnb-sre-section { margin-bottom: 16px; }
+    .cnb-sre-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-sre-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+
+    .cnb-sre-pattern-option {
+      padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 6px;
+      margin-bottom: 4px; cursor: pointer; font-size: 13px; color: #444;
+    }
+    .cnb-sre-pattern-option:hover { border-color: #bbb; }
+    .cnb-sre-pattern-option.selected { border-color: #2b6cb0; background: #eff6fc; }
+
+    .cnb-sre-custom-pcs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .cnb-sre-pc-toggle, .cnb-sre-trigger-pill {
+      font: inherit; font-size: 11px; padding: 3px 7px; line-height: 1.2;
+      border: 1px solid #ccc; border-radius: 10px; background: #fafafa;
+      color: #888; cursor: pointer;
+    }
+    .cnb-sre-pc-toggle.on, .cnb-sre-trigger-pill.on {
+      background: #2b6cb0; border-color: #2b6cb0; color: white;
+    }
+
+    .cnb-sre-derived {
+      font-size: 12px; color: #555; background: #f8f8f8;
+      border: 1px solid #eee; border-radius: 6px;
+      padding: 8px 10px; margin-bottom: 16px; line-height: 1.6;
+    }
+    .cnb-sre-derived-error { color: #c62828; }
+
+    .cnb-sre-template-row {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 6px 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px;
+    }
+    .cnb-sre-template-pos, .cnb-sre-template-mode {
+      font: inherit; font-size: 12px; padding: 3px 4px; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-sre-template-triggers { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+    .cnb-sre-template-triggers.inactive { opacity: 0.35; }
+    .cnb-sre-template-remove {
+      font: inherit; font-size: 13px; width: 22px; height: 22px; line-height: 1;
+      border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+    }
+    .cnb-sre-template-add {
+      font: inherit; font-size: 12px; padding: 5px 10px;
+      border: 1px dashed #aaa; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+
+    .cnb-sre-proximity {
+      display: flex; align-items: center; gap: 8px; font-size: 12px;
+      color: #444; margin: 12px 0; cursor: pointer;
+    }
+
+    .cnb-sre-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-sre-valid { color: #2e7d32; }
+    .cnb-sre-error { color: #c62828; }
+    .cnb-sre-warning { color: #b45309; }
+  </style>
+</head>
+<body>
+  <h1>CNB Staff/Ledger Rule Editor — Module 13 Visual Test</h1>
+  <p>
+    Change the staff pattern, override individual lines, and edit ledger
+    templates; the preview below re-renders through Module 3 (Staff) and
+    Module 5 (Ledger Set) on every change, and the resulting
+    <code>config.staff</code> / <code>config.ledgers</code> slices update
+    live. The dots are example notes (a two-octave chromatic run), one column
+    per semitone, each showing the ledger lines that Module 5 resolves for it.
+  </p>
+
+  <div class="card">
+    <h2>Staff/ledger rule editor</h2>
+    <div id="editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Live preview (Module 3 staff + Module 5 ledgers)</h2>
+    <div id="preview-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>config.staff + config.ledgers (live)</h2>
+    <pre id="config-json"></pre>
+  </div>
+
+  <script type="module">
+    import { CNBStaffRuleEditor } from "../ui/staff-rule-editor.js";
+    import { CNBConfig } from "../src/cnb-config.js";
+
+    const config = CNBConfig.createDefault();
+
+    function refresh(slices) {
+      config.staff = slices.staff;
+      config.ledgers = slices.ledgers;
+
+      document.getElementById("config-json").textContent =
+        JSON.stringify({ staff: config.staff, ledgers: config.ledgers }, null, 2);
+
+      const host = document.getElementById("preview-host");
+      host.textContent = "";
+      CNBStaffRuleEditor.renderPreview(host, config, { colWidth: 30 });
+    }
+
+    const handle = CNBStaffRuleEditor.render(
+      document.getElementById("editor-host"),
+      { config, onChange: (slices) => refresh(slices) }
+    );
+    refresh({ staff: handle.getStaff(), ledgers: handle.getLedgers() });
+  </script>
+</body>
+</html>
