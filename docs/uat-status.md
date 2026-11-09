@@ -21,6 +21,26 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Undo and redo — 2026-11-09 (session 41)
+
+A wrong change could only be put right by hand. Session 41 adds **Undo**
+and **Redo** to the top bar, with Ctrl+Z and Ctrl+Shift+Z (Ctrl+Y redoes
+too; Cmd on a Mac), back through the last 100 changes to the config. Every
+change is a step: an edit in any section, the notehead panel, the canvas, an
+imported shape, and opening a config. A value typed a key at a time, or a
+colour dragged, is one step. Save adds none. What is not the config (the
+section shown, the selection, the canvas Size, duration and key) is not
+undone, and the history does not survive a reload.
+
+**What the UAT checks.** The new driver, `uat-undo.mjs`, on the default
+config: the buttons start disabled; a staff pattern, a dragged colour and a
+typed name are three steps, which Ctrl+Z undoes one at a time back to the
+starting config and Ctrl+Shift+Z, Redo and Ctrl+Y redo, each state compared
+through View file (JSON); a change after an undo leaves nothing to redo;
+opening Twinline is one step that Undo reverts and Redo repeats; and after a
+change and a Save, one undo is back at the start. 22 of 22 checks pass, and
+`npm run uat` passes 18 of 18 drivers.
+
 ## The workflow in the order a notation is designed — 2026-11-09 (session 39)
 
 In the session-38 rebuild the operator judged a notehead's height against

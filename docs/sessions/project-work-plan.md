@@ -52,7 +52,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 38 | Selecting several noteheads, found at once | no | 2026-11-08 |
 | 39 | The workflow in the order a notation is designed | no | 2026-11-09 |
 | 40 | Stems where the notehead's SVG puts them | no | 2026-11-09 |
-| 41 | Undo and redo | — | not declared |
+| 41 | Undo and redo | no | 2026-11-09 |
 | 42 | The UI is stable | — | not declared |
 | 43 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 | 44 | Designing the key-signature designer | — | not declared |
@@ -404,3 +404,9 @@ Make a shape's stem anchor the stem's own position rather than the place its edg
 **Amended after acceptance:**
 
 - 2026-11-09 — step 'stem-centre': its files: Two more tests pin exported attachment numbers: the 45deg.svg import test (cnb-svg-importer-tests.js) and the minim-pair export test (cnb-config-export-tests.js). (claude-code (anthropic, claude-opus-5-5))
+
+### Session 41 — Undo and redo
+
+**Releasable: no.**
+
+Give the configurator undo and redo of every change to the config. A new small module, cnb/ui/history.js (CNBHistory), keeps a bounded stack of config snapshots (JSON strings, 100 levels): create(config), record(config, group) which adds a step when the config differs from the current one and folds consecutive records of the same non-null group into one step, seal() which ends the open group, amend(config) which replaces the current snapshot without a step, undo() / redo() which return the config to restore or null, and canUndo() / canRedo(). cnb/index.html records the config at the end of every change (refreshShared), so every editor, the notehead panel, the canvas, an SVG import and opening a config are each a step; the group is the form control whose input event is being handled, and its change event seals it, so a typed value or a dragged colour is one step; Save's meta stamp amends the current step instead of adding one. Undo and Redo buttons in the top bar, disabled when there is nothing to undo or redo, and Ctrl+Z / Ctrl+Shift+Z (Cmd on a Mac, Ctrl+Y too) restore the snapshot, re-seed every editor and redraw, without recording. A browser UAT driver checks it in the real page.

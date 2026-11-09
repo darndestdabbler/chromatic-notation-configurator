@@ -36,6 +36,8 @@
               aria-expanded="false" aria-controls="checks-list">No problems</button>
       <div id="checks-list" class="checks-list" role="dialog" aria-label="Checks" hidden></div>
     </div>
+    <button type="button" id="undo-config" class="btn-ghost" title="Undo (Ctrl+Z)" disabled>Undo</button>
+    <button type="button" id="redo-config" class="btn-ghost" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
     <button type="button" id="open-config" class="btn-ghost">Open…</button>
     <input type="file" id="open-file" accept=".json,application/json" hidden>
     <button type="button" id="save-config">Save</button>
@@ -187,6 +189,7 @@
     import { CNBPitchModel } from "./ui/pitch-model.js";
     import { CNBChecksWording } from "./ui/checks-wording.js";
     import { CNBSaveFile } from "./ui/save-file.js";
+    import { CNBHistory } from "./ui/history.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -196,6 +199,13 @@
 
     const byId = (id) => document.getElementById(id);
     const stateJson = byId("state-json");
+
+    // Undo and redo (session 41): the history, made once the editors have
+    // mounted, and the control whose input event is being handled.
+    let undoHistory = null;
+    let inputTarget = null;
+    const undoButton = byId("undo-config");
+    const redoButton = byId("redo-config");
 
     // The full config is exposed (not slices) so an external harness can
     // run direct CNBConfigIO/CNBLilypond calls on the exact same state and
@@ -555,7 +565,9 @@
       // (Module 17 contract: callback first, then its own redraw).
       onSave: (stamped) => {
         appConfig = stamped;
-        refreshShared();
+        // The stamp is not a change to undo: it amends the current step.
+        refreshShared({ record: false });
+        if (undoHistory) undoHistory.amend(appConfig);
       },
       // Replace the shared state with the merged config and re-seed every
       // editor from it (their vocabularies and values come from the config).
@@ -626,8 +638,9 @@
     };
 
     /** Redraw everything that READS the shared config (not the editors).
-     *  keepPanel: the notehead panel made the change and draws itself. */
-    function refreshShared({ keepPanel = false } = {}) {
+     *  keepPanel: the notehead panel made the change and draws itself.
+     *  record: false for an undo, a redo or Save's stamp. */
+    function refreshShared({ keepPanel = false, record = true } = {}) {
       refreshPanel();
       refreshChecks();
       previewApi.redraw();
@@ -637,7 +650,53 @@
       heightApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
+      // Last, so a config that could not be drawn is not recorded.
+      if (undoHistory && record) undoHistory.record(appConfig, inputTarget);
+      refreshUndoButtons();
     }
+
+    // ── Undo and redo (session 41) ───────────────────────────────────────
+    // Every change ends in refreshShared, which records the config. The
+    // changes one control makes while its input events are handled fold
+    // into one step, which its change event ends: a typed value or a
+    // dragged colour is undone at once.
+    document.addEventListener("input", (e) => {
+      const target = e.target;
+      inputTarget = target;
+      setTimeout(() => { if (inputTarget === target) inputTarget = null; });
+    }, true);
+    document.addEventListener("change", () => {
+      inputTarget = null;
+      if (undoHistory) undoHistory.seal();
+    }, true);
+
+    function refreshUndoButtons() {
+      undoButton.disabled = !(undoHistory && undoHistory.canUndo());
+      redoButton.disabled = !(undoHistory && undoHistory.canRedo());
+    }
+
+    /** Put back an undone or redone config: every editor re-seeds from it. */
+    function restore(config) {
+      if (!config) return;
+      appConfig = config;
+      mountEditors();
+      refreshShared({ record: false });
+    }
+    const undo = () => restore(undoHistory.undo());
+    const redo = () => restore(undoHistory.redo());
+    undoButton.onclick = undo;
+    redoButton.onclick = redo;
+    document.addEventListener("keydown", (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+      } else if (key === "y" && e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+    });
 
     // ── Editors writing config slices ────────────────────────────────────
     // Re-mounted whenever the whole config is replaced (JSON load) or the
@@ -836,6 +895,7 @@
     refreshRuleList();
     refreshPanel();
     refreshChecks();
+    undoHistory = CNBHistory.create(appConfig);
   </script>
 </body>
 </html>
