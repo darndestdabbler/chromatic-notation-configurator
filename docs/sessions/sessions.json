@@ -792,9 +792,9 @@
     {
       "number": 38,
       "title": "Selecting several noteheads, found at once",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-08T13:42:27.431000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-09T04:51:00.093000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
