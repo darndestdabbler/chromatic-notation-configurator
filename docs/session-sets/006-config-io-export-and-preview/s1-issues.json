@@ -1,0 +1,27 @@
+{
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Out-of-scope changes outside cnb/ (Touches: none outside cnb/)",
+      "location": "docs/session-sets/006-config-io-export-and-preview/*",
+      "resolution": "The verifier's suggested fix — 'split them into a separate non-task commit' — was already in place in the reviewed diff: product code was committed alone (commit af95e1d, cnb/ files only) and every docs/session-sets file was committed as a separate docs-only lifecycle-records commit (1d4b89b). These files are the session lifecycle records the repo's own governing documents mandate: session-state.json/session-events.jsonl are written by the required start command (start-here.md Step 3: 'This writes session-state.json (status: \"in-progress\"), appends a work_started event'), activity-log.json satisfies the close gate's activity_log_entry requirement against the spec's own 'Progress keys: session-001/config-save-load-module' line, and s1-uat.md is the record required by the spec's requiresUAT: true / uatScope: per-session / uatStyle: dsl configuration. Verification records (s1-verification.md, this file) are committed the same docs-only way.",
+      "status": "adjudicated"
+    },
+    {
+      "id": 2,
+      "title": "Filename preview stale immediately after loading a config with a different meta.configName",
+      "location": "cnb/ui/config-io.js loadText() (redraw() before onLoad())",
+      "resolution": "Fixed exactly as suggested: both loadText() and save() now invoke the host callback (onLoad/onSave) BEFORE redraw(), so the redraw's filename preview reads the config the host has already adopted. Regression unit test added ('render load: filename preview reflects the LOADED config once the host adopts it'): with test-page-style wiring, loading a config named 'Kite 3-6-9' flips the preview from default-4-8-system.cnb.json to kite-3-6-9.cnb.json. Suite now 498 passed / 0 failed; UAT re-run 19/19.",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "title": "Inconsistent test counts between the response summary and activity-log.json",
+      "location": "docs/session-sets/006-config-io-export-and-preview/activity-log.json",
+      "resolution": "The activity-log entry was written before two later commits each added tests (guard test, then the issue-2 regression test), so its 31/496 was stale, and the round-1 summary's 33/497 predated the issue-2 fix. A superseding activity-log entry now records the final authoritative counts from the runner output: 34 tests in cnb-config-io-tests.js, 498 passed / 0 failed total (464 pre-existing + 34 new), legacy 240/240.",
+      "status": "fixed"
+    }
+  ]
+}

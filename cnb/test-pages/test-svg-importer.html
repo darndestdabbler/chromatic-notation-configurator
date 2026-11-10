@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB SVG Importer Test — Module 16</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    .cnb-svg-drop-zone {
+      border: 2px dashed #bbb;
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .cnb-svg-drop-zone.dragover { border-color: #1b9e77; background: #f0faf6; }
+    button {
+      font: inherit;
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    button:hover { background: #f0f0f0; }
+    #status { font-size: 13px; margin: 10px 0 0; min-height: 18px; }
+    #status.ok { color: #1b7d43; }
+    #status.err { color: #c62828; }
+    #warnings { font-size: 12px; color: #ef6c00; margin: 6px 0 0; padding-left: 18px; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 480px;
+      max-height: 420px;
+      overflow: auto;
+      margin: 0;
+    }
+    .legend { font-size: 12px; color: #666; margin-top: 8px; }
+    .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 5px; vertical-align: -1px; margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>Module 16: SVG Shape Importer — file picker, extraction, and Module 6 preview</h1>
+<p>
+  Import a notehead SVG exported by the Music Glyph Toolkit (or load the built-in
+  sample). The extracted <code>config.shapes[name]</code> entry is shown as JSON and
+  rendered with Module 6 against the debug grid: solid and hollow variants centered on
+  their semitone lines, with the extracted stem anchors marked
+  (<span style="color:#c62828">red</span> = up, <span style="color:#1565c0">blue</span> = down).
+</p>
+
+<div class="card" style="min-width: 320px;">
+  <h2>Import</h2>
+  <div id="import-control-host"></div>
+  <button id="load-sample">Load built-in sample (2-semitone ellipse)</button>
+  <div id="status"></div>
+  <ul id="warnings"></ul>
+</div>
+
+<div class="card">
+  <h2>Extracted config.shapes[name] entry</h2>
+  <pre id="shape-json">(nothing imported yet)</pre>
+</div>
+
+<div class="card">
+  <h2 id="preview-title">Preview (Module 6 against debug grid)</h2>
+  <svg id="preview-svg" width="480" style="display:block;"></svg>
+  <div class="legend">
+    <span class="swatch" style="background:#c62828;"></span>crotchetUp / minimUp anchor&nbsp;&nbsp;
+    <span class="swatch" style="background:#1565c0;"></span>crotchetDown / minimDown anchor
+  </div>
+</div>
+
+<!-- Built-in sample: shaped exactly like current Music Glyph Toolkit output —
+     normalized 100-units-per-semitone paths, centered viewBox, stem placemarker
+     rects, data-semitone-height, and pre-baked data-lilypond-* attributes. -->
+<script id="sample-svg" type="text/plain">
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200" viewBox="-120 -100 240 200">
+  <g id="layer1">
+    <rect id="stem-down" x="-120" y="0" width="22.2222" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-up" x="97.7778" y="-350" width="22.2222" height="350" style="fill:#FF00FF;stroke:none"/>
+    <path id="notehead"
+          d="M 120 0 C 120 -55 66 -100 0 -100 C -66 -100 -120 -55 -120 0 C -120 55 -66 100 0 100 C 66 100 120 55 120 0 Z"
+          data-semitone-height="2.0"
+          data-lilypond-notehead="'(
+    (moveto 1.2 0)
+    (curveto 1.2 0.55 0.66 1.0 0 1.0)
+    (curveto -0.66 1.0 -1.2 0.55 -1.2 0)
+    (curveto -1.2 -0.55 -0.66 -1.0 0 -1.0)
+    (curveto 0.66 -1.0 1.2 -0.55 1.2 0)
+    (closepath))"
+          style="fill:#000000;stroke:none"/>
+    <path id="hollow"
+          d="M 80 0 C 80 -36 44 -64 0 -64 C -44 -64 -80 -36 -80 0 C -80 36 -44 64 0 64 C 44 64 80 36 80 0 Z"
+          data-lilypond-hollow="'(
+    (moveto 0.8 0)
+    (curveto 0.8 0.36 0.44 0.64 0 0.64)
+    (curveto -0.44 0.64 -0.8 0.36 -0.8 0)
+    (curveto -0.8 -0.36 -0.44 -0.64 0 -0.64)
+    (curveto 0.44 -0.64 0.8 -0.36 0.8 0)
+    (closepath))"
+          style="fill:#FFFFFF;stroke:none"/>
+  </g>
+</svg>
+</script>
+
+<script type="module">
+  import { CNBConfig }      from "../src/cnb-config.js";
+  import { CNBGrid }        from "../src/cnb-grid.js";
+  import { CNBStaff }       from "../src/cnb-staff.js";
+  import { CNBNotehead }    from "../src/cnb-notehead.js";
+  import { CNBSvgImporter } from "../ui/svg-importer.js";
+
+  const NS = "http://www.w3.org/2000/svg";
+  const statusEl = document.getElementById("status");
+  const warningsEl = document.getElementById("warnings");
+  const jsonEl = document.getElementById("shape-json");
+  const svg = document.getElementById("preview-svg");
+  const previewTitle = document.getElementById("preview-title");
+
+  function showResult(result) {
+    warningsEl.innerHTML = "";
+    if (result.error) {
+      statusEl.textContent = "✗ " + result.error;
+      statusEl.className = "err";
+      return;
+    }
+    statusEl.textContent = `✓ Imported shape "${result.name}"`;
+    statusEl.className = "ok";
+    for (const w of result.warnings) {
+      const li = document.createElement("li");
+      li.textContent = w;
+      warningsEl.appendChild(li);
+    }
+    jsonEl.textContent = JSON.stringify(result.shape, null, 2);
+    renderPreview(result.name, result.shape);
+  }
+
+  function anchorMarker(parent, cx, cy, color) {
+    const size = 5;
+    for (const [x1, y1, x2, y2] of [
+      [cx - size, cy, cx + size, cy],
+      [cx, cy - size, cx, cy + size],
+    ]) {
+      const line = document.createElementNS(NS, "line");
+      line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", "1.5");
+      parent.appendChild(line);
+    }
+  }
+
+  function renderPreview(name, shape) {
+    previewTitle.textContent = `Preview: ${name} (Module 6 against debug grid)`;
+    svg.innerHTML = "";
+
+    const MIN_SEMI = -4, MAX_SEMI = 28;
+    const config = CNBConfig.createDefault();
+    const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    svg.setAttribute("height", String(grid.svgHeight));
+
+    const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+
+    const measure = CNBNotehead.measure(shape, grid.pxPerSemi);
+    const cases = [
+      { semi: 0,  hollow: false, color: "#000" },
+      { semi: 8,  hollow: false, color: "#000" },
+      { semi: 12, hollow: true,  color: "#000" },
+      { semi: 20, hollow: true,  color: "#000" },
+      { semi: 24, hollow: false, color: "#1b9e77" },
+    ];
+    cases.forEach((c, i) => {
+      const x = 60 + i * 85;
+      const y = grid.semiToY(c.semi);
+      CNBNotehead.render(svg, {
+        shape, x, y,
+        scaleFactor: measure.scaleFactor,
+        hollow: c.hollow,
+        color: c.color,
+      });
+      if (shape.anchors) {
+        const s = measure.scaleFactor;
+        anchorMarker(svg, x + shape.anchors.crotchetUp.x * s,
+                          y + shape.anchors.crotchetUp.y * s, "#c62828");
+        anchorMarker(svg, x + shape.anchors.crotchetDown.x * s,
+                          y + shape.anchors.crotchetDown.y * s, "#1565c0");
+      }
+    });
+  }
+
+  // Module 16's reusable import control (file picker + drag-and-drop)
+  CNBSvgImporter.renderImportControl(
+    document.getElementById("import-control-host"),
+    { onResult: showResult });
+
+  document.getElementById("load-sample").addEventListener("click", () => {
+    const text = document.getElementById("sample-svg").textContent.trim();
+    showResult(CNBSvgImporter.parseSvgText(text, "sample-ellipse.svg"));
+  });
+</script>
+
+</body>
+</html>
