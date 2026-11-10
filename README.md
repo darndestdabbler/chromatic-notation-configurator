@@ -180,7 +180,8 @@ The page is the staff canvas, with one section at a time beside it. Above
 the staff, the canvas toolbar chooses what it shows: the durations, and
 beside them whether longer durations get **Its own shape for each
 duration** or **Repeat the notehead** (as the engine engraves them: minim
-×2, semibreve and breve ×4); and the **Key**, a tonic and a mode (major,
+×2, semibreve ×4, and a breve as two tied semibreves); and the
+**Key**, a tonic and a mode (major,
 minor and the church modes LilyPond's `\key` names), whose signature the
 staff draws. While the signature is off, **Show the key signature** turns
 it on, as the scale stack: the key's scale as stacked noteheads, as the
@@ -371,10 +372,11 @@ it (session 34, LY export spec 1.3.9):
   widths long, all black and solid. They have no settings.
 - **The key signature's spacing is the engine's**, and has no setting.
 - **Repeated heads are the engine's.** When longer durations repeat the
-  notehead, the preview draws what the engine engraves: minim ×2,
-  semibreve ×4 and breve ×4, each head edge to edge with the multinote
-  padding (`engine.multinotePadding`, in staff spaces) between them. How
-  many heads there are is not a setting.
+  notehead, the preview draws what the engine engraves: minim ×2 and
+  semibreve ×4, each head edge to edge with the multinote padding
+  (`engine.multinotePadding`, in staff spaces) between them. A breve is two
+  tied semibreves, 1 staff space apart, the tie black (engine 1.3.0 and
+  later). How many heads there are, the gap and the tie are not settings.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem

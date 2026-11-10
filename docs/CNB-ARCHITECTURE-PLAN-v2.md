@@ -551,7 +551,8 @@ durations: {
 
   // "shape" = different notehead shapes per duration
   // "repeat" = repeat the same notehead: the engine's fixed counts,
-  //   minim ×2, semibreve and breve ×4 (session 18). repeatCounts, which
+  //   minim ×2, semibreve ×4 (session 18), and a breve as two semibreves
+  //   1 staff space apart, joined by a tie (session 44). repeatCounts, which
   //   neither the preview nor the export read, is retired (session 34).
   representationMode: "shape"
 }
@@ -1844,13 +1845,18 @@ Build Module X: [one-line description]
    published site is a copy, not a build (`cnb/site/assemble-site.mjs`,
    session 15).
 3. **Quad noteheads:** *Resolved in session 18.* In repeat mode the card
-   follows the engine's `cnb:build-duration-stencil`: minim ×2, semibreve
-   and breve ×4 (fixed; `durations.repeatCounts` is not read), each copy
+   follows the engine's `cnb:build-duration-stencil`: minim ×2 and
+   semibreve ×4 (fixed; `durations.repeatCounts` is not read), each copy
    edge to edge with `engine.multinotePadding` staff spaces between them,
    the group centred on the head position. The stem attaches at the
    anchor's relative position across the group, as LilyPond's
    stem-attachment does, and the ledgers widen with the group
-   (`CNBCard.repeatCount` / `CNBCard.repeatLayout`).
+   (`CNBCard.repeatCount` / `CNBCard.repeatLayout`). Since session 44 (engine
+   session 25, engine 1.3.0) a breve is two semibreve groups 1 staff space
+   apart, with a tie in the gap on each notehead, LilyPond's
+   `make-tie-stencil`, drawn black whatever the notehead's colour
+   (`CNBCard.tiedGroups` / `CNBCard.tiePath`; LY spec 1.3.12 §4.1d). The
+   ledgers and the column follow the whole width.
 4. **Off-key marking:** Visual treatment. Deferred.
 5. **Accidentals and clefs:** *Clefs settled in set 009:* custom clefs
    render in a left gutter placed on the semitone grid (Modules 20 and 21,

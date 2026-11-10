@@ -152,7 +152,7 @@ const REPRESENTATION_CHOICES = {
   repeat: "Repeat the notehead",
 };
 /** The engine's repeat counts (CNBCard.repeatCount), shown with the choice. */
-const REPEAT_HINT = "Repeated: minim ×2, semibreve and breve ×4";
+const REPEAT_HINT = "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves";
 
 /** The key picker's tonics and the key shown first (session 36). */
 const TONIC_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];

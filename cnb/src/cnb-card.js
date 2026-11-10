@@ -33,6 +33,13 @@
  * by the group's extra width. One head (shape mode, crotchets) takes the
  * existing code path unchanged.
  *
+ * Session 44 (the breve as tied semibreves, engine session 25): in repeat
+ * mode a breve draws as two semibreve groups of 4 heads, 1 staff space
+ * apart, with a tie in the gap on each notehead of the octave pair:
+ * LilyPond's make-tie-stencil, bowing down from the head's centre line
+ * (CNBCard.tiePath), drawn black whatever the notehead's colour, as the
+ * engine engraves it. The ledgers and the column follow the whole width.
+ *
  * Session 22 (notehead size): the resolved heightSemis / widthSemis set the
  * notehead measurement, and the ledger width, column width, repeated group,
  * stem anchor (scaleX) and octave pair follow it. Unsized, nothing changes.
@@ -112,14 +119,30 @@ function axisOffsetPx(gridContext, resolved) {
 /** Engine default for cnb:multinote-padding (engine cnb/config.ly). */
 const DEFAULT_MULTINOTE_PADDING = -0.5;
 
+/** The gap between tied semibreve groups, in staff spaces (engine session 25). */
+const TIE_GAP = 1;
+
+/** The tie's thickness, in staff spaces (engine session 25). */
+const TIE_THICKNESS = 0.12;
+
+/** The tie's colour: LilyPond's default black, not the notehead's (engine session 25). */
+const TIE_COLOR = "#000000";
+
+/** The duration category of a duration name (lilypondDuration; 3 if unknown). */
+function durationCategory(config, duration) {
+  const def = (config.durations?.definitions || []).find(d => d.name === duration);
+  return def?.lilypondDuration ?? 3;
+}
+
 export const CNBCard = {
 
   /**
-   * How many heads the engine engraves for a duration: 1 unless
+   * How many heads one group of a duration has: 1 unless
    * durations.representationMode is "repeat"; then by the duration
    * definition's lilypondDuration (the engine's duration category): 3 or
-   * more → 1, 2 (minim) → 2, 1 or 0 (semibreve, breve) → 4. The engine's
-   * counts are fixed; durations.repeatCounts is not read.
+   * more → 1, 2 (minim) → 2, 1 or 0 (semibreve, breve) → 4. A breve is two
+   * such groups, tied (tiedGroups). The engine's counts are fixed;
+   * durations.repeatCounts is not read.
    *
    * @param {object} config
    * @param {string} duration  duration name
@@ -127,16 +150,30 @@ export const CNBCard = {
    */
   repeatCount(config, duration) {
     if (config.durations?.representationMode !== "repeat") return 1;
-    const def = (config.durations.definitions || []).find(d => d.name === duration);
-    const category = def?.lilypondDuration ?? 3;
+    const category = durationCategory(config, duration);
     if (category >= 3) return 1;
     return category === 2 ? 2 : 4;
   },
 
   /**
+   * How many tied semibreve groups a duration draws: 2 for a breve
+   * (lilypondDuration 0 or less) in repeat mode, as the engine engraves it
+   * (its session 25); otherwise 1.
+   *
+   * @param {object} config
+   * @param {string} duration  duration name
+   * @returns {number}
+   */
+  tiedGroups(config, duration) {
+    if (config.durations?.representationMode !== "repeat") return 1;
+    return durationCategory(config, duration) <= 0 ? 2 : 1;
+  },
+
+  /**
    * Horizontal layout of a duration's repeated heads (pure). Copies sit
-   * edge to edge with engine.multinotePadding staff spaces between them;
-   * offsets are each copy's centre relative to the group centre.
+   * edge to edge with engine.multinotePadding staff spaces between them.
+   * A breve's two groups sit 1 staff space apart, with a tie in the gap.
+   * Offsets and tie ends are relative to the centre of the whole.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -144,20 +181,65 @@ export const CNBCard = {
    * @param {string} duration  duration name
    * @param {{heightSemis?:number|null, widthSemis?:number|null}} [size]
    *        the resolved notehead size (session 22); absent = the shape's own
-   * @returns {{count:number, offsets:number[], groupWidth:number}} px
+   * @returns {{count:number, offsets:number[], groupWidth:number,
+   *            ties:Array<{x1:number, x2:number}>, staffSpacePx:number}} px;
+   *          count is the number of heads, groupWidth the whole width
    */
   repeatLayout(config, gridContext, shape, duration, size) {
-    const count = CNBCard.repeatCount(config, duration);
+    const perGroup = CNBCard.repeatCount(config, duration);
+    const groups = CNBCard.tiedGroups(config, duration);
     const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
-    if (count === 1) return { count, offsets: [0], groupWidth: pixelWidth };
     const axis = gridContext.axis;
     const unitsPerStaffSpace = axis && axis.enabled
       ? axis.unitsPerStaffSpace
       : (config.staff?.semitonesPerStaffSpace ?? 4);
+    const staffSpacePx = unitsPerStaffSpace * gridContext.pxPerSemi;
+    if (perGroup === 1) return { count: 1, offsets: [0], groupWidth: pixelWidth, ties: [], staffSpacePx };
     const padding = config.engine?.multinotePadding ?? DEFAULT_MULTINOTE_PADDING;
-    const step = pixelWidth + padding * unitsPerStaffSpace * gridContext.pxPerSemi;
-    const offsets = Array.from({ length: count }, (_, i) => (i - (count - 1) / 2) * step);
-    return { count, offsets, groupWidth: pixelWidth + (count - 1) * step };
+    const step = pixelWidth + padding * staffSpacePx;
+    const width = pixelWidth + (perGroup - 1) * step;
+    const gap = TIE_GAP * staffSpacePx;
+    const pitch = width + gap;
+    const offsets = [];
+    const ties = [];
+    for (let g = 0; g < groups; g++) {
+      const centre = (g - (groups - 1) / 2) * pitch;
+      for (let i = 0; i < perGroup; i++) offsets.push(centre + (i - (perGroup - 1) / 2) * step);
+      if (g > 0) ties.push({ x1: centre - pitch + width / 2, x2: centre - width / 2 });
+    }
+    return {
+      count: perGroup * groups,
+      offsets,
+      groupWidth: groups * width + (groups - 1) * gap,
+      ties,
+      staffSpacePx,
+    };
+  },
+
+  /**
+   * A tie as LilyPond's make-tie-stencil draws it, bowing down from y
+   * between x1 and x2 (pure, px, SVG y down). Its height is LilyPond's
+   * slur height for the width (height limit 1, ratio 0.33, in staff
+   * spaces), its outline make-bow-stencil's bezier sandwich (angularity
+   * 0.5, 0.12 staff spaces thick), stroked at min(2 × thickness, 0.1)
+   * staff spaces and filled.
+   *
+   * @param {number} x1  left end
+   * @param {number} x2  right end
+   * @param {number} y   the ends' y
+   * @param {number} staffSpacePx
+   * @returns {{d:string, strokeWidth:number, height:number}} height: the
+   *          bow's height in px (the curve's middle sits that far below y)
+   */
+  tiePath(x1, x2, y, staffSpacePx) {
+    const width = Math.abs(x2 - x1) / staffSpacePx;
+    const height = (2 / Math.PI) * Math.atan(Math.PI * width * 0.33 * 0.5);
+    const outer = (4 / 3) * height;
+    const inner = outer - TIE_THICKNESS;
+    const at = (u, v) => `${x1 + u * (x2 - x1)},${y + v * staffSpacePx}`;
+    const d = `M ${at(0, 0)} C ${at(0.25, outer)} ${at(0.75, outer)} ${at(1, 0)} ` +
+      `C ${at(0.75, inner)} ${at(0.25, inner)} ${at(0, 0)} Z`;
+    return { d, strokeWidth: Math.min(2 * TIE_THICKNESS, 0.1) * staffSpacePx, height: height * staffSpacePx };
   },
 
   /**
@@ -326,6 +408,24 @@ export const CNBCard = {
         lowerOffsetPx: offsetPx + dx,
         upperOffsetPx: offsetPx + dx,
       });
+    }
+
+    // 4. A breve's ties (session 44), one per gap on each notehead
+    for (const semi of [lowerSemi, upperSemi]) {
+      for (const { x1, x2 } of repeat.ties) {
+        const tie = CNBCard.tiePath(headX + x1, headX + x2, gridContext.semiToY(semi), repeat.staffSpacePx);
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("class", "cnb-tie");
+        path.setAttribute("d", tie.d);
+        // Black whatever the notehead's colour: the engine adds the tie after
+        // it colours the head (engine session 25 handoff, §1 "Flag").
+        path.setAttribute("fill", TIE_COLOR);
+        path.setAttribute("stroke", TIE_COLOR);
+        path.setAttribute("stroke-width", String(tie.strokeWidth));
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute("stroke-linecap", "round");
+        svg.appendChild(path);
+      }
     }
 
     col.appendChild(svg);

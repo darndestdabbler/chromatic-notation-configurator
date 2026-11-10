@@ -441,7 +441,7 @@ export const tests = [
         assertEqual(options.map(o => o.className.includes(" on")), [true, false], "the config's mode is on");
         assertEqual(options.map(o => o.getAttribute("aria-pressed")), ["true", "false"]);
         assertEqual(findOne(choice, "cnb-pvd-repeat-hint").textContent,
-          "Repeated: minim ×2, semibreve and breve ×4");
+          "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves");
       });
     },
   },

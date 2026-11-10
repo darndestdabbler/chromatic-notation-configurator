@@ -222,15 +222,19 @@ await page.click('#mode-toggle button[data-mode="repeat"]');
 check("TOGGLE REPEAT: the page's toggle shows repeat (set through the editor's setState)",
   await page.evaluate(() =>
     document.querySelector('#mode-toggle button[data-mode="repeat"]').classList.contains("selected")));
-check("TOGGLE REPEAT: 4 captioned rows; each card draws the engine's repeated heads (crotchet 1, minim 2, semibreve 4, breve 4 octave pairs)",
+check("TOGGLE REPEAT: 4 captioned rows; each card draws the engine's repeated heads (crotchet 1, minim 2, semibreve 4, breve 8 octave pairs: two tied semibreves, session 44)",
   (await rowCount()) === 4 && (await captionCount()) === 4 &&
   JSON.stringify([await headsInFirstCard(0), await headsInFirstCard(1), await headsInFirstCard(2), await headsInFirstCard(3)]) ===
-    JSON.stringify([2, 4, 8, 8]));
-check("TOGGLE REPEAT: legend lists the engine's counts — minim 2, semibreve 4, breve 4 heads",
+    JSON.stringify([2, 4, 8, 16]));
+check("TOGGLE REPEAT: the breve's card draws a tie on each notehead of the pair; no other card draws one",
+  await page.evaluate(() => [...document.querySelectorAll("#preview-host .cnb-duration-row")]
+    .map(row => row.querySelector(".pc-col .note-slice").querySelectorAll(".cnb-tie").length)
+    .join(",") === "0,0,0,2"));
+check("TOGGLE REPEAT: legend lists the engine's counts — minim 2, semibreve 4, breve two tied semibreves of 8 heads",
   await legendTexts().then(t => JSON.stringify(t) === JSON.stringify([
     "Minim (Half): 2 heads",
     "Semibreve (Whole): 4 heads",
-    "Breve (Double Whole): 4 heads",
+    "Breve (Double Whole): two tied semibreves, 8 heads",
   ])));
 j = await readJson();
 check('TOGGLE REPEAT: JSON representationMode "repeat"; Section C repeat field flips to #t',

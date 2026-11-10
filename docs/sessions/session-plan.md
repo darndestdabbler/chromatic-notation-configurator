@@ -1608,6 +1608,13 @@ semibreves (session 42).
 3. The engine's golden files, the export baselines and the LY spec follow,
    with an engine round trip.
 
+*(Amended during session 44, 2026-11-10: the operator chose to keep the
+breve as one note whose repeat-mode stencil is two semibreve groups with a
+tie between them, and to have the engine work done as engine session 25,
+"The breve as tied semibreves", in the engine repository's plan. That
+session makes the engine change and regenerates its goldens. This
+session's round trip waits for it to land.)*
+
 ### Session 45: Clefs
 
 **Why.** The engine's dozenal clef is not drawn in the preview, and the

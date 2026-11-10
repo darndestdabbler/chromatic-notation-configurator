@@ -23,7 +23,8 @@
  *     and this editor draws no control for it. The host re-seeds the
  *     editor when the canvas changes it. There are no repeat counts: the
  *     preview and the export both draw the engine's fixed counts
- *     (CNBCard.repeatCount — minim ×2, semibreve ×4, breve ×4; session 18),
+ *     (CNBCard.repeatCount — minim ×2, semibreve ×4; session 18 — and a
+ *     breve as two tied semibreves, CNBCard.tiedGroups; session 44),
  *     so `durations.repeatCounts` left the editor in session 34, and a
  *     config that carries it loses it when the editor builds the durations
  *     slice.
@@ -422,7 +423,8 @@ export const CNBCommonPropsEditor = {
    *   - representationMode "repeat": the same rows, whose cards draw each
    *     duration's repeated heads as the engine engraves them (session 18),
    *     plus a legend with one item per repeated duration ("Minim (Half):
-   *     2 heads"), the count from CNBCard.repeatCount.
+   *     2 heads"), the count from CNBCard.repeatCount; a breve's item reads
+   *     "two tied semibreves, 8 heads" (CNBCard.tiedGroups, session 44).
    *
    * Throws on a config with no duration definitions or an invalid
    * representationMode — a preview of a guessed mode helps nobody.
@@ -462,12 +464,15 @@ export const CNBCommonPropsEditor = {
       const legend = doc.createElement("div");
       legend.className = "cnb-cpe-repeat-legend";
       for (const def of defs) {
-        const count = CNBCard.repeatCount(config, def.name);
-        if (count === 1) continue;
+        const perGroup = CNBCard.repeatCount(config, def.name);
+        if (perGroup === 1) continue;
+        const groups = CNBCard.tiedGroups(config, def.name);
+        const count = perGroup * groups;
         const item = doc.createElement("div");
         item.className = "cnb-cpe-repeat-item";
         item.setAttribute("data-duration", def.name);
-        item.textContent = def.displayName + ": " + count + " heads";
+        item.textContent = def.displayName + ": " +
+          (groups === 2 ? "two tied semibreves, " : "") + count + " heads";
         legend.appendChild(item);
         legendItems.push({ name: def.name, count });
       }

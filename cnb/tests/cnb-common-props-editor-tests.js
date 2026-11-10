@@ -496,9 +496,11 @@ export const tests = [
       const items = findAll(out.root, "cnb-cpe-repeat-item");
       assert(items.length === 3, "3 legend items");
       assertEqual(out.legendItems,
-        [{ name: "minim", count: 2 }, { name: "semibreve", count: 4 }, { name: "breve", count: 4 }],
+        [{ name: "minim", count: 2 }, { name: "semibreve", count: 4 }, { name: "breve", count: 8 }],
         "legend items are the engine's counts");
       assert(items[0].textContent === "Minim (Half): 2 heads", "legend text");
+      assert(items[2].textContent === "Breve (Double Whole): two tied semibreves, 8 heads",
+        "the breve's legend text (session 44)");
       assert(findAll(out.root, "cnb-cpe-preview-note")[0].textContent.includes("(repeat . #t)"),
         "note names the exporter field");
     }),

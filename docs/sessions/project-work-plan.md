@@ -55,7 +55,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 41 | Undo and redo | no | 2026-11-09 |
 | 42 | The UI is stable | no | 2026-11-09 |
 | 43 | Nudges you can see and drag | no | 2026-11-10 |
-| 44 | The breve as tied semibreves | — | not declared |
+| 44 | The breve as tied semibreves | no | 2026-11-10 |
 | 45 | Clefs | — | not declared |
 | 46 | Designing the key-signature designer | — | not declared |
 
@@ -428,3 +428,14 @@ Make the UI stable for the 1.1.0 release. The operator tries what sessions 36-41
 **Releasable: no.**
 
 Make every notehead nudgeable and nudge it where it is drawn. Nudges stop being measured from a fixed C: a stride-12 pitch axis (the form writeNudges writes) is read as each pitch class's own offset, position minus pitch class, so C, and with it the notehead in the middle of the default staff, has a nudge like any other; a map at another stride (Twinline's 7) is still rescaled and read from C, which is only how it is brought into nudge form. The Pitch section's sliders and shaded bars go: each pitch class keeps its name, its number field and its 'shares' mark, framed with a light grey border and background so it is clear which notehead it belongs to, and C's field is enabled. On the canvas, with the Pitch section open, dragging a notehead's column up or down moves it with the pointer and the release nudges that pitch class by the distance dragged (a new pure CNBPitchModel.dragNudge, which converts the drag to a nudge, clamps it to the neighbours' limits and writes it); a press that does not move stays a click that selects. The notehead panel's nudge loses its slider and its 'C is the reference' hint the same way. Tests named after each changed source file follow, the browser UAT drives the field and the drag, and the design document and docs/uat-status.md record the change.
+
+### Session 44 — The breve as tied semibreves
+
+**Releasable: no.**
+
+In repeat mode, a breve engraves and previews as two semibreves joined by a tie, instead of 4 heads like the semibreve. The operator chose (2026-11-10) to keep the breve as one note whose repeat-mode stencil is the composite: two of today's 4-head semibreve groups, 1 staff space apart, with a tie in the gap. The tie is LilyPond's make-tie-stencil from the left group's right edge to the right group's left edge, at the head's centre line, bowing down, 0.12 staff spaces thick, with LilyPond's default height limit and ratio. Longer values (longa, maxima) get 2^(-log) such groups, tied in turn. The engine work is the engine repository's own session: this session inserts it into the engine's plan as its session 25 (the operator's choice), with the geometry above, its goldens and a configurator handoff. Here, the card (cnb/src/cnb-card.js) draws the breve so: the same groups, gap and tie, the tie's path computed as LilyPond's bezier sandwich, and the ledgers and column following the wider group. The repeat-mode hint and the docs (README, architecture plan, LY spec 1.3.12) say so. Once the engine session has landed, an engine round trip pins the engraved breve's width and height to the preview's for the Kite and 45deg-369 fixtures, and the export baselines are confirmed unchanged, since the export text does not change (the engine draws the breve from the existing (repeat . #t)).
+
+**Amended after acceptance:**
+
+- 2026-11-10 — step 'roundtrip': its files: Engine handoff 025 section 1: the tie engraves black, not in the notehead's colour; the preview follows, so the step also touches the card module (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-10 — accepted step 'engine-session': its checks: The engine released 1.3.0 as its session 27, not 26 (it inserted 'Session 26: Document 1.3.0' when landing session 25); the check accepts the release at any session number. The other three conditions are unchanged. Operator's choice, 2026-11-10. (claude-code (anthropic, claude-opus-5-5))
