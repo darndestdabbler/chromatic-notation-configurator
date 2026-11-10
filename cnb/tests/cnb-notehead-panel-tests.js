@@ -2,13 +2,13 @@
  * cnb-notehead-panel-tests.js — Unit tests for the notehead panel
  * (session 27, design docs/planning/notehead-first-editor-design.md §2, §5.4)
  *
- * Covers the pure helpers (giveTargets, applyLook, sharesSpot,
- * keptRulesFor) and the panel driven against a stub DOM: each control
- * writes its rules through the inference (colour too, session 37), the colour
- * input keeps its element on `input` and redraws on `change` (session 21's
- * wiring), Shift-selection edits every selected notehead, Give this look
- * to, the side step's visibility, the kept-rule marker, and (session 28)
- * renaming a notehead and its nudge.
+ * Covers the pure helpers (withShape, sharesSpot, keptRulesFor) and the
+ * panel driven against a stub DOM: each control writes its rules through the
+ * inference (colour too, session 37), the colour input keeps its element on
+ * `input` and redraws on `change` (session 21's wiring), Shift-selection
+ * edits every selected notehead, a new shape's width (session 42), the side
+ * step's visibility, the kept-rule marker, and (session 28) renaming a
+ * notehead and its nudge. Give this look to went in session 42.
  */
 
 import { readFileSync } from "fs";
@@ -179,27 +179,25 @@ export const tests = [
 
   // ── Pure helpers ──────────────────────────────────────────────────────
 
-  { name: "giveTargets: All, every N from the pitch class, the accidentals and the naturals", fn: () => {
-      deepEq(P.giveTargets(5, "all"), [...Array(12).keys()], "all");
-      deepEq(P.giveTargets(1, "every-2"), [1, 3, 5, 7, 9, 11], "every other from C♯");
-      deepEq(P.giveTargets(1, "every-3"), [1, 4, 7, 10], "every 3rd from C♯");
-      deepEq(P.giveTargets(2, "every-4"), [2, 6, 10], "every 4th from D");
-      deepEq(P.giveTargets(11, "every-6"), [5, 11], "every 6th from B");
-      deepEq(P.giveTargets(0, "accidentals"), [1, 3, 6, 8, 10], "accidentals");
-      deepEq(P.giveTargets(0, "naturals"), [0, 2, 4, 5, 7, 9, 11], "naturals");
-      let threw = false;
-      try { P.giveTargets(0, "every-5"); } catch { threw = true; }
-      assert(threw, "an unknown choice throws");
+  { name: "withShape (session 42): a sized notehead keeps its height, its width at the new shape's proportions", fn: () => {
+      const config = CNBBuiltinShapes.withShape(CNBConfig.createDefault(), "kite-up");
+      const row = { ...I.lookTable(config)[0], heightSemis: 3, widthSemis: 3.7977, xOffsetStaffSpaces: 0.5 };
+      const out = P.withShape(config, row, "kite-up");
+      const kite = config.shapes["kite-up"];
+      const want = Math.round(3 * kite.naturalWidth / kite.naturalHeight * 1e4) / 1e4;
+      deepEq([out.shape, out.heightSemis, out.widthSemis], ["kite-up", 3, want], "height kept, width follows");
+      eq(out.xOffsetStaffSpaces, 0.5, "the rest of the row kept");
+      eq(row.shape, "crotchet-minim", "input unchanged");
     }},
 
-  { name: "applyLook: copies only the chosen parts, never the side step, and leaves the input", fn: () => {
-      const table = I.lookTable(CNBConfig.createDefault());
-      const look = { ...table[1], color: "#ff0000", shape: "kite-up", heightSemis: 2, widthSemis: 3, xOffsetStaffSpaces: 0.5 };
-      const out = P.applyLook(table, [0, 4], look, ["colour", "size"]);
-      deepEq([out[0].color, out[0].heightSemis, out[0].widthSemis], ["#ff0000", 2, 3], "colour and size copied");
-      deepEq([out[0].shape, out[0].hollow, out[0].xOffsetStaffSpaces], ["crotchet-minim", false, 0], "shape, fill, side step not");
-      eq(out[2], table[2], "other pitch classes untouched");
-      eq(table[0].color, null, "input unchanged");
+  { name: "withShape: a size equal to the new shape's own is none, and a notehead at its own size stays so", fn: () => {
+      const config = CNBBuiltinShapes.withShape(CNBConfig.createDefault(), "kite-up");
+      const kite = config.shapes["kite-up"];
+      const own = kite.semitoneHeight;
+      const at = P.withShape(config, { ...I.lookTable(config)[0], heightSemis: own, widthSemis: 9 }, "kite-up");
+      deepEq([at.heightSemis, at.widthSemis], [null, null], "the kite's own height and width");
+      const plain = P.withShape(config, { ...I.lookTable(config)[0], heightSemis: null, widthSemis: 2 }, "kite-up");
+      deepEq([plain.heightSemis, plain.widthSemis], [null, null], "no height: the new shape's own size");
     }},
 
   { name: "sharesSpot: never on a linear staff; on Twinline for the shared pairs only", fn: () => {
@@ -314,7 +312,7 @@ export const tests = [
         eq(help.tag, "details", "a help disclosure");
         assert(/another name/.test(findOne(help, "cnb-nhp-suggest-note").textContent), "says how to make a colour-blind version");
         const sets = findAll(help, "cnb-nhp-suggest-set");
-        eq(sets.length, 12, "twelve sets");
+        eq(sets.length, 14, "fourteen sets, two led by black (session 42)");
         const labels = sets.map(s => findOne(s, "cnb-nhp-suggest-label").textContent);
         assert(labels.filter(l => l.startsWith("Colour-blind safe")).length === 6, "colour-blind-safe sets marked");
         const dark3 = sets.find(s => s.getAttribute("data-set") === "dark2-3");
@@ -392,26 +390,6 @@ export const tests = [
       }
     }},
 
-  { name: "Give this look to: copies the chosen parts to the choice, from the selected pitch class", fn: () => {
-      const config = fixture("kite-4-369-config.json");
-      withPanel(config, [1], (h) => {
-        const part = (name) => findAll(h.api.root, "cnb-nhp-give-parts")[0].children
-          .map(l => l.children[0]).find(b => b.getAttribute("data-part") === name);
-        part("colour").onchange({ target: { checked: false } });
-        part("shape").onchange({ target: { checked: false } });
-        part("size").onchange({ target: { checked: false } });
-        byData(h.api.root, "cnb-nhp-give-option", "data-give", "all").onclick();
-        assert([...Array(12).keys()].every(pc => resolved(h.config, pc).hollow), "all hollow");
-        eq(resolved(h.config, 0).shape, "kite-down", "shape not copied");
-        eq(colourOf(h.config, 0), "#50b4e9", "colour not copied");
-      });
-      withPanel(CNBConfig.createDefault(), [2], (h) => {
-        findOne(h.api.root, "cnb-nhp-color-input").onchange({ target: { value: "#0000ff" } });
-        byData(h.api.root, "cnb-nhp-give-option", "data-give", "every-3").onclick();
-        deepEq([...Array(12).keys()].filter(pc => colourOf(h.config, pc) === "#0000ff"), [2, 5, 8, 11], "every 3rd from D");
-      });
-    }},
-
   { name: "selecting several (session 38): the head's hint and the Close title, for one notehead and for several", fn: () => {
       withPanel(CNBConfig.createDefault(), [1], (h) => {
         eq(findOne(h.api.root, "cnb-nhp-select-hint").textContent,
@@ -424,15 +402,25 @@ export const tests = [
       });
     }},
 
-  { name: "Give this look to (session 38): says what it copies, and each button names its noteheads", fn: () => {
+  { name: "Give this look to is gone (session 42): a look reaches many noteheads by selecting them", fn: () => {
       withPanel(CNBConfig.createDefault(), [4, 0], (h) => {
-        eq(findOne(h.api.root, "cnb-nhp-give-hint").textContent,
-          "Copies the ticked parts of E's look to the noteheads chosen below.", "the first selected notehead's look");
-        const title = (kind) => byData(h.api.root, "cnb-nhp-give-option", "data-give", kind).title;
-        eq(title("every-4"), "C, E and G♯", "every 4th from E");
-        eq(title("every-6"), "E and A♯", "every 6th from E");
-        eq(title("accidentals"), "C♯, D♯, F♯, G♯ and A♯", "the accidentals");
-        eq(title("all"), "C, C♯, D, D♯, E, F, F♯, G, G♯, A, A♯ and B", "all");
+        eq(findAll(h.api.root, "cnb-nhp-give").length, 0, "no Give this look to");
+        eq(findAll(h.api.root, "cnb-nhp-right").length, 0, "no empty right column on a linear staff");
+      });
+      withPanel(twinline(), [0], (h) => {
+        eq(findAll(h.api.root, "cnb-nhp-right").length, 1, "the right column holds the nudge and side step");
+      });
+    }},
+
+  { name: "shape (session 42): a notehead 4 semitones tall that becomes a kite is 4 wide, not the old shape's width", fn: () => {
+      withPanel(CNBConfig.createDefault(), [0], (h) => {
+        findOne(h.api.root, "cnb-nhp-height").onchange({ target: { value: "4" } });
+        eq(Number(findOne(h.api.root, "cnb-nhp-width").value), 5.0639, "the default notehead's proportions");
+        byData(h.api.root, "cnb-nhp-shape-option", "data-shape", "kite-up").onclick();
+        const r = resolved(h.config, 0);
+        eq(r.shape, "kite-up", "kite");
+        assert(r.widthSemis === null && r.heightSemis === null, `the kite's own 4 × 4: ${JSON.stringify([r.heightSemis, r.widthSemis])}`);
+        eq(Number(findOne(h.api.root, "cnb-nhp-width").value), 4, "the field shows 4");
       });
     }},
 

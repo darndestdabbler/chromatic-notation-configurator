@@ -18,13 +18,14 @@ const table = () => CNBNoteheadInference.lookTable(CNBConfig.createDefault());
 
 export const tests = [
   {
-    name: "SETS: six Dark2 sets then six colour-blind-safe sets, with unique keys",
+    name: "SETS: six Dark2 sets, six colour-blind-safe sets, then two led by black, with unique keys",
     fn: () => {
       const keys = CNBColourSets.SETS.map(s => s.key);
       assert(new Set(keys).size === keys.length, "unique keys");
       assert(JSON.stringify(keys) === JSON.stringify([
         "dark2-2", "dark2-3", "dark2-4", "dark2-6", "dark2-7", "dark2-11",
         "cbsafe-2", "cbsafe-3", "cbsafe-4", "cbsafe-6", "cbsafe-7", "cbsafe-11",
+        "black-3", "black-4",
       ]), keys.join(","));
       for (const s of CNBColourSets.SETS) {
         assert(s.colors.length === Number(s.key.split("-")[1]), `${s.key} size`);
@@ -42,6 +43,18 @@ export const tests = [
       assert(d11[7].hex === "#666666" && d11[10].hex === "#6a3d9a", "Dark2 11 extension");
       const cb4 = CNBColourSets.SETS.find(s => s.key === "cbsafe-4").colors.map(c => c.hex);
       assert(JSON.stringify(cb4) === JSON.stringify(["#4477AA", "#CCBB44", "#EE6677", "#228833"]), cb4.join(","));
+    },
+  },
+  {
+    name: "SETS: the sets led by black are the operator's (session 42), named by their colours",
+    fn: () => {
+      const hexes = (key) => CNBColourSets.SETS.find(s => s.key === key).colors.map(c => c.hex).join(",");
+      assert(hexes("black-3") === "#000000,#CC79A7,#56B3E9", hexes("black-3"));
+      assert(hexes("black-4") === "#000000,#E23084,#2B9E7B,#56B3E9", hexes("black-4"));
+      const label = CNBColourSets.SETS.find(s => s.key === "black-4").label;
+      assert(label === "Black, Deep pink, Shamrock, Sky blue", label);
+      const out = CNBColourSets.apply(table(), "black-3");
+      assert(out[0].color === null && out[1].color === "#cc79a7" && out[3].color === null, "black is none");
     },
   },
   {

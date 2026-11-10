@@ -6,8 +6,9 @@ A browser-based tool for designing custom chromatic music notation systems. The 
 
 The Configurator is the design environment where notation creators make creative decisions:
 
-- **Give each notehead its look** — click it on the staff and choose its
-  colour, fill, shape and size; the looks are kept as cumulative rules
+- **Give each notehead its look** — click it on the staff (Shift+click or
+  Ctrl+click to select several) and choose its colour, fill, shape and
+  size; the looks are kept as cumulative rules
 - **Import notehead shapes** from SVGs produced by the Music Glyph Toolkit
 - **Configure staff geometry** — any number of lines at any semitone positions
 - **Configure ledger lines** — automatic, or your own rules for which notes get them
@@ -16,9 +17,11 @@ The Configurator is the design environment where notation creators make creative
   notation is simply a second config saved under another name
 - **Preview your notation** on a staff of octave chords, as the engine engraves it
 - **Export `.ly` config files** that the ChromaticNotationBase engine consumes
-- **Save/load configurations** as JSON for iterative design
+- **Save/load configurations** as JSON for iterative design, in the
+  folder you choose
+- **Undo and redo** every change to the design
 
-![The Configurator with Kite 4-369 open: the staff canvas, and under it the notehead panel for D](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open: the top bar with Undo and Redo, the staff canvas with its durations and repeat mode, and under it the notehead panel for C♯, F and A selected together](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -64,8 +67,10 @@ npx serve .
 python -m http.server 8000
 ```
 
-then open `http://localhost:8000/cnb/index.html` (port per your server).
-No build step required. Opened from disk (`file://`), the browser blocks
+then open `http://localhost:8000/cnb/` (`npx serve` uses port 3000:
+`http://localhost:3000/cnb/`). Keep the trailing slash: `npx serve`
+rewrites `/cnb/index.html` to `/cnb`, where the page cannot find its
+modules. No build step required. Opened from disk (`file://`), the browser blocks
 the modules, and the page shows a notice saying so, with a link to the
 live site and these commands.
 
@@ -150,9 +155,10 @@ the [engine repository's README](https://github.com/darndestdabbler/lilypond-chr
    the metadata the Configurator reads: `data-semitone-height`, stem
    placemarker rects (attachment anchors), and pre-baked
    `data-lilypond-notehead` / `data-lilypond-hollow` path strings.
-   If minims attach their stems elsewhere, draw the optional second pair of
-   rects, `stem-minim-up` / `stem-minim-down`; without it, minims use the
-   crotchet anchors.
+   A stem is drawn where its rect is, centred on it, in the preview and the
+   engraving. If minims attach their stems elsewhere, draw the optional
+   second pair of rects, `stem-minim-up` / `stem-minim-down`; without it,
+   minims use the crotchet anchors.
 
 ### 2. Import the shape into the Configurator
 
@@ -196,10 +202,9 @@ conventional notehead on the 4-8 staff.
 - **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
   selects several, and Esc clears the selection) to
   open the notehead panel: colour (with **Suggested colours** to start
-  from), fill, shape, size and nudge, and **Give
-  this look to** all, every other, every third … of the noteheads, or the
-  accidentals or naturals. The section lists the rules the looks are kept
-  as.
+  from), fill, shape, size and nudge, for every selected notehead at once.
+  A new shape keeps the notehead's height, at the new shape's proportions.
+  The section lists the rules the looks are kept as.
 - **Key signature** and **Clef** — the signature's look, and the keys a
   notehead rule can be for (the signature draws for the key picked on the
   staff, defined here or not); an imported clef glyph or a text clef.
@@ -208,6 +213,12 @@ conventional notehead on the 4-8 staff.
   file as JSON.
 
 The canvas redraws live from the same JSON config the export reads.
+**Undo** and **Redo** in the top bar (Ctrl+Z and Ctrl+Shift+Z, or Ctrl+Y;
+Cmd on a Mac) step back and forward through the last 100 changes: an edit
+in any section, on the canvas or in the notehead panel, an imported shape,
+or an opened config. A value typed a key at a time, or a colour dragged, is
+one step. The section shown, the selection, and the canvas's Size,
+duration and key are not undone, and the history does not survive a reload.
 
 ### 4. Save and export
 

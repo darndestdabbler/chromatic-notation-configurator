@@ -1572,16 +1572,96 @@ and down on the left (operator, 2026-11-09).
 3. The README's text and picture follow the UI as it now is. The full UAT
    runs.
 4. The operator declares the UI stable, which is the condition for
-   session 43.
+   session 43. *(Amended during session 42: the operator's try-out found
+   four large rough edges (`docs/uat-status.md`, session 42) and asked
+   that all of them come before the 1.1.0 release. They are sessions
+   43–46 and on, and the declaration moves to the session before the
+   release, which is numbered once session 46 has said how many sessions
+   the key-signature designer takes.)*
 
-### Session 43: Release 1.1.0 (release: 1.1.0)
+### Session 43: Nudges you can see and drag
+
+**Why.** The operator's try-out in session 42 (`docs/uat-status.md`): the
+notehead in the middle of the staff cannot be nudged, and the sliders crowd
+the number fields so that each sits nearer the next pitch class than its
+own.
+
+1. Register.
+2. Any notehead can be nudged, the one in the middle of the staff
+   included; nudges are no longer measured from a fixed C.
+3. The sliders go. A notehead is nudged by dragging it up and down on the
+   canvas, and by its number field. Each pitch class's field is framed (a
+   light grey border or background) so it is clear which notehead it
+   belongs to.
+
+### Session 44: The breve as tied semibreves
+
+**Why.** In repeat mode the semibreve and the breve both show 4 heads, the
+engine's fixed counts (session 18). Doubling to 8 for the breve strings too
+many heads together; the operator prefers a breve written as tied
+semibreves (session 42).
+
+1. Register.
+2. With the engine's repository: in repeat mode a breve engraves as two
+   semibreves tied, and the preview draws it so. Longer values, if any, as
+   more tied semibreves.
+3. The engine's golden files, the export baselines and the LY spec follow,
+   with an engine round trip.
+
+### Session 45: Clefs
+
+**Why.** The engine's dozenal clef is not drawn in the preview, and the
+standard clefs take an import to use (operator, 2026-11-08). In the
+session-42 try-out the operator found the clef not yet working: an imported
+clef symbol should be resizable and placed vertically, and shown over a
+range of semitones.
+
+1. Register.
+2. The preview draws the dozenal clef, and buttons choose it or a standard
+   clef (treble, bass, alto), each placed at the pitch it marks, from
+   glyphs whose licence allows it (Bravura, SIL OFL, for example).
+3. An imported clef symbol is resized and moved up and down on the canvas
+   or by its fields, and a clef says over which semitones it is shown,
+   in the preview and the engraving (engine work, if the engine has no
+   such setting).
+
+### Session 46: Designing the key-signature designer
+
+**Why.** A signature should be as easy to design as the noteheads, and
+reach Clairnote's, traditional ones and the scale stack alike (operator,
+2026-11-08), without a designer defining every key in every mode
+(operator, session 42).
+
+1. Register.
+2. A design document only, no code, from the operator's outline in
+   `docs/uat-status.md` (session 42): two kinds of signature, **traditional
+   accidentals** or **scale notes**. Scale notes have the shape, colour and
+   size of their noteheads for naturals, flats and sharps across all
+   pitches; the upper tonic shown or hidden; the option of only the tonic
+   and the notes a half step apart; the stacking (two stacks of odd and
+   even notes, optionally with the gold stem, or a new stack to the right
+   at each half step, optionally alternating fill, colour or shape, enough
+   for Clairnote's); and how the signature repeats across the staff's line
+   groups (once, placed on the bottom group, the top group or near the
+   notes; or repeated across every visible group, the root as a double
+   notehead). It names the engine work (the mark-list hook of the engine
+   backlog §2.3).
+3. The design goes to a cross-provider consult (GPT and Gemini) before the
+   operator approves it, and it plans the sessions that build it.
+
+### Sessions 47 and on: The key-signature designer
+
+As session 46 plans them, with their engine work. Then a session in which
+the operator declares the UI stable, and the release:
+
+### Release 1.1.0 (release: 1.1.0), numbered once session 46 has planned
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
 1. Register.
 2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
    renamed to 1.1.0, and add the notehead-first editor, the clef and
-   key-signature export, and sessions 36–41, to the entry.
+   key-signature export, and sessions 36 onward, to the entry.
 3. The tag deploys the site. Confirm it is up and that the README and the
    `file://` notice link work.
 
@@ -1590,28 +1670,12 @@ and down on the left (operator, 2026-11-09).
 ## Toward 1.2.0
 
 Planned with the operator on 2026-11-08. Release version proposed: 1.2.0,
-a minor version, since each item adds a feature and none breaks a config.
-The release session is numbered once session 44 has said how many sessions
-the key-signature designer takes.
+a minor version, since the item adds a feature and breaks no config. The
+clefs and the key-signature designer, first planned here, moved before
+1.1.0 in session 42 (operator). The session is numbered after the 1.1.0
+release.
 
-### Session 44: Designing the key-signature designer
-
-**Why.** A signature should be as easy to design as the noteheads, and
-reach Clairnote's, traditional ones and the scale stack alike (operator,
-2026-11-08).
-
-1. Register.
-2. A design document only, no code: the designer starts from the scale
-   stack with real noteheads and ledgers, and for a key a designer selects
-   marks and swaps their shape or colour. It settles whether changes are
-   made per key or by rule, and the toggles: only the degrees traditional
-   notation alters or the whole scale, monochrome, and a notehead with
-   ledger and stem or a free symbol with neither. It names the engine work
-   (the mark-list hook of the engine backlog §2.3).
-3. The design goes to a cross-provider consult (GPT and Gemini) before the
-   operator approves it, and it plans the sessions that build it.
-
-### Session 45: Published schemas and partial configs
+### Published schemas and partial configs
 
 **Why.** With a published schema for each part of a config, a designer can
 have an AI write that part and import it (operator, 2026-11-08).
@@ -1626,20 +1690,6 @@ have an AI write that part and import it (operator, 2026-11-08).
    change first, and validates it as any config is.
 4. The AI-assisted workflow guide gains a prompt for each component, with
    the schema's address.
-
-### Session 46: Clefs to pick from
-
-**Why.** The engine's dozenal clef is not drawn in the preview, and the
-standard clefs take an import to use (operator, 2026-11-08).
-
-1. Register.
-2. The preview draws the dozenal clef, and buttons choose it or a standard
-   clef (treble, bass, alto), each placed at the pitch it marks, from
-   glyphs whose licence allows it (Bravura, SIL OFL, for example).
-
-### Sessions 47 and on: The key-signature designer
-
-As session 44 plans them, with their engine work.
 
 ---
 
@@ -1672,7 +1722,7 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
   010 s2 notes D11, D12 and its design consult; record 40). The engine
   backlog §2.3 says to reopen a mark-list rendering hook when this is
   scheduled. *Planned since 2026-11-08 as session 42 and on; since
-  2026-11-09, 44 and on.*
+  2026-11-09, 44 and on; since 2026-11-10, 46 and on.*
 - **Gallery fidelity** (`reproduction-report.md`):
   - Gap A, a ledger rule that hides a ledger when a staff line lies between
     it and the note, which would let the Clairnote SN/DN, Chromatic Lyre

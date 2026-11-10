@@ -18,16 +18,19 @@
  *     ones, then Import from SVG) and size (height and width in semitones,
  *     with an aspect-ratio lock);
  *   - with one notehead selected, its nudge (the Pitch section's control,
- *     session 28) when the pitch axis can show nudges; the side step, shown
- *     only when the pitch axis puts the notehead on a neighbour's spot; and
- *     Give this look to.
+ *     session 28) when the pitch axis can show nudges; and the side step,
+ *     shown only when the pitch axis puts the notehead on a neighbour's spot.
  * A marker says when a rule for particular durations or keys also changes
  * the notehead (§5.5); those rules are edited in Advanced.
  *
  * The panel says how to use it on many noteheads (session 38): a hint under
- * the head on adding (Shift+click or Ctrl+click) and clearing the selection,
- * a line saying what Give this look to copies, and each of its buttons
- * naming in its title the noteheads it would change.
+ * the head on adding (Shift+click or Ctrl+click) and clearing the selection.
+ * A look is given to many noteheads by selecting them; Give this look to,
+ * which copied a look to a choice of noteheads, went in session 42, since
+ * beside a selection it read as a contradiction.
+ *
+ * A new shape keeps the notehead's height, and its width follows the new
+ * shape's proportions (session 42), so a Kite 4 semitones tall is 4 wide.
  *
  * Colour inputs apply once (session 36): while the designer drags, `input`
  * only tints the close-up notehead (the field shows its own colour) and
@@ -61,20 +64,6 @@ import { CNBPitchModel } from "./pitch-model.js";
 import { CNBPitchPanel } from "./pitch-panel.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const ACCIDENTALS = [1, 3, 6, 8, 10];
-const PARTS = ["colour", "fill", "shape", "size"];
-
-/** The Give this look to choices, in the order shown. */
-const GIVE = [
-  ["all", "All"],
-  ["every-2", "Every other"],
-  ["every-3", "Every 3rd"],
-  ["every-4", "Every 4th"],
-  ["every-6", "Every 6th"],
-  ["accidentals", "The accidentals"],
-  ["naturals", "The naturals"],
-];
-
 const round4 = (x) => Math.round(x * 1e4) / 1e4;
 
 function pcName(pc) {
@@ -122,49 +111,25 @@ function coloursInUse(table) {
 
 export const CNBNoteheadPanel = {
 
-  GIVE,
-  PARTS,
-
   /**
-   * The pitch classes a Give this look to choice covers, from pc: "all",
-   * "every-N" (N in 2, 3, 4, 6: pc, pc + N, …), "accidentals", "naturals".
-   * @param {number} pc 0–11
-   * @param {string} kind
-   * @returns {number[]}
+   * A look-table row with a new shape (session 42). A notehead at its
+   * shape's own size takes the new shape's own size; otherwise it keeps its
+   * height and its width follows the new shape's proportions. A size equal
+   * to the new shape's own is written as none. The input is not changed.
+   * @param {object} config  a config holding the new shape (or a built-in)
+   * @param {object} row     a look-table row
+   * @param {string} name    the new shape's name
+   * @returns {object}
    */
-  giveTargets(pc, kind) {
-    const all = [...Array(12).keys()];
-    if (kind === "all") return all;
-    if (kind === "accidentals") return ACCIDENTALS.slice();
-    if (kind === "naturals") return all.filter(p => !ACCIDENTALS.includes(p));
-    const m = /^every-(2|3|4|6)$/.exec(kind);
-    if (m) return all.filter(p => (p - pc + 12) % Number(m[1]) === 0);
-    throw new Error(`giveTargets: unknown choice ${JSON.stringify(kind)}`);
-  },
-
-  /**
-   * A new look table with the given parts of a look copied to the pitch
-   * classes: "colour" (color), "fill" (hollow), "shape", "size" (heightSemis
-   * and widthSemis). The side step is never copied. The input is not changed.
-   * @param {object[]} table
-   * @param {number[]} pcs
-   * @param {object} look   a look-table row
-   * @param {string[]} parts
-   * @returns {object[]}
-   */
-  applyLook(table, pcs, look, parts) {
-    return table.map(row => {
-      if (!pcs.includes(row.pc)) return row;
-      const out = { ...row };
-      if (parts.includes("colour")) out.color = look.color;
-      if (parts.includes("fill")) out.hollow = look.hollow;
-      if (parts.includes("shape")) out.shape = look.shape;
-      if (parts.includes("size")) {
-        out.heightSemis = look.heightSemis;
-        out.widthSemis = look.widthSemis;
-      }
-      return out;
-    });
+  withShape(config, row, name) {
+    if (row.heightSemis === null || row.heightSemis === undefined) {
+      return { ...row, shape: name, heightSemis: null, widthSemis: null };
+    }
+    const shape = shapeOf(config, name);
+    const own = ownSize(shape);
+    const h = round4(row.heightSemis);
+    const w = round4(h * shape.naturalWidth / shape.naturalHeight);
+    return { ...row, shape: name, heightSemis: h === round4(own.height) ? null : h, widthSemis: w === own.width ? null : w };
   },
 
   /**
@@ -380,7 +345,6 @@ export const CNBNoteheadPanel = {
     const pc = selection[0];
 
     let lock = true;                 // Keep aspect ratio (editor state only)
-    let parts = PARTS.slice();       // what Give this look to copies
 
     const el = (tag, className, text) => {
       const e = doc.createElement(tag);
@@ -435,7 +399,8 @@ export const CNBNoteheadPanel = {
 
     function chooseShape(name) {
       const config = CNBBuiltinShapes.withShape(getConfig(), name);
-      const table = I.lookTable(getConfig()).map(row => (selection.includes(row.pc) ? { ...row, shape: name } : row));
+      const table = I.lookTable(getConfig())
+        .map(row => (selection.includes(row.pc) ? CNBNoteheadPanel.withShape(config, row, name) : row));
       commit(table, { config });
     }
 
@@ -672,43 +637,6 @@ export const CNBNoteheadPanel = {
       return group;
     }
 
-    // ── Give this look to ─────────────────────────────────────────────────
-    function drawGive() {
-      const group = el("div", "cnb-nhp-group cnb-nhp-give");
-      group.appendChild(el("p", "cnb-nhp-label", "Give this look to"));
-      group.appendChild(el("p", "cnb-nhp-hint cnb-nhp-give-hint",
-        `Copies the ticked parts of ${pcName(pc)}'s look to the noteheads chosen below.`));
-      const which = el("div", "cnb-nhp-give-parts");
-      for (const part of PARTS) {
-        const label = el("label", "cnb-nhp-give-part");
-        const box = el("input", "");
-        box.type = "checkbox";
-        box.checked = parts.includes(part);
-        box.setAttribute("data-part", part);
-        box.onchange = (e) => {
-          const on = e && e.target ? !!e.target.checked : !parts.includes(part);
-          parts = PARTS.filter(p => (p === part ? on : parts.includes(p)));
-        };
-        label.appendChild(box);
-        label.appendChild(el("span", "", part[0].toUpperCase() + part.slice(1)));
-        which.appendChild(label);
-      }
-      group.appendChild(which);
-      const choices = el("div", "cnb-nhp-give-choices");
-      for (const [kind, text] of GIVE) {
-        const b = button("cnb-nhp-give-option", text, () => {
-          const table = I.lookTable(getConfig());
-          const targets = CNBNoteheadPanel.giveTargets(pc, kind);
-          commit(CNBNoteheadPanel.applyLook(table, targets, table[pc], parts));
-        });
-        b.setAttribute("data-give", kind);
-        b.title = listNames(CNBNoteheadPanel.giveTargets(pc, kind));
-        choices.appendChild(b);
-      }
-      group.appendChild(choices);
-      return group;
-    }
-
     function draw() {
       root.textContent = "";
       const config = getConfig();
@@ -749,10 +677,9 @@ export const CNBNoteheadPanel = {
       if (nudge) right.appendChild(nudge);
       const side = drawSideStep(config, table);
       if (side) right.appendChild(side);
-      right.appendChild(drawGive());
       body.appendChild(left);
       body.appendChild(middle);
-      body.appendChild(right);
+      if (right.children.length) body.appendChild(right);
       root.appendChild(body);
     }
 

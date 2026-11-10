@@ -196,7 +196,7 @@ async function newPage() {
   const text = notice ? await notice.textContent() : "";
   check("FILE: the notice gives the two local commands and the page to open",
     text.includes("npx serve .") && text.includes("python -m http.server 8000") &&
-    text.includes("/cnb/index.html"), text);
+    text.includes("/cnb/ on that server"), text);
   await page.close();
 }
 

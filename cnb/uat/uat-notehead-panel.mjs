@@ -9,15 +9,15 @@
  * (a notehead's colour lives on its rules, session 37). The staff, ledgers,
  * shapes and meta are kept. Then, on the canvas and in the notehead panel:
  *
- *   1. C♯ → kite up, and Give this look to › Every 4th (shape only):
- *      C♯, F, A. D, Shift-click F♯ and A♯ → kite up.
- *   2. C♯ → Hollow, and Every other (fill only): the odd semitones.
- *   3. C, C♯ and D → sky-blue, rose and black through the colour input,
- *      each given to Every 3rd (colour only).
+ *   1. C♯, Shift-click F and A → kite up. D, Shift-click F♯ and A♯ → kite up.
+ *   2. The odd semitones, selected together → Hollow.
+ *   3. Every 3rd semitone from C, from C♯ and from D, each selected
+ *      together → sky-blue, rose and black through the colour input.
  *
  * First (session 38) it checks the help for selecting several: the
  * toolbar's hint, the panel's hint, Ctrl-click adding and dropping a
- * notehead, Give this look to's line and a button's title, and Esc.
+ * notehead, and Esc. Give this look to went in session 42: a look reaches
+ * many noteheads by selecting them, and the driver checks it is gone.
  *
  * Along the way it checks the selection marks, that the colour input's
  * element survives an `input` event (session 21's wiring), the rule list's
@@ -198,23 +198,16 @@ await ctrlClick(7);
 await page.waitForFunction(() => document.querySelector(".cnb-nhp-title")?.textContent === "E");
 check("CTRL-CLICK: a second Ctrl-click drops G", JSON.stringify(await marked("cnb-pvd-selected")) === "[4]",
   JSON.stringify(await marked("cnb-pvd-selected")));
-check("HELP: Give this look to says what it copies, and Every 4th names its noteheads",
-  (await page.textContent(".cnb-nhp-give-hint")) ===
-    "Copies the ticked parts of E's look to the noteheads chosen below." &&
-  (await page.getAttribute('.cnb-nhp-give-option[data-give="every-4"]', "title")) === "C, E and G♯",
-  await page.getAttribute('.cnb-nhp-give-option[data-give="every-4"]', "title"));
+check("PANEL: Give this look to is gone (session 42)", (await page.$$(".cnb-nhp-give")).length === 0);
 await page.keyboard.press("Escape");
 check("HELP: Esc clears the selection", (await marked("cnb-pvd-selected")).length === 0 &&
   !(await page.isVisible("#notehead-panel-card")));
 
-/** Give this look to, copying only the named part. */
-async function give(kind, part) {
-  for (const p of ["colour", "fill", "shape", "size"]) {
-    const box = `.cnb-nhp-give-parts input[data-part="${p}"]`;
-    if (p === part) await page.check(box);
-    else await page.uncheck(box);
-  }
-  await page.click(`.cnb-nhp-give-option[data-give="${kind}"]`);
+/** Select these noteheads together: a click on the first, Shift-clicks on the rest. */
+async function selectMany(pcs) {
+  await selectNotehead(page, pcs[0]);
+  for (const pc of pcs.slice(1)) await selectNotehead(page, pc, { add: true });
+  await page.waitForFunction((n) => document.querySelector(".cnb-nhp-title")?.textContent.endsWith(`(${n} noteheads)`), pcs.length);
 }
 
 /** Set the selection's colour through the colour input: input, then change. */
@@ -235,8 +228,8 @@ check("SELECT: a click opens the notehead panel for C♯, with the rule list sti
   await page.isVisible('[data-panel="noteheads"]'));
 check("SELECT: C♯'s column is outlined", JSON.stringify(await marked("cnb-pvd-selected")) === "[1]",
   JSON.stringify(await marked("cnb-pvd-selected")));
+await selectMany([1, 5, 9]);
 await page.click('.cnb-nhp-shape-option[data-shape="kite-up"]');
-await give("every-4", "shape");
 await selectNotehead(page, 2);
 await selectNotehead(page, 6, { add: true });
 await selectNotehead(page, 10, { add: true });
@@ -252,9 +245,8 @@ check("SHAPE: kite up on C♯, D, F, F♯, A, A♯ as one inferred rule",
   JSON.stringify(cfg.noteheadRules.map(r => [r.name, r.match.pitchClasses])));
 
 // ── 2. Fill: hollow every other semitone from C♯ ────────────────────────────
-await selectNotehead(page, 1);
+await selectMany([1, 3, 5, 7, 9, 11]);
 await page.click('.cnb-nhp-fill-option[data-fill="hollow"]');
-await give("every-2", "fill");
 
 // ── 3. Colour: sky-blue, rose and black every 3 semitones ───────────────────
 await selectNotehead(page, 0);
@@ -270,14 +262,12 @@ check("COLOUR: a drag step (input) keeps the colour input's element (the picker 
   await page.$$eval('.cnb-nhp-closeup path[fill="#50b4e9"]', els => els.length > 0) &&
   await page.$$eval('.cnb-pvd-preview .pc-col[data-pc="0"] path[fill="#50b4e9"]', els => els.length === 0) &&
   (await state()).noteheadRules.every(r => r.apply.color === undefined));
+await selectMany([0, 3, 6, 9]);
 await pickColour("#50b4e9");
-await give("every-3", "colour");
-await selectNotehead(page, 1);
+await selectMany([1, 4, 7, 10]);
 await pickColour("#cc79a7");
-await give("every-3", "colour");
-await selectNotehead(page, 2);
+await selectMany([2, 5, 8, 11]);
 await pickColour("#000000");
-await give("every-3", "colour");
 await page.screenshot({ path: path.join(SHOT_DIR, "notehead-panel-kite.png"), fullPage: true });
 
 cfg = await state();

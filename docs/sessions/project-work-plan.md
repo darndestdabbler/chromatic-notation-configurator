@@ -53,7 +53,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 39 | The workflow in the order a notation is designed | no | 2026-11-09 |
 | 40 | Stems where the notehead's SVG puts them | no | 2026-11-09 |
 | 41 | Undo and redo | no | 2026-11-09 |
-| 42 | The UI is stable | — | not declared |
+| 42 | The UI is stable | no | 2026-11-09 |
 | 43 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 | 44 | Designing the key-signature designer | — | not declared |
 | 45 | Published schemas and partial configs | — | not declared |
@@ -410,3 +410,15 @@ Make a shape's stem anchor the stem's own position rather than the place its edg
 **Releasable: no.**
 
 Give the configurator undo and redo of every change to the config. A new small module, cnb/ui/history.js (CNBHistory), keeps a bounded stack of config snapshots (JSON strings, 100 levels): create(config), record(config, group) which adds a step when the config differs from the current one and folds consecutive records of the same non-null group into one step, seal() which ends the open group, amend(config) which replaces the current snapshot without a step, undo() / redo() which return the config to restore or null, and canUndo() / canRedo(). cnb/index.html records the config at the end of every change (refreshShared), so every editor, the notehead panel, the canvas, an SVG import and opening a config are each a step; the group is the form control whose input event is being handled, and its change event seals it, so a typed value or a dragged colour is one step; Save's meta stamp amends the current step instead of adding one. Undo and Redo buttons in the top bar, disabled when there is nothing to undo or redo, and Ctrl+Z / Ctrl+Shift+Z (Cmd on a Mac, Ctrl+Y too) restore the snapshot, re-seed every editor and redraw, without recording. A browser UAT driver checks it in the real page.
+
+### Session 42 — The UI is stable
+
+**Releasable: no.**
+
+Make the UI stable for the 1.1.0 release. The operator tries what sessions 36-41 added in the app (the save dialog, repeat mode beside the durations, colours chosen on the noteheads with suggested sets, selecting several noteheads, the sections in design order with Notehead height first, stems where the SVG puts them, and undo and redo), and the findings are recorded in a session-42 section of docs/uat-status.md. The small rough edges found are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 43. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is, undo and redo included, and its local-serving instructions are checked against the page as served. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 43), is recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-10 — step 'fix-rough-edges': its files: The three fixes live in the colour sets and the notehead panel (with their tests, CSS, UAT driver and design doc), not cnb/index.html; the planned items' session numbers were added to the session-42 record. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-10 — step 'readme': its files: Checking the serving instructions found npx serve breaks /cnb/index.html, so the page's file:// notice (and its site UAT check) changed with the README; the new screenshot showed Shift+click selecting label text, fixed in app.css; both recorded in docs/uat-status.md. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-10 — step 'uat-and-declaration': its checks: At the operator's request the four large rough edges come before the 1.1.0 release (sessions 43-46 and on), so the operator did not declare the UI stable in this session; the record states that the declaration moves to the session before the release, and the check reads that instead of a declaration for session 43. (claude-code (anthropic, claude-opus-5-5))

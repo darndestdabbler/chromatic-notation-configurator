@@ -496,8 +496,9 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 /* ── Selecting noteheads (session 27, design §2, §6.2) ─────────────────── */
 /* A column is the hit target. Selection: a 2 px accent outline and a faint
- * tint over the whole column, labels included; hover of a rule: the tint. */
-.canvas-card .cnb-pvd-preview .pc-col { cursor: pointer; border-radius: var(--radius-s); }
+ * tint over the whole column, labels included; hover of a rule: the tint.
+ * A Shift+click selects noteheads, not the labels' text (session 42). */
+.canvas-card .cnb-pvd-preview .pc-col { cursor: pointer; border-radius: var(--radius-s); user-select: none; }
 .canvas-card .cnb-pvd-preview .pc-col:hover { background: rgba(47, 91, 211, .04); }
 .cnb-pvd-preview .pc-col.cnb-pvd-tint { background: rgba(47, 91, 211, .09); }
 .cnb-pvd-preview .pc-col.cnb-pvd-selected {
@@ -554,7 +555,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-nhp-none, .cnb-nhp-rule-swatch.cnb-nhp-none {
   background: linear-gradient(135deg, #fff 45%, var(--error) 45%, var(--error) 55%, #fff 55%);
 }
-.cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock, .cnb-nhp-give-part {
+.cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock {
   display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--ink-2);
 }
 /* Suggested colours (session 37): a help disclosure in the Colour group. */
@@ -578,9 +579,6 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-nhp-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
 .cnb-nhp-unit { font-size: 12px; color: var(--ink-2); }
 .cnb-nhp-hint { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
-.cnb-nhp-give-parts { display: flex; flex-wrap: wrap; gap: var(--space-3); flex-basis: 100%; }
-.cnb-nhp-give-choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.cnb-nhp-give-option { font-size: 13px; }
 
 /* ── The label strip (session 28, design §4.2, §6.2) ──────────────────── */
 /* Quiet everywhere: plain grey labels on the inset surface with a hairline

@@ -21,6 +21,88 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Trying sessions 36–41 — 2026-11-10 (session 42)
+
+The operator tried what sessions 36–41 added, in the app served locally
+(`python -m http.server 8000`). They did not test the rest of the
+Configurator this time.
+
+**Works as intended.** Repeat mode beside the duration buttons (session 36),
+colours chosen on the noteheads and the suggested colour sets (37),
+selecting several noteheads (38), and the start on Notehead height (39).
+
+**Rough edges**, each marked *fix here* or *planned*. The operator asked
+that all the planned ones come before the 1.1.0 release.
+
+1. **Two more suggested colour sets** (*fix here*): a three-colour set,
+   black `#000000`, rose `#CC79A7`, sky blue `#56B3E9`; and a four-colour
+   set, black `#000000`, deep pink `#E23084`, shamrock `#2B9E7B`, sky blue
+   `#56B3E9`.
+2. **Give this look to goes** (*fix here*): with several noteheads
+   selected on the canvas, its toggles and buttons seem to contradict the
+   selection. The operator chose to remove it, so a look is given to many
+   noteheads by selecting them.
+3. **Kite's default width** (*fix here*): a Kite notehead 4 semitones tall
+   showed a width of 5.0639 instead of 4.00, which is 4 at the default
+   notehead's proportions (344.852 ÷ 272.4). A width is kept from the shape
+   the notehead had before, instead of following the new shape's.
+4. **The breve as tied semibreves** (*planned*, session 44): in repeat mode the semibreve
+   and the breve both show 4 heads, the engine's fixed counts. Doubling to
+   8 for the breve strings too many heads together. The operator prefers a
+   breve written as one or more tied semibreves, which needs engine work.
+   No other plan for the breve existed.
+5. **Nudges** (*planned*, session 43): the notehead in the middle of the staff cannot
+   be nudged (C is the fixed reference). The sliders take so much room that
+   each number field sits nearer the next pitch class than its own;
+   dragging the notehead up and down could replace them, and a light grey
+   border or background would show which field belongs to which pitch
+   class.
+6. **The clef** (*planned*, session 45): the engine's dozenal clef should be a choice,
+   drawn in the preview, and an imported clef symbol should be resizable
+   and placed vertically, with the semitone range over which it is shown.
+7. **Key signatures** (*planned*, the designer: its design in session 46, then the sessions it plans): fewer
+   options, so a designer does not have to define every key in every mode.
+   The operator's outline:
+   - **A. Accidentals**: traditional accidentals, which may help pianists.
+   - **B. Scale notes**, with:
+     1. the shape, colour and size of the signature's noteheads, for
+        naturals, flats and sharps across all pitches;
+     2. the upper tonic (the octave) shown or hidden;
+     3. only the tonic and the notes a half step apart;
+     4. the vertical stacking: two stacks of odd and even notes, optionally
+        with the gold stem between them; or two or three stacks, a new one
+        to the right at each half step, optionally alternating fill, colour
+        or shape (enough for [Clairnote's signatures](https://clairnote.org/key-signatures/));
+     5. how the signature repeats across the staff's line groups: not
+        repeated, placed so most noteheads fall on the bottom group, on the
+        top group, or near the notes on the staff; or repeated across every
+        visible group, the root as a double notehead.
+
+**Found while updating the README** (*fixed here*): a Shift+click on the
+canvas also selected the column labels' text, which showed as blue
+highlights; the columns now take no text selection. And `npx serve .`, one
+of the two ways the README and the page's `file://` notice give to serve
+the app, rewrites `/cnb/index.html` to `/cnb`, where the page cannot find
+its modules; both now say to open `/cnb/`, with the trailing slash, which
+loads under either server.
+
+**What the UAT checks.** `uat-notehead-panel.mjs` builds the Kite 4-369
+looks by selecting noteheads together (Shift+click) instead of through Give
+this look to, checks that Give this look to is gone, and still exports the
+Kite baseline byte for byte (19 of 19 checks). `uat-site.mjs` checks that
+the `file://` notice says to open `/cnb/` (10 of 10). `npm run uat` passes
+18 of 18 drivers (2026-11-10).
+
+**The declaration moves.** The operator did not declare the UI stable in
+this session. Having listed the rough edges above, they wrote: "I think
+that there is enough work above to occupy a few sessions -- possibly
+requiring some work in the engine, as well", and chose that all of it come
+before the release (2026-11-10). So the operator will declare the UI stable
+in the session before the 1.1.0 release, once sessions 43 (nudges),
+44 (the breve), 45 (clefs) and 46 and on (the key-signature designer) are
+done; that session and the release are numbered when session 46 has planned
+the designer.
+
 ## Undo and redo — 2026-11-09 (session 41)
 
 A wrong change could only be put right by hand. Session 41 adds **Undo**

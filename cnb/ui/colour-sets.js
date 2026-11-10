@@ -13,6 +13,9 @@
  * four hues chosen for this project). The colour-blind-safe sets for sizes
  * 2–7 follow Paul Tol's schemes; the 11-colour one is this project's own.
  *
+ * Session 42 adds two sets the operator asked for, each led by black:
+ * black, rose and sky blue; and black, deep pink, shamrock and sky blue.
+ *
  * A colour-blind version of a notation is a second config: the same one
  * saved under another name with other colours.
  *
@@ -85,9 +88,25 @@ const COLOUR_BLIND_SAFE = {
   ],
 };
 
+/** The operator's sets (session 42), each led by black. */
+const WITH_BLACK = [
+  { key: "black-3", colors: [
+    { name: "Black",     hex: "#000000" },
+    { name: "Rose",      hex: "#CC79A7" },
+    { name: "Sky blue",  hex: "#56B3E9" },
+  ] },
+  { key: "black-4", colors: [
+    { name: "Black",     hex: "#000000" },
+    { name: "Deep pink", hex: "#E23084" },
+    { name: "Shamrock",  hex: "#2B9E7B" },
+    { name: "Sky blue",  hex: "#56B3E9" },
+  ] },
+];
+
 const SIZES = [2, 3, 4, 6, 7, 11];
 
-/** The sets, Dark2 first, each { key, label, colourBlindSafe, colors }. */
+/** The sets, Dark2 first, then the colour-blind-safe ones, then those led
+ *  by black, each { key, label, colourBlindSafe, colors }. */
 const SETS = [
   ...SIZES.map(n => ({
     key: `dark2-${n}`, label: `Dark2 · ${n} colours`, colourBlindSafe: false,
@@ -96,6 +115,9 @@ const SETS = [
   ...SIZES.map(n => ({
     key: `cbsafe-${n}`, label: `Colour-blind safe · ${n} colours`, colourBlindSafe: true,
     colors: COLOUR_BLIND_SAFE[n],
+  })),
+  ...WITH_BLACK.map(({ key, colors }) => ({
+    key, label: colors.map(c => c.name).join(", "), colourBlindSafe: false, colors,
   })),
 ];
 

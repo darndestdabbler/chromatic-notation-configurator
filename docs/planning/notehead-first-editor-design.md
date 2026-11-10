@@ -112,21 +112,19 @@ The panel has three columns: on the left, the selected notehead drawn
 alone at the Large size on its piece of staff, so a change is seen up
 close while the canvas above shows it in context (§6), with the
 pitch-class control under it; in the middle, the look (colour, fill, shape, size); on the
-right, the nudge and **Give this look to**. The inferred rules (§5.4) are
-listed under the panel.
+right, the nudge (and the side step, when shown). The inferred rules
+(§5.4) are listed under the panel.
 
-**Give this look to.** A row of quick selections applies the current look
-to more noteheads at once: **All**, **Every other**, **Every
-3rd**, **Every 4th**, **Every 6th** (each starting from the selected pitch
-class), **The accidentals** and **The naturals**. The user chooses which
-parts of the look to copy (colour, fill, shape, size). A Shift-click on the
-canvas adds a notehead to the selection (a Ctrl-click or Cmd-click too,
-since session 38), and the panel then edits all the selected noteheads
-together. Esc or Close clears the selection. Since session 38 the canvas
-and the panel say how: the canvas toolbar's hint, a hint under the panel's
-head on adding, dropping and clearing, a line saying what Give this look to
-copies, and each of its buttons naming the noteheads it would change. This is how a designer says "every third note
-is blue" without writing a rule. The inference (§5) then finds the same
+**Selecting several.** A Shift-click on the canvas adds a notehead to the
+selection (a Ctrl-click or Cmd-click too, since session 38), and the panel
+then edits all the selected noteheads together. Esc or Close clears the
+selection. Since session 38 the canvas and the panel say how: the canvas
+toolbar's hint and a hint under the panel's head on adding, dropping and
+clearing. This is how a designer says "every third note is blue" without
+writing a rule. *(Until session 42 a row of quick selections, Give this
+look to, copied chosen parts of the look to All, Every other, Every 3rd,
+4th or 6th, the accidentals or the naturals. Beside a selection made on
+the canvas it read as a contradiction, and the operator had it removed.)* The inference (§5) then finds the same
 pattern again.
 
 **Built-in shapes.** A small set, so a new user can design without
