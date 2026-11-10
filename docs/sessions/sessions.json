@@ -902,9 +902,9 @@
     {
       "number": 43,
       "title": "Nudges you can see and drag",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-10T07:13:26.649000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-10T07:27:03.211000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
