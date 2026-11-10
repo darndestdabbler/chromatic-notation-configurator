@@ -105,7 +105,7 @@ The panel holds:
 | **Shape** | Thumbnails of the shapes in the config, then the built-in shapes, then **Import from SVG…** (today's importer) | inferred rules, `apply.shape`. A built-in shape is copied into `config.shapes` when first chosen. |
 | **Size** | Height and width in semitones (0.25 to 4), with an aspect-ratio lock that is on by default. The shape's own size is the reset value. | inferred rules, `apply.heightSemis` / `apply.widthSemis` (the fields session 22 adds) |
 | **Pitch class** | "This notehead is: C ▾", which renames the notehead (§4.1) | `staff`, `ledgers`, the look table (§4.1) |
-| **Nudge** | A slider from −1 to +1 semitone with a number field, 0 in the middle (§3) | `pitchAxis` (§3.2) |
+| **Nudge** | A number field from −1 to +1 semitone in a light grey frame, and the notehead dragged up or down on the canvas with Pitch open (§3; sliders until session 43) | `pitchAxis` (§3.2) |
 | **Side step** | Shown only when the nudge makes this notehead share a spot with a neighbour: a horizontal offset in staff spaces, so the two stay readable | inferred rules, `apply.xOffsetStaffSpaces` |
 
 The panel has three columns: on the left, the selected notehead drawn
@@ -179,18 +179,29 @@ change:
 With every nudge at 0 this is the identity map, which the pitch-axis design
 already proves exports exactly as the linear path.
 
-**Nudges are measured from C** *(session 28)*. Shifting every position by
-the same amount draws and engraves the same staff, so a map has nudges only
-relative to one pitch class. C is that reference: every map, stride 12
-included, is read with the §3.3 formula, and C's nudge always reads 0. A map
-whose positions are all shifted by the same amount therefore reads as no
-nudges. The Pitch section shows C's nudge fixed at 0, and a note is moved
-against C by nudging it, or C against all the others by nudging them.
+**Every pitch class has its own nudge** *(session 43)*. A stride-12 map,
+the form above, is read as it is written: `nudge(pc) = position(pc) − pc`,
+C's included. From session 28 to 42 nudges were measured from C, whose
+nudge always read 0, so the notehead in the middle of the default staff
+could not be nudged (operator's try-out, session 42). Shifting every
+position by the same amount still draws and engraves the same staff (the
+preview and the export both measure from the middle of the staff's
+position), so twelve equal nudges are allowed and change nothing on the
+page. A map at another stride (Twinline's 7) is still rescaled and read
+from C (§3.3): that is only how it is brought into nudge form.
+
+**Nudging on the canvas** *(session 43)*. With the Pitch section open, a
+notehead is dragged up or down on the canvas: its column follows the
+pointer, and the release nudges its pitch class by the distance dragged,
+stopped at its neighbours (`CNBPitchModel.dragNudge`). A press that does
+not move still selects. The Pitch section's sliders went in the same
+session: each pitch class keeps its name and its number field, framed in
+light grey so it is clear which notehead it belongs to.
 
 **No reordering.** Nudges may make neighbours share a spot but may never
 reorder notes. Position must not decrease from one pitch class to the next,
 including across the octave (`11 + nudge(11) ≤ 12 + nudge(0)`). This is the
-map rule that validation already enforces (PA-8). The slider for a pitch
+map rule that validation already enforces (PA-8). The nudge of a pitch
 class therefore stops at the neighbours: its range is
 `[max(−1, nudge(pc−1) − 1), min(+1, nudge(pc+1) + 1)]`, wrapping at B and C.
 Reaching the stop is how a user makes two noteheads share a spot. The panel
@@ -200,7 +211,8 @@ then shows the Side step control (§2).
 
 The Twinline fixture (`twinline-compact.json`) has seven positions per
 octave, with stride 7 and 2 axis units per staff space. Its nudges come
-from rescaling its positions to stride 12 with C fixed at 0:
+from rescaling its positions to stride 12, measured from C (a map at a
+stride other than 12 only):
 
 ```
 nudge(pc) = (position(pc) − position(0)) × 12 / octaveStride − pc
@@ -238,18 +250,18 @@ that writes a decimal value confirms it with an engine render (§11).
 A config whose map gives some pitch class a nudge outside ±1 by the formula
 above (for example three pitch classes collapsed onto one spot, or a map
 that is not evenly spaced) is kept as it is. The Pitch section says "This
-file uses a custom pitch axis that nudges can't show", the nudge sliders
+file uses a custom pitch axis that nudges can't show", the nudge fields
 are disabled, and the map stays editable in **Advanced › Pitch axis map**
 (today's pitch-axis editor). The rest of the editor works normally. A
 stride-7 map that does fit is also kept as it is until the user changes a
 nudge or the spacing. Only then is it rewritten in the stride-12 form,
 which engraves the same positions, though the `.ly` text differs.
 
-Because nudges are measured from C (§3.2), renaming a nudged notehead
-(§4.1) can leave a map that needs more than ±1 from its new C. The picture
-is unchanged, but the map then shows as a custom pitch axis. For example,
-renaming Twinline's C to G puts the old F (+0.14) on the new C, and the old
-C♯ (−1) would need −1.14 from it.
+Renaming a nudged notehead (§4.1) rotates a stride-12 map's nudges as they
+are, so each spot keeps its nudge and the map stays in nudge form (session
+43). From session 28 to 42, when nudges were measured from C, renaming
+Twinline's C to G left a map that needed −1.14 from its new C and showed
+as a custom pitch axis.
 
 ---
 
@@ -295,7 +307,7 @@ to the staff, that is the same picture the drag showed. The Pitch section's
 The labels sit one semitone apart, too close to read in one column, so they
 stagger in two columns: **even pitch classes on the left** (C, D, E, F♯,
 G♯, A♯) and odd on the right. That gives each column two semitones per
-label, and C, the reference, always reads first. Staggering also sets
+label, and C always reads first. Staggering also sets
 apart labels that share a spot under a nudge, because sharing neighbours
 are one even and one odd. In the rare case of three neighbours sharing a
 spot, the two in one column show as one chip, "C·D".

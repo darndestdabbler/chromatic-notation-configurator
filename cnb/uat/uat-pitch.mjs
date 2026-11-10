@@ -21,6 +21,10 @@
  * Then, separately:
  *   - in the Pitch section, dragging a label strip one semitone down makes
  *     the middle of the staff G♯, and dragging it back makes it G;
+ *   - on the default config (session 43), C's framed nudge field, the
+ *     middle of the staff, is enabled, and nudging C alone moves C's
+ *     notehead; dragging G's notehead half a semitone up on the canvas
+ *     nudges G +0.5 and leaves the Pitch section open (no selection);
  *   - on the default config, renaming C to F♯ from the notehead panel
  *     keeps the exported staff '(-4 -2 2 4) (design §11);
  *   - the fixture itself opens with its nudges shown, and a map that needs
@@ -303,6 +307,42 @@ check("CUSTOM: a map that needs more than ±1 says so and disables the nudges",
 await page.click(".cnb-pp-open-advanced");
 check("CUSTOM: its button opens Advanced › Pitch axis map",
   await page.isVisible('[data-panel="advanced"]') && await page.$eval("#pitch-axis-map", d => d.open));
+
+// ── Nudging C and dragging a notehead (session 43) ──────────────────────────
+await page.reload();
+await page.waitForSelector(".cnb-pvd-preview .pc-col");
+await openSection(page, "pitch");
+const cField = '.cnb-pp-nudge[data-pc="0"] .cnb-pp-nudge-field';
+check("NUDGE C: no sliders, and C's field, the middle of the staff, is enabled",
+  !(await page.$(".cnb-pp-nudge-slider")) && !(await page.$eval(cField, e => e.disabled)));
+const pxSemi = CNBPreviewDisplay.SIZES[await page.$eval(".cnb-pvd-size-option.on", b => b.dataset.size)];
+let ys = await lowerHeadY();
+const cAboveD = ys[0] - ys[2];
+await setField(page, cField, "0.5");
+ys = await lowerHeadY();
+check("NUDGE C: nudging C alone by +0.5 moves C's notehead half a semitone up against D",
+  CNBPitchModel.readNudges(await state()).nudges[0] === 0.5 && Math.abs((ys[0] - ys[2]) - (cAboveD - pxSemi / 2)) < 0.5,
+  `${cAboveD} → ${ys[0] - ys[2]}`);
+const gAboveF = ys[7] - ys[5];
+{
+  const box = await page.locator('.cnb-pvd-preview .pc-col[data-pc="7"]').first().boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - pxSemi / 4, { steps: 3 });
+  await page.mouse.move(x, y - pxSemi / 2, { steps: 3 });
+  await page.mouse.up();
+}
+const dragged = CNBPitchModel.readNudges(await state()).nudges;
+ys = await lowerHeadY();
+check("DRAG NOTEHEAD: dragging G half a semitone up nudges it +0.5 and moves it",
+  Math.abs(dragged[7] - 0.5) < 0.02 && dragged[0] === 0.5 && Math.abs((ys[7] - ys[5]) - (gAboveF - pxSemi / 2)) < 1,
+  `${JSON.stringify(dragged)} ${gAboveF} → ${ys[7] - ys[5]}`);
+check("DRAG NOTEHEAD: the drag does not select: the Pitch section stays open",
+  await page.isVisible('[data-panel="pitch"]') && !(await page.$(".cnb-nhp-title")) &&
+  Math.abs(Number(await page.inputValue('.cnb-pp-nudge[data-pc="7"] .cnb-pp-nudge-field')) - 0.5) < 0.02);
+await page.screenshot({ path: path.join(SHOT_DIR, "pitch-nudges-framed.png"), fullPage: true });
 
 // ── Renaming C to F♯ on the default staff ───────────────────────────────────
 await page.reload();

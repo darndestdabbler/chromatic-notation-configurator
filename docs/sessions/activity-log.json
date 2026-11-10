@@ -699,6 +699,13 @@
       "what": "step 'uat-and-declaration': its checks",
       "reason": "At the operator's request the four large rough edges come before the 1.1.0 release (sessions 43-46 and on), so the operator did not declare the UI stable in this session; the record states that the declaration moves to the session before the release, and the check reads that instead of a declaration for session 43.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 43,
+      "dateTime": "2026-11-10T07:16:10.369000-05:00",
+      "task": "Make every notehead nudgeable and nudge it where it is drawn. Nudges stop being measured from a fixed C: a stride-12 pitch axis (the form writeNudges writes) is read as each pitch class's own offset, position minus pitch class, so C, and with it the notehead in the middle of the default staff, has a nudge like any other; a map at another stride (Twinline's 7) is still rescaled and read from C, which is only how it is brought into nudge form. The Pitch section's sliders and shaded bars go: each pitch class keeps its name, its number field and its 'shares' mark, framed with a light grey border and background so it is clear which notehead it belongs to, and C's field is enabled. On the canvas, with the Pitch section open, dragging a notehead's column up or down moves it with the pointer and the release nudges that pitch class by the distance dragged (a new pure CNBPitchModel.dragNudge, which converts the drag to a nudge, clamps it to the neighbours' limits and writes it); a press that does not move stays a click that selects. The notehead panel's nudge loses its slider and its 'C is the reference' hint the same way. Tests named after each changed source file follow, the browser UAT drives the field and the drag, and the design document and docs/uat-status.md record the change.",
+      "releasable": false
     }
   ]
 }

@@ -4,7 +4,8 @@
  *
  * Covers the controls on the default config and on Twinline (the §3.3
  * nudges and the shared marks), the middle of the staff, the staff spacing,
- * a nudge change and its limits, C fixed as the reference, every nudge
+ * a nudge change and its limits, C nudged like the rest (session 43), no
+ * sliders (session 43), every nudge
  * back at 0, the custom-map fallback (§3.5), a stride-7 map kept until a
  * control changes, and nudgeControl on its own.
  */
@@ -25,6 +26,10 @@ function assert(condition, message) {
 
 function eq(a, b, msg) {
   if (a !== b) throw new Error(`${msg || "eq"}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+}
+
+function deepEq(a, b, msg) {
+  eq(JSON.stringify(a), JSON.stringify(b), msg);
 }
 
 function near(a, b, tol, msg) {
@@ -112,7 +117,7 @@ const TWINLINE_NUDGES = [0, -1, -0.29, 0.43, -0.57, 0.14, -0.86, -0.14, 0.57, -0
 
 export const tests = [
 
-  { name: "render: the default config shows C in the middle, spacing 4, and twelve nudges at 0 with C fixed", fn: () => {
+  { name: "render: the default config shows C in the middle, spacing 4, and twelve nudge fields at 0, C's included", fn: () => {
       withDomStub(container => {
         const { api, state, control } = mount(container, CNBConfig.createDefault());
         assert(container.children.includes(api.root), "appended");
@@ -124,9 +129,11 @@ export const tests = [
           eq(field(control(pc)).value, "0", `pc ${pc} at 0`);
           eq(findAll(control(pc), "cnb-pp-nudge-shares").length, 0, `pc ${pc} shares nothing`);
         }
-        eq(field(control(0)).disabled, true, "C fixed");
-        eq(findOne(control(0), "cnb-pp-nudge-slider").disabled, true, "C's slider fixed");
-        eq(field(control(5)).disabled, false, "F editable");
+        for (let pc = 0; pc < 12; pc++) {
+          eq(field(control(pc)).disabled, false, `pc ${pc} editable`);
+          eq(findAll(control(pc), "cnb-pp-nudge-slider").length, 0, `pc ${pc} has no slider`);
+          eq(findAll(control(pc), "cnb-pp-nudge-reach").length, 0, `pc ${pc} has no shaded bar`);
+        }
         eq(findAll(api.root, "cnb-pp-custom").length, 0, "no custom-map note");
         eq(state.changes, 0, "drawing writes nothing");
       });
@@ -136,8 +143,6 @@ export const tests = [
       withDomStub(container => {
         const { api, state, control } = mount(container, twinline());
         TWINLINE_NUDGES.forEach((n, pc) => near(Number(field(control(pc)).value), n, 0.005, `pc ${pc}`));
-        eq(findOne(control(1), "cnb-pp-nudge-value").textContent, "−1.00", "C♯ shown as −1.00");
-        eq(findOne(control(3), "cnb-pp-nudge-value").textContent, "+0.43", "D♯ shown as +0.43");
         for (let pc = 0; pc < 12; pc++) {
           const shared = ![2, 7].includes(pc);
           eq(findAll(control(pc), "cnb-pp-nudge-shares").length, shared ? 1 : 0, `pc ${pc} shares`);
@@ -181,7 +186,7 @@ export const tests = [
       });
     }},
 
-  { name: "nudges: a change is written as a stride-12 axis; it is clamped to its limits, which the bar shades", fn: () => {
+  { name: "nudges: a change is written as a stride-12 axis; it is clamped to its limits, which the field carries", fn: () => {
       withDomStub(container => {
         const { state, control } = mount(container, CNBConfig.createDefault());
         field(control(2)).onchange({ target: { value: "-0.5" } });
@@ -189,31 +194,26 @@ export const tests = [
         eq(state.config.pitchAxis.octaveStride, 12, "stride 12");
         eq(state.config.pitchAxis.pitchClasses[2].position, 1.5, "D at 1.5");
         // C♯ now stops at D: max = min(1, −0.5 + 1) = 0.5.
-        const reach = findOne(control(1), "cnb-pp-nudge-reach");
-        eq(reach.style.left, "0%", "reach starts at −1");
-        eq(reach.style.width, "75%", "and ends at +0.5");
+        eq(field(control(1)).min, "-1", "C♯ from −1");
+        eq(field(control(1)).max, "0.5", "to +0.5");
         field(control(1)).onchange({ target: { value: "0.9" } });
         eq(P.readNudges(state.config).nudges[1], 0.5, "clamped to D's spot");
         assert(findAll(control(1), "cnb-pp-nudge-shares").length === 1, "C♯ now shares D's spot");
         assert(findAll(control(2), "cnb-pp-nudge-shares").length === 1, "and D shares C♯'s");
         field(control(1)).onchange({ target: { value: "-3" } });
         eq(P.readNudges(state.config).nudges[1], -1, "clamped to −1");
-        const slider = findOne(control(4), "cnb-pp-nudge-slider");
-        slider.oninput({ target: { value: "0.25" } });
-        eq(findOne(control(4), "cnb-pp-nudge-value").textContent, "+0.25", "the slider shows its value while moving");
-        const changes = state.changes;
-        slider.onchange({ target: { value: "0.25" } });
-        eq(state.changes, changes + 1, "and writes on release");
       });
     }},
 
-  { name: "nudges: C cannot be nudged, and every nudge back at 0 removes pitchAxis", fn: () => {
+  { name: "nudges: C, the middle of the default staff, is nudged like the rest (session 43); every nudge back at 0 removes pitchAxis", fn: () => {
       withDomStub(container => {
         const { state, control } = mount(container, nudged([0, 0, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
         field(control(0)).onchange({ target: { value: "0.5" } });
-        eq(state.changes, 0, "C is the reference");
+        eq(state.changes, 1, "C nudged");
+        deepEq(P.readNudges(state.config).nudges, [0.5, 0, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0], "C +0.5, D still +0.5");
+        field(control(0)).onchange({ target: { value: "0" } });
         field(control(2)).onchange({ target: { value: "0" } });
-        eq(state.changes, 1, "D back at 0");
+        eq(state.changes, 3, "C and D back at 0");
         assert(!("pitchAxis" in state.config), "the section is removed");
       });
     }},
@@ -265,7 +265,6 @@ export const tests = [
         field(control).onchange({ target: { value: "-0.5" } });
         eq(changes.length, 1, "reported");
         eq(P.readNudges(changes[0]).nudges[1], -0.5, "the new nudge");
-        eq(CNBPitchPanel.formatNudge(0), "0", "0 shown bare");
         eq(CNBPitchPanel.shares(ZEROS, 3), false, "no nudges, no sharing");
       });
     }},

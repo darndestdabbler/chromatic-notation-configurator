@@ -13,12 +13,16 @@
  *   writeNudges(config, n, spacing)  → nudges written as a stride-12 pitch
  *                                      axis, or the section removed (§3.2)
  *   nudgeLimits(nudges, pc)          → { min, max } of one nudge (§3.2)
+ *   dragNudge(config, pc, units)     → pc nudged by a drag on the canvas, or
+ *                                      null when nothing changes (session 43)
  *   renameDelta(fromPc, toPc)        → the d, −6…+5, from one name to another
  *   renameNotehead(config, from, to) → names changed, the picture kept (§4.1)
  *
  * A nudge is a pitch class's offset from its own semitone, −1…+1; its
- * position is pc + nudge. Nudges are read relative to C, whose nudge is
- * always 0 (session 28). Nudges and spacing are rounded to 4 decimals (the
+ * position is pc + nudge. Every pitch class has its own, C included
+ * (session 43): before then nudges were read relative to C, whose nudge was
+ * always 0, so the notehead in the middle of the default staff could not be
+ * nudged. Nudges and spacing are rounded to 4 decimals (the
  * exporter's precision), and so are the positions written from them, so two
  * pitch classes that share a spot get the same number.
  *
@@ -72,11 +76,11 @@ function shiftRaw(config, d) {
 /**
  * The nudges and staff spacing a config shows (§3.2–§3.4). With no active
  * pitch axis every nudge is 0 and the spacing is staff.semitonesPerStaffSpace.
- * Every map, stride 12 included, is measured from C's position and rescaled
- * to stride 12 (§3.3): nudge(pc) = (position(pc) − position(0)) × 12 /
- * octaveStride − pc. C is the reference, so its nudge always reads 0, and a
- * map whose positions are all shifted by the same amount (which draws and
- * engraves the same as no shift) reads as no nudges. The spacing is
+ * A stride-12 map, the form writeNudges writes, holds the nudges as they
+ * are: nudge(pc) = position(pc) − pc (session 43). A map at another stride
+ * (Twinline's 7) is rescaled to stride 12 and measured from C's position
+ * (§3.3): nudge(pc) = (position(pc) − position(0)) × 12 / octaveStride − pc,
+ * which is how it is brought into nudge form. The spacing is
  * axisUnitsPerStaffSpace × 12 / octaveStride (§3.4). Null when a nudge
  * falls outside ±1: the map is a custom axis nudges can't show (§3.5).
  */
@@ -87,7 +91,8 @@ function readNudges(config) {
   }
   const stride = axis.octaveStride;
   const pos = PCS.map(pc => axis.positionOfSemi(pc));
-  const nudges = PCS.map(pc => round4((pos[pc] - pos[0]) * 12 / stride - pc));
+  const base = stride === 12 ? 0 : pos[0];
+  const nudges = PCS.map(pc => round4((pos[pc] - base) * 12 / stride - pc));
   if (nudges.some(n => Math.abs(n) > 1 + EPS)) return null;
   return { nudges, staffSpacing: round4(axis.unitsPerStaffSpace * 12 / stride) };
 }
@@ -137,6 +142,26 @@ function writeNudges(config, nudges, staffSpacing) {
     };
   }
   return keepAutomaticLedgers(config, out);
+}
+
+/**
+ * A drag on the canvas (session 43): pc's notehead dragged up by `units`
+ * axis units (downward negative), the unit the canvas draws one semitone of
+ * a stride-12 map in. The drag is converted to a nudge at the map's stride
+ * (× 12 / octaveStride), added to pc's nudge, clamped to nudgeLimits and
+ * written with writeNudges at the current spacing. Null when the map is one
+ * nudges can't show or the nudge does not change.
+ */
+function dragNudge(config, pc, units) {
+  const read = readNudges(config);
+  if (!read || !Number.isFinite(units)) return null;
+  const axis = CNBPitchAxis.create(config);
+  const stride = axis.enabled ? axis.octaveStride : 12;
+  const { min, max } = nudgeLimits(read.nudges, pc);
+  const next = read.nudges.slice();
+  next[pc] = round4(Math.min(max, Math.max(min, read.nudges[pc] + units * 12 / stride)));
+  if (next[pc] === read.nudges[pc]) return null;
+  return writeNudges(config, next, read.staffSpacing);
 }
 
 /** The shift, −6…+5 semitones, that takes the name fromPc to toPc. */
@@ -196,6 +221,7 @@ export const CNBPitchModel = {
   readNudges,
   writeNudges,
   nudgeLimits,
+  dragNudge,
   renameDelta,
   renameNotehead,
 };

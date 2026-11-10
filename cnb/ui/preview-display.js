@@ -102,6 +102,14 @@
  * opts.onPitchDrag(d), d the semitones dragged, downward positive (the
  * host applies CNBPitchModel.shiftPitch(config, d)).
  *
+ * Session 43 (nudges you can drag): in pitch mode, with opts.onNudgeDrag,
+ * a pointer drag on a pitch column moves its note-slice with the pointer,
+ * and the release calls opts.onNudgeDrag(pc, units), units the axis units
+ * dragged upward (pixels ÷ display.pxPerSemi, to 2 places; the host
+ * applies CNBPitchModel.dragNudge). Esc, a cancel or a move under
+ * NUDGE_THRESHOLD pixels puts the slice back and reports nothing. A drag
+ * that moved swallows the click that follows, so it does not also select.
+ *
  * Session 36 (the rebuilds' rough edges): beside the duration buttons, when
  * the host passes opts.onRepresentationMode, a two-way choice between each
  * duration's own shape and repeated heads (durations.representationMode,
@@ -162,7 +170,9 @@ function checkKey(key) {
 }
 
 /** The toolbar hint in pitch mode (session 28, mock-up 3). */
-const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff";
+const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff, or a notehead up or down to nudge it";
+/** The pixels a notehead drag must move before it nudges (session 43). */
+const NUDGE_THRESHOLD = 3;
 /** The toolbar hint when noteheads can be selected (session 38). */
 const SELECT_HINT = "Click a notehead to give it a look; Shift+click or Ctrl+click to select several";
 
@@ -482,6 +492,8 @@ export const CNBPreviewDisplay = {
     let marks = { selected: [], tinted: [] };   // setMarks, put back after every redraw
     let columns = [];         // the drawn pitch columns (data-pc), for the marks
     const onPitchDrag = opts.onPitchDrag || null;
+    const onNudgeDrag = opts.onNudgeDrag || null;
+    let swallowClick = false; // a notehead drag moved: the click that follows does not select
     const onRepresentationMode = opts.onRepresentationMode || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
@@ -705,7 +717,10 @@ export const CNBPreviewDisplay = {
       if (onSelect) {
         for (const col of columns) {
           const pc = Number(col.getAttribute("data-pc")) % 12;
-          col.onclick = (e) => onSelect(pc, { add: !!(e && (e.shiftKey || e.ctrlKey || e.metaKey)) });
+          col.onclick = (e) => {
+            if (swallowClick) { swallowClick = false; return; }
+            onSelect(pc, { add: !!(e && (e.shiftKey || e.ctrlKey || e.metaKey)) });
+          };
         }
       }
       applyMarks();
@@ -767,6 +782,54 @@ export const CNBPreviewDisplay = {
       }
     }
 
+    /**
+     * Make each pitch column's noteheads draggable in pitch mode (session
+     * 43): the note-slice follows the pointer up and down, and the release
+     * reports the axis units dragged upward through opts.onNudgeDrag(pc,
+     * units). Esc, a cancel or a move under NUDGE_THRESHOLD puts it back.
+     */
+    function wireNudges(step) {
+      if (!onNudgeDrag) return;
+      for (const col of columns) {
+        const pc = Number(col.getAttribute("data-pc")) % 12;
+        const slice = byClassAttr(col, "note-slice")[0];
+        if (!slice) continue;
+        let drag = null;
+        const place = (dy) => { slice.style.transform = dy === 0 ? "" : `translateY(${dy}px)`; };
+        const end = (report) => {
+          if (!drag) return;
+          const { dy, moved } = drag;
+          globalThis.removeEventListener?.("keydown", drag.onKey);
+          drag = null;
+          place(0);
+          if (moved) swallowClick = true;
+          if (report && moved) {
+            const units = Math.round(-dy / step * 100) / 100 || 0;
+            if (units !== 0) onNudgeDrag(pc, units);
+          }
+        };
+        col.onpointerdown = (e) => {
+          swallowClick = false;
+          if (!pitchMode || !e) return;
+          const onKey = (k) => { if (k && k.key === "Escape") end(false); };
+          drag = { startY: e.clientY, dy: 0, moved: false, onKey };
+          globalThis.addEventListener?.("keydown", onKey);
+          if (typeof col.setPointerCapture === "function" && e.pointerId !== undefined) {
+            try { col.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+          }
+          if (typeof e.preventDefault === "function") e.preventDefault();
+        };
+        col.onpointermove = (e) => {
+          if (!drag || !e) return;
+          drag.dy = e.clientY - drag.startY;
+          if (Math.abs(drag.dy) >= NUDGE_THRESHOLD) drag.moved = true;
+          if (drag.moved) place(drag.dy);
+        };
+        col.onpointerup = () => end(true);
+        col.onpointercancel = () => end(false);
+      }
+    }
+
     /** The hint and the class for pitch mode, with no redraw; outside it,
      *  the selection hint when noteheads can be selected. */
     function applyPitchMode() {
@@ -792,6 +855,7 @@ export const CNBPreviewDisplay = {
       root.appendChild(preview);
       wireColumns();
       wireStrips(config.display.pxPerSemi);
+      wireNudges(config.display.pxPerSemi);
       updateOverflow(config, options);
       onRender(collectionOptions, preview);
     }
@@ -872,7 +936,8 @@ export const CNBPreviewDisplay = {
       },
       /** Pitch mode (session 28, design §4.2): the canvas gets the class
        *  cnb-pvd-pitch-mode and the toolbar its hint, with no redraw, and a
-       *  drag on a label strip reports opts.onPitchDrag(d). Kept across
+       *  drag on a label strip reports opts.onPitchDrag(d), and a drag on a
+       *  notehead opts.onNudgeDrag(pc, units) (session 43). Kept across
        *  redraws. */
       setPitchMode: (on) => {
         pitchMode = !!on;

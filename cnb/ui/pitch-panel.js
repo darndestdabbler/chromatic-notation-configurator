@@ -9,10 +9,13 @@
  *     same as dragging the label strip (§3.1, §4.2).
  *   - Staff spacing: semitones per staff space, a decimal (§3.4), written
  *     with the current nudges (writeNudges).
- *   - Nudges: one control per pitch class, −1 to +1 semitone, limited by its
- *     neighbours (nudgeLimits) and shaded to show how far the note can go.
- *     A note on a neighbour's spot is marked "shares". C is the reference,
- *     fixed at 0 (§3.2).
+ *   - Nudges: one number field per pitch class, −1 to +1 semitone, limited
+ *     by its neighbours (nudgeLimits), each framed so it reads as its
+ *     notehead's own. A note on a neighbour's spot is marked "shares".
+ *     Every pitch class has its own nudge, C included (session 43, §3.2).
+ *     The sliders are gone (session 43): a notehead is also nudged by
+ *     dragging it up or down on the canvas while this section is open
+ *     (preview-display.js, CNBPitchModel.dragNudge).
  * When readNudges gives null the file has a custom pitch axis (§3.5): the
  * section says so, the spacing and nudge controls are disabled, and a
  * button opens Advanced › Pitch axis map. Drawing the section never writes
@@ -43,12 +46,6 @@ function pcName(pc) {
   return l.text + (l.sharp ? "♯" : "");
 }
 
-/** A nudge as the section shows it: "0", "+0.43", "−1.00". */
-function formatNudge(n) {
-  if (Math.abs(n) < 0.005) return "0";
-  return (n > 0 ? "+" : "−") + Math.abs(n).toFixed(2);
-}
-
 /** True when pc's spot (pc + nudge) is its lower or upper neighbour's. */
 function shares(nudges, pc) {
   const at = pc + nudges[pc];
@@ -68,15 +65,14 @@ const valueOf = (e, input) => (e && e.target && e.target.value !== undefined ? e
 
 export const CNBPitchPanel = {
 
-  formatNudge,
   shares,
 
   /**
-   * One pitch class's nudge: its name, its value, "shares" when it sits on
-   * a neighbour's spot, a slider and a number field from −1 to +1, and a
-   * bar shaded over the range its neighbours allow. A change is clamped to
-   * that range and reported as writeNudges(config, …) through onChange.
-   * Disabled for C (the reference) and for a map nudges can't show.
+   * One pitch class's nudge: its name, "shares" when it sits on a
+   * neighbour's spot, and a number field limited to the range its
+   * neighbours allow, in a frame. A change is clamped to that range and
+   * reported as writeNudges(config, …) through onChange. Disabled for a map
+   * nudges can't show.
    * @param {HTMLElement} host
    * @param {{config: object, pc: number, onChange: (config: object) => void}} opts
    * @returns {HTMLElement} the div.cnb-pp-nudge appended to host
@@ -86,42 +82,23 @@ export const CNBPitchPanel = {
     const nudges = read ? read.nudges : PCS.map(() => 0);
     const value = nudges[pc];
     const { min, max } = P.nudgeLimits(nudges, pc);
-    const fixed = pc === 0;
-    const disabled = !read || fixed;
+    const disabled = !read;
 
     const wrap = element("div", "cnb-pp-nudge" + (disabled ? " disabled" : ""));
     wrap.setAttribute("data-pc", String(pc));
     const head = element("div", "cnb-pp-nudge-head");
     head.appendChild(element("span", "cnb-pp-nudge-name", pcName(pc)));
-    const shown = element("span", "cnb-pp-nudge-value", formatNudge(value));
-    head.appendChild(shown);
     if (read && shares(nudges, pc)) head.appendChild(element("span", "cnb-pp-nudge-shares", "shares"));
     wrap.appendChild(head);
 
     const commit = (raw) => {
       const v = Number(raw);
-      if (!read || fixed || !Number.isFinite(v)) return;
+      if (!read || !Number.isFinite(v)) return;
       const next = nudges.slice();
       next[pc] = round4(Math.min(max, Math.max(min, v)));
       if (next[pc] === value) return;
       onChange(P.writeNudges(config, next, read.staffSpacing));
     };
-
-    const bar = element("div", "cnb-pp-nudge-bar");
-    // The shaded reach: [min, max] on the −1…+1 bar, in percent.
-    const reach = element("div", "cnb-pp-nudge-reach");
-    reach.style.left = round4((min + 1) * 50) + "%";
-    reach.style.width = round4((max - min) * 50) + "%";
-    bar.appendChild(reach);
-    const slider = element("input", "cnb-pp-nudge-slider");
-    slider.type = "range";
-    slider.min = "-1";
-    slider.max = "1";
-    slider.step = "0.01";
-    slider.value = String(value);
-    slider.disabled = disabled;
-    bar.appendChild(slider);
-    wrap.appendChild(bar);
 
     const field = element("input", "cnb-pp-nudge-field");
     field.type = "number";
@@ -130,13 +107,10 @@ export const CNBPitchPanel = {
     field.step = "0.01";
     field.value = String(value);
     field.disabled = disabled;
-    // The slider shows its value as it moves and writes on release.
-    slider.oninput = (e) => { shown.textContent = formatNudge(Number(valueOf(e, slider))); };
-    slider.onchange = (e) => commit(valueOf(e, slider));
+    field.title = `${pcName(pc)}'s nudge, ${round4(min)} to ${round4(max)} semitones`;
     field.onchange = (e) => commit(valueOf(e, field));
     wrap.appendChild(field);
 
-    if (fixed) wrap.title = "C is the reference: nudges are measured from it, so its own is always 0.";
     host.appendChild(wrap);
     return wrap;
   },
@@ -240,7 +214,7 @@ export const CNBPitchPanel = {
       group.appendChild(element("p", "cnb-pp-label", "Nudges"));
       group.appendChild(element("p", "cnb-pp-hint",
         "Each pitch class can sit up to a semitone above or below its own place. " +
-        "Neighbours may meet, never cross. The shaded part of each bar is how far that note can go."));
+        "Drag a notehead up or down on the canvas, or type its nudge here. Neighbours may meet, never cross."));
       const list = element("div", "cnb-pp-nudges");
       for (const pc of PCS) {
         CNBPitchPanel.nudgeControl(list, { config, pc, onChange: report });

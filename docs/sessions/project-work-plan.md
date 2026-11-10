@@ -54,10 +54,10 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 40 | Stems where the notehead's SVG puts them | no | 2026-11-09 |
 | 41 | Undo and redo | no | 2026-11-09 |
 | 42 | The UI is stable | no | 2026-11-09 |
-| 43 | Release 1.1.0 (release: 1.1.0) | — | not declared |
-| 44 | Designing the key-signature designer | — | not declared |
-| 45 | Published schemas and partial configs | — | not declared |
-| 46 | Clefs to pick from | — | not declared |
+| 43 | Nudges you can see and drag | no | 2026-11-10 |
+| 44 | The breve as tied semibreves | — | not declared |
+| 45 | Clefs | — | not declared |
+| 46 | Designing the key-signature designer | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -422,3 +422,9 @@ Make the UI stable for the 1.1.0 release. The operator tries what sessions 36-41
 - 2026-11-10 — step 'fix-rough-edges': its files: The three fixes live in the colour sets and the notehead panel (with their tests, CSS, UAT driver and design doc), not cnb/index.html; the planned items' session numbers were added to the session-42 record. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-10 — step 'readme': its files: Checking the serving instructions found npx serve breaks /cnb/index.html, so the page's file:// notice (and its site UAT check) changed with the README; the new screenshot showed Shift+click selecting label text, fixed in app.css; both recorded in docs/uat-status.md. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-10 — step 'uat-and-declaration': its checks: At the operator's request the four large rough edges come before the 1.1.0 release (sessions 43-46 and on), so the operator did not declare the UI stable in this session; the record states that the declaration moves to the session before the release, and the check reads that instead of a declaration for session 43. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 43 — Nudges you can see and drag
+
+**Releasable: no.**
+
+Make every notehead nudgeable and nudge it where it is drawn. Nudges stop being measured from a fixed C: a stride-12 pitch axis (the form writeNudges writes) is read as each pitch class's own offset, position minus pitch class, so C, and with it the notehead in the middle of the default staff, has a nudge like any other; a map at another stride (Twinline's 7) is still rescaled and read from C, which is only how it is brought into nudge form. The Pitch section's sliders and shaded bars go: each pitch class keeps its name, its number field and its 'shares' mark, framed with a light grey border and background so it is clear which notehead it belongs to, and C's field is enabled. On the canvas, with the Pitch section open, dragging a notehead's column up or down moves it with the pointer and the release nudges that pitch class by the distance dragged (a new pure CNBPitchModel.dragNudge, which converts the drag to a nudge, clamps it to the neighbours' limits and writes it); a press that does not move stays a click that selects. The notehead panel's nudge loses its slider and its 'C is the reference' hint the same way. Tests named after each changed source file follow, the browser UAT drives the field and the drag, and the design document and docs/uat-status.md record the change.

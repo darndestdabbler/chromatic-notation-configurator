@@ -3,10 +3,11 @@
  * (session 24, design docs/planning/notehead-first-editor-design.md §3, §4)
  *
  * Covers shiftPitch (the staff stays, the labels move), readNudges (linear,
- * Twinline's §3.3 table and §3.4 spacing, the ±1 test of §3.5, nudges read
- * relative to C),
+ * Twinline's §3.3 table and §3.4 spacing, the ±1 test of §3.5, each pitch
+ * class's own nudge on a stride-12 map, C's included),
  * writeNudges (stride-12 form, the section removed at all zeros, a decimal
- * spacing), nudgeLimits (no reordering, the wrap at B and C), renameDelta
+ * spacing), nudgeLimits (no reordering, the wrap at B and C), dragNudge (a
+ * drag on the canvas, session 43), renameDelta
  * and renameNotehead (every spot keeps its look and nudge), and an engine
  * render of Twinline in nudge form against the stride-7 fixture.
  */
@@ -159,20 +160,25 @@ export const tests = [
       eq(P.readNudges(cfg), null, "D would need −2");
     }},
 
-  { name: "readNudges: a stride-12 map is read relative to C's position (session 28)", fn: () => {
+  { name: "readNudges: a stride-12 map holds each pitch class's own nudge, C's included (session 43)", fn: () => {
       const cfg = CNBConfig.createDefault();
       const nudges = [0.25, 0.25, 0.25, 0.25, -0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25];
       cfg.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
         pitchClasses: nudges.map((n, pc) => ({ pc, position: pc + n })) };
-      const r = P.readNudges(cfg);
-      eq(r.nudges[0], 0, "C is the reference");
-      eq(r.nudges[4], -0.75, "E reads −0.75 from C");
-      r.nudges.forEach((n, pc) => { if (pc !== 4) eq(n, 0, `pc ${pc} sits level with C's shift`); });
+      deepEq(P.readNudges(cfg).nudges, nudges, "each nudge as written");
     }},
 
-  { name: "readNudges: writeNudges with every nudge 0.5 reads back as zeros (session 24 review)", fn: () => {
+  { name: "readNudges: C nudged alone reads its own nudge (session 43)", fn: () => {
+      const n = ZEROS.slice();
+      n[0] = 0.4;
+      const out = P.writeNudges(CNBConfig.createDefault(), n, 4);
+      deepEq(P.readNudges(out), { nudges: n, staffSpacing: 4 }, "C +0.4, the rest 0");
+      deepEq(CNBConfig.validate(out).errors, [], "no errors");
+    }},
+
+  { name: "readNudges: writeNudges with every nudge 0.5 reads back as 0.5 (session 43)", fn: () => {
       const out = P.writeNudges(CNBConfig.createDefault(), Array(12).fill(0.5), 4);
-      deepEq(P.readNudges(out), { nudges: ZEROS, staffSpacing: 4 }, "a uniform shift is no nudge");
+      deepEq(P.readNudges(out), { nudges: Array(12).fill(0.5), staffSpacing: 4 }, "the nudges as written");
     }},
 
   // ── writeNudges ──────────────────────────────────────────────────────────
@@ -260,6 +266,51 @@ export const tests = [
       assert(threw, "reordering across the octave must throw");
     }},
 
+  // ── dragNudge ────────────────────────────────────────────────────────────
+
+  { name: "dragNudge: a drag up nudges the pitch class up; down, down (session 43)", fn: () => {
+      const def = CNBConfig.createDefault();
+      const up = P.dragNudge(def, 0, 0.3);
+      eq(P.readNudges(up).nudges[0], 0.3, "C up 0.3");
+      P.readNudges(up).nudges.forEach((n, pc) => { if (pc !== 0) eq(n, 0, `pc ${pc} not moved`); });
+      eq(P.readNudges(P.dragNudge(up, 0, -0.5)).nudges[0], -0.2, "then down 0.5");
+      eq(P.readNudges(P.dragNudge(def, 7, -0.25)).nudges[7], -0.25, "G down 0.25");
+    }},
+
+  { name: "dragNudge: a drag stops at a neighbour and at ±1", fn: () => {
+      const n = ZEROS.slice();
+      n[5] = 0.5;
+      const cfg = P.writeNudges(CNBConfig.createDefault(), n, 4);
+      eq(P.readNudges(P.dragNudge(cfg, 4, 3)).nudges[4], 1, "E up stops at ±1");
+      eq(P.readNudges(P.dragNudge(cfg, 5, -3)).nudges[5], -1, "F down stops at ±1");
+      const m = ZEROS.slice();
+      m[1] = -0.5;
+      const shared = P.dragNudge(P.writeNudges(CNBConfig.createDefault(), m, 4), 0, 2);
+      eq(P.readNudges(shared).nudges[0], 0.5, "C up stops on C♯'s spot");
+    }},
+
+  { name: "dragNudge: a drag at Twinline's stride 7 is rescaled to semitones", fn: () => {
+      const cfg = twinline();
+      const r = P.readNudges(cfg);
+      const out = P.dragNudge(cfg, 2, 0.35);
+      eq(out.pitchAxis.octaveStride, 12, "written in nudge form");
+      near(P.readNudges(out).nudges[2], r.nudges[2] + 0.6, 1e-3, "0.35 axis units are 0.6 semitones");
+    }},
+
+  { name: "dragNudge: null when nothing changes or the map is custom", fn: () => {
+      const def = CNBConfig.createDefault();
+      eq(P.dragNudge(def, 3, 0), null, "no move");
+      eq(P.dragNudge(def, 3, NaN), null, "not a number");
+      const n = ZEROS.slice();
+      n[3] = 1;
+      eq(P.dragNudge(P.writeNudges(def, n, 4), 3, 0.5), null, "already at its limit");
+      const cfg = CNBConfig.createDefault();
+      const positions = [0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+      cfg.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 12, axisUnitsPerStaffSpace: 4,
+        pitchClasses: positions.map((position, pc) => ({ pc, position })) };
+      eq(P.dragNudge(cfg, 5, 0.2), null, "custom map");
+    }},
+
   // ── renameNotehead ───────────────────────────────────────────────────────
 
   { name: "renameNotehead: every spot keeps its look; the staff stays (default, Kite)", fn: () => {
@@ -317,17 +368,14 @@ export const tests = [
           deepEq(foldedLines(out), foldedLines(cfg), `stride ${stride} ${from}→${to}: staff lines`);
         }
       }
-      // The nudges rotate, read relative to the new C (session 28). Renaming
-      // C to F puts the old G, nudged −0.14, on the new C, so every nudge
-      // reads 0.14 higher.
-      const out = P.renameNotehead(nudgeForm, 0, 5);
-      const d = P.renameDelta(0, 5);
-      const rotated = r.nudges.map((_, pc) => r.nudges[mod12(pc - d)]);
-      P.readNudges(out).nudges.forEach((n, pc) =>
-        near(n, rotated[pc] - rotated[0], 1e-3, `rotated nudge of pc ${pc}, relative to C`));
-      // Renaming C to G puts the old F (+0.14) on the new C, and the old C♯
-      // (−1) then needs −1.14 from it: a custom pitch axis (§3.5).
-      eq(P.readNudges(P.renameNotehead(nudgeForm, 0, 7)), null, "C→G needs more than ±1 from the new C");
+      // In nudge form the nudges rotate as they are (session 43): each
+      // pitch class takes the nudge of the one d below it.
+      for (const [from, to] of [[0, 5], [0, 7]]) {
+        const d = P.renameDelta(from, to);
+        const rotated = r.nudges.map((_, pc) => r.nudges[mod12(pc - d)]);
+        P.readNudges(P.renameNotehead(nudgeForm, from, to)).nudges.forEach((n, pc) =>
+          near(n, rotated[pc], 1e-3, `${from}→${to}: rotated nudge of pc ${pc}`));
+      }
     }},
 
   // ── Automatic ledger lines follow the nudges (session 28) ───────────────

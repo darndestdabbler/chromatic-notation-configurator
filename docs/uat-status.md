@@ -21,6 +21,30 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Nudges you can see and drag — 2026-11-10 (session 43)
+
+Rough edge 5 of the session-42 try-out (below), as planned.
+
+- **Any notehead can be nudged.** A nudge is now each pitch class's own
+  offset, `position − pc` on the stride-12 map the editor writes, so C, the
+  middle of the default staff, is nudged like the rest. Nudges are no
+  longer measured from a fixed C. A map at another stride (Twinline's 7) is
+  still read from C, which is only how it is brought into nudge form.
+- **The sliders are gone.** Each pitch class keeps its name, its "shares"
+  mark and its number field, in a light grey frame, so each field reads as
+  its own notehead's. The notehead panel's nudge is the same control.
+- **Drag on the canvas.** With the Pitch section open, a notehead dragged
+  up or down follows the pointer, and the release nudges it by the distance
+  dragged, stopped at its neighbours (`CNBPitchModel.dragNudge`). A press
+  that does not move still selects; a drag does not.
+
+`uat-pitch.mjs` checks that C's field is enabled and there are no sliders,
+that nudging C alone by +0.5 moves C's notehead half a semitone against D,
+and that dragging G's notehead half a semitone up writes +0.5, moves it,
+and leaves the Pitch section open: **pass, 30/30 checks**.
+`uat-app-layout.mjs`: **pass, 79/79 checks**. The full suite runs at the
+close as the run of record.
+
 ## Trying sessions 36–41 — 2026-11-10 (session 42)
 
 The operator tried what sessions 36–41 added, in the app served locally

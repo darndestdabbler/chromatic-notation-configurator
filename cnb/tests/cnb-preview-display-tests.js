@@ -962,7 +962,7 @@ export const tests = [
         api.setPitchMode(true);
         assertEqual(renders, before, "no redraw");
         assert(on(), "class on");
-        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff", "hint");
+        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff, or a notehead up or down to nudge it", "hint");
         api.redraw();
         assert(on() && hint() !== "", "kept across a redraw");
         assertEqual(api.getPitchMode(), true);
@@ -981,7 +981,7 @@ export const tests = [
         assertEqual(hint(), "Click a notehead to give it a look; Shift+click or Ctrl+click to select several", "selection hint");
         assertEqual(hint(), PVD.SELECT_HINT);
         api.setPitchMode(true);
-        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff", "pitch hint");
+        assertEqual(hint(), "Drag the labels on the left to move the pitches against the staff, or a notehead up or down to nudge it", "pitch hint");
         api.setPitchMode(false);
         api.redraw();
         assertEqual(hint(), PVD.SELECT_HINT, "back after pitch mode and a redraw");
@@ -1037,6 +1037,86 @@ export const tests = [
         }
         assertEqual(drags, [2], "Esc puts the strip back");
         assert(labels().every(g => g.getAttribute("transform") === ""), "labels back after Esc");
+      });
+    },
+  },
+  {
+    name: "pitch mode: dragging a notehead up reports its pitch class and the axis units (session 43)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const drags = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          onNudgeDrag: (pc, units) => drags.push([pc, units]) });
+        const step = PVD.SIZES.medium;
+        const col = (pc) => findAll(api.root, "pc-col").find(c => c.getAttribute("data-pc") === String(pc));
+        const slice = (pc) => findAllByClassAttr(col(pc), "note-slice")[0];
+        col(4).onpointerdown({ clientY: 100 });
+        col(4).onpointermove({ clientY: 100 - step });
+        col(4).onpointerup({});
+        assertEqual(drags, [], "outside pitch mode a drag does nothing");
+
+        api.setPitchMode(true);
+        col(4).onpointerdown({ clientY: 100 });
+        col(4).onpointermove({ clientY: 100 - step / 2 });
+        assertEqual(slice(4).style.transform, `translateY(${-step / 2}px)`, "the noteheads follow the pointer");
+        col(4).onpointerup({});
+        assertEqual(drags, [[4, 0.5]], "half a semitone up");
+        assertEqual(slice(4).style.transform, "", "put back for the redraw");
+
+        col(12).onpointerdown({ clientY: 100 });
+        col(12).onpointermove({ clientY: 100 + 2 * step });
+        col(12).onpointerup({});
+        assertEqual(drags[1], [0, -2], "C′ nudges C, two semitones down");
+
+        col(7).onpointerdown({ clientY: 100 });
+        col(7).onpointermove({ clientY: 102 });
+        col(7).onpointerup({});
+        col(7).onpointerdown({ clientY: 100 });
+        col(7).onpointermove({ clientY: 100 - step });
+        col(7).onpointercancel({});
+        assertEqual(drags.length, 2, "a move under the threshold and a cancel report nothing");
+
+        const listeners = [];
+        const hadAdd = "addEventListener" in globalThis;
+        const prevAdd = globalThis.addEventListener;
+        const prevRemove = globalThis.removeEventListener;
+        globalThis.addEventListener = (type, fn) => listeners.push([type, fn]);
+        globalThis.removeEventListener = () => {};
+        try {
+          col(7).onpointerdown({ clientY: 100 });
+          col(7).onpointermove({ clientY: 100 - step });
+          listeners.find(([t]) => t === "keydown")[1]({ key: "Escape" });
+          col(7).onpointerup({});
+        } finally {
+          if (hadAdd) { globalThis.addEventListener = prevAdd; globalThis.removeEventListener = prevRemove; }
+          else { delete globalThis.addEventListener; delete globalThis.removeEventListener; }
+        }
+        assertEqual(drags.length, 2, "Esc puts the notehead back");
+        assertEqual(slice(7).style.transform, "", "and its slice");
+      });
+    },
+  },
+  {
+    name: "pitch mode: a notehead drag that moved does not also select; a click still does (session 43)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const picks = [];
+        const drags = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          onSelect: (pc) => picks.push(pc), onNudgeDrag: (pc, units) => drags.push([pc, units]) });
+        api.setPitchMode(true);
+        const col = (pc) => findAll(api.root, "pc-col").find(c => c.getAttribute("data-pc") === String(pc));
+        col(2).onpointerdown({ clientY: 100 });
+        col(2).onpointermove({ clientY: 90 });
+        col(2).onpointerup({});
+        col(2).onclick({});
+        assertEqual([picks, drags.length], [[], 1], "the drag nudged and did not select");
+        col(3).onpointerdown({ clientY: 100 });
+        col(3).onpointerup({});
+        col(3).onclick({});
+        assertEqual(picks, [3], "a press with no move is a click");
       });
     },
   },

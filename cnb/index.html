@@ -458,6 +458,11 @@
       onSelect: selectNotehead,
       // Dragging the label strip by d semitones moves the pitch (§4.2).
       onPitchDrag: (d) => adoptPitchChange(CNBPitchModel.shiftPitch(appConfig, d)),
+      // Dragging a notehead up or down nudges it (session 43).
+      onNudgeDrag: (pc, units) => {
+        const next = CNBPitchModel.dragNudge(appConfig, pc, units);
+        if (next) adoptPitchChange(next);
+      },
       onRender: (options) => {
         canvasOptions = options;
         refreshSectionPreviews();

@@ -159,7 +159,9 @@ export const tests = [
       const cfg = PM.writeNudges(CNBConfig.createDefault(), [0, 0, -0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4);
       withPanel(cfg, [1], h => {
         const group = findOne(h.api.root, "cnb-nhp-nudge");
-        eq(findOne(group, "cnb-pp-nudge-reach").style.width, "75%", "C♯ can go from −1 to D's +0.5");
+        const f = findOne(group, "cnb-pp-nudge-field");
+        eq([f.min, f.max].join(" "), "-1 0.5", "C♯ can go from −1 to D's +0.5");
+        eq(findAll(group, "cnb-pp-nudge-slider").length, 0, "no slider (session 43)");
         findOne(group, "cnb-pp-nudge-field").onchange({ target: { value: "0.9" } });
         eq(h.changes, 1, "written");
         eq(PM.readNudges(h.config).nudges[1], 0.5, "clamped at D");

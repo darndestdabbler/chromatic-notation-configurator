@@ -631,9 +631,8 @@ export const CNBNoteheadPanel = {
       const group = el("div", "cnb-nhp-group cnb-nhp-nudge");
       group.appendChild(el("p", "cnb-nhp-label", "Nudge"));
       CNBPitchPanel.nudgeControl(group, { config, pc, onChange: (c) => { onChange(c); draw(); } });
-      group.appendChild(el("p", "cnb-nhp-hint", pc === 0
-        ? "C is the reference: nudges are measured from it. Nudge the others to move them against C."
-        : "Up to a semitone above or below its own place, never past its neighbours."));
+      group.appendChild(el("p", "cnb-nhp-hint",
+        "Up to a semitone above or below its own place, never past its neighbours."));
       return group;
     }
 
