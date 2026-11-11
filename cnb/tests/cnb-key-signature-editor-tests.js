@@ -116,8 +116,15 @@ function fancyKeys() {
     keySignature: {
       enabled: true,
       style: "notehead-chords",
-      placement: { rule: "scale-from-tonic", tonicOctave: 2 },
-      separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
+      // The designer's settings (session 48), carried through unchanged.
+      notes: "tonic-and-half-steps",
+      upperTonic: false,
+      looks: { all: { heightSemis: 1.2, widthSemis: 1.2 }, flat: { color: "#0000ff" }, sharp: { hollow: true } },
+      stacking: "parity-stacks",
+      alternate: { color: "#ff0000" },
+      columns: "left-in-sharp-keys",
+      placement: { rule: "scale-from-tonic", tonicOctave: 2, position: "every-set" },
+      separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6, shareThickness: false },
     },
   };
 }
@@ -184,6 +191,20 @@ export const tests = [
       const config = CNBConfig.createDefault();
       config.keys = fancyKeys();
       deepEq(E.buildKeys(E.stateFromConfig(config)), config.keys, "fancy round-trip");
+  } },
+
+  { name: "stateFromConfig: a keySignature saved before the designer's settings (session 48) opens with them at their defaults", fn: () => {
+      const state = E.stateFromConfig({ keys: { keySignature: {
+        enabled: true, style: "notehead-chords",
+        placement: { rule: "scale-from-tonic", tonicOctave: null },
+        separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
+      } } });
+      const ks = CNBConfig.createDefault().keys.keySignature;
+      for (const f of ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"]) {
+        deepEq(state.keySignature[f], ks[f], f);
+      }
+      eq(state.keySignature.placement.position, "middle", "placement.position");
+      eq(state.keySignature.separator.shareThickness, true, "separator.shareThickness");
   } },
 
   { name: "applyToConfig replaces only the keys section and mutates neither argument", fn: () => {

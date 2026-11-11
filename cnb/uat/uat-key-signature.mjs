@@ -267,7 +267,7 @@ check("DEFAULT-OFF: the preview reserves NO keysig gutter (no .keysig-col) and s
   (await keysigColCount()) === 0 &&
   await page.$$eval(".cnb-pvd-preview .pc-col", els => els.length === 13) &&
   await page.evaluate(() =>
-    document.querySelector(".cnb-pvd-key-tonic").value === "0" &&
+    document.querySelector(".cnb-pvd-key-tonic").value === "C" &&
     document.querySelector(".cnb-pvd-key-mode").value === "major" &&
     !!document.querySelector(".cnb-pvd-signature-on")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-initial.png"), fullPage: true });
@@ -333,12 +333,13 @@ check("ENABLE SIGNATURE: the picked key's signature draws at once (C major, pick
   await page.evaluate(() => !document.querySelector(".cnb-pvd-signature-on")));
 
 // ── STEP 4: the key picked on the staff ─────────────────────────────────────
-/** Pick a key and mode in the canvas toolbar (session 36). */
+/** Pick a key and mode in the canvas toolbar (session 36): the tonic by its
+ *  spelled name, one of the current mode's 15 (session 48). */
 async function pickKey(tonic, mode) {
   await setField(page, ".cnb-pvd-key-tonic", tonic);
   await setField(page, ".cnb-pvd-key-mode", mode);
 }
-await pickKey(0, "major");
+await pickKey("C", "major");
 cfg = await fullConfig();
 // The fluid canvas stretches its columns, so the gutter is a CSS track that
 // keeps the engine's spacing at any width (session 34): measured as drawn,
@@ -427,7 +428,7 @@ check("KEY SELECTION: ledger lines render beneath the marks (at least one ledger
 }
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-C.png"), fullPage: true });
 
-await pickKey(2, "dorian");
+await pickKey("D", "dorian");
 cfg = await fullConfig();
 expected = expectedMarks(cfg, "D Dorian");
 actual = await renderedMarks();
@@ -438,7 +439,7 @@ check("KEY SELECTION: switching to D Dorian re-anchors the signature on tonic D 
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-d-dorian.png"), fullPage: true });
 {
   // A key nobody defined draws too: F♯ major's signature starts on F♯.
-  await pickKey(6, "major");
+  await pickKey("F♯", "major");
   const fsharp = { ...cfg, keys: { ...cfg.keys, definitions: [...cfg.keys.definitions,
     { name: "F♯ major", pitchClasses: [1, 3, 5, 6, 8, 10, 11], tonicPc: 6 }] } };
   const want = expectedMarks(fsharp, "F♯ major");
@@ -448,7 +449,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-d-dorian.png")
     (await fullConfig()).keys.definitions.length === 2,
     `actual=${JSON.stringify(got)} expected=${JSON.stringify(want)}`);
 }
-await pickKey(0, "major");
+await pickKey("C", "major");
 
 // ── STEP 5: mark style + placement/separator controls ───────────────────────
 // One implemented style (notehead-chords); the task owner deferred simple-mark

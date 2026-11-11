@@ -612,6 +612,29 @@ keys: {
     // treats an unknown style as inactive).
     style: "notehead-chords",
 
+    // The designer's settings (session 48, design
+    // docs/planning/key-signature-designer-design.md §4, §6). Each default
+    // is the signature above, so a config saved before them draws as it did;
+    // a setting that does not apply to the kind or stacking is kept and
+    // ignored. Not exported yet (the mark table is session 49).
+    notes: "all",               // | "tonic-and-half-steps": the tonic and both
+                                //   notes of each half step in the scale
+    upperTonic: true,           // the tonic an octave up
+    looks: {                    // each field unset = the look beneath: the
+      all: {},                  //   notehead's own (at crotchet, in the key),
+      flat: {},                 //   then all marks, then flats or sharps by
+      sharp: {}                 //   the key's spelling. { shape, hollow,
+    },                          //   color, heightSemis, widthSemis }
+    stacking: "degrees",        // which stack a note joins: "degrees" (1 3 5 7
+                                //   left, 2 4 6 8 right), "parity" (odd
+                                //   semitones left, even right),
+                                //   "parity-stacks" (a new stack to the right
+                                //   at each change of parity, Clairnote's),
+                                //   "parity-zigzag" (the other stack at each)
+    alternate: {},              // every second stack's look, over the others:
+                                //   { shape, hollow, color }
+    columns: "right",           // | "left-in-sharp-keys" (not under "parity")
+
     // Placement rule: how the key's pitch classes map to grid positions.
     // "scale-from-tonic" (the keysig.ly rule) is the only implemented
     // value; validation rejects others and the renderer treats an unknown
@@ -619,8 +642,12 @@ keys: {
     // [tonic, tonic+12] on staff.midpoint, ties resolving upward — matches
     // the engine's middle-C anchor for the default config); an explicit
     // integer overrides, and is exported as cnb:keysig-tonic-octave with
-    // no offset (LY spec 1.3.7 §5.6).
-    placement: { rule: "scale-from-tonic", tonicOctave: null },
+    // no offset (LY spec 1.3.7 §5.6). position (session 48): where the
+    // signature sits, "middle" (the rule above), or "bottom-set", "top-set"
+    // or "every-set", on the engraved staff's line sets (runs of lines one
+    // staff space apart, staff.midpoint ± 12), each copy's octave centred on
+    // its set; tonicOctave overrides the middle only.
+    placement: { rule: "scale-from-tonic", tonicOctave: null, position: "middle" },
 
     // The gold STEM running through the horizontal middle of the mark
     // columns, beneath the marks (the engine's keysig bar, cnb:gold
@@ -630,7 +657,10 @@ keys: {
     // staff's 4 semitones per space). Exported as cnb:keysig-bar-color,
     // -thickness (thicknessPct / (10 × sps), 0 when disabled) and
     // -extent-semis, each when it differs from the engine's default.
-    separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 }
+    // Since session 48 a stem stands between each pair of neighbouring
+    // stacks; with shareThickness on, n stems are thicknessPct ÷ n each.
+    separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12,
+                 shareThickness: true }
 
     // No gutter setting (session 34): the preview spaces the signature as
     // the engine does — 0.75 staff spaces after the staff's start, or 3.5
@@ -984,6 +1014,20 @@ CNBMusic.chromaticLabels() → [ { text, sharp }, ... ]
 // Which octave region "owns" a given absolute semitone for ledger purposes
 // (Used by Module 5 for octave-aware ledger logic)
 CNBMusic.ledgerOctaveRegion(semi) → number
+
+// The seven modes LilyPond's \key names, and a key's pitch classes (session 36)
+CNBMusic.MODES → { major: [0, 2, 4, 5, 7, 9, 11], minor: …, … }
+CNBMusic.scale(tonicPc, mode) → number[]
+
+// Key spelling (session 48, key-signature design §3): a seven-note key
+// spelled on the seven letters from its tonic's name, each note from the
+// tonic up with its alteration (−1 flat, 0 natural, 1 sharp), null without
+// a spelling free of double sharps and flats; each mode's 15 tonic names
+// with at most seven sharps or flats, in pitch-class order; and the tonic's
+// name with the fewest sharps and flats, a tie to the sharp
+CNBMusic.spell(tonicName, pitchClasses) → [{ pc, alteration }] | null
+CNBMusic.spellings(mode) → string[]           // "C", "C♯", "D♭", … (15)
+CNBMusic.defaultSpelling(tonicPc, pitchClasses) → string
 ```
 
 **Test cases:**
@@ -1539,8 +1583,13 @@ Rendering): pure config-in/DOM-out renderer for the `keys.keySignature`
 config section (§4.9). The displayed key is EXAMPLE DATA — it arrives as
 the `keyName` argument (the collection passes `options.keys[0]`), never
 from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
-`tonicPc(def)`, `tonicSemi(config, def)`, `signatureSemis(config,
-keyName)` (the placement rule's grid positions), `measure(config,
+`tonicPc(def)`, `tonicSemi(config, def)`, `marks(config, key)` (session
+48, key-signature design §8: for a key definition, with its tonic and
+optional `spelling`, the marks as `{ semi, column, mark }`, the columns'
+centres and the gold stems in staff spaces, and the marks that overlap in a
+stack, for every scale-note setting of §4.9; null for an unknown style or
+rule), `signatureSemis(config, keyName)` (the marks' semitones),
+`measure(config,
 pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
 firstHeadCenter)` (the engine's spacing either side of the marks, session
 34; the collection passes the first card's `CNBCard.headCenterX`),
@@ -1550,9 +1599,12 @@ gridContext, config, keyName)`. One mark style is implemented,
 "notehead-chords": marks resolve through
 `CNBConfig.resolveNotehead(config, pc, "crotchet", keyName)` (the
 engine's quarter-note keysig resolution), with per-column ledger lines
-beneath re-drawn noteheads (keysig.ly's two-pass layering). The separator
-runs through the horizontal middle of the columns beneath the marks (the
-engine's gold bar geometry). `style` is a single-value vocabulary; an
+beneath re-drawn noteheads (keysig.ly's two-pass layering); since session
+48 the looks of §4.9 are laid over them. The separator runs between each
+pair of neighbouring columns beneath the marks (the engine's gold bar
+geometry, one bar for the default two). `measure` and `render` draw from
+`marks`, and at the defaults draw exactly as before
+(`cnb/fixtures/key-signature-baseline.json`). `style` is a single-value vocabulary; an
 unknown style renders nothing (the task owner deferred richer styles to a
 future set — s2-uat.md). Integrated into Module 10 as a `div.keysig-col`
 after the clef column. Dependencies: Modules A, B, 1 (grid context passed
@@ -2009,8 +2061,15 @@ Complete default config for development and testing.
     keySignature: {
       enabled: false,
       style: "notehead-chords",
-      placement: { rule: "scale-from-tonic", tonicOctave: null },
-      separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
+      notes: "all",
+      upperTonic: true,
+      looks: { all: {}, flat: {}, sharp: {} },
+      stacking: "degrees",
+      alternate: {},
+      columns: "right",
+      placement: { rule: "scale-from-tonic", tonicOctave: null, position: "middle" },
+      separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12,
+                   shareThickness: true },
     },
   },
 

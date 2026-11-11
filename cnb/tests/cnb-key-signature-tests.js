@@ -19,6 +19,7 @@
  */
 
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -30,11 +31,64 @@ import { CNBCard } from "../src/cnb-card.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
-import { findEngine, measureSpacing } from "./engine-probe.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { findEngine, measureSpacing, readKeys } from "./engine-probe.js";
 import { withSvgStub, withDomStub } from "./svg-stub.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BASELINE_PATH = path.join(__dirname, "..", "fixtures", "default-export-baseline.ly");
+const FIXTURES = path.join(__dirname, "..", "fixtures");
+const GALLERY_DIR = path.join(__dirname, "..", "assets", "examples", "gallery");
+const BASELINE_PATH = path.join(FIXTURES, "default-export-baseline.ly");
+const SIGNATURE_BASELINE = path.join(FIXTURES, "key-signature-baseline.json");
+
+// ─── The signature on the canvas, pinned (session 48) ───────────────────────
+//
+// The key-signature designer (design docs/planning/key-signature-designer-
+// design.md) adds settings whose defaults are today's signature. Every probe
+// renders CNBCollection.render at crotchet through the stub DOM, with keys and
+// the signature on and one key defined, and hashes the JSON of the tree. The
+// hashes in cnb/fixtures/key-signature-baseline.json were captured by
+// captureSignatureBaseline() with the code before the designer, so a match
+// proves each fixture and gallery file draws its signature exactly as before.
+
+/** The keys each probe draws: name, pitch classes and tonic. */
+const SIGNATURE_KEYS = [
+  { name: "C major", pitchClasses: [0, 2, 4, 5, 7, 9, 11], tonicPc: 0 },
+  { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7], tonicPc: 9 },
+  { name: "D major", pitchClasses: [2, 4, 6, 7, 9, 11, 1], tonicPc: 2 },
+  { name: "E♭ major", pitchClasses: [3, 5, 7, 8, 10, 0, 2], tonicPc: 3 },
+];
+
+/** The pinned probes: [{ id, config, options }], in a fixed order. */
+export function signatureProbes() {
+  const load = file => CNBConfigIO.loadFromText(fs.readFileSync(file, "utf8")).config;
+  const sources = [
+    ["default", CNBConfig.createDefault()],
+    ...["kite-4-369-config.json", "45deg-369-config.json", "sized-config.json"]
+      .map(f => [f, load(path.join(FIXTURES, f))]),
+    ...fs.readdirSync(GALLERY_DIR).filter(f => f.endsWith(".json")).sort()
+      .map(f => [`gallery/${f}`, load(path.join(GALLERY_DIR, f))]),
+  ];
+  const probes = [];
+  for (const [id, source] of sources) {
+    for (const key of SIGNATURE_KEYS) {
+      const config = CNBConfig.clone(source);
+      config.keys.enabled = true;
+      config.keys.definitions = [CNBConfig.clone(key)];
+      config.keys.keySignature.enabled = true;
+      probes.push({ id: `${id} · ${key.name}`, config, options: { durations: ["crotchet"], keys: [key.name] } });
+    }
+  }
+  return probes;
+}
+
+/** Recompute every probe's hash (used to write the fixture, and by the pin). */
+export function captureSignatureBaseline() {
+  return signatureProbes().map(p => {
+    const json = withDomStub(container => JSON.stringify(CNBCollection.render(container, p.config, p.options)));
+    return { id: p.id, sha256: createHash("sha256").update(json).digest("hex"), length: json.length };
+  });
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -115,6 +169,42 @@ export const tests = [
       disabled.keys.keySignature.enabled = false;
       assert(!CNBLilypond.generate(enabled).includes("cnb:keysig-style"), "enabled at the defaults: the engine's 'chord");
       assert(CNBLilypond.generate(disabled).includes("#(set! cnb:keysig-style 'none)"), "disabled: no signature engraved");
+    }},
+
+  { name: "signature baseline: every fixture and gallery file draws its signature exactly as before the designer, in four keys", fn: () => {
+      const baseline = JSON.parse(fs.readFileSync(SIGNATURE_BASELINE, "utf8")).probes;
+      const current = captureSignatureBaseline();
+      deepEq(current.map(p => p.id), baseline.map(p => p.id), "the probes");
+      const changed = current.filter((p, i) => p.sha256 !== baseline[i].sha256 || p.length !== baseline[i].length);
+      assert(changed.length === 0, `drawn differently: ${changed.map(p => p.id).join(", ")}`);
+    }},
+
+  // Engine-backed (session 48, design §9): the key-signature designer's mark
+  // table is keyed by the tonic's spelling and the key's pitch classes, so
+  // the engine must read both from the score's \key. A Staff engraver reads
+  // them at each engraved signature: an enharmonic pair (F♯ and G♭ major,
+  // the same pitch classes), a flat key, a key change, the signature repeated
+  // at a system start, and a transposed score. Skips with the reason logged
+  // without LilyPond or the engine.
+  { name: "engine (key identity): the tonic's spelling and the key's pitch classes are read from \\key, at a key change, a system start and under \\transpose", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const got = await readKeys(engine, CNBLilypond.generate(CNBConfig.createDefault()),
+        "\\key fis \\major c'1 \\key ges \\major c'1 \\break c'1 \\key bes \\major c'1 " +
+        "\\transpose c d { \\key c \\major c'1 }");
+      if (got.error) throw new Error(got.error);
+      const FIS = { notename: 3, alteration: 0.5, pitchClasses: [1, 3, 5, 6, 8, 10, 11] };
+      const GES = { notename: 4, alteration: -0.5, pitchClasses: [1, 3, 5, 6, 8, 10, 11] };
+      const BES = { notename: 6, alteration: -0.5, pitchClasses: [0, 2, 3, 5, 7, 9, 10] };
+      const D = { notename: 1, alteration: 0, pitchClasses: [1, 2, 4, 6, 7, 9, 11] };
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      // Each key in the order engraved; a signature at a system start
+      // repeats the key in force, so consecutive repeats are collapsed.
+      const sequence = got.keys.filter((k, i) => i === 0 || !same(k, got.keys[i - 1]));
+      deepEq(sequence, [FIS, GES, BES, D], "the keys engraved, in order");
+      // The \break repeats G♭ major's signature at the second system's start.
+      assert(got.keys.filter(k => same(k, GES)).length >= 2,
+        `G♭ major is read again at the system start (read ${JSON.stringify(got.keys)})`);
     }},
 
   // ── activeKey gating (decision D5) ─────────────────────────────────────
@@ -622,7 +712,195 @@ export const tests = [
       approx(m.markWidth, MARK_W, "markWidth unchanged");
     }},
 
+  // ── session 48: marks, the key-signature designer's scale notes ───────────
+
+  { name: "marks: the default is today's scale stack — eight marks in two stacked sevenths, one gold stem over the middle ± 12, 0.4 staff spaces", fn: () => {
+      const sig = CNBKeySignature.marks(keysigConfig(), C_KEY);
+      deepEq(sig.marks.map(m => m.semi), [12, 14, 16, 17, 19, 21, 23, 24], "C major from the middle's C");
+      deepEq(sig.marks.map(m => m.column), [0, 1, 0, 1, 0, 1, 0, 1], "1 3 5 7 left, 2 4 6 8 right");
+      approx(sig.columns[1] - sig.columns[0], MARK_W / 64, "the stacks a mark's width apart, in staff spaces");
+      eq(sig.bars.length, 1, "one stem");
+      const [bar] = sig.bars;
+      deepEq([bar.top, bar.bottom, bar.column, bar.middle, bar.color], [24, 0, 0, true, "#ffd42a"], "the stem");
+      approx(bar.x, MARK_W / 64, "between the stacks");
+      approx(bar.thickness, 0.4, "160% of a semitone at 4 semitones per staff space");
+      deepEq(sig.overlaps, [], "no marks run together");
+      deepEq(CNBKeySignature.signatureSemis(keysigConfig(), "C"), [12, 14, 16, 17, 19, 21, 23, 24], "signatureSemis");
+      eq(CNBKeySignature.marks(keysigConfig([], { style: "accidentals" }), C_KEY), null, "an unknown style");
+    }},
+
+  { name: "marks: the four stacking rules, for an even tonic (C major, A minor's parity) and an odd one (D♭ major)", fn: () => {
+      const cols = (stacking, key) => CNBKeySignature.marks(keysigConfig([], { stacking }), key).marks.map(m => m.column);
+      // C major: C D E F G A B C′, semitone parity e e e o o o o e.
+      deepEq(cols("degrees", C_KEY), [0, 1, 0, 1, 0, 1, 0, 1], "C: stacked sevenths");
+      deepEq(cols("parity", C_KEY), [1, 1, 1, 0, 0, 0, 0, 1], "C: odd semitones left, even right");
+      deepEq(cols("parity-stacks", C_KEY), [0, 0, 0, 1, 1, 1, 1, 2], "C: C D E | F G A B | C′");
+      deepEq(cols("parity-zigzag", C_KEY), [0, 0, 0, 1, 1, 1, 1, 0], "C: the zigzag, odd-left mirrored");
+      deepEq(cols("parity-stacks", A_MINOR_KEY), [0, 0, 1, 1, 1, 2, 2, 2], "A minor: A B | C D E | F G A′");
+      // D♭ major: D♭ E♭ F G♭ A♭ B♭ C D♭′, parity o o o e e e e o.
+      deepEq(cols("degrees", DB_KEY), [0, 1, 0, 1, 0, 1, 0, 1], "D♭: stacked sevenths");
+      deepEq(cols("parity", DB_KEY), [0, 0, 0, 1, 1, 1, 1, 0], "D♭: odd left");
+      deepEq(cols("parity-stacks", DB_KEY), [0, 0, 0, 1, 1, 1, 1, 2], "D♭: new stacks");
+      deepEq(cols("parity-zigzag", DB_KEY), [0, 0, 0, 1, 1, 1, 1, 0], "D♭: the zigzag is odd-left itself");
+    }},
+
+  { name: "marks: the upper tonic off, and the tonic and the half steps alone, keep each note's stack", fn: () => {
+      const sig = (ks, key = C_KEY) => CNBKeySignature.marks(keysigConfig([], ks), key).marks;
+      const noUpper = sig({ upperTonic: false, stacking: "parity-stacks" });
+      deepEq(noUpper.map(m => m.semi), [12, 14, 16, 17, 19, 21, 23], "seven notes");
+      deepEq(noUpper.map(m => m.column), [0, 0, 0, 1, 1, 1, 1], "Clairnote's 3–4");
+      deepEq(sig({ upperTonic: false, stacking: "parity-stacks" }, A_MINOR_KEY).map(m => m.column),
+        [0, 0, 1, 1, 1, 2, 2], "A minor: Clairnote's 2–3–2");
+      const halves = sig({ notes: "tonic-and-half-steps" });
+      deepEq(halves.map(m => m.semi), [12, 16, 17, 23, 24], "C, E and F, B and C′");
+      deepEq(halves.map(m => m.column), [0, 0, 1, 0, 1], "their stacked-seventh stacks");
+      deepEq(sig({ notes: "tonic-and-half-steps" }, A_MINOR_KEY).map(m => m.semi), [9, 11, 12, 16, 17],
+        "A minor: A, B and C, E and F (G to A′ is a whole step)");
+      deepEq(sig({ notes: "tonic-and-half-steps", upperTonic: false }).map(m => m.semi), [12, 16, 17, 23],
+        "without the upper tonic");
+    }},
+
+  { name: "marks: each mark's look — the notehead's own, then all marks, then flats or sharps by the key's spelling, then every second stack", fn: () => {
+      const config = keysigConfig([], {
+        looks: { all: { heightSemis: 1, widthSemis: 1 }, flat: { color: "#0000ff" }, sharp: { color: "#ff0000", hollow: true } },
+        alternate: { color: "#00ff00" },
+      });
+      config.noteheadRules.push({ name: "D is grey", priority: 5,
+        match: { pitchClasses: [2], durations: "all", keys: "all" }, apply: { color: "#888888" } });
+      const looks = key => CNBKeySignature.marks(config, key).marks.map(({ mark }) =>
+        `${mark.color}${mark.hollow ? " hollow" : ""}`);
+      // B♭ major: B♭ C D E♭ F G A B♭′; odd-numbered notes are the second stack.
+      // The default rules hollow the black-key pitch classes (B♭, E♭), which
+      // no look changes.
+      deepEq(looks(BB_KEY), ["#0000ff hollow", "#00ff00", "#888888", "#00ff00 hollow", "#000000", "#00ff00", "#000000", "#00ff00 hollow"],
+        "flats blue, every second stack green over them; D grey from its rule");
+      const mark = CNBKeySignature.marks(config, BB_KEY).marks[0].mark;
+      deepEq([mark.heightSemis, mark.widthSemis, mark.shape], [1, 1, "crotchet-minim"], "all marks' size, the notehead's shape");
+      // The default rule hollows the black-key pitch classes; the sharps' look keeps it, and adds red.
+      deepEq(looks(D_KEY).filter((_, i) => i % 2 === 0), ["#888888", "#ff0000 hollow", "#000000", "#ff0000 hollow"],
+        "D major's first stack: D grey, F♯ and C♯ red and hollow");
+    }},
+
+  { name: "marks: the spelling tells F♯ major from G♭ major — the definition's, the name's, else the default", fn: () => {
+      const config = keysigConfig([], { looks: { all: {}, flat: { color: "#0000ff" }, sharp: { color: "#ff0000" } } });
+      const colors = key => CNBKeySignature.marks(config, key).marks.map(m => m.mark.color);
+      const pcs = [6, 8, 10, 11, 1, 3, 5];
+      deepEq(colors({ name: "F♯ major", pitchClasses: pcs, tonicPc: 6 }),
+        ["#ff0000", "#ff0000", "#ff0000", "#000000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"], "F♯ G♯ A♯ B C♯ D♯ E♯ F♯′");
+      deepEq(colors({ name: "G♭ major", pitchClasses: pcs, tonicPc: 6 }),
+        ["#0000ff", "#0000ff", "#0000ff", "#0000ff", "#0000ff", "#0000ff", "#000000", "#0000ff"], "G♭ A♭ B♭ C♭ D♭ E♭ F G♭′");
+      deepEq(colors({ name: "Picked", pitchClasses: pcs, tonicPc: 6, spelling: "G♭" }),
+        colors({ name: "G♭ major", pitchClasses: pcs, tonicPc: 6 }), "the definition's spelling (the picker's)");
+      deepEq(colors({ name: "Mystery", pitchClasses: pcs, tonicPc: 6 }),
+        colors({ name: "F♯ major", pitchClasses: pcs, tonicPc: 6 }), "no spelling: the default, a tie to the sharp");
+      deepEq(colors({ name: "Pentatonic", pitchClasses: [0, 2, 4, 7, 9], tonicPc: 0 }), Array(6).fill("#000000"),
+        "a key no name spells: every note natural");
+    }},
+
+  { name: "marks: stacks go to the left in sharp keys — mirrored for D major, not for B♭ or C major, nor under odd-left-even-right", fn: () => {
+      const cols = (key, stacking) => CNBKeySignature.marks(keysigConfig([], { stacking, columns: "left-in-sharp-keys" }), key)
+        .marks.map(m => m.column);
+      // D major: D E F♯ | G A B C♯ | D′ under new stacks at each parity change.
+      deepEq(cols(D_KEY, "parity-stacks"), [2, 2, 2, 1, 1, 1, 1, 0], "D major, a sharp key: mirrored");
+      deepEq(cols(BB_KEY, "parity-stacks"), [0, 0, 0, 1, 1, 1, 1, 2], "B♭ major, a flat key: B♭ C D | E♭ F G A | B♭′ to the right");
+      deepEq(cols(C_KEY, "parity-stacks"), [0, 0, 0, 1, 1, 1, 1, 2], "C major, neither: to the right");
+      deepEq(cols(D_KEY, "parity"), [1, 1, 1, 0, 0, 0, 0, 1], "odd-left-even-right fixes each side");
+      deepEq(cols(D_KEY, "degrees"), [1, 0, 1, 0, 1, 0, 1, 0], "stacked sevenths mirror too");
+    }},
+
+  { name: "marks: the bottom, top and every line set, each copy's octave centred on its set; the middle keeps the tonic octave", fn: () => {
+      const at = (position, key, extra = {}) => CNBKeySignature.marks(
+        keysigConfig([], { placement: { rule: "scale-from-tonic", tonicOctave: null, position, ...extra } }), key).marks;
+      // The default 4-8 staff's sets: 4–8 (middle 6) and 16–20 (middle 18).
+      eq(at("bottom-set", C_KEY)[0].semi, 0, "C on the bottom set: C to C′, 0–12");
+      eq(at("bottom-set", G_KEY)[0].semi, -5, "G on the bottom set: from the G below the set to the G inside it");
+      eq(at("top-set", C_KEY)[0].semi, 12, "C on the top set: 12–24");
+      eq(at("bottom-set", FS_KEY)[0].semi, 6, "F♯ midway on the set: the higher octave on a tie");
+      eq(at("middle", C_KEY, { tonicOctave: 2 })[0].semi, 24, "an explicit tonic octave moves the middle");
+      eq(at("bottom-set", C_KEY, { tonicOctave: 2 })[0].semi, 0, "…and not a line set");
+      // Every line set: two copies, the root at 12 a double notehead under stacked sevenths.
+      const every = at("every-set", C_KEY);
+      eq(every.length, 16, "two copies of eight");
+      deepEq(every.filter(m => m.semi === 12).map(m => m.column), [1, 0], "the lower copy's C′ right, the upper's C left");
+      const parity = CNBKeySignature.marks(keysigConfig([], { stacking: "parity",
+        placement: { rule: "scale-from-tonic", tonicOctave: null, position: "every-set" } }), C_KEY).marks;
+      eq(parity.filter(m => m.semi === 12).length, 1, "one stack: the root drawn once");
+      // Kite's 3-6-9 staff: sets 3–9 and 15–21.
+      const kite = keysigConfig([], { placement: { rule: "scale-from-tonic", tonicOctave: null, position: "top-set" } });
+      kite.staff = { semitonePattern: [3, 6, 9], midpoint: 12, semitonesPerStaffSpace: 3 };
+      eq(CNBKeySignature.marks(kite, C_KEY).marks[0].semi, 12, "Kite's top set, middle 18: C at 12");
+      // A staff of one set (lines 0, 4, … 20, one space apart): every set is one copy.
+      const one = keysigConfig([], { placement: { rule: "scale-from-tonic", tonicOctave: null, position: "every-set" } });
+      one.staff = { semitonePattern: [0, 4, 8], midpoint: 12, semitonesPerStaffSpace: 4 };
+      eq(CNBKeySignature.marks(one, C_KEY).marks.length, 8, "one copy");
+    }},
+
+  { name: "marks: a gold stem between each pair of neighbouring stacks, sharing the thickness when set; over each copy's marks on a line set", fn: () => {
+      const bars = (ks, key = C_KEY) => CNBKeySignature.marks(keysigConfig([], ks), key).bars;
+      const shared = bars({ stacking: "parity-stacks" });
+      deepEq(shared.map(b => b.column), [0, 1], "two stems for three stacks");
+      shared.forEach(b => approx(b.thickness, 0.2, "half each"));
+      approx(shared[1].x - shared[0].x, MARK_W / 64, "a stack apart");
+      bars({ stacking: "parity-stacks", separator: { enabled: true, color: "#123456", thicknessPct: 160, extentSemis: 12, shareThickness: false } })
+        .forEach(b => { approx(b.thickness, 0.4, "full each"); eq(b.color, "#123456", "its colour"); });
+      approx(bars({ separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12, shareThickness: false } })[0].thickness,
+        0.4, "one stem: unchanged either way");
+      deepEq(bars({ separator: { enabled: false, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 } }), [], "off: none");
+      const every = bars({ placement: { rule: "scale-from-tonic", tonicOctave: null, position: "every-set" } });
+      deepEq(every.map(b => [b.bottom, b.top, b.middle]), [[0, 12, false], [12, 24, false]], "each copy's stem over its marks");
+    }},
+
+  { name: "marks: marks that run together in one stack are reported — the default notehead a whole step apart, and not small marks", fn: () => {
+      const overlaps = ks => CNBKeySignature.marks(keysigConfig([], ks), C_KEY).overlaps;
+      const parity = overlaps({ stacking: "parity" });
+      assert(parity.some(o => o.column === 0 && o.semis[0] === 17 && o.semis[1] === 19),
+        `F and G, 2 semitones apart, overlap at 2.724 tall: ${JSON.stringify(parity)}`);
+      deepEq(overlaps({ stacking: "parity", looks: { all: { heightSemis: 1.2, widthSemis: 1.2 }, flat: {}, sharp: {} } }), [],
+        "Clairnote-sized marks do not");
+      deepEq(overlaps({}), [], "stacked sevenths, 3 and 4 semitones apart, do not");
+    }},
+
+  { name: "render: three stacks and two stems for a new stack at each change of parity; the gutter widens by a stack", fn: () => {
+      const config = keysigConfig([C_MAJOR], { stacking: "parity-stacks" });
+      eq(CNBKeySignature.measure(config, PX_PER_SEMI, "C").contentWidth, 3 * MARK_W, "three stacks wide");
+      approx(CNBKeySignature.gutterWidth(config, PX_PER_SEMI, "C"), GUTTER_W + MARK_W, "a stack wider than today's");
+      withSvgStub(svg => {
+        const grid = CNBGrid.create(config, GRID_RANGE);
+        const g = CNBKeySignature.render(svg, grid, config, "C");
+        const stems = g.children.filter(c => c.getAttribute("class") === "cnb-key-signature-separator");
+        deepEq(stems.map(s => Number(s.getAttribute("x1"))).map(x => Math.round((x - PAD_LEFT) / MARK_W)), [1, 2], "between the stacks");
+        stems.forEach(s => approx(Number(s.getAttribute("stroke-width")), SEPARATOR_PX / 2, "shared"));
+        const heads = g.children.filter(c => String(c.getAttribute("transform") || "").startsWith("translate"));
+        const xs = [...new Set(heads.map(h => Math.round((parseTranslate(h.getAttribute("transform")).x - PAD_LEFT) / MARK_W * 2)))];
+        deepEq(xs, [1, 3, 5], "the heads at three stack centres");
+      });
+    }},
+
+  { name: "render: on every line set the shared root is a double notehead — two heads side by side at one height", fn: () => {
+      const config = keysigConfig([C_MAJOR], { placement: { rule: "scale-from-tonic", tonicOctave: null, position: "every-set" } });
+      withSvgStub(svg => {
+        const grid = CNBGrid.create(config, GRID_RANGE);
+        const g = CNBKeySignature.render(svg, grid, config, "C");
+        const heads = g.children.filter(c => String(c.getAttribute("transform") || "").startsWith("translate"))
+          .map(h => parseTranslate(h.getAttribute("transform")));
+        eq(heads.length, 16, "two copies");
+        const root = heads.filter(h => Math.abs(h.y - semiToYExpected(12)) < 1e-9);
+        eq(root.length, 2, "two heads at the root");
+        approx(Math.abs(root[0].x - root[1].x), MARK_W, "side by side");
+        eq(g.children.filter(c => c.getAttribute("class") === "cnb-key-signature-separator").length, 2, "a stem per copy");
+      });
+    }},
+
 ];
+
+// Keys for the marks tests (session 48): definitions as the picker passes them.
+const C_KEY = { name: "C major", pitchClasses: [0, 2, 4, 5, 7, 9, 11], tonicPc: 0 };
+const A_MINOR_KEY = { name: "A minor", pitchClasses: [9, 11, 0, 2, 4, 5, 7], tonicPc: 9 };
+const G_KEY = { name: "G major", pitchClasses: [7, 9, 11, 0, 2, 4, 6], tonicPc: 7 };
+const D_KEY = { name: "D major", pitchClasses: [2, 4, 6, 7, 9, 11, 1], tonicPc: 2 };
+const FS_KEY = { name: "F♯ major", pitchClasses: [6, 8, 10, 11, 1, 3, 5], tonicPc: 6 };
+const BB_KEY = { name: "B♭ major", pitchClasses: [10, 0, 2, 3, 5, 7, 9], tonicPc: 10 };
+const DB_KEY = { name: "D♭ major", pitchClasses: [1, 3, 5, 6, 8, 10, 0], tonicPc: 1 };
 
 /** C-major key signature on the 013 Twinline axis with the 0.85 offset rule. */
 function axisKeysigConfig() {

@@ -1726,6 +1726,13 @@ anything is built on it (both consult rounds).
    score and system starts; goldens on LilyPond 2.24 and 2.26; the
    handoff), and its session 31, the 1.4.0 release, into the engine's plan.
 
+*(Done in session 48, 2026-11-11: the probe read the tonic's spelling and
+the key's pitch classes from `\key`, F♯ and G♭ major told apart, at a key
+change, a system start and under `\transpose`, so the design stands. The
+engine work is engine sessions 30 and 31 in the engine repository's plan,
+"Key signatures from a mark list" and its release 1.4.0; session 49's
+export and round trip wait for engine session 30 to land.)*
+
 ### Session 49: Scale notes reach LilyPond
 
 **Why.** The engraving has to draw what the canvas draws (design §9).

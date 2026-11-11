@@ -442,10 +442,14 @@ export const tests = [
         ],
         offKeyMark: {},
         keySignature: {
+          ...cfg.keys.keySignature,
           enabled: true,
           style: "notehead-chords",
-          placement: { rule: "scale-from-tonic", tonicOctave: 2 },
-          separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6 },
+          // The designer's settings (session 48), off their defaults.
+          stacking: "parity-stacks",
+          looks: { all: { heightSemis: 1.2 }, flat: {}, sharp: { color: "#ff0000" } },
+          placement: { rule: "scale-from-tonic", tonicOctave: 2, position: "bottom-set" },
+          separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6, shareThickness: false },
           gutter: { paddingH: 20 },
         },
       };

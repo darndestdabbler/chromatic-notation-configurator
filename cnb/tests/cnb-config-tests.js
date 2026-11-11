@@ -622,6 +622,71 @@ export const tests = [
       "no simple-mark style subsections");
   }},
 
+  { name: "keysig: the designer's settings (session 48) default to today's signature, and a config without them gains them on merge", fn: () => {
+    const ks = CNBConfig.createDefault().keys.keySignature;
+    eq(ks.notes, "all", "the whole scale");
+    eq(ks.upperTonic, true, "the tonic an octave up");
+    deepEq(ks.looks, { all: {}, flat: {}, sharp: {} }, "every mark looks like its notehead");
+    eq(ks.stacking, "degrees", "stacked sevenths");
+    deepEq(ks.alternate, {}, "every second stack as the others");
+    eq(ks.columns, "right", "stacks go to the right");
+    eq(ks.placement.position, "middle", "in the middle of the staff");
+    eq(ks.separator.shareThickness, true, "several stems share the thickness");
+    const old = CNBConfig.createDefault();
+    for (const f of ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"]) delete old.keys.keySignature[f];
+    delete old.keys.keySignature.placement.position;
+    delete old.keys.keySignature.separator.shareThickness;
+    deepEq(CNBConfig.merge(CNBConfig.createDefault(), old).keys.keySignature, ks, "merged");
+    const enabledOld = keysigConfig();
+    for (const f of ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"]) delete enabledOld.keys.keySignature[f];
+    assert(CNBConfig.validate(enabledOld).valid, "absent settings are their defaults");
+  }},
+
+  { name: "keysig: validate — the designer's vocabularies and switches are checked", fn: () => {
+    const good = keysigConfig();
+    Object.assign(good.keys.keySignature, { notes: "tonic-and-half-steps", upperTonic: false,
+      stacking: "parity-zigzag", columns: "left-in-sharp-keys" });
+    good.keys.keySignature.placement.position = "every-set";
+    good.keys.keySignature.separator.shareThickness = false;
+    assert(CNBConfig.validate(good).valid, `every valid value: ${CNBConfig.validate(good).errors}`);
+    for (const [field, bad] of [["notes", "some"], ["stacking", "columns"], ["columns", "left"],
+                                ["placement.position", "near-the-notes"], ["upperTonic", "yes"],
+                                ["separator.shareThickness", 1]]) {
+      const cfg = keysigConfig();
+      const [a, b] = field.split(".");
+      if (b) cfg.keys.keySignature[a][b] = bad; else cfg.keys.keySignature[a] = bad;
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes(`keys.keySignature.${field}`)), `${field} ${JSON.stringify(bad)}`);
+    }
+    const off = keysigConfig();
+    off.keys.keySignature.enabled = false;
+    off.keys.keySignature.stacking = "spiral";
+    assert(CNBConfig.validate(off).valid, "not checked with the signature off, as today");
+  }},
+
+  { name: "keysig: validate — a look is checked as a notehead rule's apply block; every second stack's takes no size", fn: () => {
+    const good = keysigConfig();
+    good.keys.keySignature.looks = { all: { shape: "crotchet-minim", heightSemis: 1, widthSemis: 1.5 },
+      flat: { hollow: true, color: "#0000ff" }, sharp: { color: null } };
+    good.keys.keySignature.alternate = { shape: "crotchet-minim", hollow: false, color: "#ff0000" };
+    assert(CNBConfig.validate(good).valid, `valid looks: ${CNBConfig.validate(good).errors}`);
+    const errorFor = (looks, alternate) => {
+      const cfg = keysigConfig();
+      if (looks) cfg.keys.keySignature.looks = looks;
+      if (alternate) cfg.keys.keySignature.alternate = alternate;
+      return CNBConfig.validate(cfg).errors.join("\n");
+    };
+    assert(/looks\.all references unknown shape "dot"/.test(errorFor({ all: { shape: "dot" } })), "unknown shape");
+    assert(/looks\.flat has invalid color hex/.test(errorFor({ flat: { color: "blue" } })), "bad colour");
+    assert(/looks\.sharp\.hollow must be true or false/.test(errorFor({ sharp: { hollow: 1 } })), "bad hollow");
+    assert(/looks\.all\.heightSemis must be a finite number/.test(errorFor({ all: { heightSemis: 0 } })), "bad size");
+    assert(/looks\.natural is not a look/.test(errorFor({ natural: {} })), "no naturals look: all marks stands for them");
+    assert(/alternate\.heightSemis is not a look setting/.test(errorFor(null, { heightSemis: 1 })), "no size on every second stack");
+    assert(/looks must be an object/.test(errorFor("small")), "looks not an object");
+    const tiny = keysigConfig();
+    tiny.keys.keySignature.looks.all = { heightSemis: 0.1 };
+    assert(CNBConfig.validate(tiny).warnings.some(w => /looks\.all\.heightSemis is 0\.1 semitones/.test(w)), "size warning");
+  }},
+
   { name: "keysig: merge — config predating the keySignature section gains the default-off subsection", fn: () => {
     const old = CNBConfig.createDefault();
     delete old.keys.keySignature;

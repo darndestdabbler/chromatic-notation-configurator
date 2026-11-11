@@ -54,8 +54,11 @@
  *     keySignature: {
  *       enabled: boolean,
  *       style: string,   // "notehead-chords" (single-value vocabulary)
- *       placement: { rule: string, tonicOctave: number|null },
- *       separator: { enabled, color, thicknessPct, extentSemis }
+ *       notes, upperTonic, looks, stacking, alternate, columns,
+ *                        // the designer's settings (session 48): carried
+ *                        // through unchanged, with no controls yet
+ *       placement: { rule: string, tonicOctave: number|null, position },
+ *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness }
  *     }
  *   }
  *
@@ -88,6 +91,17 @@ import { CNBKeySignature } from "../src/cnb-key-signature.js";
 
 function deepClone(v) {
   return v === undefined ? v : JSON.parse(JSON.stringify(v));
+}
+
+/** The schema's keySignature, and the designer's settings at their defaults. */
+const DEFAULT_KS = CNBConfig.createDefault().keys.keySignature;
+const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"];
+const DESIGNER_DEFAULTS = Object.fromEntries(DESIGNER_FIELDS.map(f => [f, DEFAULT_KS[f]]));
+
+/** The designer's settings (session 48) of a keySignature, copied as they
+ *  are: the panel has no controls for them yet, and validation checks them. */
+function designerSettings(ks) {
+  return Object.fromEntries(DESIGNER_FIELDS.map(f => [f, deepClone(ks[f])]));
 }
 
 function isPlainObject(v) {
@@ -184,15 +198,18 @@ export const CNBKeySignatureEditor = {
       keySignature: {
         enabled: !!ks.enabled,
         style: ks.style,
+        ...designerSettings(ks),
         placement: {
           rule: placement.rule,
           tonicOctave: placement.tonicOctave,
+          position: placement.position,
         },
         separator: {
           enabled: !!sep.enabled,
           color: sep.color,
           thicknessPct: sep.thicknessPct,
           extentSemis: sep.extentSemis,
+          shareThickness: sep.shareThickness,
         },
       },
     };
@@ -239,15 +256,18 @@ export const CNBKeySignatureEditor = {
       keySignature: {
         enabled: !!ks.enabled,
         style: typeof ks.style === "string" ? ks.style : "notehead-chords",
+        ...designerSettings({ ...DESIGNER_DEFAULTS, ...ks }),
         placement: {
           rule: typeof placement.rule === "string" ? placement.rule : "scale-from-tonic",
           tonicOctave: Number.isInteger(placement.tonicOctave) ? placement.tonicOctave : null,
+          position: placement.position ?? DEFAULT_KS.placement.position,
         },
         separator: {
           enabled: sep.enabled !== false,   // schema default: true
           color: isValidHex(sep.color) ? sep.color : "#ffd42a",
           thicknessPct: finite(sep.thicknessPct, 0, 160),
           extentSemis: finite(sep.extentSemis, 0, 12, true),
+          shareThickness: sep.shareThickness ?? DEFAULT_KS.separator.shareThickness,
         },
       },
     };

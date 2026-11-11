@@ -27,8 +27,10 @@
  *     the preview area then shows an explicit .cnb-pvd-empty message
  *     instead of a collection — an honest empty state, not a guessed row.
  *   - The key is a tonic and a mode (session 36): a key and mode picker,
- *     shown whatever the config, over the twelve tonics and the seven modes
- *     LilyPond's \key names (CNBMusic.MODES). The pick is example data,
+ *     shown whatever the config, over the seven modes LilyPond's \key names
+ *     (CNBMusic.MODES) and, since session 48, each mode's 15 spelled tonics
+ *     (CNBMusic.spellings: F♯ and G♭ major are two keys, since a signature
+ *     marks flats and sharps). The pick is example data,
  *     like the durations: withKey() gives the drawn copy of the config the
  *     picked key as a definition, so the signature draws for it, and
  *     options.keys = [its name]. With keys off there is no key (the export
@@ -140,6 +142,7 @@
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBClef } from "../src/cnb-clef.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
 
 const PC_MIN = 0;
 const PC_MAX = 12;   // upper C completing the chromatic row (Module B/10)
@@ -166,8 +169,7 @@ const REPRESENTATION_CHOICES = {
 /** The engine's repeat counts (CNBCard.repeatCount), shown with the choice. */
 const REPEAT_HINT = "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves";
 
-/** The key picker's tonics and the key shown first (session 36). */
-const TONIC_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+/** The key shown first (session 36). */
 const DEFAULT_KEY = { tonic: 0, mode: "major" };
 
 /** The sorted, distinct pitch classes of a list, as a comparable string. */
@@ -175,10 +177,20 @@ function pcSet(pcs) {
   return [...new Set(pcs.map(CNBMusic.pitchClass))].sort((a, b) => a - b).join(" ");
 }
 
-/** Throws unless key is { tonic: 0–11, mode: a CNBMusic.MODES name }. */
+/** Throws unless key is { tonic: 0–11, mode: a CNBMusic.MODES name,
+ *  spelling?: one of the mode's spellings of that tonic (session 48) }. */
 function checkKey(key) {
   if (!isPlainObject(key)) throw new Error(`state.key must be { tonic, mode } (got ${JSON.stringify(key)})`);
   CNBMusic.scale(key.tonic, key.mode);
+  if (key.spelling !== undefined && (!CNBMusic.spellings(key.mode).includes(key.spelling) ||
+      CNBKeySignature.parseTonicPc(key.spelling) !== key.tonic)) {
+    throw new Error(`state.key.spelling must be one of ${key.mode}'s names for its tonic (got ${JSON.stringify(key.spelling)})`);
+  }
+}
+
+/** The picked key's tonic spelled (session 48): its spelling, else the default. */
+function spellingOf(key) {
+  return key.spelling ?? CNBMusic.defaultSpelling(key.tonic, CNBMusic.scale(key.tonic, key.mode));
 }
 
 /** The toolbar hint in pitch mode (session 28, mock-up 3). */
@@ -213,7 +225,6 @@ export const CNBPreviewDisplay = {
   REPRESENTATION_CHOICES,
   REPEAT_HINT,
   SELECT_HINT,
-  TONIC_NAMES,
   DEFAULT_KEY,
 
   /**
@@ -352,12 +363,13 @@ export const CNBPreviewDisplay = {
    * on, its keys.definitions carry the picked key, under the name of the
    * defined key the export engraves for those pitch classes (LY spec 1.3.9
    * §6.4: the first in definition order that a rule names, else the first
-   * with them) and with the picked tonic, or, when none is defined, a new
-   * definition named for it ("D dorian"). The signature and the key-scoped
-   * rules then draw as engraved. With keys off, or no key, the config comes
-   * back as it is and the name is null. The input is not changed.
+   * with them) and with the picked tonic and its spelling (session 48), or,
+   * when none is defined, a new definition named for it ("D dorian", "G♭
+   * major"). The signature and the key-scoped rules then draw as engraved.
+   * With keys off, or no key, the config comes back as it is and the name
+   * is null. The input is not changed.
    * @param {object} config
-   * @param {{tonic:number, mode:string}|null} key
+   * @param {{tonic:number, mode:string, spelling?:string}|null} key
    * @returns {{config: object, name: string|null}}
    */
   withKey(config, key) {
@@ -371,8 +383,9 @@ export const CNBPreviewDisplay = {
     const named = new Set((config.noteheadRules || [])
       .flatMap(r => (r && r.match && Array.isArray(r.match.keys)) ? r.match.keys : []));
     const match = defs.find(d => sameSet(d) && named.has(d.name)) || defs.find(sameSet);
-    const name = match ? match.name : `${TONIC_NAMES[key.tonic]} ${key.mode}`;
-    const picked = { ...(match || { pitchClasses: pcs }), name, tonicPc: key.tonic };
+    const spelling = spellingOf(key);
+    const name = match ? match.name : `${spelling} ${key.mode}`;
+    const picked = { ...(match || { pitchClasses: pcs }), name, tonicPc: key.tonic, spelling };
     const definitions = match ? defs.map(d => (d === match ? picked : d)) : [...defs, picked];
     return { config: { ...config, keys: { ...keys, definitions } }, name };
   },
@@ -611,17 +624,20 @@ export const CNBPreviewDisplay = {
       const wrap = el("div", "cnb-pvd-key");
       wrap.appendChild(el("span", "cnb-pvd-key-label", "Key"));
 
+      // The mode's 15 spelled tonics (session 48, key-signature design §3).
+      const spelled = spellingOf(key);
       const tonic = el("select", "cnb-pvd-key-tonic");
       tonic.setAttribute("aria-label", "Key");
-      TONIC_NAMES.forEach((text, pc) => {
-        const option = el("option", "", text);
-        option.value = String(pc);
-        if (pc === key.tonic) option.selected = true;
+      for (const name of CNBMusic.spellings(key.mode)) {
+        const option = el("option", "", name);
+        option.value = name;
+        if (name === spelled) option.selected = true;
         tonic.appendChild(option);
-      });
-      tonic.value = String(key.tonic);
+      }
+      tonic.value = spelled;
       tonic.onchange = (e) => {
-        state.key = { ...key, tonic: parseInt(valueFrom(e, tonic), 10) };
+        const spelling = valueFrom(e, tonic);
+        state.key = { ...key, tonic: CNBKeySignature.parseTonicPc(spelling), spelling };
         changed();
       };
       wrap.appendChild(tonic);
@@ -636,7 +652,13 @@ export const CNBPreviewDisplay = {
       }
       mode.value = key.mode;
       mode.onchange = (e) => {
-        state.key = { ...key, mode: valueFrom(e, mode) };
+        // The spelling stays where the new mode has it (E♭ major → E♭
+        // minor), else the tonic takes the new mode's default (C♭ major → B
+        // minor).
+        const next = valueFrom(e, mode);
+        const spelling = CNBMusic.spellings(next).includes(spelled) ? spelled
+          : CNBMusic.defaultSpelling(key.tonic, CNBMusic.scale(key.tonic, next));
+        state.key = { tonic: key.tonic, mode: next, spelling };
         changed();
       };
       wrap.appendChild(mode);

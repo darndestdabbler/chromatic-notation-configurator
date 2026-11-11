@@ -59,6 +59,12 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 45 | Clefs | no | 2026-11-10 |
 | 46 | The breve's tie below the noteheads | no | 2026-11-11 |
 | 47 | Designing the key-signature designer | no | 2026-11-11 |
+| 48 | Scale notes on the canvas, and the engine's hook planned | no | 2026-11-11 |
+| 49 | Scale notes reach LilyPond | — | not declared |
+| 50 | The Key signature panel | — | not declared |
+| 51 | Accidentals | — | not declared |
+| 52 | The UI is stable | — | not declared |
+| 53 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -471,3 +477,13 @@ Design the key-signature designer, as a document only, for the operator's approv
 
 - 2026-11-11 — step 'operator-approval': its files: The operator asked, before approving, for mock-ups of normal and edge cases to review visually (placement on the bottom set, top set or both, and a signature starting midway up a set); static mock-ups under docs/planning, as session 19's, nothing under cnb/. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-11 — step 'operator-approval': its files: The operator, reviewing the mock-ups, added four stack-membership rules, custom symbols and a styleable gold stem, and asked for a second consult with Sol and Argon (gpt-6.1-sol, gemini-4-argon) before approving; the consult record gains that round. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 48 — Scale notes on the canvas, and the engine's hook planned
+
+**Releasable: no.**
+
+Build the scale-note half of the approved key-signature design (docs/planning/key-signature-designer-design.md, session 47) on the canvas, after first proving its engine contract. A LilyPond probe (cnb/tests/engine-probe.js) shows that, under the engine, a Staff engraver acknowledging each KeySignature grob reads the tonic's note name and alteration (the context's tonic) and the key's seven pitch classes (keyAlterations over the seven steps) from real \key events: a sharp key (F sharp major), a flat key (B flat major), an enharmonic pair (F sharp and G flat major), a key change, a transposed score and the signature repeated at a system start; if it cannot, the session stops and the design is revisited. A baseline captured before any code changes pins the canvas's signature (CNBCollection.render with keys and the signature on) for every fixture and gallery file in four keys, so the defaults are proved to draw exactly as before. CNBMusic gains key spelling: each mode's 15 tonic spellings (design section 3), the alteration of each note of a key spelled from its tonic's name, and a default spelling. keys.keySignature gains the fields of design section 6 (notes, upperTonic, looks.all/flat/sharp, stacking, alternate, columns, placement.position, separator.shareThickness), each defaulting to today's signature, with validation, carried through unchanged by the key-signature editor, and the architecture plan's section 4.9. CNBKeySignature.marks(config, key) computes, for a key definition carrying its tonic and spelling, the marks (semitone, column, resolved look: the notehead's own, then all marks, then flats or sharps, then every second stack), the columns' x offsets in staff spaces, the gold stems (between neighbouring stacks, their colour, and thickness shared among them when set) and the overlaps of marks in one stack, for every scale-note choice of design section 4: the whole scale or the tonic and the half steps, the upper tonic, the four stacking rules, the direction, and the middle, bottom, top or every line set, centred; render, measure and the gutter draw from it. The staff's picker offers each mode's 15 spellings and passes the spelling with the picked key. Finally the engine's session 30 (the mark-list hook, design section 9) and session 31 (release 1.4.0) are inserted into the engine repository's plan.
+
+**Amended after acceptance:**
+
+- 2026-11-11 — step 'config-fields': its files: A config-io round-trip test hand-builds keys.keySignature without the new fields, and loading now merges their defaults; its fixture is built over the schema's default keySignature instead (claude-code (anthropic, claude-opus-5-5))

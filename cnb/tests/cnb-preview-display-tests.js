@@ -18,6 +18,7 @@ import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 
 /** The default config showing one of the built-in clefs (session 45). */
@@ -215,13 +216,40 @@ export const tests = [
       assertEqual(d.name, "C", "D dorian has C major's pitch classes");
       const fs = PVD.withKey(cfg, { tonic: 6, mode: "major" });
       assertEqual(fs.name, "F♯ major");
-      assertEqual(fs.config.keys.definitions[2], { pitchClasses: [1, 3, 5, 6, 8, 10, 11], name: "F♯ major", tonicPc: 6 });
+      assertEqual(fs.config.keys.definitions[2],
+        { pitchClasses: [1, 3, 5, 6, 8, 10, 11], name: "F♯ major", tonicPc: 6, spelling: "F♯" });
       const empty = keyedConfig();
       empty.keys.definitions = [];
-      assertEqual(PVD.withKey(empty, { tonic: 3, mode: "minor" }).name, "E♭ minor", "no definitions at all");
+      assertEqual(PVD.withKey(empty, { tonic: 3, mode: "minor", spelling: "E♭" }).name, "E♭ minor", "no definitions at all");
+      assertEqual(PVD.withKey(empty, { tonic: 3, mode: "minor" }).name, "D♯ minor",
+        "no spelling: the default, D♯ and E♭ minor tying at six to the sharp");
       assertThrows(() => PVD.withKey(cfg, { tonic: 12, mode: "major" }), "tonic");
       assertThrows(() => PVD.withKey(cfg, { tonic: 0, mode: "bebop" }), "unknown mode");
       assertThrows(() => PVD.withKey(cfg, "G"), "must be { tonic, mode }");
+      assertThrows(() => PVD.withKey(cfg, { tonic: 6, mode: "major", spelling: "G" }), "state.key.spelling",
+        "a spelling of another tonic");
+      assertThrows(() => PVD.withKey(cfg, { tonic: 3, mode: "major", spelling: "D♯" }), "state.key.spelling",
+        "not one of major's (D♯ major needs F𝄪)");
+    },
+  },
+  {
+    name: "withKey: the picked spelling reaches the definition, so F♯ and G♭ major draw their sharps and flats (session 48)",
+    fn: () => {
+      const cfg = keyedConfig();
+      cfg.keys.keySignature = { ...CNBConfig.createDefault().keys.keySignature, enabled: true,
+        looks: { all: {}, flat: { color: "#0000ff" }, sharp: { color: "#ff0000" } } };
+      const colours = key => {
+        const { config, name } = PVD.withKey(cfg, key);
+        return CNBKeySignature.measure(config, 16, name).marks.map(m => m.mark.color);
+      };
+      const gb = PVD.withKey(cfg, { tonic: 6, mode: "major", spelling: "G♭" });
+      assertEqual(gb.name, "G♭ major", "named for its spelling");
+      assertEqual(gb.config.keys.definitions.at(-1).spelling, "G♭");
+      assertEqual(colours({ tonic: 6, mode: "major", spelling: "G♭" }).filter(c => c === "#0000ff").length, 7, "six flats and the upper G♭");
+      assertEqual(colours({ tonic: 6, mode: "major", spelling: "F♯" }).filter(c => c === "#ff0000").length, 7, "six sharps and the upper F♯");
+      const g = PVD.withKey(cfg, { tonic: 7, mode: "major", spelling: "G" });
+      assertEqual(g.config.keys.definitions[1], { name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11], tonicPc: 7, spelling: "G" },
+        "a defined key lends its name and takes the spelling");
     },
   },
 
@@ -516,7 +544,7 @@ export const tests = [
 
   // ── render: the key and mode picker (session 36) ──
   {
-    name: "render: the key and mode picker — twelve tonics and the seven modes, C major first; a pick passes through options.keys",
+    name: "render: the key and mode picker — the mode's 15 spelled tonics and the seven modes, C major first; a pick passes through options.keys",
     fn: () => {
       const cfg = keyedConfig();
       withDomStub(container => {
@@ -525,18 +553,45 @@ export const tests = [
         const tonic = findOne(keyWrap, "cnb-pvd-key-tonic");
         const mode = findOne(keyWrap, "cnb-pvd-key-mode");
         assertEqual(tonic.children.map(o => o.textContent),
-          ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"]);
+          ["C", "C♯", "D♭", "D", "E♭", "E", "F", "F♯", "G♭", "G", "A♭", "A", "B♭", "B", "C♭"], "major's 15 (session 48)");
+        assertEqual(tonic.children.map(o => o.value), tonic.children.map(o => o.textContent), "valued by name");
         assertEqual(mode.children.map(o => o.textContent),
           ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]);
-        assertEqual([tonic.value, mode.value], ["0", "major"], "C major first");
+        assertEqual([tonic.value, mode.value], ["C", "major"], "C major first");
         assertEqual(api.getOptions().keys, ["C"], "the defined C");
-        findOne(api.root, "cnb-pvd-key-tonic").onchange({ target: { value: "7" } });
-        assertEqual(api.getState().key, { tonic: 7, mode: "major" });
+        findOne(api.root, "cnb-pvd-key-tonic").onchange({ target: { value: "G" } });
+        assertEqual(api.getState().key, { tonic: 7, mode: "major", spelling: "G" });
         assertEqual(api.getOptions().keys, ["G"]);
         findOne(api.root, "cnb-pvd-key-mode").onchange({ target: { value: "mixolydian" } });
-        assertEqual(api.getState().key, { tonic: 7, mode: "mixolydian" });
+        assertEqual(api.getState().key, { tonic: 7, mode: "mixolydian", spelling: "G" });
         assertEqual(api.getOptions().keys, ["C"], "G mixolydian has C major's pitch classes");
         assertEqual(findAll(api.root, "cnb-pvd-key-note").length, 0, "no developer note");
+      });
+    },
+  },
+  {
+    name: "render: F♯ and G♭ major are both offered and passed through; minor offers its own 15; a mode without the spelling takes the tonic's default (session 48)",
+    fn: () => {
+      const cfg = keyedConfig();
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg });
+        const pick = (cls, value) => findOne(api.root, cls).onchange({ target: { value } });
+        pick("cnb-pvd-key-tonic", "G♭");
+        assertEqual(api.getState().key, { tonic: 6, mode: "major", spelling: "G♭" });
+        assertEqual(api.getOptions().keys, ["G♭ major"], "no key G♭ is defined: named for it");
+        assertEqual(findOne(api.root, "cnb-pvd-key-tonic").value, "G♭", "the redraw shows G♭");
+        pick("cnb-pvd-key-tonic", "F♯");
+        assertEqual(api.getOptions().keys, ["F♯ major"], "F♯ major is another key");
+        pick("cnb-pvd-key-mode", "minor");
+        assertEqual(findOne(api.root, "cnb-pvd-key-tonic").children.map(o => o.value),
+          ["C", "C♯", "D", "D♯", "E♭", "E", "F", "F♯", "G", "G♯", "A♭", "A", "A♯", "B♭", "B"], "minor's 15");
+        assertEqual(api.getState().key, { tonic: 6, mode: "minor", spelling: "F♯" }, "F♯ minor keeps its spelling");
+        pick("cnb-pvd-key-mode", "major");
+        pick("cnb-pvd-key-tonic", "C♭");
+        pick("cnb-pvd-key-mode", "minor");
+        assertEqual(api.getState().key, { tonic: 11, mode: "minor", spelling: "B" }, "C♭ minor is no key: B minor");
+        assertThrows(() => api.setState({ key: { tonic: 11, mode: "minor", spelling: "C♭" } }), "state.key.spelling",
+          "a spelling the mode lacks");
       });
     },
   },

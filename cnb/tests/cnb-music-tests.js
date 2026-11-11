@@ -47,6 +47,51 @@ export const tests = [
     assert(threw, "unknown mode");
   }},
 
+  // ── key spelling (session 48, key-signature design §3) ──
+  { name: "spell: a key spelled on the seven letters from its tonic, F♯ and G♭ major told apart", fn: () => {
+    const alts = (name, pcs) => CNBMusic.spell(name, pcs).map(n => n.alteration);
+    deepEq(alts("C", CNBMusic.scale(0, "major")), [0, 0, 0, 0, 0, 0, 0], "C major");
+    deepEq(alts("F♯", CNBMusic.scale(6, "major")), [1, 1, 1, 0, 1, 1, 1], "F♯ major: F♯ G♯ A♯ B C♯ D♯ E♯");
+    deepEq(alts("G♭", CNBMusic.scale(6, "major")), [-1, -1, -1, -1, -1, -1, 0], "G♭ major: G♭ A♭ B♭ C♭ D♭ E♭ F");
+    deepEq(alts("B♭", CNBMusic.scale(10, "major")), [-1, 0, 0, -1, 0, 0, 0], "B♭ major");
+    deepEq(CNBMusic.spell("A", CNBMusic.scale(9, "minor")).map(n => n.pc), [9, 11, 0, 2, 4, 5, 7], "from the tonic up");
+    deepEq(alts("Bb", [10, 0, 2, 3, 5, 7, 9]), [-1, 0, 0, -1, 0, 0, 0], "ASCII flat, any order");
+  }},
+  { name: "spell: null for a key that is not seven notes, lacks its tonic, or would need a double sharp or flat", fn: () => {
+    eq(CNBMusic.spell("C", [0, 2, 4, 7, 9]), null, "pentatonic");
+    eq(CNBMusic.spell("C♯", CNBMusic.scale(0, "major")), null, "the tonic is not in the key");
+    eq(CNBMusic.spell("B♯", CNBMusic.scale(0, "major")), null, "B♯ with C major's notes needs C𝄪");
+    eq(CNBMusic.spell("H", CNBMusic.scale(0, "major")), null, "not a note name");
+  }},
+  { name: "spellings: each mode's 15 tonics with at most seven sharps or flats, in pitch-class order", fn: () => {
+    deepEq(CNBMusic.spellings("major"),
+      ["C", "C♯", "D♭", "D", "E♭", "E", "F", "F♯", "G♭", "G", "A♭", "A", "B♭", "B", "C♭"], "major");
+    deepEq(CNBMusic.spellings("minor"),
+      ["C", "C♯", "D", "D♯", "E♭", "E", "F", "F♯", "G", "G♯", "A♭", "A", "A♯", "B♭", "B"], "minor");
+    const LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const pcOf = name => (LETTER_PC[name[0]] + (name[1] === "♯" ? 1 : name[1] === "♭" ? -1 : 0) + 12) % 12;
+    for (const mode of Object.keys(CNBMusic.MODES)) {
+      const names = CNBMusic.spellings(mode);
+      eq(names.length, 15, mode + " has 15");
+      eq(new Set(names.map(pcOf)).size, 12, mode + " covers every pitch class");
+      for (const name of names) {
+        const notes = CNBMusic.spell(name, CNBMusic.scale(pcOf(name), mode));
+        assert(notes !== null, `${name} ${mode} is spelled`);
+        const sharps = notes.filter(n => n.alteration === 1).length;
+        const flats = notes.filter(n => n.alteration === -1).length;
+        assert(sharps === 0 || flats === 0, `${name} ${mode} has sharps or flats, not both`);
+      }
+    }
+  }},
+  { name: "defaultSpelling: the fewest sharps and flats, a tie to the sharp; a key no name spells takes the natural, else the sharp", fn: () => {
+    eq(CNBMusic.defaultSpelling(1, CNBMusic.scale(1, "major")), "D♭", "D♭ major (5♭) over C♯ (7♯)");
+    eq(CNBMusic.defaultSpelling(6, CNBMusic.scale(6, "major")), "F♯", "F♯ and G♭ major tie: the sharp");
+    eq(CNBMusic.defaultSpelling(11, CNBMusic.scale(11, "major")), "B", "B major (5♯) over C♭ (7♭)");
+    eq(CNBMusic.defaultSpelling(8, CNBMusic.scale(8, "minor")), "G♯", "G♯ minor (5♯) over A♭ (7♭)");
+    eq(CNBMusic.defaultSpelling(0, [0, 2, 4, 7, 9]), "C", "a pentatonic key: the natural name");
+    eq(CNBMusic.defaultSpelling(3, [3, 5]), "D♯", "no natural name: the sharp");
+  }},
+
   // ── pitchClass ────────────────────────────────────────────────────────────
   { name: "pitchClass(0) = 0",   fn: () => eq(CNBMusic.pitchClass(0),   0) },
   { name: "pitchClass(11) = 11", fn: () => eq(CNBMusic.pitchClass(11), 11) },

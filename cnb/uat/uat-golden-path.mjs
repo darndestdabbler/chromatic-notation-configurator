@@ -228,7 +228,7 @@ check("PREVIEW: full chromatic row on load — 13 cards, one caption-less durati
     document.querySelectorAll(".cnb-pvd-duration-pill").length === 4 &&
     document.querySelectorAll(".cnb-pvd-duration-pill.on").length === 1 &&
     document.querySelector('.cnb-pvd-duration-pill[data-duration="crotchet"]').classList.contains("on") &&
-    document.querySelector(".cnb-pvd-key-tonic").value === "0" &&
+    document.querySelector(".cnb-pvd-key-tonic").value === "C" &&
     document.querySelector(".cnb-pvd-key-mode").value === "major"),
   `cards=${await cardCount()}`);
 let cfg = await fullConfig();

@@ -542,6 +542,56 @@ export function measureKeySignature(engine, ly, key) {
 }
 
 /**
+ * Read each engraved key signature's identity (session 48): a Staff
+ * engraver acknowledges every KeySignature grob, at a key change and at each
+ * system start, and prints the context's tonic, its note name (0 = C … 6 =
+ * B) and alteration (1/2 a sharp, -1/2 a flat), and the key's seven pitch
+ * classes, each step's natural pitch class plus twice its keyAlterations
+ * alteration (0 when the step is not altered), mod 12, sorted. This is the
+ * identity the key-signature design's mark table is keyed by (design §9).
+ * Returns { keys: [{ notename, alteration, pitchClasses }] } in engraving
+ * order, the alteration a number, or { error } with LilyPond's output.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  the score's music, e.g. "\\key fis \\major c'1"
+ * @returns {Promise<{keys?:{notename:number, alteration:number, pitchClasses:number[]}[], error?:string}>}
+ */
+export function readKeys(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+#(define (cnb-probe:key-engraver context)
+   (make-engraver
+     (acknowledgers
+       ((key-signature-interface engraver grob source)
+        (let* ((tonic (ly:context-property context 'tonic))
+               (alts (ly:context-property context 'keyAlterations))
+               (pcs (map (lambda (step)
+                           (let ((alt (assv step alts)))
+                             (modulo (+ (list-ref '(0 2 4 5 7 9 11) step)
+                                        (* 2 (if alt (cdr alt) 0)))
+                                     12)))
+                         '(0 1 2 3 4 5 6))))
+          (format #t "CNB-KEY ~a ~a ~{~a ~}\\n"
+            (ly:pitch-notename tonic)
+            (exact->inexact (ly:pitch-alteration tonic))
+            (sort pcs <)))))))
+\\layout { \\context { \\Staff \\consists #cnb-probe:key-engraver } }
+{ ${music} }
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    if (error) return { error: `${error.message}\n${output}` };
+    const keys = [...output.matchAll(/^CNB-KEY (\d+) (\S+) ((?:\d+ ){7})$/gm)].map(([, n, a, pcs]) => ({
+      notename: Number(n),
+      alteration: schemeNumber(a),
+      pitchClasses: pcs.trim().split(" ").map(Number),
+    }));
+    if (keys.length === 0) return { error: `no key signature was read\n${output}` };
+    return { keys };
+  });
+}
+
+/**
  * LilyPond's options for a compile whose measurements are read from what
  * it prints during layout: no pages are printed (session 45). Printing a
  * PDF hands the pages to Ghostscript, which now and then fails when many

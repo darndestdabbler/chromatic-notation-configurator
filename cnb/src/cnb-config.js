@@ -150,18 +150,38 @@ function buildDefault() {
       // 0.4 staff-space at the default staff's 4 semitones per space.
       // dot.radiusPct 60 (diameter 1.2 semitones) per the s2 UAT operator
       // feedback that 30 rendered "really small".
+      //
+      // The designer's settings (session 48, key-signature design §6) each
+      // default to the signature above, so a config saved before them draws
+      // as it did: notes "all" (or "tonic-and-half-steps"), upperTonic;
+      // looks.all, .flat, .sharp (shape, hollow, color, heightSemis,
+      // widthSemis, each unset = the look beneath: the notehead's own, then
+      // all marks, then flats or sharps); stacking "degrees" (or "parity",
+      // "parity-stacks", "parity-zigzag"); alternate, the look of every second
+      // stack (shape, hollow, color); columns "right" (or
+      // "left-in-sharp-keys"); placement.position "middle" (or "bottom-set",
+      // "top-set", "every-set"); separator.shareThickness, several stems
+      // sharing thicknessPct.
       keySignature: {
         enabled: false,
         style: "notehead-chords",
+        notes: "all",
+        upperTonic: true,
+        looks: { all: {}, flat: {}, sharp: {} },
+        stacking: "degrees",
+        alternate: {},
+        columns: "right",
         placement: {
           rule: "scale-from-tonic",
           tonicOctave: null,
+          position: "middle",
         },
         separator: {
           enabled: true,
           color: "#ffd42a",
           thicknessPct: 160,
           extentSemis: 12,
+          shareThickness: true,
         },
       },
     },
@@ -503,8 +523,69 @@ export const CNBConfig = {
               (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0)) {
             errors.push(`keys.keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
           }
+          if (sep.shareThickness !== undefined && typeof sep.shareThickness !== "boolean") {
+            errors.push(`keys.keySignature.separator.shareThickness must be true or false (got ${JSON.stringify(sep.shareThickness)})`);
+          }
         }
       }
+      // The designer's settings (session 48, key-signature design §6): an
+      // absent setting is its default.
+      const vocabulary = (value, field, values) => {
+        if (value !== undefined && !values.includes(value)) {
+          errors.push(`keys.keySignature.${field} must be one of ${values.map(v => `"${v}"`).join(", ")} (got ${JSON.stringify(value)})`);
+        }
+      };
+      vocabulary(keySig.notes, "notes", ["all", "tonic-and-half-steps"]);
+      vocabulary(keySig.stacking, "stacking", ["degrees", "parity", "parity-stacks", "parity-zigzag"]);
+      vocabulary(keySig.columns, "columns", ["right", "left-in-sharp-keys"]);
+      if (isPlainObject(placement)) {
+        vocabulary(placement.position, "placement.position", ["middle", "bottom-set", "top-set", "every-set"]);
+      }
+      if (keySig.upperTonic !== undefined && typeof keySig.upperTonic !== "boolean") {
+        errors.push(`keys.keySignature.upperTonic must be true or false (got ${JSON.stringify(keySig.upperTonic)})`);
+      }
+      // A look is checked as a notehead rule's apply block is (checks 1, 2,
+      // 3 and 3a): every second stack's takes no size.
+      const checkLook = (look, field, fields) => {
+        if (look === undefined) return;
+        if (!isPlainObject(look)) {
+          errors.push(`keys.keySignature.${field} must be an object`);
+          return;
+        }
+        for (const key of Object.keys(look)) {
+          if (!fields.includes(key)) errors.push(`keys.keySignature.${field}.${key} is not a look setting (${fields.join(", ")})`);
+        }
+        if (look.shape !== undefined && !(look.shape in shapes)) {
+          errors.push(`keys.keySignature.${field} references unknown shape "${look.shape}"`);
+        } else if (look.hollow === true && look.shape !== undefined && !shapes[look.shape].svgHollowPath) {
+          errors.push(`keys.keySignature.${field} sets hollow on shape "${look.shape}", which has no svgHollowPath`);
+        }
+        if (look.hollow !== undefined && typeof look.hollow !== "boolean") {
+          errors.push(`keys.keySignature.${field}.hollow must be true or false (got ${JSON.stringify(look.hollow)})`);
+        }
+        if (look.color !== undefined && look.color !== null && !isValidHex(look.color)) {
+          errors.push(`keys.keySignature.${field} has invalid color hex "${look.color}"`);
+        }
+        for (const size of ["heightSemis", "widthSemis"]) {
+          const v = look[size];
+          if (v === undefined || !fields.includes(size)) continue;
+          if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+            errors.push(`keys.keySignature.${field}.${size} must be a finite number greater than 0 (got ${JSON.stringify(v)})`);
+          } else if (v < 0.25 || v > 4) {
+            warnings.push(`keys.keySignature.${field}.${size} is ${v} semitones, outside the usual 0.25–4`);
+          }
+        }
+      };
+      const LOOK = ["shape", "hollow", "color", "heightSemis", "widthSemis"];
+      if (keySig.looks !== undefined && !isPlainObject(keySig.looks)) {
+        errors.push("keys.keySignature.looks must be an object");
+      } else if (isPlainObject(keySig.looks)) {
+        for (const key of Object.keys(keySig.looks)) {
+          if (!["all", "flat", "sharp"].includes(key)) errors.push(`keys.keySignature.looks.${key} is not a look (all, flat, sharp)`);
+          else checkLook(keySig.looks[key], `looks.${key}`, LOOK);
+        }
+      }
+      checkLook(keySig.alternate, "alternate", ["shape", "hollow", "color"]);
       // Key definitions are what the signature renders from.
       if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
           !Array.isArray(keysSection.definitions)) {
