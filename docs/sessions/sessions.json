@@ -1078,9 +1078,9 @@
     {
       "number": 51,
       "title": "Accidentals",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-11T11:35:16.650000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-11T12:10:20.969000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
