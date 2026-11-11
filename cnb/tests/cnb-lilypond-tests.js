@@ -13,7 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions, measureLedgers, measureSpacing, NO_PAGES } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureKeySignatureMarks, measureStaffPositions, measureLedgers, measureSpacing, NO_PAGES } from "./engine-probe.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 import { CNBClefEditor } from "../ui/clef-editor.js";
@@ -30,6 +30,10 @@ import { CNBScheme } from "../src/cnb-scheme.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBStaff } from "../src/cnb-staff.js";
+import { CNBMusic } from "../src/cnb-music.js";
+import { CNBNotehead } from "../src/cnb-notehead.js";
+import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
+import { CNBPreviewDisplay } from "../ui/preview-display.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -1211,6 +1215,250 @@ export const tests = [
       axis.keys.keySignature.placement.tonicOctave = 2;
       const b = CNBLilypond.sectionB(axis);
       eq(b.split("cnb:keysig-tonic-octave").length, 2, "under an axis it is written once, by the axis block");
+    }},
+
+  // ── The mark table (session 49, engine handoff 030, LY spec 1.3.15 §5.6a) ─
+
+  { name: "mark table: today's signature exports as before, a stored but unused setting included", fn: () => {
+      const today = CNBLilypond.generate(keySignatureConfig());
+      const config = keySignatureConfig();
+      // Under "degrees" every key has two stacks: the shared thickness never applies.
+      config.keys.keySignature.separator.shareThickness = false;
+      config.keys.keySignature.looks = { all: { shape: undefined }, flat: {}, sharp: {} };
+      eq(_internals.markTable(config).length, 0, "no table");
+      eq(CNBLilypond.generate(config), today, "byte for byte");
+      lacks(today, "'marks", "'chord");
+    }},
+
+  { name: "mark table: any other signature writes 'marks and 105 keys, told apart by tonic and spelling", fn: () => {
+      for (const change of [
+        ks => { ks.stacking = "parity"; },
+        ks => { ks.stacking = "parity-stacks"; },
+        ks => { ks.stacking = "parity-zigzag"; },
+        ks => { ks.upperTonic = false; },
+        ks => { ks.notes = "tonic-and-half-steps"; },
+        ks => { ks.columns = "left-in-sharp-keys"; },
+        ks => { ks.placement.position = "every-set"; },
+        ks => { ks.looks.flat = { hollow: true }; },
+        ks => { ks.alternate = { color: "#cc79a7" }; },
+      ]) {
+        const config = keySignatureConfig();
+        change(config.keys.keySignature);
+        const b = CNBLilypond.sectionB(config);
+        contains(b, "%% Key signature\n#(set! cnb:keysig-style 'marks)", String(change));
+        eq(b.split("\n     (((").length - 1, 105, `${change}: 15 spellings × 7 modes`);
+        lacks(b, "cnb:keysig-bar", "the bars are the table's");
+      }
+      const config = keySignatureConfig();
+      config.keys.keySignature.stacking = "parity";
+      const b = CNBLilypond.sectionB(config);
+      contains(b, ";; C major\n     (((0 . 0) . (0 2 4 5 7 9 11))", "C major");
+      contains(b, ";; A minor\n     (((5 . 0) . (0 2 4 5 7 9 11))", "A minor: the same pitch classes, another tonic");
+      contains(b, ";; F♯ major\n     (((3 . 1/2) . (1 3 5 6 8 10 11))", "F♯ major");
+      contains(b, ";; G♭ major\n     (((4 . -1/2) . (1 3 5 6 8 10 11))", "G♭ major: the same pitch classes, another spelling");
+    }},
+
+  { name: "mark table: each entry is CNBKeySignature.marks for the key the canvas's picker gives", fn: () => {
+      const config = keySignatureConfig();
+      Object.assign(config.keys.keySignature, { stacking: "parity-stacks", upperTonic: false });
+      config.keys.keySignature.looks.sharp = { color: "#cc79a7" };
+      config.noteheadRules.push({ name: "G is red", priority: 9,
+        match: { pitchClasses: [7], durations: "all", keys: ["G"] }, apply: { color: "#ff0000" } });
+      const table = _internals.markTable(config);
+      eq(table.length, 105, "entries");
+      for (const e of table) {
+        const tonic = CNBKeySignature.parseTonicPc(e.spelling);
+        const picked = CNBPreviewDisplay.withKey(config, { tonic, mode: e.mode, spelling: e.spelling });
+        const def = CNBKeySignature.activeKey(picked.config, picked.name).def;
+        eq(JSON.stringify(e.sig), JSON.stringify(CNBKeySignature.marks(picked.config, def)), `${e.spelling} ${e.mode}`);
+        eq(e.pcs.join(" "), CNBMusic.scale(tonic, e.mode).sort((a, b) => a - b).join(" "), "sorted pitch classes");
+      }
+      // The written entry carries those columns, bars and marks.
+      const g = table.find(e => e.spelling === "G" && e.mode === "major").sig;
+      const b = CNBLilypond.sectionB(config);
+      const start = b.indexOf(";; G major");
+      const entry = b.slice(start, b.indexOf(";; ", start + 1));
+      contains(entry, `(columns ${g.columns.map(x => _internals.fmtNum(x)).join(" ")})`, "columns");
+      for (const bar of g.bars) {
+        contains(entry, `(${_internals.fmtNum(bar.x)} ${bar.bottom} ${bar.top} "${bar.color}" ${_internals.fmtNum(bar.thickness)})`, "bar");
+      }
+      contains(entry, "(7 0 head crotchet-minim #f red-ff0000)", "G in G, coloured by its key-scoped rule");
+      contains(entry, "crotchet-minim-cutout puce-cc79a7)", "F♯, the sharp look");
+      eq(entry.split(" head ").length - 1, g.marks.length, "every mark");
+    }},
+
+  { name: "mark table: Section A registers the shapes, sizes and colours only the signature's looks use", fn: () => {
+      const config = keySignatureConfig();
+      config.keys.keySignature.looks.flat = { color: "#0072b2", heightSemis: 2 };
+      const out = CNBLilypond.generate(config);
+      contains(out, "#(cnb:register-path! 'crotchet-minim-h2-w", "the sized variant");
+      contains(out, "#(cnb:register-color! 'cerulean-0072b2 \"#0072b2\")", "the flats' colour");
+      contains(out, " head crotchet-minim-h2-w", "named in the table");
+      lacks(CNBLilypond.generate(keySignatureConfig()), "-h2-w", "registered only when used");
+    }},
+
+  // Engine-backed (session 49): the mark table engraves what the canvas
+  // draws. For the default config and the Clairnote DN gallery file, under
+  // each setting, in D major, B♭ major and C major (key changes in one
+  // score), every mark's height, column and look (size, fill and colour),
+  // every bar and the signature's ink are held to the preview's within 0.001
+  // staff spaces, and again at other magnifications. The ink is compared
+  // where the engine draws the edge stacks' ledgers as the canvas does: the
+  // engine's signature heads take their ledgers from its own rule, not the
+  // notation's (planned as engine work); the cases where they differ are
+  // logged.
+  { name: "mark table (engine): every mark, bar and the signature's ink engrave where the preview draws them, at any magnification", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const dn = () => CNBConfigIO.loadFromText(readFileSync(
+        path.join(CNB_DIR, "assets", "examples", "gallery", "clairnote-dn.json"), "utf8")).config;
+      const settings = [
+        ["degrees, no upper tonic", ks => { ks.upperTonic = false; }],
+        ["parity", ks => { ks.stacking = "parity"; }],
+        ["parity-stacks", ks => { ks.stacking = "parity-stacks"; }],
+        ["parity-zigzag", ks => { ks.stacking = "parity-zigzag"; }],
+        ["the tonic and the half steps", ks => { ks.notes = "tonic-and-half-steps"; }],
+        ["the bottom line set", ks => { ks.placement.position = "bottom-set"; }],
+        ["the top line set", ks => { ks.placement.position = "top-set"; }],
+        ["every line set", ks => { ks.placement.position = "every-set"; }],
+        ["several gold stems, unshared", ks => {
+          ks.stacking = "parity-stacks";
+          Object.assign(ks.separator, { shareThickness: false, color: "#123abc", thicknessPct: 80 });
+        }],
+        ["looks", ks => {
+          ks.looks.flat = { color: "#0072b2" };
+          ks.looks.sharp = { hollow: true };
+          ks.alternate = { color: "#cc79a7" };
+        }],
+      ];
+      const runs = [];
+      for (const [name, base] of [["default", () => keySignatureConfig()], ["clairnote-dn", dn]]) {
+        for (const [label, change] of settings) {
+          const config = base();
+          change(config.keys.keySignature);
+          runs.push({ label: `${name}, ${label}`, config, music: "" });
+        }
+      }
+      for (const magnify of ["1", "5/2"]) {
+        for (const stacking of ["parity-stacks", "parity"]) {
+          const config = keySignatureConfig();
+          config.keys.keySignature.stacking = stacking;
+          config.engine.defaultMagnify = magnify;
+          runs.push({ label: `default, ${stacking}, magnify ${magnify}`, config, music: "" });
+        }
+      }
+      const small = keySignatureConfig();
+      small.keys.keySignature.placement.position = "every-set";
+      runs.push({ label: "default, every line set, \\magnifyStaff 2/3", config: small, music: "\\magnifyStaff #2/3 " });
+
+      const keys = [["d", "major", "D"], ["bes", "major", "B♭"], ["c", "major", "C"]];
+      const failures = [];
+      const ledgerGaps = [];
+      let inkCompared = 0;
+      let inkPastMarks = 0;
+      const near = (a, b) => Math.abs(a - b) < 1e-3;
+      const results = [];
+      for (let i = 0; i < runs.length; i += 4) {   // four compiles at a time
+        results.push(...await Promise.all(runs.slice(i, i + 4).map(run => {
+          const ly = CNBLilypond.generate(run.config);
+          const music = run.music + keys.map(([t, mode]) => `\\key ${t} \\${mode} c'1`).join(" ");
+          return measureKeySignatureMarks(engine, ly, music).then(got => ({ run, ly, got }));
+        })));
+      }
+      for (const { run, ly, got } of results) {
+        const { label, config } = run;
+        if (got.error) { failures.push(`${label}: ${got.error.slice(0, 400)}`); continue; }
+        if (got.signatures.length !== keys.length) { failures.push(`${label}: ${got.signatures.length} signatures engraved`); continue; }
+        const table = _internals.markTable(config);
+        const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
+        const movetos = sym => {
+          const m = new RegExp(`#\\(define cnb:${sym}-path ([\\s\\S]*?)\\n\\n`).exec(ly);
+          return m ? (m[1].match(/moveto/g) || []).length : 0;
+        };
+        keys.forEach(([, mode, spelling], k) => {
+          const where = `${label}, ${spelling} ${mode}`;
+          const sig = table.find(e => e.spelling === spelling && e.mode === mode).sig;
+          const engraved = got.signatures[k];
+          const seen = new Set();
+          const heads = engraved.paths.filter(p => {
+            if (p.color.every(c => c === 1)) return false;        // a false hollow's white overlay
+            const id = [...p.x, ...p.y].map(v => v.toFixed(4)).join(" ");
+            return seen.has(id) ? false : (seen.add(id), true);
+          });
+          if (heads.length !== sig.marks.length) failures.push(`${where}: ${heads.length} heads engraved, ${sig.marks.length} drawn`);
+          const width = sig.columns.length > 0 ? 2 * sig.columns[0] : 0;   // a stack's width
+          for (const { semi, column, mark } of sig.marks) {
+            const x = sig.columns[column];
+            const y = CNBStaff.lilypondPosition(config, semi) / 2;
+            const h = heads.find(p => near((p.x[0] + p.x[1]) / 2, x) && near((p.y[0] + p.y[1]) / 2, y));
+            if (!h) { failures.push(`${where}: no head at column ${column} (${x}), semitone ${semi} (${y})`); continue; }
+            const size = CNBNotehead.measure(config.shapes[mark.shape], 1, mark);
+            if (!near(h.x[1] - h.x[0], size.pixelWidth / space) || !near(h.y[1] - h.y[0], size.pixelHeight / space)) {
+              failures.push(`${where}: semitone ${semi} engraved ${h.x[1] - h.x[0]} × ${h.y[1] - h.y[0]}, drawn ${size.pixelWidth / space} × ${size.pixelHeight / space}`);
+            }
+            const rgb = [1, 3, 5].map(j => parseInt(mark.color.slice(j, j + 2), 16) / 255);
+            if (!rgb.every((c, j) => Math.abs(c - h.color[j]) < 1e-3)) failures.push(`${where}: semitone ${semi} colour ${h.color}, drawn ${mark.color}`);
+            const f = _internals.sectionCFields(config, mark);
+            const subpaths = movetos(f.shapeSym) + (f.hollowSym === "#f" ? 0 : movetos(`${f.shapeSym}-cutout`));
+            if (h.subpaths !== subpaths) failures.push(`${where}: semitone ${semi} has ${h.subpaths} subpaths, ${mark.hollow ? "hollow" : "solid"} wants ${subpaths}`);
+          }
+          const bars = engraved.lines.filter(l => near(l.x1, l.x2)).sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
+          const drawnBars = sig.bars.map(b => ({ x: b.x, bottom: CNBStaff.lilypondPosition(config, b.bottom) / 2,
+            top: CNBStaff.lilypondPosition(config, b.top) / 2, b })).sort((a, b) => a.x - b.x || a.bottom - b.bottom);
+          if (bars.length !== drawnBars.length) failures.push(`${where}: ${bars.length} bars engraved, ${drawnBars.length} drawn`);
+          drawnBars.forEach((d, j) => {
+            const e = bars[j];
+            if (!e) return;
+            const rgb = [1, 3, 5].map(n => parseInt(d.b.color.slice(n, n + 2), 16) / 255);
+            if (!near(e.x1, d.x) || !near(Math.min(e.y1, e.y2), d.bottom) || !near(Math.max(e.y1, e.y2), d.top) ||
+                !near(e.thickness, d.b.thickness) || !rgb.every((c, n) => Math.abs(c - e.color[n]) < 1e-3)) {
+              failures.push(`${where}: bar ${j} engraved ${JSON.stringify(e)}, drawn ${JSON.stringify(d)}`);
+            }
+          });
+          // The ledgers, by stack: the engine's and the canvas's.
+          const ledgers = engraved.lines.filter(l => near(l.y1, l.y2));
+          for (const l of ledgers) {
+            if (!near(l.x2 - l.x1 + l.thickness, width * 4 / 3 + 0.2)) failures.push(`${where}: a ledger ${l.x2 - l.x1 + l.thickness} long, drawn ${width * 4 / 3 + 0.2}`);
+          }
+          const stackOf = l => sig.columns.findIndex(c => near((l.x1 + l.x2) / 2, c));
+          const engravedLedgered = c => ledgers.some(l => stackOf(l) === c);
+          const drawnLedgered = c => {
+            const semis = sig.marks.filter(m => m.column === c).map(m => m.semi);
+            return CNBLedgerSet.ledgersFor(config, semis, { minSemi: Math.min(...semis) - 12, maxSemi: Math.max(...semis) + 12 },
+              CNBPitchAxis.create(config)).length > 0;
+          };
+          const last = sig.columns.length - 1;
+          if (engravedLedgered(0) !== drawnLedgered(0) || engravedLedgered(last) !== drawnLedgered(last)) {
+            ledgerGaps.push(where);
+            return;
+          }
+          inkCompared++;
+          if (drawnLedgered(0) || drawnLedgered(last)) inkPastMarks++;
+          const overhang = width / 6 + 0.1;
+          const left = drawnLedgered(0) ? -overhang : 0;
+          const right = sig.columns.length * width + (drawnLedgered(last) ? overhang : 0);
+          if (!near(engraved.x[0], left) || !near(engraved.x[1], right)) {
+            failures.push(`${where}: ink ${engraved.x[0]} … ${engraved.x[1]}, drawn ${left} … ${right}`);
+          }
+        });
+      }
+      if (ledgerGaps.length > 0) {
+        console.log(`      (${ledgerGaps.length} signatures whose edge stacks the engine's ledger rule ledgers differently; ink compared in ${inkCompared}, ${inkPastMarks} with a ledger past the marks)`);
+      }
+      assert(inkCompared >= 15 && inkPastMarks >= 1,
+        `the ink was compared in only ${inkCompared} signatures, ${inkPastMarks} with a ledger past the marks`);
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  { name: "mark table (engine): a key the table lacks engraves no signature and the engine names it", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const config = keySignatureConfig();
+      config.keys.keySignature.stacking = "parity";
+      const got = await measureKeySignatureMarks(engine, CNBLilypond.generate(config), "\\key dis \\major c'1");
+      assert(!got.error, got.error);
+      eq(got.signatures.length, 0, "no signature for D♯ major");
+      assert(got.warnings.some(w => /no entry for the key of #<Pitch dis/.test(w)), `the engine names the key: ${got.warnings.join(" | ")}`);
     }},
 
   { name: "key signature (engine): a styled bar engraves its colour and thickness, and the marks where the preview draws them", fn: async () => {

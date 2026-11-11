@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.14 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads)
-**Date:** November 11, 2026 (1.3.14); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.15 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table)
+**Date:** November 11, 2026 (1.3.14, 1.3.15); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -64,7 +64,10 @@ semibreves, §4.1d. The export text is unchanged; engine 1.3.0 engraves a
 repeat-mode breve differently. 1.3.13, for both: clefs to choose from,
 §5.5a. Only a config showing the dozenal clef exports anything new,
 `'dozenal`. 1.3.14, for both: the breve's tie below the heads, §4.1d. The
-export text is unchanged; engine 1.3.1 engraves the tie differently.)*
+export text is unchanged; engine 1.3.1 engraves the tie differently.
+1.3.15, for both: the key signature's mark table, §5.6a. Only a config
+whose signature is on and is not the engine's scale stack exports anything
+new; it needs engine 1.4.0.)*
 
 Summary of additions:
 
@@ -79,6 +82,7 @@ Summary of additions:
 | Section A5 colours (1.3.10, linear and axis alike) | palette colours, with a `cnb:use-accessible-colors` branch | each colour the noteheads use, once, named from its hex; no branch (§4.5a) |
 | The breve in repeat mode (1.3.12, linear and axis alike) | 4 heads, as a semibreve | two semibreve groups, tied, as engine 1.3.0 engraves it; since 1.3.14 one tie below the heads, first head's centre to the last's, as engine 1.3.1 engraves it; export text unchanged (§4.1d) |
 | Clefs to choose from (1.3.13, linear and axis alike) | glyph and text clefs | the dozenal clef as `cnb:clef-style 'dozenal`; treble, bass and alto as registered glyphs (§5.5a) |
+| The key signature's mark table (1.3.15, linear and axis alike) | `'chord`, the engine's scale stack | any other signature as `cnb:keysig-style 'marks` and `cnb:keysig-marks`, 105 keys (§5.6a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -850,6 +854,125 @@ the preview's position and the bar's end at ±extent, with the bar's colour
 and a thickness of 0.2 staff space read from its stencil; the default
 config engraves no signature.
 
+### 5.6a The mark table (new in 1.3.15, linear and axis configs alike)
+
+Session 48 gave the signature the key-signature designer's settings
+(`docs/planning/key-signature-designer-design.md` §4, §6): which notes,
+the upper tonic, the looks of all marks, flats, sharps and every second
+stack, four stacking rules and their direction, and the middle, bottom,
+top or every line set. The engine's `'chord` style draws only the default:
+the scale and its upper tonic in two stacks of sevenths on the middle of
+the staff. Since engine 1.4.0 (engine session 30, its
+`docs/session-sets/030-keysig-mark-list/configurator-handoff.md`) the
+engine also draws an explicit list of marks, and the exporter writes one
+for every other signature (session 49).
+
+**Which path.** With keys and the signature on, the signature is `'chord`'s
+when the settings that apply to it are at their defaults: `notes "all"`,
+`upperTonic` on, `stacking "degrees"`, `columns "right"`,
+`placement.position "middle"`, and no field set in `looks.all`,
+`looks.flat`, `looks.sharp` or `alternate`. It then exports as §5.6 says,
+byte for byte as before. A setting that does not apply does not count:
+under `"degrees"` every key has two stacks, so `separator.shareThickness`
+never applies. Any other signature exports the table, in Section B in
+place of §5.6's lines:
+
+```lilypond
+%% Key signature
+#(set! cnb:keysig-style 'marks)
+#(define cnb:keysig-marks
+   '(
+     ;; C major
+     (((0 . 0) . (0 2 4 5 7 9 11))
+      . ((columns 0.4311 1.2932 2.1553)
+         (bars (0.8621 0 24 "#ffd42a" 0.2) (1.7243 0 24 "#ffd42a" 0.2))
+         (marks (12 0 head crotchet-minim #f black-000000)
+                (14 0 head crotchet-minim #f black-000000)
+                …
+                (24 2 head crotchet-minim #f black-000000))))
+     …
+     ))
+```
+
+- **105 keys.** One entry for each of the 15 spellings of each of the 7
+  modes `\key` names (`CNBMusic.spellings`, `CNBMusic.MODES`), the keys
+  the canvas's picker offers. Its key is the tonic's note name (0 = C …
+  6 = B) and alteration (`1/2`, `-1/2`, `0`, exact rationals) and the
+  key's pitch classes, ascending, as the engine reads them from `\key`. So
+  C major and A minor are told apart by their tonics, and F♯ major
+  `((3 . 1/2) …)` and G♭ major `((4 . -1/2) …)` by their spellings.
+- **Each entry is `CNBKeySignature.marks`** for the key as the picker gives
+  it (`CNBPreviewDisplay.withKey`): the key definition with those pitch
+  classes that a notehead rule names, else the first defined with them,
+  else a key named `"<spelling> <mode>"`, with the tonic and its spelling.
+  A key-scoped rule therefore colours the marks of its key, as on the
+  canvas.
+- **`columns`**: each stack's centre in staff spaces from the signature's
+  start. **`bars`**: each gold stem's x in staff spaces, its bottom and top
+  in engine semitones, its colour as a hex string and its thickness in
+  staff spaces; `(bars)` when there are none.
+- **`marks`**: each mark's engine semitone, its column, and `head` with
+  the shape, cutout and colour symbols Section A registers, a sized
+  variant (§4.1c) where its look is sized. A mark whose shape is not
+  defined is left out, as the preview leaves it undrawn. Sharps and flats
+  (`sharp`, `flat`) are the format's, for session 51.
+- **Engine semitones** are §5.7's: the preview semitone, less
+  `staff.midpoint − 12` on a linear staff, as it is under a pitch axis.
+- **Section A** registers the shapes, sized variants and colours the
+  table's marks use, besides the noteheads': a look may give the marks a
+  colour or size no notehead has.
+- **A key the table lacks** (`\key dis \major`, whose D♯ major needs a
+  double sharp) engraves no signature, and the engine warns naming it.
+- **Not carried under a pitch axis:** a mark's `xOffsetStaffSpaces`, and
+  the middle stem's extent as a length (the preview draws
+  `separator.extentSemis` as a length; the engine maps the bar's ends
+  through the hook). Both are known divergences.
+
+**Spacing (the preview, session 49).** LilyPond spaces a `'marks`
+signature by its stencil, measured from renders with a time signature
+after it, as in a score. Without a clef its ink starts 0.75 staff spaces
+after the staff's start. After a clef its origin (the first stack's left
+edge) is 2.9286 after the clef's left edge, whatever its ink (the scale
+stack's ink starts 0.5689 into its stencil, hence §5.2a's 3.5). The first
+note's head is centred 4.8636 after its ink, as for `'chord`. The ink is
+the marks and any ledger of the first or last stack, which reaches 1/6 of
+the head's width and its 0.1-staff-space round cap past it. The preview
+places the signature so, and draws every signature's ledgers 4/3 of the
+head's width plus their caps, and its gold stems with round caps, as the
+engine does (`'chord` included).
+
+**Known divergence: the signature's ledgers.** The engine gives a
+signature head its ledgers by its own proximity rule, on the head's
+position rounded to a whole number, not from the notation's ledgers that
+every export carries (§5.7) and the preview draws. So on the default 4-8
+staff the engraved C-major signature gives B a ledger and C and D none,
+where the preview gives C and D their in-gap ledgers and B none, and a
+ledger the two place differently on a first or last stack moves the ink and
+the first note. This holds for `'chord` too. The fix is engine session 33
+(engine 1.4.1): signature heads take their ledgers from
+`cnb:ledgers-by-semitone`.
+
+**Verified** by engine round trips (`cnb/tests/cnb-lilypond-tests.js`,
+`cnb/tests/cnb-key-signature-tests.js`, measured through
+`cnb/tests/engine-probe.js`). For the default config and the Clairnote DN
+gallery file, under each stacking rule, without the upper tonic, with the
+tonic and the half steps alone, on the bottom, top and every line set, with
+several unshared gold stems and with looks for flats, sharps and every
+second stack, in D, B♭ and C major, every engraved head's height, column,
+size, fill and colour, every bar's x, ends, colour and thickness, and every
+ledger's length are within 0.001 staff spaces of the preview's, and again
+at `cnb:default-magnify` 1 and 5/2 and under `\magnifyStaff #2/3`. The ink
+is within 0.001 staff spaces wherever the engine's ledger rule agrees with
+the notation's on the first and last stacks (19 signatures, 16 with a
+ledger past the marks). The spacing above is held to 0.005 with and without
+a clef, at magnifications 1, 7/4 and 5/2. `\key dis \major` engraves no
+signature, and the engine names the key.
+
+**Compatibility.** A config whose signature is off, or is `'chord`'s,
+exports byte for byte as in 1.3.14; the five export baselines are
+unchanged. A table needs engine 1.4.0 or later: an earlier engine does not
+know `'marks`.
+
 ### 5.7 Ledger lines (new in 1.3.9, linear and axis configs alike)
 
 Before 1.3.9 the export wrote no ledger rules, and the engine drew its own
@@ -1068,7 +1191,8 @@ engine round-trip test as evidence.
 | `cnb:clef-text` | markup | `""` | For a text clef (§5.5) — **new 1.3.7** |
 | `cnb:clef-size-semitones` | number | `#f` | For a text clef (§5.5) — **new 1.3.7** |
 | `cnb:clef-gutter-semitones` | number | `#f` | For a shown clef (§5.5) — **new 1.3.7** |
-| `cnb:keysig-style` | `'chord` \| `'none` | `'chord` | `'none` unless keys and the signature are on (§5.6) — **new 1.3.7** |
+| `cnb:keysig-style` | `'chord` \| `'none` \| `'marks` | `'chord` | `'none` unless keys and the signature are on (§5.6) — **new 1.3.7**; `'marks` for a signature not `'chord`'s (§5.6a) — **1.3.15** |
+| `cnb:keysig-marks` | list of entries | `'()` | With `'marks` (§5.6a) — **new 1.3.15**, engine 1.4.0 |
 | `cnb:keysig-bar-color` | `"#RRGGBB"` | `"#ffd42a"` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
@@ -1086,7 +1210,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.14** | **Nov 11, 2026** | **The breve's tie below the noteheads (session 46, engine session 28): §4.1d. Since engine 1.3.1 a repeat-mode breve has one tie, from the centre of the first head of the first group to the centre of the last head of the last group, at the heads' bottom, curving down; the groups and the gap are unchanged, and the preview draws the same, its breve row deep enough to hold the tie. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the tie's ends, its lowest point and the breve's height to 0.001 staff spaces.** |
+| **1.3.15** | **Nov 11, 2026** | **The key signature's mark table (session 49, engine session 30): new §5.6a. A signature whose applicable settings are not the scale stack's exports `cnb:keysig-style 'marks` and `cnb:keysig-marks`, 105 keys (15 spellings × 7 modes), each keyed by its tonic's note name and alteration and its pitch classes, with the columns, gold bars and marks `CNBKeySignature.marks` gives; Section A registers the looks the marks use. A key the table lacks engraves no signature. Output changes only for such a signature; the five export baselines are byte-identical. Needs engine 1.4.0.** |
+| 1.3.14 | Nov 11, 2026 | The breve's tie below the noteheads (session 46, engine session 28): §4.1d. Since engine 1.3.1 a repeat-mode breve has one tie, from the centre of the first head of the first group to the centre of the last head of the last group, at the heads' bottom, curving down; the groups and the gap are unchanged, and the preview draws the same, its breve row deep enough to hold the tie. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the tie's ends, its lowest point and the breve's height to 0.001 staff spaces. |
 | 1.3.13 | Nov 10, 2026 | Clefs to choose from (session 45): new §5.5a. The dozenal clef, kind `"dozenal"`, exports `cnb:clef-style 'dozenal` and its gutter and registers nothing; the preview draws the engine's numeral 50. LilyPond's treble, bass and alto clefs (Emmentaler, SIL OFL) are glyph clefs placed on the pitch each marks, exported through `cnb:register-clef!`. A glyph clef's range, set in the panel or by dragging it on the canvas, is its top and height. Output changes only for a config showing the dozenal clef; the five export baselines are byte-identical. Engine round trips hold the dozenal and a moved and resized treble clef to the preview. |
 | 1.3.12 | Nov 10, 2026 | The breve as tied semibreves (session 44, engine session 25): new §4.1d. Since engine 1.3.0 a repeat-mode breve engraves as two semibreve groups 1 staff space apart, joined by LilyPond's `make-tie-stencil` in black, and the preview draws the same. The breve stays one note. §5.2a's repeat counts follow. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the breve to 0.001 staff spaces. |
 | 1.3.11 | Nov 9, 2026 | Stems where the notehead's SVG puts them (session 40): new §4.4c. A stem anchor is the stem's centre, as the SVG's stem rect draws it, so the Kite 4-369 and 45deg-369 stems are centred. Each `cnb:register-attachment!` point's x is the anchor moved half the engine's 0.13-staff-space stem outward, relative to the registered extent; a sized variant's points are computed at its scale. The default notehead's anchors move to ±146.426 SVG units, so on its staff the up stem's right edge and the down stem's left edge are on its sides (`(1 . 0.3157)`); each gallery file sets them for its own staff. Output CHANGES for every config with stems; the five export baselines were regenerated. |

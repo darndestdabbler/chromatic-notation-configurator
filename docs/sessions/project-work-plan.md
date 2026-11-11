@@ -60,7 +60,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 46 | The breve's tie below the noteheads | no | 2026-11-11 |
 | 47 | Designing the key-signature designer | no | 2026-11-11 |
 | 48 | Scale notes on the canvas, and the engine's hook planned | no | 2026-11-11 |
-| 49 | Scale notes reach LilyPond | — | not declared |
+| 49 | Scale notes reach LilyPond | no | 2026-11-11 |
 | 50 | The Key signature panel | — | not declared |
 | 51 | Accidentals | — | not declared |
 | 52 | The UI is stable | — | not declared |
@@ -487,3 +487,14 @@ Build the scale-note half of the approved key-signature design (docs/planning/ke
 **Amended after acceptance:**
 
 - 2026-11-11 — step 'config-fields': its files: A config-io round-trip test hand-builds keys.keySignature without the new fields, and loading now merges their defaults; its fixture is built over the schema's default keySignature instead (claude-code (anthropic, claude-opus-5-5))
+
+### Session 49 — Scale notes reach LilyPond
+
+**Releasable: no.**
+
+Export the key-signature designer's scale-note signatures to LilyPond (design docs/planning/key-signature-designer-design.md section 9), once engine session 30, the mark-list hook (cnb:keysig-style 'marks and cnb:keysig-marks), has landed in the engine repository; until then the export step is reported blocked. The exporter decides from the signature's effective settings (those that apply to its kind and stacking rule, not every stored field) whether it is today's: today's signature exports byte for byte as before ('chord, or 'none when off), and any other writes cnb:keysig-style 'marks and a mark table of 105 entries, the 15 spellings of each of the 7 modes, each keyed by the tonic's note name and alteration and the key's sorted pitch classes, giving its columns' x offsets in staff spaces, its gold bars (x, two ends in engine semitones, colour, thickness) and its marks (engine semitone, column, head with the shape, hollow and colour names Section A registers, a sized variant where sized), all computed by CNBKeySignature.marks; Section A registers the shapes, variants and colours the table uses. The LY spec gains 1.3.15 section 5.6a, and the architecture plan and the README follow. An engine round trip on a representative set (the default and Clairnote DN fixtures; each stacking rule; the upper tonic on and off; the half steps alone; the bottom, top and every line set; several gold stems) holds each engraved mark's height, column and look, each bar, and the signature's width to the preview's within 0.001 staff spaces; a key the table lacks engraves no signature and warns; the five export baselines stay byte-identical.
+
+**Amended after acceptance:**
+
+- 2026-11-11 — step 'engine-round-trip': its files: The operator asked for the preview to be as true as possible (2026-11-11): the round trip found the engine spaces a mark-table signature from its ink (0.75 before, 2.5 after, handoff 030 section 3), draws its bars with round caps and its ledgers 4/3 of a head plus round caps, so the preview follows (cnb-key-signature.js, its tests, the canvas signature baseline), the scale-stack test moves to CNBKeySignature for the exporter to share, and the engine's signature ledgers, which ignore the config's ledger rules, are planned as engine work (operator's choice) and recorded in the spec, the plan and the README. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-11 — step 'engine-round-trip': its files: The preview-DOM baseline also pins the key-signature probes (default-key-signature and the two Clairnote gallery files), whose gold stems now have round caps and whose ledgers their engraved length; it is re-captured with capturePreviewBaseline(), as its description provides for an approved preview change. (claude-code (anthropic, claude-opus-5-5))

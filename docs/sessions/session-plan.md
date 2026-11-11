@@ -1750,6 +1750,17 @@ export and round trip wait for engine session 30 to land.)*
    key the table lacks engraves no signature and warns. The five export
    baselines stay byte-identical.
 
+*(Done in session 49, 2026-11-11: the table exports and its marks, bars
+and ledger lengths engrave as drawn, at any magnification. At the
+operator's request the preview was made as true as possible: a mark-table
+signature is spaced by its ink as the engine spaces it, and every
+signature's gold stems have round caps and its ledgers their engraved
+length. The round trip also found that the engine's signature heads take
+ledgers from its own rule rather than the notation's, so the ink was held
+only where the two agree; at the operator's choice the fix is engine
+session 33 (engine 1.4.1, session 34 its release), and session 51 holds
+the rest once it lands.)*
+
 ### Session 50: The Key signature panel
 
 **Why.** A designer sets the signature in the panel, in a designer's words
@@ -1782,6 +1793,13 @@ session 42), the design's second kind of signature (design §5).
    C, a sharp key and a flat key, on the bottom line set and on every line
    set; tests and the UAT. *Engine work:* none beyond engine session 30,
    which draws sharps and flats.
+4. Once engine session 33 has landed (engine 1.4.1; otherwise the item is
+   blocked): the key-signature round trips hold every signature head's
+   ledgers to the canvas's, and every signature's ink, the scale stack and
+   the mark table alike, so the ledger gap session 49 logs is gone, and LY
+   spec §5.6a drops its known divergence. *Engine work:* engine session 33,
+   key-signature ledgers from the exported per-semitone table, planned by
+   session 49 at the operator's choice.
 
 ### Session 52: The UI is stable
 

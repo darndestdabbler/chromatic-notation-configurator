@@ -12,7 +12,8 @@
  * Covers the full export: header, Section A (named definitions), Section B
  * (engine settings), Section C (configuration procedure), and generate().
  *
- * Dependencies: Module A (config), Module B (music), Module 24 (pitch axis)
+ * Dependencies: Module A (config), Module B (music), Module 22 (key
+ * signature: the mark table, LY spec 1.3.15 §5.6a), Module 24 (pitch axis)
  */
 
 import { CNBConfig } from "./cnb-config.js";
@@ -24,6 +25,7 @@ import { CNBScheme } from "./cnb-scheme.js";
 import { CNBStaff } from "./cnb-staff.js";
 import { CNBStem } from "./cnb-stem.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
+import { CNBKeySignature } from "./cnb-key-signature.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
 // Values the CNB engine assumes when a setting is not emitted. Section B
@@ -222,6 +224,16 @@ function resolveAll(config) {
 }
 
 /**
+ * Every look Section A registers for: the resolved noteheads (resolveAll)
+ * and, when the export writes a mark table (LY spec 1.3.15 §5.6a), each
+ * mark's look, which the signature's looks may give a shape, size or colour
+ * no notehead has.
+ */
+function drawnLooks(config) {
+  return [...resolveAll(config), ...markTable(config).flatMap(e => e.sig.marks.map(m => m.mark))];
+}
+
+/**
  * The keys Section C dispatches on (session 34, LY spec 1.3.9 §6.4): with
  * keys on, each key definition a notehead rule names, as { name, pcs }
  * with pcs its sorted pitch classes, the one thing the engine passes for a
@@ -294,7 +306,7 @@ function registrationFor(config, r) {
 function usedRegistrations(config) {
   const shapes = config.shapes || {};
   const bySym = new Map();
-  for (const r of resolveAll(config)) {
+  for (const r of drawnLooks(config)) {
     if (!r.shape || !shapes[r.shape]) continue;
     const reg = registrationFor(config, r);
     if (!bySym.has(reg.sym)) bySym.set(reg.sym, reg);
@@ -314,7 +326,7 @@ function usedRegistrations(config) {
 function usedShapes(config) {
   const shapes = config.shapes || {};
   const used = new Set();
-  for (const r of resolveAll(config)) {
+  for (const r of drawnLooks(config)) {
     if (r.shape && shapes[r.shape]) used.add(r.shape);
   }
   return [...used].sort();
@@ -340,7 +352,7 @@ function usedColors(config) {
   const colors = [];
   const seen = new Set();
   let hasBlack = false;
-  for (const r of resolveAll(config)) {
+  for (const r of drawnLooks(config)) {
     if (isBlack(r.color)) { hasBlack = true; continue; }
     const lower = r.color.toLowerCase();
     if (seen.has(lower)) continue;
@@ -670,7 +682,9 @@ function clefLines(config) {
  * is written as is: the engine places semitone s where the preview does at
  * the default middle (12), so their octaves agree, as a round trip measures
  * (the handoff's −1 offset does not hold). Under a pitch axis
- * pitchAxisLines() writes the octave instead (§5.4d).
+ * pitchAxisLines() writes the octave instead (§5.4d). A signature that is
+ * not 'chord's writes the mark table instead (markTable, LY spec 1.3.15
+ * §5.6a), which carries its own bars.
  *
  * @param {object} config
  * @param {number} sps  semitones (axis units under an axis) per staff space
@@ -685,6 +699,8 @@ function keySignatureLines(config, sps, axisOn) {
     lines.push("#(set! cnb:keysig-style 'none)");
     return lines;
   }
+  const table = markTable(config);
+  if (table.length > 0) return [...lines, ...markTableLines(config, table)];
   const sep = ks.separator || {};
   const color = sep.color ?? "#ffd42a";
   if (color.toLowerCase() !== "#ffd42a") {
@@ -703,6 +719,87 @@ function keySignatureLines(config, sps, axisOn) {
     lines.push(`#(set! cnb:keysig-tonic-octave ${fmtNum(octave, "keys.keySignature.placement.tonicOctave")})`);
   }
   return lines.length === 1 ? [] : lines;
+}
+
+/** \key's alteration as the engine reads it (ly:pitch-alteration). */
+const ALTERATIONS = { "": "0", "♯": "1/2", "♭": "-1/2" };
+
+/**
+ * The mark table (LY spec 1.3.15 §5.6a, engine handoff 030 §1): with keys
+ * and the signature on and the signature not the scale stack 'chord draws
+ * (CNBKeySignature.isScaleStack), one entry for each
+ * of the 7 modes' 15 spellings (CNBMusic.spellings), its marks from
+ * CNBKeySignature.marks for the key as the canvas's picker gives it
+ * (CNBPreviewDisplay.withKey): the defined key with those pitch classes
+ * that a rule names, else the first defined with them, else one named
+ * "<spelling> <mode>", with the picked tonic and spelling. Each entry is
+ * { spelling, mode, notename, alteration, pcs, sig }. Empty otherwise.
+ */
+function markTable(config) {
+  const keys = config.keys || {};
+  const ks = keys.keySignature || {};
+  if (!keys.enabled || !ks.enabled || CNBKeySignature.isScaleStack(config)) return [];
+  const defs = Array.isArray(keys.definitions) ? keys.definitions : [];
+  const named = new Set((config.noteheadRules || [])
+    .flatMap(r => (r && r.match && Array.isArray(r.match.keys)) ? r.match.keys : []));
+  const setOf = pcs => [...new Set(pcs.map(CNBMusic.pitchClass))].sort((a, b) => a - b).join(" ");
+  const table = [];
+  for (const mode of Object.keys(CNBMusic.MODES)) {
+    for (const spelling of CNBMusic.spellings(mode)) {
+      const tonic = CNBKeySignature.parseTonicPc(spelling);
+      const pcs = CNBMusic.scale(tonic, mode).sort((a, b) => a - b);
+      const sameSet = d => d && Array.isArray(d.pitchClasses) && setOf(d.pitchClasses) === pcs.join(" ");
+      const match = defs.find(d => sameSet(d) && named.has(d.name)) || defs.find(sameSet);
+      const def = { ...(match || { pitchClasses: pcs }), name: match ? match.name : `${spelling} ${mode}`,
+        tonicPc: tonic, spelling };
+      const sig = CNBKeySignature.marks(config, def);
+      if (!sig) continue;
+      table.push({ spelling, mode, notename: "CDEFGAB".indexOf(spelling[0]),
+        alteration: ALTERATIONS[spelling.slice(1)], pcs, sig });
+    }
+  }
+  return table;
+}
+
+/**
+ * Section B lines for the mark table (LY spec 1.3.15 §5.6a): 'marks and
+ * cnb:keysig-marks, each entry keyed by its tonic's note name and
+ * alteration and its sorted pitch classes, giving its columns' centres and
+ * its bars' x in staff spaces, its bars' ends and its marks' semitones as
+ * engine semitones (§5.7's numbering), and each head's registered shape (a
+ * sized variant where sized), cutout and colour. A mark whose shape is not
+ * defined is left out, as the preview leaves it undrawn.
+ */
+function markTableLines(config, table) {
+  const axis = CNBPitchAxis.create(config);
+  const shift = axis.enabled ? 0 : ((config.staff || {}).midpoint || 0) - 12;
+  const shapes = config.shapes || {};
+  const semi = s => fmtNum(s - shift, "key-signature mark semitone");
+  const lines = [
+    "#(set! cnb:keysig-style 'marks)",
+    "%% The signature of each key: (tonic note name . alteration) and its",
+    "%% pitch classes → columns' centres (staff spaces), gold bars (x, ends in",
+    "%% engine semitones, colour, thickness) and marks (engine semitone, column,",
+    "%% head shape, cutout, colour).",
+    "#(define cnb:keysig-marks",
+    "   '(",
+  ];
+  for (const e of table) {
+    const columns = e.sig.columns.map(x => fmtNum(x, "key-signature column")).join(" ");
+    const bars = e.sig.bars.map(b => `(${fmtNum(b.x, "key-signature bar")} ${semi(b.bottom)} ${semi(b.top)} ` +
+      `${hexString(b.color, "keys.keySignature.separator.color")} ${fmtNum(b.thickness, "keys.keySignature.separator.thicknessPct")})`);
+    const marks = e.sig.marks.filter(({ mark }) => shapes[mark.shape]).map(({ semi: s, column, mark }) => {
+      const f = sectionCFields(config, mark);
+      return `(${semi(s)} ${column} head ${f.shapeSym} ${f.hollowSym} ${f.colorSym})`;
+    });
+    lines.push(`     ;; ${CNBScheme.comment(`${e.spelling} ${e.mode}`)}`);
+    lines.push(`     (((${e.notename} . ${e.alteration}) . (${e.pcs.join(" ")}))`);
+    lines.push(`      . ((columns ${columns})`);
+    lines.push(`         (bars${bars.map(b => " " + b).join("")})`);
+    lines.push(`         (marks ${marks.join("\n                ")})))`);
+  }
+  lines.push("     ))");
+  return lines;
 }
 
 /**
@@ -1297,4 +1394,5 @@ export const _internals = {
   durationLyNumber,
   sectionCFields,
   pcCondition,
+  markTable,
 };

@@ -97,21 +97,57 @@ const NS = "http://www.w3.org/2000/svg";
 const SPACE_BEFORE = 0.75;
 const SPACE_FROM_CLEF = 3.5;
 const FIRST_NOTE_CENTRE = 4.8636;
+// A signature drawn from the mark table (LY spec 1.3.15 §5.6a) is spaced by
+// its ink (session 49, measured from renders, a time signature after it as
+// in a score): the ink starts 0.75 after the staff's start, and the first
+// note's head is centred 4.8636 after it ends. After a clef, LilyPond places
+// the signature's origin, the first stack's left edge, 2.9286 after the
+// clef's left edge, whatever its ink (the scale stack's ink starts 0.5689
+// into its stencil, hence its 3.5).
+const MARKS_FROM_CLEF = 2.9286;
+
+// The engine's signature ledger (keysig.ly cnb:add-keysig-ledgers): 4/3 of
+// its head's width, drawn as a line 0.2 staff spaces thick with round caps,
+// which reach half that beyond each end.
+const LEDGER_CAP = 0.1;
+
+/** A signature ledger's whole length in px, its caps included. */
+function ledgerLength(markWidth, space) {
+  return markWidth * (4 / 3) + 2 * LEDGER_CAP * space;
+}
 
 /** CNBKeySignature.padding for a measured signature. */
 function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const space = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) });
   const clef = CNBClef.activeGlyph(config);
+  const scaleStack = CNBKeySignature.isScaleStack(config);
+  const fromClef = (scaleStack ? SPACE_FROM_CLEF : MARKS_FROM_CLEF) * space;
   const left = clef
-    ? Math.max(0, SPACE_FROM_CLEF * space - CNBClef.measure(clef.def, pxPerSemi, space).pixelWidth -
+    ? Math.max(0, fromClef - CNBClef.measure(clef.def, pxPerSemi, space).pixelWidth -
         (config.clef?.gutter?.paddingH ?? 12))
     : SPACE_BEFORE * space;
   // Without the first card, a column for a notehead the size of the marks
   // stands for it: its padding plus half its ledger (CNBCard.columnWidth).
   const inset = firstHeadCenter ??
     (config.display?.column?.paddingH ?? 16) + CNBLedgerSet.width(m.markWidth) / 2;
-  return { left, right: Math.max(0, FIRST_NOTE_CENTRE * space - inset) };
+  if (scaleStack) {
+    return { left, right: Math.max(0, FIRST_NOTE_CENTRE * space - inset) };
+  }
+  // The ink: a ledger under a head of the first or last stack reaches past
+  // the marks.
+  const overhang = (ledgerLength(m.markWidth, space) - m.markWidth) / 2;
+  const ledgered = c => {
+    const semis = m.marks.filter(mk => mk.column === c).map(mk => mk.semi);
+    return semis.length > 0 && CNBLedgerSet.ledgersFor(config, semis,
+      { minSemi: Math.min(...semis) - 12, maxSemi: Math.max(...semis) + 12 }, CNBPitchAxis.create(config)).length > 0;
+  };
+  const before = !clef && ledgered(0) ? overhang : 0;
+  const after = ledgered(m.columns - 1) ? overhang : 0;
+  return { left: left + before, right: Math.max(0, after + FIRST_NOTE_CENTRE * space - inset) };
 }
+
+/** A look that sets nothing: every field unset (design §6). */
+const lookUnset = look => Object.values(look || {}).every(v => v === undefined);
 
 /** Signature duration: the engine resolves keysig noteheads at quarter
  *  note (duration 3) — stencils.ly cnb:get-keysig-note-stencil. */
@@ -208,6 +244,26 @@ export const CNBKeySignature = {
     const base = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[m[1].toLowerCase()];
     const alt = m[2] === "#" || m[2] === "♯" ? 1 : (m[2] === "b" || m[2] === "♭" ? -1 : 0);
     return (((base + alt) % 12) + 12) % 12;
+  },
+
+  /**
+   * True when the signature is the scale stack the engine's 'chord style
+   * draws (LY spec 1.3.15 §5.6a, design §9): the settings that apply to it
+   * at their defaults, notes "all", the upper tonic, stacking "degrees",
+   * columns "right", the middle of the staff, and no look or alternate field
+   * set. A setting that does not apply does not count: under "degrees" every
+   * key has two stacks, so separator.shareThickness never applies. Any other
+   * signature is drawn from the mark table, and spaced by its ink.
+   *
+   * @param {object} config
+   * @returns {boolean}
+   */
+  isScaleStack(config) {
+    const ks = (config.keys || {}).keySignature || {};
+    return (ks.notes ?? "all") === "all" && ks.upperTonic !== false &&
+      (ks.stacking ?? "degrees") === "degrees" && (ks.columns ?? "right") === "right" &&
+      ((ks.placement || {}).position ?? "middle") === "middle" &&
+      ["all", "flat", "sharp"].every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate);
   },
 
   /**
@@ -584,6 +640,9 @@ export const CNBKeySignature = {
         }
         line.setAttribute("stroke", bar.color);
         line.setAttribute("stroke-width", String(m.separatorPx));
+        // The engine's bar is a line with round caps, half its thickness
+        // beyond each end (session 49).
+        line.setAttribute("stroke-linecap", "round");
         g.appendChild(line);
       }
     }
@@ -594,8 +653,9 @@ export const CNBKeySignature = {
 
     // Ledger layer first, noteheads on top (keysig.ly's two-pass
     // layering). Ledger length = 4/3 × notehead width, the engine's
-    // keysig ledger proportion.
-    const ledgerOpts = { width: m.markWidth * (4 / 3) };
+    // keysig ledger proportion, and its round caps (session 49).
+    const space = CNBStaff.staffSpacePx(config, gridContext);
+    const ledgerOpts = { width: ledgerLength(m.markWidth, space) };
     if (m.offsets) {
       // Axis path: ledgers follow their marks — one render per
       // (column, offset) group, so equal-offset marks share ledgers.

@@ -616,7 +616,8 @@ keys: {
     // docs/planning/key-signature-designer-design.md §4, §6). Each default
     // is the signature above, so a config saved before them draws as it did;
     // a setting that does not apply to the kind or stacking is kept and
-    // ignored. Not exported yet (the mark table is session 49).
+    // ignored. Exported as the mark table when any applies (session 49,
+    // LY spec 1.3.15 §5.6a).
     notes: "all",               // | "tonic-and-half-steps": the tonic and both
                                 //   notes of each half step in the scale
     upperTonic: true,           // the tonic an octave up
@@ -665,7 +666,10 @@ keys: {
     // No gutter setting (session 34): the preview spaces the signature as
     // the engine does — 0.75 staff spaces after the staff's start, or 3.5
     // after a clef's left edge, and the first notehead centred 4.8636 after
-    // it. gutter.paddingH is retired.
+    // it. gutter.paddingH is retired. A mark-table signature (session 49,
+    // LY spec §5.6a) is spaced by its ink, ledgers included: 0.75 after the
+    // staff's start, or its first stack 2.9286 after a clef's left edge, and
+    // the first notehead 4.8636 after the ink.
   }
 }
 ```
@@ -690,6 +694,14 @@ keys: {
   the engine's default. The spacing is the engine's in the preview too
   (session 34). Set 010 wrote nothing for this section (its
   `s1-engine-coordination.md` records why).
+- **The mark table (session 49, LY spec 1.3.15 §5.6a).** `'chord` draws
+  only the default scale stack. A signature whose applicable settings are
+  not its defaults exports `cnb:keysig-style 'marks` and
+  `cnb:keysig-marks` (engine 1.4.0): 105 keys, the 15 spellings of each of
+  the 7 modes, each keyed by the tonic's note name and alteration and its
+  pitch classes, with the columns, gold bars and marks
+  `CNBKeySignature.marks` gives for the key the canvas's picker would
+  show. A key the table lacks engraves no signature.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -1505,6 +1517,9 @@ For the colours the noteheads use (§4.6):
 
 **Section B:**
 - B1: Staff geometry from `config.staff`
+- The clef and the key signature (LY spec §5.5, §5.6); a signature that is
+  not the engine's scale stack as the mark table, from
+  `CNBKeySignature.marks`, whose looks Section A also registers (§5.6a)
 - B2: Emit-if-changed engine settings from `config.engine`
 - B3: Metadata from `config.meta`
 
@@ -1858,7 +1873,8 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:notation-label` | `""` | `meta.notationLabel` | Always |
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |
 | `cnb:clef-style` (+ name, text, size, gutter; A6 `cnb:register-clef!`) | `'dozenal` | `clef` (§4.12) | Always: `'none` when no clef is shown (LY spec 1.3.7 §5.5) |
-| `cnb:keysig-style` | `'chord` | `keys.enabled`, `keys.keySignature.enabled` | `'none` unless both are on (LY spec 1.3.7 §5.6) |
+| `cnb:keysig-style` | `'chord` | `keys.enabled`, `keys.keySignature.enabled` | `'none` unless both are on (LY spec 1.3.7 §5.6); `'marks` for a signature not the scale stack (1.3.15 §5.6a) |
+| `cnb:keysig-marks` | `'()` | `keys.keySignature`, through `CNBKeySignature.marks` for 105 keys | With `'marks` (LY spec 1.3.15 §5.6a) |
 | `cnb:keysig-bar-color` / `-thickness` / `-extent-semis`, `cnb:keysig-tonic-octave` | `"#ffd42a"` / `4` / `12`, `#f` | `keys.keySignature.separator`, `.placement.tonicOctave` | If changed, signature on (LY spec 1.3.7 §5.6) |
 
 ### Section C — Configuration Procedure

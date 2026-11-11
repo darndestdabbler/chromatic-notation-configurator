@@ -524,10 +524,23 @@ export const tests = [
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
       const G = { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] };
       const failures = [];
-      for (const { label, clef, wideG } of [
+      // A signature from the mark table is spaced by its ink (session 49,
+      // engine handoff 030 §3): G's stacks at each change of parity, its first
+      // and last stacks with no ledger, then its first stack with a ledger
+      // reaching past the marks (G♭ with ledgers in the top line set).
+      // The spacing is in staff spaces, so it holds at any magnification.
+      for (const { label, clef, wideG, stacking, position, magnify } of [
         { label: "no clef" }, { label: "text clef", clef: true }, { label: "a wide G mark", wideG: true },
+        { label: "text clef, magnify 1", clef: true, magnify: "1" },
+        { label: "mark table, no clef", stacking: "parity-stacks" },
+        { label: "mark table, text clef", clef: true, stacking: "parity-stacks" },
+        { label: "mark table, the top line set", position: "top-set" },
+        { label: "mark table, text clef, magnify 5/2", clef: true, stacking: "parity", magnify: "5/2" },
       ]) {
         const config = keysigConfig([C_MAJOR, G]);
+        if (stacking) config.keys.keySignature.stacking = stacking;
+        if (position) config.keys.keySignature.placement.position = position;
+        if (magnify) config.engine.defaultMagnify = magnify;
         if (clef) {
           config.clef.enabled = true;
           config.clef.glyphs = { four: { displayName: "4", kind: "text", text: "4", textHeightSemis: 4, anchorSemi: 14 } };
@@ -550,9 +563,21 @@ export const tests = [
           const sig = cols[k].children[1].children[0];
           const firstMark = sig.children.find(c => String(c.getAttribute("transform") || "").startsWith("translate"));
           const marksLeft = kStart + parseTranslate(firstMark.getAttribute("transform")).x - markW / 2;
+          let left = marksLeft;
+          let right = marksLeft + CNBKeySignature.measure(config, PX_PER_SEMI, "G").columns * markW;
+          if (!CNBKeySignature.isScaleStack(config)) {
+            // The ink, as drawn: the ledgers reach past the marks.
+            for (const set of sig.children.filter(c => c.getAttribute("class") === "cnb-ledger-set")) {
+              for (const r of set.children) {
+                left = Math.min(left, kStart + Number(r.getAttribute("x")));
+                right = Math.max(right, kStart + Number(r.getAttribute("x")) + Number(r.getAttribute("width")));
+              }
+            }
+          }
           return {
-            before: (clef ? marksLeft - config.clef.gutter.paddingH : marksLeft) / space,
-            after: (kStart + widths[k] + widths[k + 1] / 2 - (marksLeft + 2 * markW)) / space,
+            before: (clef ? left - config.clef.gutter.paddingH : left) / space,
+            after: (kStart + widths[k] + widths[k + 1] / 2 - right) / space,
+            inkRight: right - kStart,                      // from the signature's column
           };
         });
         const got = await measureSpacing(engine, CNBLilypond.generate(config), "\\key g \\major c'4 d'4");
@@ -574,7 +599,7 @@ export const tests = [
         const tracks = /^(?:(\S+)px )?max\(0px, min\(calc\((\S+)px - (\S+) \* 100%\), (\S+)px\)\) repeat\(13, minmax\((\S+)px, (\S+)px\)\)$/.exec(template);
         if (!tracks) { failures.push(`${label}: fluid track template ${template}`); continue; }
         const [fixed, P, Q, hi, colMin, maxCol] = [Number(tracks[1] || 0), ...tracks.slice(2).map(Number)];
-        const marks = CNBKeySignature.padding(config, PX_PER_SEMI, "G", 0).left + 2 * markW;
+        const marks = preview.inkRight;
         for (const W of [fixed + hi + 13 * colMin, fixed + hi + 13 * colMin + 500, 13 * 800, 13 * 3000]) {
           const K = Math.max(0, Math.min(P - Q * W, hi));
           const t = Math.min(maxCol, Math.max(colMin, (W - fixed - K) / 13));
@@ -863,16 +888,51 @@ export const tests = [
   { name: "render: three stacks and two stems for a new stack at each change of parity; the gutter widens by a stack", fn: () => {
       const config = keysigConfig([C_MAJOR], { stacking: "parity-stacks" });
       eq(CNBKeySignature.measure(config, PX_PER_SEMI, "C").contentWidth, 3 * MARK_W, "three stacks wide");
-      approx(CNBKeySignature.gutterWidth(config, PX_PER_SEMI, "C"), GUTTER_W + MARK_W, "a stack wider than today's");
+      // A mark-table signature is spaced by its ink (session 49): C and D
+      // (first stack) and the upper C (last) have ledgers, each reaching
+      // 1/6 of a head and its 0.1-staff-space cap past the marks.
+      const overhang = MARK_W / 6 + 0.1 * 64;
+      approx(CNBKeySignature.gutterWidth(config, PX_PER_SEMI, "C"), GUTTER_W + MARK_W + 2 * overhang,
+        "a stack wider than today's, and the ledgers past the marks");
       withSvgStub(svg => {
         const grid = CNBGrid.create(config, GRID_RANGE);
         const g = CNBKeySignature.render(svg, grid, config, "C");
+        const left = PAD_LEFT + overhang;
         const stems = g.children.filter(c => c.getAttribute("class") === "cnb-key-signature-separator");
-        deepEq(stems.map(s => Number(s.getAttribute("x1"))).map(x => Math.round((x - PAD_LEFT) / MARK_W)), [1, 2], "between the stacks");
+        deepEq(stems.map(s => Number(s.getAttribute("x1"))).map(x => Math.round((x - left) / MARK_W)), [1, 2], "between the stacks");
         stems.forEach(s => approx(Number(s.getAttribute("stroke-width")), SEPARATOR_PX / 2, "shared"));
+        stems.forEach(s => eq(s.getAttribute("stroke-linecap"), "round", "round caps, as engraved"));
         const heads = g.children.filter(c => String(c.getAttribute("transform") || "").startsWith("translate"));
-        const xs = [...new Set(heads.map(h => Math.round((parseTranslate(h.getAttribute("transform")).x - PAD_LEFT) / MARK_W * 2)))];
+        const xs = [...new Set(heads.map(h => Math.round((parseTranslate(h.getAttribute("transform")).x - left) / MARK_W * 2)))];
         deepEq(xs, [1, 3, 5], "the heads at three stack centres");
+      });
+    }},
+
+  { name: "isScaleStack: the defaults, and settings that do not apply, are the scale stack; any other setting is not", fn: () => {
+      assert(CNBKeySignature.isScaleStack(keysigConfig([C_MAJOR])), "the defaults");
+      const unused = keysigConfig([C_MAJOR]);
+      unused.keys.keySignature.separator.shareThickness = false;   // two stacks: one stem, nothing to share
+      unused.keys.keySignature.looks = { all: { color: undefined }, flat: {}, sharp: {} };
+      assert(CNBKeySignature.isScaleStack(unused), "a setting that does not apply");
+      for (const [label, ks] of [
+        ["notes", { notes: "tonic-and-half-steps" }], ["upper tonic", { upperTonic: false }],
+        ["stacking", { stacking: "parity" }], ["columns", { columns: "left-in-sharp-keys" }],
+        ["place", { placement: { rule: "scale-from-tonic", tonicOctave: null, position: "top-set" } }],
+        ["a look", { looks: { all: {}, flat: { hollow: true }, sharp: {} } }],
+        ["a colour of none", { looks: { all: { color: null }, flat: {}, sharp: {} } }],
+        ["every second stack", { alternate: { color: "#cc79a7" } }],
+      ]) {
+        assert(!CNBKeySignature.isScaleStack(keysigConfig([C_MAJOR], ks)), label);
+      }
+    }},
+
+  { name: "render: a signature's ledgers are 4/3 of a head and their round caps long, as engraved", fn: () => {
+      const config = keysigConfig([C_MAJOR]);
+      withSvgStub(svg => {
+        const g = CNBKeySignature.render(svg, CNBGrid.create(config, GRID_RANGE), config, "C");
+        const rects = g.children.filter(c => c.getAttribute("class") === "cnb-ledger-set").flatMap(s => s.children);
+        assert(rects.length > 0, "C major draws ledgers");
+        rects.forEach(r => approx(Number(r.getAttribute("width")), MARK_W * 4 / 3 + 0.2 * 64, "length"));
       });
     }},
 

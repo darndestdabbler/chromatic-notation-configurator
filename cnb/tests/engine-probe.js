@@ -542,6 +542,107 @@ export function measureKeySignature(engine, ly, key) {
 }
 
 /**
+ * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "\\key g \\major c'1 \\key bes \\major c'1") and read each engraved
+ * key signature's stencil, in order, under the engine's 'marks style
+ * (session 49, engine handoff 030): the stencil expression is walked through
+ * its scales and translations, and each path (a head; a true hollow is one
+ * path with its cutout as a further subpath, a false hollow a white path
+ * over it) reported with its exact extent, as LilyPond measures the path,
+ * its subpaths and its colour, and each line (a bar, or a ledger) with its
+ * ends, thickness and colour. Everything is in the staff's own staff spaces,
+ * whatever the magnification, x from the signature's reference point and y
+ * from the staff's middle line.
+ *
+ * Returns { signatures: [{ x: [left, right], paths: [{ x, y, subpaths,
+ * color }], lines: [{ x1, y1, x2, y2, thickness, color }] }], warnings },
+ * extents as [min, max], colours as [r, g, b] (0–1), and LilyPond's warnings
+ * that name cnb:keysig-marks; or { error } with LilyPond's output when it
+ * fails.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ */
+export function measureKeySignatureMarks(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+#(define (cnb-probe:leaves e sx sy dx dy color)
+   (cond ((not (pair? e)) '())
+         ((eq? (car e) 'combine-stencil)
+          (append-map (lambda (x) (cnb-probe:leaves x sx sy dx dy color)) (cdr e)))
+         ((eq? (car e) 'translate-stencil)
+          (cnb-probe:leaves (caddr e) sx sy (+ dx (* sx (car (cadr e)))) (+ dy (* sy (cdr (cadr e)))) color))
+         ((eq? (car e) 'scale-stencil)
+          (cnb-probe:leaves (caddr e) (* sx (car (cadr e))) (* sy (cadr (cadr e))) dx dy color))
+         ((eq? (car e) 'color)
+          (cnb-probe:leaves (caddr e) sx sy dx dy (cadr e)))
+         ((eq? (car e) 'path)
+          (let* ((cmds (caddr e))
+                 (cmds (if (and (pair? cmds) (eq? (car cmds) 'quote)) (cadr cmds) cmds))
+                 (stil (make-path-stencil cmds (cadr e) 1 1 (last e)))
+                 (x (ly:stencil-extent stil X))
+                 (y (ly:stencil-extent stil Y)))
+            (list (list 'path (+ dx (* sx (car x))) (+ dx (* sx (cdr x)))
+                              (+ dy (* sy (car y))) (+ dy (* sy (cdr y)))
+                              (length (filter (lambda (c) (eq? c 'moveto)) cmds)) color))))
+         ((eq? (car e) 'draw-line)
+          (let ((a (cdr e)))
+            (list (list 'line (+ dx (* sx (list-ref a 1))) (+ dy (* sy (list-ref a 2)))
+                              (+ dx (* sx (list-ref a 3))) (+ dy (* sy (list-ref a 4)))
+                              (* sx (list-ref a 0)) color))))
+         ((symbol? (car e)) (cnb-probe:leaves (last e) sx sy dx dy color))
+         (else '())))
+{
+  \\override Staff.KeySignature.after-line-breaking = #(lambda (grob)
+    (let ((stil (ly:grob-property grob 'stencil)))
+      (if (and (ly:stencil? stil) (not (ly:stencil-empty? stil)))
+        (let* ((staff (ly:grob-object grob 'staff-symbol))
+               (common (ly:grob-common-refpoint grob staff Y))
+               (y0 (- (ly:grob-relative-coordinate grob common Y)
+                      (ly:grob-relative-coordinate staff common Y)))
+               (space (ly:staff-symbol-staff-space grob))
+               (s (lambda (v) (exact->inexact (/ v space))))
+               (x (ly:stencil-extent stil X)))
+          (format #t "CNB-SIG ~a ~a\\n" (s (car x)) (s (cdr x)))
+          (for-each
+            (lambda (leaf)
+              (let ((c (or (last leaf) '(0 0 0))))
+                (if (eq? (car leaf) 'path)
+                    (format #t "CNB-PATH ~a ~a ~a ~a ~a ~a ~a ~a\\n"
+                      (s (list-ref leaf 1)) (s (list-ref leaf 2))
+                      (s (+ y0 (list-ref leaf 3))) (s (+ y0 (list-ref leaf 4))) (list-ref leaf 5)
+                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c)))
+                    (format #t "CNB-LINE ~a ~a ~a ~a ~a ~a ~a ~a\\n"
+                      (s (list-ref leaf 1)) (s (+ y0 (list-ref leaf 2)))
+                      (s (list-ref leaf 3)) (s (+ y0 (list-ref leaf 4))) (s (list-ref leaf 5))
+                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c))))))
+            (cnb-probe:leaves (ly:stencil-expr stil) 1 1 0 0 #f))))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    if (error) return { error: `${error.message}\n${output}` };
+    const warnings = output.split(/\r?\n/).filter(l => /warning:.*cnb:keysig-marks/.test(l));
+    const n = rest => rest.trim().split(" ").map(schemeNumber);
+    const signatures = [];
+    for (const line of output.split(/\r?\n/)) {
+      let m;
+      if ((m = /^CNB-SIG (\S+) (\S+)$/.exec(line))) {
+        signatures.push({ x: [schemeNumber(m[1]), schemeNumber(m[2])], paths: [], lines: [] });
+      } else if ((m = /^CNB-PATH((?: \S+){8})$/.exec(line)) && signatures.length > 0) {
+        const v = n(m[1]);
+        signatures[signatures.length - 1].paths.push({ x: [v[0], v[1]], y: [v[2], v[3]], subpaths: v[4], color: v.slice(5) });
+      } else if ((m = /^CNB-LINE((?: \S+){8})$/.exec(line)) && signatures.length > 0) {
+        const v = n(m[1]);
+        signatures[signatures.length - 1].lines.push({ x1: v[0], y1: v[1], x2: v[2], y2: v[3], thickness: v[4], color: v.slice(5) });
+      }
+    }
+    return { signatures, warnings };
+  });
+}
+
+/**
  * Read each engraved key signature's identity (session 48): a Staff
  * engraver acknowledges every KeySignature grob, at a key change and at each
  * system start, and prints the context's tonic, its note name (0 = C … 6 =

@@ -377,7 +377,11 @@ it (session 34, LY export spec 1.3.9):
   them at LilyPond's sizes: stems 0.13 staff spaces thick and LilyPond's
   length, staff lines 0.1, ledgers 0.2 with rounded ends and 1.5 notehead
   widths long, all black and solid. They have no settings.
-- **The key signature's spacing is the engine's**, and has no setting.
+- **The key signature's spacing is the engine's**, and has no setting. Its
+  gold stems have round caps and its ledgers the engraved length. One known
+  difference remains: the engine gives a signature's noteheads ledgers by
+  its own rule rather than the notation's, so a signature's ledgers can
+  differ from the preview's until engine 1.4.1.
 - **Repeated heads are the engine's.** When longer durations repeat the
   notehead, the preview draws what the engine engraves: minim ×2 and
   semibreve ×4, each head edge to edge with the multinote padding
@@ -399,7 +403,11 @@ the semitones the preview draws it over, and a
 text clef engraves in its font, colour and size, but at the engine's own
 height rather than at its anchor. A key signature that is off engraves
 none. One that is on engraves with its bar's colour, thickness and extent,
-and with an explicit tonic octave.
+and with an explicit tonic octave. A signature that is not the scale stack
+(other notes, stacks, looks or line sets) exports as a table of its marks
+for the 105 keys the staff's key picker offers (LY export spec 1.3.15
+§5.6a), which needs engine 1.4.0 or later; a key outside it engraves no
+signature.
 
 Notehead height and width are not on this list either: they do export. A rule's
 size (`apply.heightSemis` / `apply.widthSemis`, in semitones; the rule
