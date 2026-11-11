@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock-up 4: Advanced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="mockup.css">
+  <style>
+    .scoped { list-style: none; margin: 0; padding: 0; }
+    .scoped li { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-3); align-items: center;
+      padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s); }
+    .scoped li + li { margin-top: var(--space-2); }
+    .scoped .when { font-size: 13px; color: var(--ink-2); }
+    .scoped li.flag { border-color: #f1dcb4; background: var(--warn-soft); }
+    .eng { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+    .anchor { position: relative; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <span class="app">Chromatic Notation Configurator</span>
+    <span class="doc">Kite 4-369</span>
+    <span class="spacer"></span>
+    <span class="anchor">
+      <span class="checks warn"><span class="dot"></span>1 warning</span>
+      <div class="popover" style="right: -8px; top: 44px">
+        <h3>Checks</h3>
+        <div class="item">
+          <span class="ic">!</span>
+          <div>
+            <p>“In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys, so the exported F♯ stays solid.</p>
+            <a href="#">Show the rule</a>
+          </div>
+        </div>
+        <div class="item small muted">Export is not blocked: warnings never stop it.</div>
+      </div>
+    </span>
+    <button class="btn ghost">Open…</button>
+    <button class="btn">Save</button>
+    <button class="btn primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar nav">
+      <a href="#">Staff</a>
+      <a href="#">Noteheads</a>
+      <a href="#">Pitch</a>
+      <a href="#">Ledger lines</a>
+      <a href="#">Clef</a>
+      <a href="#">Key signature</a>
+      <hr>
+      <a class="on" href="#">Advanced</a>
+      <a href="#">Export</a>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <section class="card">
+          <div class="canvas-toolbar">
+            <span>Showing crotchets</span>
+            <span class="spacer"></span><span class="tool" id="size"></span>
+          </div>
+          <div class="canvas" id="canvas"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Rules</h2>
+            <span class="sub">The rules written from your noteheads, and the rules you keep by hand</span>
+          </div>
+          <div class="card-body stack">
+            <ul class="rules" id="rules"></ul>
+            <div>
+              <p class="group-title" style="margin-top: var(--space-2)">For particular durations or keys</p>
+              <p class="lead small" style="margin-bottom: var(--space-2)">The noteheads can't hold these, so they are kept as you wrote them and override the rules above.</p>
+              <ul class="scoped">
+                <li><span><b>Minims are hollow</b><br><span class="when">Minims · every pitch class · fill: hollow</span></span><span class="badge">Exported</span><button class="btn small">Edit</button></li>
+                <li class="flag"><span><b>In G, F♯ is hollow</b><br><span class="when">In G · F♯ · fill: hollow</span></span><span class="badge">Not engraved</span><button class="btn small">Edit</button></li>
+              </ul>
+              <div style="margin-top: var(--space-2)"><button class="btn small">Add a rule for a duration or key</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>More settings</h2><span class="sub">Rarely needed. Each is described where it is.</span></div>
+          <div class="card-body">
+            <div class="disclosure">
+              <div class="sum"><span class="chev">▾</span>Engine<span class="spacer"></span><span class="sub">All at LilyPond's defaults</span></div>
+              <div class="inner eng">
+                <div class="field"><span class="label">Space between repeated noteheads</span><div class="row"><input class="input num" value="−0.5"><span class="unit">staff spaces</span></div></div>
+                <div class="field"><span class="label">Magnification</span><div class="row"><input class="input num" value="7/4"></div></div>
+                <div class="field"><span class="label">Stem thickness <span class="badge">Preview only</span></span><div class="row"><select class="select"><option>Automatic</option></select></div></div>
+              </div>
+            </div>
+            <div class="disclosure"><div class="sum"><span class="chev">▸</span>Durations<span class="spacer"></span><span class="sub">A shape for each duration</span></div></div>
+            <div class="disclosure"><div class="sum"><span class="chev">▸</span>Pitch axis map<span class="spacer"></span><span class="sub">Not used: no notehead is nudged</span></div></div>
+            <div class="disclosure"><div class="sum"><span class="chev">▸</span>Line overrides<span class="spacer"></span><span class="sub">None</span></div></div>
+            <div class="disclosure"><div class="sum"><span class="chev">▸</span>View file (JSON)<span class="spacer"></span><span class="sub">Read-only, with Copy</span></div></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { loadConfig, renderStaff, sizeControl, SIZES, renderRules, ready } from "./mockup.js";
+    ready(async () => {
+      const config = await loadConfig("cnb/fixtures/kite-4-369-config.json");
+      renderRules(document.getElementById("rules"), config);
+      renderStaff(document.getElementById("canvas"), config, { strip: true, px: SIZES.small });
+      document.getElementById("size").innerHTML = sizeControl("small");
+    });
+  </script>
+</body>
+</html>
