@@ -1,0 +1,725 @@
+/**
+ * key-signature-editor.js — Key Signature Editor (set 010, session 2)
+ *
+ * Edits the `config.keys` section activated in set 010 session 1
+ * (architecture plan §4.9): the `keys.enabled` master gate, the key
+ * definitions the signature renders from, and the `keys.keySignature`
+ * subsection (enable toggle, mark-style selection, placement-rule
+ * controls, separator/dot styling). `keys.offKeyMark` passes
+ * through untouched — off-key marking stays deferred (plan §11).
+ *
+ * Why the key-definition controls live HERE (session-2 design decision,
+ * s2-notes.md): sets 005–006 shipped key CONSUMERS — the notehead rule
+ * editor's match.keys pills and the preview display's key selector both
+ * read `keys.definitions` — but no editor writes `keys.enabled` or
+ * `keys.definitions`. The set-010 session-2 goal ("a key signature can be
+ * configured … through the UI") and its UAT flow ("enable → key
+ * selection → …") need a writer, and the key signature is defined
+ * relative to a key definition (set spec binding rule 2), so this panel
+ * hosts the whole `keys` section: definitions (name, pitch-class pills,
+ * optional explicit tonic) alongside the signature controls.
+ *
+ * Disabled-state rule (set-006 session-3 lesson; spec session 2 step 1):
+ * when `keys.enabled` is false everything below the master toggle is
+ * rendered DISABLED with an explicit .cnb-kse-disabled-note — shown, not
+ * hidden, and gated exactly on `keys.enabled`.
+ *
+ * Preserve-and-report: unknown `style` / `placement.rule` strings loaded
+ * from a config file are kept in the editor state and shown as an extra
+ * "(unrecognized)" option; the Module A validation pass-through reports
+ * them. The editor never silently rewrites loaded values.
+ *
+ * Editor-level checks beyond Module A (labeled "Editor check" in the
+ * validation panel): duplicate definition names — key selection and rule
+ * matching are name-keyed, so a duplicated name makes later definitions
+ * unreachable.
+ *
+ * Export (session 30, LY spec 1.3.7 §5.6): the engine engraves the
+ * signature from the score's `\key`, and the exporter writes its on/off
+ * state, an explicit tonic octave and the separator's styling. The spacing
+ * around the signature is the engine's (session 34), so nothing here is
+ * preview-only, and a config's keySignature.gutter is not carried.
+ *
+ * `style` is a single-value vocabulary ("notehead-chords"): the task owner
+ * evaluated simple built-in marks in set-010 s2 UAT and chose the note
+ * stack as the sole style, deferring custom-symbol signatures to a future
+ * set (s2-uat.md, s2-design-consult.md). The style select preserves and
+ * reports an unknown loaded value rather than rewriting it.
+ *
+ * Editor state model (the render() UI edits this; all builds are pure):
+ *   {
+ *     enabled: boolean,                    // keys.enabled (master gate)
+ *     definitions: [ { name, pitchClasses, tonicPc? } ],  // pass through
+ *     offKeyMark: object,                  // untouched passthrough
+ *     keySignature: {
+ *       enabled: boolean,
+ *       style: string,   // "notehead-chords" (single-value vocabulary)
+ *       notes, upperTonic, looks, stacking, alternate, columns,
+ *                        // the designer's settings (session 48): carried
+ *                        // through unchanged, with no controls yet
+ *       placement: { rule: string, tonicOctave: number|null, position },
+ *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness }
+ *     }
+ *   }
+ *
+ * The UI cannot express every invalid config (e.g. a definition with no
+ * pitch classes mid-edit), so — like Modules 12–15 and the clef editor —
+ * invalid-but-editable situations surface through the Module A validation
+ * pass-through, while structurally invalid STATE (non-array definitions,
+ * non-finite numbers, invalid separator hex) throws from the pure
+ * builders: that is a caller bug, not user input.
+ *
+ * Rendering contract (same as Modules 12–17 and the clef editor):
+ * render() builds plain DOM via document.createElement, wires events as
+ * element properties (onclick/oninput/onchange) so the whole UI is
+ * exercisable in Node against a stub document, and reports every state
+ * change through onChange({ keys }, state) where `keys` is a ready
+ * `config.keys` object. Hosts own layout/styling via .cnb-kse-* hooks.
+ *
+ * Inspired by Clairnote DN's alternative key signatures (design
+ * CC BY-SA 4.0, Paul Morris); no code is ported from clairnote.ly.
+ *
+ * Dependencies: Module A (validation pass-through), Module B (pitch-class
+ * labels), cnb-key-signature.js (tonic-resolution chain for the hint).
+ */
+
+import { CNBConfig } from "../src/cnb-config.js";
+import { CNBMusic } from "../src/cnb-music.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
+
+// ─── Pure helpers ────────────────────────────────────────────────────────────
+
+function deepClone(v) {
+  return v === undefined ? v : JSON.parse(JSON.stringify(v));
+}
+
+/** The schema's keySignature, and the designer's settings at their defaults. */
+const DEFAULT_KS = CNBConfig.createDefault().keys.keySignature;
+const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"];
+const DESIGNER_DEFAULTS = Object.fromEntries(DESIGNER_FIELDS.map(f => [f, DEFAULT_KS[f]]));
+
+/** The designer's settings (session 48) of a keySignature, copied as they
+ *  are: the panel has no controls for them yet, and validation checks them. */
+function designerSettings(ks) {
+  return Object.fromEntries(DESIGNER_FIELDS.map(f => [f, deepClone(ks[f])]));
+}
+
+function isPlainObject(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function isValidHex(v) {
+  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+}
+
+/** Known vocabulary (Module A validate() accepts exactly these). */
+const STYLES = ["notehead-chords"];
+const PLACEMENT_RULES = ["scale-from-tonic"];
+
+/** The placement rules in a designer's words. */
+const PLACEMENT_RULE_LABELS = { "scale-from-tonic": "Scale from the tonic" };
+
+/** Pitch-class display label: "C", "C♯", … (Module B). */
+function pcName(pc) {
+  const label = CNBMusic.pcLabel(pc);
+  return label.text + (label.sharp ? "♯" : "");
+}
+
+/** New-definition template: a plainly visible C-major scaffold the user
+ *  edits — never a silent fallback (set-004 lesson). */
+function definitionTemplate() {
+  return { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11] };
+}
+
+export const CNBKeySignatureEditor = {
+
+  STYLES,
+  PLACEMENT_RULES,
+
+  /**
+   * Build a ready `config.keys` slice from editor state. Pure function;
+   * throws on structurally invalid state (see module header) rather than
+   * guessing. Mid-edit-reachable situations (empty definition name, no
+   * pitch classes, signature enabled while keys disabled) are NOT throws —
+   * the Module A validation pass-through reports them.
+   *
+   * @param {object} state
+   * @returns {object} config.keys object
+   */
+  buildKeys(state) {
+    if (!isPlainObject(state)) {
+      throw new Error("Key-signature editor state must be an object");
+    }
+    if (!Array.isArray(state.definitions)) {
+      throw new Error("keys.definitions must be an array of key definitions");
+    }
+    for (const [i, def] of state.definitions.entries()) {
+      if (!isPlainObject(def)) {
+        throw new Error(`keys.definitions[${i}] must be an object (got ${JSON.stringify(def)})`);
+      }
+      if (typeof def.name !== "string") {
+        throw new Error(`keys.definitions[${i}].name must be a string (got ${JSON.stringify(def.name)})`);
+      }
+      if (!Array.isArray(def.pitchClasses)) {
+        throw new Error(`keys.definitions[${i}].pitchClasses must be an array (got ${JSON.stringify(def.pitchClasses)})`);
+      }
+    }
+    const ks = state.keySignature;
+    if (!isPlainObject(ks)) {
+      throw new Error("keys.keySignature editor state must be an object");
+    }
+    if (typeof ks.style !== "string") {
+      throw new Error(`keySignature.style must be a string (got ${JSON.stringify(ks.style)})`);
+    }
+    const placement = ks.placement;
+    if (!isPlainObject(placement) || typeof placement.rule !== "string") {
+      throw new Error("keySignature.placement must be an object with a string rule");
+    }
+    if (placement.tonicOctave !== null && !Number.isInteger(placement.tonicOctave)) {
+      throw new Error(`keySignature.placement.tonicOctave must be an integer or null for auto (got ${JSON.stringify(placement.tonicOctave)})`);
+    }
+    const sep = ks.separator;
+    if (!isPlainObject(sep)) {
+      throw new Error("keySignature.separator editor state must be an object");
+    }
+    if (!isValidHex(sep.color)) {
+      throw new Error(`keySignature.separator.color must be a #RRGGBB hex string (got ${JSON.stringify(sep.color)})`);
+    }
+    if (typeof sep.thicknessPct !== "number" || !Number.isFinite(sep.thicknessPct) || sep.thicknessPct < 0) {
+      throw new Error(`keySignature.separator.thicknessPct must be a finite non-negative number (got ${JSON.stringify(sep.thicknessPct)})`);
+    }
+    if (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0) {
+      throw new Error(`keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
+    }
+    return {
+      enabled: !!state.enabled,
+      definitions: deepClone(state.definitions),
+      offKeyMark: isPlainObject(state.offKeyMark) ? deepClone(state.offKeyMark) : {},
+      keySignature: {
+        enabled: !!ks.enabled,
+        style: ks.style,
+        ...designerSettings(ks),
+        placement: {
+          rule: placement.rule,
+          tonicOctave: placement.tonicOctave,
+          position: placement.position,
+        },
+        separator: {
+          enabled: !!sep.enabled,
+          color: sep.color,
+          thicknessPct: sep.thicknessPct,
+          extentSemis: sep.extentSemis,
+          shareThickness: sep.shareThickness,
+        },
+      },
+    };
+  },
+
+  /**
+   * Apply an editor state to a config: returns a new config with the keys
+   * section replaced (all other sections untouched). Neither argument is
+   * mutated.
+   * @param {object} config
+   * @param {object} state
+   * @returns {object}
+   */
+  applyToConfig(config, state) {
+    const out = CNBConfig.clone(config);
+    out.keys = CNBKeySignatureEditor.buildKeys(state);
+    return out;
+  },
+
+  /**
+   * Recover an editor state from a config (inverse of applyToConfig for
+   * the keys slice). Tolerant of configs predating the keySignature
+   * subsection — a missing or malformed section opens as the default-off
+   * state. Unknown style/rule STRINGS are preserved (preserve-and-report,
+   * module header); non-string/malformed values fall back to defaults.
+   * @param {object} config
+   * @returns {object} editor state
+   */
+  stateFromConfig(config) {
+    const keys = isPlainObject(config && config.keys) ? config.keys : {};
+    const ks = isPlainObject(keys.keySignature) ? keys.keySignature : {};
+    const placement = isPlainObject(ks.placement) ? ks.placement : {};
+    const sep = isPlainObject(ks.separator) ? ks.separator : {};
+    const finite = (v, min, fallback, exclusive = false) =>
+      (typeof v === "number" && Number.isFinite(v) && (exclusive ? v > min : v >= min))
+        ? v
+        : fallback;
+    return {
+      enabled: !!keys.enabled,
+      definitions: Array.isArray(keys.definitions)
+        ? deepClone(keys.definitions.filter(isPlainObject))
+        : [],
+      offKeyMark: isPlainObject(keys.offKeyMark) ? deepClone(keys.offKeyMark) : {},
+      keySignature: {
+        enabled: !!ks.enabled,
+        style: typeof ks.style === "string" ? ks.style : "notehead-chords",
+        ...designerSettings({ ...DESIGNER_DEFAULTS, ...ks }),
+        placement: {
+          rule: typeof placement.rule === "string" ? placement.rule : "scale-from-tonic",
+          tonicOctave: Number.isInteger(placement.tonicOctave) ? placement.tonicOctave : null,
+          position: placement.position ?? DEFAULT_KS.placement.position,
+        },
+        separator: {
+          enabled: sep.enabled !== false,   // schema default: true
+          color: isValidHex(sep.color) ? sep.color : "#ffd42a",
+          thicknessPct: finite(sep.thicknessPct, 0, 160),
+          extentSemis: finite(sep.extentSemis, 0, 12, true),
+          shareThickness: sep.shareThickness ?? DEFAULT_KS.separator.shareThickness,
+        },
+      },
+    };
+  },
+
+  /**
+   * The tonic-resolution chain for a definition, mirrored from the
+   * renderer (s1 decision D3) so the hint states exactly what will render:
+   *   explicit tonicPc → parsed from the name's leading note letter →
+   *   first listed pitch class (fallback).
+   * @param {object} def  keys.definitions entry
+   * @returns {{pc: number, source: "explicit"|"name"|"fallback"}}
+   */
+  tonicInfo(def) {
+    if (Number.isInteger(def.tonicPc) && def.tonicPc >= 0 && def.tonicPc <= 11) {
+      return { pc: def.tonicPc, source: "explicit" };
+    }
+    const parsed = CNBKeySignature.parseTonicPc(def.name);
+    if (parsed !== null) return { pc: parsed, source: "name" };
+    return { pc: CNBKeySignature.tonicPc(def), source: "fallback" };
+  },
+
+  /**
+   * Editor-level warnings that Module A does not cover (labeled as editor
+   * checks in the validation panel): duplicate definition names — the
+   * preview's key selector and the rule editor's key matching are
+   * name-keyed, so later duplicates are unreachable.
+   * @param {object} state
+   * @returns {string[]}
+   */
+  editorWarnings(state) {
+    const warnings = [];
+    const seen = new Map();
+    for (const def of state.definitions) {
+      const name = def.name;
+      if (typeof name !== "string" || name.length === 0) continue;
+      seen.set(name, (seen.get(name) || 0) + 1);
+    }
+    for (const [name, count] of seen) {
+      if (count > 1) {
+        warnings.push(
+          `Editor check: ${count} definitions share the name "${name}" — key ` +
+          `selection and rule matching are name-keyed, so only the first is reachable`);
+      }
+    }
+    return warnings;
+  },
+
+  /**
+   * Render the key-signature editor into a container.
+   *
+   * Structure (all styling left to the host via class hooks):
+   *   div.cnb-key-signature-editor
+   *   ├── label.cnb-kse-keys-enable    (keys.enabled master toggle)
+   *   ├── div.cnb-kse-disabled-note    (ONLY while keys.enabled is false)
+   *   ├── div.cnb-kse-definitions     (definition rows + add button)
+   *   ├── div.cnb-kse-signature       (keySignature.enabled, style,
+   *   │                                placement, separator, dot)
+   *   └── div.cnb-kse-validation      (Module A pass-through + editor checks)
+   *
+   * While keys.enabled is false every control below the master toggle is
+   * rendered with disabled = true (explicit disabled state, not hidden).
+   *
+   * @param {HTMLElement} container
+   * @param {{config?: object,
+   *          onChange?: (slices: {keys: object}, state: object) => void}} [opts]
+   *        `config` seeds the editor state and is the base for the
+   *        validation pass-through (defaults to CNBConfig.createDefault()).
+   * @returns {{root: HTMLElement, getState: () => object,
+   *            getKeys: () => object, applyTo: (config: object) => object,
+   *            setState: (partial: object) => void, redraw: () => void}}
+   */
+  render(container, opts = {}) {
+    const doc = globalThis.document;
+    const baseConfig = opts.config ? CNBConfig.clone(opts.config) : CNBConfig.createDefault();
+    const state = CNBKeySignatureEditor.stateFromConfig(baseConfig);
+    const onChange = opts.onChange || (() => {});
+
+    const root = doc.createElement("div");
+    root.className = "cnb-key-signature-editor";
+
+    const el = (tag, className, text) => {
+      const e = doc.createElement(tag);
+      if (className) e.className = className;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    };
+
+    const numberFrom = (e, input) => {
+      const raw = (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
+      const v = parseFloat(raw);
+      return Number.isFinite(v) ? v : null;
+    };
+
+    const checkedFrom = (e, input) =>
+      e && e.target && e.target.checked !== undefined ? !!e.target.checked : !!input.checked;
+
+    const valueFrom = (e, input) =>
+      (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
+
+    const emit = () => {
+      onChange({ keys: CNBKeySignatureEditor.buildKeys(state) }, deepClone(state));
+    };
+
+    const changed = () => {
+      redraw();
+      emit();
+    };
+
+    /** Everything below the master toggle is disabled while keys.enabled
+     *  is false (explicit disabled state — set-006 s3 lesson). */
+    const gated = () => !state.enabled;
+
+    const control = (e) => { e.disabled = gated(); return e; };
+
+    const subtitle = (text) => el("div", "cnb-kse-subtitle", text);
+
+    // ── keys.enabled master toggle (never disabled) ──────────────────────
+    function drawKeysEnable() {
+      const label = el("label", "cnb-kse-keys-enable");
+      const cb = el("input", "cnb-kse-keys-enable-check");
+      cb.type = "checkbox";
+      cb.checked = !!state.enabled;
+      cb.onchange = (e) => { state.enabled = checkedFrom(e, cb); changed(); };
+      label.appendChild(cb);
+      label.appendChild(el("span", "cnb-kse-keys-enable-text",
+        "Use keys: name the keys this notation knows, for its key signature and for rules in a key"));
+      return label;
+    }
+
+    function drawDisabledNote() {
+      if (!gated()) return null;
+      return el("div", "cnb-kse-disabled-note",
+        "Keys are off. The settings below are kept, but nothing to do with " +
+        "keys shows until keys are on.");
+    }
+
+    // ── Key definitions ──────────────────────────────────────────────────
+    function drawDefinitions() {
+      const wrap = el("div", "cnb-kse-section cnb-kse-definitions");
+      wrap.appendChild(el("div", "cnb-kse-title", "Keys"));
+      wrap.appendChild(el("div", "cnb-kse-hint",
+        "Each key has a name and its notes. Its tonic is the one you choose, " +
+        "else the note its name starts with, else its first note."));
+
+      if (state.definitions.length === 0) {
+        wrap.appendChild(el("div", "cnb-kse-empty",
+          "No keys yet: the staff draws the key picked there. Add one to give a notehead rule a key."));
+      }
+
+      state.definitions.forEach((def, index) => {
+        const row = el("div", "cnb-kse-def-row");
+        row.setAttribute("data-def-index", String(index));
+
+        const name = el("input", "cnb-kse-def-name");
+        name.type = "text";
+        name.value = def.name;
+        name.title = "The key's name, as the Key menu and the rules show it";
+        name.oninput = (e) => { def.name = String(valueFrom(e, name)); changed(); };
+        row.appendChild(control(name));
+
+        const pills = el("span", "cnb-kse-def-pcs");
+        for (let pc = 0; pc <= 11; pc++) {
+          const on = def.pitchClasses.includes(pc);
+          const pill = el("button", "cnb-kse-pc-pill" + (on ? " on" : ""), pcName(pc));
+          pill.type = "button";
+          pill.setAttribute("data-pc", String(pc));
+          pill.onclick = () => {
+            def.pitchClasses = on
+              ? def.pitchClasses.filter(v => v !== pc)
+              : [...def.pitchClasses, pc].sort((a, b) => a - b);
+            changed();
+          };
+          pills.appendChild(control(pill));
+        }
+        row.appendChild(pills);
+
+        const tonic = el("select", "cnb-kse-def-tonic");
+        tonic.title = "Tonic (auto: from the name, else the first note)";
+        const auto = el("option", "", "Tonic: auto");
+        auto.value = "";
+        tonic.appendChild(auto);
+        for (let pc = 0; pc <= 11; pc++) {
+          const option = el("option", "", pcName(pc));
+          option.value = String(pc);
+          if (Number.isInteger(def.tonicPc) && def.tonicPc === pc) option.selected = true;
+          tonic.appendChild(option);
+        }
+        tonic.value = Number.isInteger(def.tonicPc) ? String(def.tonicPc) : "";
+        tonic.onchange = (e) => {
+          const v = valueFrom(e, tonic);
+          if (v === "") delete def.tonicPc;
+          else def.tonicPc = parseInt(v, 10);
+          changed();
+        };
+        row.appendChild(control(tonic));
+
+        const info = CNBKeySignatureEditor.tonicInfo(def);
+        const sourceText = { explicit: "explicit", name: "from name", fallback: "first note" }[info.source];
+        row.appendChild(el("span", "cnb-kse-def-tonic-hint",
+          `tonic ${pcName(info.pc)} (${sourceText})`));
+
+        const remove = el("button", "cnb-kse-def-remove", "×");
+        remove.type = "button";
+        remove.title = "Remove this key";
+        remove.onclick = () => { state.definitions.splice(index, 1); changed(); };
+        row.appendChild(control(remove));
+
+        wrap.appendChild(row);
+      });
+
+      const add = el("button", "cnb-kse-def-add", "+ Add a key");
+      add.type = "button";
+      add.onclick = () => { state.definitions.push(definitionTemplate()); changed(); };
+      wrap.appendChild(control(add));
+      return wrap;
+    }
+
+    // ── Key signature ────────────────────────────────────────────────────
+    function drawSignature() {
+      const wrap = el("div", "cnb-kse-section cnb-kse-signature");
+      wrap.appendChild(el("div", "cnb-kse-title", "Key signature"));
+      wrap.appendChild(el("div", "cnb-kse-hint",
+        "The selected key's scale, drawn as noteheads at the start of the " +
+        "staff. LilyPond draws it from the score's key, with the noteheads, " +
+        "bar and octave this notation exports."));
+
+      const enable = el("label", "cnb-kse-sig-enable");
+      const cb = el("input", "cnb-kse-sig-enable-check");
+      cb.type = "checkbox";
+      cb.checked = !!state.keySignature.enabled;
+      cb.onchange = (e) => { state.keySignature.enabled = checkedFrom(e, cb); changed(); };
+      enable.appendChild(control(cb));
+      enable.appendChild(el("span", "cnb-kse-sig-enable-text",
+        "Show the key signature after the clef"));
+      wrap.appendChild(enable);
+
+      // Which key draws (session 36): the one picked on the staff, whether
+      // or not a key is defined here.
+      if (state.enabled && state.keySignature.enabled) {
+        wrap.appendChild(el("div", "cnb-kse-sig-status",
+          "The signature draws for the key and mode picked on the staff."));
+      }
+
+      wrap.appendChild(drawStyle());
+      wrap.appendChild(drawPlacement());
+      wrap.appendChild(drawSeparator());
+      return wrap;
+    }
+
+    function drawStyle() {
+      const wrap = el("div", "cnb-kse-style");
+      wrap.appendChild(subtitle("Marks"));
+
+      const options = [
+        {
+          value: "notehead-chords",
+          label: "Notehead chords",
+          detail: "The key's scale as noteheads: seven notes up from the tonic " +
+            "and the tonic an octave higher, in two columns, as LilyPond " +
+            "draws it. The only kind of mark so far; others may come later.",
+        },
+      ];
+      if (!STYLES.includes(state.keySignature.style)) {
+        options.push({
+          value: state.keySignature.style,
+          label: `${state.keySignature.style} (unrecognized)`,
+          detail: "The file names marks this version does not know. " +
+            "Choose Notehead chords to fix it.",
+        });
+      }
+      for (const option of options) {
+        const isOn = state.keySignature.style === option.value;
+        const row = el("div", "cnb-kse-style-option" + (isOn ? " selected" : ""));
+        row.setAttribute("data-style", option.value);
+        row.appendChild(el("div", "cnb-kse-style-label", option.label));
+        row.appendChild(el("div", "cnb-kse-style-detail", option.detail));
+        row.onclick = () => {
+          if (gated()) return;   // real DOM divs have no disabled semantics
+          state.keySignature.style = option.value;
+          changed();
+        };
+        wrap.appendChild(row);
+      }
+      return wrap;
+    }
+
+    function drawPlacement() {
+      const wrap = el("div", "cnb-kse-placement");
+      wrap.appendChild(subtitle("Placement"));
+      wrap.appendChild(el("div", "cnb-kse-hint",
+        "Where the marks sit: the scale rises from the tonic, the only rule so far."));
+
+      const ruleRow = el("div", "cnb-kse-fields");
+      ruleRow.appendChild(el("span", "cnb-kse-field-label", "Rule"));
+      const rule = el("select", "cnb-kse-placement-rule");
+      const ruleValues = PLACEMENT_RULES.includes(state.keySignature.placement.rule)
+        ? PLACEMENT_RULES
+        : [...PLACEMENT_RULES, state.keySignature.placement.rule];
+      for (const value of ruleValues) {
+        const option = el("option", "",
+          PLACEMENT_RULES.includes(value) ? PLACEMENT_RULE_LABELS[value] : `${value} (unrecognized)`);
+        option.value = value;
+        if (value === state.keySignature.placement.rule) option.selected = true;
+        rule.appendChild(option);
+      }
+      rule.value = state.keySignature.placement.rule;
+      rule.onchange = (e) => {
+        state.keySignature.placement.rule = String(valueFrom(e, rule));
+        changed();
+      };
+      ruleRow.appendChild(control(rule));
+      wrap.appendChild(ruleRow);
+
+      const octaveRow = el("div", "cnb-kse-fields");
+      octaveRow.appendChild(el("span", "cnb-kse-field-label", "Tonic octave"));
+      const isAuto = state.keySignature.placement.tonicOctave === null;
+      const autoLabel = el("label", "cnb-kse-octave-auto");
+      const autoCheck = el("input", "cnb-kse-octave-auto-check");
+      autoCheck.type = "checkbox";
+      autoCheck.checked = isAuto;
+      autoCheck.onchange = (e) => {
+        state.keySignature.placement.tonicOctave = checkedFrom(e, autoCheck) ? null : 1;
+        changed();
+      };
+      autoLabel.appendChild(control(autoCheck));
+      autoLabel.appendChild(el("span", "cnb-kse-octave-auto-text",
+        "Automatic (centred on the middle of the staff)"));
+      octaveRow.appendChild(autoLabel);
+
+      const octave = el("input", "cnb-kse-octave-input");
+      octave.type = "number";
+      octave.step = "1";
+      octave.value = isAuto ? "" : String(state.keySignature.placement.tonicOctave);
+      octave.title = "The tonic's octave, a whole number";
+      octave.disabled = gated() || isAuto;
+      octave.oninput = (e) => {
+        const v = numberFrom(e, octave);
+        if (v !== null && Number.isInteger(v)) {
+          state.keySignature.placement.tonicOctave = v;
+          changed();
+        }
+      };
+      octaveRow.appendChild(octave);
+      wrap.appendChild(octaveRow);
+      return wrap;
+    }
+
+    function drawSeparator() {
+      const wrap = el("div", "cnb-kse-separator");
+      wrap.appendChild(subtitle("Separator bar"));
+      wrap.appendChild(el("div", "cnb-kse-hint",
+        "The gold bar through the middle of the mark columns, beneath the marks."));
+
+      const row = el("div", "cnb-kse-fields");
+
+      const enable = el("label", "cnb-kse-sep-enable");
+      const cb = el("input", "cnb-kse-sep-enable-check");
+      cb.type = "checkbox";
+      cb.checked = !!state.keySignature.separator.enabled;
+      cb.onchange = (e) => { state.keySignature.separator.enabled = checkedFrom(e, cb); changed(); };
+      enable.appendChild(control(cb));
+      enable.appendChild(el("span", "", "Show"));
+      row.appendChild(enable);
+
+      const color = el("input", "cnb-kse-sep-color");
+      color.type = "color";
+      color.value = state.keySignature.separator.color;
+      color.title = "Colour";
+      // A drag (`input`) changes only the field's own swatch; the colour
+      // applies once, when the picker closes (`change`, session 36).
+      color.onchange = (e) => {
+        const v = String(valueFrom(e, color));
+        if (isValidHex(v)) { state.keySignature.separator.color = v; changed(); }
+      };
+      row.appendChild(control(color));
+
+      const thickness = el("input", "cnb-kse-sep-thickness");
+      thickness.type = "number";
+      thickness.min = "0";
+      thickness.step = "1";
+      thickness.value = String(state.keySignature.separator.thicknessPct);
+      thickness.title = "Thickness";
+      thickness.oninput = (e) => {
+        const v = numberFrom(e, thickness);
+        if (v !== null && v >= 0) { state.keySignature.separator.thicknessPct = v; changed(); }
+      };
+      row.appendChild(control(thickness));
+      row.appendChild(el("span", "cnb-kse-field-unit", "% of a semitone thick"));
+
+      const extent = el("input", "cnb-kse-sep-extent");
+      extent.type = "number";
+      extent.step = "1";
+      extent.value = String(state.keySignature.separator.extentSemis);
+      extent.title = "How far the bar reaches";
+      extent.oninput = (e) => {
+        const v = numberFrom(e, extent);
+        if (v !== null && v > 0) { state.keySignature.separator.extentSemis = v; changed(); }
+      };
+      row.appendChild(control(extent));
+      row.appendChild(el("span", "cnb-kse-field-unit", "semitones above and below the middle"));
+
+      wrap.appendChild(row);
+      return wrap;
+    }
+
+    // ── Validation pass-through (Module A) + editor checks ───────────────
+    function drawValidation() {
+      const wrap = el("div", "cnb-kse-validation");
+      let result;
+      try {
+        result = CNBConfig.validate(CNBKeySignatureEditor.applyToConfig(baseConfig, state));
+      } catch (err) {
+        wrap.appendChild(el("div", "cnb-kse-error", "Editor state error: " + err.message));
+        return wrap;
+      }
+      const editorWarnings = CNBKeySignatureEditor.editorWarnings(state);
+      if (result.valid && editorWarnings.length === 0) {
+        wrap.appendChild(el("div", "cnb-kse-valid", "Config valid ✓"));
+      }
+      for (const msg of result.errors) {
+        wrap.appendChild(el("div", "cnb-kse-error", msg));
+      }
+      for (const msg of result.warnings) {
+        wrap.appendChild(el("div", "cnb-kse-warning", msg));
+      }
+      for (const msg of editorWarnings) {
+        wrap.appendChild(el("div", "cnb-kse-warning cnb-kse-editor-warning", msg));
+      }
+      return wrap;
+    }
+
+    function redraw() {
+      root.textContent = "";   // clears children on real DOM and on the test stub
+      root.appendChild(drawKeysEnable());
+      const note = drawDisabledNote();
+      if (note) root.appendChild(note);
+      root.appendChild(drawDefinitions());
+      root.appendChild(drawSignature());
+      root.appendChild(drawValidation());
+    }
+
+    redraw();
+    container.appendChild(root);
+
+    return {
+      root,
+      getState: () => deepClone(state),
+      getKeys: () => CNBKeySignatureEditor.buildKeys(state),
+      applyTo: (config) => CNBKeySignatureEditor.applyToConfig(config, state),
+      setState: (partial) => { Object.assign(state, deepClone(partial)); changed(); },
+      redraw,
+    };
+  },
+};

@@ -1,0 +1,30 @@
+{
+  "status": "completed",
+  "summary": "Fixed all three exporter-owned discrepancies from the session-1 catalog (D1 use-procedure-model emission, D2 half-staff-space staff positions, D5 semitone-canonical anchors with export-time / sps conversion), kept the staff-rule editor in exporter parity, and re-ran the full round-trip with zero hand patches: engine golden assertion suite 74/74 on both renders, exhaustive structural diff 21/191 elements differing (all the cataloged D3 cosmetic path-text artifact), visual pixel diff 0 differing pixels at 4x and 16x, UI download byte-identical to the rendered headless export, all 7 browser UAT drivers passing (184 checks), cnb suite 556/556 and legacy 240/240. Per-fix isolation reruns (Addendum A) and the operator's human visual UAT sign-off (Addendum B) are recorded in s2-uat.md. README.md gained the end-to-end walkthrough; the LY spec was amended to 1.2.1 and the architecture plan corrected per the catalog's fix list; cross-repo items were handed off in s2-cross-repo-coordination.md (engine: README render half, E1, D3 normalization, spec sync; toolkit: D6 minim anchors). Verification: round 1 ISSUES_FOUND (human UAT evidence, per-fix rerun wording/evidence, product-doc scope authority), all three resolved in the remediation commit; round 2 VERIFIED. This closes the set and the ecosystem's shared release gate.",
+  "files_changed": [
+    "cnb/fixtures/kite-4-369-config.json",
+    "cnb/src/cnb-lilypond.js",
+    "cnb/tests/cnb-lilypond-tests.js",
+    "cnb/tests/cnb-staff-rule-editor-tests.js",
+    "cnb/uat/uat-kite-pipeline.mjs",
+    "cnb/uat/uat-staff-rule-editor.mjs",
+    "cnb/ui/staff-rule-editor.js",
+    "cnb/ui/svg-importer.js",
+    "README.md",
+    "docs/CNB-ARCHITECTURE-PLAN-v2.md",
+    "docs/CNB-LY-EXPORT-SPEC-v1_2.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/session-state.json",
+    "docs/session-sets/007-end-to-end-pipeline-verification/session-events.jsonl",
+    "docs/session-sets/007-end-to-end-pipeline-verification/activity-log.json",
+    "docs/session-sets/007-end-to-end-pipeline-verification/s2-uat.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/s2-cross-repo-coordination.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/change-log.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/s2-verification.md",
+    "docs/session-sets/007-end-to-end-pipeline-verification/disposition.json"
+  ],
+  "verification_method": "api",
+  "verification_message_ids": [],
+  "next_orchestrator": null,
+  "blockers": [],
+  "verification_verdict": "VERIFIED"
+}

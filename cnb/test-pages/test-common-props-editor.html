@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Common Properties Editor Test — Module 15</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 0 20px 20px 0;
+      display: inline-block;
+      vertical-align: top;
+      max-width: 1180px;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+    pre {
+      font-size: 11px;
+      background: #f7f7f7;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 10px;
+      max-width: 520px;
+      max-height: 420px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    /* ── Common properties editor host styling (module ships structure only) ── */
+    .cnb-cpe-section { margin-bottom: 16px; }
+    .cnb-cpe-title { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+    .cnb-cpe-hint { font-size: 11px; color: #aaa; margin-bottom: 6px; max-width: 460px; }
+
+    .cnb-cpe-def-row {
+      font-size: 12px; color: #555; padding: 5px 8px; margin-bottom: 4px;
+      border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
+    }
+
+    /* The page's own mode toggle: the app chooses the mode on the canvas. */
+    #mode-toggle button {
+      font-size: 13px; color: #444; padding: 7px 10px; margin: 0 5px 10px 0;
+      border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer;
+    }
+    #mode-toggle button.selected {
+      border-color: #2b6cb0; background: #eaf2fb; color: #1a4e85; font-weight: 600;
+    }
+
+    /* "inactive" only dims — the rows stay visible and editable in shape mode */
+    .cnb-cpe-engine-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; min-height: 26px; font-size: 12px; color: #555; }
+    .cnb-cpe-engine-label { width: 150px; flex: none; }
+    .cnb-cpe-engine-row input[type="text"], .cnb-cpe-engine-row input[type="number"] {
+      font: inherit; font-size: 12px; padding: 3px 6px; width: 80px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .cnb-cpe-badge { font-size: 10px; color: #999; font-style: italic; }
+
+    .cnb-cpe-validation { margin-top: 14px; font-size: 12px; line-height: 1.6; }
+    .cnb-cpe-valid { color: #2e7d32; }
+    .cnb-cpe-error { color: #c62828; }
+    .cnb-cpe-warning { color: #b45309; }
+
+    /* ── Preview (Module 10 rows + repeat legend) ── */
+    .cnb-cpe-preview-note { font-size: 12px; color: #555; margin-bottom: 8px; max-width: 900px; }
+    .cnb-cpe-repeat-legend {
+      border: 1px solid #eee; border-radius: 6px; background: #fcfcfc;
+      padding: 8px 10px; margin-bottom: 10px; display: inline-block;
+    }
+    .cnb-cpe-repeat-item { font-size: 12px; color: #555; margin: 2px 0; }
+    .cnb-duration-caption { font-size: 13px; margin: 10px 0 2px; }
+    #lilypond-repeat-field { font-size: 12px; color: #555; margin-bottom: 8px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>CNB Common Properties Editor — Module 15 Visual Test</h1>
+  <p>
+    Edit the global duration/representation settings (plan §4.8) and the
+    LilyPond engine block (plan §4.10). The editor draws no control for the
+    representation mode, which the app chooses on the staff canvas (session
+    36); this page's own toggle sets it through the editor's setState, and it
+    drives
+    the Module 10 (Card Collection) preview below: "shape" renders one
+    captioned row per duration definition; "repeat" keeps the rows, whose cards
+    draw each duration's repeated heads as the engine engraves them, plus a
+    legend of the counts. The live panels show the emitted
+    <code>config.durations</code> / <code>config.engine</code> slices, the
+    exporter's Section B (emit-if-changed), and the <code>repeat</code> field
+    Section C will carry (LY spec §6.1).
+  </p>
+
+  <div class="card">
+    <h2>Representation mode (this page's toggle)</h2>
+    <div id="mode-toggle">
+      <button type="button" data-mode="shape">shape</button>
+      <button type="button" data-mode="repeat">repeat</button>
+    </div>
+    <h2>Common properties editor</h2>
+    <div id="editor-host"></div>
+  </div>
+
+  <div class="card">
+    <h2>Live config slices</h2>
+    <pre id="config-json"></pre>
+    <h2 style="margin-top:16px;">LilyPond Section B (Module 11, emit-if-changed)</h2>
+    <div id="lilypond-repeat-field"></div>
+    <pre id="section-b"></pre>
+  </div>
+
+  <div class="card" style="max-width: none;">
+    <h2>Preview (Module 10 Card Collection)</h2>
+    <div id="preview-host"></div>
+  </div>
+
+  <script type="module">
+    import { CNBCommonPropsEditor } from "../ui/common-props-editor.js";
+    import { CNBConfig } from "../src/cnb-config.js";
+    import { CNBLilypond } from "../src/cnb-lilypond.js";
+
+    const config = CNBConfig.createDefault();
+
+    // Colour rules so the preview noteheads are colored (visual only —
+    // Module 15 does not touch the notehead rules).
+    ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"].forEach((hex, i) => config.noteheadRules.push({
+      name: "Colour " + hex, priority: 2 + i,
+      match: { pitchClasses: [i, i + 4, i + 8], durations: "all", keys: "all" }, apply: { color: hex },
+    }));
+
+    const PREVIEW_PCS = [0, 2, 4, 5, 7, 9, 11];
+
+    function refresh(slices) {
+      config.durations = slices.durations;
+      config.engine = slices.engine;
+
+      document.getElementById("config-json").textContent = JSON.stringify(
+        { durations: config.durations, engine: config.engine }, null, 2);
+
+      document.getElementById("section-b").textContent =
+        CNBLilypond.sectionB(config);
+      const sectionC = CNBLilypond.sectionC(config);
+      document.getElementById("lilypond-repeat-field").textContent =
+        "Section C repeat field: " +
+        (sectionC.includes("(repeat     . #t)") ? "(repeat . #t)" : "(repeat . #f)");
+
+      for (const b of document.querySelectorAll("#mode-toggle button")) {
+        b.classList.toggle("selected", b.dataset.mode === config.durations.representationMode);
+      }
+
+      const host = document.getElementById("preview-host");
+      host.textContent = "";
+      CNBCommonPropsEditor.renderPreview(host, config, { pitchClasses: PREVIEW_PCS });
+    }
+
+    const handle = CNBCommonPropsEditor.render(
+      document.getElementById("editor-host"),
+      { config, onChange: (slices) => refresh(slices) }
+    );
+    for (const b of document.querySelectorAll("#mode-toggle button")) {
+      b.onclick = () => handle.setState({ representationMode: b.dataset.mode });
+    }
+    refresh({ durations: handle.getDurations(), engine: handle.getEngine() });
+  </script>
+</body>
+</html>

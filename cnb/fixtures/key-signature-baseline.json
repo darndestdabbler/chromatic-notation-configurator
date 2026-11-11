@@ -1,0 +1,446 @@
+{
+  "description": "Pre-designer canvas key-signature baseline (sha256 + length of the stub-DOM JSON of CNBCollection.render at crotchet, keys and the signature on, one key defined), per fixture and gallery file in four keys, captured in session 48 before the key-signature designer's settings (docs/planning/key-signature-designer-design.md), so their defaults are proved to draw today's signature. Regenerate only with captureSignatureBaseline() in cnb/tests/cnb-key-signature-tests.js, and only when an intentional change to how a signature at its defaults is drawn is approved.",
+  "capturedAt": "e83d251",
+  "probes": [
+    {
+      "id": "default · C major",
+      "sha256": "5ca8b5190a67a24a83fcbe5b5d3e61a3ce8a270d5be9a86723abbbae254a35c6",
+      "length": 48136
+    },
+    {
+      "id": "default · A minor",
+      "sha256": "9eefa02ce3b530ef27b9ba9712a1f521fa58e089e1eb3ae800bc9dfb2c06c726",
+      "length": 47970
+    },
+    {
+      "id": "default · D major",
+      "sha256": "d8119537a09d1333cb467f64d569a344d4cd367d5004441c8721787c62998b02",
+      "length": 48964
+    },
+    {
+      "id": "default · E♭ major",
+      "sha256": "997eea7bf43085d7587120d6bcf598487c951dfd92c0cb14ea51cc70d8e031f2",
+      "length": 49451
+    },
+    {
+      "id": "kite-4-369-config.json · C major",
+      "sha256": "3115080f273a29d0d026bb5e00079e6d24e291e00a5a17738bbc9bce93e141b4",
+      "length": 36340
+    },
+    {
+      "id": "kite-4-369-config.json · A minor",
+      "sha256": "4234e371018c114e9dc04d2151f78022328dd7eb41bb4d172c042e17d8ac57dc",
+      "length": 36277
+    },
+    {
+      "id": "kite-4-369-config.json · D major",
+      "sha256": "cbb3071340748bcc423e2daf155c5d8a00bbdb9b97ce6d5701c31c5a4d621794",
+      "length": 36350
+    },
+    {
+      "id": "kite-4-369-config.json · E♭ major",
+      "sha256": "deda1abcfe9c37ac02e4cba3362151ec7fc80de9642421a5e1c50cd59445b73a",
+      "length": 36132
+    },
+    {
+      "id": "45deg-369-config.json · C major",
+      "sha256": "bcb142e56513e440e0105d0555f29a42beddf6ba0f0d41de8107b6f3cc4b7433",
+      "length": 46868
+    },
+    {
+      "id": "45deg-369-config.json · A minor",
+      "sha256": "0b4da82e863e3d7dbb45b856436876bdb4f0ccf2fa0e945d2f7cdd7f10c52d70",
+      "length": 47287
+    },
+    {
+      "id": "45deg-369-config.json · D major",
+      "sha256": "a9314e9b7f4b06f4a094d639a533c2c3d9eeef76e9e15d0831115f4a7ea399b2",
+      "length": 46870
+    },
+    {
+      "id": "45deg-369-config.json · E♭ major",
+      "sha256": "6b59e5fdc99bceb65a8fa9473fef95df5c1297e78e38de9df48a3fe6ec6b494c",
+      "length": 46870
+    },
+    {
+      "id": "sized-config.json · C major",
+      "sha256": "bed739fc682116a403ce90eab61df0e6525a6bf08b11c7fb2a8d5aac15fbc1fe",
+      "length": 48361
+    },
+    {
+      "id": "sized-config.json · A minor",
+      "sha256": "7d3a200701508a906993e8ede7b4d4ec53865af0deb3dd7ecd2ba62e45e47b64",
+      "length": 48174
+    },
+    {
+      "id": "sized-config.json · D major",
+      "sha256": "9421e00929f9b7309b4af62802cea6cebb52bedba120ba1210e64a165ce0f321",
+      "length": 49223
+    },
+    {
+      "id": "sized-config.json · E♭ major",
+      "sha256": "e251b3e366453efbd189500089770c49ab322ea8bd4aeb2f9a19aff8b34b06cf",
+      "length": 49800
+    },
+    {
+      "id": "gallery/0-5-7-notation.json · C major",
+      "sha256": "88e3acbdb5493d1441f651f9dadfe7969c0655d00fb1f0d8f82d3be00d199913",
+      "length": 45105
+    },
+    {
+      "id": "gallery/0-5-7-notation.json · A minor",
+      "sha256": "e35fca77ec8937d89014393c5ff9d46b7dcb900641c0fca4a46a3576ff50cc98",
+      "length": 45277
+    },
+    {
+      "id": "gallery/0-5-7-notation.json · D major",
+      "sha256": "eefdbbe812a5ac0c7047e7c832f2e80e6af8b21f94bcbb89d572252011bdd6d7",
+      "length": 45277
+    },
+    {
+      "id": "gallery/0-5-7-notation.json · E♭ major",
+      "sha256": "02c5f4267d8b83d945a104d3ea9a4c1e59bf0458236824d98fd73213ca99f104",
+      "length": 44602
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json · C major",
+      "sha256": "8f0f9705706c06aa06ad7c75f02a8ffeaeebdc9871147f0c1665f4acf23ecac2",
+      "length": 50895
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json · A minor",
+      "sha256": "eea36aa8c8389a48f7b0c96bf2a3b0ea1a966f65945b2958c17b990fd47f76a2",
+      "length": 50393
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json · D major",
+      "sha256": "f7c378e1e2078eafa817116e6d4b7702dc89b3ec564c0d19abddeab838bde84d",
+      "length": 51410
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json · E♭ major",
+      "sha256": "d401b6f98221d22b5a619c828bd434aa1f896ed8f2a7656f51e7563ab3abc93c",
+      "length": 50903
+    },
+    {
+      "id": "gallery/ambros-system.json · C major",
+      "sha256": "79f7e1c2c544b6232b0ed2f086ee00eef0edbb01720df8985589134c46c5e0d1",
+      "length": 44558
+    },
+    {
+      "id": "gallery/ambros-system.json · A minor",
+      "sha256": "63ab0ba9f399258ae42684984b0f7b16bbf712979d21ffa1045b5764ee6ce432",
+      "length": 44560
+    },
+    {
+      "id": "gallery/ambros-system.json · D major",
+      "sha256": "7f8c60e860cc3e1f022e629ca6e03b708be81102290f4d703139a676b535cec1",
+      "length": 44560
+    },
+    {
+      "id": "gallery/ambros-system.json · E♭ major",
+      "sha256": "f378ea377d1e55cebd0626239d53e053e07508392047fc3e033fd707ae2842b6",
+      "length": 44560
+    },
+    {
+      "id": "gallery/avique-notation.json · C major",
+      "sha256": "22b616dbd56c275b9ce3e86ed58a9c93dd1f1aa1d24f74d389ab3834d43277f0",
+      "length": 44907
+    },
+    {
+      "id": "gallery/avique-notation.json · A minor",
+      "sha256": "3335eb10f28b25e4e700018da82da547b399222eb10ae1231dc6780f017acb12",
+      "length": 44909
+    },
+    {
+      "id": "gallery/avique-notation.json · D major",
+      "sha256": "adda7b546ebd0284573d4993a06b71e151e84520dd146c986ae4d37535dd3c66",
+      "length": 45077
+    },
+    {
+      "id": "gallery/avique-notation.json · E♭ major",
+      "sha256": "753b60077cdc9f83580dde54c98147c030fa8d14ab5e4956969a1a302b7af0a2",
+      "length": 44909
+    },
+    {
+      "id": "gallery/axlomafi.json · C major",
+      "sha256": "be0c94774142c948cab54b5577e79e14de6d2443fd70128b0f77e489081d7e54",
+      "length": 44375
+    },
+    {
+      "id": "gallery/axlomafi.json · A minor",
+      "sha256": "f164abea7b393652d3e199c72d4e7221869cda10d8d8677808da06f1369de253",
+      "length": 44215
+    },
+    {
+      "id": "gallery/axlomafi.json · D major",
+      "sha256": "a394ac65cfc35ab1a06f7361ac13d944590da7f3c808f5e272e3f56090c5767d",
+      "length": 44210
+    },
+    {
+      "id": "gallery/axlomafi.json · E♭ major",
+      "sha256": "016348fbc160a3f69b69ba706e6950922bbdb22a1b07a6fc34a6df6600aaad29",
+      "length": 44210
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json · C major",
+      "sha256": "5e2aa13d210321224be92c197f9eda461e7979b08498248cc6c58725cf5e06e7",
+      "length": 50936
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json · A minor",
+      "sha256": "b434f5fc474b7c5e8cc36fb8b0cce153daf3c07f380a14c996586bfbfdb7b02d",
+      "length": 50441
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json · D major",
+      "sha256": "c9a6cdcb3e13a24f9abf547a84778f8520b589ee1241a1fe38b451b1984d668c",
+      "length": 50769
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json · E♭ major",
+      "sha256": "677fa063ad259dac991209cc51a52b85daa967cdc7ed3af3ece20132656b03a8",
+      "length": 50769
+    },
+    {
+      "id": "gallery/clairnote-dn.json · C major",
+      "sha256": "d5aa7ce4441366cab694802f5e5f89a8de1b79f58c69f02dcaa946caa58fb00c",
+      "length": 49658
+    },
+    {
+      "id": "gallery/clairnote-dn.json · A minor",
+      "sha256": "6fd3d08a5f35cbfc428235b408e5e1c454aa5700935db27d3ad850a03de3b499",
+      "length": 49820
+    },
+    {
+      "id": "gallery/clairnote-dn.json · D major",
+      "sha256": "1f939bea0e1ce61ce07c5b524fba23f512284035367c42ae0ea19f07fb66b8c1",
+      "length": 49492
+    },
+    {
+      "id": "gallery/clairnote-dn.json · E♭ major",
+      "sha256": "7d7ab50ffe7f9b4e7034e18867477bef8a71c65fbb7ee6cc703dfa221a80465f",
+      "length": 49491
+    },
+    {
+      "id": "gallery/clairnote-sn.json · C major",
+      "sha256": "add839368c745d4b174c0c33037a149851660e14ec1fe214b722882f1879f1dd",
+      "length": 46106
+    },
+    {
+      "id": "gallery/clairnote-sn.json · A minor",
+      "sha256": "124f6b94290c43ad65128bd16b61383543755fc60484e6c48a0f8d355fecdaae",
+      "length": 45939
+    },
+    {
+      "id": "gallery/clairnote-sn.json · D major",
+      "sha256": "70912ba007faf54c3cd9723bc08f303bb2c2d0c3981896b5ac95709085aa8a24",
+      "length": 46452
+    },
+    {
+      "id": "gallery/clairnote-sn.json · E♭ major",
+      "sha256": "5e117ce5749c545bccafa390a87a680692cca2c3fbd3326984c7e72e6829c515",
+      "length": 46111
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json · C major",
+      "sha256": "4157fbf317affc819c61f18033d6f9d808c85e4a1c718e0fafd5059b1283fb7e",
+      "length": 43540
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json · A minor",
+      "sha256": "b85d1d99c9f1114bc84a12fa5d72c79624e958b6d4cdb4e732f1a236f9f2cc96",
+      "length": 43347
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json · D major",
+      "sha256": "295385e691dc25d68d3893d9e955d9689fd7f0ad1dc6d2c7cfa18645b6e5c1fe",
+      "length": 44110
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json · E♭ major",
+      "sha256": "a02efef768ca0b8ff0eeaee7fba88f013949d73e262d7adfcd0c060b41bbdfd3",
+      "length": 44678
+    },
+    {
+      "id": "gallery/express-stave-original.json · C major",
+      "sha256": "256945fa0c4c4c68a53322e7f4ac945071674daab8addb4ae487956bb163145f",
+      "length": 51640
+    },
+    {
+      "id": "gallery/express-stave-original.json · A minor",
+      "sha256": "0ddd67db342c8f798d4a7c2fb011bb32a6cae10f3af06d527f5b1993a5b657d2",
+      "length": 51642
+    },
+    {
+      "id": "gallery/express-stave-original.json · D major",
+      "sha256": "6266261513a84cb30205934f0639b8eb4a97f9d7fb6c811adefabd6b3a3a65c2",
+      "length": 50986
+    },
+    {
+      "id": "gallery/express-stave-original.json · E♭ major",
+      "sha256": "6d0e1e8cd5852be0c87d79f31567576e8847c80126529c550af6191cbc2db559",
+      "length": 50330
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json · C major",
+      "sha256": "a99ded653a9eee518bf7081959d81b9dab93de86adda93adb52cb0f7bf2a2988",
+      "length": 47048
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json · A minor",
+      "sha256": "6dfcc07f929e1116d50f95e81d56cdefbe8e26792c3bd2dcf0da560d5a5809b6",
+      "length": 47050
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json · D major",
+      "sha256": "0dd597a7ddf2c888dba67f62c0cec765def7e905ba8858f2e9010df2c22cb37b",
+      "length": 47706
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json · E♭ major",
+      "sha256": "5f07615c2a26df137d8c5ffa7e4707231c54a2ce34d198b97d38e900a168b293",
+      "length": 48362
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json · C major",
+      "sha256": "6a1491362eaa9e214fecc24d983d5c03bc27f6aaa53ec2c4b9699d4eba71e80e",
+      "length": 38122
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json · A minor",
+      "sha256": "df7baddeaf722ceeba04d14a714c2e2832041ba463b78a839055f057318d2bec",
+      "length": 37915
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json · D major",
+      "sha256": "3fc9a0aa36010282d02447e085488b3b69000a4f1b04a6cdeb1e9c5b96cd8a50",
+      "length": 38206
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json · E♭ major",
+      "sha256": "f335d3717ec442d72954987a84b5dca369aaa2d549676d8f796fdb29aa81923b",
+      "length": 37914
+    },
+    {
+      "id": "gallery/lautus-notation.json · C major",
+      "sha256": "24e605041fe3cf49cd0a7a3c36a77b4e97b71247c6502a717b3dc242a17bcf44",
+      "length": 44505
+    },
+    {
+      "id": "gallery/lautus-notation.json · A minor",
+      "sha256": "5dc5f9f566215a0e7d46de361f7382426eaf1383580ad3279127b2f0f7734a2d",
+      "length": 44507
+    },
+    {
+      "id": "gallery/lautus-notation.json · D major",
+      "sha256": "91d9de1e35541744152a7370025a3377a91d5ce68b904c7af30fae8f11886409",
+      "length": 44507
+    },
+    {
+      "id": "gallery/lautus-notation.json · E♭ major",
+      "sha256": "68530bc2683ce653ae5a380c459fd8df8b8b389862bb9b809bd0e7d81e97b0e2",
+      "length": 44507
+    },
+    {
+      "id": "gallery/notagraph.json · C major",
+      "sha256": "79f7e1c2c544b6232b0ed2f086ee00eef0edbb01720df8985589134c46c5e0d1",
+      "length": 44558
+    },
+    {
+      "id": "gallery/notagraph.json · A minor",
+      "sha256": "63ab0ba9f399258ae42684984b0f7b16bbf712979d21ffa1045b5764ee6ce432",
+      "length": 44560
+    },
+    {
+      "id": "gallery/notagraph.json · D major",
+      "sha256": "7f8c60e860cc3e1f022e629ca6e03b708be81102290f4d703139a676b535cec1",
+      "length": 44560
+    },
+    {
+      "id": "gallery/notagraph.json · E♭ major",
+      "sha256": "f378ea377d1e55cebd0626239d53e053e07508392047fc3e033fd707ae2842b6",
+      "length": 44560
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json · C major",
+      "sha256": "e837e6261706a8f933636421f2da2759649aec157db6538b7a35d4ac0ddcb7ce",
+      "length": 45747
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json · A minor",
+      "sha256": "34bbba30e0cd7c9ec5909784b811ba7a913796c3d8505b5f89051b7fcc795569",
+      "length": 45539
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json · D major",
+      "sha256": "ff1f5a52fe4734c76581862db329daed511f44a69251c376a8a03b7db5dc575a",
+      "length": 45751
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json · E♭ major",
+      "sha256": "b5fc999811e6a5b938b21659ff527e32272156b619107da96e5ecfca2732050d",
+      "length": 45539
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json · C major",
+      "sha256": "7beb86c5813f0e973140de6f1fc0f233e3ea36605739d82448e3b3ebf2ed7359",
+      "length": 43880
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json · A minor",
+      "sha256": "46bf143bfc454f005f20a27223a04db2389760707355fed2c788e42466939019",
+      "length": 43925
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json · D major",
+      "sha256": "1cb9101abdac68054c946bdb98cd9a46f4cd149d7f3e191890315084446983b3",
+      "length": 43966
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json · E♭ major",
+      "sha256": "bd8656e9b8b463e800c939772809be761d7197b8ae6d3c6dc3dcc82b4cd61568",
+      "length": 43921
+    },
+    {
+      "id": "gallery/trilinear-notation.json · C major",
+      "sha256": "a4c809cc61e9edcf227d4fee21cceea7bebf34c63714a8518a79f802cf128e3d",
+      "length": 38121
+    },
+    {
+      "id": "gallery/trilinear-notation.json · A minor",
+      "sha256": "61c8e17c2f00af94e1486a05ab4218d093c0c430b6601720789b11f4f4aef35b",
+      "length": 37915
+    },
+    {
+      "id": "gallery/trilinear-notation.json · D major",
+      "sha256": "1f9009f6e73dd1310ef748d5367eb1fb55e02c212c38177b092db17b722696eb",
+      "length": 38170
+    },
+    {
+      "id": "gallery/trilinear-notation.json · E♭ major",
+      "sha256": "d801a3fc89f0541cb621c3136141206d9c1e12d436859c053314dc023c54c7ca",
+      "length": 37914
+    },
+    {
+      "id": "gallery/twinline-compact.json · C major",
+      "sha256": "e53b2326521fd58f6e8d7ad5eb0c840899bc3c8ad3ca5a9754678deb5dd5160a",
+      "length": 48873
+    },
+    {
+      "id": "gallery/twinline-compact.json · A minor",
+      "sha256": "1b718e584754986b335a5170b1db3942d046d79d1be242cf4286896359e12333",
+      "length": 48705
+    },
+    {
+      "id": "gallery/twinline-compact.json · D major",
+      "sha256": "98c2dc0723e942db65db7861b530584cc8657d179e5ca0daabf53827a83aab7f",
+      "length": 49358
+    },
+    {
+      "id": "gallery/twinline-compact.json · E♭ major",
+      "sha256": "ad0b4dddfe572aabcf4a2926e3d13f6efd83814b742a5550b856b1d19c3e7f7c",
+      "length": 49876
+    }
+  ]
+}
