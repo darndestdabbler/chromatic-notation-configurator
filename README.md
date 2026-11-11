@@ -207,7 +207,10 @@ conventional notehead on the 4-8 staff.
   A new shape keeps the notehead's height, at the new shape's proportions.
   The section lists the rules the looks are kept as.
 - **Key signature** — the signature, drawn for the key picked on the
-  staff: which **Notes** (the whole scale, or the tonic and the half steps,
+  staff. **Draw** the key's notes, or **Sharps or flats**: the traditional
+  signature, LilyPond's own sharps or flats in the order F C G D A E B (or
+  B E A D G C F), each in its own column at the pitch it makes, with only
+  the Place below. For the key's notes: which **Notes** (the whole scale, or the tonic and the half steps,
   with or without the tonic an octave up); the **Stacks** (stacked sevenths,
   odd semitones left and even right, a new stack at each change of odd and
   even, or a zigzag), which way they go, and the gold stem between them, its
@@ -417,7 +420,9 @@ and with an explicit tonic octave. A signature that is not the scale stack
 (other notes, stacks, looks or line sets) exports as a table of its marks
 for the 105 keys the staff's key picker offers (LY export spec 1.3.15
 §5.6a), which needs engine 1.4.0 or later; a key outside it engraves no
-signature.
+signature. Sharps or flats export through the same table (LY export spec
+1.3.17), drawn by the engine from its music font in the optical size it
+uses for the staff, as the preview draws them.
 
 Notehead height and width are not on this list either: they do export. A rule's
 size (`apply.heightSemis` / `apply.widthSemis`, in semitones; the rule

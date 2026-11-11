@@ -21,6 +21,68 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Sharps or flats — 2026-11-11 (session 51)
+
+The key signature's second kind, the traditional accidentals (design
+`docs/planning/key-signature-designer-design.md` §5).
+
+- **Draw: The key's notes, or Sharps or flats.** A row under Show the key
+  signature writes `keys.keySignature.style` (`"notehead-chords"` or
+  `"accidentals"`). Under sharps or flats the Notes, Stacks and Looks rows
+  hide, their values kept, and Place stays.
+- **The signs.** The key's sharps in the order F C G D A E B, or its flats
+  in the order B E A D G C F, each in its own column at the pitch it makes
+  (F♯'s sign at F♯), in the octave the place gives that note in the scale;
+  on every line set each copy starts again from the first column. They are
+  LilyPond's own, Emmentaler's sharp and flat, black, with no ledgers and
+  no gold stems. C major draws nothing.
+- **The optical size, found by the round trip.** LilyPond draws the staff
+  with the Emmentaler size whose design size is nearest 20 pt × the staff's
+  magnification, emmentaler-26 at the engine's default 7/4. The flat
+  differs between sizes (0.92 staff spaces wide in emmentaler-20, 0.9037 in
+  emmentaler-26), so the preview draws each sign from the size LilyPond
+  uses for `engine.defaultMagnify` (`cnb/src/cnb-accidental-glyphs.js`,
+  the eight sizes' outlines and LilyPond's own boxes).
+- **The export** writes each sign through the mark table as
+  `(semi column sharp)` or `(semi column flat)` (LY export spec 1.3.17); the
+  five export baselines are byte-identical. Engine round trips
+  (`cnb/tests/cnb-lilypond-tests.js`, `cnb/tests/cnb-key-signature-tests.js`)
+  hold every sign's kind, height, box and the signature's ink to 0.001 staff
+  spaces, for the default config and Kite 4-369, in the middle, on the bottom
+  line set and on every line set, in C, D and B♭ major, at magnifications 1,
+  4/5 and 5/2, and the spacing with and without a clef to 0.005.
+
+**Found along the way.** The engine magnifies every staff by
+`cnb:default-magnify` as it stands when the engine is included
+(`cnb/score-defaults.ly`), before the export sets it, so a plain score
+engraves every config at 7/4 whatever its `engine.defaultMagnify`; only a
+staff that magnifies itself with `\magnifyStaff #cnb:default-magnify` takes
+the config's. This predates the session and holds for every glyph; it is
+recorded in LY spec §5.6a and needs a session of its own. The magnification
+round trips of session 49 compared in staff spaces, so they passed
+regardless; session 51's magnify their staff. And the Place hint ("the tonic
+and the half steps alone keep it less busy") still shows under sharps or
+flats, where that setting is hidden: wording for session 52.
+
+**What the UAT checks.** `uat-key-signature.mjs` keeps its flow and now
+chooses Sharps or flats, checks the rows hide and Place stays, and for C, D
+and B♭ major, in the middle, on the bottom line set and on every line set,
+that the canvas draws exactly the signs the Node-side renderer gives for the
+live config (outline, transform and black fill; none for C, two or four for
+D and B♭), with no noteheads, ledgers or gold stems; that the export carries
+D major's `(6 0 sharp) (13 1 sharp)` and B♭ major's flats; and that choosing
+the key's notes again brings back the rows and the settings as they were:
+**pass, 80/80 checks**. `uat-app-layout.mjs`: **pass, 79/79 checks**.
+
+**The screenshots, judged.** `uat-051-accidentals-1440.png` and
+`uat-051-accidentals-1280.png` (in the UAT's screenshot folder) show D
+major's sharps on every line set and the panel's Draw and Place rows, at
+both widths with no sideways scroll. They match the mock-ups' section 9
+(`docs/planning/key-signature-mockups/`, "D major · both sets"): F♯ then C♯,
+each in its own column, the two columns repeated on each line set, the signs
+taller than a staff space and overlapping in height but apart in their
+columns.
+
 ## The Key signature panel — 2026-11-11 (session 50)
 
 The key-signature designer's panel (design

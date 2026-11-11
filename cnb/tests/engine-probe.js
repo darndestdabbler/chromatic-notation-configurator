@@ -550,12 +550,15 @@ export function measureKeySignature(engine, ly, key) {
  * path with its cutout as a further subpath, a false hollow a white path
  * over it) reported with its exact extent, as LilyPond measures the path,
  * its subpaths and its colour, and each line (a bar, or a ledger) with its
- * ends, thickness and colour. Everything is in the staff's own staff spaces,
+ * ends, thickness and colour, and each font glyph (a sharp or a flat,
+ * session 51) with its name, its origin and its extent as LilyPond measures
+ * the glyph. Everything is in the staff's own staff spaces,
  * whatever the magnification, x from the signature's reference point and y
  * from the staff's middle line.
  *
  * Returns { signatures: [{ x: [left, right], paths: [{ x, y, subpaths,
- * color }], lines: [{ x1, y1, x2, y2, thickness, color }] }], warnings },
+ * color }], lines: [{ x1, y1, x2, y2, thickness, color }], glyphs: [{ name,
+ * origin: [x, y], x, y }] }], warnings },
  * extents as [min, max], colours as [r, g, b] (0–1), and LilyPond's warnings
  * that name cnb:keysig-marks; or { error } with LilyPond's output when it
  * fails.
@@ -586,6 +589,12 @@ export function measureKeySignatureMarks(engine, ly, music) {
             (list (list 'path (+ dx (* sx (car x))) (+ dx (* sx (cdr x)))
                               (+ dy (* sy (car y))) (+ dy (* sy (cdr y)))
                               (length (filter (lambda (c) (eq? c 'moveto)) cmds)) color))))
+         ((eq? (car e) 'named-glyph)
+          (let* ((stil (ly:font-get-glyph (cadr e) (caddr e)))
+                 (x (ly:stencil-extent stil X))
+                 (y (ly:stencil-extent stil Y)))
+            (list (list 'glyph (caddr e) dx (+ dx (* sx (car x))) (+ dx (* sx (cdr x)))
+                                         dy (+ dy (* sy (car y))) (+ dy (* sy (cdr y))) color))))
          ((eq? (car e) 'draw-line)
           (let ((a (cdr e)))
             (list (list 'line (+ dx (* sx (list-ref a 1))) (+ dy (* sy (list-ref a 2)))
@@ -608,15 +617,20 @@ export function measureKeySignatureMarks(engine, ly, music) {
           (for-each
             (lambda (leaf)
               (let ((c (or (last leaf) '(0 0 0))))
-                (if (eq? (car leaf) 'path)
+                (cond
+                  ((eq? (car leaf) 'glyph)
+                    (format #t "CNB-GLYPH ~a ~a ~a ~a ~a ~a ~a\\n" (list-ref leaf 1)
+                      (s (list-ref leaf 2)) (s (list-ref leaf 3)) (s (list-ref leaf 4))
+                      (s (+ y0 (list-ref leaf 5))) (s (+ y0 (list-ref leaf 6))) (s (+ y0 (list-ref leaf 7)))))
+                  ((eq? (car leaf) 'path)
                     (format #t "CNB-PATH ~a ~a ~a ~a ~a ~a ~a ~a\\n"
                       (s (list-ref leaf 1)) (s (list-ref leaf 2))
                       (s (+ y0 (list-ref leaf 3))) (s (+ y0 (list-ref leaf 4))) (list-ref leaf 5)
-                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c)))
-                    (format #t "CNB-LINE ~a ~a ~a ~a ~a ~a ~a ~a\\n"
+                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c))))
+                  (else (format #t "CNB-LINE ~a ~a ~a ~a ~a ~a ~a ~a\\n"
                       (s (list-ref leaf 1)) (s (+ y0 (list-ref leaf 2)))
                       (s (list-ref leaf 3)) (s (+ y0 (list-ref leaf 4))) (s (list-ref leaf 5))
-                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c))))))
+                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c)))))))
             (cnb-probe:leaves (ly:stencil-expr stil) 1 1 0 0 #f))))))
   ${music}
 }
@@ -629,7 +643,10 @@ export function measureKeySignatureMarks(engine, ly, music) {
     for (const line of output.split(/\r?\n/)) {
       let m;
       if ((m = /^CNB-SIG (\S+) (\S+)$/.exec(line))) {
-        signatures.push({ x: [schemeNumber(m[1]), schemeNumber(m[2])], paths: [], lines: [] });
+        signatures.push({ x: [schemeNumber(m[1]), schemeNumber(m[2])], paths: [], lines: [], glyphs: [] });
+      } else if ((m = /^CNB-GLYPH (\S+)((?: \S+){6})$/.exec(line)) && signatures.length > 0) {
+        const v = n(m[2]);
+        signatures[signatures.length - 1].glyphs.push({ name: m[1], origin: [v[0], v[3]], x: [v[1], v[2]], y: [v[4], v[5]] });
       } else if ((m = /^CNB-PATH((?: \S+){8})$/.exec(line)) && signatures.length > 0) {
         const v = n(m[1]);
         signatures[signatures.length - 1].paths.push({ x: [v[0], v[1]], y: [v[2], v[3]], subpaths: v[4], color: v.slice(5) });

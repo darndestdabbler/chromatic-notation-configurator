@@ -14,7 +14,10 @@
  * signature → select the displayed key in the preview → the panel of the
  * key-signature design §7 (session 50: each notes, stacks, gold-stem, looks
  * and place choice, the canvas checked against CNBKeySignature after each,
- * and the overlap note) → clef composition → save the config (real
+ * and the overlap note) → Sharps or flats (session 51: C, D and B♭ major in
+ * the middle, on the bottom and on every line set, each checked against
+ * CNBKeySignature, the export's signs, and the key's notes restored) → clef
+ * composition → save the config (real
  * download) and load it back → export a .ly file (real download, the mark
  * table) → the Clairnote SN gallery file's signature → screenshots at 1440
  * and 1280 px — with Node-side parity checks run in
@@ -53,6 +56,7 @@ import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { useCanvasSize, useDownloads, canvasConfig, openSection, setField } from "./app-page.mjs";
+import { withSvgStub } from "../tests/svg-stub.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -488,11 +492,11 @@ async function canvasDraws(key, label) {
 const canvasStems = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature-separator",
   els => els.map(e => ({ stroke: e.getAttribute("stroke"), width: parseFloat(e.getAttribute("stroke-width")) })));
 
-check("PANEL: the signature is set in a designer's words (Show the key signature; Notes, Stacks, Looks and Place), the key definitions below it under Keys for notehead rules",
+check("PANEL: the signature is set in a designer's words (Show the key signature; Draw, Notes, Stacks, Looks and Place), the key definitions below it under Keys for notehead rules",
   await page.evaluate(() => {
     const labels = [...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")].map(e => e.textContent);
     const sections = [...document.querySelectorAll(".cnb-key-signature-editor > .cnb-kse-section")];
-    return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Looks", "Place"]) &&
+    return JSON.stringify(labels) === JSON.stringify(["Draw", "Notes", "Stacks", "Looks", "Place"]) &&
       document.querySelector(".cnb-kse-sig-enable").textContent === "Show the key signature" &&
       sections[0].classList.contains("cnb-kse-signature") &&
       sections[1].querySelector(".cnb-kse-title").textContent === "Keys for notehead rules";
@@ -651,6 +655,84 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 }
 await page.setViewportSize({ width: 1600, height: 1800 });
 await page.waitForTimeout(150);
+
+// ── STEP 5b: sharps or flats (session 51, key-signature design §5) ─────────
+// Draw: Sharps or flats hides the scale-note rows and keeps Place; for C, a
+// sharp key and a flat key, in the middle, on the bottom line set and on
+// every line set, the canvas draws exactly the signs the Node-side renderer
+// draws for the live config; the export carries them; and the key's notes
+// come back with the settings they had.
+const BF_MAJOR_KEY = { tonic: 10, mode: "major", spelling: "B♭" };
+/** The canvas's signs: each path's class, transform and outline. */
+const canvasSigns = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature > path.cnb-key-signature-sign",
+  els => els.map(e => ({ transform: e.getAttribute("transform"), d: e.getAttribute("d"), fill: e.getAttribute("fill") })));
+/** The Node-side renderer's signs for the live config and a key, on the canvas's grid. */
+function expectedSigns(cfg, key) {
+  const picked = CNBPreviewDisplay.withKey(cfg, key);
+  const shown = drawn(picked.config);
+  return withSvgStub(svg => {
+    const grid = CNBGrid.create(shown, CNBCollection.gridRange(FULL_ROW, shown, ["crotchet"], picked.name));
+    const g = CNBKeySignature.render(svg, grid, shown, picked.name);
+    return (g ? g.children : []).map(p => ({ transform: p.getAttribute("transform"), d: p.getAttribute("d"), fill: p.getAttribute("fill") }));
+  });
+}
+const numbers = (t) => (t.match(/-?[\d.]+(e[-+]?\d+)?/gi) || []).map(Number);
+const signsMatch = (got, want) => got.length === want.length && got.every((s, i) =>
+  s.d === want[i].d && s.fill === want[i].fill &&
+  numbers(s.transform).every((v, j) => close(v, numbers(want[i].transform)[j])));
+
+const before51 = JSON.parse(JSON.stringify((await fullConfig()).keys.keySignature));
+await radio("cnb-kse-style", "accidentals");
+cfg = await fullConfig();
+check("DRAW: Sharps or flats is written as the style \"accidentals\"; the Notes, Stacks and Looks rows hide and Place stays",
+  cfg.keys.keySignature.style === "accidentals" &&
+  await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
+    .map(e => e.textContent)) === JSON.stringify(["Draw", "Place"])));
+for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D major", 2], [BF_MAJOR_KEY, "B♭ major", 2]]) {
+  await pickKey(key.spelling, key.mode);
+  for (const place of ["middle", "bottom-set", "every-set"]) {
+    await radio("cnb-kse-position", place);
+    const live = await fullConfig();
+    const got = await canvasSigns();
+    const want = expectedSigns(live, key);
+    const copies = place === "every-set" ? 2 : 1;
+    check(`DRAW: ${label}, ${place} — ${signs * copies} ${key.spelling === "B♭" ? "flats" : "sharps"}, black, drawn as the Node-side renderer draws them, and no noteheads, ledgers or gold stems`,
+      signsMatch(got, want) && got.length === signs * copies && got.every(s => s.fill === "#000000") &&
+      (await renderedMarks()).length === 0 && (await canvasStems()).length === 0 &&
+      (await page.$$(".cnb-pvd-preview .keysig-col .cnb-ledger-set line, .cnb-pvd-preview .keysig-col .cnb-ledger-set rect")).length === 0,
+      `actual=${JSON.stringify(got.map(s => s.transform))} expected=${JSON.stringify(want.map(s => s.transform))}`);
+  }
+}
+{
+  const ly = CNBLilypond.generate(await fullConfig());
+  const table = ly.slice(ly.indexOf("#(define cnb:keysig-marks"));
+  const marks = table.slice(0, table.indexOf("\n\n"));
+  check("DRAW: the export carries the signs through the mark table — D major's (6 0 sharp) (13 1 sharp) and B♭ major's flats, no heads",
+    ly.includes("cnb:keysig-style 'marks") && /\(marks \(6 0 sharp\)\s+\(13 1 sharp\)/.test(marks) &&
+    /\(-?\d+ 0 flat\)/.test(marks) && !/ head /.test(marks), marks.slice(0, 600));
+}
+// The panel and the canvas with sharps, at the page's two widths.
+await pickKey("D", "major");
+for (const [width, height] of [[1440, 900], [1280, 800]]) {
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-051-accidentals-${width}.png`), fullPage: true });
+}
+await page.setViewportSize({ width: 1600, height: 1800 });
+await page.waitForTimeout(150);
+await radio("cnb-kse-position", "middle");
+await radio("cnb-kse-style", "notehead-chords");
+await pickKey("C", "major");
+{
+  const r = await canvasDraws(C_MAJOR_KEY, "the key's notes again");
+  const after = (await fullConfig()).keys.keySignature;
+  check("DRAW: The key's notes again — the Notes, Stacks and Looks rows return, the settings are as they were, and the canvas draws the noteheads as the Node-side renderer does",
+    JSON.stringify(after) === JSON.stringify(before51) && r.ok && (await canvasSigns()).length === 0 &&
+    await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
+      .map(e => e.textContent)) === JSON.stringify(["Draw", "Notes", "Stacks", "Looks", "Place"])),
+    `${r.detail} before=${JSON.stringify(before51)} after=${JSON.stringify(after)}`);
+}
+cfg = await fullConfig();
 
 // ── STEP 6: clef composition (set-009 gutter, left to right) ────────────────
 await openSection(page, "clef");

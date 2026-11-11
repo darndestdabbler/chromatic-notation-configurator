@@ -62,7 +62,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 48 | Scale notes on the canvas, and the engine's hook planned | no | 2026-11-11 |
 | 49 | Scale notes reach LilyPond | no | 2026-11-11 |
 | 50 | The Key signature panel | no | 2026-11-11 |
-| 51 | Accidentals | — | not declared |
+| 51 | Accidentals | no | 2026-11-11 |
 | 52 | The UI is stable | — | not declared |
 | 53 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
@@ -510,3 +510,13 @@ Give the key-signature designer its panel (design docs/planning/key-signature-de
 - 2026-11-11 — step 'panel-settings': its files: Engine 1.4.1 (engine session 33) landed before this session ran and broke the step's check (the unit suite): a key-signature engine round trip. At the operator's choice (2026-11-11) session 51's item 4 moves here: the scale stack is spaced by its ink, the export gives mark-table marks beyond semitones 0-24 their ledger entries, the round trips hold every signature's ledgers and ink, LY spec 1.3.16, session plan item moved. cnb-checks-wording-tests.js and uat-app-layout.mjs needed no change. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-11 — step 'clairnote-signatures': its files: The Clairnote files' signatures sit on the bottom line set, where G major's lowest mark (semitone -5) fell below the row's grid and was cut off on the canvas; CNBCollection.gridRange now widens to a signature mark beyond the range (only then, so no other file's drawing changes), with a test in cnb-collection-tests.js. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-11 — step 'concert-check': its files: The concert-size engraving showed the one-sided tails meeting the next dot and the balancing slivers printing as specks; at the operator's choice the symbols became slashed dots, symmetric about the dot. Slashed and plain dots differ in width, and the engine sizes each signature ledger from its own head, so the preview now draws each head's ledgers at its own width and spaces by the true ink (cnb-key-signature.js), with a unit test, the spacing and Clairnote round trips updated, and a sentence in LY spec 1.3.16 section 5.6a. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 51 — Accidentals
+
+**Releasable: no.**
+
+Give the key-signature designer its second kind of signature, the traditional accidentals (design docs/planning/key-signature-designer-design.md section 5). keys.keySignature.style gains the value "accidentals": CNBKeySignature.marks then gives a sharp for each sharp of the key in the order F C G D A E B, or a flat for each flat in the order B E A D G C F, and nothing for a key with neither, each sign in its own column, left to right, at the semitone of the note it makes, in the octave the signature's place gives that note in the scale; on every line set each copy's columns start again from the first. Signs are black, have no ledger lines and no gold stems, and the scale-note settings (notes, upper tonic, looks, stacking, direction, gold stem) do not apply, while the place does. The signs are Emmentaler's accidentals.sharp and accidentals.flat (SIL OFL 1.1, its licence already in cnb/assets/fonts/), copied from LilyPond 2.24's emmentaler-20 font at LilyPond's size in staff spaces, placed and spaced as engine 1.4.0 draws them (a sharp's origin at its centre line, a flat's at its bowl's line, X extent centred on its column). The panel gains 'Draw: The key's notes / Sharps or flats', hiding the scale-note rows for sharps or flats. The export writes the signs through the mark table as (semi column sharp) and (semi column flat), and an engine round trip holds C major, a sharp key and a flat key, on the bottom line set and on every line set, to the preview. The key-signature UAT, README, architecture plan, LY spec and docs/uat-status.md follow. No engine work.
+
+**Amended after acceptance:**
+
+- 2026-11-11 — step 'export-accidentals': its files: The first engine round trip showed LilyPond draws the flat from Emmentaler's optical size nearest 20 pt x the staff's magnification (emmentaler-26 at the default 7/4), whose box differs from emmentaler-20's by up to 0.06 staff spaces; the preview needs each design size's sharp and flat, kept in their own data module with tests, so the signs engrave where and as large as the canvas draws them. (claude-code (anthropic, claude-opus-5-5))

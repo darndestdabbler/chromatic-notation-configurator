@@ -230,7 +230,9 @@ function resolveAll(config) {
  * no notehead has.
  */
 function drawnLooks(config) {
-  return [...resolveAll(config), ...markTable(config).flatMap(e => e.sig.marks.map(m => m.mark))];
+  // A sign (session 51) is the engine's own glyph: nothing to register.
+  return [...resolveAll(config),
+    ...markTable(config).flatMap(e => e.sig.marks.filter(m => !m.mark.sign).map(m => m.mark))];
 }
 
 /**
@@ -608,7 +610,8 @@ function ledgerLines(config, axis) {
   // line set beyond the cards' pitches gets the ledgers the canvas draws it.
   const semis = new Set();
   for (let s = PREVIEW_SEMIS.min; s <= PREVIEW_SEMIS.max; s++) semis.add(s);
-  for (const entry of markTable(config)) for (const m of entry.sig.marks) semis.add(m.semi);
+  // A sign has no ledgers (session 51), so it adds no entry.
+  for (const entry of markTable(config)) for (const m of entry.sig.marks) if (!m.mark.sign) semis.add(m.semi);
   const entries = [];
   for (const s of [...semis].sort((a, b) => a - b)) {
     const ledgers = CNBLedgerSet.ledgersFor(config, [s], { minSemi: s - 12, maxSemi: s + 12 }, axis)
@@ -775,8 +778,9 @@ function markTable(config) {
  * alteration and its sorted pitch classes, giving its columns' centres and
  * its bars' x in staff spaces, its bars' ends and its marks' semitones as
  * engine semitones (§5.7's numbering), and each head's registered shape (a
- * sized variant where sized), cutout and colour. A mark whose shape is not
- * defined is left out, as the preview leaves it undrawn.
+ * sized variant where sized), cutout and colour, or a sign, sharp or flat
+ * (session 51, LY spec 1.3.17). A mark whose shape is not defined is left
+ * out, as the preview leaves it undrawn.
  */
 function markTableLines(config, table) {
   const axis = CNBPitchAxis.create(config);
@@ -788,7 +792,7 @@ function markTableLines(config, table) {
     "%% The signature of each key: (tonic note name . alteration) and its",
     "%% pitch classes → columns' centres (staff spaces), gold bars (x, ends in",
     "%% engine semitones, colour, thickness) and marks (engine semitone, column,",
-    "%% head shape, cutout, colour).",
+    "%% head shape, cutout, colour, or sharp or flat).",
     "#(define cnb:keysig-marks",
     "   '(",
   ];
@@ -796,15 +800,17 @@ function markTableLines(config, table) {
     const columns = e.sig.columns.map(x => fmtNum(x, "key-signature column")).join(" ");
     const bars = e.sig.bars.map(b => `(${fmtNum(b.x, "key-signature bar")} ${semi(b.bottom)} ${semi(b.top)} ` +
       `${hexString(b.color, "keys.keySignature.separator.color")} ${fmtNum(b.thickness, "keys.keySignature.separator.thicknessPct")})`);
-    const marks = e.sig.marks.filter(({ mark }) => shapes[mark.shape]).map(({ semi: s, column, mark }) => {
+    const marks = e.sig.marks.filter(({ mark }) => mark.sign || shapes[mark.shape]).map(({ semi: s, column, mark }) => {
+      if (mark.sign) return `(${semi(s)} ${column} ${mark.sign})`;
       const f = sectionCFields(config, mark);
       return `(${semi(s)} ${column} head ${f.shapeSym} ${f.hollowSym} ${f.colorSym})`;
     });
     lines.push(`     ;; ${CNBScheme.comment(`${e.spelling} ${e.mode}`)}`);
     lines.push(`     (((${e.notename} . ${e.alteration}) . (${e.pcs.join(" ")}))`);
-    lines.push(`      . ((columns ${columns})`);
+    // A key with no sharps or flats has no columns or marks (session 51).
+    lines.push(`      . ((columns${columns ? " " + columns : ""})`);
     lines.push(`         (bars${bars.map(b => " " + b).join("")})`);
-    lines.push(`         (marks ${marks.join("\n                ")})))`);
+    lines.push(`         (marks${marks.length ? " " + marks.join("\n                ") : ""})))`);
   }
   lines.push("     ))");
   return lines;

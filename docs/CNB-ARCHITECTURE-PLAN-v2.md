@@ -604,15 +604,17 @@ keys: {
     // plus the octave tonic, interleaved into two columns (even indices
     // left, odd right), which reads as two stacked 7th chords — resolved
     // through the normal notehead rule pipeline at crotchet duration with
-    // the selected key as rule-match context. `style` is a single-value
-    // vocabulary: the task owner evaluated simple built-in marks (dot,
-    // interval blocks, staggered ledgers) in set-010 s2 UAT and chose the
-    // note stack as the sole style, deferring richer custom-symbol
-    // signatures (Clairnote-style) to a future set (s2-uat.md,
-    // s2-design-consult.md). The field stays the extension point for those
-    // future styles (validation rejects unknown values; the renderer
-    // treats an unknown style as inactive).
-    style: "notehead-chords",
+    // the selected key as rule-match context. "accidentals" (session 51,
+    // design §5) is the traditional signature: the key's sharps in the
+    // order F C G D A E B, or its flats in the order B E A D G C F, each
+    // LilyPond's own sign (Emmentaler, in the optical size LilyPond draws
+    // the staff with, cnb/src/cnb-accidental-glyphs.js), black, in its own
+    // column at the semitone of the note it makes, with no ledgers or gold
+    // stems; the settings below but placement do not apply to it. The
+    // field stays the extension point for further styles (validation
+    // rejects unknown values; the renderer treats an unknown style as
+    // inactive).
+    style: "notehead-chords",   // | "accidentals"
 
     // The designer's settings (session 48, design
     // docs/planning/key-signature-designer-design.md §4, §6). Each default
@@ -706,7 +708,10 @@ keys: {
   the 7 modes, each keyed by the tonic's note name and alteration and its
   pitch classes, with the columns, gold bars and marks
   `CNBKeySignature.marks` gives for the key the canvas's picker would
-  show. A key the table lacks engraves no signature.
+  show. A key the table lacks engraves no signature. Sharps and flats
+  (session 51, LY spec 1.3.17 §5.6a) are marks of the same table,
+  `(semi column sharp)` or `(semi column flat)`, which the engine draws from
+  its music font; they register nothing and add no ledger entries.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -1524,7 +1529,8 @@ For the colours the noteheads use (§4.6):
 - B1: Staff geometry from `config.staff`
 - The clef and the key signature (LY spec §5.5, §5.6); a signature that is
   not the engine's scale stack as the mark table, from
-  `CNBKeySignature.marks`, whose looks Section A also registers (§5.6a)
+  `CNBKeySignature.marks`, whose looks Section A also registers (§5.6a);
+  a traditional signature's sharps and flats as the table's signs (1.3.17)
 - B2: Emit-if-changed engine settings from `config.engine`
 - B3: Metadata from `config.meta`
 
@@ -1607,16 +1613,20 @@ from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
 48, key-signature design §8: for a key definition, with its tonic and
 optional `spelling`, the marks as `{ semi, column, mark }`, the columns'
 centres and the gold stems in staff spaces, and the marks that overlap in a
-stack, for every scale-note setting of §4.9; null for an unknown style or
-rule), `signatureSemis(config, keyName)` (the marks' semitones),
+stack, for every scale-note setting of §4.9; under the style
+"accidentals" (session 51) each mark is `{ sign: "sharp" | "flat" }`, in
+the traditional order, each in its own column, every line set's copy from
+column 0; null for an unknown style or rule), `isScaleStack(config)` (the
+signature the engine's `'chord` draws), `signatureSemis(config, keyName)`
+(the marks' semitones),
 `measure(config,
 pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
 firstHeadCenter)` (the engine's spacing either side of the marks, session
 34; the collection passes the first card's `CNBCard.headCenterX`),
 `gutterWidth(config, pxPerSemi, keyName, firstHeadCenter)` (0 when
 nothing renders — no gutter reserved), and `render(svgParent,
-gridContext, config, keyName)`. One mark style is implemented,
-"notehead-chords": marks resolve through
+gridContext, config, keyName)`. Two mark styles are implemented. Under
+"notehead-chords" marks resolve through
 `CNBConfig.resolveNotehead(config, pc, "crotchet", keyName)` (the
 engine's quarter-note keysig resolution), with per-column ledger lines
 beneath re-drawn noteheads (keysig.ly's two-pass layering); since session
@@ -1624,11 +1634,16 @@ beneath re-drawn noteheads (keysig.ly's two-pass layering); since session
 pair of neighbouring columns beneath the marks (the engine's gold bar
 geometry, one bar for the default two). `measure` and `render` draw from
 `marks`, and at the defaults draw exactly as before
-(`cnb/fixtures/key-signature-baseline.json`). `style` is a single-value vocabulary; an
-unknown style renders nothing (the task owner deferred richer styles to a
-future set — s2-uat.md). Integrated into Module 10 as a `div.keysig-col`
+(`cnb/fixtures/key-signature-baseline.json`). Under "accidentals"
+(session 51) each sign is Emmentaler's outline from
+`cnb-accidental-glyphs.js`, in the optical size LilyPond picks for
+`engine.defaultMagnify` (the design size nearest 20 pt × the
+magnification), black, its box centred on its column and its origin at its
+semitone, with no ledgers or stems; the signature is spaced by the signs'
+boxes, as a mark-table signature is. An unknown style renders nothing.
+Integrated into Module 10 as a `div.keysig-col`
 after the clef column. Dependencies: Modules A, B, 1 (grid context passed
-in), 5, 6. Visual test page: `test-key-signature.html`. Since session 30
+in), 5, 6, the accidental glyphs. Visual test page: `test-key-signature.html`. Since session 30
 Module 11 exports the signature's on/off state, bar styling and explicit
 tonic octave, so the engine engraves what this module draws (LY spec
 1.3.7 §5.6).
@@ -1641,7 +1656,9 @@ CONSUMERS — the rule editor's `match.keys` pills and the preview's key
 selector), and the `keySignature` subsection. Since session 50 the
 signature is the panel of the key-signature design §7
 (`docs/planning/key-signature-designer-design.md`), in a designer's
-words: Show the key signature; Notes (`notes`, `upperTonic`); Stacks
+words: Show the key signature; Draw (`style`: "The key's notes" or, since
+session 51, "Sharps or flats", which hides Notes, Stacks and Looks, their
+values kept); Notes (`notes`, `upperTonic`); Stacks
 (`stacking`, `columns` hidden under `"parity"`, and the gold stem:
 `separator.enabled`, `color`, its thickness shown in staff spaces and
 written as `thicknessPct`, and `shareThickness`, saying what each stem gets
@@ -1651,7 +1668,7 @@ shared as `CNBNoteheadPanel.thumbnail`, and the host's Import from SVG;
 each field's "as …" clears it; a built-in shape the config lacks is added,
 reported as `onChange({ keys, shapes })`); Place (`placement.position`);
 and a note when two marks of a stack overlap in the picked key (the host
-passes it as `opts.key` and re-mounts the panel when it changes). `style`,
+passes it as `opts.key` and re-mounts the panel when it changes).
 `placement.rule`, `placement.tonicOctave` and `separator.extentSemis` have
 no controls and keep their stored values. The key definitions follow,
 under "Keys for notehead rules". While `keys.enabled` is false the
@@ -1801,6 +1818,7 @@ cnb/
 │   ├── cnb-collection.js       Module 10
 │   ├── cnb-clef.js             Module 20 (set 009)
 │   ├── cnb-key-signature.js    Module 22 (set 010)
+│   ├── cnb-accidental-glyphs.js the signature's sharp and flat (session 51)
 │   ├── cnb-pitch-axis.js       Module 24 (set 014)
 │   └── cnb-lilypond.js         Module 11
 │

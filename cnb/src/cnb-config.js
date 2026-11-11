@@ -120,14 +120,12 @@ function buildDefault() {
       // scale rendered as real noteheads — 7 degrees ascending from the tonic
       // plus the octave tonic, interleaved into two columns (two stacked 7th
       // chords) — with a gold separator stem through the middle (engine
-      // cnb:gold #ffd42a). style is a single-value vocabulary (only
-      // "notehead-chords" is implemented): the task owner evaluated simple
-      // built-in marks (dot, interval blocks, staggered ledgers) in set-010
-      // s2 UAT and chose the note stack as the sole style, deferring richer
-      // custom-symbol signatures (Clairnote-style) to a future set (see
-      // s2-uat.md and s2-design-consult.md). The field stays the extension
-      // point for those future styles (validation rejects unknown values;
-      // the renderer treats an unknown style as inactive).
+      // cnb:gold #ffd42a). The other style, "accidentals" (session 51,
+      // key-signature design §5), is the traditional signature: the key's
+      // sharps or flats, Emmentaler's, each in its own column at the
+      // semitone of the note it makes. The field stays the extension point
+      // for further styles (validation rejects unknown values; the renderer
+      // treats an unknown style as inactive).
       //
       // placement is the explicit placement-rule surface (binding rule 2;
       // session 2's placement-rule controls edit it): rule names how the
@@ -490,8 +488,8 @@ export const CNBConfig = {
         warnings.push("keys.keySignature.enabled is true but keys.enabled is false — the key signature will not render (rendering is gated on keys.enabled per the E2 requirements entry)");
       }
       const ksStyle = keySig.style === undefined || keySig.style === null ? "notehead-chords" : keySig.style;
-      if (ksStyle !== "notehead-chords") {
-        errors.push(`keys.keySignature.style must be "notehead-chords" (got ${JSON.stringify(keySig.style)}; the vocabulary extends when new mark styles are implemented)`);
+      if (ksStyle !== "notehead-chords" && ksStyle !== "accidentals") {
+        errors.push(`keys.keySignature.style must be "notehead-chords" or "accidentals" (got ${JSON.stringify(keySig.style)}; the vocabulary extends when new mark styles are implemented)`);
       }
       const placement = keySig.placement;
       if (placement !== undefined && placement !== null) {

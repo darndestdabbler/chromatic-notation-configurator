@@ -4,8 +4,8 @@
  * Edits the `config.keys` section activated in set 010 session 1
  * (architecture plan §4.9): the `keys.enabled` master gate, the key
  * definitions the signature renders from, and the `keys.keySignature`
- * subsection (enable toggle, mark-style selection, placement-rule
- * controls, separator/dot styling). `keys.offKeyMark` passes
+ * subsection (the panel of the key-signature design §7, below).
+ * `keys.offKeyMark` passes
  * through untouched — off-key marking stays deferred (plan §11).
  *
  * Why the key-definition controls live HERE (session-2 design decision,
@@ -55,10 +55,15 @@
  * staff, the bottom, top or every line set);
  * and a note when two marks of one stack run together in the key picked on
  * the staff (opts.key, which also counts the stems). The key definitions
- * follow, under "Keys for notehead rules". `style`, the placement rule, the
- * tonic octave and the gold stem's extent have no controls: their stored
- * values are kept as they are, and an unknown style or rule is reported by
+ * follow, under "Keys for notehead rules". The placement rule, the tonic
+ * octave and the gold stem's extent have no controls: their stored values
+ * are kept as they are, and an unknown style or rule is reported by
  * validation rather than rewritten.
+ *
+ * Draw (session 51, design §5, §7): "The key's notes" (style
+ * "notehead-chords") or "Sharps or flats" (style "accidentals"). Under
+ * sharps or flats the Notes, Stacks and Looks rows are hidden, their values
+ * kept, and Place stays.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -67,7 +72,7 @@
  *     offKeyMark: object,                  // untouched passthrough
  *     keySignature: {
  *       enabled: boolean,
- *       style: string,   // "notehead-chords" (single-value vocabulary)
+ *       style: string,   // "notehead-chords" | "accidentals" (session 51)
  *       notes, upperTonic, looks, stacking, alternate, columns,
  *                        // the designer's settings (session 48), edited
  *                        // in the panel since session 50
@@ -656,12 +661,25 @@ export const CNBKeySignatureEditor = {
           "The signature draws for the key and mode picked on the staff."));
       }
 
-      const sig = pickedSignature();
-      wrap.appendChild(drawNotes(ks));
-      wrap.appendChild(drawStacks(ks, sig));
-      wrap.appendChild(drawLooks(ks));
+      wrap.appendChild(drawDraw(ks));
+      // The scale-note settings do not apply to sharps or flats (design §5,
+      // §7): their rows are hidden and their values kept.
+      if (ks.style !== "accidentals") {
+        const sig = pickedSignature();
+        wrap.appendChild(drawNotes(ks));
+        wrap.appendChild(drawStacks(ks, sig));
+        wrap.appendChild(drawLooks(ks));
+      }
       wrap.appendChild(drawPlace(ks));
       return wrap;
+    }
+
+    function drawDraw(ks) {
+      return row("cnb-kse-draw", "Draw",
+        radios("cnb-kse-style", ks.style, [
+          ["notehead-chords", "The key's notes"],
+          ["accidentals", "Sharps or flats"],
+        ], (v) => { ks.style = v; }));
     }
 
     function drawNotes(ks) {

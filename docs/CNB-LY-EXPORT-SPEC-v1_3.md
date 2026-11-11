@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.16 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers)
-**Date:** November 11, 2026 (1.3.14, 1.3.15, 1.3.16); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.17 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats)
+**Date:** November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -70,7 +70,9 @@ whose signature is on and is not the engine's scale stack exports anything
 new; it needs engine 1.4.0. 1.3.16, for both: the signature's ledgers,
 §5.6a and §5.7. Only a config exporting the mark table with marks beyond
 the cards' pitches gains ledger entries; the five export baselines are
-byte-identical.)*
+byte-identical. 1.3.17, for both: sharps and flats, §5.6a. Only a config
+whose signature draws sharps or flats exports anything new, through the
+mark table; the five export baselines are byte-identical.)*
 
 Summary of additions:
 
@@ -87,6 +89,7 @@ Summary of additions:
 | Clefs to choose from (1.3.13, linear and axis alike) | glyph and text clefs | the dozenal clef as `cnb:clef-style 'dozenal`; treble, bass and alto as registered glyphs (§5.5a) |
 | The key signature's mark table (1.3.15, linear and axis alike) | `'chord`, the engine's scale stack | any other signature as `cnb:keysig-style 'marks` and `cnb:keysig-marks`, 105 keys (§5.6a) |
 | The signature's ledgers (1.3.16, linear and axis alike) | the engine's own rule for signature heads | the notation's, through `cnb:ledgers-by-semitone`, as engine 1.4.1 reads it; an entry for each mark beyond the cards' pitches (§5.6a, §5.7) |
+| Sharps and flats (1.3.17, linear and axis alike) | a signature of noteheads only | the traditional signature, each sign `(semi column sharp)` or `(semi column flat)` in the mark table (§5.6a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -918,8 +921,8 @@ place of §5.6's lines:
 - **`marks`**: each mark's engine semitone, its column, and `head` with
   the shape, cutout and colour symbols Section A registers, a sized
   variant (§4.1c) where its look is sized. A mark whose shape is not
-  defined is left out, as the preview leaves it undrawn. Sharps and flats
-  (`sharp`, `flat`) are the format's, for session 51.
+  defined is left out, as the preview leaves it undrawn. Or, since 1.3.17,
+  a sign, `sharp` or `flat` (see *Sharps and flats* below).
 - **Engine semitones** are §5.7's: the preview semitone, less
   `staff.midpoint − 12` on a linear staff, as it is under a pitch axis.
 - **Section A** registers the shapes, sized variants and colours the
@@ -979,6 +982,60 @@ is within 0.001 staff spaces in every signature. The spacing above, the
 scale stack's included, is held to 0.005 with and without a clef, at
 magnifications 1, 7/4 and 5/2. `\key dis \major` engraves no signature, and
 the engine names the key.
+
+**Sharps and flats (1.3.17).** A signature whose `style` is
+`"accidentals"` (session 51, key-signature design §5) is the traditional
+one, and always exports the table. Each key's sharps, in the order F C G D
+A E B, or its flats, in the order B E A D G C F, are each written
+`(semi column sharp)` or `(semi column flat)`: the engine semitone of the
+note the sign makes (F♯'s sign at F♯), in the octave the place gives that
+note in the scale, in its own column from 0, each copy's columns starting
+again on every line set. A key with neither writes `(columns)`, `(bars)`
+and `(marks)`, and engraves nothing.
+
+```lilypond
+     ;; D major
+     (((1 . 0) . (1 2 4 6 7 9 11))
+      . ((columns 0.55 1.65)
+         (bars)
+         (marks (6 0 sharp)
+                (13 1 sharp))))
+```
+
+- **The signs are LilyPond's own**, Emmentaler's `accidentals.sharp` and
+  `accidentals.flat` (SIL OFL 1.1), drawn by the engine in black at the
+  staff's size. The engine centres each sign's box on its column and puts
+  its origin (a sharp's centre line, a flat's bowl line) at the semitone's
+  height.
+- **The columns are the sign's width apart**, by the box LilyPond measures
+  in the optical size it draws the staff with: Emmentaler has eight, and
+  LilyPond takes the one whose design size is nearest, by ratio, to 20 pt
+  × the staff's magnification. A sharp's box is 1.1 staff spaces wide in
+  every size; a flat's is 0.92 in emmentaler-20 (magnification 1) and
+  0.9037 in emmentaler-26 (the engine's default 7/4). The preview draws
+  each sign's outline from that size (`cnb/src/cnb-accidental-glyphs.js`)
+  for `engine.defaultMagnify`.
+- **No ledgers, looks or gold stems.** A sign registers nothing in
+  Section A and adds no entry to `cnb:ledgers-by-semitone` (§5.7). The
+  scale-note settings (`notes`, `upperTonic`, `looks`, `stacking`,
+  `alternate`, `columns`, the separator) do not apply; `placement` does.
+- **The magnification a score engraves with.** The engine magnifies every
+  staff by `cnb:default-magnify` as it stands when the engine is included
+  (`cnb/score-defaults.ly`), before the export sets it, so a score engraves
+  a config's own magnification only where its staff magnifies itself with
+  `\magnifyStaff #cnb:default-magnify`. That holds for every glyph, not
+  only the signs; the optical size follows whichever magnification the
+  staff has.
+
+**Verified** by engine round trips (`cnb/tests/cnb-lilypond-tests.js`,
+`cnb/tests/cnb-key-signature-tests.js`, through `cnb/tests/engine-probe.js`,
+which reads the signature's font glyphs). For the default config and Kite
+4-369, in the middle, on the bottom line set and on every line set, in C, D
+and B♭ major, and at magnifications 1, 4/5 and 5/2: every engraved sign's
+kind, its origin's height and its box, and the signature's ink, are within
+0.001 staff spaces of the preview's, with no ledgers or bars, and C major
+engraves nothing. The spacing before the signs and to the first note, with
+and without a clef, sharps and flats, is within 0.005.
 
 **Compatibility.** A config whose signature is off, or is `'chord`'s,
 exports byte for byte as in 1.3.14; the five export baselines are
@@ -1229,7 +1286,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.16** | **Nov 11, 2026** | **The signature's ledgers (session 50, engine session 33): §5.6a and §5.7. Since engine 1.4.1 a signature head takes its semitone's `cnb:ledgers-by-semitone` entry, for `'chord` and `'marks` alike, so the signature's ledgers are the notation's; the table gains an entry for each mark of the mark table beyond the cards' pitches, and the preview spaces the scale stack by its ink, as it does the mark table. The known divergence of 1.3.15 is gone: engine round trips hold every stack's ledgers and every signature's ink to the preview's. Output changes only for a mark-table signature with marks beyond semitones 0–24; the five export baselines are byte-identical.** |
+| **1.3.17** | **Nov 11, 2026** | **Sharps and flats (session 51): §5.6a. A signature whose `style` is `"accidentals"` exports the mark table with each key's sharps (F C G D A E B) or flats (B E A D G C F) as `(semi column sharp)` / `(semi column flat)`, each at the note it makes, in its own column, the columns a sign's width apart by the box LilyPond measures in the optical size it draws the staff with; no Section A registration, ledger entries or bars. Engine round trips hold every sign, its box and the ink to the preview's. Output changes only for such a signature; the five export baselines are byte-identical.** |
+| 1.3.16 | Nov 11, 2026 | The signature's ledgers (session 50, engine session 33): §5.6a and §5.7. Since engine 1.4.1 a signature head takes its semitone's `cnb:ledgers-by-semitone` entry, for `'chord` and `'marks` alike, so the signature's ledgers are the notation's; the table gains an entry for each mark of the mark table beyond the cards' pitches, and the preview spaces the scale stack by its ink, as it does the mark table. The known divergence of 1.3.15 is gone: engine round trips hold every stack's ledgers and every signature's ink to the preview's. Output changes only for a mark-table signature with marks beyond semitones 0–24; the five export baselines are byte-identical. |
 | 1.3.15 | Nov 11, 2026 | The key signature's mark table (session 49, engine session 30): new §5.6a. A signature whose applicable settings are not the scale stack's exports `cnb:keysig-style 'marks` and `cnb:keysig-marks`, 105 keys (15 spellings × 7 modes), each keyed by its tonic's note name and alteration and its pitch classes, with the columns, gold bars and marks `CNBKeySignature.marks` gives; Section A registers the looks the marks use. A key the table lacks engraves no signature. Output changes only for such a signature; the five export baselines are byte-identical. Needs engine 1.4.0. |
 | 1.3.14 | Nov 11, 2026 | The breve's tie below the noteheads (session 46, engine session 28): §4.1d. Since engine 1.3.1 a repeat-mode breve has one tie, from the centre of the first head of the first group to the centre of the last head of the last group, at the heads' bottom, curving down; the groups and the gap are unchanged, and the preview draws the same, its breve row deep enough to hold the tie. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the tie's ends, its lowest point and the breve's height to 0.001 staff spaces. |
 | 1.3.13 | Nov 10, 2026 | Clefs to choose from (session 45): new §5.5a. The dozenal clef, kind `"dozenal"`, exports `cnb:clef-style 'dozenal` and its gutter and registers nothing; the preview draws the engine's numeral 50. LilyPond's treble, bass and alto clefs (Emmentaler, SIL OFL) are glyph clefs placed on the pitch each marks, exported through `cnb:register-clef!`. A glyph clef's range, set in the panel or by dragging it on the canvas, is its top and height. Output changes only for a config showing the dozenal clef; the five export baselines are byte-identical. Engine round trips hold the dozenal and a moved and resized treble clef to the preview. |

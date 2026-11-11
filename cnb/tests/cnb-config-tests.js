@@ -714,15 +714,17 @@ export const tests = [
     assert(result.warnings.some(w => w.includes("keys.enabled is false")), "gate warning emitted");
   }},
 
-  { name: "keysig: validate — notehead-chords passes; unknown style is an error; absent falls back to the default", fn: () => {
+  { name: "keysig: validate — notehead-chords and accidentals pass; unknown style is an error; absent falls back to the default", fn: () => {
     const ok = keysigConfig();
     ok.keys.keySignature.style = "notehead-chords";
     assert(CNBConfig.validate(ok).valid, "notehead-chords valid");
-    for (const bad of ["sparkles", "dot", "interval-blocks", "staggered-ledgers"]) {
+    ok.keys.keySignature.style = "accidentals";
+    assert(CNBConfig.validate(ok).valid, "accidentals valid (session 51)");
+    for (const bad of ["sparkles", "dot", "interval-blocks", "staggered-ledgers", "Accidentals"]) {
       const cfg = keysigConfig();
       cfg.keys.keySignature.style = bad;
       assert(CNBConfig.validate(cfg).errors.some(e => e.includes("keys.keySignature.style")),
-        `${bad} rejected (only notehead-chords is implemented)`);
+        `${bad} rejected (only notehead-chords and accidentals are implemented)`);
     }
     const absent = keysigConfig();
     delete absent.keys.keySignature.style;

@@ -33,6 +33,7 @@ import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLedgerSet } from "../src/cnb-ledger-set.js";
+import { CNBAccidentalGlyphs } from "../src/cnb-accidental-glyphs.js";
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -1566,6 +1567,124 @@ export const tests = [
             const half = ledgered ? w * 2 / 3 + 0.1 : w / 2;
             left = Math.min(left, sig.columns[column] - half);
             right = Math.max(right, sig.columns[column] + half);
+          }
+          if (!near(engraved.x[0], left) || !near(engraved.x[1], right)) {
+            failures.push(`${where}: ink ${engraved.x[0]} … ${engraved.x[1]}, drawn ${left} … ${right}`);
+          }
+        });
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // ─── Accidentals (session 51, LY spec 1.3.17) ─────────────────────────────
+
+  { name: "mark table: accidentals write each sign as (semi column sharp) or (semi column flat), register nothing and add no ledger entry", fn: () => {
+      const entry = (out, name) => {
+        const m = new RegExp(`;; ${name}\\n([\\s\\S]*?)(?=\\n     ;;|\\n     \\)\\))`).exec(out);
+        assert(m, `${name} has an entry`);
+        return m[1];
+      };
+      const config = keySignatureConfig();
+      config.keys.keySignature.style = "accidentals";
+      const out = CNBLilypond.generate(config);
+      contains(out, "#(set! cnb:keysig-style 'marks)", "the mark table");
+      eq(entry(out, "C major"), "     (((0 . 0) . (0 2 4 5 7 9 11))\n      . ((columns)\n         (bars)\n         (marks)))",
+        "C major: no signs");
+      contains(entry(out, "D major"), "(columns 0.55 1.65)", "D major's columns");
+      contains(entry(out, "D major"), "(marks (6 0 sharp)\n                (13 1 sharp))", "F♯ C♯ at the notes they make");
+      contains(entry(out, "B♭ major"), "(columns 0.4519 1.3556)", "B♭ major's columns, emmentaler-26's flat apart");
+      contains(entry(out, "B♭ major"), "(marks (10 0 flat)\n                (15 1 flat))", "B♭ E♭ from the tonic B♭ at 10");
+      const table = out.slice(out.indexOf("cnb:keysig-marks"));
+      lacks(table.slice(0, table.indexOf("\n\n")), " head ", "no heads");
+
+      // Every line set: two copies, each from column 0; their marks beyond
+      // the cards' pitches add no ledger entry (signs have no ledgers).
+      config.keys.keySignature.placement.position = "every-set";
+      const every = CNBLilypond.generate(config);
+      contains(entry(every, "D major"), "(marks (6 0 sharp)\n                (13 1 sharp)\n                (18 0 sharp)\n                (25 1 sharp))", "D major twice");
+      contains(entry(every, "B♭ major"), "(marks (-2 0 flat)\n                (3 1 flat)\n                (10 0 flat)\n                (15 1 flat))", "B♭ major twice, the lower below the cards");
+      lacks(every, "(25 . (", "no ledger entry for C♯ at 25");
+      lacks(every, "(-2 . (", "no ledger entry for B♭ at −2");
+      eq(every.split("#(cnb:register-path!").length, CNBLilypond.generate(CNBConfig.createDefault()).split("#(cnb:register-path!").length,
+        "Section A registers only the noteheads' paths");
+    }},
+
+  // Engine-backed (session 51): the traditional signature engraves where the
+  // canvas draws it. For the default config and Kite 4-369, in the middle, on
+  // the bottom line set and on every line set, in C, D and B♭ major (key
+  // changes in one score), and at magnifications 1, 4/5 and 5/2: every engraved
+  // sign's kind, its origin's height, its box (so its column and size, in the
+  // optical size LilyPond picks) and the signature's ink within 0.001 staff
+  // spaces of the preview's, and no ledgers, paths or bars. C major engraves
+  // nothing.
+  { name: "mark table (engine): sharps and flats engrave where the canvas draws them, on any line set, at any magnification", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const kite = () => {
+        const config = CNBConfigIO.loadFromText(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8")).config;
+        config.keys.enabled = true;
+        config.keys.keySignature.enabled = true;
+        return config;
+      };
+      const runs = [];
+      for (const [name, base] of [["default", keySignatureConfig], ["Kite 4-369", kite]]) {
+        for (const position of ["middle", "bottom-set", "every-set"]) {
+          const config = base();
+          config.keys.keySignature.style = "accidentals";
+          config.keys.keySignature.placement.position = position;
+          runs.push({ label: `${name}, ${position}`, config, music: "" });
+        }
+      }
+      // The engine magnifies every staff by cnb:default-magnify as it stands
+      // when the engine is included (cnb/score-defaults.ly), before the
+      // export set!s it, so a score that wants the config's own magnification
+      // magnifies its staff with it, as these do. Each picks its optical size.
+      for (const magnify of ["1", "4/5", "5/2"]) {
+        const config = keySignatureConfig();
+        config.keys.keySignature.style = "accidentals";
+        config.keys.keySignature.placement.position = "every-set";
+        config.engine.defaultMagnify = magnify;
+        runs.push({ label: `default, every-set, magnify ${magnify}`, config, music: "\\magnifyStaff #cnb:default-magnify " });
+      }
+      const keys = [["c", "major", "C"], ["d", "major", "D"], ["bes", "major", "B♭"]];
+      const near = (a, b) => Math.abs(a - b) < 1e-3;
+      const failures = [];
+      const results = [];
+      for (let i = 0; i < runs.length; i += 4) {   // four compiles at a time
+        results.push(...await Promise.all(runs.slice(i, i + 4).map(run =>
+          measureKeySignatureMarks(engine, CNBLilypond.generate(run.config),
+            run.music + keys.map(([t, mode]) => `\\key ${t} \\${mode} c'1`).join(" ")).then(got => ({ run, got })))));
+      }
+      for (const { run: { label, config }, got } of results) {
+        if (got.error) { failures.push(`${label}: ${got.error.slice(0, 400)}`); continue; }
+        // C major has no signs, so only D's and B♭'s signatures engrave.
+        if (got.signatures.length !== 2) { failures.push(`${label}: ${got.signatures.length} signatures engraved, 2 wanted`); continue; }
+        const table = _internals.markTable(config);
+        const r = CNBScheme.parseRatio(config.engine.defaultMagnify);
+        const magnify = r.num / (r.den ?? 1);
+        if (table.find(e => e.spelling === "C" && e.mode === "major").sig.marks.length !== 0) failures.push(`${label}: C major draws signs`);
+        keys.slice(1).forEach(([, mode, spelling], k) => {
+          const where = `${label}, ${spelling} ${mode}`;
+          const sig = table.find(e => e.spelling === spelling && e.mode === mode).sig;
+          const engraved = got.signatures[k];
+          if (engraved.paths.length > 0 || engraved.lines.length > 0) {
+            failures.push(`${where}: ${engraved.paths.length} paths and ${engraved.lines.length} lines (ledgers or bars) engraved, none wanted`);
+          }
+          if (engraved.glyphs.length !== sig.marks.length) failures.push(`${where}: ${engraved.glyphs.length} signs engraved, ${sig.marks.length} drawn`);
+          let left = Infinity;
+          let right = -Infinity;
+          for (const { semi, column, mark } of sig.marks) {
+            const glyph = CNBAccidentalGlyphs.glyph(mark.sign, magnify);
+            const x = sig.columns[column];
+            const y = CNBStaff.lilypondPosition(config, semi) / 2;
+            const e = engraved.glyphs.find(g => near((g.x[0] + g.x[1]) / 2, x) && near(g.origin[1], y));
+            if (!e) { failures.push(`${where}: no sign at column ${column} (${x}), semitone ${semi} (${y})`); continue; }
+            if (e.name !== `accidentals.${mark.sign}`) failures.push(`${where}: semitone ${semi} engraved ${e.name}, drawn a ${mark.sign}`);
+            if (!near(e.x[1] - e.x[0], glyph.x[1] - glyph.x[0]) || !near(e.y[0] - e.origin[1], glyph.y[0]) || !near(e.y[1] - e.origin[1], glyph.y[1])) {
+              failures.push(`${where}: semitone ${semi} engraved ${JSON.stringify(e)}, drawn a box ${JSON.stringify([glyph.x, glyph.y])}`);
+            }
+            left = Math.min(left, x - (glyph.x[1] - glyph.x[0]) / 2);
+            right = Math.max(right, x + (glyph.x[1] - glyph.x[0]) / 2);
           }
           if (!near(engraved.x[0], left) || !near(engraved.x[1], right)) {
             failures.push(`${where}: ink ${engraved.x[0]} … ${engraved.x[1]}, drawn ${left} … ${right}`);

@@ -34,6 +34,7 @@ const TEST_FILES = [
   "./cnb-card-tests.js",
   "./cnb-collection-tests.js",
   "./cnb-clef-tests.js",
+  "./cnb-accidental-glyphs-tests.js",
   "./cnb-key-signature-tests.js",
   "./cnb-scheme-tests.js",
   "./cnb-lilypond-tests.js",

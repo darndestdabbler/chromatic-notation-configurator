@@ -24,8 +24,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBMusic } from "../src/cnb-music.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
+import { CNBAccidentalGlyphs } from "../src/cnb-accidental-glyphs.js";
+import { CNBScheme } from "../src/cnb-scheme.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBCard } from "../src/cnb-card.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
@@ -533,13 +536,16 @@ export const tests = [
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
       const G = { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] };
+      const BF = { name: "B♭", pitchClasses: [10, 0, 2, 3, 5, 7, 9] };
       const failures = [];
       // A signature from the mark table is spaced by its ink (session 49,
       // engine handoff 030 §3): G's stacks at each change of parity, its first
       // and last stacks with no ledger, then its first stack with a ledger
       // reaching past the marks (G♭ with ledgers in the top line set).
       // The spacing is in staff spaces, so it holds at any magnification.
-      for (const { label, clef, wideG, stacking, position, magnify, gallery } of [
+      // Sharps or flats (session 51) are spaced by their boxes, the flat's in
+      // the optical size LilyPond picks for the staff's magnification.
+      for (const { label, clef, wideG, stacking, position, magnify, gallery, style, flat } of [
         { label: "no clef" }, { label: "text clef", clef: true }, { label: "a wide G mark", wideG: true },
         { label: "text clef, magnify 1", clef: true, magnify: "1" },
         { label: "mark table, no clef", stacking: "parity-stacks" },
@@ -550,10 +556,16 @@ export const tests = [
         // with its own ledgers, a stack of narrow marks starting its ink later.
         { label: "Clairnote SN, slashed and plain dots", gallery: "clairnote-sn.json" },
         { label: "Clairnote SN, text clef", gallery: "clairnote-sn.json", clef: true },
+        { label: "sharps, no clef", style: "accidentals" },
+        { label: "sharps, text clef", style: "accidentals", clef: true },
+        { label: "flats, no clef", style: "accidentals", flat: true },
+        { label: "flats, text clef", style: "accidentals", flat: true, clef: true },
       ]) {
         const config = gallery
           ? CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, gallery), "utf8")).config
-          : keysigConfig([C_MAJOR, G]);
+          : keysigConfig([C_MAJOR, G, BF]);
+        const key = flat ? "B♭" : "G";
+        if (style) config.keys.keySignature.style = style;
         if (stacking) config.keys.keySignature.stacking = stacking;
         if (position) config.keys.keySignature.placement.position = position;
         if (magnify) config.engine.defaultMagnify = magnify;
@@ -569,7 +581,7 @@ export const tests = [
         }
         const space = 64;                                  // 4 semitones × 16 px
         const preview = withDomStub(container => {
-          const root = CNBCollection.render(container, config, { keys: ["G"] });
+          const root = CNBCollection.render(container, config, { keys: [key] });
           const pc = root.children[0].children.find(c => c.className === "preview-container");
           const cols = pc.children.find(c => c.className === "pc-columns").children;
           const widths = cols.map(c => parseFloat(c.style.width));
@@ -579,11 +591,20 @@ export const tests = [
           // Every drawn mark (in the order measure gives them), each its own
           // width about its centre: a stack may go left, or hold narrower marks.
           const heads = sig.children.filter(c => String(c.getAttribute("transform") || "").startsWith("translate"));
-          const measured = CNBKeySignature.measure(config, PX_PER_SEMI, "G").marks;
+          const measured = CNBKeySignature.measure(config, PX_PER_SEMI, key).marks;
           let left = Infinity;
           let right = -Infinity;
           heads.forEach((h, i) => {
             const { mark } = measured[i];
+            if (mark.sign) {
+              // A sign's box, from its origin.
+              const r = CNBScheme.parseRatio(config.engine.defaultMagnify);
+              const box = CNBAccidentalGlyphs.glyph(mark.sign, r.num / (r.den ?? 1)).x;
+              const origin = kStart + parseFloat(/translate\(([-\d.eE+]+) /.exec(h.getAttribute("transform"))[1]);
+              left = Math.min(left, origin + box[0] * space);
+              right = Math.max(right, origin + box[1] * space);
+              return;
+            }
             const w = CNBNotehead.measure(config.shapes[mark.shape], PX_PER_SEMI, mark).pixelWidth;
             const x = kStart + parseTranslate(h.getAttribute("transform")).x;
             left = Math.min(left, x - w / 2);
@@ -604,7 +625,7 @@ export const tests = [
             inkRight: right - kStart,                      // from the signature's column
           };
         });
-        const got = await measureSpacing(engine, CNBLilypond.generate(config), "\\key g \\major c'4 d'4");
+        const got = await measureSpacing(engine, CNBLilypond.generate(config), `\\key ${flat ? "bes" : "g"} \\major c'4 d'4`);
         if (got.error || !got.keySignature || !got.firstNote) { failures.push(`${label}: ${got.error || "nothing engraved"}`); continue; }
         const before = got.keySignature.left - (clef ? got.clef.left : got.staffStart);
         const after = (got.firstNote.left + got.firstNote.right) / 2 - got.keySignature.right;
@@ -616,7 +637,7 @@ export const tests = [
         // (past where the cards stop growing), keeps the first notehead as far
         // after the marks as the engraving.
         const template = withDomStub(container => {
-          const row = CNBCollection.render(container, config, { fluid: true, keys: ["G"] }).children[0];
+          const row = CNBCollection.render(container, config, { fluid: true, keys: [key] }).children[0];
           const system = row.children.find(c => c.className === "preview-container");
           return system.children.find(c => c.className === "pc-columns").style.gridTemplateColumns;
         });
@@ -778,7 +799,7 @@ export const tests = [
       approx(bar.thickness, 0.4, "160% of a semitone at 4 semitones per staff space");
       deepEq(sig.overlaps, [], "no marks run together");
       deepEq(CNBKeySignature.signatureSemis(keysigConfig(), "C"), [12, 14, 16, 17, 19, 21, 23, 24], "signatureSemis");
-      eq(CNBKeySignature.marks(keysigConfig([], { style: "accidentals" }), C_KEY), null, "an unknown style");
+      eq(CNBKeySignature.marks(keysigConfig([], { style: "sparkles" }), C_KEY), null, "an unknown style");
     }},
 
   { name: "marks: the four stacking rules, for an even tonic (C major, A minor's parity) and an odd one (D♭ major)", fn: () => {
@@ -847,6 +868,97 @@ export const tests = [
         colors({ name: "F♯ major", pitchClasses: pcs, tonicPc: 6 }), "no spelling: the default, a tie to the sharp");
       deepEq(colors({ name: "Pentatonic", pitchClasses: [0, 2, 4, 7, 9], tonicPc: 0 }), Array(6).fill("#000000"),
         "a key no name spells: every note natural");
+    }},
+
+  // ─── Accidentals (session 51, design §5) ──────────────────────────────────
+
+  { name: "marks: accidentals — the sharps in the order F C G D A E B, the flats B E A D G C F, each its own column; nothing for C major", fn: () => {
+      const acc = key => CNBKeySignature.marks(keysigConfig([], { style: "accidentals" }), key);
+      const signs = key => acc(key).marks.map(m => [m.mark.sign, CNBMusic.pitchClass(m.semi), m.column]);
+      deepEq(signs(C_KEY), [], "C major: no signs");
+      deepEq(acc(C_KEY).columns, [], "…and no columns");
+      deepEq(signs(D_KEY), [["sharp", 6, 0], ["sharp", 1, 1]], "D major: F♯ C♯");
+      const EB_KEY = { name: "E♭ major", pitchClasses: [3, 5, 7, 8, 10, 0, 2], tonicPc: 3 };
+      deepEq(signs(EB_KEY), [["flat", 10, 0], ["flat", 3, 1], ["flat", 8, 2]], "E♭ major: B♭ E♭ A♭");
+      deepEq(signs(FS_KEY).map(s => s[1]), [6, 1, 8, 3, 10, 5], "F♯ major: F♯ C♯ G♯ D♯ A♯ E♯");
+      deepEq(signs(FS_KEY).map(s => s[2]), [0, 1, 2, 3, 4, 5], "…one column each");
+      const CB_KEY = { name: "C♭ major", pitchClasses: [11, 1, 3, 4, 6, 8, 10], tonicPc: 11 };
+      deepEq(signs(CB_KEY).map(s => s[1]), [10, 3, 8, 1, 6, 11, 4], "C♭ major: B♭ E♭ A♭ D♭ G♭ C♭ F♭");
+      deepEq(signs({ name: "E minor", pitchClasses: [4, 6, 7, 9, 11, 0, 2], tonicPc: 4 }), [["sharp", 6, 0]], "E minor: F♯");
+      deepEq(signs({ name: "D minor", pitchClasses: [2, 4, 5, 7, 9, 10, 0], tonicPc: 2 }), [["flat", 10, 0]], "D minor: B♭");
+      deepEq(signs({ name: "Pentatonic", pitchClasses: [0, 2, 4, 7, 9], tonicPc: 0 }), [], "a key no letters spell: none");
+      acc(D_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 1.1, "columns a sharp's 1.1 staff spaces apart"));
+      // At the default magnification, 7/4, LilyPond draws emmentaler-26's flat, 0.9037 wide.
+      acc(EB_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 0.9037, "columns a flat's 0.9037 staff spaces apart"));
+      const one = keysigConfig([], { style: "accidentals" });
+      one.engine.defaultMagnify = "1";
+      CNBKeySignature.marks(one, EB_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 0.92, "at magnify 1, emmentaler-20's 0.92"));
+      deepEq(acc(D_KEY).bars, [], "no gold stems");
+      deepEq(acc(FS_KEY).overlaps, [], "no overlaps");
+    }},
+
+  { name: "marks: accidentals — each sign at the note it makes, in the octave of the scale from the place's tonic; every line set restarts the columns", fn: () => {
+      const at = (position, key, staff) => {
+        const config = keysigConfig([], { style: "accidentals",
+          placement: { rule: "scale-from-tonic", tonicOctave: null, position } });
+        if (staff) config.staff = staff;
+        return CNBKeySignature.marks(config, key).marks.map(m => [m.semi, m.column]);
+      };
+      const EB_KEY = { name: "E♭ major", pitchClasses: [3, 5, 7, 8, 10, 0, 2], tonicPc: 3 };
+      deepEq(at("middle", D_KEY), [[6, 0], [13, 1]], "D major in the middle: D at 2, F♯ 6, C♯ 13");
+      deepEq(at("middle", EB_KEY), [[10, 0], [3, 1], [8, 2]], "E♭ major: E♭ at 3, B♭ 10, A♭ 8");
+      deepEq(at("bottom-set", D_KEY), [[6, 0], [13, 1]], "the bottom set 4–8: D at 2");
+      deepEq(at("top-set", D_KEY), [[18, 0], [25, 1]], "the top set 16–20: D at 14");
+      deepEq(at("every-set", D_KEY), [[6, 0], [13, 1], [18, 0], [25, 1]], "every set: two copies, each from column 0");
+      const kite = { semitonePattern: [3, 6, 9], midpoint: 12, semitonesPerStaffSpace: 3 };
+      deepEq(at("middle", D_KEY, kite), [[6, 0], [13, 1]], "Kite's staff, the middle: the same notes");
+      deepEq(at("top-set", D_KEY, kite), [[18, 0], [25, 1]], "Kite's top set 15–21: D at 14");
+      deepEq(at("bottom-set", EB_KEY, kite), [[10, 0], [3, 1], [8, 2]], "Kite's bottom set 3–9: E♭ at 3");
+    }},
+
+  { name: "accidentals: not the scale stack; validation accepts the style", fn: () => {
+      assert(CNBKeySignature.isScaleStack(keysigConfig()), "the default is the scale stack");
+      assert(!CNBKeySignature.isScaleStack(keysigConfig([], { style: "accidentals" })), "accidentals are not");
+      assert(CNBConfig.validate(keysigConfig([D_KEY], { style: "accidentals" })).valid, "valid");
+    }},
+
+  { name: "render: accidentals — black Emmentaler signs at LilyPond's size, in its optical size, centred on their columns, no ledgers or stems", fn: () => {
+      const EB_KEY = { name: "E♭ major", pitchClasses: [3, 5, 7, 8, 10, 0, 2], tonicPc: 3 };
+      const space = 4 * PX_PER_SEMI;                       // the default staff: 64 px a staff space
+      for (const [key, sign, extent, width, magnify, height] of [
+        [D_KEY, "sharp", [0, 1.1], 1.1, "1", 3], [EB_KEY, "flat", [-0.12, 0.8], 0.92, "1", 2.512],
+        [EB_KEY, "flat", [-0.1037, 0.8], 0.9037, "7/4", 2.508],      // emmentaler-26
+      ]) {
+        withSvgStub(svg => {
+          const config = keysigConfig([key], { style: "accidentals" });
+          config.engine.defaultMagnify = magnify;
+          const grid = CNBGrid.create(config, GRID_RANGE);
+          const g = CNBKeySignature.render(svg, grid, config, key.name);
+          const marks = CNBKeySignature.marks(config, key).marks;
+          eq(g.children.length, marks.length, `${key.name}: the signs alone, no ledgers or stems`);
+          const m = CNBKeySignature.measure(config, PX_PER_SEMI, key.name);
+          approx(m.markWidth, width * space, `${key.name}: a column is a ${sign}'s width`);
+          const { left } = CNBKeySignature.padding(config, PX_PER_SEMI, key.name);
+          approx(left, 0.75 * space, `${key.name}: its ink 0.75 staff spaces after the staff's start`);
+          g.children.forEach((p, c) => {
+            eq(p.tag, "path", "a path");
+            eq(p.getAttribute("class"), "cnb-key-signature-sign", "its class");
+            eq(p.getAttribute("fill"), "#000000", "black");
+            const t = /translate\(([-\d.eE+]+) ([-\d.eE+]+)\) scale\(([-\d.eE+]+)\)/.exec(p.getAttribute("transform"));
+            assert(t, "translate and scale");
+            approx(parseFloat(t[3]), space / 250, "250 font units a staff space");
+            // The glyph's extent centred on its column.
+            const centre = left + (c + 0.5) * width * space;
+            approx(parseFloat(t[1]) + (extent[0] + extent[1]) / 2 * space, centre, `${sign} ${c} centred`);
+            approx(parseFloat(t[2]), semiToYExpected(marks[c].semi), `${sign} ${c}: its origin at its semitone`);
+          });
+          // The glyph's outline, at that scale: a sharp 3 staff spaces tall.
+          const ys = g.children[0].getAttribute("d").match(/-?\d+(\.\d+)?/g).map(Number).filter((_, i) => i % 2 === 1);
+          approx((Math.max(...ys) - Math.min(...ys)) / 250, height, `${sign} at magnify ${magnify}: its outline's height in staff spaces`, 1e-3);
+        });
+      }
+      eq(CNBKeySignature.gutterWidth(keysigConfig([C_KEY], { style: "accidentals" }), PX_PER_SEMI, C_KEY.name), 0,
+        "C major: nothing drawn, no gutter");
     }},
 
   { name: "marks: stacks go to the left in sharp keys — mirrored for D major, not for B♭ or C major, nor under odd-left-even-right", fn: () => {
