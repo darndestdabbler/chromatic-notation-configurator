@@ -1,0 +1,29 @@
+{
+  "session": 2,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "verifier": "gpt-5-4 (routed session-verification)",
+  "date": "2026-07-06",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "Structural limitations (records 14, 42) were treated as Tier-3 gaps instead of Tier-4 invariants",
+      "resolution": "Accepted. Added invariants I4 (per-octave staff periodicity; anticipated by schema.md's feasibility hooks) and I5 (absolute pitch anchoring; schema.md's offset-0=C convention) under the spec's confirm-or-amend instruction; re-tiered record 14 to Tier 4 (I4) and record 42 to Tier 4 (I5); updated counts (21/12/1/21), Tier-4 partition, feed-forward lists, E1/E2 driver tables (42 moved to Tier-4 evidence), and the uncataloged-gaps list."
+    },
+    {
+      "id": 2,
+      "summary": "Tier 3 was redefined beyond the spec ('devices or display behaviors')",
+      "resolution": "Accepted (verifier's offered alternative adopted). Tier 3's primary wording restored to the spec verbatim; the single remaining extension (record 7's partial-display case) is now an explicitly documented amendment in the tier definition, dated to this verification round."
+    },
+    {
+      "id": 3,
+      "summary": "Recorded UAT attestation did not clearly attest the final corrected deliverables",
+      "resolution": "Accepted. The initial attestation is now marked preliminary/superseded in s2-uat.md, and a post-correction attestation was obtained from the operator over the final corrected verdicts (verbatim: 'Attested — corrected records and tier verdicts stand as final'), recorded in the s2-uat.md addendum."
+    },
+    {
+      "id": 4,
+      "summary": "Invariant selection was justified by prevalence rather than architecture",
+      "resolution": "Accepted. Matrix §1 now states an explicit architectural invariant test (structural output difference vs omitted redundant marks, prevalence irrelevant); both amendments and the record-7 non-elevation are argued from that test."
+    }
+  ]
+}
