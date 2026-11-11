@@ -1,0 +1,6 @@
+{"timestamp": "2026-07-07T00:17:00.932825Z", "session_number": 1, "event_type": "work_started"}
+{"timestamp": "2026-07-07T01:07:40.098079Z", "session_number": 1, "event_type": "closeout_requested", "force": false, "manual_verify": false}
+{"timestamp": "2026-07-07T01:07:40.343081Z", "session_number": 1, "event_type": "closeout_succeeded", "method": "api", "engine": "claude-code", "provider": "anthropic", "model": null, "verdict": "VERIFIED"}
+{"timestamp": "2026-07-07T01:21:50.094609Z", "session_number": 2, "event_type": "work_started"}
+{"timestamp": "2026-07-07T02:09:47.243988Z", "session_number": 2, "event_type": "closeout_requested", "force": false, "manual_verify": false}
+{"timestamp": "2026-07-07T02:09:47.494740Z", "session_number": 2, "event_type": "closeout_succeeded", "method": "api", "engine": "claude-code", "provider": "anthropic", "model": null, "verdict": "VERIFIED"}
