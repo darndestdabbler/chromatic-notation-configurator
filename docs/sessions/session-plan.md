@@ -1944,20 +1944,124 @@ whole-step stack.
    design plans the sessions that build it, and the engine session they
    need. The operator decides whether they come before the 1.1.0 release.
 
-### Session 54: The UI is stable
+*(Done in session 53: the amendment is §13 of
+[`docs/planning/key-signature-designer-design.md`](../planning/key-signature-designer-design.md),
+with mock-ups in
+[`docs/planning/key-signature-editor-mockups/`](../planning/key-signature-editor-mockups/index.html)
+and a consult with Sol and Argon in
+[`docs/planning/key-signature-editor-consult.md`](../planning/key-signature-editor-consult.md).
+The operator approved it on 2026-11-11 and put the sessions it plans, 54–56
+below, before the UI-stable session (57) and the 1.1.0 release (58): "No
+one is using this yet; so, no need to worry about release-related stuff.")*
+
+### Session 54: One model for the key signature, on the canvas
+
+**Why.** The approved key-signature editor design (session 53, design §13)
+replaces the two styles with one model. It is built on the canvas first, and
+the engine's work is planned.
+
+1. Register.
+2. The config of design §13.9 with its validation, and
+   `CNBConfig.signatureStyleToModel`, called by `CNBConfigIO.mergeLoaded`
+   before the defaults are merged. It converts a saved `style`: the
+   accidentals style becomes the sharps or flats only, black signs and the
+   cycle of fifths, climbing (§13.2).
+3. In `CNBKeySignature.marks` and `render` (§13.3–§13.6):
+   - the looks for naturals, a line or ledger and a space;
+   - the signs as a look, black unless a look colours them;
+   - added symbols, each `offset` and `added` replaced whole;
+   - shapes' `reference` and `ledgers`;
+   - placement by reference point plus offset;
+   - the column step;
+   - the sharps or flats only, with the cycle of fifths and both heights,
+     the window shared by the key's family.
+4. Tests in `cnb/tests/cnb-key-signature-tests.js` and
+   `cnb/tests/cnb-config-tests.js`:
+   - the window's zigzag on the default and Kite staffs, in sharp and flat
+     keys, with the window raised;
+   - a one-sided symbol placed by its reference point, and its ledgers;
+   - every fixture and gallery file, and both of today's styles after
+     conversion, drawing exactly as before.
+5. Today's panel keeps working on the model, its Draw row setting the
+   traditional starting point or the defaults, until session 56.
+6. *Engine work:* insert into the engine's plan the session of design
+   §13.10 and its release, 1.6.0. The session covers:
+   - `(at dx . dy)` on every mark;
+   - a colour on `sharp` and `flat`;
+   - the `symbol` kind, solid or hollow, with no ledgers;
+   - every ledger drawn before the marks.
+
+### Session 55: The key signature's model reaches LilyPond
+
+**Why.** The engine's contract is proved before the editor is built on it
+(design §13.11, from the consult).
+
+1. Register.
+2. Once the engine session has landed (otherwise the step is blocked), the
+   mark table carries (design §13.10):
+   - the `at` placement;
+   - signs' colours;
+   - the `symbol` kind;
+   - layered marks.
+
+   LY spec 1.3.19 §5.6a, the architecture plan and the README are
+   updated. The five export baselines stay byte-identical.
+3. The Clairnote SN and DN gallery files take Clairnote's own signatures,
+   their tails imported as filled shapes. Dots are solid on a line or ledger
+   and hollow in a space (SN through the line and space looks, DN through
+   its noteheads). Flats have a tail up and sharps a tail down, each an
+   added symbol shallow enough to clear (design §13.7). They are checked at
+   concert size on an engraved page, as session 50 checked them.
+4. An engine round trip holds every symbol's placement, size and colour,
+   every stack's ledgers and the ink to the preview's within 0.001 staff
+   spaces. It covers:
+   - the default, Kite 4-369 and both Clairnote files;
+   - the traditional starting point on the bottom and every line set;
+   - C, D and B♭ major;
+   - an asymmetric head with a reference point;
+   - offsets in x and y;
+   - added symbols of other sizes;
+   - a hollow base without ledgers;
+   - a coloured and moved sign;
+   - the Twinline pitch axis;
+   - the seam between two line sets' copies.
+
+   *Engine work:* the session planned in session 54.
+
+### Session 56: The key-signature editor
+
+**Why.** A signature designed on a magnified canvas, an edit moving a
+whole category in every key (design §13.8).
+
+1. Register.
+2. The editor of design §13.8:
+   - the magnified canvas, its height capped, with selection (a mark's
+     spelling or the picked layer; the base or an added symbol), the drags,
+     their snapping, one drag one step of undo, and the fields;
+   - Edit and the look card, with the signs' thumbnails;
+   - Import from SVG with its reference point and "Takes ledger lines";
+   - the key picker, the mode's 15 keys previewed, and the list of keys
+     whose marks touch;
+   - the touch check over the 105 keys, by ink, as a warning (§13.7);
+   - Start from.
+3. The rows the editor replaces are removed: Draw, Looks, Size and the
+   overlap note. A UAT driver covers each drag and choice; screenshots at
+   1440 and 1280 px, judged against the mock-ups. *Engine work:* none.
+
+### Session 57: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06); the
 declaration moved here in session 42.
 
 1. Register.
-2. The operator tries sessions 43–52 in the app. Rough edges found are
-   fixed here, or planned as sessions before 55 if they are large.
+2. The operator tries sessions 43–56 in the app. Rough edges found are
+   fixed here, or planned as sessions before 58 if they are large.
 3. The README's text and picture follow the UI as it now is. The full UAT
    runs.
 4. The operator declares the UI stable, which is the condition for
-   session 55.
+   session 58.
 
-### Session 55: Release 1.1.0 (release: 1.1.0)
+### Session 58: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
@@ -2027,7 +2131,8 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
   scheduled. *Planned since 2026-11-08 as session 42 and on; since
   2026-11-09, 44 and on; since 2026-11-10, 46 and on; since 2026-11-11,
   designed in session 47 and built in sessions 48–51, the mark-list hook
-  being engine session 30.*
+  being engine session 30; Clairnote's tailed marks, through the
+  key-signature editor designed in session 53, in sessions 54–56.*
 - **Gallery fidelity** (`reproduction-report.md`):
   - Gap A, a ledger rule that hides a ledger when a staff line lies between
     it and the note, which would let the Clairnote SN/DN, Chromatic Lyre

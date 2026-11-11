@@ -64,7 +64,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 50 | The Key signature panel | no | 2026-11-11 |
 | 51 | Accidentals | no | 2026-11-11 |
 | 52 | Sharps and flats sized to the noteheads | no | 2026-11-11 |
-| 53 | Designing the key-signature editor | — | not declared |
+| 53 | Designing the key-signature editor | no | 2026-11-11 |
 | 54 | The UI is stable | — | not declared |
 | 55 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
@@ -532,3 +532,9 @@ Size the traditional key signature's sharps and flats in semitones, as the noteh
 **Amended after acceptance:**
 
 - 2026-11-11 — step 'sign-size': its files: Scaling the signs moves their columns, so the existing sharps-and-flats engine round trips and export-text test fail until the export writes each sign's scale (cnb-lilypond.js, its tests); the editor's buildKeys/stateFromConfig must carry the new keySignature.signs or its default round-trip test fails. With engine 1.5.0 the gutter round trip at magnify 1 and 5/2 now really engraves at those sizes, so the preview's spacing must follow the clef's X-offset and the time signature's optical width in cnb-key-signature.js. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 53 — Designing the key-signature editor
+
+**Releasable: no.**
+
+Design the key-signature editor, as a design only, for the operator's approval: an amendment to docs/planning/key-signature-designer-design.md. It replaces the two styles with one model for every signature, four choices (which notes get a mark: the whole scale or the altered notes only; what each mark is drawn with; how the marks are arranged; their sizes and offsets), with the notehead signature the default and the traditional signature a starting point (altered notes, Emmentaler's signs, the cycle of fifths, no gold stem), and says how a config with either of today's styles loads and draws as it does now. It covers symbols (a notehead's own look or a chosen shape, Emmentaler's sharp or flat, or an imported SVG, chosen separately for naturals, flats and sharps; a mark as a base plus up to two added symbols such as a tail; each symbol's reference point and whether it takes ledgers, set on import); when a look applies (natural, flat or sharp; line or ledger, or space; every second stack); the arrangement (today's stacking rules, or the cycle of fifths one sign to a column, with a zigzag rule for a chromatic staff); the editor (the signature magnified on a canvas from the notehead panel's thumbnails, controls and import, drags that move or resize a symbol in semitones for its whole category, a key picker and small previews of other keys); placing a mark by its reference point plus an offset rather than by centring its box; how a tail clears the next dot of a stack; and the config, the panel rows the editor replaces, the preview, the mark table's format and the engine's work (imported symbols as signs, placement by reference point and offset, layered marks). Mock-ups follow before approval: the editor at 1440 and 1280 px with its key picker and previews of other keys, and the notehead signature, a traditional one with the zigzag, and Clairnote SN and DN with tails, each in a sharp and a flat key at concert size. One identical brief goes to two providers' models as a cross-provider consult, recorded with a synthesis, and the design is revised from it. The operator reviews the mock-ups and the design, approves it, and decides whether the sessions it plans come before the 1.1.0 release; those sessions, and the engine session they need, are then numbered in the session plan.

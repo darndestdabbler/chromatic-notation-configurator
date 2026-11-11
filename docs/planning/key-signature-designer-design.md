@@ -9,6 +9,8 @@ session 47.
 and the operator's review of the mock-ups
 ([`key-signature-mockups/`](key-signature-mockups/index.html)), §12 below;
 **approved by the operator on 2026-11-11** (Approval, at the end).
+**Amended in session 53** (2026-11-11): the key-signature editor, one model
+for every signature in place of the two styles (§13, after the Approval).
 
 ## 1. What a designer wants
 
@@ -609,3 +611,613 @@ The operator's decisions in this session:
 The program of §11 is numbered in the session plan: sessions 48 to 51
 build the designer, session 52 is the UI-stable session and session 53 the
 1.1.0 release.
+
+---
+
+## 13. Amendment: the key-signature editor (session 53)
+
+**Session:** 53 (2026-11-11). A design only: no code changes with it.
+**Source:** the session plan's session 53, from the operator's request
+(2026-11-11): an editor that shows the signature magnified, its marks
+noteheads, sharps and flats or imported symbols, each of which can be
+resized and moved, with rules for stacking and offsets.
+**Mock-ups:** [`key-signature-editor-mockups/`](key-signature-editor-mockups/index.html).
+**Consult:** Sol and Argon,
+[`key-signature-editor-consult.md`](key-signature-editor-consult.md); what
+it changed is §13.12.
+
+### 13.1 Why
+
+Sessions 48–52 built two styles. "The key's notes" draws one shape per
+mark with its box centred on its stack. "Sharps or flats" draws Emmentaler's
+signs and nothing else. Clairnote shows what neither can do (operator,
+2026-11-11). A mark on a line or a ledger is solid and one in a space is
+hollow, and a flat has a diagonal tail up and a sharp a diagonal tail down.
+A mark is therefore one to three shapes: a dot, solid or hollow, and a tail.
+Session 50 tried one-sided tails and dropped them for two reasons
+(`docs/sessions/session-050/notes.md`):
+
+1. **Hidden geometry.** The engine centres a mark's box on its stack. A
+   one-sided symbol therefore needed an invisible sliver opposite its tail
+   to keep its dot on the stack, and LilyPond printed the sliver as a speck.
+2. **The next dot.** A steep tail ran into the next dot of a whole-step
+   stack.
+
+This amendment answers both (§13.6, §13.7). It replaces the two styles with
+one model and gives the model an editor.
+
+### 13.2 One model for every signature
+
+A signature is four choices:
+
+| Choice | Values |
+|---|---|
+| **Which notes get a mark** | the whole scale (the default), the tonic and the half steps (§4.3), or **the sharps or flats only**; and the upper tonic, as today (§4.2) |
+| **What each mark is drawn with** | a look for naturals, flats and sharps, laid over the notehead's own look (§13.3, §13.4) |
+| **How the marks are arranged** | today's four stacking rules (§4.4), or **the cycle of fifths, one mark to a column** (§13.5); and the place (§4.5) |
+| **Their sizes and offsets** | each symbol's size and its offset from the mark's pitch, in semitones (§13.3, §13.6) |
+
+**The notehead signature is the default**: the whole scale, every mark the
+notehead's own look, stacked sevenths, in the middle, with the gold stem.
+It is today's default signature, unchanged.
+
+**The traditional signature is a starting point**, not a separate style.
+It sets the sharps or flats only; Emmentaler's sharp for sharps and flat for
+flats, each with no colour (`color: null`, black), so that a notehead's
+colour never reaches a sign; the cycle of fifths, with the heights the
+window gives (§13.5); and the place in the middle. Under the cycle of fifths
+there is no gold stem (§13.5). The designer can change any of it
+afterwards: give the signs a colour, move them, or draw dots for them.
+
+**Configs saved today load and draw as they do now.** `style` is retired,
+and a config that carries it is converted when it loads, as a palette is
+(`CNBConfig.paletteToRules`). A new pure function,
+`CNBConfig.signatureStyleToModel`, is called by `CNBConfigIO.mergeLoaded`:
+
+- `"notehead-chords"` needs nothing: the model's defaults are that style.
+  The field is dropped.
+- `"accidentals"` becomes the sharps or flats only, `looks.flat` `{ sign:
+  "flat", color: null }`, `looks.sharp` `{ sign: "sharp", color: null }`,
+  and the cycle of fifths with the heights `"scale"` (§13.5). Those are
+  session 51's signs, black, each at its note in the scale's octave from
+  the tonic. `looks.all`, `looks.flat`, `looks.sharp` and `alternate` are
+  cleared first: the accidentals style ignored them, and left in place they
+  would colour or reshape the signs. `signs.heightSemis` and `placement`
+  stay as they are.
+
+The conversion runs on the loaded data before the defaults are merged, and
+running it twice changes nothing. Every fixture and gallery file therefore
+draws, and exports, byte for byte as before, which the first building
+session pins (§13.11). What a saved accidentals config loses is only the
+notehead settings it was not using; Sol suggested keeping a copy of them,
+which is not taken, since nothing reads them.
+
+### 13.3 Symbols
+
+A mark's **base** is one of three kinds of symbol:
+
+- **A notehead**: the notehead's own look (nothing set), or a chosen
+  shape from `config.shapes`, which is today's look `shape`.
+- **Emmentaler's sharp or flat**: the look's new field `sign`, `"sharp"`
+  or `"flat"`. These are the signs session 51 draws, sized by session 52's
+  `signs.heightSemis`. One size serves both signs, and a look's height and
+  width do not apply to them (the session plan: "resizing a sharp sets
+  session 52's size"). A sign takes a look's colour; it takes no colour
+  from the notehead (§13.2).
+- **An imported SVG**, which is a shape like any other. It is imported
+  through the notehead panel's Import from SVG into `config.shapes`, and
+  chosen as `shape`. A look's `shape` and `sign` are one slot: a layer that
+  sets either replaces both beneath it.
+
+Each kind is chosen separately for naturals, flats and sharps (§13.4), and
+flats and sharps each have their own Import from SVG, so a designer imports
+the flat's symbol while editing flats.
+
+**Added symbols.** A look may add up to two symbols to the base, `added:
+[{ shape, heightSemis, widthSemis, offset }]`, each a shape from
+`config.shapes`. An added symbol is drawn over the base, solid, in the
+mark's colour, and has no ledgers of its own. So one tail serves a solid dot
+and a hollow one: the flats' look adds a tail, and the dot beneath is solid
+or hollow as its line or space gives it (§13.4). Two added symbols are
+enough for a dot with a tail and a second stroke, and the limit keeps the
+look's controls small.
+
+**A symbol's reference point and its ledgers.** Two new optional shape
+fields:
+
+- **`reference: { x, y }`**, in the shape's native SVG units: the point
+  that sits on the mark's pitch, such as a dot's centre or a flat's bowl
+  line. A shape without one is placed as today, its box centred on its
+  stack and its origin at its pitch. Every shape saved today is therefore
+  placed as it is now.
+- **`ledgers: false`**: the symbol takes no ledger lines, as a sign does
+  not. A shape without the field takes them, as a notehead does.
+
+Only the key signature reads the two fields. A notehead rule that uses the
+same shape draws and engraves it as it does today, with its ledgers.
+
+For Emmentaler's signs both are fixed: the reference is the sign's box's
+centre across and its origin up and down, a sharp's centre line and a flat's
+bowl line, which is where session 51 puts them, and a sign takes no ledgers.
+
+**On import** the panel shows the symbol enlarged, with its reference point
+marked. The point starts at the SVG's origin, which is the toolkit's
+notehead centre. A click on the symbol moves the point. Beneath it is a
+checkbox, "Takes ledger lines", which starts on when importing for naturals
+and off when importing for flats or sharps. The toolkit's `data-*`
+attributes are read as for a notehead (Module 16), and stem anchors are not
+needed.
+
+### 13.4 When a look applies
+
+Looks are laid over one another, each field left unset keeping the one
+beneath, in this order, the last winning:
+
+1. the notehead's own look (at crotchet, in the key), as today;
+2. **all marks** (`looks.all`), as today;
+3. **naturals** (`looks.natural`, new), **flats** (`looks.flat`) or
+   **sharps** (`looks.sharp`), by the key's spelling;
+4. **on a line or a ledger** (`looks.line`, new) or **in a space**
+   (`looks.space`, new);
+5. **every second stack** (`alternate`), as today.
+
+A mark is **on a line** when its pitch is a staff line's, or when the
+notation's ledgers for a note at its pitch (`CNBLedgerSet.ledgersFor`)
+include its own semitone. Otherwise it is in a space. This holds whether or
+not the mark draws ledgers, so a sign can take the line look too. It is
+decided from the mark's pitch, before any offset. Under a pitch axis the
+comparison is by axis position, to within 10⁻⁶.
+
+A look's fields are today's `shape`, `hollow`, `color`, `heightSemis` and
+`widthSemis`, plus `sign`, `offset` and `added`. **`offset` and `added`
+are each one field**: a layer that sets one replaces it whole, so an offset
+`{ x: 0, y: 0 }` resets it and `added: []` removes the added symbols
+beneath. Added symbols from two layers are not combined.
+
+Clairnote SN is then:
+
+- all marks are a small dot;
+- a line or ledger is solid, and a space hollow;
+- flats add a tail up;
+- sharps add a tail down.
+
+Clairnote DN sets no line or space look, since its noteheads already
+alternate solid and hollow, and the dot takes their fill (mock-ups,
+section 2).
+
+### 13.5 Arrangement
+
+`stacking` gains a fifth value, **`"fifths"`: the cycle of fifths, one mark
+to a column.** In a sharp key the marks are in the order F C G D A E B, and
+in a flat key, or a key with neither, B E A D G C F. The order is by letter,
+so it applies to every mark drawn, naturals included, when the notes are
+the whole scale. Under `"fifths"` the gold stem, the stack direction
+(`columns`) and every second stack apply as follows:
+
+- there is no gold stem;
+- the direction does not apply, and the columns go left to right;
+- every second stack is every second column;
+- the upper tonic does not apply, since each letter has one mark.
+
+**Heights** (`heights`, under `"fifths"` only):
+
+- **`"scale"`**: each mark at its note in the scale's octave from the
+  tonic, which is session 51's rule. The signs climb as the key's notes do.
+- **`"window"`**: each mark at the octave of its note that falls in a
+  **one-octave window around its line set**: the semitones from the set's
+  middle − 6 up to, but not including, its middle + 6. In the middle
+  place, the window is around `staff.midpoint`.
+
+The window gives the traditional zigzag on any staff. A fifth up is 7
+semitones and a fourth down 5, so in a window of 12 each next sign is
+either a fifth up or a fourth down, and the signs zigzag instead of
+climbing, as a treble signature's do (G5, D5, A4: down twice).
+On the default staff's bottom set (lines 4 and 8, middle 6, window 0–11):
+
+- the sharps fall on 6 1 8 3 10 5 0 (F♯ C♯ G♯ D♯ A♯ E♯ B♯);
+- the flats fall on 10 3 8 1 6 11 4 (B♭ E♭ A♭ D♭ G♭ C♭ F♭).
+
+The traditional treble clef does the same with its own windows: its sharps
+fall in A4–G5 and its flats in F4–E5. The window is the fifths' order
+wrapped into an octave, not every clef's exact placement, and its signs
+stand at the pitches they make (§5). One setting moves the window:
+**`window: { sharp: 0, flat: 0 }`**, the semitones by which the window is
+raised in sharp keys and in flat keys (negative lowers). It is needed
+because a traditional signature's sharps sit a third above its flats, and
+some designers will want that. Both are 0 by default. All the marks of one
+copy share its key's window, naturals included; a key with neither sharps
+nor flats raises it by 0.
+
+Every line set's copy has its own window, as each copy has its own octave
+today (§4.5). The marks keep their order by letter, so the window changes
+only their heights.
+
+### 13.6 Placing a mark, and its sizes and offsets
+
+**A mark is placed by its reference point plus an offset.** For a symbol
+with a reference point (§13.3), the reference point goes to the mark's pitch
+on its stack, moved by the symbol's **`offset: { x, y }`**, in semitones
+(axis units under a pitch axis, as a notehead's size). Its box is not
+centred. A one-sided symbol therefore needs no hidden geometry: a dot with
+a tail has its reference at the dot's centre, and the dot sits on the stack
+whatever the tail does. That is session 50's first failure answered.
+
+- An added symbol is placed the same way, at the base's point (the base's
+  offset included) plus its own offset. Moving the base moves its tail
+  with it, and a tail can also be moved by itself.
+- A symbol with no reference point is placed as today, its box centred,
+  and an offset moves it from there. Every config saved today keeps that
+  placement.
+- A head's ledgers move with it, and are as long as the base is wide: an
+  added symbol never lengthens them.
+- **Sizes** are each symbol's `heightSemis` and `widthSemis`, as a
+  notehead's are (null = the shape's own). The signs' size is
+  `signs.heightSemis` (§13.3).
+
+**Columns.** The step between columns is the farthest any mark reaches to
+the right of its stack's line plus the farthest any mark reaches to the
+left, the offsets and added symbols included. No mark's ink then overlaps
+the next column's. A mark centred on its stack, as every mark today is,
+gives its width, today's step, so nothing saved today moves. A mark that
+reaches out to one side widens the step for the whole signature, which
+keeps the rule to one number. *(Revised after the mock-ups: the first draft
+took twice the farthest reach, which spaced a tailed dot's stacks half as
+wide again as they need.)*
+
+### 13.7 Tails
+
+How a tail clears the next dot of its stack, session 50's second failure:
+
+- **Shallow and short.** A stack holds notes a whole step, 2 semitones,
+  apart. With a dot 1.6 semitones high and its reference at the centre, the
+  next dot's edge is 1.2 semitones above the centre. A tail leaving the dot
+  at 30° from the horizontal and reaching 0.8 semitones past its side
+  rises about 0.5 semitones, and clears the next dot by more than its own
+  thickness. Session 50's 55° tail rose about 1.1 semitones and met the
+  dot. The editor's drag sets the tail's offset and size (§13.8), so the
+  designer can make it shallower and shorter until it clears.
+- **The next stack.** The column step reaches the farthest ink (§13.6), so
+  a tail never reaches into the next stack. "Stacks go to the left in sharp
+  keys" (§4.4) remains for Clairnote's own arrangement.
+- **Measured, not avoided.** The editor checks every mark's ink against the
+  other marks in its stack and in the neighbouring stacks, for all 105 keys,
+  every line set's copy and the seams between copies included. This
+  replaces §4.4's height-only overlap note. No mark is moved automatically.
+
+**The touch check**, made precise from the consult:
+
+- It compares whole marks, a base with its added symbols, so a tail joined
+  to its own dot is not a touch. Staff lines and ledgers do not count.
+- It tests the boxes first, and where two boxes meet, the ink itself: the
+  two marks drawn into a small offscreen mask at a fixed resolution, a
+  hollow mark's cut-out excluded. A diagonal tail whose box grazes a
+  neighbour's is not reported unless its ink does.
+- It runs after a drag ends, not while it moves.
+- It is advice: it never blocks the export. The checks list shows it as a
+  warning, "Marks touch in 3 keys", so the status does not say "No
+  problems" beside it.
+
+### 13.8 The editor
+
+The Key signature section's panel holds the editor
+(mock-ups, at 1440 and 1280 px):
+
+```
+Key signature   [x] Show the key signature     Start from: [The noteheads] [Traditional sharps and flats]
+
+  ┌ Key: [D ▾] [major ▾] ───────────────────────────────────┐  ┌ Sharps ──────────────────────┐
+  │                                                          │  │ Symbol  [notehead thumbnails] │
+  │     the signature, magnified, on the staff's lines      │  │         [♯] [♭]  Import from SVG│
+  │     and ledgers; a mark selected shows its reference     │  │ Fill    (as beneath) Solid Hollow│
+  │     point, its box and a resize handle                   │  │ Colour  ■   Size  h [ ] w [ ]   │
+  │                                                          │  │ Offset  x [0.0] y [0.0] semis   │
+  └──────────────────────────────────────────────────────────┘  │ Added   [tail ▾] [+ Add a symbol]│
+  Other keys:  C  G  D  A  E  B  F♯ C♯ | F  B♭ E♭ A♭ D♭ G♭ C♭   └──────────────────────────────┘
+               (each a small signature; a key whose marks touch is outlined, "2 marks touch")
+  Edit: (o) Sharps  ( ) Flats  ( ) Naturals  ( ) All marks  ( ) On a line  ( ) In a space  ( ) Every second stack
+
+  Notes   (o) The whole scale  ( ) The tonic and the half steps  ( ) The sharps or flats only   [x] The tonic an octave up
+  Stacks  ( ) Stacked sevenths … ( ) Cycle of fifths, one to a column: heights (o) in a window ( ) climbing
+          window raised: sharps [0] flats [0] semitones
+  Place   (o) In the middle of the staff ( ) bottom line set ( ) top line set ( ) every line set
+```
+
+- **The canvas** draws the signature for the picked key magnified, at 24
+  px a semitone (about twice the staff's Medium size), with the staff's
+  lines near the marks and the marks' ledgers, through the same `render`
+  the staff uses. The magnification is a grid context with a larger
+  `pxPerSemi`, and nothing else changes. *(The first draft said four times
+  the staff's scale; the mock-ups showed that an octave's signature would
+  then be taller than the panel.)*
+- **The edit applies to its category, never to one mark in one key.** A
+  line beside the controls says so: "Edits all flats in every key".
+  - **What a click selects.** A click on a mark selects its spelling,
+    naturals, flats or sharps, unless the designer has picked another layer
+    in "Edit" (all marks, a line or ledger, a space, every second stack),
+    which then stays picked. Every mark is on a line or in a space, so
+    membership alone cannot say which layer is meant (both consult models).
+  - **Which symbol.** A click on the base selects the base; a click on an
+    added symbol selects that symbol. The look card names the selection,
+    Base, Added 1 or Added 2, each with a way to remove an added symbol.
+  - **Dragging** a symbol sets the layer's `offset`, or an added symbol's
+    own offset, so dragging one flat moves every flat in every key. The
+    corner handle sets the selected symbol's size, or `signs.heightSemis`
+    for a sign, so resizing a sharp resizes both signs, as session 52's
+    size does. Values snap to tenths of a semitone (a value loaded from a
+    file is never snapped) and show beside the handle while dragging. One
+    drag is one step of undo. The fields on the right show and set the same
+    numbers.
+- **The look card** is the notehead panel's controls, its thumbnails
+  shared as `CNBNoteheadPanel.thumbnail`, with Emmentaler's sharp and flat
+  as two more thumbnails, Import from SVG (§13.3), the offset fields, and
+  the added symbols. Each field's "as …" clears it, as today.
+- **The key picker** is the staff's own key and mode, shown above the
+  canvas. Changing it here changes the staff's picker too.
+- **Other keys.** Beneath the canvas, the picked mode's 15 spellings as
+  small signatures at the staff's scale, sharp keys then flat keys,
+  wrapping onto a second row where the panel is narrow. A click picks one.
+  A key whose marks touch (§13.7) is outlined, with the number of places
+  where marks touch. A line beneath says how many of the 105 keys have
+  marks that touch. It opens a list of those keys, and a click on one picks
+  its tonic and mode. An offset that fits B♭ major may collide in G♭
+  major, and this is where the designer sees it.
+- **The canvas's height is capped** at 360 px, the signature scrolling
+  inside it if it is taller, so Notes, Stacks and Place stay near (Sol, from
+  the mock-ups).
+- **Start from** sets the notehead signature (the defaults) or the
+  traditional one (§13.2) after asking to confirm, since it replaces the
+  signature's settings. Show the key signature and the picked key are
+  kept. Undo restores them (session 41's history).
+
+**Panel rows the editor replaces:**
+
+| Today's row | Becomes |
+|---|---|
+| Draw (the key's notes / sharps or flats) | **Start from**, and the third Notes choice |
+| Looks (four menus) | **Edit** and the look card |
+| Size (sharps and flats) | the sign's resize handle, and the size field in the look card ("Automatic (2.72)" kept) |
+| The overlap note | the touch check over all keys (§13.7) |
+
+Show the key signature, Notes, Stacks with the gold stem, and Place stay as
+they are, each with the additions above. Controls that do not apply are
+hidden, as today. The key definitions stay below, under "Keys for notehead
+rules".
+
+### 13.9 The config
+
+```javascript
+keySignature: {
+  enabled: false,
+  // style: retired; converted on load (§13.2)
+  notes: "all",                    // | "tonic-and-half-steps" | "altered"
+  upperTonic: true,
+  looks: {                         // each field unset = the look beneath (§13.4)
+    all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {}
+  },                               // { shape | sign, hollow, color, heightSemis, widthSemis,
+                                   //   offset: { x, y }, added: [{ shape, heightSemis, widthSemis, offset }] }
+  alternate: {},                   // every second stack, as today, with the same fields
+  stacking: "degrees",             // | "parity" | "parity-stacks" | "parity-zigzag" | "fifths"
+  heights: "window",               // under "fifths": | "scale"
+  window: { sharp: 0, flat: 0 },   // under "fifths" and "window": semitones up
+  columns: "right",                // as today
+  placement: { … },                // as today
+  separator: { … },                // as today
+  signs: { heightSemis: null }     // as today: the size of both signs
+}
+shapes[name].reference             // optional { x, y }, native SVG units (§13.3)
+shapes[name].ledgers               // optional; false = no ledger lines
+```
+
+**Validation** extends today's checks:
+
+- each new vocabulary is checked;
+- `sign` is `"sharp"` or `"flat"`;
+- an offset is two finite numbers;
+- `added` has at most two entries, each naming a shape that exists, its
+  sizes checked as a notehead rule's are;
+- a reference point is two finite numbers, and `ledgers` a boolean;
+- a look that sets both `shape` and `sign` is an error.
+
+Settings that do not apply are kept and ignored, as today, so switching
+back restores them.
+
+### 13.10 The preview, the mark table and the engine's work
+
+**The preview.** `CNBKeySignature.marks` stays the one function that says
+what is drawn, and the exporter writes its result (§8). Each mark gains the
+symbols it draws, in order: the base, then the added ones, each with its
+kind and its placement, either the box centred as today or a point (the
+reference point plus the offset, in staff spaces from the column and the
+pitch). `render` and the editor's canvas draw from it.
+
+**The mark table** (LY spec §5.6a) keeps its format. Each mark gains one
+optional last element, the placement **`(at dx . dy)`**, in staff spaces.
+With it, the stencil's origin goes to the column plus `dx` and the
+semitone's height plus `dy`, and its box is not centred:
+
+```lilypond
+(marks (6 0 head clairnote-dot #f black-000000)                 ; as today
+       (6 0 symbol clairnote-tail-down #f black-000000 (at -0.05 . 0))
+       (13 1 sharp 0.6473 red-cc0000 (at 0.1 . 0.25)))           ; a sign coloured and moved
+```
+
+- **`dx` and `dy`** are the offset less the reference point, scaled to the
+  symbol's size and converted as its path is (§4.1b, Y negated), so the
+  engine places only origins and never needs a symbol's reference.
+- **A mark without `at`** is placed as today. Every table exported today is
+  therefore engraved as before.
+- **A sign's colour.** A sign may carry a colour, which Section A
+  registers, after its scale. A black sign writes none, so an unchanged
+  sign is written as today.
+- **A sign with a colour or `at`** writes its scale even when it is 1, so
+  the element positions stay fixed.
+- **A new kind, `symbol`**: `(semi column symbol <shape> <cutout> <color>
+  [at])`, as `head` is, but with no ledgers. It serves added symbols, which
+  are solid, and any base whose shape has `ledgers: false`, which may be
+  hollow.
+- **Layered marks** are several marks at one semitone and column. The
+  preview removes repeated marks (§4.5) before it splits a mark into its
+  symbols, so a dot and its tail are never merged. The engine draws every
+  ledger first, then the marks in the table's order. A mark's ledgers come
+  from its `head`, so a tail adds none.
+- **The spacing** reads the placed stencils' extents, which LilyPond's
+  translation carries, so a moved mark widens the signature in both.
+
+**The engine's work** is one engine session and its release. Its sessions
+are numbered when the first building session inserts them into the
+engine's plan, after its session 36, the 1.5.0 release:
+
+1. `(at dx . dy)` on `head`, `symbol`, `sharp` and `flat` marks, as above.
+2. The `symbol` kind, solid or hollow.
+3. A colour on `sharp` and `flat` marks.
+4. Drawing order: bars, every ledger, then the marks in table order.
+5. Goldens and integration specs on LilyPond 2.24 and 2.26, the handoff,
+   and **engine 1.6.0**, a minor release, since it adds to the format and
+   changes no existing output. The key-change, transposition and
+   system-start tests stay.
+
+The space around the signature needs nothing new: the preview already
+spaces a mark-table signature by its ink, and the engine's ink is its
+stencil, whatever the placement.
+
+### 13.11 The program
+
+Each session ends with the browser UAT and screenshots at 1440 and
+1280 px, as sessions 25 onward do.
+
+**Session A: The model on the canvas, and the engine planned.**
+
+1. Register.
+2. The config of §13.9 with its validation, and
+   `CNBConfig.signatureStyleToModel` called on load.
+3. The looks for naturals, lines and spaces, the signs as a look, added
+   symbols, reference points, offsets and columns (§13.3–§13.6), and the
+   sharps or flats only with the cycle of fifths and both heights (§13.5).
+   All of it goes in `CNBKeySignature.marks` and `render`, with tests in
+   `cnb/tests/cnb-key-signature-tests.js` and
+   `cnb/tests/cnb-config-tests.js`. The tests cover:
+   - the window's zigzag on the default and Kite staffs, in sharp and flat
+     keys, with the window raised;
+   - a one-sided symbol placed by its reference point;
+   - every fixture and gallery file, and both of today's styles after
+     conversion, drawing exactly as before.
+4. Today's panel keeps working on the model: its Draw row sets the
+   traditional starting point or the defaults, until session C replaces it.
+5. *Engine work:* insert the engine session of §13.10 and its 1.6.0
+   release into the engine's plan.
+
+*(Reordered from the consult: Sol advised proving the engine's contract
+before the editor is built on it, as session 48 did for the mark table.)*
+
+**Session B: The model reaches LilyPond.**
+
+1. Register.
+2. Once the engine session has landed (otherwise the step is blocked):
+   the mark table's `at` placement, signs' colours, the `symbol` kind and
+   layered marks (§13.10). LY spec 1.3.19 §5.6a, the architecture plan and
+   the README are updated. The five export baselines stay byte-identical.
+3. The Clairnote SN and DN gallery files take Clairnote's own signatures,
+   their tails imported as filled shapes: dots solid on a line or ledger and
+   hollow in a space, a tail up for flats and down for sharps, each tail an
+   added symbol shallow enough to clear (§13.7). They are checked at
+   concert size on an engraved page, as session 50 checked them, since the
+   mock-ups' stroked tails are not the proof.
+4. An engine round trip holds every symbol's placement, size and colour,
+   every stack's ledgers and the ink to the preview's within 0.001 staff
+   spaces. It covers the default, Kite 4-369 and both Clairnote files; the
+   traditional starting point on the bottom and every line set; C, D and
+   B♭ major; an asymmetric head with a reference point; offsets in x and
+   y; added symbols of other sizes; a hollow base without ledgers; a
+   coloured and moved sign; a pitch axis (the Twinline file); and the seam
+   between two line sets' copies. *Engine work:* the engine session of
+   §13.10.
+
+**Session C: The editor.**
+
+1. Register.
+2. The panel of §13.8:
+   - the magnified canvas, with selection, the drags, their snapping and
+     the fields;
+   - Edit and the look card, with the signs' thumbnails and the selected
+     symbol;
+   - Import from SVG with its reference point and ledgers;
+   - the key picker, the other keys' previews and the list of keys whose
+     marks touch;
+   - the touch check over the 105 keys (§13.7);
+   - Start from.
+3. The rows the editor replaces are removed (§13.8). A UAT driver covers
+   each drag and choice. *Engine work:* none.
+
+The operator decides where these sessions go: before the UI-stable session
+and the 1.1.0 release, which are then renumbered after them, or after
+1.1.0. The consult split (§13.12). The decision is recorded in §13.13.
+
+### 13.12 What the consult changed
+
+Sol (`gpt-6.1-sol`) and Argon (`gemini-4-argon`) reviewed the amendment and
+its mock-ups on 2026-11-11
+([the record](key-signature-editor-consult.md)). Both approved the one
+model, keeping symbols in `config.shapes`, the layer order, the window, the
+two placements, the column step and an advisory touch check with no
+automatic avoidance. From their synthesis:
+
+- **Signs are black unless a look colours them** (§13.2, §13.3), and the
+  mark table carries a sign's colour (§13.10). Both found that the editor
+  offered coloured signs that the table could not carry.
+- **A hollow symbol without ledgers** keeps its cut-out: `symbol` takes a
+  cutout as `head` does (§13.10). Both found this.
+- **`offset` and `added` are each one field**, replaced whole by a layer
+  that sets it (§13.4). Both found this.
+- **A click selects the mark's spelling**, or the layer the designer
+  picked; the base and each added symbol are selected apart (§13.8). Both
+  found "the most specific layer" undefined.
+- **The touch check** compares whole marks by their ink, seams included,
+  and is a warning that never blocks the export (§13.7).
+- **The window** is shared by a copy's marks by its key's family, and the
+  upper tonic does not apply under the cycle of fifths (§13.5); an offset
+  on a shape with no reference point moves today's placement, and a head's
+  ledgers move with it (§13.6).
+- **The editor** caps its canvas's height, lists the keys whose marks touch
+  with a click to pick each, says that an edit applies to every key, keeps
+  one drag as one step of undo, and Start from keeps the picked key
+  (§13.8).
+- **The program** exports the model before the editor is built (§13.11),
+  and its round trip covers the cases Sol listed.
+
+Not taken:
+
+- **One added symbol instead of two** (Argon). The session plan asks for up
+  to two.
+- **A look's size for signs, with flats and sharps sized apart** (Sol). The
+  session plan has resizing a sharp set session 52's size, one size for
+  both signs.
+- **A copy of the settings an accidentals config was not using** (Sol).
+  Nothing reads them.
+- **Removing "None" from a sign's colour** (Argon). None is black (§4.6),
+  not invisible.
+
+**Before or after 1.1.0** is the operator's, and the two split. Argon would
+build it before, so that 1.1.0 does not ship the two styles that the next
+release retires, nor the gallery's slashed dots. Sol would release 1.1.0
+first, since this changes the model, the importer and the engine's
+contract, and is not a finishing touch to a release whose UI is to be
+declared stable.
+
+### 13.13 Approval
+
+**Approved by the operator on 2026-11-11**, after reviewing the mock-ups,
+the revised amendment and the consult's synthesis: "Design is approved."
+
+The operator's decisions:
+
+- **Sessions A–C come before the 1.1.0 release** (the consult split,
+  §13.12): "No one is using this yet; so, no need to worry about
+  release-related stuff." The UI-stable session and the 1.1.0 release
+  follow them.
+- The points kept against one model stand: up to two added symbols, and one
+  size for both signs.
+
+The program of §13.11 is numbered in the session plan: session 54 is
+session A (the model on the canvas, and the engine's session planned), 55
+is session B (the model reaches LilyPond), 56 is session C (the editor), 57
+is the UI-stable session and 58 the 1.1.0 release.
