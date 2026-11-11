@@ -31,7 +31,10 @@ const PREVIEW_BASELINE = path.join(FIXTURES, "preview-baseline.json");
 // the JSON serialization of the resulting tree. The hashes in
 // cnb/fixtures/preview-baseline.json were captured by capturePreviewBaseline()
 // BEFORE any consumer module gained an axis path, so a match proves the
-// axis-disabled preview is byte-identical to the pre-rethread code.
+// axis-disabled preview is byte-identical to the pre-rethread code. The
+// fixture's description lists each intentional re-capture since: in session
+// 50 the probes with a key signature, for the scale stack spaced by its ink,
+// and the Clairnote SN and DN files again, for their own dot signatures.
 
 /** The 013 Twinline-like map (design §1.1) — five shared pairs. */
 export const TWINLINE_PITCH_AXIS = {
@@ -159,6 +162,29 @@ export const tests = [
       eq(range.minSemi, -6, "bottom −5.3 → −6");
       config.clef.enabled = false;
       eq(CNBCollection.gridRange([0, 1, 2, 3, 4, 5, 6], config).maxSemi, 22, "off: unchanged");
+    }},
+
+  { name: "gridRange: with a key, a signature mark beyond the range widens it to the mark and 4 semitones more (session 50)", fn: () => {
+      const pcs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      const config = keySigDefault();
+      config.keys.definitions.push({ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] });
+      const plain = CNBCollection.gridRange(pcs);
+      eq(JSON.stringify(CNBCollection.gridRange(pcs, config, [], "C")), JSON.stringify(plain), "in the middle of the staff: inside the cards' range");
+      config.keys.keySignature.placement.position = "bottom-set";
+      // G major on the bottom set runs from the G below middle C, −5.
+      eq(Math.min(...CNBKeySignature.signatureSemis(config, "G")), -5, "the lowest mark");
+      eq(CNBCollection.gridRange(pcs, config, [], "G").minSemi, -9, "down to it, 4 semitones lower");
+      eq(CNBCollection.gridRange(pcs, config, [], "G").maxSemi, plain.maxSemi, "the top unchanged");
+      config.keys.keySignature.placement.position = "top-set";
+      const high = Math.max(...CNBKeySignature.signatureSemis(config, "G"));
+      assert(high <= plain.maxSemi, "on the top set G's marks stay inside the cards' range");
+      eq(JSON.stringify(CNBCollection.gridRange(pcs, config, [], "G")), JSON.stringify(plain), "so it is unchanged");
+      config.staff.midpoint = 20;                      // the staff 8 semitones higher: its top set too
+      config.staff.semitonePattern = [0, 4];
+      const higher = Math.max(...CNBKeySignature.signatureSemis(config, "G"));
+      assert(higher > plain.maxSemi, `a mark above the cards (${higher})`);
+      eq(CNBCollection.gridRange(pcs, config, [], "G").maxSemi, Math.ceil(higher) + 4, "up to it, 4 semitones higher");
+      eq(JSON.stringify(CNBCollection.gridRange(pcs, config)), JSON.stringify(plain), "no key: unchanged");
     }},
 
   { name: "gridRange: a breve row in repeat mode holds the tie under the lowest notehead", fn: () => {
@@ -499,7 +525,10 @@ export const tests = [
       const config = keySigDefault();
       const px = config.display.pxPerSemi;
       const pad = CNBKeySignature.padding(config, px, "C", 0);
-      const marks = CNBKeySignature.gutterWidth(config, px, "C", 0) - pad.right;   // left padding + marks
+      // The ink's end: the left padding, the marks and the last stack's ledger,
+      // which the first notehead is centred 4.8636 staff spaces after (session 50).
+      const marks = CNBKeySignature.gutterWidth(config, px, "C", 0) - pad.right +
+        CNBKeySignature.measure(config, px, "C").markWidth / 6 + 0.1 * 64;
       withDomStub(container => {
         const systems = fluidSystems(CNBCollection.render(container, config, { fluid: true, rows: 2, keys: ["C"] }).children[0]);
         for (const s of systems) {

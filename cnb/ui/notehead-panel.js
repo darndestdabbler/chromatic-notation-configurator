@@ -112,6 +112,15 @@ function coloursInUse(table) {
 export const CNBNoteheadPanel = {
 
   /**
+   * A small solid drawing of a shape, at 7 px per semitone, as an <svg>: the
+   * shape buttons' picture, shared with the Key signature panel's looks
+   * (session 50).
+   * @param {object} shape
+   * @returns {SVGSVGElement}
+   */
+  thumbnail,
+
+  /**
    * A look-table row with a new shape (session 42). A notehead at its
    * shape's own size takes the new shape's own size; otherwise it keeps its
    * height and its width follows the new shape's proportions. A size equal

@@ -11,10 +11,13 @@
  *
  * Flow (spec step 5): enable keys → define keys (add/rename definitions,
  * duplicate-name editor check, tonic resolution) → enable the key
- * signature → select the displayed key in the preview → mark styling
- * (notehead-chords ↔ dot, separator, explicit tonic octave) → clef
- * composition → save the config (real download) and load it back →
- * export a .ly file (real download) — with Node-side parity checks run in
+ * signature → select the displayed key in the preview → the panel of the
+ * key-signature design §7 (session 50: each notes, stacks, gold-stem, looks
+ * and place choice, the canvas checked against CNBKeySignature after each,
+ * and the overlap note) → clef composition → save the config (real
+ * download) and load it back → export a .ly file (real download, the mark
+ * table) → the Clairnote SN gallery file's signature → screenshots at 1440
+ * and 1280 px — with Node-side parity checks run in
  * THIS process on the full config read from the page's live state panel:
  * CNBKeySignature.gutterWidth / measure / signatureSemis and
  * CNBGrid.semiToY for the preview geometry, CNBLilypond.generate for the
@@ -48,6 +51,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { useCanvasSize, useDownloads, canvasConfig, openSection, setField } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -212,13 +216,14 @@ const renderedMarks = () => page.evaluate(() => {
 const signatureGap = async (cfg) => {
   const size = await page.$eval(".cnb-pvd-size-option.on", b => b.dataset.size);
   const shown = canvasConfig(cfg, size);
+  // The ink: the marks and their ledgers (session 50, engine 1.4.1).
   const got = await page.evaluate(() => {
-    const marks = [...document.querySelectorAll(".cnb-pvd-preview .keysig-col .cnb-key-signature > g")]
-      .filter(g => g.querySelector(":scope > path"));
+    const ink = [...document.querySelectorAll(".cnb-pvd-preview .keysig-col .cnb-key-signature > g")]
+      .filter(g => g.querySelector(":scope > path") || g.classList.contains("cnb-ledger-set"));
     const head = [...document.querySelectorAll(".cnb-pvd-preview .pc-col")][0]
       .querySelector(".note-slice > g:not(.cnb-ledger-set)");
     const r = head.getBoundingClientRect();
-    return (r.left + r.right) / 2 - Math.max(...marks.map(g => g.getBoundingClientRect().right));
+    return (r.left + r.right) / 2 - Math.max(...ink.map(g => g.getBoundingClientRect().right));
   });
   return { size, got, want: 4.8636 * shown.display.pxPerSemi * shown.staff.semitonesPerStaffSpace };
 };
@@ -226,18 +231,25 @@ const signatureGap = async (cfg) => {
 /** The marks' left edge in the gutter: the engine's spacing, after the staff's start or a clef (session 34). */
 const marksLeft = (cfg, keyName) => CNBKeySignature.padding(drawn(cfg), drawn(cfg).display.pxPerSemi, keyName).left;
 
-/** Node-side expected mark positions for the current config + key. */
+/** Node-side expected mark positions for the current config + key: each
+ *  mark at its stack's centre and its semitone, under any stacking rule and
+ *  place (session 50), in the order the renderer draws them. */
 function expectedMarks(cfg, keyName) {
   cfg = drawn(cfg);
   const m = CNBKeySignature.measure(cfg, cfg.display.pxPerSemi, keyName);
   if (!m) return null;
-  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
-  const leftX = marksLeft(cfg, keyName) + m.markWidth / 2;
-  const rightX = leftX + m.markWidth;
-  return m.semis.map((semi, i) => ({
-    x: i % 2 === 0 ? leftX : rightX,
-    y: grid.semiToY(semi),
-  }));
+  const grid = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW, cfg, ["crotchet"], keyName));
+  const left = marksLeft(cfg, keyName);
+  return m.marks
+    .filter(({ mark }) => cfg.shapes[mark.shape])
+    .map(({ semi, column }) => ({ x: left + (column + 0.5) * m.markWidth, y: grid.semiToY(semi) }));
+}
+
+/** The same for a key picked on the staff ({ tonic, mode, spelling }), as the
+ *  canvas draws it whether or not a key is defined (CNBPreviewDisplay.withKey). */
+function expectedFor(cfg, key) {
+  const picked = CNBPreviewDisplay.withKey(cfg, key);
+  return expectedMarks(picked.config, picked.name);
 }
 
 const close = (a, b) => Math.abs(a - b) < 1e-6;
@@ -347,7 +359,7 @@ cfg = await fullConfig();
 for (const size of ["small", "large", "small"]) {
   await page.click(`.cnb-pvd-size-option[data-size="${size}"]`);
   const gap = await signatureGap(cfg);
-  check(`KEY SELECTION (${gap.size}): selecting C grew a keysig gutter column (one per row), and the first card's notehead is centred ${gap.want.toFixed(2)} px (the engine's 4.8636 staff spaces) after the marks, as drawn (±1 px)`,
+  check(`KEY SELECTION (${gap.size}): selecting C grew a keysig gutter column (one per row), and the first card's notehead is centred ${gap.want.toFixed(2)} px (the engine's 4.8636 staff spaces) after the signature's ink, its ledgers included, as drawn (±1 px)`,
     (await keysigColCount()) >= 1 && Math.abs(gap.got - gap.want) <= 1, JSON.stringify(gap));
 }
 
@@ -357,7 +369,7 @@ for (const size of ["small", "large", "small"]) {
 // 3000 px wide (past where the cards stop growing), with default marks and
 // with a G mark twice as wide as the first card's C. Measured as drawn
 // (getBoundingClientRect), the first notehead is centred the engine's 4.8636
-// staff spaces after the marks (±1 px).
+// staff spaces after the signature's ink, marks and ledgers (±1 px).
 {
   const G = { name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] };
   for (const wideG of [false, true]) {
@@ -380,14 +392,14 @@ for (const size of ["small", "large", "small"]) {
         document.body.appendChild(host);
         CNBCollection.render(host, cfg, { ...options, fluid: true });
         const marks = [...host.querySelectorAll(".keysig-col .cnb-key-signature > g")]
-          .filter(g => g.querySelector(":scope > path"));
+          .filter(g => g.querySelector(":scope > path") || g.classList.contains("cnb-ledger-set"));
         const head = host.querySelector(".pc-col .note-slice > g:not(.cnb-ledger-set)").getBoundingClientRect();
         const gap = (head.left + head.right) / 2 - Math.max(...marks.map(g => g.getBoundingClientRect().right));
         host.remove();
         return { width, gap };
       });
     }, { cfg: rowCfg, options, widths: [Math.ceil(min), Math.ceil(min) + 400, 3 * 800, 3 * 3000] });
-    check(`FLUID ROWS${wideG ? " (a G mark wider than the first C)" : ""}: from the minimum row (${Math.ceil(min)} px) to columns 3000 px wide, the first notehead is centred ${want.toFixed(2)} px after the marks, as the browser lays the row out (±1 px)`,
+    check(`FLUID ROWS${wideG ? " (a G mark wider than the first C)" : ""}: from the minimum row (${Math.ceil(min)} px) to columns 3000 px wide, the first notehead is centred ${want.toFixed(2)} px after the signature's ink, as the browser lays the row out (±1 px)`,
       rows.every(r => Math.abs(r.gap - want) <= 1), JSON.stringify(rows));
   }
 }
@@ -451,65 +463,194 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-key-d-dorian.png")
 }
 await pickKey("C", "major");
 
-// ── STEP 5: mark style + placement/separator controls ───────────────────────
-// One implemented style (notehead-chords); the task owner deferred simple-mark
-// styles to a future set (s2-uat.md). Confirm the style vocabulary and the
-// preview-only controls.
-check("STYLING: the mark-style panel offers exactly one style (Notehead chords), selected, as LilyPond draws it",
-  cfg.keys.keySignature.style === "notehead-chords" &&
+// ── STEP 5: the panel of the key-signature design §7 (session 50) ──────────
+// Each choice is made in the panel as a designer makes it, and after each
+// the canvas must draw exactly what the Node-side renderer gives for the live
+// config and the key picked on the staff.
+const C_MAJOR_KEY = { tonic: 0, mode: "major", spelling: "C" };
+const D_MAJOR_KEY = { tonic: 2, mode: "major", spelling: "D" };
+/** Choose a radio of one of the panel's rows by its value. */
+const radio = (group, value) => page.check(`.${group} .cnb-kse-radio[data-value="${value}"] input`);
+/** Open a look's menu (the editor re-mounts on a new key, closing them). */
+const openLook = (kind) => page.evaluate((k) => {
+  document.querySelector(`.cnb-kse-look[data-look="${k}"]`).open = true;
+  document.querySelector(`.cnb-kse-look[data-look="${k}"]`).dispatchEvent(new Event("toggle"));
+}, kind);
+/** The canvas against the Node-side marks for the live config and a key. */
+async function canvasDraws(key, label) {
+  const live = await fullConfig();
+  const want = expectedFor(live, key);
+  const got = await renderedMarks();
+  return { ok: !!want && marksMatch(got, want), cfg: live, got, want,
+    detail: `${label}: actual=${JSON.stringify(got)} expected=${JSON.stringify(want)}` };
+}
+/** The canvas's gold stems: [{ stroke, width }]. */
+const canvasStems = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature-separator",
+  els => els.map(e => ({ stroke: e.getAttribute("stroke"), width: parseFloat(e.getAttribute("stroke-width")) })));
+
+check("PANEL: the signature is set in a designer's words (Show the key signature; Notes, Stacks, Looks and Place), the key definitions below it under Keys for notehead rules",
   await page.evaluate(() => {
-    const opts = [...document.querySelectorAll(".cnb-kse-style-option")];
-    return opts.length === 1 &&
-      opts[0].getAttribute("data-style") === "notehead-chords" &&
-      opts[0].classList.contains("selected") &&
-      opts[0].textContent.includes("as LilyPond draws it");
+    const labels = [...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")].map(e => e.textContent);
+    const sections = [...document.querySelectorAll(".cnb-key-signature-editor > .cnb-kse-section")];
+    return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Looks", "Place"]) &&
+      document.querySelector(".cnb-kse-sig-enable").textContent === "Show the key signature" &&
+      sections[0].classList.contains("cnb-kse-signature") &&
+      sections[1].querySelector(".cnb-kse-title").textContent === "Keys for notehead rules";
   }));
-check("STYLING: no spacing control and no Preview only badge: the spacing is the engine's, and placement and the separator export (session 34)",
+check("PANEL: no Marks style, placement-rule, tonic-octave or bar-extent control, and no spacing control or Preview only badge; the stored values are kept",
   await page.evaluate(() =>
-    !document.querySelector(".cnb-kse-gutter-input") &&
-    document.querySelectorAll(".cnb-key-signature-editor .cnb-badge").length === 0));
+    !document.querySelector(".cnb-kse-style-option, .cnb-kse-placement-rule, .cnb-kse-octave-auto-check, .cnb-kse-octave-input, .cnb-kse-sep-extent, .cnb-kse-gutter-input") &&
+    document.querySelectorAll(".cnb-key-signature-editor .cnb-badge").length === 0) &&
+  cfg.keys.keySignature.style === "notehead-chords" && cfg.keys.keySignature.placement.rule === "scale-from-tonic");
 
-// Explicit tonic octave (placement control; auto is the s1 D4 decision).
-await page.uncheck(".cnb-kse-octave-auto-check");
-await page.fill(".cnb-kse-octave-input", "0");
-cfg = await fullConfig();
-check("STYLING: explicit tonic octave 0 reaches placement.tonicOctave and shifts the marks an octave down (Node-side signatureSemis parity)",
-  cfg.keys.keySignature.placement.tonicOctave === 0 &&
-  CNBKeySignature.signatureSemis(cfg, "C")[0] === 0 &&
-  // The lowest notehead (first degree, now semi 0) sits at semiToY(0).
-  await page.evaluate((expY) => {
-    const marks = [...document.querySelectorAll(".cnb-pvd-preview .cnb-key-signature > g")]
-      .filter(g => g.querySelector(":scope > path"));
-    if (marks.length === 0) return false;
-    const m = /translate\([-\d.eE+]+,([-\d.eE+]+)\)/.exec(marks[0].getAttribute("transform") || "");
-    return m && Math.abs(parseFloat(m[1]) - expY) < 1e-6;
-  }, CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW)).semiToY(0)));
-await page.check(".cnb-kse-octave-auto-check");
-cfg = await fullConfig();
-check("STYLING: re-checking auto restores tonicOctave null (centered on the staff midpoint — engine parity for the default config)",
-  cfg.keys.keySignature.placement.tonicOctave === null &&
-  CNBKeySignature.signatureSemis(cfg, "C")[0] === 12);
-
-// Separator styling; the gutter follows the engine's spacing.
-await page.fill(".cnb-kse-sep-extent", "6");
-cfg = await fullConfig();
+// Notes.
+await radio("cnb-kse-notes-choice", "tonic-and-half-steps");
 {
-  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
-  const gap = await signatureGap(cfg);
-  check("STYLING: separator extent 6 reaches the config and the preview (bar shortened); the first notehead stays the engine's spacing after the marks",
-    cfg.keys.keySignature.separator.extentSemis === 6 &&
-    await page.$eval(".cnb-pvd-preview .cnb-key-signature-separator",
-      (el, exp) => el.getAttribute("y1") === String(exp.y1) && el.getAttribute("y2") === String(exp.y2),
-      { y1: grid.semiToY(cfg.staff.midpoint + 6), y2: grid.semiToY(cfg.staff.midpoint - 6) }) &&
-    Math.abs(gap.got - gap.want) <= 1, JSON.stringify(gap));
+  const r = await canvasDraws(C_MAJOR_KEY, "half steps");
+  check("NOTES: the tonic and the half steps — C, E and F, B and C′ in C major, five marks, as the Node-side renderer draws them",
+    r.cfg.keys.keySignature.notes === "tonic-and-half-steps" && r.ok && r.got.length === 5, r.detail);
+}
+await radio("cnb-kse-notes-choice", "all");
+await page.uncheck(".cnb-kse-upper-tonic-check");
+{
+  const r = await canvasDraws(C_MAJOR_KEY, "no upper tonic");
+  check("NOTES: without the tonic an octave up, the key's seven notes", r.cfg.keys.keySignature.upperTonic === false && r.ok && r.got.length === 7, r.detail);
+}
+await page.check(".cnb-kse-upper-tonic-check");
+{
+  const r = await canvasDraws(C_MAJOR_KEY, "upper tonic");
+  check("NOTES: the whole scale and the tonic an octave up again, eight marks", r.cfg.keys.keySignature.upperTonic === true && r.ok && r.got.length === 8, r.detail);
+}
+
+// Stacks, and the direction, hidden where it does not apply.
+for (const [value, stacks] of [["parity", 2], ["parity-zigzag", 2], ["degrees", 2], ["parity-stacks", 3]]) {
+  await radio("cnb-kse-stacking", value);
+  const r = await canvasDraws(C_MAJOR_KEY, value);
+  const columns = new Set(r.got.map(p => p && p.x.toFixed(3))).size;
+  check(`STACKS: ${value} — written, drawn as the Node-side renderer draws it in ${stacks} stacks, the direction ${value === "parity" ? "hidden" : "shown"}`,
+    r.cfg.keys.keySignature.stacking === value && r.ok && columns === stacks &&
+    (await page.$$(".cnb-kse-columns")).length === (value === "parity" ? 0 : 1), r.detail);
+}
+await pickKey("D", "major");
+const rightD = await canvasDraws(D_MAJOR_KEY, "D major, to the right");
+await radio("cnb-kse-columns", "left-in-sharp-keys");
+{
+  const r = await canvasDraws(D_MAJOR_KEY, "D major, to the left");
+  const tonic = r.got[0];
+  check("STACKS: to the left in sharp keys — D major's stacks mirror, the tonic's stack now the rightmost, as the Node-side renderer draws it",
+    rightD.ok && r.cfg.keys.keySignature.columns === "left-in-sharp-keys" && r.ok &&
+    tonic.x === Math.max(...r.got.map(p => p.x)) && rightD.got[0].x === Math.min(...rightD.got.map(p => p.x)), r.detail);
+}
+await pickKey("C", "major");
+
+// The overlap note: a whole step apart in one stack, the 2.7-semitone notehead runs into the next.
+check("OVERLAP: with a new stack at each change of parity, C major's marks run together, and the note says so and points to the looks' size",
+  await page.evaluate(() => {
+    const note = document.querySelector(".cnb-kse-overlap-note");
+    return !!note && note.textContent.includes("run together") && note.textContent.includes("Looks");
+  }));
+
+// The gold stem: two between three stacks, sharing the thickness, then each the whole.
+{
+  const live = await fullConfig();
+  const px = drawn(live).display.pxPerSemi;
+  const whole = (live.keys.keySignature.separator.thicknessPct / 100) * px;
+  const shared = await canvasStems();
+  check("GOLD STEM: two stems between the three stacks, each half the thickness, and the panel says so",
+    shared.length === 2 && shared.every(s => Math.abs(s.width - whole / 2) < 1e-6) &&
+    (await page.textContent(".cnb-kse-share-text")).includes("2 stems in this key: half each"), JSON.stringify(shared));
+  await page.uncheck(".cnb-kse-sep-share-check");
+  const unshared = await canvasStems();
+  check("GOLD STEM: unshared, each stem takes the whole thickness",
+    (await fullConfig()).keys.keySignature.separator.shareThickness === false &&
+    unshared.length === 2 && unshared.every(s => Math.abs(s.width - whole) < 1e-6), JSON.stringify(unshared));
+  await setField(page, ".cnb-kse-sep-thickness", "0.5");
+  await setField(page, ".cnb-kse-sep-color", "#336699");
+  const styled = await canvasStems();
+  const sps = live.staff.semitonesPerStaffSpace;
+  check("GOLD STEM: a thickness of 0.5 staff spaces is written as 200% of a semitone and drawn so; the colour reaches the stems",
+    (await fullConfig()).keys.keySignature.separator.thicknessPct === 200 &&
+    styled.every(s => Math.abs(s.width - 0.5 * sps * px) < 1e-6 && s.stroke === "#336699"), JSON.stringify(styled));
+  await page.uncheck(".cnb-kse-sep-enable-check");
+  check("GOLD STEM: turned off, no stem is drawn and the sharing choice is hidden",
+    (await canvasStems()).length === 0 && (await page.$$(".cnb-kse-sep-share")).length === 0);
+  await page.check(".cnb-kse-sep-enable-check");
+}
+
+// Looks: size, shape, fill and colour, each set and cleared.
+await openLook("all");
+await setField(page, '.cnb-kse-look[data-look="all"] .cnb-kse-look-height', "1.5");
+{
+  const r = await canvasDraws(C_MAJOR_KEY, "small marks");
+  check("LOOKS: all marks 1.5 semitones tall (the width keeping the notehead's proportions) — drawn so, and the overlap note is gone",
+    r.cfg.keys.keySignature.looks.all.heightSemis === 1.5 && r.cfg.keys.keySignature.looks.all.widthSemis > 1.5 && r.ok &&
+    !(await page.$(".cnb-kse-overlap-note")) &&
+    (await page.textContent('.cnb-kse-look[data-look="all"] .cnb-kse-look-words')).includes("1.5"), r.detail);
+}
+await page.click('.cnb-kse-look[data-look="all"] .cnb-kse-look-shape[data-shape="kite-up"]');
+{
+  const r = await canvasDraws(C_MAJOR_KEY, "kite marks");
+  const kite = r.cfg.shapes["kite-up"];
+  check("LOOKS: a built-in shape the notation lacked (Kite up) is added to it and given to all marks, which draw with it",
+    r.cfg.keys.keySignature.looks.all.shape === "kite-up" && !!kite && r.ok &&
+    await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
+      (ps, d) => ps.length > 0 && ps.every(p => p.getAttribute("d") === d), kite.svgPath), r.detail);
+}
+await page.click('.cnb-kse-look[data-look="all"] .cnb-kse-look-shape[data-shape=""]');
+check("LOOKS: 'as the noteheads' clears the shape",
+  !("shape" in (await fullConfig()).keys.keySignature.looks.all));
+await pickKey("D", "major");
+await openLook("sharp");
+await page.click('.cnb-kse-look[data-look="sharp"] .cnb-kse-look-fill[data-fill="hollow"]');
+{
+  const r = await canvasDraws(D_MAJOR_KEY, "hollow sharps");
+  const hollow = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g",
+    gs => gs.filter(g => [...g.querySelectorAll(":scope > path")].some(p => p.getAttribute("fill") === "white")).length);
+  check("LOOKS: hollow sharps — D major's F♯ and C♯ draw hollow, the others solid",
+    r.cfg.keys.keySignature.looks.sharp.hollow === true && r.ok && hollow === 2, `${r.detail} hollow=${hollow}`);
+}
+await page.click('.cnb-kse-look[data-look="sharp"] .cnb-kse-look-fill[data-fill=""]');
+await openLook("alternate");
+await setField(page, '.cnb-kse-look[data-look="alternate"] .cnb-kse-look-colour-input', "#cc79a7");
+{
+  const live = await fullConfig();
+  const picked = CNBPreviewDisplay.withKey(live, D_MAJOR_KEY);
+  const sig = CNBKeySignature.marks(picked.config, picked.config.keys.definitions.find(d => d.name === picked.name));
+  const want = sig.marks.filter(mk => mk.mark.color === "#cc79a7").length;
+  const got = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
+    ps => ps.filter(p => p.getAttribute("fill") === "#cc79a7").length);
+  check("LOOKS: every second stack in puce — those marks draw puce, the others not",
+    live.keys.keySignature.alternate.color === "#cc79a7" && want > 0 && got === want && got < sig.marks.length, `drawn ${got}, wanted ${want}`);
+}
+await page.click('.cnb-kse-look[data-look="alternate"] .cnb-kse-look-colour[data-color=""]');
+cfg = await fullConfig();
+check("LOOKS: 'as all marks' and 'as the others' clear the sharps' fill and the second stacks' colour",
+  !("hollow" in cfg.keys.keySignature.looks.sharp) && !("color" in cfg.keys.keySignature.alternate));
+await pickKey("C", "major");
+
+// Place.
+{
+  const counts = {};
+  for (const value of ["bottom-set", "top-set", "every-set", "middle"]) {
+    await radio("cnb-kse-position", value);
+    const r = await canvasDraws(C_MAJOR_KEY, value);
+    counts[value] = r.got.length;
+    check(`PLACE: ${value} — written and drawn as the Node-side renderer draws it`,
+      r.cfg.keys.keySignature.placement.position === value && r.ok, r.detail);
+  }
+  check("PLACE: on every line set the signature repeats, more marks than in the middle",
+    counts["every-set"] > counts.middle, JSON.stringify(counts));
 }
 cfg = await fullConfig();
-expected = expectedMarks(cfg, "C");
-actual = await renderedMarks();
-check("STYLING: the notehead-chords marks remain the 8 two-column stack after the control edits",
-  cfg.keys.keySignature.style === "notehead-chords" &&
-  expected && marksMatch(actual, expected));
-await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-styled.png"), fullPage: true });
+// The panel and the canvas at the page's two widths, a look open.
+await openLook("all");
+for (const [width, height] of [[1440, 900], [1280, 800]]) {
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-050-panel-${width}.png`), fullPage: true });
+}
+await page.setViewportSize({ width: 1600, height: 1800 });
+await page.waitForTimeout(150);
 
 // ── STEP 6: clef composition (set-009 gutter, left to right) ────────────────
 await openSection(page, "clef");
@@ -550,13 +691,19 @@ const savedJson = JSON.parse(await readFile(savedPath, "utf8"));
 cfg = await fullConfig();
 check("SAVE: the shell adopted the stamped config — the live state panel is deep-equal to the downloaded file",
   JSON.stringify(cfg) === JSON.stringify(savedJson));
-check("SAVE: the keys section is in the file — enabled, 2 definitions, signature enabled, extent 6, no gutter setting",
+check("SAVE: the keys section is in the file — enabled, 2 definitions, the signature enabled with the panel's choices (a new stack at each change of parity, to the left in sharp keys, unshared 200% stems in #336699, marks 1.5 semitones tall), the stored extent kept, no gutter setting",
   savedJson.keys.enabled === true &&
   savedJson.keys.definitions.length === 2 &&
   savedJson.keys.definitions[1].name === "D Dorian" &&
   savedJson.keys.keySignature.enabled === true &&
   savedJson.keys.keySignature.style === "notehead-chords" &&
-  savedJson.keys.keySignature.separator.extentSemis === 6 &&
+  savedJson.keys.keySignature.stacking === "parity-stacks" &&
+  savedJson.keys.keySignature.columns === "left-in-sharp-keys" &&
+  savedJson.keys.keySignature.separator.shareThickness === false &&
+  savedJson.keys.keySignature.separator.thicknessPct === 200 &&
+  savedJson.keys.keySignature.separator.color === "#336699" &&
+  savedJson.keys.keySignature.separator.extentSemis === 12 &&
+  savedJson.keys.keySignature.looks.all.heightSemis === 1.5 &&
   !("gutter" in savedJson.keys.keySignature),
   JSON.stringify(savedJson.keys));
 
@@ -569,12 +716,15 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, separator extent 6)",
+check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, its stacking, stems and look)",
   await page.evaluate(() =>
     document.querySelector(".cnb-kse-keys-enable-check").checked &&
     document.querySelector(".cnb-kse-sig-enable-check").checked &&
     document.querySelectorAll(".cnb-kse-def-row").length === 2 &&
-    document.querySelector(".cnb-kse-sep-extent").value === "6"));
+    document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="parity-stacks"] input').checked &&
+    !document.querySelector(".cnb-kse-sep-share-check").checked &&
+    document.querySelector(".cnb-kse-sep-thickness").value === "0.5" &&
+    document.querySelector('.cnb-kse-look[data-look="all"] .cnb-kse-look-words').textContent.includes("1.5")));
 expected = expectedMarks(cfg, "C");
 actual = await renderedMarks();
 check("LOAD: the preview still renders the key-C signature in its gutter (preview key selection survives the load)",
@@ -601,8 +751,9 @@ check("EXPORT PARITY: downloaded .ly is byte-identical to a direct CNBLilypond.g
 const disabledCfg = CNBConfig.clone(cfg);
 disabledCfg.keys.keySignature.enabled = false;
 const tonicOctave = cfg.keys.keySignature.placement.tonicOctave;
-check("EXPORT EMISSION: the keysig-enabled download keeps the signature and its tonic octave; with the signature disabled generate() writes 'none",
+check("EXPORT EMISSION: the keysig-enabled download keeps the signature, as the mark table since the panel's choices are not the scale stack's (LY spec §5.6a), and its tonic octave; with the signature disabled generate() writes 'none",
   direct !== null && !exported.includes("cnb:keysig-style 'none") &&
+  exported.includes("#(set! cnb:keysig-style 'marks)") && exported.includes("#(define cnb:keysig-marks") &&
   (!Number.isInteger(tonicOctave) || exported.includes(`#(set! cnb:keysig-tonic-octave ${tonicOctave})`)) &&
   CNBLilypond.generate(disabledCfg).includes("#(set! cnb:keysig-style 'none)"),
   `tonic octave ${tonicOctave}; the key-signature settings are wrong in the export`);
@@ -611,6 +762,40 @@ check("EXPORT: valid badge shown, no error rows",
     !!document.querySelector(".cnb-cex-valid") &&
     document.querySelectorAll(".cnb-cex-verror").length === 0));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-exported.png"), fullPage: true });
+
+// ── STEP 9b: the Clairnote SN gallery file's own signature (session 50) ─────
+await page.setInputFiles("#open-file", path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-sn.json"));
+await page.waitForFunction(() =>
+  document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
+await openSection(page, "key-signature");
+await pickKey("D", "major");
+{
+  const r = await canvasDraws(D_MAJOR_KEY, "Clairnote SN, D major");
+  const slashed = r.cfg.shapes["clairnote-dot-sharp"].svgPath;
+  const sharps = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
+    (ps, d) => ps.filter(p => p.getAttribute("d") === d).length, slashed);
+  check("CLAIRNOTE SN: D major draws as the Node-side renderer draws it — dots on the bottom line set, F♯ and C♯ slashed, no gold stem",
+    r.ok && sharps === 2 && (await canvasStems()).length === 0, `${r.detail} slashed=${sharps}`);
+  check("CLAIRNOTE SN: the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set, and its looks in words",
+    await page.evaluate(() => {
+      const on = (group, value) => document.querySelector(`.${group} .cnb-kse-radio[data-value="${value}"] input`).checked;
+      return on("cnb-kse-stacking", "parity-stacks") && on("cnb-kse-columns", "left-in-sharp-keys") &&
+        on("cnb-kse-position", "bottom-set") &&
+        !document.querySelector(".cnb-kse-upper-tonic-check").checked &&
+        !document.querySelector(".cnb-kse-sep-enable-check").checked &&
+        document.querySelector('.cnb-kse-look[data-look="sharp"] .cnb-kse-look-words').textContent.includes("rising slash");
+    }));
+}
+
+// ── STEP 9c: the panel and canvas at the page's two widths ──────────────────
+for (const [width, height] of [[1440, 900], [1280, 800]]) {
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(150);
+  await openLook("sharp");
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-050-clairnote-${width}.png`), fullPage: true });
+  check(`SCREENSHOT ${width}: the Key signature section does not make the page scroll sideways`,
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+}
 
 // ── STEP 10: no errors ───────────────────────────────────────────────────────
 check("NO console or page errors across the whole key-signature flow", consoleErrors.length === 0,

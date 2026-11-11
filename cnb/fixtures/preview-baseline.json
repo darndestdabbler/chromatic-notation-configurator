@@ -1,5 +1,5 @@
 {
-  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads. Every probe was re-captured in session 33, when the preview began putting a stem's edge (an up stem's right, a down stem's left) on its anchor, as LilyPond engraves it, and the Kite fixture's stem anchors moved to the engine reference's attachment (1.8 / 0.73 semitones). Every probe with stems was re-captured in session 34, when the preview began drawing the engine's stem (0.13 staff spaces thick, 3.5 staff spaces past the far notehead, shortened as LilyPond shortens it). Every probe was re-captured again in session 34 when the preview began drawing staff lines and ledgers as the engine does (black and solid, staff lines 0.1 and ledgers 0.2 staff spaces thick, ledgers 1.5 notehead widths long, so the columns narrowed). The probes with a key signature (default-key-signature and the two Clairnote gallery files) were re-captured once more in session 34, when the signature's gutter began giving the engine's spacing (0.75 staff spaces before the marks, the first notehead centred 4.8636 after them). Every probe with stems was re-captured in session 40, when the preview began drawing a stem centred on its anchor (the centre of the SVG's stem rect), so the Kite and 45deg-369 stems are centred on the notehead. The default notehead's probes and the gallery files that carry it were re-captured once more in session 40, when its anchors moved so its stems' outer edges sit on its sides. The gallery probes were re-captured once more in session 40 (verification round 1), when each gallery file's default-notehead anchors were set for its own staff, so its stems' outer edges sit on the notehead's sides. The probes with a key signature were re-captured in session 49, when its gold stems took round caps and its ledgers their engraved length, as the engine draws them. capturedAt is provenance: the revision of the original capture, not of the re-captures noted here, which give each probe's current hash.",
+  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads. Every probe was re-captured in session 33, when the preview began putting a stem's edge (an up stem's right, a down stem's left) on its anchor, as LilyPond engraves it, and the Kite fixture's stem anchors moved to the engine reference's attachment (1.8 / 0.73 semitones). Every probe with stems was re-captured in session 34, when the preview began drawing the engine's stem (0.13 staff spaces thick, 3.5 staff spaces past the far notehead, shortened as LilyPond shortens it). Every probe was re-captured again in session 34 when the preview began drawing staff lines and ledgers as the engine does (black and solid, staff lines 0.1 and ledgers 0.2 staff spaces thick, ledgers 1.5 notehead widths long, so the columns narrowed). The probes with a key signature (default-key-signature and the two Clairnote gallery files) were re-captured once more in session 34, when the signature's gutter began giving the engine's spacing (0.75 staff spaces before the marks, the first notehead centred 4.8636 after them). Every probe with stems was re-captured in session 40, when the preview began drawing a stem centred on its anchor (the centre of the SVG's stem rect), so the Kite and 45deg-369 stems are centred on the notehead. The default notehead's probes and the gallery files that carry it were re-captured once more in session 40, when its anchors moved so its stems' outer edges sit on its sides. The gallery probes were re-captured once more in session 40 (verification round 1), when each gallery file's default-notehead anchors were set for its own staff, so its stems' outer edges sit on the notehead's sides. The probes with a key signature were re-captured in session 49, when its gold stems took round caps and its ledgers their engraved length, as the engine draws them. The probes with a key signature whose scale stack has a ledger past its marks (default-key-signature, gallery/clairnote-dn.json, gallery/clairnote-sn.json) were re-captured in session 50, when the scale stack came to be spaced by its ink, as engine 1.4.1 engraves it. The Clairnote SN and DN probes were re-captured once more in session 50, when the two gallery files took their own Clairnote-style signatures. capturedAt is provenance: the revision of the original capture, not of the re-captures noted here, which give each probe's current hash.",
   "capturedAt": "8b6013a",
   "probes": [
     {
@@ -14,8 +14,8 @@
     },
     {
       "id": "default-key-signature",
-      "sha256": "ee6e00a35c0cb284dae66f772dc9bf0edc1051521202def4c16321f3a13e1ac6",
-      "length": 96560
+      "sha256": "f5f5960794be3aed4b36711461dfb23f24943f7d211d51769db331e11b527460",
+      "length": 96644
     },
     {
       "id": "kite-4-369",
@@ -59,13 +59,13 @@
     },
     {
       "id": "gallery/clairnote-dn.json",
-      "sha256": "d931fa8a1a6b084b04bcee12b68cb297b17429eb3e142103a682d08e8bbf5d27",
-      "length": 99268
+      "sha256": "966b88e9e6c249a6effc8774f1d72dd804da9f2ac0af9c55ce761d538ec1a779",
+      "length": 94210
     },
     {
       "id": "gallery/clairnote-sn.json",
-      "sha256": "5fc14f9c8e2b54cd94f6779140a84851c23690697ae1f08d1e1b8da852f053eb",
-      "length": 92496
+      "sha256": "f6a4d53842f606a97028b76664913e4799f2785a09395d06d32455ce1a797374",
+      "length": 88430
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json",

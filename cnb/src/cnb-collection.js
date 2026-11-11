@@ -237,7 +237,7 @@ function splitSystems(pitchClasses, rows) {
  * card, and the cards are placed explicitly beside it.
  */
 function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots, labelStrip }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration]));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration], key));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
   const stripWidth = labelStrip ? LABEL_STRIP_PX : 0;
   const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, duration,
@@ -383,7 +383,7 @@ function durationCaption(config, duration) {
 
 /** One duration row: background staff SVG + flex row of cards. */
 function renderRow(config, { pitchClasses, duration, key, showCaption }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration]));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration], key));
 
   const row = document.createElement("div");
   row.className = "cnb-duration-row";
@@ -471,14 +471,18 @@ export const CNBCollection = {
    * session 45), to the whole semitone, so a clef that reaches past the
    * noteheads is not cut off. With durations, it also holds a breve's tie
    * under the lower noteheads (CNBCard.tieBottom, session 46), whole
-   * semitones lower until it fits.
+   * semitones lower until it fits. With a key, a signature mark beyond the
+   * range widens it to that mark with the noteheads' 4 semitones of headroom
+   * (session 50), so a signature on a line set beyond the cards' pitches is
+   * not cut off.
    *
    * @param {number[]} pitchClasses
    * @param {object} [config]
    * @param {string[]} [durations]  the durations the cards draw
+   * @param {string|null} [keyName]  the key whose signature the row draws
    * @returns {{minSemi:number, maxSemi:number}}
    */
-  gridRange(pitchClasses, config, durations = []) {
+  gridRange(pitchClasses, config, durations = [], keyName = null) {
     const range = {
       minSemi: Math.min(...pitchClasses) - 4,
       maxSemi: Math.max(...pitchClasses) + 12 + 4,
@@ -487,6 +491,13 @@ export const CNBCollection = {
     if (clef) {
       range.minSemi = Math.min(range.minSemi, Math.floor(clef.bottom));
       range.maxSemi = Math.max(range.maxSemi, Math.ceil(clef.top));
+    }
+    const signature = config && keyName ? CNBKeySignature.signatureSemis(config, keyName) : null;
+    if (signature && signature.length > 0) {
+      const low = Math.min(...signature);
+      const high = Math.max(...signature);
+      if (low < range.minSemi) range.minSemi = Math.floor(low) - 4;
+      if (high > range.maxSemi) range.maxSemi = Math.ceil(high) + 4;
     }
     if (config) {
       const clipped = () => {
@@ -515,7 +526,7 @@ export const CNBCollection = {
     const pitchClasses = options.pitchClasses ?? DEFAULT_PCS;
     const durations = options.durations ?? ["crotchet"];
     const key = (options.keys && options.keys[0]) ?? null;
-    const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
+    const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [], key));
     const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
     const slots = splitSystems(pitchClasses, options.rows)[0].length;
     const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, durations[0], 0, slots, colMin);
@@ -561,7 +572,7 @@ export const CNBCollection = {
     root.className = "cnb-preview";
 
     if (options.fluid === true) {
-      const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
+      const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [], key));
       const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
       const rows = options.rows === 2 ? 2 : 1;
       for (const duration of durations) {

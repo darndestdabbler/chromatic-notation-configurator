@@ -587,7 +587,9 @@ const LEDGER_ENTRIES_PER_LINE = 6;
  * (CNBLedgerSet.ledgersFor), as LilyPond staff positions, an empty list
  * where it draws none. Each notehead takes its pitch's entry through
  * NoteHead.ledger-positions (no-ledgers for an empty one), so the engine's
- * own rule adds nothing. A pitch beyond them keeps the engine's rule, which
+ * own rule adds nothing; so does a key-signature mark of the mark table
+ * beyond them (session 50: engine 1.4.1's signature heads take their
+ * entries). Any other pitch keeps the engine's rule, which
  * reaches the engraved staff: the preview's staff repeats every octave, the
  * engraved one has only the exported lines. The table is keyed by the
  * pitch, not by cnb:ledger-overrides' notehead position: the engine hands
@@ -601,8 +603,14 @@ const LEDGER_ENTRIES_PER_LINE = 6;
 function ledgerLines(config, axis) {
   const midpoint = (config.staff || {}).midpoint || 0;
   const shift = axis.enabled ? 0 : midpoint - 12;
+  // The mark table's marks too (session 50, LY spec 1.3.16 §5.7): since
+  // engine 1.4.1 a signature head takes its semitone's entry, so a mark on a
+  // line set beyond the cards' pitches gets the ledgers the canvas draws it.
+  const semis = new Set();
+  for (let s = PREVIEW_SEMIS.min; s <= PREVIEW_SEMIS.max; s++) semis.add(s);
+  for (const entry of markTable(config)) for (const m of entry.sig.marks) semis.add(m.semi);
   const entries = [];
-  for (let s = PREVIEW_SEMIS.min; s <= PREVIEW_SEMIS.max; s++) {
+  for (const s of [...semis].sort((a, b) => a - b)) {
     const ledgers = CNBLedgerSet.ledgersFor(config, [s], { minSemi: s - 12, maxSemi: s + 12 }, axis)
       .map(l => fmtNum(CNBStaff.lilypondPosition(config, l), "ledger position (ledgers.templates)"));
     entries.push(`(${fmtNum(s - shift, "staff.midpoint")} . (${ledgers.join(" ")}))`);

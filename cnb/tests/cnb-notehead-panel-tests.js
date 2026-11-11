@@ -124,6 +124,22 @@ const resolved = (config, pc) => CNBConfig.resolveNotehead(config, pc, "crotchet
 
 export const tests = [
 
+  { name: "thumbnail: a shape drawn solid at 7 px per semitone, as the shape buttons and the signature's looks show it (session 50)", fn: () => {
+      withDomStub(() => {
+        const shape = CNBConfig.createDefault().shapes["crotchet-minim"];
+        const svg = P.thumbnail(shape);
+        eq(svg.tag, "svg", "an <svg>");
+        const w = Math.ceil(7 * shape.semitoneHeight * shape.naturalWidth / shape.naturalHeight) + 4;
+        const h = Math.ceil(7 * shape.semitoneHeight) + 4;
+        eq(svg.getAttribute("width"), String(w), "the shape's width at 7 px per semitone, 2 px either side");
+        eq(svg.getAttribute("height"), String(h), "and its height");
+        const paths = [];
+        const visit = (n) => { for (const c of n.children || []) { if (c.tag === "path") paths.push(c); visit(c); } };
+        visit(svg);
+        assert(paths.length > 0 && paths.every(p => p.getAttribute("fill") === "#1c1c1e"), "drawn solid in ink");
+      });
+  } },
+
   // ── Name and nudge (session 28, design §2, §4.1) ────────────────────────
 
   { name: "name: \"This notehead is\" shows only for one selected notehead, at its name", fn: () => {

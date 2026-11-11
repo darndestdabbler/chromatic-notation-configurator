@@ -102,6 +102,17 @@ operator finds such tails hard to see at a concert staff's size, as the
 mock-ups bear out; that is the designer's choice to make, and the gallery's
 own symbols are checked at concert size on an engraved page.
 
+*(Session 50, at the operator's choice after that check.)* The gallery's
+own symbols are a dot with a slash through it, rising (/) for a sharp and
+falling (\) for a flat, rather than a one-sided tail. The engine places a
+mark by centring its box on the stack (and its height by its origin), so a
+one-sided tail moves the dot off its stack unless hidden geometry balances
+the box, and LilyPond prints any such geometry as a speck. A tail steep
+enough to read also ran into the next dot a whole step away. The slash is
+symmetric about the dot and clears its neighbours. A designer's own
+symbol should likewise be symmetric about its origin from left to right
+(`docs/sessions/session-050/notes.md`).
+
 ### 4.2 The upper tonic (B2)
 
 **Show the tonic an octave up** is on by default, as today. Off, the
@@ -483,7 +494,8 @@ the accidentals are built on them.
    dot and tailed-dot symbols (each placed by the dot's centre, tails
    thick and steep enough to read), a new stack at each change of parity
    going left in sharp keys, no upper tonic, no gold stem. They are checked
-   at concert size on an engraved page.
+   at concert size on an engraved page. *(Done with slashed dots at the
+   operator's choice; §4.1.)*
 4. A UAT driver for each choice on the canvas; screenshots at 1440 and
    1280 px. *Engine work:* none.
 

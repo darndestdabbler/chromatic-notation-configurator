@@ -820,6 +820,37 @@
       "what": "step 'engine-round-trip': its files",
       "reason": "The preview-DOM baseline also pins the key-signature probes (default-key-signature and the two Clairnote gallery files), whose gold stems now have round caps and whose ledgers their engraved length; it is re-captured with capturePreviewBaseline(), as its description provides for an approved preview change.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T09:44:55.206000-05:00",
+      "task": "Give the key-signature designer its panel (design docs/planning/key-signature-designer-design.md section 7). The Key signature section, in a designer's words, edits the settings session 48 added: Show the key signature; Notes (the whole scale, or the tonic and the half steps; the tonic an octave up); Stacks (the four stacking rules, the direction, to the right or to the left in sharp keys, hidden under odd-left-even-right; the gold stem between the stacks with its colour and its thickness in staff spaces, and several stems sharing the thickness, saying what each stem gets); Looks (all marks, flats, sharps and every second stack, each a menu that opens the notehead panel's own controls, shape, fill, colour, height and width, with 'as the noteheads', 'as all marks' or 'as the others' clearing a field); Place (the middle of the staff, the bottom, top or every line set); and a note beside the stacks when two marks of one stack overlap in the key picked on the staff, pointing to the looks' size. The panel drops the old Marks, placement-rule, tonic-octave and bar-extent controls, whose stored values are kept, and the key definitions move below it under 'Keys for notehead rules'. The Clairnote SN and DN gallery files take Clairnote-style signatures: a dot, a dot with a rising tail for sharps and a dot with a falling tail for flats, each placed by the dot's centre, with tails thick and steep enough to read; a new stack at each change of parity, going left in sharp keys; no upper tonic; no gold stem; on the bottom line set; their fill following the noteheads. An engine round trip holds those signatures to the preview, and they are checked at concert size on an engraved page. The key-signature UAT driver exercises each choice on the canvas, with screenshots at 1440 and 1280 px judged against the mock-ups; the README, the architecture plan's Module 23 and docs/uat-status.md follow. No engine work.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:00:46.860000-05:00",
+      "what": "step 'panel-settings': its files",
+      "reason": "Engine 1.4.1 (engine session 33) landed before this session ran and broke the step's check (the unit suite): a key-signature engine round trip. At the operator's choice (2026-11-11) session 51's item 4 moves here: the scale stack is spaced by its ink, the export gives mark-table marks beyond semitones 0-24 their ledger entries, the round trips hold every signature's ledgers and ink, LY spec 1.3.16, session plan item moved. cnb-checks-wording-tests.js and uat-app-layout.mjs needed no change.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:24:06.368000-05:00",
+      "what": "step 'clairnote-signatures': its files",
+      "reason": "The Clairnote files' signatures sit on the bottom line set, where G major's lowest mark (semitone -5) fell below the row's grid and was cut off on the canvas; CNBCollection.gridRange now widens to a signature mark beyond the range (only then, so no other file's drawing changes), with a test in cnb-collection-tests.js.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:48:55.409000-05:00",
+      "what": "step 'concert-check': its files",
+      "reason": "The concert-size engraving showed the one-sided tails meeting the next dot and the balancing slivers printing as specks; at the operator's choice the symbols became slashed dots, symmetric about the dot. Slashed and plain dots differ in width, and the engine sizes each signature ledger from its own head, so the preview now draws each head's ledgers at its own width and spaces by the true ink (cnb-key-signature.js), with a unit test, the spacing and Clairnote round trips updated, and a sentence in LY spec 1.3.16 section 5.6a.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

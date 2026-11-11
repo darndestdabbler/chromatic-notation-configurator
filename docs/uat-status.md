@@ -21,6 +21,61 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The Key signature panel — 2026-11-11 (session 50)
+
+The key-signature designer's panel (design
+`docs/planning/key-signature-designer-design.md` §7).
+
+- **The panel speaks a designer's words.** Show the key signature; Notes
+  (the whole scale, or the tonic and the half steps; the tonic an octave
+  up); Stacks (stacked sevenths, odd semitones left and even right, a new
+  stack at each change of odd and even, a zigzag; which way they go, hidden
+  where it does not apply; the gold stem, its colour, its thickness in staff
+  spaces and whether several stems share it, saying what each gets in the
+  picked key); Looks (all marks, flats, sharps and every second stack, each
+  a menu with the notehead panel's own shape, fill, colour and size
+  controls, and an "as …" that clears a field); Place (the middle of the
+  staff, the bottom, top or every line set). A note says when marks in a
+  stack run together, and points to the looks' size. The old Marks,
+  placement-rule, tonic-octave and bar-extent controls are gone; their
+  stored values are kept. The keys a notehead rule can be for sit below,
+  under "Keys for notehead rules".
+- **Clairnote's signatures.** The Clairnote SN and DN gallery files draw
+  dots, slashed through for sharps (/) and flats (\\), a new stack at each
+  change of parity going left in sharp keys, no upper tonic, no gold stem,
+  on the bottom line set. Engraved at concert size they read; the first
+  one-sided tails ran into the next dot and their balancing points printed
+  as specks, so the slash replaced them (`docs/sessions/session-050/notes.md`).
+- **The preview follows engine 1.4.1**, which landed before the session:
+  the signature's heads take the notation's ledgers, so the scale stack is
+  spaced by its ink as the mark table is, and each head's ledgers are its own
+  width (the sized fixture and the Hass and Trilinear files' signature
+  ledgers were drawn too long). A signature on a line set below or above the
+  cards is no longer cut off by the row.
+
+**What the UAT checks.** `uat-key-signature.mjs` keeps its enable, define,
+key-picking, clef, save, load and export flow, and now drives each choice in
+the panel: both notes choices and the upper tonic, the four stacking rules
+and the direction (D major mirrored to the left), the overlap note, the gold
+stem shared and unshared, at 0.5 staff spaces and in another colour, and off;
+all marks' size and a built-in shape, sharps' fill and every second stack's
+colour, each set and cleared; and the four places. After each it checks the
+canvas draws exactly the marks the Node-side renderer gives for the live
+config and the picked key. It loads the Clairnote SN file and checks D
+major's dots and slashed sharps, and the export carries the mark table:
+**pass, 68/68 checks**. `uat-app-layout.mjs`: **pass, 79/79 checks**.
+
+**The screenshots, judged.** `uat-050-panel-1440.png`,
+`uat-050-panel-1280.png`, `uat-050-clairnote-1440.png` and
+`uat-050-clairnote-1280.png` (in the UAT's screenshot folder) show the
+panel and the canvas at both widths, a look's menu open, with no sideways
+scroll. The panel follows the layout of design §7 row for row. The canvas
+draws the signatures of the mock-ups
+(`docs/planning/key-signature-mockups/`, sections 3, 5 and 6): the new
+stack at each change of parity, the stacks going left in a sharp key, the
+bottom line set; the Clairnote file's dots, with slashes where section 6 had
+one-sided tails.
+
 ## Clefs — 2026-11-10 (session 45)
 
 Rough edge 6 of the session-42 try-out (below), as planned.

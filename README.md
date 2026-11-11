@@ -206,9 +206,19 @@ conventional notehead on the 4-8 staff.
   from), fill, shape, size and nudge, for every selected notehead at once.
   A new shape keeps the notehead's height, at the new shape's proportions.
   The section lists the rules the looks are kept as.
-- **Key signature** and **Clef** — the signature's look, and the keys a
-  notehead rule can be for (the signature draws for the key picked on the
-  staff, defined here or not); the clef. **Dozenal**, **Treble**, **Bass**
+- **Key signature** — the signature, drawn for the key picked on the
+  staff: which **Notes** (the whole scale, or the tonic and the half steps,
+  with or without the tonic an octave up); the **Stacks** (stacked sevenths,
+  odd semitones left and even right, a new stack at each change of odd and
+  even, or a zigzag), which way they go, and the gold stem between them, its
+  colour, its thickness in staff spaces and whether several stems share it;
+  the **Looks** of all marks, flats, sharps and every second stack, with the
+  notehead panel's controls (shape, fill, colour and size); and the
+  **Place**, the middle of the staff or the bottom, top or every line set. A
+  note says when marks in a stack run together. Below it, the keys a
+  notehead rule can be for. The Clairnote SN and DN gallery files show
+  Clairnote-style signatures: dots, slashed for sharps and flats.
+- **Clef** — **Dozenal**, **Treble**, **Bass**
   and **Alto** buttons choose the engine's dozenal clef (drawn as the
   engine engraves it, the numeral 50 of the default treble register) or
   LilyPond's own treble, bass and alto clef, placed on the pitch it marks
@@ -378,10 +388,10 @@ it (session 34, LY export spec 1.3.9):
   length, staff lines 0.1, ledgers 0.2 with rounded ends and 1.5 notehead
   widths long, all black and solid. They have no settings.
 - **The key signature's spacing is the engine's**, and has no setting. Its
-  gold stems have round caps and its ledgers the engraved length. One known
-  difference remains: the engine gives a signature's noteheads ledgers by
-  its own rule rather than the notation's, so a signature's ledgers can
-  differ from the preview's until engine 1.4.1.
+  gold stems have round caps and its ledgers the engraved length. With
+  engine 1.4.1 and later a signature's noteheads take the notation's
+  ledgers, as the preview draws them, and the signature is spaced by its
+  ink, ledgers included.
 - **Repeated heads are the engine's.** When longer durations repeat the
   notehead, the preview draws what the engine engraves: minim ×2 and
   semibreve ×4, each head edge to edge with the multinote padding

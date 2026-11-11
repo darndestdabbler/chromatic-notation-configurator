@@ -29,6 +29,42 @@
       "lilypondPath": null,
       "lilypondHollowPath": null,
       "lilypondAnchors": null
+    },
+    "clairnote-dot": {
+      "displayName": "Clairnote key-signature dot",
+      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z",
+      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
+      "naturalHeight": 160,
+      "naturalWidth": 160,
+      "semitoneHeight": 1.6,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "clairnote-dot-sharp": {
+      "displayName": "Clairnote key-signature dot, rising slash (sharp)",
+      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z M 29.698 -57.983 L 91.924 -120.208 L 120.208 -91.924 L 57.983 -29.698 Z M -29.698 57.983 L -91.924 120.208 L -120.208 91.924 L -57.983 29.698 Z",
+      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
+      "naturalHeight": 160,
+      "naturalWidth": 240.416,
+      "semitoneHeight": 1.6,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "clairnote-dot-flat": {
+      "displayName": "Clairnote key-signature dot, falling slash (flat)",
+      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z M 57.983 29.698 L 120.208 91.924 L 91.924 120.208 L 29.698 57.983 Z M -57.983 -29.698 L -120.208 -91.924 L -91.924 -120.208 L -29.698 -57.983 Z",
+      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
+      "naturalHeight": 160,
+      "naturalWidth": 240.416,
+      "semitoneHeight": 1.6,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
     }
   },
   "staff": {
@@ -127,18 +163,32 @@
     "keySignature": {
       "enabled": true,
       "style": "notehead-chords",
+      "notes": "all",
+      "upperTonic": false,
+      "looks": {
+        "all": {
+          "shape": "clairnote-dot"
+        },
+        "flat": {
+          "shape": "clairnote-dot-flat"
+        },
+        "sharp": {
+          "shape": "clairnote-dot-sharp"
+        }
+      },
+      "stacking": "parity-stacks",
+      "alternate": {},
+      "columns": "left-in-sharp-keys",
       "placement": {
         "rule": "scale-from-tonic",
-        "tonicOctave": null
+        "tonicOctave": null,
+        "position": "bottom-set"
       },
       "separator": {
-        "enabled": true,
+        "enabled": false,
         "color": "#ffd42a",
         "thicknessPct": 160,
         "extentSemis": 12
-      },
-      "gutter": {
-        "paddingH": 12
       }
     }
   },

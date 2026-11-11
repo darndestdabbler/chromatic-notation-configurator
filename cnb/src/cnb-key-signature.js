@@ -90,10 +90,12 @@ import { CNBStaff } from "./cnb-staff.js";
 const NS = "http://www.w3.org/2000/svg";
 
 // The engine's spacing around the signature (session 34, measured from
-// renders), in staff spaces: the signature starts 0.75 after the staff's
-// start, or 3.5 after the clef's left edge (LilyPond's clef-to-signature
-// minimum-space), and the first note's head is centred 4.8636 after it,
-// whatever the widths of the marks and of that notehead (measured).
+// renders), in staff spaces: the signature's ink starts 0.75 after the
+// staff's start, or its marks 3.5 after the clef's left edge (LilyPond's
+// clef-to-signature minimum-space), and the first note's head is centred
+// 4.8636 after its ink, whatever the widths of the marks and of that
+// notehead (measured). The ink is the marks and any ledger of the first or
+// last stack (session 50, engine 1.4.1).
 const SPACE_BEFORE = 0.75;
 const SPACE_FROM_CLEF = 3.5;
 const FIRST_NOTE_CENTRE = 4.8636;
@@ -130,20 +132,42 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   // stands for it: its padding plus half its ledger (CNBCard.columnWidth).
   const inset = firstHeadCenter ??
     (config.display?.column?.paddingH ?? 16) + CNBLedgerSet.width(m.markWidth) / 2;
-  if (scaleStack) {
-    return { left, right: Math.max(0, FIRST_NOTE_CENTRE * space - inset) };
+  // The ink, from the stacks' start: since engine 1.4.1 (engine session 33)
+  // the signature's heads take the notation's ledgers, as the canvas draws
+  // them, so the scale stack is spaced by its ink as the mark table is
+  // (session 50).
+  const ink = inkExtent(config, pxPerSemi, m, space);
+  const before = clef ? 0 : -ink.left;
+  const after = ink.right - m.columns * m.markWidth;
+  return { left: Math.max(0, left + before), right: Math.max(0, after + FIRST_NOTE_CENTRE * space - inset) };
+}
+
+/** A mark's drawn width in px: its shape's at its size, or the widest's. */
+function markWidthOf(config, pxPerSemi, m, mark) {
+  const shape = (config.shapes || {})[mark.shape];
+  return shape ? CNBNotehead.measure(shape, pxPerSemi, mark).pixelWidth : m.markWidth;
+}
+
+/**
+ * The signature's ink in px from the stacks' start, as the engine draws it
+ * (session 50): each head's box centred on its stack, and each head's own
+ * ledgers, 4/3 of its own width and their round caps (keysig.ly
+ * cnb:add-keysig-ledgers), so a narrow mark beside a wide one draws shorter
+ * ledgers and a stack of narrow marks starts its ink later.
+ */
+function inkExtent(config, pxPerSemi, m, space) {
+  const axis = CNBPitchAxis.create(config);
+  let left = Infinity;
+  let right = -Infinity;
+  for (const { semi, column, mark } of m.marks) {
+    const w = markWidthOf(config, pxPerSemi, m, mark);
+    const ledgered = CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
+    const half = ledgered ? ledgerLength(w, space) / 2 : w / 2;
+    const x = (column + 0.5) * m.markWidth;
+    left = Math.min(left, x - half);
+    right = Math.max(right, x + half);
   }
-  // The ink: a ledger under a head of the first or last stack reaches past
-  // the marks.
-  const overhang = (ledgerLength(m.markWidth, space) - m.markWidth) / 2;
-  const ledgered = c => {
-    const semis = m.marks.filter(mk => mk.column === c).map(mk => mk.semi);
-    return semis.length > 0 && CNBLedgerSet.ledgersFor(config, semis,
-      { minSemi: Math.min(...semis) - 12, maxSemi: Math.max(...semis) + 12 }, CNBPitchAxis.create(config)).length > 0;
-  };
-  const before = !clef && ledgered(0) ? overhang : 0;
-  const after = ledgered(m.columns - 1) ? overhang : 0;
-  return { left: left + before, right: Math.max(0, after + FIRST_NOTE_CENTRE * space - inset) };
+  return Number.isFinite(left) ? { left, right } : { left: 0, right: m.columns * m.markWidth };
 }
 
 /** A look that sets nothing: every field unset (design §6). */
@@ -556,10 +580,12 @@ export const CNBKeySignature = {
 
   /**
    * The gutter's padding left and right of the marks, in px, giving the
-   * engine's spacing (session 34): the marks start 0.75 staff spaces after
-   * the staff's start, or, with a clef shown, 3.5 after the clef glyph's left
-   * edge (the clef column pads the glyph on both sides); the first card's
-   * notehead is centred 4.8636 after them. Null when nothing renders.
+   * engine's spacing (session 34): the ink starts 0.75 staff spaces after
+   * the staff's start, or, with a clef shown, the marks 3.5 after the clef
+   * glyph's left edge (2.9286 for a mark-table signature; the clef column
+   * pads the glyph on both sides); the first card's notehead is centred
+   * 4.8636 after the ink. The ink is the marks and the ledgers of the first
+   * and last stacks (session 50). Null when nothing renders.
    *
    * @param {object} config
    * @param {number} pxPerSemi
@@ -652,27 +678,33 @@ export const CNBKeySignature = {
     const columnX = c => leftX + c * m.markWidth;
 
     // Ledger layer first, noteheads on top (keysig.ly's two-pass
-    // layering). Ledger length = 4/3 × notehead width, the engine's
-    // keysig ledger proportion, and its round caps (session 49).
+    // layering). Ledger length = 4/3 × the head's own width, the engine's
+    // keysig ledger proportion, and its round caps (session 49); marks of
+    // one width in a stack share their ledgers, and a narrower mark draws
+    // its own shorter ones, as the engine does (session 50).
     const space = CNBStaff.staffSpacePx(config, gridContext);
-    const ledgerOpts = { width: ledgerLength(m.markWidth, space) };
+    const groups = new Map();   // "x width" → { x, width, semis }
+    const axis = CNBPitchAxis.create(config);
+    const join = ({ semi, mark }, x) => {
+      // A mark with no ledgers of its own joins the stack's usual group.
+      const ledgered = CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
+      const width = ledgered ? markWidthOf(config, gridContext.pxPerSemi, m, mark) : m.markWidth;
+      const id = `${x} ${width}`;
+      if (!groups.has(id)) groups.set(id, { x, width, semis: [] });
+      groups.get(id).semis.push(semi);
+    };
     if (m.offsets) {
-      // Axis path: ledgers follow their marks — one render per
-      // (column, offset) group, so equal-offset marks share ledgers.
-      const groups = new Map();
-      m.marks.forEach(({ semi, column }, i) => {
-        const x = columnX(column) + m.offsets[i];
-        if (!groups.has(x)) groups.set(x, []);
-        groups.get(x).push(semi);
-      });
-      for (const [x, semis] of groups) {
-        CNBLedgerSet.render(g, gridContext, config, semis, { ...ledgerOpts, centerX: x });
-      }
+      // Axis path: ledgers follow their marks' offsets.
+      m.marks.forEach((mk, i) => join(mk, columnX(mk.column) + m.offsets[i]));
     } else {
       for (let c = 0; c < m.columns; c++) {
-        const semis = m.marks.filter(mk => mk.column === c).map(mk => mk.semi);
-        CNBLedgerSet.render(g, gridContext, config, semis, { ...ledgerOpts, centerX: columnX(c) });
+        const stack = m.marks.filter(mk => mk.column === c);
+        if (stack.length === 0) groups.set(`empty ${c}`, { x: columnX(c), width: m.markWidth, semis: [] });
+        for (const mk of stack) join(mk, columnX(c));
       }
+    }
+    for (const { x, width, semis } of groups.values()) {
+      CNBLedgerSet.render(g, gridContext, config, semis, { width: ledgerLength(width, space), centerX: x });
     }
 
     m.marks.forEach(({ semi, column, mark }, i) => {

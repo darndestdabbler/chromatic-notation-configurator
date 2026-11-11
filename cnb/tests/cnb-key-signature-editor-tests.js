@@ -5,8 +5,9 @@
  * Covers the pure state ↔ config builders (buildKeys / applyToConfig /
  * stateFromConfig, round-tripped on every branch), the render() UI driven
  * against a stub DOM (keys.enabled master gate with its explicit disabled
- * state, key-definition rows, signature style/placement/separator/
- * controls), the editor-level duplicate-name check, the Module A
+ * state, key-definition rows, and the panel of the key-signature design §7,
+ * session 50: Notes, Stacks with the gold stem and the overlap note, and
+ * Place), the editor-level duplicate-name check, the Module A
  * validation pass-through, and the export through the editor path (an
  * editor-built keysig-enabled config leaves the signature to the engine;
  * the default, signature off, exports 'none — session 30).
@@ -15,6 +16,7 @@
 import { CNBKeySignatureEditor } from "../ui/key-signature-editor.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBBuiltinShapes } from "../ui/builtin-shapes.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -306,7 +308,7 @@ export const tests = [
 
         for (const token of ["cnb-kse-def-name", "cnb-kse-pc-pill", "cnb-kse-def-tonic",
                              "cnb-kse-def-remove", "cnb-kse-def-add",
-                             "cnb-kse-sig-enable-check", "cnb-kse-placement-rule",
+                             "cnb-kse-sig-enable-check", "cnb-kse-radio-input",
                              "cnb-kse-sep-color"]) {
           const controls = findAll(root, token);
           assert(controls.length > 0, `${token} rendered while gated (shown, not hidden)`);
@@ -462,19 +464,6 @@ export const tests = [
       });
   } },
 
-  { name: "render: style options — the single notehead-chords style, selected, said as LilyPond draws it", fn: () => {
-      withDomStub((container) => {
-        const api = E.render(container, { config: keysConfig() });
-        const options = findAll(api.root, "cnb-kse-style-option");
-        eq(options.length, 1, "one implemented style");
-        eq(options[0].getAttribute("data-style"), "notehead-chords", "notehead-chords");
-        assert(options[0].className.includes("selected"), "selected by default");
-        eq(subtreeText(findAll(options[0], "cnb-kse-style-label")[0]), "Notehead chords", "label");
-        assert(subtreeText(options[0]).includes("as LilyPond draws it"), "the engine's style, in words");
-        assert(subtreeText(options[0]).includes("others may come later"), "notes other styles may come");
-      });
-  } },
-
   { name: "render: nothing is preview-only — no spacing control and no badge (session 34: the spacing is the engine's)", fn: () => {
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });
@@ -491,98 +480,397 @@ export const tests = [
       });
   } },
 
-  { name: "render: an unrecognized loaded style is shown as an extra option and reported by validation", fn: () => {
+  { name: "render: an unrecognized loaded style or placement rule is kept, has no control, and is reported by validation", fn: () => {
       withDomStub((container) => {
         const config = keysConfig();
         config.keys.keySignature.style = "tonic-label";
-        const api = E.render(container, { config });
-        const options = findAll(api.root, "cnb-kse-style-option");
-        eq(options.length, 2, "unknown style appended after the one known style");
-        assert(subtreeText(options[1]).includes("unrecognized"), "labeled unrecognized");
-        assert(options[1].className.includes("selected"), "and selected");
-        const errors = findAll(api.root, "cnb-kse-error");
-        assert(errors.some(e => subtreeText(e).includes("keys.keySignature.style")),
-          "Module A error surfaced");
-      });
-  } },
-
-  { name: "render: placement rule select offers the implemented vocabulary and writes the rule", fn: () => {
-      withDomStub((container) => {
-        let last = null;
-        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const rule = findAll(api.root, "cnb-kse-placement-rule")[0];
-        eq(rule.children.length, 1, "one implemented rule");
-        eq(rule.children[0].value, "scale-from-tonic", "the keysig.ly rule");
-        rule.value = "scale-from-tonic";
-        rule.onchange();
-        eq(last.keys.keySignature.placement.rule, "scale-from-tonic", "rule written");
-      });
-  } },
-
-  { name: "render: an unrecognized loaded placement rule is preserved in the select and reported", fn: () => {
-      withDomStub((container) => {
-        const config = keysConfig();
         config.keys.keySignature.placement.rule = "tonic-only";
         const api = E.render(container, { config });
-        const rule = findAll(api.root, "cnb-kse-placement-rule")[0];
-        eq(rule.children.length, 2, "unknown rule appended");
-        eq(rule.value, "tonic-only", "unknown rule stays selected");
-        const errors = findAll(api.root, "cnb-kse-error");
-        assert(errors.some(e => subtreeText(e).includes("placement.rule")),
-          "Module A error surfaced");
+        eq(api.getKeys().keySignature.style, "tonic-label", "style kept");
+        eq(api.getKeys().keySignature.placement.rule, "tonic-only", "rule kept");
+        const errors = findAll(api.root, "cnb-kse-error").map(subtreeText);
+        assert(errors.some(e => e.includes("keys.keySignature.style")), "style error surfaced");
+        assert(errors.some(e => e.includes("placement.rule")), "rule error surfaced");
       });
   } },
 
-  { name: "render: tonic octave — auto checkbox ↔ explicit integer input (preview-only note shown)", fn: () => {
+  // ─── render(): the panel of design §7 (session 50) ────────────────────
+
+  { name: "render: the old Marks, rule, tonic-octave and extent controls are gone, and their stored values are kept", fn: () => {
       withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.placement.tonicOctave = 2;
+        config.keys.keySignature.separator.extentSemis = 6;
         let last = null;
-        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-
-        const auto = findAll(api.root, "cnb-kse-octave-auto-check")[0];
-        eq(auto.checked, true, "auto by default");
-        eq(findAll(api.root, "cnb-kse-octave-input")[0].disabled, true, "explicit input disabled on auto");
-
-        auto.checked = false;
-        auto.onchange();
-        eq(last.keys.keySignature.placement.tonicOctave, 1, "unchecking auto adopts an explicit octave");
-
-        const input = findAll(api.root, "cnb-kse-octave-input")[0];
-        eq(input.disabled, false, "explicit input enabled");
-        input.value = "2";
-        input.oninput();
-        eq(last.keys.keySignature.placement.tonicOctave, 2, "explicit octave written");
-
-        const auto2 = findAll(api.root, "cnb-kse-octave-auto-check")[0];
-        auto2.checked = true;
-        auto2.onchange();
-        eq(last.keys.keySignature.placement.tonicOctave, null, "auto restores null");
+        const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
+        for (const token of ["cnb-kse-style-option", "cnb-kse-placement-rule", "cnb-kse-octave-auto-check",
+                             "cnb-kse-octave-input", "cnb-kse-sep-extent"]) {
+          eq(findAll(api.root, token).length, 0, `${token} gone`);
+        }
+        const upper = findAll(api.root, "cnb-kse-upper-tonic-check")[0];
+        upper.checked = false;
+        upper.onchange();
+        eq(last.keys.keySignature.placement.tonicOctave, 2, "tonic octave kept");
+        eq(last.keys.keySignature.separator.extentSemis, 6, "extent kept");
+        eq(last.keys.keySignature.style, "notehead-chords", "style kept");
       });
   } },
 
-  { name: "render: separator controls write enabled/color/thicknessPct/extentSemis", fn: () => {
+  { name: "render: the signature comes first, the key definitions below it under Keys for notehead rules", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig() });
+        const sections = api.root.children.map(c => String(c.className));
+        const sig = sections.findIndex(c => c.includes("cnb-kse-signature"));
+        const defs = sections.findIndex(c => c.includes("cnb-kse-definitions"));
+        assert(sig >= 0 && defs > sig, "definitions follow the signature");
+        eq(subtreeText(findAll(api.root.children[defs], "cnb-kse-title")[0]), "Keys for notehead rules", "title");
+        eq(subtreeText(findAll(api.root, "cnb-kse-sig-enable")[0]), "Show the key signature", "show label");
+      });
+  } },
+
+  { name: "render: Notes — the whole scale or the tonic and the half steps, and the tonic an octave up", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const options = findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio");
+        deepEq(options.map(o => o.getAttribute("data-value")), ["all", "tonic-and-half-steps"], "two choices");
+        assert(options[0].className.includes("on"), "the whole scale by default");
+        eq(subtreeText(options[1]), "The tonic and the half steps", "in words");
+        options[1].children[0].onchange();
+        eq(last.keys.keySignature.notes, "tonic-and-half-steps", "notes written");
+        findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio")[0].children[0].onchange();
+        eq(last.keys.keySignature.notes, "all", "and back");
 
-        const cb = findAll(api.root, "cnb-kse-sep-enable-check")[0];
-        cb.checked = false;
-        cb.onchange();
-        eq(last.keys.keySignature.separator.enabled, false, "separator disabled");
+        const upper = findAll(api.root, "cnb-kse-upper-tonic-check")[0];
+        eq(upper.checked, true, "upper tonic on by default");
+        upper.checked = false;
+        upper.onchange();
+        eq(last.keys.keySignature.upperTonic, false, "upper tonic written");
+      });
+  } },
+
+  { name: "render: Stacks — the four rules write stacking; the direction is hidden under odd-left-even-right", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const values = () => findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio");
+        deepEq(values().map(o => o.getAttribute("data-value")),
+          ["degrees", "parity", "parity-stacks", "parity-zigzag"], "four rules");
+        eq(subtreeText(values()[0]), "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right", "the default in words");
+        for (const value of ["parity-stacks", "parity-zigzag", "parity", "degrees"]) {
+          values().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          eq(last.keys.keySignature.stacking, value, `${value} written`);
+          eq(findAll(api.root, "cnb-kse-columns").length, value === "parity" ? 0 : 1,
+            `direction ${value === "parity" ? "hidden" : "shown"} under ${value}`);
+        }
+        const direction = findAll(findAll(api.root, "cnb-kse-columns")[0], "cnb-kse-radio");
+        deepEq(direction.map(o => o.getAttribute("data-value")), ["right", "left-in-sharp-keys"], "two directions");
+        direction[1].children[0].onchange();
+        eq(last.keys.keySignature.columns, "left-in-sharp-keys", "direction written");
+      });
+  } },
+
+  { name: "render: Place — the middle of the staff, or the bottom, top or every line set", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const options = () => findAll(findAll(api.root, "cnb-kse-position")[0], "cnb-kse-radio");
+        deepEq(options().map(o => o.getAttribute("data-value")), ["middle", "bottom-set", "top-set", "every-set"], "four places");
+        assert(options()[0].className.includes("on"), "the middle by default");
+        for (const value of ["bottom-set", "top-set", "every-set", "middle"]) {
+          options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          eq(last.keys.keySignature.placement.position, value, `${value} written`);
+        }
+      });
+  } },
+
+  { name: "render: the gold stem's show, colour and thickness, the thickness in staff spaces at 4 and 3 semitones per staff space", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const thickness = findAll(api.root, "cnb-kse-sep-thickness")[0];
+        eq(thickness.value, "0.4", "160% of a semitone at 4 semitones per staff space is 0.4 staff spaces");
+        thickness.value = "0.5";
+        thickness.onchange();
+        eq(last.keys.keySignature.separator.thicknessPct, 200, "0.5 staff spaces written as 200%");
 
         const color = findAll(api.root, "cnb-kse-sep-color")[0];
         color.value = "#112233";
         color.onchange();
-        eq(last.keys.keySignature.separator.color, "#112233", "color written");
+        eq(last.keys.keySignature.separator.color, "#112233", "colour written");
 
+        const cb = findAll(api.root, "cnb-kse-sep-enable-check")[0];
+        eq(subtreeText(findAll(api.root, "cnb-kse-sep-enable")[0]), "Gold stem between the stacks", "in words");
+        cb.checked = false;
+        cb.onchange();
+        eq(last.keys.keySignature.separator.enabled, false, "stem off");
+      });
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.staff.semitonesPerStaffSpace = 3;
+        let last = null;
+        const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
         const thickness = findAll(api.root, "cnb-kse-sep-thickness")[0];
-        thickness.value = "40";
-        thickness.oninput();
-        eq(last.keys.keySignature.separator.thicknessPct, 40, "thickness written");
+        eq(thickness.value, "0.5333", "160% at 3 semitones per staff space");
+        thickness.value = "0.5";
+        thickness.onchange();
+        eq(last.keys.keySignature.separator.thicknessPct, 150, "0.5 staff spaces at sps 3 is 150%");
+      });
+  } },
 
-        const extent = findAll(api.root, "cnb-kse-sep-extent")[0];
-        extent.value = "6";
-        extent.oninput();
-        eq(last.keys.keySignature.separator.extentSemis, 6, "extent written");
+  { name: "thicknessInStaffSpaces / thicknessPct / semisPerStaffSpace convert the stored percentage", fn: () => {
+      eq(E.thicknessInStaffSpaces(160, 4), 0.4, "160% at 4");
+      eq(E.thicknessPct(0.4, 4), 160, "and back");
+      eq(E.thicknessInStaffSpaces(100, 3), 0.3333, "shown to 4 places");
+      eq(E.thicknessPct(0.5, 3), 150, "0.5 staff spaces at 3");
+      eq(E.semisPerStaffSpace(CNBConfig.createDefault()), 4, "the default staff");
+      const axis = CNBConfig.createDefault();
+      axis.pitchAxis = { enabled: true, kind: "pitch-class-map-v1", octaveStride: 7, axisUnitsPerStaffSpace: 2,
+        pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })) };
+      eq(E.semisPerStaffSpace(axis), 2, "the pitch axis's units under an axis");
+  } },
+
+  { name: "shareText: what each stem gets, in this key", fn: () => {
+      eq(E.shareText(1, true), "(1 stem in this key: all of it)", "one stem");
+      eq(E.shareText(2, true), "(2 stems in this key: half each)", "two, shared");
+      eq(E.shareText(3, true), "(3 stems in this key: a third each)", "three, shared");
+      eq(E.shareText(5, true), "(5 stems in this key: 1/5 each)", "five, shared");
+      eq(E.shareText(2, false), "(2 stems in this key: all of it each)", "two, not shared");
+      eq(E.shareText(0, true), "(one stack in this key: no stem)", "one stack");
+      eq(E.shareText(null, true), "(each of n stems: 1/n of it)", "no key picked");
+  } },
+
+  { name: "render: Several stems share the thickness — counted for the picked key, written, and hidden with the stem off", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity-stacks";   // C major: C D E | F G A B | C′
+        let last = null;
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" }, onChange: (slices) => { last = slices; } });
+        eq(subtreeText(findAll(api.root, "cnb-kse-share-text")[0]).trim(), "(2 stems in this key: half each)", "two stems in C major");
+        const share = findAll(api.root, "cnb-kse-sep-share-check")[0];
+        share.checked = false;
+        share.onchange();
+        eq(last.keys.keySignature.separator.shareThickness, false, "sharing written");
+        eq(subtreeText(findAll(api.root, "cnb-kse-share-text")[0]).trim(), "(2 stems in this key: all of it each)", "not shared");
+
+        const stem = findAll(api.root, "cnb-kse-sep-enable-check")[0];
+        stem.checked = false;
+        stem.onchange();
+        eq(findAll(api.root, "cnb-kse-sep-share").length, 0, "hidden with the stem off");
+      });
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" } });
+        eq(subtreeText(findAll(api.root, "cnb-kse-share-text")[0]).trim(), "(1 stem in this key: all of it)", "stacked sevenths: one stem");
+      });
+  } },
+
+  { name: "render: the overlap note shows when two marks of one stack run together in the picked key, and only then", fn: () => {
+      const key = { tonic: 0, mode: "major" };
+      withDomStub((container) => {
+        // Stacked sevenths: a stack's notes are a third apart, clear of the 2.7-semitone notehead.
+        const api = E.render(container, { config: keysConfig(), key });
+        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "no note under stacked sevenths");
+      });
+      withDomStub((container) => {
+        // A new stack at each change of parity: whole steps, 2 semitones, in one stack.
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity-stacks";
+        const api = E.render(container, { config, key });
+        const note = findAll(api.root, "cnb-kse-overlap-note");
+        eq(note.length, 1, "the note shows");
+        assert(subtreeText(note[0]).includes("run together") && subtreeText(note[0]).includes("Looks"),
+          "it says the marks run together and points to the looks' size");
+        // A smaller look clears it.
+        api.setState({ keySignature: { ...api.getState().keySignature, looks: { all: { heightSemis: 1.5, widthSemis: 1.5 }, flat: {}, sharp: {} } } });
+        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "smaller marks: no note");
+      });
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity-stacks";
+        const api = E.render(container, { config });
+        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "no key picked: no note");
+      });
+  } },
+
+  // ─── render(): the looks (design §4.1, §7; session 50) ─────────────────
+
+  { name: "lookSummary: 'as …' beneath for an empty look, else what it sets, in words", fn: () => {
+      eq(E.lookSummary({}, "all"), "as the noteheads", "all marks");
+      eq(E.lookSummary({}, "flat"), "as all marks", "flats");
+      eq(E.lookSummary({}, "sharp"), "as all marks", "sharps");
+      eq(E.lookSummary({}, "alternate"), "as the others", "every second stack");
+      eq(E.lookSummary({ shape: "kite-up", hollow: true }, "all"), CNBBuiltinShapes.get("kite-up").displayName + ", hollow",
+        "a built-in shape by its name, and the fill");
+      const shapes = CNBConfig.createDefault().shapes;
+      eq(E.lookSummary({ shape: "crotchet-minim", hollow: false, color: null, heightSemis: 1.5, widthSemis: 1.9 }, "sharp", shapes),
+        "Crotchet–Minim, solid, no colour, 1.5 × 1.9 semitones", "every field");
+      assert(E.lookSummary({ color: "#0072b2" }, "flat").length > 0 && !E.lookSummary({ color: "#0072b2" }, "flat").startsWith("as"),
+        "a colour by its name");
+      eq(E.lookSummary({ heightSemis: 2 }, "all"), "2 semitones tall", "a height alone");
+  } },
+
+  { name: "render: Looks — a menu for all marks, flats, sharps and every second stack, each saying its look", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.looks.flat = { color: null };
+        const api = E.render(container, { config });
+        const menus = findAll(api.root, "cnb-kse-look");
+        deepEq(menus.map(m => m.getAttribute("data-look")), ["all", "flat", "sharp", "alternate"], "four looks");
+        deepEq(menus.map(m => subtreeText(findAll(m, "cnb-kse-look-label")[0])),
+          ["All marks", "Flats", "Sharps", "Every second stack"], "in words");
+        deepEq(menus.map(m => subtreeText(findAll(m, "cnb-kse-look-words")[0])),
+          ["as the noteheads", "no colour", "as all marks", "as the others"], "each says its look");
+        eq(menus[0].tag, "details", "a menu that opens");
+        eq(findAll(menus[3], "cnb-kse-look-height").length, 0, "every second stack has no size");
+        eq(findAll(menus[0], "cnb-kse-look-height").length, 1, "the others have one");
+      });
+  } },
+
+  { name: "render: a look's shape, fill and colour are set and cleared through its 'as …' choice", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const menu = (kind) => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === kind);
+        const pick = (kind, token, attr, value) => findAll(menu(kind), token).find(b => b.getAttribute(attr) === value);
+
+        pick("sharp", "cnb-kse-look-shape", "data-shape", "crotchet-minim").onclick();
+        eq(last.keys.keySignature.looks.sharp.shape, "crotchet-minim", "shape set");
+        assert(!("shapes" in last), "a shape the notation has adds none");
+        assert(pick("sharp", "cnb-kse-look-shape", "data-shape", "crotchet-minim").className.includes("on"), "and shown on");
+        pick("sharp", "cnb-kse-look-shape", "data-shape", "").onclick();
+        assert(!("shape" in last.keys.keySignature.looks.sharp), "'as all marks' clears it");
+
+        pick("flat", "cnb-kse-look-fill", "data-fill", "hollow").onclick();
+        eq(last.keys.keySignature.looks.flat.hollow, true, "hollow");
+        pick("flat", "cnb-kse-look-fill", "data-fill", "solid").onclick();
+        eq(last.keys.keySignature.looks.flat.hollow, false, "solid");
+        pick("flat", "cnb-kse-look-fill", "data-fill", "").onclick();
+        assert(!("hollow" in last.keys.keySignature.looks.flat), "cleared");
+
+        pick("alternate", "cnb-kse-look-colour", "data-color", "none").onclick();
+        eq(last.keys.keySignature.alternate.color, null, "none: no colour");
+        findAll(menu("alternate"), "cnb-kse-look-colour-input")[0].onchange({ target: { value: "#CC79A7" } });
+        eq(last.keys.keySignature.alternate.color, "#cc79a7", "a colour, when the picker closes");
+        pick("alternate", "cnb-kse-look-colour", "data-color", "").onclick();
+        assert(!("color" in last.keys.keySignature.alternate), "'as the others' clears it");
+      });
+  } },
+
+  { name: "render: a look's size — height and width in semitones, the aspect ratio kept, cleared together", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const menu = () => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
+        const shape = CNBConfig.createDefault().shapes["crotchet-minim"];
+        const ratio = shape.naturalWidth / shape.naturalHeight;
+        const height = findAll(menu(), "cnb-kse-look-height")[0];
+        height.value = "1.5";
+        height.onchange();
+        eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height");
+        eq(last.keys.keySignature.looks.all.widthSemis, Math.round(1.5 * ratio * 1e4) / 1e4, "width at the notehead's ratio");
+
+        const lock = findAll(menu(), "cnb-kse-look-lock-check")[0];
+        lock.checked = false;
+        lock.onchange();
+        const width = findAll(menu(), "cnb-kse-look-width")[0];
+        width.value = "1";
+        width.onchange();
+        eq(last.keys.keySignature.looks.all.widthSemis, 1, "width alone with the ratio unlocked");
+        eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height kept");
+
+        findAll(menu(), "cnb-kse-look-size-as")[0].onclick();
+        assert(!("heightSemis" in last.keys.keySignature.looks.all) && !("widthSemis" in last.keys.keySignature.looks.all),
+          "'as the noteheads' clears both");
+      });
+  } },
+
+  { name: "render: a look's new shape keeps its height, the width following the shape's proportions while the ratio is kept", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const menu = () => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
+        const shapeButton = (name) => findAll(menu(), "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === name);
+        const height = findAll(menu(), "cnb-kse-look-height")[0];
+        height.value = "1.5";
+        height.onchange();
+        shapeButton("kite-up").onclick();
+        const kite = CNBBuiltinShapes.get("kite-up");
+        eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height kept");
+        eq(last.keys.keySignature.looks.all.widthSemis, Math.round(1.5 * kite.naturalWidth / kite.naturalHeight * 1e4) / 1e4,
+          "width at the kite's proportions");
+
+        const lock = findAll(menu(), "cnb-kse-look-lock-check")[0];
+        lock.checked = false;
+        lock.onchange();
+        const width = findAll(menu(), "cnb-kse-look-width")[0];
+        width.value = "1";
+        width.onchange();
+        shapeButton("crotchet-minim").onclick();
+        eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "with the ratio not kept, the height stays");
+        eq(last.keys.keySignature.looks.all.widthSemis, 1, "and so does the width");
+      });
+  } },
+
+  { name: "render: an imported shape given to a look keeps its height, the width following the imported shape's proportions", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const gives = [];
+        const api = E.render(container, {
+          config: keysConfig(),
+          onChange: (slices) => { last = slices; },
+          importControl: (slot, give) => { gives.push(give); },
+        });
+        const height = findAll(api.root, "cnb-kse-look-height")[0];   // all marks
+        height.value = "1.5";
+        height.onchange();
+        const dot = { displayName: "Dot", svgPath: "M 80 0 L 0 80 L -80 0 L 0 -80 Z", naturalHeight: 160, naturalWidth: 240,
+          semitoneHeight: 1.6, anchors: null };
+        gives[0]("dot", dot);   // the first look's, all marks
+        eq(last.keys.keySignature.looks.all.shape, "dot", "the imported shape given to the look");
+        eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height kept");
+        eq(last.keys.keySignature.looks.all.widthSemis, 2.25, "width at the imported shape's proportions (1.5 × 240 / 160)");
+      });
+  } },
+
+  { name: "render: a built-in shape the notation lacks is added to it, and reported with the keys", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        const menu = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
+        const kite = findAll(menu, "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up");
+        assert(kite, "the built-in shapes are offered");
+        kite.onclick();
+        eq(last.keys.keySignature.looks.all.shape, "kite-up", "given to the look");
+        assert(last.shapes && last.shapes["kite-up"] && last.shapes["crotchet-minim"], "added to the notation's shapes");
+        eq(findAll(api.root, "cnb-kse-valid").length, 1, "and the config validates with it");
+      });
+  } },
+
+  { name: "render: a look's Import from SVG is the host's, and gives the imported shape to that look", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const gives = {};
+        const api = E.render(container, {
+          config: keysConfig(),
+          onChange: (slices) => { last = slices; },
+          importControl: (slot, give) => { slot.setAttribute("data-import", "yes"); gives[Object.keys(gives).length] = give; },
+        });
+        eq(findAll(api.root, "cnb-kse-look-import").length, 4, "one per look");
+        gives[2]("dot");   // the third look's, Sharps
+        eq(last.keys.keySignature.looks.sharp.shape, "dot", "the imported shape given to Sharps");
+      });
+  } },
+
+  { name: "render: an open look menu stays open across a change", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig() });
+        const menu = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "flat");
+        eq(menu.open, false, "closed at first");
+        menu.open = true;
+        menu.ontoggle();
+        findAll(menu, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "hollow").onclick();
+        const after = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "flat");
+        assert(after !== menu && after.open === true, "redrawn open");
       });
   } },
 

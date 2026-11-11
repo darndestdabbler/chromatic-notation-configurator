@@ -430,6 +430,8 @@
     // canvas Size with its duration and key, redrawn with every canvas draw.
     // With no duration selected the canvas draws no staff, and neither do they.
     let canvasOptions = { durations: ["crotchet"], keys: null };
+    // The key the Key signature panel was mounted for (session 50).
+    let keySignatureEditorKey = null;
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
       const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
@@ -467,6 +469,11 @@
       onRender: (options) => {
         canvasOptions = options;
         refreshSectionPreviews();
+        // The Key signature panel speaks of the key picked here (its stems,
+        // its overlap note), so a new pick re-mounts it (session 50).
+        if (previewApi && JSON.stringify(previewApi.getState().key) !== keySignatureEditorKey) {
+          mountKeySignatureEditor();
+        }
       },
       // Shapes or repeated heads, beside the duration buttons (session 36).
       // With the Clef section open, dragging the clef moves it, or its
@@ -741,14 +748,49 @@
      *  vocabulary the notehead rule editor reads at mount time (its
      *  match.keys pills), so that editor is re-seeded after every keys
      *  change — same rationale as the SVG-import re-mount below. The canvas
-     *  can turn the signature on (session 36), so it re-seeds this one. */
+     *  can turn the signature on (session 36), so it re-seeds this one. It
+     *  is told the key picked on the staff, for which it counts the stems
+     *  and finds marks that run together (session 50). */
     function mountKeySignatureEditor() {
+      const key = previewApi ? previewApi.getState().key : null;
+      keySignatureEditorKey = JSON.stringify(key);
       byId("key-signature-editor-host").textContent = "";
       CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
         config: appConfig,
+        key,
+        // A look's Import from SVG (session 50): the shape is added to the
+        // notation and given to that look.
+        importControl: drawLookImporter,
         onChange: (slices) => {
           appConfig.keys = slices.keys;
+          // A look took a built-in shape the notation lacked (session 50).
+          if (slices.shapes) appConfig.shapes = slices.shapes;
           mountNoteheadEditor();
+          refreshShared();
+        },
+      });
+    }
+
+    /** The Key signature panel's Import from SVG for one look: an imported
+     *  shape joins the notation's shapes and is given to the look, and the
+     *  editors re-seed with it (session 50). */
+    function drawLookImporter(slot, give) {
+      const control = document.createElement("div");
+      control.className = "cnb-kse-look-importer";
+      slot.appendChild(control);
+      const status = document.createElement("div");
+      status.className = "cnb-kse-look-import-status";
+      slot.appendChild(status);
+      CNBSvgImporter.renderImportControl(control, {
+        label: "Import from SVG… (click, or drop a .svg file here)",
+        onResult: (result) => {
+          if (result.error) {
+            status.textContent = "Import failed: " + result.error;
+            return;   // config untouched
+          }
+          appConfig.shapes[result.name] = result.shape;
+          give(result.name, result.shape);
+          mountEditors();
           refreshShared();
         },
       });

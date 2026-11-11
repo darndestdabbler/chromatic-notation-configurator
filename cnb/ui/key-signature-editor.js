@@ -36,15 +36,29 @@
  *
  * Export (session 30, LY spec 1.3.7 §5.6): the engine engraves the
  * signature from the score's `\key`, and the exporter writes its on/off
- * state, an explicit tonic octave and the separator's styling. The spacing
+ * state, an explicit tonic octave and the separator's styling, and since
+ * session 49 the mark table for any other signature (§5.6a). The spacing
  * around the signature is the engine's (session 34), so nothing here is
  * preview-only, and a config's keySignature.gutter is not carried.
  *
- * `style` is a single-value vocabulary ("notehead-chords"): the task owner
- * evaluated simple built-in marks in set-010 s2 UAT and chose the note
- * stack as the sole style, deferring custom-symbol signatures to a future
- * set (s2-uat.md, s2-design-consult.md). The style select preserves and
- * reports an unknown loaded value rather than rewriting it.
+ * The panel (session 50, key-signature design §7) speaks a designer's
+ * words: Show the key signature; Notes (the whole scale, or the tonic and
+ * the half steps; the tonic an octave up); Stacks (the four stacking rules,
+ * the direction, hidden under odd-left-even-right, and the gold stem with
+ * its colour, its thickness in staff spaces and whether several stems share
+ * it); Looks (all marks, flats, sharps and every second stack: each a menu
+ * saying its look in words and opening the notehead panel's controls,
+ * shape with its thumbnails and the host's Import from SVG (opts.importControl),
+ * fill, colour and, but for every second stack, size, each field with an
+ * "as …" choice that clears it; a built-in shape the notation lacks is
+ * added, reported as onChange({ keys, shapes })); Place (the middle of the
+ * staff, the bottom, top or every line set);
+ * and a note when two marks of one stack run together in the key picked on
+ * the staff (opts.key, which also counts the stems). The key definitions
+ * follow, under "Keys for notehead rules". `style`, the placement rule, the
+ * tonic octave and the gold stem's extent have no controls: their stored
+ * values are kept as they are, and an unknown style or rule is reported by
+ * validation rather than rewritten.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -55,8 +69,8 @@
  *       enabled: boolean,
  *       style: string,   // "notehead-chords" (single-value vocabulary)
  *       notes, upperTonic, looks, stacking, alternate, columns,
- *                        // the designer's settings (session 48): carried
- *                        // through unchanged, with no controls yet
+ *                        // the designer's settings (session 48), edited
+ *                        // in the panel since session 50
  *       placement: { rule: string, tonicOctave: number|null, position },
  *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness }
  *     }
@@ -86,6 +100,12 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
+import { CNBStaff } from "../src/cnb-staff.js";
+import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
+import { CNBPreviewDisplay } from "./preview-display.js";
+import { CNBNoteheadPanel } from "./notehead-panel.js";
+import { CNBBuiltinShapes } from "./builtin-shapes.js";
+import { CNBColor } from "../src/cnb-color.js";
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -116,8 +136,11 @@ function isValidHex(v) {
 const STYLES = ["notehead-chords"];
 const PLACEMENT_RULES = ["scale-from-tonic"];
 
-/** The placement rules in a designer's words. */
-const PLACEMENT_RULE_LABELS = { "scale-from-tonic": "Scale from the tonic" };
+/** The looks the panel edits (design §4.1, §7), in its words. */
+const LOOK_KINDS = [["all", "All marks"], ["flat", "Flats"], ["sharp", "Sharps"], ["alternate", "Every second stack"]];
+
+/** What an unset field of each look is: the look beneath. */
+const AS_BENEATH = { all: "as the noteheads", flat: "as all marks", sharp: "as all marks", alternate: "as the others" };
 
 /** Pitch-class display label: "C", "C♯", … (Module B). */
 function pcName(pc) {
@@ -274,6 +297,70 @@ export const CNBKeySignatureEditor = {
   },
 
   /**
+   * Semitones (or pitch-axis units) per staff space for a config: the unit
+   * the gold stem's thicknessPct is a percentage of, a hundredth each.
+   * @param {object} config
+   * @returns {number}
+   */
+  semisPerStaffSpace(config) {
+    return CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
+  },
+
+  /** A stored thicknessPct in staff spaces, to 4 places, at sps semitones
+   *  (or axis units) per staff space. */
+  thicknessInStaffSpaces(thicknessPct, sps) {
+    return Math.round((thicknessPct / 100 / sps) * 1e4) / 1e4;
+  },
+
+  /** A thickness in staff spaces as the stored thicknessPct, to 4 places. */
+  thicknessPct(staffSpaces, sps) {
+    return Math.round(staffSpaces * sps * 100 * 1e4) / 1e4;
+  },
+
+  /**
+   * A look in words, for its menu's summary: "as the noteheads" (all marks),
+   * "as all marks" (flats, sharps) or "as the others" (every second stack)
+   * when it sets nothing, else what it sets: the shape's name, the fill, the
+   * colour's name (or no colour) and the size.
+   * @param {object} look    { shape, hollow, color, heightSemis, widthSemis }
+   * @param {string} kind    "all" | "flat" | "sharp" | "alternate"
+   * @param {object} [shapes] the config's shapes, for the shape's name
+   * @returns {string}
+   */
+  lookSummary(look, kind, shapes = {}) {
+    const words = [];
+    const l = look || {};
+    if (l.shape !== undefined) {
+      const shape = (shapes || {})[l.shape] || CNBBuiltinShapes.get(l.shape);
+      words.push((shape && shape.displayName) || l.shape);
+    }
+    if (l.hollow !== undefined) words.push(l.hollow ? "hollow" : "solid");
+    if (l.color !== undefined) words.push(l.color === null ? "no colour" : CNBColor.baseColorName(l.color));
+    if (l.heightSemis !== undefined || l.widthSemis !== undefined) {
+      words.push(l.widthSemis === undefined ? `${l.heightSemis} semitones tall`
+        : l.heightSemis === undefined ? `${l.widthSemis} semitones wide`
+        : `${l.heightSemis} × ${l.widthSemis} semitones`);
+    }
+    return words.length === 0 ? AS_BENEATH[kind] : words.join(", ");
+  },
+
+  /**
+   * What each gold stem gets, in words, for a key with `stems` stems
+   * (null when no key is drawn) and the thickness shared or not.
+   * @param {number|null} stems
+   * @param {boolean} shared
+   * @returns {string}
+   */
+  shareText(stems, shared) {
+    if (stems === null) return shared ? "(each of n stems: 1/n of it)" : "(each stem: all of it)";
+    if (stems === 0) return "(one stack in this key: no stem)";
+    if (stems === 1) return "(1 stem in this key: all of it)";
+    if (!shared) return `(${stems} stems in this key: all of it each)`;
+    const part = { 2: "half", 3: "a third", 4: "a quarter" }[stems] || `1/${stems}`;
+    return `(${stems} stems in this key: ${part} each)`;
+  },
+
+  /**
    * The tonic-resolution chain for a definition, mirrored from the
    * renderer (s1 decision D3) so the hint states exactly what will render:
    *   explicit tonicPc → parsed from the name's leading note letter →
@@ -323,17 +410,19 @@ export const CNBKeySignatureEditor = {
    *   div.cnb-key-signature-editor
    *   ├── label.cnb-kse-keys-enable    (keys.enabled master toggle)
    *   ├── div.cnb-kse-disabled-note    (ONLY while keys.enabled is false)
-   *   ├── div.cnb-kse-definitions     (definition rows + add button)
-   *   ├── div.cnb-kse-signature       (keySignature.enabled, style,
-   *   │                                placement, separator, dot)
+   *   ├── div.cnb-kse-signature       (show, Notes, Stacks with the gold
+   *   │                                stem and the overlap note, Place)
+   *   ├── div.cnb-kse-definitions     (Keys for notehead rules: rows + add)
    *   └── div.cnb-kse-validation      (Module A pass-through + editor checks)
    *
    * While keys.enabled is false every control below the master toggle is
    * rendered with disabled = true (explicit disabled state, not hidden).
    *
    * @param {HTMLElement} container
-   * @param {{config?: object,
+   * @param {{config?: object, key?: {tonic:number, mode:string, spelling?:string}|null,
    *          onChange?: (slices: {keys: object}, state: object) => void}} [opts]
+   *        `key` is the key picked on the staff, for the stems' count and
+   *        the overlap note (neither without it).
    *        `config` seeds the editor state and is the base for the
    *        validation pass-through (defaults to CNBConfig.createDefault()).
    * @returns {{root: HTMLElement, getState: () => object,
@@ -368,14 +457,20 @@ export const CNBKeySignatureEditor = {
     const valueFrom = (e, input) =>
       (e && e.target && e.target.value !== undefined) ? e.target.value : input.value;
 
-    const emit = () => {
-      onChange({ keys: CNBKeySignatureEditor.buildKeys(state) }, deepClone(state));
+    // extra: other slices a change makes, { shapes } when a look takes a
+    // built-in shape the notation lacks (session 50).
+    const emit = (extra) => {
+      onChange({ keys: CNBKeySignatureEditor.buildKeys(state), ...(extra || {}) }, deepClone(state));
     };
 
-    const changed = () => {
+    const changed = (extra) => {
       redraw();
-      emit();
+      emit(extra);
     };
+
+    // Editor state only: which look menus are open, and the size lock.
+    const openLooks = new Set();
+    let lockLooks = true;
 
     /** Everything below the master toggle is disabled while keys.enabled
      *  is false (explicit disabled state — set-006 s3 lesson). */
@@ -408,8 +503,9 @@ export const CNBKeySignatureEditor = {
     // ── Key definitions ──────────────────────────────────────────────────
     function drawDefinitions() {
       const wrap = el("div", "cnb-kse-section cnb-kse-definitions");
-      wrap.appendChild(el("div", "cnb-kse-title", "Keys"));
+      wrap.appendChild(el("div", "cnb-kse-title", "Keys for notehead rules"));
       wrap.appendChild(el("div", "cnb-kse-hint",
+        "A key named here can be given to a notehead rule; the signature needs none. " +
         "Each key has a name and its notes. Its tonic is the one you choose, " +
         "else the note its name starts with, else its first note."));
 
@@ -486,192 +582,381 @@ export const CNBKeySignatureEditor = {
       return wrap;
     }
 
-    // ── Key signature ────────────────────────────────────────────────────
+    // ── Key signature (design §7) ─────────────────────────────────────────
+    /** The signature for the key picked on the staff, or null when none is
+     *  drawn (keys or the signature off, or no key picked). */
+    function pickedSignature() {
+      if (!opts.key) return null;
+      let config;
+      try { config = CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { return null; }
+      const { config: picked, name } = CNBPreviewDisplay.withKey(config, opts.key);
+      const active = CNBKeySignature.activeKey(picked, name);
+      return active ? CNBKeySignature.marks(picked, active.def) : null;
+    }
+
+    /** A row of radios writing one value: options are [value, label]. */
+    function radios(className, current, options, write) {
+      const group = el("div", "cnb-kse-radios " + className);
+      for (const [value, label] of options) {
+        const option = el("label", "cnb-kse-radio" + (value === current ? " on" : ""));
+        option.setAttribute("data-value", value);
+        const input = el("input", "cnb-kse-radio-input");
+        input.type = "radio";
+        input.name = className;
+        input.value = value;
+        input.checked = value === current;
+        input.onchange = () => { write(value); changed(); };
+        option.appendChild(control(input));
+        option.appendChild(el("span", "", label));
+        group.appendChild(option);
+      }
+      return group;
+    }
+
+    /** A checkbox writing a boolean. */
+    function checkbox(className, checked, text, write) {
+      const label = el("label", "cnb-kse-check " + className);
+      const input = el("input", className + "-check");
+      input.type = "checkbox";
+      input.checked = !!checked;
+      input.onchange = (e) => { write(checkedFrom(e, input)); changed(); };
+      label.appendChild(control(input));
+      label.appendChild(el("span", "", text));
+      return label;
+    }
+
+    /** One row of the panel: its label, then its controls. */
+    function row(className, label, ...children) {
+      const wrap = el("div", "cnb-kse-row " + className);
+      wrap.appendChild(el("div", "cnb-kse-row-label", label));
+      const body = el("div", "cnb-kse-row-body");
+      for (const child of children) if (child) body.appendChild(child);
+      wrap.appendChild(body);
+      return wrap;
+    }
+
     function drawSignature() {
+      const ks = state.keySignature;
       const wrap = el("div", "cnb-kse-section cnb-kse-signature");
       wrap.appendChild(el("div", "cnb-kse-title", "Key signature"));
-      wrap.appendChild(el("div", "cnb-kse-hint",
-        "The selected key's scale, drawn as noteheads at the start of the " +
-        "staff. LilyPond draws it from the score's key, with the noteheads, " +
-        "bar and octave this notation exports."));
 
       const enable = el("label", "cnb-kse-sig-enable");
       const cb = el("input", "cnb-kse-sig-enable-check");
       cb.type = "checkbox";
-      cb.checked = !!state.keySignature.enabled;
-      cb.onchange = (e) => { state.keySignature.enabled = checkedFrom(e, cb); changed(); };
+      cb.checked = !!ks.enabled;
+      cb.onchange = (e) => { ks.enabled = checkedFrom(e, cb); changed(); };
       enable.appendChild(control(cb));
-      enable.appendChild(el("span", "cnb-kse-sig-enable-text",
-        "Show the key signature after the clef"));
+      enable.appendChild(el("span", "cnb-kse-sig-enable-text", "Show the key signature"));
       wrap.appendChild(enable);
 
       // Which key draws (session 36): the one picked on the staff, whether
       // or not a key is defined here.
-      if (state.enabled && state.keySignature.enabled) {
+      if (state.enabled && ks.enabled) {
         wrap.appendChild(el("div", "cnb-kse-sig-status",
           "The signature draws for the key and mode picked on the staff."));
       }
 
-      wrap.appendChild(drawStyle());
-      wrap.appendChild(drawPlacement());
-      wrap.appendChild(drawSeparator());
+      const sig = pickedSignature();
+      wrap.appendChild(drawNotes(ks));
+      wrap.appendChild(drawStacks(ks, sig));
+      wrap.appendChild(drawLooks(ks));
+      wrap.appendChild(drawPlace(ks));
       return wrap;
     }
 
-    function drawStyle() {
-      const wrap = el("div", "cnb-kse-style");
-      wrap.appendChild(subtitle("Marks"));
-
-      const options = [
-        {
-          value: "notehead-chords",
-          label: "Notehead chords",
-          detail: "The key's scale as noteheads: seven notes up from the tonic " +
-            "and the tonic an octave higher, in two columns, as LilyPond " +
-            "draws it. The only kind of mark so far; others may come later.",
-        },
-      ];
-      if (!STYLES.includes(state.keySignature.style)) {
-        options.push({
-          value: state.keySignature.style,
-          label: `${state.keySignature.style} (unrecognized)`,
-          detail: "The file names marks this version does not know. " +
-            "Choose Notehead chords to fix it.",
-        });
-      }
-      for (const option of options) {
-        const isOn = state.keySignature.style === option.value;
-        const row = el("div", "cnb-kse-style-option" + (isOn ? " selected" : ""));
-        row.setAttribute("data-style", option.value);
-        row.appendChild(el("div", "cnb-kse-style-label", option.label));
-        row.appendChild(el("div", "cnb-kse-style-detail", option.detail));
-        row.onclick = () => {
-          if (gated()) return;   // real DOM divs have no disabled semantics
-          state.keySignature.style = option.value;
-          changed();
-        };
-        wrap.appendChild(row);
-      }
-      return wrap;
+    function drawNotes(ks) {
+      return row("cnb-kse-notes", "Notes",
+        radios("cnb-kse-notes-choice", ks.notes, [
+          ["all", "The whole scale"],
+          ["tonic-and-half-steps", "The tonic and the half steps"],
+        ], (v) => { ks.notes = v; }),
+        checkbox("cnb-kse-upper-tonic", ks.upperTonic !== false, "The tonic an octave up",
+          (v) => { ks.upperTonic = v; }));
     }
 
-    function drawPlacement() {
-      const wrap = el("div", "cnb-kse-placement");
-      wrap.appendChild(subtitle("Placement"));
-      wrap.appendChild(el("div", "cnb-kse-hint",
-        "Where the marks sit: the scale rises from the tonic, the only rule so far."));
+    function drawStacks(ks, sig) {
+      const stacking = radios("cnb-kse-stacking", ks.stacking, [
+        ["degrees", "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right"],
+        ["parity", "Odd semitones left, even right"],
+        ["parity-stacks", "A new stack at each change of odd and even"],
+        ["parity-zigzag", "Zigzag at each change of odd and even"],
+      ], (v) => { ks.stacking = v; });
 
-      const ruleRow = el("div", "cnb-kse-fields");
-      ruleRow.appendChild(el("span", "cnb-kse-field-label", "Rule"));
-      const rule = el("select", "cnb-kse-placement-rule");
-      const ruleValues = PLACEMENT_RULES.includes(state.keySignature.placement.rule)
-        ? PLACEMENT_RULES
-        : [...PLACEMENT_RULES, state.keySignature.placement.rule];
-      for (const value of ruleValues) {
-        const option = el("option", "",
-          PLACEMENT_RULES.includes(value) ? PLACEMENT_RULE_LABELS[value] : `${value} (unrecognized)`);
-        option.value = value;
-        if (value === state.keySignature.placement.rule) option.selected = true;
-        rule.appendChild(option);
+      // Odd-left-even-right fixes each side, so the direction does not apply.
+      let direction = null;
+      if (ks.stacking !== "parity") {
+        direction = el("div", "cnb-kse-direction");
+        direction.appendChild(el("span", "cnb-kse-field-label", "Stacks go"));
+        direction.appendChild(radios("cnb-kse-columns", ks.columns, [
+          ["right", "to the right"],
+          ["left-in-sharp-keys", "to the left in sharp keys"],
+        ], (v) => { ks.columns = v; }));
       }
-      rule.value = state.keySignature.placement.rule;
-      rule.onchange = (e) => {
-        state.keySignature.placement.rule = String(valueFrom(e, rule));
-        changed();
-      };
-      ruleRow.appendChild(control(rule));
-      wrap.appendChild(ruleRow);
 
-      const octaveRow = el("div", "cnb-kse-fields");
-      octaveRow.appendChild(el("span", "cnb-kse-field-label", "Tonic octave"));
-      const isAuto = state.keySignature.placement.tonicOctave === null;
-      const autoLabel = el("label", "cnb-kse-octave-auto");
-      const autoCheck = el("input", "cnb-kse-octave-auto-check");
-      autoCheck.type = "checkbox";
-      autoCheck.checked = isAuto;
-      autoCheck.onchange = (e) => {
-        state.keySignature.placement.tonicOctave = checkedFrom(e, autoCheck) ? null : 1;
-        changed();
-      };
-      autoLabel.appendChild(control(autoCheck));
-      autoLabel.appendChild(el("span", "cnb-kse-octave-auto-text",
-        "Automatic (centred on the middle of the staff)"));
-      octaveRow.appendChild(autoLabel);
-
-      const octave = el("input", "cnb-kse-octave-input");
-      octave.type = "number";
-      octave.step = "1";
-      octave.value = isAuto ? "" : String(state.keySignature.placement.tonicOctave);
-      octave.title = "The tonic's octave, a whole number";
-      octave.disabled = gated() || isAuto;
-      octave.oninput = (e) => {
-        const v = numberFrom(e, octave);
-        if (v !== null && Number.isInteger(v)) {
-          state.keySignature.placement.tonicOctave = v;
-          changed();
-        }
-      };
-      octaveRow.appendChild(octave);
-      wrap.appendChild(octaveRow);
-      return wrap;
+      const overlap = sig && sig.overlaps.length > 0
+        ? el("div", "cnb-kse-overlap-note",
+          "In this key some marks in one stack run together. A smaller height under Looks keeps them apart.")
+        : null;
+      return row("cnb-kse-stacks", "Stacks", stacking, direction, drawGoldStem(ks, sig), overlap);
     }
 
-    function drawSeparator() {
+    function drawGoldStem(ks, sig) {
+      const sep = ks.separator;
       const wrap = el("div", "cnb-kse-separator");
-      wrap.appendChild(subtitle("Separator bar"));
-      wrap.appendChild(el("div", "cnb-kse-hint",
-        "The gold bar through the middle of the mark columns, beneath the marks."));
-
-      const row = el("div", "cnb-kse-fields");
-
-      const enable = el("label", "cnb-kse-sep-enable");
-      const cb = el("input", "cnb-kse-sep-enable-check");
-      cb.type = "checkbox";
-      cb.checked = !!state.keySignature.separator.enabled;
-      cb.onchange = (e) => { state.keySignature.separator.enabled = checkedFrom(e, cb); changed(); };
-      enable.appendChild(control(cb));
-      enable.appendChild(el("span", "", "Show"));
-      row.appendChild(enable);
+      const line = el("div", "cnb-kse-fields");
+      line.appendChild(checkbox("cnb-kse-sep-enable", sep.enabled, "Gold stem between the stacks",
+        (v) => { sep.enabled = v; }));
 
       const color = el("input", "cnb-kse-sep-color");
       color.type = "color";
-      color.value = state.keySignature.separator.color;
-      color.title = "Colour";
+      color.value = sep.color;
+      color.title = "The gold stem's colour";
       // A drag (`input`) changes only the field's own swatch; the colour
       // applies once, when the picker closes (`change`, session 36).
       color.onchange = (e) => {
         const v = String(valueFrom(e, color));
-        if (isValidHex(v)) { state.keySignature.separator.color = v; changed(); }
+        if (isValidHex(v)) { sep.color = v; changed(); }
       };
-      row.appendChild(control(color));
+      line.appendChild(el("span", "cnb-kse-field-unit", "colour"));
+      line.appendChild(control(color));
 
+      // Stored as a percentage of a semitone (or axis unit); shown in staff spaces.
+      const sps = CNBKeySignatureEditor.semisPerStaffSpace(baseConfig);
       const thickness = el("input", "cnb-kse-sep-thickness");
       thickness.type = "number";
       thickness.min = "0";
-      thickness.step = "1";
-      thickness.value = String(state.keySignature.separator.thicknessPct);
-      thickness.title = "Thickness";
-      thickness.oninput = (e) => {
+      thickness.step = "0.05";
+      thickness.value = String(CNBKeySignatureEditor.thicknessInStaffSpaces(sep.thicknessPct, sps));
+      thickness.title = "The gold stem's thickness";
+      thickness.onchange = (e) => {
         const v = numberFrom(e, thickness);
-        if (v !== null && v >= 0) { state.keySignature.separator.thicknessPct = v; changed(); }
+        if (v !== null && v >= 0) {
+          sep.thicknessPct = CNBKeySignatureEditor.thicknessPct(v, sps);
+          changed();
+        }
       };
-      row.appendChild(control(thickness));
-      row.appendChild(el("span", "cnb-kse-field-unit", "% of a semitone thick"));
+      line.appendChild(el("span", "cnb-kse-field-unit", "thickness"));
+      line.appendChild(control(thickness));
+      line.appendChild(el("span", "cnb-kse-field-unit", "staff spaces"));
+      wrap.appendChild(line);
 
-      const extent = el("input", "cnb-kse-sep-extent");
-      extent.type = "number";
-      extent.step = "1";
-      extent.value = String(state.keySignature.separator.extentSemis);
-      extent.title = "How far the bar reaches";
-      extent.oninput = (e) => {
-        const v = numberFrom(e, extent);
-        if (v !== null && v > 0) { state.keySignature.separator.extentSemis = v; changed(); }
-      };
-      row.appendChild(control(extent));
-      row.appendChild(el("span", "cnb-kse-field-unit", "semitones above and below the middle"));
-
-      wrap.appendChild(row);
+      if (sep.enabled) {
+        const stems = sig ? Math.max(0, sig.columns.length - 1) : null;
+        const share = checkbox("cnb-kse-sep-share", sep.shareThickness !== false,
+          "Several stems share the thickness", (v) => { sep.shareThickness = v; });
+        share.appendChild(el("span", "cnb-kse-share-text",
+          " " + CNBKeySignatureEditor.shareText(stems, sep.shareThickness !== false)));
+        wrap.appendChild(share);
+      }
       return wrap;
+    }
+
+    // ── Looks (design §4.1, §7): the notehead panel's own controls ────────
+    /** The look a kind edits, created when missing. */
+    function lookOf(ks, kind) {
+      if (kind === "alternate") {
+        if (!isPlainObject(ks.alternate)) ks.alternate = {};
+        return ks.alternate;
+      }
+      if (!isPlainObject(ks.looks)) ks.looks = {};
+      if (!isPlainObject(ks.looks[kind])) ks.looks[kind] = {};
+      return ks.looks[kind];
+    }
+
+    /** Set a look's field, or clear it (undefined): "as …" beneath. */
+    function setLookField(kind, field, value, extra) {
+      const look = lookOf(state.keySignature, kind);
+      if (value === undefined) delete look[field];
+      else look[field] = value;
+      // A new shape keeps the look's height, and with the aspect ratio kept
+      // its width follows the shape's proportions, as in the notehead panel.
+      if (field === "shape" && lockLooks && look.heightSemis !== undefined) {
+        const shape = sizedShape(state.keySignature, kind);
+        if (shape) look.widthSemis = Math.round(look.heightSemis * shape.naturalWidth / shape.naturalHeight * 1e4) / 1e4;
+      }
+      changed(extra);
+    }
+
+    /** A shape by name, from the config or else the built-in set. */
+    const shapeOf = (name) => (baseConfig.shapes || {})[name] || CNBBuiltinShapes.get(name);
+
+    /** The shape a look's size is measured on: its own, else the one beneath. */
+    function sizedShape(ks, kind) {
+      const look = lookOf(ks, kind);
+      const name = look.shape ?? (kind !== "all" ? lookOf(ks, "all").shape : undefined) ??
+        CNBConfig.resolveNotehead(baseConfig, 0, "crotchet", null).shape;
+      return shapeOf(name);
+    }
+
+    function drawLooks(ks) {
+      const wrap = el("div", "cnb-kse-looks");
+      for (const [kind, label] of LOOK_KINDS) {
+        const look = lookOf(ks, kind);
+        const menu = el("details", "cnb-kse-look");
+        menu.setAttribute("data-look", kind);
+        menu.open = openLooks.has(kind);
+        menu.ontoggle = () => { if (menu.open) openLooks.add(kind); else openLooks.delete(kind); };
+        const summary = el("summary", "cnb-kse-look-summary");
+        summary.appendChild(el("span", "cnb-kse-look-label", label));
+        summary.appendChild(el("span", "cnb-kse-look-words",
+          CNBKeySignatureEditor.lookSummary(look, kind, baseConfig.shapes)));
+        menu.appendChild(summary);
+        const body = el("div", "cnb-kse-look-body");
+        body.appendChild(drawLookShape(kind, look));
+        body.appendChild(drawLookFill(kind, look));
+        body.appendChild(drawLookColour(kind, look));
+        if (kind !== "alternate") body.appendChild(drawLookSize(ks, kind, look));
+        menu.appendChild(body);
+        wrap.appendChild(menu);
+      }
+      return row("cnb-kse-looks-row", "Looks", wrap);
+    }
+
+    /** A segmented button: on when the look's field is that value. */
+    function lookButton(className, text, on, onclick) {
+      const b = el("button", className + (on ? " on" : ""), text);
+      b.type = "button";
+      b.onclick = onclick;
+      return control(b);
+    }
+
+    function lookGroup(label) {
+      const group = el("div", "cnb-kse-look-group");
+      group.appendChild(el("span", "cnb-kse-look-group-label", label));
+      return group;
+    }
+
+    function drawLookShape(kind, look) {
+      const group = lookGroup("Shape");
+      const asBeneath = lookButton("cnb-kse-look-shape cnb-kse-look-as", AS_BENEATH[kind], look.shape === undefined,
+        () => setLookField(kind, "shape", undefined));
+      asBeneath.setAttribute("data-shape", "");
+      group.appendChild(asBeneath);
+      const names = Object.keys(baseConfig.shapes || {});
+      for (const name of CNBBuiltinShapes.NAMES) if (!names.includes(name)) names.push(name);
+      for (const name of names) {
+        const shape = shapeOf(name);
+        const b = lookButton("cnb-kse-look-shape", "", look.shape === name, () => {
+          // A built-in shape the notation lacks is added to it (session 50).
+          const added = !(name in (baseConfig.shapes || {}));
+          if (added) baseConfig.shapes = CNBBuiltinShapes.withShape(baseConfig, name).shapes;
+          setLookField(kind, "shape", name, added ? { shapes: deepClone(baseConfig.shapes) } : undefined);
+        });
+        b.setAttribute("data-shape", name);
+        b.title = shape.displayName || name;
+        b.appendChild(CNBNoteheadPanel.thumbnail(shape));
+        group.appendChild(b);
+      }
+      if (opts.importControl) {
+        const slot = el("div", "cnb-kse-look-import");
+        // The host adds the imported shape to the notation and hands it
+        // here too, so the look's width can follow its proportions.
+        opts.importControl(slot, (name, shape) => {
+          if (shape) baseConfig.shapes = { ...(baseConfig.shapes || {}), [name]: shape };
+          setLookField(kind, "shape", name);
+        });
+        group.appendChild(slot);
+      }
+      return group;
+    }
+
+    function drawLookFill(kind, look) {
+      const group = lookGroup("Fill");
+      for (const [value, text] of [[undefined, AS_BENEATH[kind]], [false, "Solid"], [true, "Hollow"]]) {
+        const b = lookButton("cnb-kse-look-fill", text, look.hollow === value,
+          () => setLookField(kind, "hollow", value));
+        b.setAttribute("data-fill", value === undefined ? "" : value ? "hollow" : "solid");
+        group.appendChild(b);
+      }
+      return group;
+    }
+
+    function drawLookColour(kind, look) {
+      const group = lookGroup("Colour");
+      const asBeneath = lookButton("cnb-kse-look-colour", AS_BENEATH[kind], look.color === undefined,
+        () => setLookField(kind, "color", undefined));
+      asBeneath.setAttribute("data-color", "");
+      group.appendChild(asBeneath);
+      const none = lookButton("cnb-kse-look-colour", "None", look.color === null,
+        () => setLookField(kind, "color", null));
+      none.setAttribute("data-color", "none");
+      group.appendChild(none);
+      const input = el("input", "cnb-kse-look-colour-input");
+      input.type = "color";
+      input.value = typeof look.color === "string" ? look.color : "#000000";
+      input.title = "A colour";
+      // The colour applies once, when the picker closes (session 36).
+      input.onchange = (e) => {
+        const v = String(valueFrom(e, input)).toLowerCase();
+        if (isValidHex(v)) setLookField(kind, "color", v);
+      };
+      group.appendChild(control(input));
+      return group;
+    }
+
+    function drawLookSize(ks, kind, look) {
+      const group = lookGroup("Size");
+      const asBeneath = lookButton("cnb-kse-look-size-as", AS_BENEATH[kind],
+        look.heightSemis === undefined && look.widthSemis === undefined, () => {
+          const target = lookOf(state.keySignature, kind);
+          delete target.heightSemis;
+          delete target.widthSemis;
+          changed();
+        });
+      group.appendChild(asBeneath);
+      const shape = sizedShape(ks, kind);
+      const ratio = shape ? shape.naturalWidth / shape.naturalHeight : 1;
+      const round4 = (v) => Math.round(v * 1e4) / 1e4;
+      const setSize = (h, w) => {
+        const target = lookOf(state.keySignature, kind);
+        target.heightSemis = round4(h);
+        target.widthSemis = round4(w);
+        changed();
+      };
+      const field = (className, label, value, onValue) => {
+        const wrap = el("label", "cnb-kse-look-field");
+        wrap.appendChild(el("span", "", label));
+        const input = el("input", className);
+        input.type = "number";
+        input.min = "0.25";
+        input.max = "4";
+        input.step = "0.05";
+        input.value = value === undefined ? "" : String(value);
+        input.placeholder = "—";
+        input.onchange = (e) => {
+          const v = numberFrom(e, input);
+          if (v !== null && v > 0) onValue(v);
+        };
+        wrap.appendChild(control(input));
+        wrap.appendChild(el("span", "cnb-kse-field-unit", "semitones"));
+        return wrap;
+      };
+      group.appendChild(field("cnb-kse-look-height", "Height", look.heightSemis,
+        (h) => setSize(h, lockLooks || look.widthSemis === undefined ? h * ratio : look.widthSemis)));
+      group.appendChild(field("cnb-kse-look-width", "Width", look.widthSemis,
+        (w) => setSize(lockLooks || look.heightSemis === undefined ? w / ratio : look.heightSemis, w)));
+      const lock = el("label", "cnb-kse-check cnb-kse-look-lock");
+      const box = el("input", "cnb-kse-look-lock-check");
+      box.type = "checkbox";
+      box.checked = lockLooks;
+      box.onchange = (e) => { lockLooks = checkedFrom(e, box); };
+      lock.appendChild(control(box));
+      lock.appendChild(el("span", "", "Keep aspect ratio"));
+      group.appendChild(lock);
+      return group;
+    }
+
+    function drawPlace(ks) {
+      return row("cnb-kse-place", "Place",
+        radios("cnb-kse-position", ks.placement.position, [
+          ["middle", "In the middle of the staff"],
+          ["bottom-set", "On the bottom line set"],
+          ["top-set", "On the top line set"],
+          ["every-set", "On every line set"],
+        ], (v) => { ks.placement.position = v; }),
+        el("div", "cnb-kse-hint",
+          "A line set is a run of staff lines one staff space apart. On every line set the " +
+          "signature repeats; the tonic and the half steps alone keep it less busy."));
     }
 
     // ── Validation pass-through (Module A) + editor checks ───────────────
@@ -705,8 +990,8 @@ export const CNBKeySignatureEditor = {
       root.appendChild(drawKeysEnable());
       const note = drawDisabledNote();
       if (note) root.appendChild(note);
-      root.appendChild(drawDefinitions());
       root.appendChild(drawSignature());
+      root.appendChild(drawDefinitions());
       root.appendChild(drawValidation());
     }
 

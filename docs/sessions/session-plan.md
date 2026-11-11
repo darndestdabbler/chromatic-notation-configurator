@@ -1775,8 +1775,24 @@ the rest once it lands.)*
    and steep enough to read; a new stack at each change of parity, going
    left in sharp keys; no upper tonic; no gold stem. They are checked at
    concert size on an engraved page.
+   *(Amended 2026-11-11, at the operator's choice, after that check.)* The
+   sharps and flats are the dot with a slash through it, rising (/) for a
+   sharp and falling (\) for a flat, not a one-sided tail. Engraved at
+   concert size, a one-sided tail steep enough to read ran into the next dot
+   of a whole-step stack. Placing the dot by its centre also needed hidden
+   balancing geometry, because the engine centres a mark's box on its stack,
+   and that geometry printed as specks. The slash is symmetric about the
+   dot, so the dot is placed by its centre with no hidden geometry, and it
+   clears the next dot (`docs/sessions/session-050/notes.md`).
 4. A UAT driver for each choice on the canvas; screenshots at 1440 and
    1280 px, judged against the mock-ups. *Engine work:* none.
+5. *(Moved from session 51 item 4 on 2026-11-11, at the operator's choice,
+   when engine session 33 landed before this session ran.)* The
+   key-signature round trips hold every signature head's ledgers to the
+   canvas's, and every signature's ink, the scale stack and the mark table
+   alike; the preview spaces the scale stack by its ink, the export gives
+   each mark beyond the cards' pitches its ledger entry, and LY spec §5.6a
+   drops its known divergence (1.3.16).
 
 ### Session 51: Accidentals
 
@@ -1793,13 +1809,9 @@ session 42), the design's second kind of signature (design §5).
    C, a sharp key and a flat key, on the bottom line set and on every line
    set; tests and the UAT. *Engine work:* none beyond engine session 30,
    which draws sharps and flats.
-4. Once engine session 33 has landed (engine 1.4.1; otherwise the item is
-   blocked): the key-signature round trips hold every signature head's
-   ledgers to the canvas's, and every signature's ink, the scale stack and
-   the mark table alike, so the ledger gap session 49 logs is gone, and LY
-   spec §5.6a drops its known divergence. *Engine work:* engine session 33,
-   key-signature ledgers from the exported per-semitone table, planned by
-   session 49 at the operator's choice.
+
+*(The signature-ledger item that was 4 here moved to session 50, item 5,
+when engine session 33 (engine 1.4.1) landed before session 50 ran.)*
 
 ### Session 52: The UI is stable
 

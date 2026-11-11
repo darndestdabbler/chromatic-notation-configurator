@@ -328,8 +328,10 @@ ledgers: {
 - **The rules are exported (session 34, LY spec 1.3.9 §5.7).** For every
   pitch the preview draws (semitones 0–24), the export writes the ledgers
   the preview draws there (`CNBLedgerSet.ledgersFor`), and each notehead
-  engraves its pitch's entry, in-gap ledgers included. Other pitches keep
-  the engine's own rule, which reaches the engraved staff.
+  engraves its pitch's entry, in-gap ledgers included. So does each
+  key-signature mark of the mark table beyond them, and since engine 1.4.1
+  every signature head takes its entry (session 50, LY spec 1.3.16). Other
+  pitches keep the engine's own rule, which reaches the engraved staff.
 
 ### 4.5 Notehead Rules
 
@@ -666,10 +668,13 @@ keys: {
     // No gutter setting (session 34): the preview spaces the signature as
     // the engine does — 0.75 staff spaces after the staff's start, or 3.5
     // after a clef's left edge, and the first notehead centred 4.8636 after
-    // it. gutter.paddingH is retired. A mark-table signature (session 49,
-    // LY spec §5.6a) is spaced by its ink, ledgers included: 0.75 after the
-    // staff's start, or its first stack 2.9286 after a clef's left edge, and
-    // the first notehead 4.8636 after the ink.
+    // it. gutter.paddingH is retired. Every signature is spaced by its ink,
+    // the ledgers of its first and last stacks included (a mark-table
+    // signature since session 49, LY spec §5.6a; the scale stack since
+    // session 50, when engine 1.4.1 gave signature heads the notation's
+    // ledgers): its ink 0.75 after the staff's start, or its marks 3.5 (a
+    // mark table's first stack 2.9286) after a clef's left edge, and the
+    // first notehead 4.8636 after the ink.
   }
 }
 ```
@@ -1633,16 +1638,31 @@ edits the whole `keys` section — the `keys.enabled` master gate, the key
 definitions (name, pitch-class pills, optional explicit tonic; the
 definition controls live here because sets 005–006 shipped only key
 CONSUMERS — the rule editor's `match.keys` pills and the preview's key
-selector — and the signature is defined relative to a definition), and
-the `keySignature` subsection (enable, mark style, placement rule +
-tonic octave, separator, gutter). While `keys.enabled` is false the
+selector), and the `keySignature` subsection. Since session 50 the
+signature is the panel of the key-signature design §7
+(`docs/planning/key-signature-designer-design.md`), in a designer's
+words: Show the key signature; Notes (`notes`, `upperTonic`); Stacks
+(`stacking`, `columns` hidden under `"parity"`, and the gold stem:
+`separator.enabled`, `color`, its thickness shown in staff spaces and
+written as `thicknessPct`, and `shareThickness`, saying what each stem gets
+in the key picked on the staff); Looks (`looks.all`, `.flat`, `.sharp` and
+`alternate`, each a menu with the notehead panel's controls, its thumbnails
+shared as `CNBNoteheadPanel.thumbnail`, and the host's Import from SVG;
+each field's "as …" clears it; a built-in shape the config lacks is added,
+reported as `onChange({ keys, shapes })`); Place (`placement.position`);
+and a note when two marks of a stack overlap in the picked key (the host
+passes it as `opts.key` and re-mounts the panel when it changes). `style`,
+`placement.rule`, `placement.tonicOctave` and `separator.extentSemis` have
+no controls and keep their stored values. The key definitions follow,
+under "Keys for notehead rules". While `keys.enabled` is false the
 panel renders an explicit DISABLED state (controls shown but inert, with
 a note) rather than hiding. Same editor contract as Modules 12–17:
 property-based event wiring (Node-testable `render()`), pure `buildKeys`
 / `applyToConfig` / `stateFromConfig` builders, Module A validation
 pass-through plus editor-level duplicate-name checks,
 `onChange({ keys }, state)`. Dependencies: Module A, Module B,
-Module 22 (tonic-resolution chain for the hint).
+Module 22 (tonic-resolution chain for the hint, and the picked key's
+marks), the notehead panel, the built-in shapes.
 
 ---
 
@@ -1868,7 +1888,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |
 | `cnb:default-staff-line-thickness`, `-color`, `cnb:stem-thickness` | — | none: the preview draws the engine's lines and stems (session 34) | Never (LY spec §5.2a) |
-| `cnb:ledgers-by-semitone` + `NoteHead.ledger-positions` / `no-ledgers` | — (the engine's own ledger rule) | `ledgers` resolved for semitones 0–24 (`CNBLedgerSet.ledgersFor`) | Always (LY spec 1.3.9 §5.7) |
+| `cnb:ledgers-by-semitone` + `NoteHead.ledger-positions` / `no-ledgers` | — (the engine's own ledger rule) | `ledgers` resolved for semitones 0–24 and the mark table's marks (`CNBLedgerSet.ledgersFor`) | Always (LY spec 1.3.9 §5.7, 1.3.16) |
 | `cnb:file-suffix` | `""` | `meta.fileSuffix` | Always |
 | `cnb:notation-label` | `""` | `meta.notationLabel` | Always |
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |
