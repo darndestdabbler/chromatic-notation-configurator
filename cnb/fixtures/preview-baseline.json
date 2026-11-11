@@ -1,0 +1,116 @@
+{
+  "description": "Pre-change CNBCollection.render preview-DOM baseline (sha256 + length of the stub-DOM JSON serialization per probe), captured at 8b6013a before set-014 s2 consumer rethread. Regenerate only with capturePreviewBaseline() in cnb/tests/cnb-collection-tests.js, and only when an intentional linear-path preview change is approved. The kite-4-369 and 45deg-369 probes (repeat mode, minims) were re-captured in session 18, when the preview began drawing the engine's repeated heads. Every probe was re-captured in session 33, when the preview began putting a stem's edge (an up stem's right, a down stem's left) on its anchor, as LilyPond engraves it, and the Kite fixture's stem anchors moved to the engine reference's attachment (1.8 / 0.73 semitones). Every probe with stems was re-captured in session 34, when the preview began drawing the engine's stem (0.13 staff spaces thick, 3.5 staff spaces past the far notehead, shortened as LilyPond shortens it). Every probe was re-captured again in session 34 when the preview began drawing staff lines and ledgers as the engine does (black and solid, staff lines 0.1 and ledgers 0.2 staff spaces thick, ledgers 1.5 notehead widths long, so the columns narrowed). The probes with a key signature (default-key-signature and the two Clairnote gallery files) were re-captured once more in session 34, when the signature's gutter began giving the engine's spacing (0.75 staff spaces before the marks, the first notehead centred 4.8636 after them). Every probe with stems was re-captured in session 40, when the preview began drawing a stem centred on its anchor (the centre of the SVG's stem rect), so the Kite and 45deg-369 stems are centred on the notehead. The default notehead's probes and the gallery files that carry it were re-captured once more in session 40, when its anchors moved so its stems' outer edges sit on its sides. The gallery probes were re-captured once more in session 40 (verification round 1), when each gallery file's default-notehead anchors were set for its own staff, so its stems' outer edges sit on the notehead's sides. The probes with a key signature were re-captured in session 49, when its gold stems took round caps and its ledgers their engraved length, as the engine draws them. capturedAt is provenance: the revision of the original capture, not of the re-captures noted here, which give each probe's current hash.",
+  "capturedAt": "8b6013a",
+  "probes": [
+    {
+      "id": "default",
+      "sha256": "cf8c1d532f24f06c2a50c8acc562f167eeceb0527b1f9dc6d251acf340ecd4f2",
+      "length": 85236
+    },
+    {
+      "id": "default-debug-grid",
+      "sha256": "15d7da62cb1214f273b5f54173efebc70d8aba07dd4bed09dd4e7a848d78bd82",
+      "length": 52737
+    },
+    {
+      "id": "default-key-signature",
+      "sha256": "ee6e00a35c0cb284dae66f772dc9bf0edc1051521202def4c16321f3a13e1ac6",
+      "length": 96560
+    },
+    {
+      "id": "kite-4-369",
+      "sha256": "fb9971840b6670d94c4f8355eb3e5dcc9db694625648ffaef6d746b582546802",
+      "length": 73013
+    },
+    {
+      "id": "45deg-369",
+      "sha256": "e6f2fbb1bc05402139fbce4854c8ebf8aa06f359a15ea614c1011086ac0918b2",
+      "length": 99351
+    },
+    {
+      "id": "gallery/0-5-7-notation.json",
+      "sha256": "42a14195a2f5ead9be314807ffd4862d664e8739636ac3ec96db04f786fef432",
+      "length": 79006
+    },
+    {
+      "id": "gallery/6-6-trigram-notation.json",
+      "sha256": "6cc915d17f225a22b8bfbac62ec30b17f067613392f75e341694fef73e146809",
+      "length": 88894
+    },
+    {
+      "id": "gallery/ambros-system.json",
+      "sha256": "ffc1299c56b0cb6e8ea56e89ef7c533190ced9617209ad957a927cc43b906a8e",
+      "length": 79258
+    },
+    {
+      "id": "gallery/avique-notation.json",
+      "sha256": "d888849d463c1ff6f774d5ca261493c8f679f056a86c5795ce7e3470ace9e519",
+      "length": 79620
+    },
+    {
+      "id": "gallery/axlomafi.json",
+      "sha256": "269d83869df27dc836b8ed242c67e99b9f1a66b2025b84fffb5240d357bdcbd9",
+      "length": 78226
+    },
+    {
+      "id": "gallery/chromatic-lyre-notation.json",
+      "sha256": "2b9f9301e397cf62dcbb1b2abafa336ba1c0445f08beb121700b7adbaef4676c",
+      "length": 88728
+    },
+    {
+      "id": "gallery/clairnote-dn.json",
+      "sha256": "d931fa8a1a6b084b04bcee12b68cb297b17429eb3e142103a682d08e8bbf5d27",
+      "length": 99268
+    },
+    {
+      "id": "gallery/clairnote-sn.json",
+      "sha256": "5fc14f9c8e2b54cd94f6779140a84851c23690697ae1f08d1e1b8da852f053eb",
+      "length": 92496
+    },
+    {
+      "id": "gallery/express-stave-jazz-6-6.json",
+      "sha256": "e0df808236c8ad9dc793fce8946fad6c427279e3eccf829b20c970542189f952",
+      "length": 78780
+    },
+    {
+      "id": "gallery/express-stave-original.json",
+      "sha256": "436db8c76a5812d836fdd786515a6cb09ed9e27e59d44d54c35ea8912df31fa3",
+      "length": 88206
+    },
+    {
+      "id": "gallery/express-stave-pianoforte.json",
+      "sha256": "e2ea65ab52707f7bf89e8bdbf8d9f068710e23813927cfe4d55b66e5f21b3d76",
+      "length": 84270
+    },
+    {
+      "id": "gallery/hass-notation-3-line.json",
+      "sha256": "4cf4b12f7582682b09d160124f89bdcb590bfb007a6e98f54ed07f895722e86a",
+      "length": 69012
+    },
+    {
+      "id": "gallery/lautus-notation.json",
+      "sha256": "d95db697db1035358bf69af2766670aa2fb3455289d991595c305f6097eb87fc",
+      "length": 79168
+    },
+    {
+      "id": "gallery/notagraph.json",
+      "sha256": "ffc1299c56b0cb6e8ea56e89ef7c533190ced9617209ad957a927cc43b906a8e",
+      "length": 79258
+    },
+    {
+      "id": "gallery/numbered-notes-notes-only.json",
+      "sha256": "ef8f4e057acfba3f9a123dc237e3dfb1d8b168974d71269a53819cb48cb1a593",
+      "length": 80386
+    },
+    {
+      "id": "gallery/schoenberg-untitled.json",
+      "sha256": "708c3d100d5f13fc242bc8f55097ca7bf3097e46fe210d0d3157138f2766869c",
+      "length": 77734
+    },
+    {
+      "id": "gallery/trilinear-notation.json",
+      "sha256": "b502da55c0d03e392ff81bd1bd31af0dfc695c8a19ea92706b537c127d971af6",
+      "length": 68592
+    }
+  ]
+}
