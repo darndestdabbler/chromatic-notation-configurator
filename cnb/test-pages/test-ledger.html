@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Ledger Set Test — Module 5</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 24px 0 4px; }
+    h1:first-of-type { margin-top: 0; }
+    p  { font-size: 13px; color: #666; margin: 0 0 16px; max-width: 760px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Module 5: Ledger Set — display-rule-driven (4-8 pattern)</h1>
+<p>
+  Default 4-8 config: override ledger templates at semis-within-octave 0
+  (triggers C, C♯, D), 2 (D), 10 (A♯). Expected per column:
+  <b>C</b> ledger at 0 · <b>D</b> ledgers at 0 and 2 · <b>E</b> none (on staff
+  line) · <b>F</b> none (inside staff) · <b>C′</b> ledger at 12 (octave
+  instance of the C template — no outside-staff gate) · <b>A♯′</b> ledger at
+  22 · <b>C″</b> ledger at 24 only (octave awareness: ledgers at 0 and 12 must
+  NOT appear) · <b>C+C′ chord</b> (via Module 7 double notehead) ledgers at
+  0 and 12.
+</p>
+<div class="card">
+  <svg id="svg-48" style="display:block;"></svg>
+</div>
+
+<h1>3-6-9 pattern — ledger in the staff gap</h1>
+<p>
+  Staff pattern [3, 6, 9] (gap between semis 9 and 15), same default ledger
+  templates. Expected: <b>C</b> ledger at 0 · <b>D</b> ledgers at 0 and 2 ·
+  <b>F♯</b> none (on staff line 6) · <b>C′</b> ledger at 12 <i>inside the
+  9–15 gap</i> — proving there is no "outside staff" hard gate · <b>A♯′</b>
+  ledger at 22 · <b>C″</b> ledger at 24 only.
+</p>
+<div class="card">
+  <svg id="svg-369" style="display:block;"></svg>
+</div>
+
+<h1>Proximity mode</h1>
+<p>
+  Custom config: 4-8 staff, single <i>proximity</i> template at
+  semi-within-octave 0 (no trigger PCs). Expected: <b>C♯</b> (semi 1) shows
+  the ledger at 0 (distance 1 &lt; distance 3 to staff line 4) · <b>D</b>
+  (semi 2) shows nothing (distance 2 ties the staff line — not strictly
+  closer) · <b>C′</b> (semi 12) shows the octave instance at 12.
+</p>
+<div class="card">
+  <svg id="svg-prox" style="display:block;"></svg>
+</div>
+
+<script type="module">
+  import { CNBConfig }         from "../src/cnb-config.js";
+  import { CNBMusic }          from "../src/cnb-music.js";
+  import { CNBGrid }           from "../src/cnb-grid.js";
+  import { CNBStaff }          from "../src/cnb-staff.js";
+  import { CNBNotehead }       from "../src/cnb-notehead.js";
+  import { CNBDoubleNotehead } from "../src/cnb-double-notehead.js";
+  import { CNBLedgerSet }      from "../src/cnb-ledger-set.js";
+
+  const MIN_SEMI = -4;
+  const MAX_SEMI = 28;
+  const COL_SPACING = 72;
+  const COL_START = 60;
+
+  function renderNote(svg, grid, config, semi) {
+    const pc = CNBMusic.pitchClass(semi);
+    const resolved = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
+    const shape = config.shapes[resolved.shape];
+    return {
+      shape,
+      hollow: resolved.hollow,
+      color: resolved.color || "#000000",
+    };
+  }
+
+  /**
+   * Render one column: resolved ledger lines + noteheads at the given semis.
+   * A two-note column is drawn through Module 7 (double notehead).
+   */
+  function renderColumn(svg, grid, config, semis, centerX, label) {
+    CNBLedgerSet.render(svg, grid, config, semis, { centerX });
+
+    if (semis.length === 2) {
+      const [lowerSemi, upperSemi] = [...semis].sort((a, b) => a - b);
+      CNBDoubleNotehead.render(svg, grid, {
+        lowerSemi,
+        upperSemi,
+        lowerNote: renderNote(svg, grid, config, lowerSemi),
+        upperNote: renderNote(svg, grid, config, upperSemi),
+        centerX,
+        offsetPercent: 0,
+      });
+    } else {
+      for (const semi of semis) {
+        const note = renderNote(svg, grid, config, semi);
+        const { scaleFactor } = CNBNotehead.measure(note.shape, grid.pxPerSemi);
+        CNBNotehead.render(svg, {
+          shape: note.shape,
+          x: centerX,
+          y: grid.semiToY(semi),
+          scaleFactor,
+          hollow: note.hollow,
+          color: note.color,
+        });
+      }
+    }
+
+    const NS = "http://www.w3.org/2000/svg";
+    const text = document.createElementNS(NS, "text");
+    text.setAttribute("x", String(centerX));
+    text.setAttribute("y", String(grid.svgHeight - 6));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("font-size", "13");
+    text.setAttribute("font-family", "system-ui, sans-serif");
+    text.setAttribute("fill", "#333");
+    text.textContent = label;
+    svg.appendChild(text);
+  }
+
+  function renderCard(svgId, config, columns) {
+    const svg = document.getElementById(svgId);
+    const width = COL_START + COL_SPACING * columns.length;
+    const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(grid.svgHeight));
+
+    const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+    CNBStaff.render(svg, grid, config, width);
+
+    columns.forEach((col, i) => {
+      renderColumn(svg, grid, config, col.semis, COL_START + COL_SPACING * i, col.label);
+    });
+  }
+
+  // ── Card 1: default 4-8 system ────────────────────────────────────────────
+  const config48 = CNBConfig.createDefault();
+  renderCard("svg-48", config48, [
+    { semis: [0],      label: "C"      },
+    { semis: [2],      label: "D"      },
+    { semis: [4],      label: "E"      },
+    { semis: [5],      label: "F"      },
+    { semis: [12],     label: "C′"     },
+    { semis: [22],     label: "A♯′"    },
+    { semis: [24],     label: "C″"     },
+    { semis: [0, 12],  label: "C+C′"   },
+  ]);
+
+  // ── Card 2: 3-6-9 system (gap between 9 and 15) ───────────────────────────
+  const config369 = CNBConfig.createDefault();
+  config369.staff.semitonePattern = [3, 6, 9];
+  config369.staff.semitonesPerStaffSpace = 3;
+  renderCard("svg-369", config369, [
+    { semis: [0],  label: "C"    },
+    { semis: [2],  label: "D"    },
+    { semis: [6],  label: "F♯"   },
+    { semis: [12], label: "C′"   },
+    { semis: [22], label: "A♯′"  },
+    { semis: [24], label: "C″"   },
+  ]);
+
+  // ── Card 3: proximity mode ────────────────────────────────────────────────
+  const configProx = CNBConfig.createDefault();
+  configProx.ledgers.templates = [
+    { semiWithinOctave: 0, triggerPCs: [], triggerMode: "proximity" },
+  ];
+  renderCard("svg-prox", configProx, [
+    { semis: [1],  label: "C♯"  },
+    { semis: [2],  label: "D"   },
+    { semis: [12], label: "C′"  },
+  ]);
+</script>
+
+</body>
+</html>

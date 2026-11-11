@@ -1,0 +1,33 @@
+{
+  "session": 2,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "verifier": "gpt-5-4",
+  "date": "2026-07-10",
+  "issues": [
+    {
+      "id": "S2-R1-1",
+      "summary": "change-log.md lists disposition.json and s2-verification.md as session-2 records while they do not yet exist at the log's commit time",
+      "location": "docs/session-sets/013-pitch-axis-engine-discovery/change-log.md (Session 2 lifecycle-records bullet)",
+      "resolution": "Reworded the bullet to partition records into those committed with the change log and those born during verification/close (s2-verification.md, session-2 disposition update), noting the gate itself sequences them after change-log.md by construction. Adopted the verifier's offered fix ('qualify references until those files actually exist')."
+    },
+    {
+      "id": "S2-R1-2",
+      "summary": "Evidence-coverage claim overstated: 'every numeric claim in both design documents is machine-checked' while the script did not cover e.g. the 0.85 x-offset example, '26 single-note columns', '9 systems'",
+      "location": "submission narrative sections 1 and 5; change-log.md and activity-log wording",
+      "resolution": "Did both halves of the verifier's offered fix: (a) EXTENDED the script with group F, which anchors the previously uncovered numeric citations against their sources (the +0.85 and 26-single-note-column measurements in s1-engine-coordination.md; 35/35, 7/7, 30/30; the '9 systems' count computed by counting the feasibility-matrix rows 32-40 that break I2; PA-8 monotonicity of the worked-example map), and (b) NARROWED the claim wording everywhere to the enumerated checks the script actually performs (groups A-F). Superseding activity-log entry appended with the final check count."
+    },
+    {
+      "id": "S2-R1-3",
+      "summary": "Non-monotonic pitch-axis maps were warn-only (PA-W2) while grid math (maxAxisPos, svgHeight) assumes monotonicity",
+      "location": "docs/planning/pitch-axis-design.md PA-W2, section 2.2, section 5.2 risk 5; CNB-LY-EXPORT-SPEC-v1_3-draft.md section 8 warnings",
+      "resolution": "Adopted the verifier's first offered fix: non-monotonic maps are now a BLOCKING validation error in pitch-class-map-v1 (new PA-8: positions non-decreasing in pc order AND positions[11] <= positions[0] + octaveStride, which guarantees global monotonicity across octave boundaries). PA-W2 row replaced with a pointer to PA-8; draft section 8 moved the check from warnings to blocking check 12; design section 2.2 now states maxAxisPos is sound because PA-8 guarantees monotonicity; risk 5 rewritten accordingly. Change attributed and dated in both documents."
+    },
+    {
+      "id": "S2-R1-4",
+      "summary": "change-log.md framing reads as if final lifecycle recording is complete while session-state.json still shows session 2 in-progress",
+      "location": "change-log.md overall framing vs session-state.json",
+      "resolution": "Added an explicit status line to the Session 2 heading ('recorded while session 2 is in progress; session-state flips to complete at close, per the gate') and scoped the lifecycle bullet to artifacts that exist at commit time (see S2-R1-1)."
+    }
+  ]
+}
