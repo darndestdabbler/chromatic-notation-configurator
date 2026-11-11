@@ -1813,20 +1813,151 @@ session 42), the design's second kind of signature (design §5).
 *(The signature-ledger item that was 4 here moved to session 50, item 5,
 when engine session 33 (engine 1.4.1) landed before session 50 ran.)*
 
-### Session 52: The UI is stable
+### Session 52: Sharps and flats sized to the noteheads
+
+**Why.** Session 51 draws the signs at LilyPond's size, 3 staff spaces
+tall for a sharp. On the default staff, at 4 semitones a staff space, that
+is 12 semitones, an octave, far too big beside its noteheads (operator,
+2026-11-11). The signs are to be sized in semitones, as the noteheads are,
+and the size is to be adjustable.
+
+1. Register.
+2. **The size.** `keys.keySignature.signs.heightSemis`: the sharp's height,
+   measured from the top left of its upper bar to the top left of its lower
+   bar, in semitones (axis units under a pitch axis, as a notehead's
+   height). `null`, the default, is automatic: the least of the
+   noteheads' mean height (the twelve pitch classes' crotchet noteheads as
+   they resolve with no key), one staff space, and 3 semitones (operator,
+   2026-11-11, after seeing 2 and 3 semitones on the default staff). Each
+   part covers one kind of staff. The 3-semitone cap holds back very large
+   noteheads, such as Kite 4-369's 4 semitones, which would otherwise make
+   enormous signs. The noteheads set the size on most staffs. A staff space
+   sets it on very dense staffs (0-5-7 and Avique, a line every semitone),
+   where it gives LilyPond's own proportion, the bars a staff space apart.
+   The rule gives 2.72 on the default staff, 3 on Kite, 1 on 0-5-7 and
+   Avique, and 2 on the rest of the gallery. A number set by hand stays as
+   it is when the noteheads or the staff change. The flat is scaled by the
+   same factor as the sharp. The factor is the size ÷ the sharp's bar
+   spacing (about 1.05 staff spaces; measure it from the outline in each
+   optical size) ÷ the semitones per staff space. The columns are the
+   scaled signs' widths apart. Validation: `null`, or a finite number
+   greater than 0, with a warning outside 1–12 semitones. On the default
+   staff the sharp comes out 7.77 semitones tall instead of 12.
+3. **The panel.** Under "Sharps or flats", a Size row: "Automatic (2.72)",
+   showing the size the rule gives, or a number in semitones that
+   overrides it, with a way back to automatic. The Place row's hint stops
+   mentioning the tonic and the half steps under sharps or flats (left over
+   from session 51).
+4. **The export.** Once the engine draws sized signs (otherwise the step is
+   blocked): each sign mark carries its factor, `(semi column sharp
+   0.6473)`. The factor is left out when it is 1, so an export from an
+   engine without the field still parses. LY spec §5.6a (1.3.18), the
+   architecture plan and the README are updated. The five export baselines
+   stay byte-identical.
+5. An engine round trip, for the default and Kite 4-369, middle and every
+   line set, C, D and B♭ major, at the automatic size and one set by hand, and
+   magnifications 1, 7/4 and 5/2: every sign's origin, its box and the ink
+   are within 0.001 staff spaces of the preview's, and the spacing is
+   within 0.005. Tests, and UAT screenshots at 1440 and 1280 px.
+   *Engine work:* a sign mark's optional fourth element scales the glyph
+   about its origin (engine session 35, engine 1.5.0, released in engine
+   session 36).
+6. **The magnification a config sets.** Engine session 35 also makes a
+   plain score engrave at the exported `cnb:default-magnify`, where today
+   only a staff that magnifies itself with `\magnifyStaff
+   #cnb:default-magnify` does (found in session 51). Once it has landed, the
+   round trips drop that prefix where the engine's handoff says they can,
+   and LY spec §5.6a's paragraph on the magnification a score engraves with
+   is rewritten to match.
+
+### Session 53: Designing the key-signature editor
+
+**Why.** A signature is set today in the panel's rows. It is either "the
+key's notes", one shape per mark centred on its stack, or "sharps or
+flats", Emmentaler's signs and nothing else. The operator wants an editor
+for signatures (2026-11-11): the signature shown magnified, its marks
+noteheads, sharps and flats or imported symbols, each of which can be resized
+and moved, with rules for stacking and offsets. It starts from the notehead
+signature, and for accidentals the arrangement is the cycle of fifths.
+
+Clairnote shows the need (operator, 2026-11-11). A mark on a line or a
+ledger is solid and one in a space hollow; a flat has a diagonal tail up and
+a sharp a diagonal tail down. So a mark is one to three shapes. Session 50
+tried one-sided tails and dropped them for two reasons
+(`docs/sessions/session-050/notes.md`). The engine centres a mark's box on
+its stack, so a one-sided symbol needed invisible balancing geometry, which
+LilyPond printed as specks. And a steep tail ran into the next dot of a
+whole-step stack.
+
+1. Register.
+2. A design only, no code: an amendment to
+   `docs/planning/key-signature-designer-design.md`.
+   - **One model for every signature,** in place of the two styles. A
+     signature is four choices:
+     - which notes get a mark: every note of the scale, or the altered notes
+       only;
+     - what each mark is drawn with;
+     - how the marks are arranged;
+     - their sizes and offsets.
+
+     The notehead signature is the default, and the traditional signature is
+     a starting point: altered notes only, Emmentaler's signs, the cycle of
+     fifths, no gold stem. A config with either of today's styles loads and
+     draws as it does now.
+   - **Symbols.** A mark's symbol is a notehead (the notehead's own look or a
+     chosen shape), Emmentaler's sharp or flat, or an imported SVG. It is
+     chosen separately for naturals, flats and sharps, and imports are
+     separate for flats and sharps. A mark is a base plus up to two added
+     symbols, such as a tail, so one tail serves a solid dot and a hollow one.
+     Each symbol has a reference point that sits on its pitch, such as a
+     flat's bowl line, and says whether it takes ledger lines (a notehead
+     does, a sign does not). An imported symbol has both set when it is
+     imported.
+   - **When a look applies.** Natural, flat or sharp; on a line or a ledger,
+     or in a space; every second stack.
+   - **Arrangement.** Today's stacking rules, or the cycle of fifths with one
+     sign to a column. Traditional signatures zigzag (treble sharps F high, C
+     lower, G high, then D, A, E, B) to stay within the staff, where session
+     51's signs climb, each in the scale's octave above the tonic. The design
+     gives a chromatic staff a zigzag rule, for example each sign within a
+     window around its line set.
+   - **The editor.** The signature magnified on a canvas, starting from the
+     notehead panel's thumbnails, controls and SVG import. A drag moves or
+     resizes a symbol, in semitones. An edit applies to its category, not to
+     one mark in one key: dragging one flat moves every flat, and resizing a
+     sharp sets session 52's size. A key picker, and small previews of other
+     keys, show what an edit does across the 105 keys, where an offset that
+     fits B♭ may collide in G♭.
+   - **Placing a mark.** By its reference point plus an offset, rather than
+     by centring its box, so no hidden geometry is needed.
+   - **Tails.** How a tail clears the next dot of a stack.
+   - **The rest.** The config, which panel rows the editor replaces, the
+     preview, the mark table's format, and the engine's work: imported
+     symbols as signs, placement by reference point and offset, and layered
+     marks.
+3. Mock-ups, made before the design goes for approval: the editor at 1440
+   and 1280 px, with its key picker and its previews of other keys; the
+   notehead signature, a traditional one with the zigzag, and Clairnote SN
+   and DN with tails, each in sharp and flat keys at concert size. The
+   operator reviews them.
+4. A cross-provider consult before the operator approves the design. The
+   design plans the sessions that build it, and the engine session they
+   need. The operator decides whether they come before the 1.1.0 release.
+
+### Session 54: The UI is stable
 
 **Why.** The release waits for a stable UI (operator, 2026-11-06); the
 declaration moved here in session 42.
 
 1. Register.
-2. The operator tries sessions 43–51 in the app. Rough edges found are
-   fixed here, or planned as sessions before 53 if they are large.
+2. The operator tries sessions 43–52 in the app. Rough edges found are
+   fixed here, or planned as sessions before 55 if they are large.
 3. The README's text and picture follow the UI as it now is. The full UAT
    runs.
 4. The operator declares the UI stable, which is the condition for
-   session 53.
+   session 55.
 
-### Session 53: Release 1.1.0 (release: 1.1.0)
+### Session 55: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
