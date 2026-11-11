@@ -56,7 +56,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 42 | The UI is stable | no | 2026-11-09 |
 | 43 | Nudges you can see and drag | no | 2026-11-10 |
 | 44 | The breve as tied semibreves | no | 2026-11-10 |
-| 45 | Clefs | — | not declared |
+| 45 | Clefs | no | 2026-11-10 |
 | 46 | Designing the key-signature designer | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -439,3 +439,13 @@ In repeat mode, a breve engraves and previews as two semibreves joined by a tie,
 
 - 2026-11-10 — step 'roundtrip': its files: Engine handoff 025 section 1: the tie engraves black, not in the notehead's colour; the preview follows, so the step also touches the card module (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-10 — accepted step 'engine-session': its checks: The engine released 1.3.0 as its session 27, not 26 (it inserted 'Session 26: Document 1.3.0' when landing session 25); the check accepts the release at any session number. The other three conditions are unchanged. Operator's choice, 2026-11-10. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 45 — Clefs
+
+**Releasable: no.**
+
+Make the clef a choice that works. The Clef panel gains buttons for the engine's dozenal clef and the standard treble, bass and alto clefs; each adds its clef (if the config does not have it yet), makes it the active one and turns the clef on. The preview draws the dozenal clef as the engine engraves it under the score's default treble clef (the register numeral 50, two bold digits 3 and 2 staff spaces tall, centred on the middle line, the left digit half-width), its digits taken from TeX Gyre Schola Bold (GUST Font License), whose digit metrics are identical to C059, the font LilyPond 2.24 uses; it exports as cnb:clef-style 'dozenal with its gutter. The standard clefs are LilyPond's own Emmentaler glyphs (clefs.G, clefs.F, clefs.C; SIL OFL 1.1, the licence shipped with them), each placed with its reference line on the pitch it marks (G, F, C, in the octave nearest the staff's middle) at LilyPond's size in staff spaces, and export as glyph clefs through the existing cnb:register-clef! path, so no engine work is needed. Every glyph clef, imported or standard, says over which semitones it is shown: the panel's 'Top of the clef' field becomes a range, 'Shown from semitone … to …', which writes the definition's anchorSemi (the top) and semitoneHeight (top minus bottom); with the Clef section open the clef is moved by dragging it up and down on the canvas and resized by dragging a handle on its bottom edge, both through one pure CNBClefEditor.withRange. The engine already places a glyph by its top and height, so the range engraves where the preview draws it. A row's grid grows to hold a clef that reaches past its noteheads, so a tall clef is not cut off. Engine round trips pin the dozenal clef and a moved and resized standard clef to the preview; the LY spec (1.3.13), the architecture plan, the README, the clef UAT driver and docs/uat-status.md follow.
+
+**Amended after acceptance:**
+
+- 2026-11-10 — step 'dozenal-and-range-preview': its files: The key signature spaces itself from the clef's width through CNBClef.measure, which needs the staff space to measure the dozenal clef, so cnb-key-signature.js passes it (one line). (claude-code (anthropic, claude-opus-5-5))

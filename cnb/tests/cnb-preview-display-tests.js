@@ -18,6 +18,15 @@ import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
+
+/** The default config showing one of the built-in clefs (session 45). */
+function clefShown(name) {
+  const config = CNBConfig.createDefault();
+  config.clef = { ...config.clef, enabled: true, active: name,
+    glyphs: { [name]: CNBBuiltinClefs.definition(config, name) } };
+  return config;
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -1117,6 +1126,94 @@ export const tests = [
         col(3).onpointerup({});
         col(3).onclick({});
         assertEqual(picks, [3], "a press with no move is a click");
+      });
+    },
+  },
+  {
+    name: "clef mode: with the Clef section open and a glyph clef, the class and the hint; not otherwise (session 45)",
+    fn: () => {
+      const cfg = clefShown("treble");
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null, onSelect: () => {}, onClefDrag: () => {} });
+        const on = () => api.root.className.split(" ").includes("cnb-pvd-clef-mode");
+        const hint = () => findOne(api.root, "cnb-pvd-pitch-hint").textContent;
+        assert(!on(), "off with no section open");
+        api.setFocus("clef");
+        assert(on(), "on with the Clef section open");
+        assertEqual(hint(), "Drag the clef up or down to move it, or its bottom edge to make it taller or shorter", "hint");
+        api.setPitchMode(true);
+        assert(!on(), "pitch mode wins");
+        api.setPitchMode(false);
+        api.setFocus("pitch");
+        assert(!on() && hint() === PVD.SELECT_HINT, "off in another section");
+      });
+      for (const [label, config, opts] of [
+        ["the dozenal clef", clefShown("dozenal"), { onClefDrag: () => {} }],
+        ["no clef", CNBConfig.createDefault(), { onClefDrag: () => {} }],
+        ["no onClefDrag", clefShown("treble"), {}],
+      ]) {
+        withDomStub(container => {
+          const api = PVD.render(container, { getConfig: () => config, storage: null, ...opts });
+          api.setFocus("clef");
+          assert(!api.root.className.split(" ").includes("cnb-pvd-clef-mode"), `off for ${label}`);
+        });
+      }
+    },
+  },
+  {
+    name: "clef mode: dragging the clef moves it, dragging its handle resizes it; Esc, a cancel or a tiny move report nothing (session 45)",
+    fn: () => {
+      const cfg = clefShown("treble");
+      withDomStub(container => {
+        const drags = [];
+        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
+          onClefDrag: (kind, semis) => drags.push([kind, semis]) });
+        const step = PVD.SIZES.medium;
+        const col = () => findAll(api.root, "clef-col")[0];
+        const slice = () => findAllByClassAttr(col(), "clef-slice")[0];
+        const handle = () => findAllByClassAttr(col(), "cnb-clef-resize")[0];
+        assertEqual(col().onpointerdown, undefined, "outside clef mode the clef takes no drag");
+
+        api.setFocus("clef");
+        col().onpointerdown({ clientY: 100 });
+        col().onpointermove({ clientY: 100 - 1.5 * step });
+        assertEqual(slice().style.transform, `translateY(${-1.5 * step}px)`, "the clef follows the pointer");
+        col().onpointerup({});
+        assertEqual(drags, [["move", 1.5]], "moved a semitone and a half up");
+        assertEqual(slice().style.transform, "", "put back for the redraw");
+
+        col().onpointerdown({ clientY: 100, target: handle() });
+        col().onpointermove({ clientY: 100 + 2 * step });
+        assertEqual(handle().getAttribute("transform"), `translate(0 ${2 * step})`, "the handle follows");
+        assertEqual(slice().style.transform || "", "", "the clef stays");
+        col().onpointerup({});
+        assertEqual(drags[1], ["resize", -2], "its bottom two semitones down");
+
+        col().onpointerdown({ clientY: 100 });
+        col().onpointermove({ clientY: 102 });
+        col().onpointerup({});
+        col().onpointerdown({ clientY: 100 });
+        col().onpointermove({ clientY: 100 - step });
+        col().onpointercancel({});
+        assertEqual(drags.length, 2, "a tiny move and a cancel report nothing");
+
+        const listeners = [];
+        const hadAdd = "addEventListener" in globalThis;
+        const prevAdd = globalThis.addEventListener;
+        const prevRemove = globalThis.removeEventListener;
+        globalThis.addEventListener = (type, fn) => listeners.push([type, fn]);
+        globalThis.removeEventListener = () => {};
+        try {
+          col().onpointerdown({ clientY: 100 });
+          col().onpointermove({ clientY: 100 - step });
+          listeners.find(([t]) => t === "keydown")[1]({ key: "Escape" });
+          col().onpointerup({});
+        } finally {
+          if (hadAdd) { globalThis.addEventListener = prevAdd; globalThis.removeEventListener = prevRemove; }
+          else { delete globalThis.addEventListener; delete globalThis.removeEventListener; }
+        }
+        assertEqual(drags.length, 2, "Esc puts the clef back");
+        assertEqual(slice().style.transform, "", "and its slice");
       });
     },
   },

@@ -110,6 +110,17 @@
  * NUDGE_THRESHOLD pixels puts the slice back and reports nothing. A drag
  * that moved swallows the click that follows, so it does not also select.
  *
+ * Session 45 (clefs): with the Clef section open (setFocus("clef")) and
+ * opts.onClefDrag, a glyph clef can be dragged on the canvas. The root gets
+ * the class cnb-pvd-clef-mode, which shows the clef's resize handle
+ * (rect.cnb-clef-resize, on its bottom edge), and the toolbar says what to
+ * do (CLEF_HINT). A drag on the clef moves it with the pointer, a drag on
+ * its handle moves only the handle, and the release calls
+ * opts.onClefDrag("move" | "resize", semis), semis the semitones dragged
+ * upward (pixels ÷ display.pxPerSemi, to 2 places; the host applies
+ * CNBClefEditor.withRange). Esc, a cancel or a move under NUDGE_THRESHOLD
+ * pixels puts it back and reports nothing.
+ *
  * Session 36 (the rebuilds' rough edges): beside the duration buttons, when
  * the host passes opts.onRepresentationMode, a two-way choice between each
  * duration's own shape and repeated heads (durations.representationMode,
@@ -128,6 +139,7 @@
 
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBClef } from "../src/cnb-clef.js";
 
 const PC_MIN = 0;
 const PC_MAX = 12;   // upper C completing the chromatic row (Module B/10)
@@ -173,6 +185,8 @@ function checkKey(key) {
 const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff, or a notehead up or down to nudge it";
 /** The pixels a notehead drag must move before it nudges (session 43). */
 const NUDGE_THRESHOLD = 3;
+/** The toolbar hint with the Clef section open and a glyph clef shown (session 45). */
+const CLEF_HINT = "Drag the clef up or down to move it, or its bottom edge to make it taller or shorter";
 /** The toolbar hint when noteheads can be selected (session 38). */
 const SELECT_HINT = "Click a notehead to give it a look; Shift+click or Ctrl+click to select several";
 
@@ -494,6 +508,7 @@ export const CNBPreviewDisplay = {
     const onPitchDrag = opts.onPitchDrag || null;
     const onNudgeDrag = opts.onNudgeDrag || null;
     let swallowClick = false; // a notehead drag moved: the click that follows does not select
+    const onClefDrag = opts.onClefDrag || null;
     const onRepresentationMode = opts.onRepresentationMode || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
@@ -830,11 +845,90 @@ export const CNBPreviewDisplay = {
       }
     }
 
-    /** The hint and the class for pitch mode, with no redraw; outside it,
-     *  the selection hint when noteheads can be selected. */
+    /** Clef mode (session 45): the Clef section is open, the host takes
+     *  drags, and the shown clef is a glyph clef. */
+    function clefMode() {
+      const active = onClefDrag && focus === "clef" ? CNBClef.activeGlyph(getConfig()) : null;
+      return !!active && (active.def.kind || "glyph") === "glyph";
+    }
+
+    /**
+     * Make the canvas's clef draggable in clef mode (session 45): a drag on
+     * the clef moves its slice with the pointer, a drag on its resize handle
+     * moves the handle, and the release reports the semitones dragged
+     * upward through opts.onClefDrag("move" | "resize", semis). Esc, a
+     * cancel or a move under NUDGE_THRESHOLD puts it back.
+     */
+    function wireClef(step) {
+      if (!clefMode()) return;
+      for (const col of preview ? byClassName(preview, "clef-col") : []) {
+        const slice = byClassAttr(col, "clef-slice")[0];
+        if (!slice) continue;
+        let drag = null;
+        const place = (dy) => {
+          const moving = drag && drag.kind === "resize" ? drag.handle : slice;
+          if (!moving) return;
+          if (drag && drag.kind === "resize") {
+            moving.setAttribute("transform", dy === 0 ? "" : `translate(0 ${dy})`);
+          } else {
+            moving.style.transform = dy === 0 ? "" : `translateY(${dy}px)`;
+          }
+        };
+        const end = (report) => {
+          if (!drag) return;
+          const { dy, moved, kind } = drag;
+          place(0);
+          globalThis.removeEventListener?.("keydown", drag.onKey);
+          drag = null;
+          if (report && moved) {
+            const semis = Math.round(-dy / step * 100) / 100 || 0;
+            if (semis !== 0) onClefDrag(kind, semis);
+          }
+        };
+        col.onpointerdown = (e) => {
+          if (!e) return;
+          const target = e.target;
+          const kind = target && typeof target.getAttribute === "function" &&
+            target.getAttribute("class") === "cnb-clef-resize" ? "resize" : "move";
+          const onKey = (k) => { if (k && k.key === "Escape") end(false); };
+          drag = { startY: e.clientY, dy: 0, moved: false, kind, handle: kind === "resize" ? target : null, onKey };
+          globalThis.addEventListener?.("keydown", onKey);
+          if (typeof col.setPointerCapture === "function" && e.pointerId !== undefined) {
+            try { col.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+          }
+          if (typeof e.preventDefault === "function") e.preventDefault();
+        };
+        col.onpointermove = (e) => {
+          if (!drag || !e) return;
+          drag.dy = e.clientY - drag.startY;
+          if (Math.abs(drag.dy) >= NUDGE_THRESHOLD) drag.moved = true;
+          if (drag.moved) place(drag.dy);
+        };
+        col.onpointerup = () => end(true);
+        col.onpointercancel = () => end(false);
+      }
+    }
+
+    /** The descendants of el whose className includes the token cls. */
+    function byClassName(el, cls) {
+      const out = [];
+      for (const child of el.children || []) {
+        if (String(child.className || "").split(/\s+/).includes(cls)) out.push(child);
+        else out.push(...byClassName(child, cls));
+      }
+      return out;
+    }
+
+    /** The hint and the class for pitch mode and clef mode, with no
+     *  redraw; outside them, the selection hint when noteheads can be
+     *  selected. */
     function applyPitchMode() {
+      const clef = !pitchMode && clefMode();
       setToken(root, "cnb-pvd-pitch-mode", pitchMode);
-      if (pitchHint) pitchHint.textContent = pitchMode ? PITCH_HINT : onSelect ? SELECT_HINT : "";
+      setToken(root, "cnb-pvd-clef-mode", clef);
+      if (pitchHint) {
+        pitchHint.textContent = pitchMode ? PITCH_HINT : clef ? CLEF_HINT : onSelect ? SELECT_HINT : "";
+      }
     }
 
     function drawPreview() {
@@ -856,6 +950,7 @@ export const CNBPreviewDisplay = {
       wireColumns();
       wireStrips(config.display.pxPerSemi);
       wireNudges(config.display.pxPerSemi);
+      wireClef(config.display.pxPerSemi);
       updateOverflow(config, options);
       onRender(collectionOptions, preview);
     }

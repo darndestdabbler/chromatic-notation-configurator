@@ -179,6 +179,7 @@
     import { CNBNoteheadRuleEditor } from "./ui/notehead-rule-editor.js";
     import { CNBCommonPropsEditor } from "./ui/common-props-editor.js";
     import { CNBClefEditor } from "./ui/clef-editor.js";
+    import { CNBClef } from "./src/cnb-clef.js";
     import { CNBKeySignatureEditor } from "./ui/key-signature-editor.js";
     import { CNBPitchAxisEditor } from "./ui/pitch-axis-editor.js";
     import { CNBConfigIO } from "./ui/config-io.js";
@@ -468,6 +469,19 @@
         refreshSectionPreviews();
       },
       // Shapes or repeated heads, beside the duration buttons (session 36).
+      // With the Clef section open, dragging the clef moves it, or its
+      // bottom edge resizes it (session 45): its range through withRange.
+      onClefDrag: (kind, semis) => {
+        const range = CNBClef.extent(appConfig);
+        if (!range) return;
+        const round4 = (v) => Math.round(v * 1e4) / 1e4;
+        const top = kind === "move" ? range.top + semis : range.top;
+        const next = CNBClefEditor.withRange(appConfig.clef, round4(top), round4(range.bottom + semis));
+        if (!next) return;   // resized to nothing
+        appConfig.clef = next;
+        mountClefEditor();
+        refreshShared();
+      },
       onRepresentationMode: (mode) => {
         appConfig.durations = { ...appConfig.durations, representationMode: mode };
         mountPropsEditor();
@@ -709,24 +723,13 @@
     // the current config. Every editor edit is committed to appConfig
     // immediately via onChange, so re-mounting never loses edits.
     function mountEditors() {
-      byId("clef-editor-host").textContent = "";
-
       mountStaffEditor();
 
       mountNoteheadEditor();
 
       mountPropsEditor();
 
-      // Custom clef (set 009). The editor also hosts the clef glyph import
-      // wiring (session-1 importer, clef kind), so the whole
-      // import → enable → position flow lives in this one panel.
-      CNBClefEditor.render(byId("clef-editor-host"), {
-        config: appConfig,
-        onChange: (slices) => {
-          appConfig.clef = slices.clef;
-          refreshShared();
-        },
-      });
+      mountClefEditor();
 
       mountKeySignatureEditor();
 
@@ -753,6 +756,23 @@
 
     /** Advanced › Durations and engine. It carries the representation mode
      *  through from its mount, so it re-seeds when the canvas changes it. */
+    /** Custom clef (set 009). The editor also hosts the clef glyph import
+     *  wiring (session-1 importer, clef kind), so the whole
+     *  import → enable → position flow lives in this one panel. A chosen
+     *  clef is placed for the current staff (session 45), and a drag on
+     *  the canvas re-mounts it. */
+    function mountClefEditor() {
+      byId("clef-editor-host").textContent = "";
+      CNBClefEditor.render(byId("clef-editor-host"), {
+        config: appConfig,
+        getConfig: () => appConfig,
+        onChange: (slices) => {
+          appConfig.clef = slices.clef;
+          refreshShared();
+        },
+      });
+    }
+
     function mountPropsEditor() {
       byId("props-editor-host").textContent = "";
       CNBCommonPropsEditor.render(byId("props-editor-host"), {

@@ -137,6 +137,45 @@ export const tests = [
       eq(subset.maxSemi, 23, "subset max");
     }},
 
+  { name: "gridRange: a config with no clef shown, or a clef inside the range, leaves it unchanged", fn: () => {
+      const pcs = [0, 1, 2, 3, 4, 5, 6];
+      const plain = CNBCollection.gridRange(pcs, CNBConfig.createDefault());
+      eq(plain.minSemi, -4, "no clef: min");
+      eq(plain.maxSemi, 22, "no clef: max");
+      const config = CNBConfig.createDefault();
+      config.clef = { ...config.clef, enabled: true, active: "small",
+        glyphs: { small: { kind: "glyph", svgPath: "M 0 0 L 1 1", naturalHeight: 1, naturalWidth: 1, semitoneHeight: 6, anchorSemi: 15 } } };
+      const inside = CNBCollection.gridRange(pcs, config);
+      eq(inside.minSemi, -4, "clef inside: min");
+      eq(inside.maxSemi, 22, "clef inside: max");
+    }},
+
+  { name: "gridRange: a clef reaching past the noteheads widens the range to the whole semitone", fn: () => {
+      const config = CNBConfig.createDefault();
+      config.clef = { ...config.clef, enabled: true, active: "tall",
+        glyphs: { tall: { kind: "glyph", svgPath: "M 0 0 L 1 1", naturalHeight: 1, naturalWidth: 1, semitoneHeight: 30.5, anchorSemi: 25.2 } } };
+      const range = CNBCollection.gridRange([0, 1, 2, 3, 4, 5, 6], config);
+      eq(range.maxSemi, 26, "top 25.2 → 26");
+      eq(range.minSemi, -6, "bottom −5.3 → −6");
+      config.clef.enabled = false;
+      eq(CNBCollection.gridRange([0, 1, 2, 3, 4, 5, 6], config).maxSemi, 22, "off: unchanged");
+    }},
+
+  { name: "render: a tall clef makes the row's staff and cards taller", fn: () => {
+      const config = CNBConfig.createDefault();
+      const plain = CNBGrid.create(config, CNBCollection.gridRange([0, 1, 2]));
+      config.clef = { ...config.clef, enabled: true, active: "tall",
+        glyphs: { tall: { kind: "glyph", svgPath: "M 0 0 L 1 1", naturalHeight: 1, naturalWidth: 1, semitoneHeight: 34, anchorSemi: 30 } } };
+      withDomStub(container => {
+        const root = CNBCollection.render(container, config, { pitchClasses: [0, 1, 2] });
+        const bg = root.children[0].children.find(c => c.className === "preview-container")
+          .children.find(c => c.getAttribute("class") === "staff-lines-bg");
+        const tall = CNBGrid.create(config, CNBCollection.gridRange([0, 1, 2], config));
+        eq(Number(bg.getAttribute("height")), tall.svgHeight, "staff as tall as the widened grid");
+        assert(tall.svgHeight > plain.svgHeight, "taller than without the clef");
+      });
+    }},
+
   { name: "render: cnb-preview root appended to container, one row, 13 default cards", fn: () => {
       const config = CNBConfig.createDefault();
       withDomStub(container => {

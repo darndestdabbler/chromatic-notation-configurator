@@ -622,13 +622,15 @@ function ledgerLines(config, axis) {
 }
 
 /**
- * Section B clef lines (handoff 005 §1, LY spec 1.3.7 §5.5). The engine's
- * default is its dozenal clef, which the Configurator has no kind for, so
- * cnb:clef-style is always written: 'none when no clef is shown, 'custom
- * naming the registered glyph, or 'text with the label as a markup carrying
- * the preview's font, colour and bold weight, at its preview height. A shown
- * clef also gets its gutter, the preview's paddingH in semitones (the engine
- * adds it on the right only).
+ * Section B clef lines (handoff 005 §1, LY spec 1.3.7 §5.5). cnb:clef-style
+ * is always written: 'none when no clef is shown, 'dozenal for the engine's
+ * own dozenal clef (session 45, LY spec 1.3.13; drawn and placed by the
+ * engine, so nothing else is written for it), 'custom naming the registered
+ * glyph (an imported clef, or a treble, bass or alto clef from the panel),
+ * or 'text with the label as a markup carrying the preview's font, colour
+ * and bold weight, at its preview height. A shown clef also gets its
+ * gutter, the preview's paddingH in semitones (the engine adds it on the
+ * right only).
  */
 function clefLines(config) {
   const clef = shownClef(config);
@@ -638,7 +640,9 @@ function clefLines(config) {
     return lines;
   }
   const { def, sym, field } = clef;
-  if ((def.kind || "glyph") === "text") {
+  if (def.kind === "dozenal") {
+    lines.push("#(set! cnb:clef-style 'dozenal)");
+  } else if ((def.kind || "glyph") === "text") {
     const font = CNBScheme.string(`${def.fontFamily || "Georgia, serif"} Bold`);
     const color = hexString(def.color || "#000000", `${field}.color`);
     lines.push("#(set! cnb:clef-style 'text)");

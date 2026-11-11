@@ -13,7 +13,10 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
-import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions, measureLedgers } from "./engine-probe.js";
+import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureStaffPositions, measureLedgers, measureSpacing, NO_PAGES } from "./engine-probe.js";
+import { CNBClef } from "../src/cnb-clef.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
+import { CNBClefEditor } from "../ui/clef-editor.js";
 import { withDomStub } from "./svg-stub.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCard } from "../src/cnb-card.js";
@@ -1096,6 +1099,77 @@ export const tests = [
       eq(none.clef, null, "no clef stencil");
     }},
 
+  // ── The clefs the panel offers (session 45, LY spec 1.3.13 §5.5) ──────
+
+  { name: "clef: the dozenal clef exports 'dozenal and its gutter, and registers nothing", fn: () => {
+      const config = builtinClefConfig(CNBConfig.createDefault(), "dozenal");
+      assert(CNBConfig.validate(config).valid, "valid");
+      contains(CNBLilypond.sectionB(config),
+        "%% Clef\n#(set! cnb:clef-style 'dozenal)\n#(set! cnb:clef-gutter-semitones 0.75)", "dozenal settings");
+      lacks(CNBLilypond.sectionB(config), "cnb:clef-name", "no name");
+      lacks(CNBLilypond.sectionB(config), "cnb:clef-size-semitones", "the engine's own size");
+      lacks(CNBLilypond.sectionA(config), "cnb:register-clef!", "nothing registered");
+    }},
+
+  { name: "clef: a treble clef from the panel exports as a registered glyph, its top and height as placed", fn: () => {
+      const config = builtinClefConfig(CNBConfig.createDefault(), "treble");
+      const def = config.clef.glyphs.treble;
+      const a = CNBLilypond.sectionA(config);
+      contains(a, "#(cnb:register-clef! 'treble", "registered");
+      contains(a, `(cons 'anchor-semitones ${def.anchorSemi})`, "its top (midpoint 12: as is)");
+      contains(a, `(cons 'height-semitones ${def.semitoneHeight})`, "its height");
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:clef-style 'custom)\n#(set! cnb:clef-name 'treble)", "shown");
+    }},
+
+  { name: "clef (engine): the dozenal clef engraves where and as wide as the preview draws it", fn: async () => {
+      // The preview draws the engine's numeral 50 (CNBClef.extent,
+      // CNBClef.measure); measured in half staff spaces from the middle line.
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      for (const base of [CNBConfig.createDefault(), JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"))]) {
+        const config = builtinClefConfig(base, "dozenal");
+        const sps = config.staff.semitonesPerStaffSpace;
+        const want = CNBClef.extent(config);
+        const ly = CNBLilypond.generate(config);
+        const { clef, error } = await measureClef(engine, ly);
+        assert(!error, `the export must compile: ${error}`);
+        const top = 2 * (want.top - config.staff.midpoint) / sps;
+        const bottom = 2 * (want.bottom - config.staff.midpoint) / sps;
+        assert(clef && Math.abs(clef.top - top) < 0.01, `sps ${sps}: top ${clef && clef.top}, preview ${top}`);
+        assert(Math.abs(clef.bottom - bottom) < 0.01, `sps ${sps}: bottom ${clef.bottom}, preview ${bottom}`);
+        const spacing = await measureSpacing(engine, ly, "c'4");
+        assert(!spacing.error, spacing.error);
+        const gutter = config.clef.gutter.paddingH / config.display.pxPerSemi / sps;
+        const engraved = spacing.clef.right - spacing.clef.left - gutter;
+        const drawn = CNBClef.measure(config.clef.glyphs.dozenal, 1, 1).pixelWidth;
+        assert(Math.abs(engraved - drawn) < 0.02, `sps ${sps}: width ${engraved} staff spaces, preview ${drawn}`);
+      }
+    }},
+
+  { name: "clef (engine): the treble, bass and alto clefs as placed, and a treble moved and resized, engrave over their ranges", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const placed = builtinClefConfig(CNBConfig.createDefault(), "treble");
+      const moved = CNBConfig.clone(placed);
+      moved.clef = CNBClefEditor.withRange(placed.clef, 22.5, 4.25);
+      for (const [label, config] of [
+        ["treble as placed", placed],
+        ["bass as placed", builtinClefConfig(CNBConfig.createDefault(), "bass")],
+        ["alto as placed", builtinClefConfig(CNBConfig.createDefault(), "alto")],
+        ["treble moved and resized", moved],
+      ]) {
+        const { top, bottom } = CNBClef.extent(config);
+        const mid = config.staff.midpoint;
+        const sps = config.staff.semitonesPerStaffSpace;
+        const { clef, error } = await measureClef(engine, CNBLilypond.generate(config));
+        assert(!error, `${label}: the export must compile: ${error}`);
+        assert(clef && Math.abs(clef.top - 2 * (top - mid) / sps) < 0.01,
+          `${label}: top ${clef && clef.top} half staff spaces, preview ${2 * (top - mid) / sps}`);
+        assert(Math.abs(clef.bottom - 2 * (bottom - mid) / sps) < 0.01,
+          `${label}: bottom ${clef.bottom}, preview ${2 * (bottom - mid) / sps}`);
+      }
+    }},
+
   // ── Key signature (session 30, engine handoff 006 §3, LY spec 1.3.7 §5.6) ─
 
   { name: "key signature: 'none unless keys and the signature are both on (the default included)", fn: () => {
@@ -1515,7 +1589,7 @@ export const tests = [
           writeFileSync(path.join(sub, "config.ly"), ly, "utf8");
           writeFileSync(path.join(sub, "score.ly"),
             '\\version "2.24.2"\n\\include "config.ly"\n{ c\'4 cis\'4 d\'4 e\'4 }\n', "utf8");
-          execFile(engine.lilypond, ["-I", engine.dir, "-o", path.join(sub, "out"), "score.ly"],
+          execFile(engine.lilypond, [...NO_PAGES, "-I", engine.dir, "-o", path.join(sub, "out"), "score.ly"],
             { cwd: sub, timeout: 120000, windowsHide: true },
             (error, stdout, stderr) => resolve({ marker, error, output: `${stdout}\n${stderr}` }));
         }));
@@ -1539,7 +1613,7 @@ export const tests = [
       const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-45deg-"));
       try {
         const { error, output } = await new Promise((resolve) => {
-          execFile(engine.lilypond, ["-I", engine.dir, "-I", fixtures, "-o", path.join(dir, "out"),
+          execFile(engine.lilypond, [...NO_PAGES, "-I", engine.dir, "-I", fixtures, "-o", path.join(dir, "out"),
             path.join(fixtures, "joy-to-the-world-45deg.ly")],
             { cwd: dir, timeout: 120000, windowsHide: true },
             (error, stdout, stderr) => resolve({ error, output: `${stdout}\n${stderr}` }));
@@ -1688,6 +1762,14 @@ function keySignatureConfig() {
 }
 
 /** The default config with a red "4" text clef, 4 semitones tall, shown. */
+/** base with one of the panel's clefs shown (session 45). */
+function builtinClefConfig(base, name) {
+  const config = CNBConfig.clone(base);
+  config.clef = { enabled: true, active: name,
+    glyphs: { [name]: CNBBuiltinClefs.definition(base, name) }, gutter: { paddingH: 12 } };
+  return config;
+}
+
 function textClefConfig() {
   const config = CNBConfig.createDefault();
   config.clef = {

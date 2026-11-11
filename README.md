@@ -208,7 +208,14 @@ conventional notehead on the 4-8 staff.
   The section lists the rules the looks are kept as.
 - **Key signature** and **Clef** — the signature's look, and the keys a
   notehead rule can be for (the signature draws for the key picked on the
-  staff, defined here or not); an imported clef glyph or a text clef.
+  staff, defined here or not); the clef. **Dozenal**, **Treble**, **Bass**
+  and **Alto** buttons choose the engine's dozenal clef (drawn as the
+  engine engraves it, the numeral 50 of the default treble register) or
+  LilyPond's own treble, bass and alto clef, placed on the pitch it marks
+  (G, F or C, nearest the middle of the staff); or import a clef glyph. A
+  glyph clef is shown from one semitone to another: type them, or, with
+  the section open, drag the clef up or down on the staff and drag its
+  bottom edge to make it taller or shorter.
 - **Advanced** — rules for particular durations or keys, the duration list
   and engine settings, the pitch axis map, the pitch range shown, and the
   file as JSON.
@@ -384,9 +391,10 @@ thickness and extension, the signature's gutter, repeat counts) are
 ignored.
 
 The clef and the rest of the key signature export (LY export spec 1.3.7
-§5.5, §5.6). A config with no clef shown engraves none, rather than the
-engine's dozenal clef. A glyph clef is
-registered and engraves with its top edge where the preview draws it, and a
+§5.5, §5.6, and 1.3.13 §5.5a). A config with no clef shown engraves none,
+and one showing the dozenal clef engraves the engine's own. A glyph clef,
+imported or a treble, bass or alto clef, is registered and engraves over
+the semitones the preview draws it over, and a
 text clef engraves in its font, colour and size, but at the engine's own
 height rather than at its anchor. A key signature that is off engraves
 none. One that is on engraves with its bar's colour, thickness and extent,
@@ -535,3 +543,10 @@ This work is dedicated to the public domain under the
 license — see the [`LICENSE`](LICENSE) file for the full legal text. To the
 extent possible under law, the author has waived all copyright and related
 or neighboring rights to this work.
+
+Two parts come from fonts under their own licences, kept in
+`cnb/assets/fonts/`: the treble, bass and alto clefs are LilyPond's
+Emmentaler glyphs, under the SIL Open Font License 1.1
+(`OFL-Emmentaler.txt`), and the dozenal clef's digits are TeX Gyre Schola
+Bold's, under the GUST Font License (`GUST-TeXGyreSchola.txt`). The Oswald
+label font is under the SIL Open Font License too (`OFL.txt`).

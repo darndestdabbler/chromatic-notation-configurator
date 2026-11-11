@@ -440,14 +440,17 @@ export const CNBConfig = {
           if (!(def.textHeightSemis > 0)) {
             errors.push(`Clef text entry "${clef.active}" needs a positive textHeightSemis`);
           }
-        } else {
-          errors.push(`Clef glyph "${clef.active}" has unknown kind "${kind}" (expected "glyph" or "text")`);
+        } else if (kind !== "dozenal") {
+          errors.push(`Clef glyph "${clef.active}" has unknown kind "${kind}" (expected "glyph", "text" or "dozenal")`);
         }
         // anchorSemi is deliberately a float: surveyed clef designs
         // (Bravura gClef top +1.392 staff-spaces above the top line,
         // Clairnote glyph tops at fractional extents) do not top-align to
-        // integer grid positions.
-        if (typeof def.anchorSemi !== "number" || !Number.isFinite(def.anchorSemi)) {
+        // integer grid positions. The engine's dozenal clef (session 45)
+        // has no anchor: it sits on the middle line.
+        if (kind === "dozenal") {
+          // nothing to check: no path, size or anchor of its own
+        } else if (typeof def.anchorSemi !== "number" || !Number.isFinite(def.anchorSemi)) {
           errors.push(`Clef glyph "${clef.active}" has no numeric anchorSemi`);
         } else if (def.anchorSemi < -24 || def.anchorSemi > 72) {
           warnings.push(`Clef glyph "${clef.active}" anchorSemi ${def.anchorSemi} is far outside the typical range (-24 to 72)`);

@@ -237,7 +237,7 @@ function splitSystems(pitchClasses, rows) {
  * card, and the cards are placed explicitly beside it.
  */
 function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots, labelStrip }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
   const stripWidth = labelStrip ? LABEL_STRIP_PX : 0;
   const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, duration,
@@ -383,7 +383,7 @@ function durationCaption(config, duration) {
 
 /** One duration row: background staff SVG + flex row of cards. */
 function renderRow(config, { pitchClasses, duration, key, showCaption }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
 
   const row = document.createElement("div");
   row.className = "cnb-duration-row";
@@ -467,15 +467,25 @@ export const CNBCollection = {
   /**
    * Grid range for a set of pitch classes: from the lowest lower-note down
    * 4 semis (ledger/stem headroom) to the highest upper-note (pc + 12) up 4.
+   * With a config, the range also holds the shown clef (CNBClef.extent,
+   * session 45), to the whole semitone, so a clef that reaches past the
+   * noteheads is not cut off.
    *
    * @param {number[]} pitchClasses
+   * @param {object} [config]
    * @returns {{minSemi:number, maxSemi:number}}
    */
-  gridRange(pitchClasses) {
-    return {
+  gridRange(pitchClasses, config) {
+    const range = {
       minSemi: Math.min(...pitchClasses) - 4,
       maxSemi: Math.max(...pitchClasses) + 12 + 4,
     };
+    const clef = config ? CNBClef.extent(config) : null;
+    if (clef) {
+      range.minSemi = Math.min(range.minSemi, Math.floor(clef.bottom));
+      range.maxSemi = Math.max(range.maxSemi, Math.ceil(clef.top));
+    }
+    return range;
   },
 
   /**
@@ -494,7 +504,7 @@ export const CNBCollection = {
     const pitchClasses = options.pitchClasses ?? DEFAULT_PCS;
     const durations = options.durations ?? ["crotchet"];
     const key = (options.keys && options.keys[0]) ?? null;
-    const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
+    const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
     const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
     const slots = splitSystems(pitchClasses, options.rows)[0].length;
     const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, durations[0], 0, slots, colMin);
@@ -540,7 +550,7 @@ export const CNBCollection = {
     root.className = "cnb-preview";
 
     if (options.fluid === true) {
-      const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses));
+      const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
       const colMin = fluidColumnMin(config, grid, pitchClasses, durations);
       const rows = options.rows === 2 ? 2 : 1;
       for (const duration of durations) {

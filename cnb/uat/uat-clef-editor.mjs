@@ -9,8 +9,13 @@
  * is the checklist's executable form, following the accepted set-004/005/006
  * pattern.)
  *
+ * Session 45 adds: the Dozenal, Treble, Bass and Alto buttons (each drawn
+ * on the canvas and exported), a glyph clef's range fields, and the canvas
+ * drag in the Clef section that moves the clef and resizes it by its
+ * bottom edge.
+ *
  * Flow (spec step 5): import a clef SVG through the clef editor → enable
- * the clef → position it (float anchor semitone + gutter padding) →
+ * the clef → position it (its range, a float top + gutter padding) →
  * confirm the preview renders the grid-positioned clef gutter → save the
  * config (real download) and load it back → export a .ly file (real
  * download) — with Node-side parity checks run in THIS process on the full
@@ -46,6 +51,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 import { useCanvasSize, useDownloads, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -232,13 +238,14 @@ check("IMPORT: the glyph entry reaches the shared config (kind glyph, semitoneHe
   cfg.clef.glyphs["uat-clef"].naturalHeight === 300 &&
   cfg.clef.glyphs["uat-clef"].anchorSemi === 15,
   JSON.stringify(cfg.clef.glyphs["uat-clef"]));
-check("IMPORT: the imported glyph is listed and selected as active; the anchor control appears",
+check("IMPORT: the imported glyph is listed and selected as active; its range fields appear (semitones 9 to 15)",
   cfg.clef.active === "uat-clef" &&
   await page.evaluate(() =>
     document.querySelectorAll(".cnb-cle-glyph-option").length === 1 &&
     document.querySelector('.cnb-cle-glyph-option[data-glyph-name="uat-clef"]')
       .classList.contains("selected") &&
-    !!document.querySelector(".cnb-cle-anchor-input")));
+    document.querySelector(".cnb-cle-range-bottom").value === "9" &&
+    document.querySelector(".cnb-cle-range-top").value === "15"));
 check("IMPORT: the clef stays disabled until enabled — the preview still has no .clef-col",
   (await clefColCount()) === 0);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-imported.png"), fullPage: true });
@@ -263,15 +270,20 @@ check("ENABLE: the clef glyph is rendered in the gutter (one .cnb-clef group wit
       .startsWith("M 50 0 L 100 60")));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-enabled.png"), fullPage: true });
 
-// ── STEP 3: position the clef (float anchor + gutter padding) ───────────────
-// First an integer anchor on the TOP STAFF LINE (semi 20), where correct
-// registration is visually obvious: the glyph's pointed top edge must sit
-// exactly on the line. This is the primary human-attestation frame.
-await page.fill(".cnb-cle-anchor-input", "20");
+// ── STEP 3: position the clef (its range + gutter padding) ──────────────────
+// First the range 14 to 20, its top on the TOP STAFF LINE (semi 20), where
+// correct registration is visually obvious: the glyph's pointed top edge
+// must sit exactly on the line. This is the primary human-attestation
+// frame. The top is set first (the bottom stays at 9), then the bottom
+// (session 45: a glyph clef is shown from one semitone to another).
+await page.fill(".cnb-cle-range-top", "20");
+check("POSITION: the top field alone keeps the bottom, so the clef grows (semitones 9 to 20)",
+  (await fullConfig()).clef.glyphs["uat-clef"].semitoneHeight === 11);
+await page.fill(".cnb-cle-range-bottom", "14");
 cfg = await fullConfig();
-const grid0 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
-check(`POSITION: anchor 20 (top staff line) — clef group at translate(12,${grid0.semiToY(20)}), glyph top ON the line (Node-side parity)`,
-  cfg.clef.glyphs["uat-clef"].anchorSemi === 20 &&
+const grid0 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW, drawn(cfg)));
+check(`POSITION: range 14 to 20 (top staff line) — clef group at translate(12,${grid0.semiToY(20)}), glyph top ON the line (Node-side parity)`,
+  cfg.clef.glyphs["uat-clef"].anchorSemi === 20 && cfg.clef.glyphs["uat-clef"].semitoneHeight === 6 &&
   await page.$eval(".cnb-pvd-preview .cnb-clef",
     (el, t) => el.getAttribute("transform") === t, `translate(12,${grid0.semiToY(20)})`));
 check("POSITION: the glyph's rendered top edge coincides with a staff line's y in PAGE coordinates (getBoundingClientRect, ±1px) — i.e. anchor 20 puts the top edge ON the semi-20 line",
@@ -290,16 +302,17 @@ check("POSITION: the glyph's rendered top edge coincides with a staff line's y i
   }));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-anchor20.png"), fullPage: true });
 
-// Then the FLOAT anchor (the s1 anchoring decision).
-await page.fill(".cnb-cle-anchor-input", "22.784");
+// Then a FLOAT range (the s1 anchoring decision): 16.784 to 22.784.
+await page.fill(".cnb-cle-range-top", "22.784");
+await page.fill(".cnb-cle-range-bottom", "16.784");
 cfg = await fullConfig();
-check("POSITION: float anchor 22.784 reaches the active definition in the shared config",
-  cfg.clef.glyphs["uat-clef"].anchorSemi === 22.784,
-  JSON.stringify(cfg.clef.glyphs["uat-clef"].anchorSemi));
+check("POSITION: the float range 16.784 to 22.784 reaches the active definition in the shared config",
+  cfg.clef.glyphs["uat-clef"].anchorSemi === 22.784 && cfg.clef.glyphs["uat-clef"].semitoneHeight === 6,
+  JSON.stringify(cfg.clef.glyphs["uat-clef"]));
 // Node-side geometry parity: the glyph's group must sit at
 // translate(paddingH, semiToY(anchorSemi)) on the same grid the preview
 // creates for the full row.
-const grid1 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
+const grid1 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW, drawn(cfg)));
 const expectedY1 = grid1.semiToY(22.784);
 check(`POSITION: the rendered clef group sits at translate(12,${expectedY1}) (Node-side CNBGrid.semiToY parity)`,
   await page.$eval(".cnb-pvd-preview .cnb-clef",
@@ -311,7 +324,7 @@ cfg = await fullConfig();
 check("POSITION: gutter padding 20 reaches the shared config",
   cfg.clef.gutter.paddingH === 20, JSON.stringify(cfg.clef.gutter));
 const expectedGutter1 = CNBClef.gutterWidth(drawn(cfg), drawn(cfg).display.pxPerSemi);
-const grid2 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW));
+const grid2 = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW, drawn(cfg)));
 check(`POSITION: gutter column resized to ${expectedGutter1}px and the clef re-anchored at translate(20,${grid2.semiToY(22.784)})`,
   await page.$eval(".cnb-pvd-preview .clef-col",
     (el, w) => el.style.width === w + "px", expectedGutter1) &&
@@ -355,12 +368,13 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check("LOAD: the clef editor re-seeded from the loaded config (enabled checked, uat-clef selected, anchor 22.784, gutter 20)",
+check("LOAD: the clef editor re-seeded from the loaded config (enabled checked, uat-clef selected, range 16.784 to 22.784, gutter 20)",
   await page.evaluate(() =>
     document.querySelector(".cnb-cle-enable-check").checked &&
     document.querySelector('.cnb-cle-glyph-option[data-glyph-name="uat-clef"]')
       .classList.contains("selected") &&
-    document.querySelector(".cnb-cle-anchor-input").value === "22.784" &&
+    document.querySelector(".cnb-cle-range-top").value === "22.784" &&
+    document.querySelector(".cnb-cle-range-bottom").value === "16.784" &&
     document.querySelector(".cnb-cle-gutter-input").value === "20"));
 check("LOAD: the preview still renders the positioned clef gutter",
   (await clefColCount()) === 1 &&
@@ -398,7 +412,99 @@ check("EXPORT: valid badge shown, no error rows",
     document.querySelectorAll(".cnb-cex-verror").length === 0));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-exported.png"), fullPage: true });
 
-// ── STEP 7: no errors ────────────────────────────────────────────────────────
+// ── STEP 7: the clefs to choose from (session 45) ───────────────────────────
+/** Export through the page's own button, as a designer does. */
+async function downloadLy() {
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click("#export-ly")]);
+  const file = path.join(SHOT_DIR, "uat-045-exported.ly");
+  await download.saveAs(file);
+  return readFile(file, "utf8");
+}
+
+await page.click('.cnb-cle-choice[data-clef="dozenal"]');
+cfg = await fullConfig();
+check("CHOOSE: Dozenal shows the engine's dozenal clef (kind dozenal), its button marked, no range fields",
+  cfg.clef.enabled && cfg.clef.active === "dozenal" && cfg.clef.glyphs.dozenal.kind === "dozenal" &&
+  await page.evaluate(() =>
+    document.querySelector('.cnb-cle-choice[data-clef="dozenal"]').classList.contains("on") &&
+    !document.querySelector(".cnb-cle-range-top") && !!document.querySelector(".cnb-cle-dozenal-note")),
+  JSON.stringify(cfg.clef.glyphs.dozenal));
+const dozenalGrid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW, drawn(cfg)));
+const dozenalSpace = CNBClef.staffSpacePx(drawn(cfg), drawn(cfg).display.pxPerSemi);
+check("CHOOSE: the canvas draws the numeral 50 on the middle line (two digit paths, Node-side transform parity)",
+  await page.$eval(".cnb-pvd-preview .cnb-clef", (el, t) =>
+    el.getAttribute("transform") === t && el.querySelectorAll("path").length === 2 &&
+    el.querySelector("path").getAttribute("d").startsWith("M535 234"),
+    `translate(20,${dozenalGrid.semiToY(cfg.staff.midpoint)}) scale(${dozenalSpace})`));
+let ly = await downloadLy();
+check("CHOOSE: the export shows the dozenal clef ('dozenal) and registers nothing",
+  ly.includes("#(set! cnb:clef-style 'dozenal)") && !ly.includes("cnb:register-clef!") &&
+  ly === CNBLilypond.generate(cfg));
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-045-dozenal.png"), fullPage: true });
+
+for (const name of ["treble", "bass", "alto"]) {
+  const before = await fullConfig();
+  await page.click(`.cnb-cle-choice[data-clef="${name}"]`);
+  cfg = await fullConfig();
+  const want = CNBBuiltinClefs.definition(before, name);
+  const def = cfg.clef.glyphs[name];
+  check(`CHOOSE: ${name} adds LilyPond's glyph placed on its pitch (top ${want.anchorSemi}, ${want.semitoneHeight} semitones tall)`,
+    cfg.clef.active === name && def && def.anchorSemi === want.anchorSemi &&
+    def.semitoneHeight === want.semitoneHeight && def.svgPath === want.svgPath,
+    JSON.stringify(def && { anchorSemi: def.anchorSemi, semitoneHeight: def.semitoneHeight }));
+  const grid = CNBGrid.create(drawn(cfg), CNBCollection.gridRange(FULL_ROW, drawn(cfg)));
+  check(`CHOOSE: the canvas draws the ${name} clef with its top at semiToY(${def.anchorSemi}), not cut off by the row`,
+    await page.$eval(".cnb-pvd-preview .cnb-clef", (el, t) => el.getAttribute("transform") === t,
+      `translate(20,${grid.semiToY(def.anchorSemi)})`) &&
+    grid.minSemi <= def.anchorSemi - def.semitoneHeight && grid.maxSemi >= def.anchorSemi);
+  ly = await downloadLy();
+  check(`CHOOSE: the export registers the ${name} glyph and shows it`,
+    ly.includes(`#(cnb:register-clef! '${name}`) && ly.includes(`#(set! cnb:clef-name '${name})`) &&
+    ly === CNBLilypond.generate(cfg));
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-045-${name}.png`), fullPage: true });
+}
+
+// ── STEP 8: move and resize the clef on the canvas (session 45) ─────────────
+await page.click('.cnb-cle-choice[data-clef="treble"]');
+check("DRAG: with the Clef section open and a glyph clef, the canvas is in clef mode and says what to do",
+  await page.evaluate(() =>
+    document.querySelector(".cnb-preview-display").classList.contains("cnb-pvd-clef-mode") &&
+    document.querySelector(".cnb-pvd-pitch-hint").textContent.startsWith("Drag the clef up or down")));
+const step = drawn(await fullConfig()).display.pxPerSemi;
+const start = (await fullConfig()).clef.glyphs.treble;
+const glyphBox = await page.locator(".cnb-pvd-preview .cnb-clef path").first().boundingBox();
+await page.mouse.move(glyphBox.x + glyphBox.width / 2, glyphBox.y + glyphBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(glyphBox.x + glyphBox.width / 2, glyphBox.y + glyphBox.height / 2 - 3 * step, { steps: 5 });
+await page.mouse.up();
+cfg = await fullConfig();
+check(`DRAG: dragging the clef 3 semitones up moves it (top ${start.anchorSemi} → ${start.anchorSemi + 3}, same height)`,
+  Math.abs(cfg.clef.glyphs.treble.anchorSemi - (start.anchorSemi + 3)) < 1e-6 &&
+  Math.abs(cfg.clef.glyphs.treble.semitoneHeight - start.semitoneHeight) < 1e-6,
+  JSON.stringify(cfg.clef.glyphs.treble.anchorSemi));
+const handleBox = await page.locator(".cnb-pvd-preview .cnb-clef-resize").first().boundingBox();
+await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 2 * step, { steps: 5 });
+await page.mouse.up();
+cfg = await fullConfig();
+const resized = cfg.clef.glyphs.treble;
+check("DRAG: dragging its bottom edge 2 semitones down resizes it (the top stays, 2 semitones taller)",
+  Math.abs(resized.anchorSemi - (start.anchorSemi + 3)) < 1e-6 &&
+  Math.abs(resized.semitoneHeight - (start.semitoneHeight + 2)) < 1e-6,
+  JSON.stringify({ anchorSemi: resized.anchorSemi, semitoneHeight: resized.semitoneHeight }));
+check("DRAG: the panel's range fields show the dragged range",
+  await page.evaluate(([top, bottom]) =>
+    document.querySelector(".cnb-cle-range-top").value === String(top) &&
+    document.querySelector(".cnb-cle-range-bottom").value === String(bottom),
+    [resized.anchorSemi, Math.round((resized.anchorSemi - resized.semitoneHeight) * 1e4) / 1e4]));
+ly = await downloadLy();
+check("DRAG: the export carries the dragged range (anchor-semitones and height-semitones)",
+  ly.includes(`(cons 'anchor-semitones ${resized.anchorSemi})`) &&
+  ly.includes(`(cons 'height-semitones ${resized.semitoneHeight})`) && ly === CNBLilypond.generate(cfg));
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-045-dragged.png"), fullPage: true });
+
+// ── STEP 9: no errors ────────────────────────────────────────────────────────
 check("NO console or page errors across the whole clef flow", consoleErrors.length === 0,
   consoleErrors.join(" | "));
 

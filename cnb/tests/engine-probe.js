@@ -472,13 +472,22 @@ export function measureKeySignature(engine, ly, key) {
   });
 }
 
+/**
+ * LilyPond's options for a compile whose measurements are read from what
+ * it prints during layout: no pages are printed (session 45). Printing a
+ * PDF hands the pages to Ghostscript, which now and then fails when many
+ * compiles run at once (`gs … failed (1)`, one in 32 measured), and no
+ * probe reads the pages.
+ */
+export const NO_PAGES = ["-dno-print-pages"];
+
 /** Run LilyPond on the config and a score in a scratch directory: { error, output }. */
 function compile(engine, ly, score) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "cnb-probe-"));
   writeFileSync(path.join(dir, "config.ly"), ly, "utf8");
   writeFileSync(path.join(dir, "score.ly"), score, "utf8");
   return new Promise((resolve) => {
-    execFile(engine.lilypond, ["-I", engine.dir, "-o", path.join(dir, "out"), "score.ly"],
+    execFile(engine.lilypond, [...NO_PAGES, "-I", engine.dir, "-o", path.join(dir, "out"), "score.ly"],
       { cwd: dir, timeout: 120000, windowsHide: true },
       (error, stdout, stderr) => {
         rmSync(dir, { recursive: true, force: true });

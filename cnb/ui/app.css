@@ -135,6 +135,8 @@ summary:focus-visible, [tabindex]:focus-visible {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600;
 }
 .cnb-nre-all-pill.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+/* The clefs to choose from (session 45): the shown one marked like a pill. */
+.cnb-cle-choice.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
 /* ── Shell (§7): top bar, section list, one content column ────────────── */
 .topbar {
@@ -365,7 +367,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-cpe-engine-label { width: 170px; flex: none; }
 .cnb-pae-label { width: 240px; flex: none; color: var(--ink-2); }
 .cnb-pae-pc-name { width: 32px; flex: none; color: var(--ink-2); }
-.cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-kse-def-tonic-hint,
+.cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-cle-range-label, .cnb-cle-dozenal-note, .cnb-kse-def-tonic-hint,
 .cnb-cle-glyph-detail, .cnb-kse-style-detail {
   font-size: 12px; color: var(--ink-2);
 }
@@ -381,7 +383,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Numeric and short text fields keep a compact width. */
-.cnb-cle-anchor-input, .cnb-cle-gutter-input,
+.cnb-cle-anchor-input, .cnb-cle-range-bottom, .cnb-cle-range-top, .cnb-cle-gutter-input,
 .cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent,
 .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
 .cnb-nre-size-height, .cnb-nre-size-width, .cnb-cpe-engine-row input {
@@ -597,6 +599,12 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-chip { fill: var(--surface); stroke: var(--line); }
 .cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-label text { fill: var(--ink); }
 .cnb-pvd-pitch-mode .cnb-pvd-preview .staff-middle { stroke: var(--accent); stroke-width: 1.5; }
+/* Clef mode (session 45): the clef drags up and down, its bottom edge resizes it. */
+.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col { cursor: grab; touch-action: none; }
+.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col:active { cursor: grabbing; }
+.cnb-pvd-clef-mode .cnb-pvd-preview .cnb-clef-resize {
+  visibility: visible; fill: var(--accent); fill-opacity: .35; cursor: ns-resize;
+}
 .cnb-pvd-pitch-hint:empty { display: none; }
 .cnb-pvd-pitch-hint { font-size: 12px; color: var(--ink-2); margin-left: auto; }
 .cnb-pvd-pitch-hint:not(:empty) + .cnb-pvd-size { margin-left: var(--space-3); }

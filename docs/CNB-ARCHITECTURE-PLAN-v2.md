@@ -728,12 +728,15 @@ clef: {
   active: null,
 
   // Open-keyed map of named clef definitions (config-IO REPLACE_PATHS
-  // member, like `shapes`). Two kinds:
+  // member, like `shapes`). Three kinds:
   //   kind "glyph" — imported SVG (toolkit contract: svgPath, natural
   //                  dimensions, semitoneHeight, viewBox min offsets,
-  //                  optional pre-baked lilypondPath)
+  //                  optional pre-baked lilypondPath), or a treble, bass
+  //                  or alto clef chosen in the panel (session 45)
   //   kind "text"  — register label (octave numeral/letter) rendered as
   //                  an SVG <text> sized by textHeightSemis
+  //   kind "dozenal" — the engine's dozenal clef (session 45): no path,
+  //                  size or anchor; the engine draws and places it
   glyphs: {
     // "express-b": {
     //   displayName: "Express B Clef",
@@ -771,6 +774,23 @@ clef: {
   Module 16 (`extractClef` / `buildClefGlyph` / `parseClefSvgText`),
   reusing the toolkit `data-*` contract; stem/anchor attributes are not
   required for clefs.
+- **Clefs to choose from (session 45).** The Clef panel's buttons add a
+  clef without an import (`ui/builtin-clefs.js`): the dozenal clef, drawn
+  as the engine engraves it under the score's default treble clef (the
+  numeral 50, its digits TeX Gyre Schola Bold, GUST Font License, centred
+  on the middle line), and LilyPond's own treble, bass and alto glyphs
+  (Emmentaler `clefs.G`, `clefs.F`, `clefs.C`, SIL OFL 1.1), each with its
+  line on the pitch it marks (G, F, C) in the octave nearest
+  `staff.midpoint`, at LilyPond's size in staff spaces. The licences are in
+  `cnb/assets/fonts/`.
+- **A glyph clef's range (session 45).** A glyph clef is shown from
+  semitone `anchorSemi − semitoneHeight` to `anchorSemi`. The panel edits
+  the two ends, and with the Clef section open the canvas moves the clef
+  by a drag on it and resizes it by a drag on its bottom edge; both write
+  through `CNBClefEditor.withRange`. A card row's grid widens to hold a
+  clef that reaches past its noteheads (`CNBCollection.gridRange(pcs,
+  config)`, from `CNBClef.extent`). Text clefs keep their top field, and
+  the dozenal clef has neither.
 - **LilyPond export (session 30, LY spec 1.3.7 §5.5).** Set 009 wrote
   nothing for clefs, because the engine then had no clef hook
   (`docs/session-sets/009-custom-clefs/s1-engine-coordination.md`). Its
@@ -1484,10 +1504,14 @@ Detailed specifications deferred. Summary:
 **Module 20 — Clef Renderer** (`cnb-clef.js`, Rendering): pure
 config-in/DOM-out renderer for the `clef` config section (§4.12). API:
 `activeGlyph(config)` (resolves the active definition or null),
-`measure(def, pxPerSemi)`, `gutterWidth(config, pxPerSemi)` (0 when no
-clef renders — the collection reserves no gutter), and
-`render(svgParent, gridContext, config)` (glyph TOP edge at
-`semiToY(anchorSemi)`, left edge at `gutter.paddingH`). Integrated into
+`measure(def, pxPerSemi, staffSpacePx)` (the dozenal kind is measured in
+staff spaces), `gutterWidth(config, pxPerSemi)` (0 when no clef renders —
+the collection reserves no gutter), `staffSpacePx(config, pxPerSemi)`,
+`extent(config)` (the shown clef's top and bottom in semitones, session
+45), and `render(svgParent, gridContext, config)` (glyph TOP edge at
+`semiToY(anchorSemi)`, left edge at `gutter.paddingH`, with a hidden
+`rect.cnb-clef-resize` on a glyph's bottom edge that the editor's canvas
+shows; the dozenal numeral on the middle line). Integrated into
 Module 10 as a `div.clef-col` prepended inside `.pc-columns` behind
 `clef.enabled`; the background staff SVG spans the gutter.
 Dependencies: Module 1, Module A. Visual test page: `test-clef.html`.
@@ -1495,13 +1519,16 @@ Since session 30 Module 11 exports the clef this module draws
 (`CNBClef.activeGlyph` decides both; LY spec 1.3.7 §5.5).
 
 **Module 21 — Clef Editor** (`ui/clef-editor.js`, UI): edits the `clef`
-section — enable toggle, clef glyph import (wraps Module 16's
-`parseClefSvgText`), glyph selection, the active definition's
-anchor-semitone control (float, step "any"), and gutter sizing. Same
-editor contract as Modules 12–17: property-based event wiring
-(Node-testable `render()`), pure `buildClef` / `applyToConfig` /
-`stateFromConfig` builders, Module A validation pass-through,
-`onChange({ clef }, state)`. Dependencies: Module A, Module 16.
+section — enable toggle, the Dozenal, Treble, Bass and Alto buttons
+(session 45, `ui/builtin-clefs.js`), clef glyph import (wraps Module 16's
+`parseClefSvgText`), glyph selection, a glyph clef's range ("Shown from
+semitone … to …", through the pure `withRange(clef, top, bottom)`, which
+the canvas drag also uses) or a text clef's anchor-semitone control
+(float, step "any"), and gutter sizing. Same editor contract as Modules
+12–17: property-based event wiring (Node-testable `render()`), pure
+`buildClef` / `applyToConfig` / `stateFromConfig` builders, Module A
+validation pass-through, `onChange({ clef }, state)`. Dependencies:
+Module A, Module 16, the built-in clefs.
 
 ---
 
@@ -1721,6 +1748,7 @@ cnb/
 │
 ├── ui/                          (Phase 5)
 │   ├── colour-sets.js           (session 37; the palette editor retired)
+│   ├── builtin-clefs.js         (session 45; the clefs the Clef panel offers)
 │   ├── staff-rule-editor.js
 │   ├── notehead-rule-editor.js
 │   ├── common-props-editor.js
@@ -1733,7 +1761,7 @@ cnb/
 │
 ├── assets/
 │   ├── shapes/                  Built-in SVG shape files
-│   └── fonts/                   The Oswald label font
+│   └── fonts/                   The Oswald label font; the clef glyphs' licences
 │
 └── index.html                   Application entry point (Phase 6)
 ```

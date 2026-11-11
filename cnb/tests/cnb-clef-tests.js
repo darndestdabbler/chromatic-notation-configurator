@@ -73,6 +73,16 @@ function clefConfig(glyphOverrides = {}, clefOverrides = {}) {
   return config;
 }
 
+/** The engine's dozenal clef (session 45). */
+const DOZENAL = { kind: "dozenal", displayName: "Dozenal" };
+
+/** Default config showing the dozenal clef. */
+function dozenalConfig() {
+  const config = CNBConfig.createDefault();
+  config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: { ...DOZENAL } } };
+  return config;
+}
+
 // ── Minimal SVG document stub for importer tests ─────────────────────────────
 
 function stubEl(attrs) {
@@ -141,6 +151,65 @@ export const tests = [
       approx(CNBClef.gutterWidth(clefConfig(), 16), 32 + 24, "enabled → glyph + padding");
     }},
 
+  // ── The dozenal clef (session 45) ──────────────────────────────────────
+
+  { name: "measure: the dozenal numeral is 3 staff spaces tall and two half-width digits wide", fn: () => {
+      // The left digit's ink, 722 font units, is made 3 staff spaces tall;
+      // each digit's advance (574 units) is drawn at half that scale.
+      const m = CNBClef.measure(DOZENAL, 16, 64);
+      approx(m.pixelHeight, 3 * 64, "3 staff spaces");
+      approx(m.pixelWidth, 574 * 3 / 722 * 64, "advance × scale", 1e-9);
+      approx(m.pixelWidth / 64, 2.385, "about 2.385 staff spaces (the engine's 2.395, measured)", 0.0005);
+    }},
+
+  { name: "gutterWidth: the dozenal clef is measured at the staff's staff space", fn: () => {
+      const config = dozenalConfig();
+      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 64 + 24, "sps 4 → 64 px a staff space");
+      config.staff.semitonesPerStaffSpace = 3;
+      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 48 + 24, "sps 3 → 48 px");
+    }},
+
+  { name: "render: the dozenal clef draws 5 and 0 on the middle line, as the engine engraves 50", fn: () => {
+      withSvgStub(svg => {
+        const config = dozenalConfig();
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const g = CNBClef.render(svg, grid, config);
+        // midpoint 12 → y = (28 − 12) × 16 = 256; a staff space is 64 px.
+        eq(g.getAttribute("transform"), "translate(12,256) scale(64)", "middle line, staff-space units");
+        eq(g.children.length, 2, "two digits");
+        const [five, zero] = g.children;
+        assert(five.getAttribute("d").startsWith("M535 234"), "the left digit is 5");
+        assert(zero.getAttribute("d").startsWith("M546 342"), "the right digit is 0");
+        const s = 3 / 722;
+        eq(five.getAttribute("transform"), `translate(0,1.5) scale(${s / 2},${-s})`, "3 staff spaces tall, half across, 1.5 down");
+        eq(zero.getAttribute("transform"), `translate(${574 * s / 2},1) scale(${s / 2},${-s * 2 / 3})`, "2/3 tall, after the 5, 1 down");
+        eq(five.getAttribute("fill"), "#000000", "black, as engraved");
+      });
+    }},
+
+  { name: "extent: the dozenal numeral spans 1.4418 above to 1.5582 below the middle line", fn: () => {
+      const config = dozenalConfig();
+      const e = CNBClef.extent(config);
+      approx(e.top, 12 + 1.4418 * 4, "top (engine: 1.44181 staff spaces)", 0.001);
+      approx(e.bottom, 12 - 1.5582 * 4, "bottom (engine: −1.55819)", 0.001);
+      config.staff.semitonesPerStaffSpace = 3;
+      config.staff.midpoint = 10;
+      approx(CNBClef.extent(config).top, 10 + 1.4418 * 3, "follows the staff's middle and spacing", 0.001);
+    }},
+
+  { name: "extent: a glyph's and a text clef's top and bottom; null when no clef shows", fn: () => {
+      const glyph = CNBClef.extent(clefConfig({ anchorSemi: 20.5 }));
+      eq(glyph.top, 20.5, "glyph top = anchorSemi");
+      eq(glyph.bottom, 14.5, "glyph bottom = anchorSemi − semitoneHeight");
+      const text = CNBClef.extent(clefConfig({ kind: "text", text: "4", textHeightSemis: 5, anchorSemi: 18 }));
+      eq(text.top, 18, "text top");
+      eq(text.bottom, 13, "text bottom");
+      eq(CNBClef.extent(CNBConfig.createDefault()), null, "the default config shows none");
+      const off = clefConfig();
+      off.clef.enabled = false;
+      eq(CNBClef.extent(off), null, "disabled");
+    }},
+
   // ── CNBClef.render ─────────────────────────────────────────────────────
 
   { name: "render: nothing rendered and null returned when no clef is active", fn: () => {
@@ -163,6 +232,33 @@ export const tests = [
         eq(pathEl.tag, "path", "path child");
         eq(pathEl.getAttribute("d"), TEST_GLYPH.svgPath, "path data");
         eq(pathEl.getAttribute("transform"), "scale(0.32) translate(0,0)", "scale + viewBox shift");
+      });
+    }},
+
+  { name: "render: a glyph clef draws a hidden resize handle along its bottom edge (session 45)", fn: () => {
+      withSvgStub(svg => {
+        const config = clefConfig();
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const g = CNBClef.render(svg, grid, config);
+        const handle = g.children.find(c => c.getAttribute("class") === "cnb-clef-resize");
+        assert(handle, "a handle");
+        eq(handle.tag, "rect", "a rect");
+        // 6 semitones × 16 px = 96 px tall, 32 px wide; the handle 8 px, centred on the bottom.
+        eq(handle.getAttribute("y"), "92", "centred on the bottom edge");
+        eq(handle.getAttribute("height"), "8", "8 px tall");
+        eq(handle.getAttribute("width"), "32", "as wide as the clef");
+        eq(handle.getAttribute("fill"), "none", "unpainted");
+        eq(handle.getAttribute("visibility"), "hidden", "hidden until the canvas shows it");
+      });
+      withSvgStub(svg => {
+        const config = clefConfig({ kind: "text", text: "4", textHeightSemis: 5 });
+        const g = CNBClef.render(svg, CNBGrid.create(config, { minSemi: -4, maxSemi: 28 }), config);
+        assert(!g.children.some(c => c.getAttribute("class") === "cnb-clef-resize"), "no handle on a text clef");
+      });
+      withSvgStub(svg => {
+        const config = dozenalConfig();
+        const g = CNBClef.render(svg, CNBGrid.create(config, { minSemi: -4, maxSemi: 28 }), config);
+        assert(!g.children.some(c => c.getAttribute("class") === "cnb-clef-resize"), "none on the dozenal clef");
       });
     }},
 

@@ -94,7 +94,7 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const space = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) });
   const clef = CNBClef.activeGlyph(config);
   const left = clef
-    ? Math.max(0, SPACE_FROM_CLEF * space - CNBClef.measure(clef.def, pxPerSemi).pixelWidth -
+    ? Math.max(0, SPACE_FROM_CLEF * space - CNBClef.measure(clef.def, pxPerSemi, space).pixelWidth -
         (config.clef?.gutter?.paddingH ?? 12))
     : SPACE_BEFORE * space;
   // Without the first card, a column for a notehead the size of the marks

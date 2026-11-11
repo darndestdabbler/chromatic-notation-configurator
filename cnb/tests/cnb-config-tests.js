@@ -538,6 +538,16 @@ export const tests = [
   { name: "clef: validate — unknown kind is an error", fn: () => {
     const result = CNBConfig.validate(clefConfig({ kind: "hologram" }));
     assert(result.errors.some(e => e.includes('unknown kind "hologram"')), "error emitted");
+    assert(result.errors.some(e => e.includes('"dozenal"')), "the message names the dozenal kind");
+  }},
+
+  { name: "clef: validate — the dozenal kind needs no path, size or anchor", fn: () => {
+    const config = CNBConfig.createDefault();
+    config.clef = { ...config.clef, enabled: true, active: "dozenal",
+      glyphs: { dozenal: { kind: "dozenal", displayName: "Dozenal" } } };
+    const result = CNBConfig.validate(config);
+    assert(result.valid, "dozenal clef valid: " + result.errors.join("; "));
+    assert(!result.warnings.some(w => /clef/i.test(w)), "no clef warnings: " + result.warnings.join("; "));
   }},
 
   { name: "clef: validate — wrong-typed clef.glyphs reports errors instead of throwing", fn: () => {

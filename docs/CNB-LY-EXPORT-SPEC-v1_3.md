@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.12 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves)
-**Date:** November 10, 2026 (1.3.12); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.13 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from)
+**Date:** November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -61,7 +61,9 @@ config with colours registers them without the accessible branch. 1.3.11,
 for both: an anchor is the stem's centre, §4.4c. Every config with stems
 exports new attachment values. 1.3.12, for both: the breve as tied
 semibreves, §4.1d. The export text is unchanged; engine 1.3.0 engraves a
-repeat-mode breve differently.)*
+repeat-mode breve differently. 1.3.13, for both: clefs to choose from,
+§5.5a. Only a config showing the dozenal clef exports anything new,
+`'dozenal`.)*
 
 Summary of additions:
 
@@ -75,6 +77,7 @@ Summary of additions:
 | Ledger lines and key-scoped rules (1.3.9, linear and axis alike) | the engine's own ledgers; Section C resolved with no key | `cnb:ledgers-by-semitone` and NoteHead overrides (§5.7); Section C dispatch on the key (§6.4) |
 | Section A5 colours (1.3.10, linear and axis alike) | palette colours, with a `cnb:use-accessible-colors` branch | each colour the noteheads use, once, named from its hex; no branch (§4.5a) |
 | The breve in repeat mode (1.3.12, linear and axis alike) | 4 heads, as a semibreve | two semibreve groups, tied, as engine 1.3.0 engraves it; export text unchanged (§4.1d) |
+| Clefs to choose from (1.3.13, linear and axis alike) | glyph and text clefs | the dozenal clef as `cnb:clef-style 'dozenal`; treble, bass and alto as registered glyphs (§5.5a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -669,14 +672,14 @@ when `clef.enabled` is on and `clef.active` names a definition
 
 **Decision: a config with no clef shown exports `'none`.** That is the
 preview's answer, and it includes the default config, whose clef is off.
-The Configurator has no kind for the engine's dozenal clef, so it never
-asks for it; a score that wants it sets `cnb:clef-style 'dozenal` after
-`\include`. So `cnb:clef-style` is always written, in Section B after the
-staff geometry (and the pitch axis, when one is enabled):
+The dozenal clef is written only when a config shows it (since 1.3.13, the
+`dozenal` kind, §5.5a). So `cnb:clef-style` is always written, in Section B
+after the staff geometry (and the pitch axis, when one is enabled):
 
 | Config | Section B | Section A |
 |---|---|---|
 | no clef shown | `#(set! cnb:clef-style 'none)` | — |
+| `kind: "dozenal"` (1.3.13) | `'dozenal`, gutter | — |
 | `kind: "glyph"` | `'custom`, `cnb:clef-name '<slug of the name>`, gutter | A6: `cnb:register-clef!` |
 | `kind: "text"` | `'text`, `cnb:clef-text`, `cnb:clef-size-semitones`, gutter | — |
 
@@ -741,6 +744,47 @@ measured through `cnb/tests/engine-probe.js`): a glyph clef on the Twinline
 axis with the fractional anchor 13.5 engraves its top and bottom edges at
 the preview's positions; a text clef engraves at its preview height; the
 default config engraves no clef.
+
+### 5.5a Clefs to choose from (new in 1.3.13, linear and axis configs alike)
+
+The Clef panel offers four clefs (session 45): the engine's dozenal clef
+and LilyPond's treble, bass and alto clefs (`cnb/ui/builtin-clefs.js`).
+
+- **The dozenal clef** is the clef kind `"dozenal"`, a definition with no
+  path, size or anchor. It exports `#(set! cnb:clef-style 'dozenal)` and the
+  gutter, and registers nothing, so the engine draws its own register
+  numeral at its own size and place: `cnb:clef-size-semitones` is not
+  written. The engine computes the numeral from the score's `\clef`, which
+  is not part of the config; the preview draws the treble clef's, 50, the
+  engine's numeral when the score sets no clef. Its geometry, from
+  `cnb:build-dozenal-clef-stencil`: two bold digits, the left one's ink 3
+  staff spaces tall and drawn at half width, the right one 2/3 as tall, the
+  left reaching from 1.5582 below the middle line to 1.4418 above it, 2.385
+  staff spaces wide. The preview draws TeX Gyre Schola Bold's digits, whose
+  metrics and outlines match C059 Bold, the bold serif LilyPond 2.24 uses.
+- **The treble, bass and alto clefs** are glyph clefs (`kind: "glyph"`),
+  exported through A6 `cnb:register-clef!` like an imported one: Emmentaler's
+  `clefs.G`, `clefs.F` and `clefs.C` (SIL OFL 1.1), their SVG paths converted
+  as §5.5 describes. Each is placed with its line on the pitch it marks (G,
+  F or C, in the octave nearest `staff.midpoint`), at LilyPond's size in
+  staff spaces: 7.319 for treble, 3.104 for bass, 4 for alto.
+- **A glyph clef's range.** The panel's "Shown from semitone … to …" fields
+  and the canvas drag set a glyph clef's top (`anchorSemi`) and height
+  (`semitoneHeight`, top − bottom), which `anchor-semitones` and
+  `height-semitones` already carry, so the clef engraves over the semitones
+  the preview draws it over. Nothing new is written for it.
+
+Export output is unchanged for every config that does not show the dozenal
+clef; the five export baselines are byte-identical.
+
+**Verified** by engine round trips (`cnb/tests/cnb-lilypond-tests.js`,
+measured through `cnb/tests/engine-probe.js`). On the default staff, in
+staff spaces from the middle line: the dozenal clef engraves from −1.5582
+to 1.4418, as the preview draws it, on Kite's staff too, and 2.3952 wide
+against the preview's 2.385; the treble clef as placed engraves from −3.79
+to 3.529, and moved and resized to semitones 4.25–22.5, from −1.9375 to
+2.625, both exactly the preview's. The bass and alto clefs match the same
+way.
 
 ### 5.6 The key signature (new in 1.3.7, linear and axis configs alike)
 
@@ -1004,7 +1048,7 @@ engine round-trip test as evidence.
 |----------|------|---------|----------|
 | `cnb:get-pitch-staff-position` | `#f` or procedure `(semitone) → half-staff-spaces` | `#f` | Only when `pitchAxis.enabled` — **new v1.3 (E13-1)** |
 | `cnb:keysig-tonic-octave` | `#f` or integer | `#f` | When `pitchAxis.enabled` (§5.4d) — **new 1.3.1**; on a linear staff for an explicit `tonicOctave` with the signature on (§5.6) — **1.3.7** |
-| `cnb:clef-style` | `'dozenal` \| `'none` \| `'custom` \| `'text` | `'dozenal` | Always (§5.5) — **new 1.3.7** |
+| `cnb:clef-style` | `'dozenal` \| `'none` \| `'custom` \| `'text` | `'dozenal` | Always (§5.5) — **new 1.3.7**; `'dozenal` for the dozenal clef (§5.5a) — **1.3.13** |
 | `cnb:clef-name` | symbol | `#f` | For a glyph clef (§5.5) — **new 1.3.7** |
 | `cnb:clef-text` | markup | `""` | For a text clef (§5.5) — **new 1.3.7** |
 | `cnb:clef-size-semitones` | number | `#f` | For a text clef (§5.5) — **new 1.3.7** |
@@ -1027,7 +1071,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.12** | **Nov 10, 2026** | **The breve as tied semibreves (session 44, engine session 25): new §4.1d. Since engine 1.3.0 a repeat-mode breve engraves as two semibreve groups 1 staff space apart, joined by LilyPond's `make-tie-stencil` in black, and the preview draws the same. The breve stays one note. §5.2a's repeat counts follow. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the breve to 0.001 staff spaces.** |
+| **1.3.13** | **Nov 10, 2026** | **Clefs to choose from (session 45): new §5.5a. The dozenal clef, kind `"dozenal"`, exports `cnb:clef-style 'dozenal` and its gutter and registers nothing; the preview draws the engine's numeral 50. LilyPond's treble, bass and alto clefs (Emmentaler, SIL OFL) are glyph clefs placed on the pitch each marks, exported through `cnb:register-clef!`. A glyph clef's range, set in the panel or by dragging it on the canvas, is its top and height. Output changes only for a config showing the dozenal clef; the five export baselines are byte-identical. Engine round trips hold the dozenal and a moved and resized treble clef to the preview.** |
+| 1.3.12 | Nov 10, 2026 | The breve as tied semibreves (session 44, engine session 25): new §4.1d. Since engine 1.3.0 a repeat-mode breve engraves as two semibreve groups 1 staff space apart, joined by LilyPond's `make-tie-stencil` in black, and the preview draws the same. The breve stays one note. §5.2a's repeat counts follow. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the breve to 0.001 staff spaces. |
 | 1.3.11 | Nov 9, 2026 | Stems where the notehead's SVG puts them (session 40): new §4.4c. A stem anchor is the stem's centre, as the SVG's stem rect draws it, so the Kite 4-369 and 45deg-369 stems are centred. Each `cnb:register-attachment!` point's x is the anchor moved half the engine's 0.13-staff-space stem outward, relative to the registered extent; a sized variant's points are computed at its scale. The default notehead's anchors move to ±146.426 SVG units, so on its staff the up stem's right edge and the down stem's left edge are on its sides (`(1 . 0.3157)`); each gallery file sets them for its own staff. Output CHANGES for every config with stems; the five export baselines were regenerated. |
 | 1.3.10 | Nov 8, 2026 | Colours on the noteheads (session 37): new §4.5a. A config has no palette: a notehead's colour is its rules' `apply.color`. Section A5 registers each colour the resolved noteheads use, once, named from its hex (`nearestColorName` → `toSchemeSymbol`), with no `cnb:use-accessible-colors` branch; the engine is unchanged and the variable is never set. A saved palette is moved onto the noteheads on load (`CNBConfig.paletteToRules`). §5.2a: nothing is preview-only, and the header loses its palette and preview-only lines. `palette` and `engine.useAccessibleColors` are retired. Output CHANGES for every config (the header) and every config with colours (A5, and the symbol names where a palette had named them); the five export baselines were regenerated. |
 | 1.3.9 | Nov 7, 2026 | Ledger lines and key-scoped rules (session 34): new §5.7 and §6.4. Section B writes `cnb:ledgers-by-semitone`, the preview's ledgers for every pitch it draws, and a `\layout` block gives each notehead its pitch's entry through `NoteHead.ledger-positions` / `no-ledgers`, so in-gap ledgers engrave; it is keyed by pitch because the engine rounds the position its ledger rule sees. Section C dispatches on the key's sorted pitch classes, one branch per key a rule names, with keys on. §5.2a: the only preview-only setting is the colour-blind toggle; the preview draws stems, staff lines, ledgers, the key signature's spacing and the repeat counts as the engine does, and their settings are retired. §8 check 10 is retired. Output CHANGES for every config (the ledger block and the header); the five export baselines were regenerated. |

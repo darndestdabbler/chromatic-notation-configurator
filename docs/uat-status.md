@@ -21,6 +21,49 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Clefs — 2026-11-10 (session 45)
+
+Rough edge 6 of the session-42 try-out (below), as planned.
+
+- **Clefs to choose from.** The Clef panel has four buttons, Dozenal,
+  Treble, Bass and Alto. Each adds its clef when the config has none of
+  that name, shows it and turns the clef on; one already there keeps its
+  placement.
+- **The dozenal clef is drawn.** The canvas draws the engine's numeral as
+  the engine engraves it under the score's default treble clef, 50: two
+  bold digits centred on the middle line, the 5 three staff spaces tall at
+  half width, the 0 two thirds as tall. The export writes
+  `cnb:clef-style 'dozenal`, so the engine draws its own, from the score's
+  clef. The panel says so; the dozenal clef has no size or place to set.
+- **Treble, bass and alto** are LilyPond's own glyphs (Emmentaler, SIL
+  OFL), each with its line on the pitch it marks, G, F or C, in the octave
+  nearest the middle of the staff, at LilyPond's size. On the default 4-8
+  staff the alto clef spans the staff exactly, the treble clef's curl sits
+  on G just below the G♯ line, and the bass clef's dots straddle F above
+  the middle.
+- **A clef is shown over a range of semitones.** A glyph clef, imported or
+  chosen, has "Shown from semitone … to …" fields. With the Clef section
+  open, dragging the clef on the canvas moves it, and dragging the bar on
+  its bottom edge makes it taller or shorter. A row grows to hold a clef
+  that reaches past its noteheads instead of cutting it off.
+- **The engraving matches.** Engine round trips measure the dozenal clef,
+  each standard clef as placed, and a treble clef moved and resized,
+  engraving over exactly the semitones the preview draws them over
+  (`cnb/tests/cnb-lilypond-tests.js`, LY export spec 1.3.13 §5.5a).
+
+**What the UAT checks.** `uat-clef-editor.mjs` keeps its import, enable,
+save, load and export flow, now placing the imported clef through its range
+fields, then chooses each of the four clefs and checks the canvas draws it
+where the Node-side renderer puts it and the downloaded export carries it,
+and drags the treble clef 3 semitones up and its bottom edge 2 semitones
+down on the canvas, checking the range written, the fields and the export:
+**pass, 46/46 checks**. `uat-app-layout.mjs`: **pass, 79/79 checks**. The
+full suite runs at the close as the run of record.
+
+**The operator's try-out** of the clefs is still to come: they try them
+with sessions 43 and 44 before declaring the UI stable, in the session
+before the 1.1.0 release.
+
 ## Nudges you can see and drag — 2026-11-10 (session 43)
 
 Rough edge 5 of the session-42 try-out (below), as planned.

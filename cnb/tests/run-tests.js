@@ -47,6 +47,7 @@ const TEST_FILES = [
   "./cnb-notehead-inference-tests.js",
   "./cnb-colour-sets-tests.js",
   "./cnb-builtin-shapes-tests.js",
+  "./cnb-builtin-clefs-tests.js",
   "./cnb-notehead-panel-tests.js",
   "./cnb-pitch-model-tests.js",
   "./cnb-pitch-panel-tests.js",
