@@ -1,0 +1,816 @@
+# Transcript: full test suite after verification round-2 remediation (strict-boolean gate)
+# Date: 2026-07-12T20:17:13-04:00
+$ node cnb/tests/run-tests.js
+
+cnb-music-tests (46 tests)
+  ✓ pitchClass(0) = 0
+  ✓ pitchClass(11) = 11
+  ✓ pitchClass(12) = 0
+  ✓ pitchClass(13) = 1
+  ✓ pitchClass(23) = 11
+  ✓ pitchClass(24) = 0
+  ✓ pitchClass(-1) = 11
+  ✓ pitchClass(-12) = 0
+  ✓ pitchClass(-13) = 11
+  ✓ octave(0) = 0
+  ✓ octave(11) = 0
+  ✓ octave(12) = 1
+  ✓ octave(23) = 1
+  ✓ octave(24) = 2
+  ✓ octave(-1) = -1
+  ✓ octave(-12) = -1
+  ✓ octave(-13) = -2
+  ✓ absoluteSemi(0, 0) = 0
+  ✓ absoluteSemi(0, 1) = 12
+  ✓ absoluteSemi(11, 0) = 11
+  ✓ absoluteSemi(0, 2) = 24
+  ✓ absoluteSemi(5, 1) = 17
+  ✓ pcLabel(0)  = C natural
+  ✓ pcLabel(1)  = C sharp
+  ✓ pcLabel(2)  = D natural
+  ✓ pcLabel(3)  = D sharp
+  ✓ pcLabel(4)  = E natural
+  ✓ pcLabel(5)  = F natural
+  ✓ pcLabel(6)  = F sharp
+  ✓ pcLabel(7)  = G natural
+  ✓ pcLabel(8)  = G sharp
+  ✓ pcLabel(9)  = A natural
+  ✓ pcLabel(10) = A sharp
+  ✓ pcLabel(11) = B natural
+  ✓ pcLabel returns a copy (no aliasing)
+  ✓ chromaticLabels() has 13 entries
+  ✓ chromaticLabels()[0] = C natural
+  ✓ chromaticLabels()[1] = C sharp
+  ✓ chromaticLabels()[12] = C natural (upper C)
+  ✓ chromaticLabels()[11] = B natural
+  ✓ ledgerOctaveRegion(0) = 0
+  ✓ ledgerOctaveRegion(11) = 0
+  ✓ ledgerOctaveRegion(12) = 1
+  ✓ ledgerOctaveRegion(23) = 1
+  ✓ ledgerOctaveRegion(24) = 2
+  ✓ ledgerOctaveRegion(-1) = -1
+
+cnb-config-tests (90 tests)
+  ✓ VERSION is '1.0'
+  ✓ createDefault() returns an object
+  ✓ createDefault() has version '1.0'
+  ✓ createDefault() has crotchet-minim shape
+  ✓ createDefault() has staff pattern [4, 8]
+  ✓ createDefault() has 2 noteheadRules
+  ✓ createDefault() returns a fresh copy each call
+  ✓ createDefault() passes validate()
+  ✓ validate: missing shape reference → error
+  ✓ validate: staff pattern < 2 → error
+  ✓ validate: fileSuffix without hyphen → error
+  ✓ validate: fileSuffix empty string → no error
+  ✓ validate: bad hex in rule color → error
+  ✓ validate: PC not covered by any rule → error
+  ✓ validate: bad hex in palette → error
+  ✓ validate: empty notationLabel → warning
+  ✓ validate: shape with lilypondPath:null → warning
+  ✓ validate: CB-safe palette shorter than primary → warning
+  ✓ merge: empty partial over default = structurally equal to default
+  ✓ merge: changes pxPerSemi without affecting other display fields
+  ✓ merge: merging new noteheadRules replaces the array entirely
+  ✓ merge: nested staff.lineDefaults preserves unmodified sibling fields
+  ✓ merge: does not mutate base
+  ✓ merge: does not mutate partial
+  ✓ clone: mutating clone does not affect original
+  ✓ clone: deeply nested objects are independent
+  ✓ clone: arrays are independent
+  ✓ resolveNotehead: PC 0 → solid crotchet-minim (default 4-8 config)
+  ✓ resolveNotehead: PC 1 (C♯) → hollow crotchet-minim
+  ✓ resolveNotehead: PC 3, 6, 8, 10 are hollow (default 4-8)
+  ✓ resolveNotehead: PC 0, 2, 4, 5, 7, 9, 11 are solid (default 4-8)
+  ✓ resolveNotehead: higher priority wins over lower
+  ✓ resolveNotehead: partial apply inherits other fields
+  ✓ resolveNotehead: duration matching (rule for crotchet only)
+  ✓ resolveNotehead: 'all' match.pitchClasses matches every PC
+  ✓ resolveColor: no palette → null
+  ✓ resolveColor: with primary palette returns correct hex
+  ✓ resolveColor: useCBSafe returns CB-safe hex
+  ✓ resolveColor: PC not in palette → null
+  ✓ pctToPx(20, 16) = 3.2
+  ✓ pctToPx(100, 16) = 16
+  ✓ pctToPx(0, 16) = 0
+  ✓ pctToPx(40, 20) = 8
+  ✓ pctToPx(26, 16) = 4.16
+  ✓ clef: default config has clef section — disabled, no active, empty glyphs, paddingH 12
+  ✓ clef: merge — config predating the clef section gains the default-off clef
+  ✓ clef: validate — default (disabled) config produces no clef errors or warnings
+  ✓ clef: validate — enabled without active is an error
+  ✓ clef: validate — active referencing an unknown glyph is an error
+  ✓ clef: validate — well-formed enabled clef adds no errors
+  ✓ clef: validate — FLOAT anchorSemi is accepted (s1 anchoring decision)
+  ✓ clef: validate — missing/non-numeric anchorSemi is an error
+  ✓ clef: validate — anchorSemi far outside typical range is a warning, not an error
+  ✓ clef: validate — glyph kind missing svgPath / dimensions is an error
+  ✓ clef: validate — text kind requires text and positive textHeightSemis
+  ✓ clef: validate — unknown kind is an error
+  ✓ clef: validate — wrong-typed clef.glyphs reports errors instead of throwing
+  ✓ clef: validate — null/primitive glyph definition reports an error instead of throwing
+  ✓ clef: validate — malformed clef section (non-object) is treated as absent, no throw
+  ✓ clef: validate — non-string active (enabled) reports the no-glyph error, no throw
+  ✓ clef: validate — gutter.paddingH must be a finite non-negative number when enabled
+  ✓ keysig: default config has keySignature section — disabled, notehead-chords style, scale-from-tonic placement, gold separator
+  ✓ keysig: merge — config predating the keySignature section gains the default-off subsection
+  ✓ keysig: validate — default (disabled) config produces no keysig errors or warnings
+  ✓ keysig: validate — well-formed enabled key signature adds no errors
+  ✓ keysig: validate — enabled while keys.enabled is false is a warning (E2 gate)
+  ✓ keysig: validate — notehead-chords passes; unknown style is an error; absent falls back to the default
+  ✓ keysig: validate — placement.rule must be a known rule; absent placement/rule defaults
+  ✓ keysig: validate — placement.tonicOctave must be an integer or null
+  ✓ keysig: validate — separator color/thicknessPct/extentSemis are checked
+  ✓ keysig: validate — gutter.paddingH must be a finite non-negative number when enabled
+  ✓ keysig: validate — key definitions are checked when the signature is enabled
+  ✓ keysig: validate — tonic fallback warning fires only when neither tonicPc nor a parsable name exists
+  ✓ keysig: validate — wrong-typed keys/keySignature sections report or ignore, never throw
+  ✓ pitchAxis: createDefault() gains NO pitchAxis section (design §1.3 — absent is the default state)
+  ✓ pitchAxis: validate — a disabled or absent section adds zero checks (output identical to the default config's)
+  ✓ pitchAxis: validate — malformed sections report errors, never throw (type-safe posture)
+  ✓ pitchAxis: validate — the design §1.1 Twinline config passes with no pitch-axis errors or warnings
+  ✓ pitchAxis PA-1: unknown kind is a blocking error
+  ✓ pitchAxis PA-2: the map must cover pc 0–11 exactly once with finite positions
+  ✓ pitchAxis PA-3/PA-4: octaveStride and axisUnitsPerStaffSpace must be finite and > 0
+  ✓ pitchAxis PA-8: non-monotonic maps are blocking errors (in-octave and cross-octave)
+  ✓ pitchAxis PA-6: staff pattern entries collapsing onto one axis position must not carry conflicting lineOverrides
+  ✓ pitchAxis PA-5: ledger templates collapsing onto one axis position must not carry conflicting lineOverrides
+  ✓ pitchAxis PA-7: apply.xOffsetStaffSpaces must be a finite number when present (enabled configs)
+  ✓ pitchAxis PA-W1: positions outside [0, octaveStride) warn (shifted map, still PA-8-legal)
+  ✓ pitchAxis PA-W3: indistinguishable shared-position pairs warn; the default sharps-hollow rule disambiguates
+  ✓ pitchAxis PA-W4: xOffsetStaffSpaces in rules warns when pitchAxis is disabled or absent (axis-gated lifecycle)
+  ✓ resolveNotehead: xOffsetStaffSpaces defaults to 0
+  ✓ resolveNotehead: xOffsetStaffSpaces merges in priority order like every other apply field
+
+cnb-pitch-axis-tests (19 tests)
+  ✓ grid invariance: the axis-disabled grid path is byte-identical to the pre-change baseline (context, semiToY, yToSemi, debug overlay)
+  ✓ export invariance: a config with a DISABLED pitchAxis section exports byte-identically to the pre-change default baseline
+  ✓ degeneracy: absent section → inactive axis with the exact identity map
+  ✓ degeneracy: enabled:false section → inactive axis
+  ✓ degeneracy: regionOfSemi matches CNBMusic.ledgerOctaveRegion on the inactive axis
+  ✓ degeneracy: distance is |a − b| on the inactive axis
+  ✓ degeneracy: semisAtPosition(p) → [p] for integer p in range, [] otherwise
+  ✓ degeneracy: an explicit ENABLED identity axis reproduces positionOfSemi(s) === s (design §1.2 degeneracy check)
+  ✓ activation: unknown kind is treated as inactive (set-010 vocabulary posture)
+  ✓ activation: structurally unsound maps are treated as inactive
+  ✓ twinline: positionOfSemi implements map[pc] + octave × stride, negative octaves included (013 spike §3.1)
+  ✓ twinline: fractional semitones interpolate linearly; shared pairs are flat
+  ✓ twinline: regionOfSemi = floor(position / stride)
+  ✓ twinline: distance is measured in axis units, not semitones
+  ✓ twinline: semisAtPosition returns candidate arrays (2 on shared positions, 1 on unshared, 0 when undeclared)
+  ✓ non-uniform 1:1 map: fractional declared positions place and invert exactly
+  ✓ boundary-equality map (PA-8 boundary, legal): candidate arrays can carry 3+ entries — pc 11 joins the next octave's shared pair
+  ✓ twinline: nearestSemisForY snaps to the nearest declared position (ties resolve upward)
+  ✓ spike reproduction: staff [2,5,8] · midpoint 7 · stride 7 · units 2 → LY positions (-3 -1 1 4 6 8), middle C → -4, midpoint → 0
+
+cnb-grid-tests (26 tests)
+  ✓ create() returns a gridContext object
+  ✓ pxPerSemi matches config.display.pxPerSemi
+  ✓ minSemi and maxSemi are stored correctly
+  ✓ totalSemiRange = maxSemi - minSemi
+  ✓ svgHeight = totalSemiRange × pxPerSemi
+  ✓ totalHeight = topLabelHeight + svgHeight + bottomLabelHeight
+  ✓ semiToY(maxSemi) = 0 (top of SVG)
+  ✓ semiToY(minSemi) = svgHeight (bottom of SVG)
+  ✓ semiToY increases as semitone decreases (higher pitch = lower Y)
+  ✓ semiToY: one semitone step = pxPerSemi pixels
+  ✓ semiToY(midpoint) = svgHeight / 2 for symmetric range
+  ✓ yToSemi(0) = maxSemi
+  ✓ yToSemi(svgHeight) = minSemi
+  ✓ semiToY and yToSemi are exact inverses for integer semitones
+  ✓ yToSemi(semiToY(s)) = s for non-integer semitone
+  ✓ topLabelHeight and bottomLabelHeight are positive numbers
+  ✓ changing pxPerSemi scales svgHeight proportionally
+  ✓ axis: disabled/absent pitchAxis exposes no axis and keeps yToSemi
+  ✓ axis: an enabled but INACTIVE section (unknown kind) falls back to the literal linear context
+  ✓ axis: enabled context exposes axis, drops yToSemi, provides yToAxis
+  ✓ axis: semiToY = (maxAxisPos − positionOfSemi) × pxPerAxisUnit; shared pairs land on one Y
+  ✓ axis: svgHeight spans axis positions, not semitones
+  ✓ axis: yToAxis inverts semiToY onto axis positions
+  ✓ axis: fractional semitones (clef-style anchors) place through interpolation
+  ✓ axis: ENABLED identity axis reproduces the linear grid's numbers (design §1.2 degeneracy check)
+  ✓ axis: debug overlay draws one line per declared axis position, labeled with all semitones mapping there
+
+cnb-staff-tests (9 tests)
+  ✓ getPositions 0-24 with 4-8 pattern returns 4,8,16,20
+  ✓ getPositions 0-24 with 3-6-9 pattern
+  ✓ getPositions 0-12 with 4-8 returns [4,8]
+  ✓ getPositions single semitone range returns that line
+  ✓ getPositions results are sorted ascending
+  ✓ getMidpoint returns config.staff.midpoint
+  ✓ default line thickness 20% of 16px semitone converts to 3.2px
+  ✓ override thickness 50% of 16px semitone converts to 8px
+  ✓ line override merges thickness only
+
+cnb-notehead-tests (5 tests)
+  ✓ measure formula with crotchet-minim shape and pxPerSemi=16
+  ✓ measure pixelHeight equals semitoneHeight × pxPerSemi
+  ✓ measure preserves the shape's natural aspect ratio
+  ✓ measure scales linearly with pxPerSemi
+  ✓ measure works for a synthetic 1-semitone shape
+
+cnb-stem-tests (14 tests)
+  ✓ direction up when average below midpoint
+  ✓ direction down when average at or above midpoint
+  ✓ direction up with 11,12 vs midpoint 12
+  ✓ geometry returns null for null anchors
+  ✓ geometry returns null for non-stem duration
+  ✓ stemX sign reflects anchor.x and direction
+  ✓ crotchet vs minim anchor selection (up)
+  ✓ crotchet vs minim anchor selection (down)
+  ✓ stem up extends above highest notehead by stemExtension notehead-heights
+  ✓ stem down extends below lowest notehead by stemExtension notehead-heights
+  ✓ anchor y offset shifts attachment point from notehead center
+  ✓ geometry returns null for a stemless shape with no anchors property
+  ✓ geometry returns null for missing anchor key
+  ✓ thickness equals pctToPx default 26,16
+
+cnb-ledger-set-tests (34 tests)
+  ✓ buildDefs expands default templates across octaves 0–2
+  ✓ buildDefs drops positions outside the range
+  ✓ buildDefs handles negative range start
+  ✓ buildDefs copies triggerPCs and triggerMode from the template
+  ✓ buildDefs attaches lineOverrides by semiWithinOctave to every octave instance
+  ✓ buildDefs drops proximity templates when proximityRule is false
+  ✓ isBetween: note at ledger, not on a staff line → true
+  ✓ isBetween: note at ledger, on a staff line → false
+  ✓ isBetween: ledger above note needs a staff line above the ledger
+  ✓ isBetween: ledger below note needs a staff line below the ledger
+  ✓ C (semi 0): C-ledger shown at semi 0
+  ✓ D (semi 2): C-ledger (0) and D-ledger (2) both shown
+  ✓ E (semi 4, on staff line): no ledgers
+  ✓ F (semi 5, inside staff): no ledgers
+  ✓ C' (semi 12) in 4-8 with default C template: ledger at 12 shown
+  ✓ C' (semi 12) in 4-8 with no matching template: no ledgers
+  ✓ C' (semi 12) in 3-6-9: ledger triggered in the 9–15 gap (no outside-staff gate)
+  ✓ C'' (semi 24): upper C-ledger shown
+  ✓ A♯ (semi 22): A♯-ledger shown above staff line 20
+  ✓ octave awareness: lower C ledger (0) NOT triggered by note at 24
+  ✓ octave chord C+C' (0, 12): each octave's C ledger shown
+  ✓ proximity: note strictly closer to ledger than to staff → shown
+  ✓ proximity: tie with nearest staff line → not shown
+  ✓ proximity: note on the ledger itself → shown
+  ✓ proximity is octave-aware too
+  ✓ resolve de-duplicates a ledger triggered by multiple notes
+  ✓ resolve returns sorted positions regardless of note order
+  ✓ resolve with empty notes returns empty
+  ✓ render: appends a group with one rect per resolved ledger
+  ✓ render: rects centered on semiToY with pct-derived thickness and centerX
+  ✓ render: lineOverrides restyle every octave instance of a template
+  ✓ render: note on a staff line renders an empty group
+  ✓ render: default opts produce a positive width and column-padding centerX
+  ✓ render: grid range cropping does not change decisions (D near range floor)
+
+cnb-double-notehead-tests (10 tests)
+  ✓ layout: y positions come from semiToY of each semitone
+  ✓ layout: offsetPercent 0 (and default) puts both noteheads at centerX
+  ✓ layout: offsetPercent 100 separates noteheads by one notehead width, centered
+  ✓ layout: offset scales with the wider of the two shapes
+  ✓ layout: scale factors match CNBNotehead.measure per shape
+  ✓ layout: works for a non-octave pair (any two semitones)
+  ✓ render: appends two groups and returns {lowerG, upperG, lowerY, upperY}
+  ✓ render: groups positioned by layout() and paths carry note colors
+  ✓ render: hollow note gets a white overlay path, solid note does not
+  ✓ render: default color is black when note.color is absent
+
+cnb-card-tests (20 tests)
+  ✓ resolveNotehead: delegates rule walking (sharps hollow, naturals solid)
+  ✓ resolveNotehead: color falls back to black with no palette and no rule color
+  ✓ resolveNotehead: palette color used when rule color is null
+  ✓ resolveNotehead: explicit rule color overrides the palette
+  ✓ resolveNotehead: pc 12 (upper C) normalizes to pitch class 0
+  ✓ columnWidth = notehead width × widthMultiplier + 2 × paddingH
+  ✓ render: pc-col with label-top, note-slice svg, label-bottom; appended to container
+  ✓ render: svg sized to column width × grid svgHeight; labels sized to grid label heights
+  ✓ render: draw order is ledgers, stem, then two noteheads on top
+  ✓ render: both labels carry the pitch-class text (natural: no sharp span)
+  ✓ render: sharp pitch class gets a styled ♯ span
+  ✓ render: pc 12 (upper C) labeled C
+  ✓ render: C chord (semis 0+12) shows ledgers at 0 and 12
+  ✓ render: E chord (on staff lines) shows no ledgers
+  ✓ render: stem line matches CNBStem.geometry (pc 0, direction up, right of center)
+  ✓ render: chord at/above midpoint stems down (pc 12 → left side)
+  ✓ render: stemless duration (semibreve, hasStem false) draws no stem
+  ✓ render: noteheads sit at semiToY(pc) and semiToY(pc+12), centered on the column
+  ✓ render: hollow pc renders white overlay paths on both noteheads
+  ✓ render: resolved color reaches both notehead fills
+
+cnb-collection-tests (9 tests)
+  ✓ gridRange: 4 semitones of headroom below the lowest and above the highest chord
+  ✓ render: cnb-preview root appended to container, one row, 13 default cards
+  ✓ render: preview-container holds staff bg SVG (first) then pc-columns flex row
+  ✓ render: staff bg sized to the summed column widths and grid svgHeight
+  ✓ render: staff bg offset down by topLabelHeight so lines align with note-slices
+  ✓ render: staff bg contains continuous lines at every staff position in range
+  ✓ render: pitchClasses subset renders only those cards, in order
+  ✓ render: one row per duration, each captioned with the duration displayName
+  ✓ render: display.debugGrid adds the debug overlay behind the staff lines
+
+cnb-clef-tests (19 tests)
+  ✓ export invariance: default config export matches the pre-change baseline byte-for-byte
+  ✓ export invariance: clef-enabled config exports identically to clef-disabled
+  ✓ activeGlyph: null when disabled, unset, or unknown; resolves when valid
+  ✓ measure: glyph kind scales like noteheads (semitoneHeight × pxPerSemi / naturalHeight)
+  ✓ measure: text kind sizes the em-box from textHeightSemis
+  ✓ gutterWidth: 0 when disabled (no gutter reserved), width + 2×padding when active
+  ✓ render: nothing rendered and null returned when no clef is active
+  ✓ render: glyph top placed at semiToY(anchorSemi), left at paddingH
+  ✓ render: FLOAT anchorSemi positions fractionally on the grid
+  ✓ render: non-zero viewBox min offsets shift the glyph origin to (0,0)
+  ✓ render: text kind renders a bold label with em-box height from textHeightSemis
+  ✓ collection: default config renders no clef column (layout unchanged)
+  ✓ collection: enabled clef prepends a clef-col with spacers and a clef-slice SVG
+  ✓ collection: staff background spans the clef gutter plus all card columns
+  ✓ importer: extractClef reads id="clef" with the toolkit data-* contract
+  ✓ importer: extractClef falls back to id="notehead", then to the first <path>
+  ✓ importer: buildClefGlyph builds a kind:"glyph" entry, no stem/anchor requirements
+  ✓ importer: buildClefGlyph derives semitoneHeight from viewBox when the attribute is absent
+  ✓ importer: parseClefSvgText end-to-end with an injected parser
+
+cnb-key-signature-tests (28 tests)
+  ✓ export invariance: default config export matches the pre-change baseline byte-for-byte
+  ✓ export invariance: keysig-enabled config exports identically to keysig-disabled
+  ✓ activeKey: null unless keys.enabled AND keySignature.enabled AND the key resolves
+  ✓ parseTonicPc: natural note letters, either case
+  ✓ parseTonicPc: sharps and flats, ASCII and unicode accidentals
+  ✓ parseTonicPc: trailing words and leading whitespace are tolerated
+  ✓ parseTonicPc: null when the name does not begin with a note letter
+  ✓ tonicPc: explicit tonicPc → parsed name → first listed pitch class
+  ✓ tonicSemi: auto centers the octave span on staff.midpoint, ties resolve upward
+  ✓ tonicSemi: explicit integer placement.tonicOctave overrides the auto rule
+  ✓ placement.rule: unknown rule renders nothing (signatureSemis null, gutterWidth 0)
+  ✓ signatureSemis: the key's scale ascending from the tonic plus the octave tonic (keysig.ly's 8 pitches)
+  ✓ gutterWidth: 0 when disabled or no key selected (no gutter reserved)
+  ✓ gutterWidth: notehead-chords → two columns + 2×padding (the separator runs through the middle, adding no width)
+  ✓ gutterWidth: 0 for an unknown style (validation reports it; renderer inactive)
+  ✓ measure: null (and gutterWidth 0) when no referenced shape resolves
+  ✓ render: nothing rendered and null returned when inactive
+  ✓ render: separator bar, two ledger layers, 8 noteheads — in that paint order (engine layering: bar at the bottom)
+  ✓ render: interleaved columns form the two stacked 7th chords (even left, odd right)
+  ✓ render: separator bar runs through the middle of the two columns (the engine's gold stem), spans midpoint ± extentSemis
+  ✓ render: separator disabled → no bar element
+  ✓ render: notehead hollow/color parity with CNBCard.resolveNotehead (A major exercises hollow sharps)
+  ✓ render: the selected key is the rule-match context for signature noteheads (engine keysig parity)
+  ✓ render: an unknown style renders nothing and returns null (validation reports it)
+  ✓ collection: default config renders no keysig column (layout unchanged)
+  ✓ collection: enabled key signature with a selected key prepends a keysig-col
+  ✓ collection: no key selected → no keysig column even when enabled (key = example data, D5)
+  ✓ collection: clef and key signature compose left to right (clef-col, keysig-col, cards)
+
+cnb-lilypond-tests (60 tests)
+  ✓ svgPathToLilypond converts M/L/C/Z
+  ✓ svgPathToLilypond folds H/V into lineto with tracked position
+  ✓ svgPathToLilypond rounds to 4 decimals by default
+  ✓ svgPathToLilypond honors explicit precision
+  ✓ svgPathToLilypond normalizes -0 to 0
+  ✓ svgPathToLilypond returns '() for empty/invalid input
+  ✓ toSchemeSymbol combines name and hex
+  ✓ toSchemeSymbol without hex slugs the name
+  ✓ toSchemeSymbol collapses repeats and trims hyphens
+  ✓ staff-line-positions: 4-8 system, midpoint 12, sps 4 → (-4 -2 2 4) half-staff-spaces
+  ✓ staff-line-positions: 3-6-9 system, midpoint 12, sps 3 → (-6 -4 -2 2 4 6) half-staff-spaces (engine reference)
+  ✓ header emits version, include, and generated-by block
+  ✓ header version comes from engine.lilypondVersion
+  ✓ sectionA falls back to SVG path conversion when lilypondPath is null
+  ✓ sectionA prefers pre-baked lilypondPath verbatim
+  ✓ sectionA registers paths and hollow cutouts
+  ✓ sectionA omits hollow registration when shape has no hollow path
+  ✓ sectionA converts SVG anchors to staff-space units (÷ scale, Y-invert, ÷ sps)
+  ✓ sectionA prefers lilypondAnchors (semitone units), converting ÷ sps at export
+  ✓ sectionA marks stemless shapes and skips attachment registration
+  ✓ sectionA default config registers only black (no palette)
+  ✓ sectionA emits CB-safe conditional block with identical symbols in both branches
+  ✓ sectionA falls back to color-<hex> symbols when schemeSymbols is empty
+  ✓ sectionA registers explicit rule colors with identity CB fallback
+  ✓ sectionB always emits staff geometry (positions in half-staff-spaces, D2)
+  ✓ sectionB always emits cnb:use-procedure-model #t (D1 — engine defaults to the vector model)
+  ✓ sectionB omits all engine settings at their defaults
+  ✓ sectionB emits changed engine settings
+  ✓ sectionB converts changed staff-line thickness: 40% at sps 4 → 0.1
+  ✓ sectionB emits changed staff-line color
+  ✓ sectionB always emits file-suffix and notation-label
+  ✓ sectionB emits footnote only when non-empty, with Scheme escaping
+  ✓ usedShapes resolves rule-referenced shapes from the default config
+  ✓ usedShapes ignores shapes not present in config.shapes
+  ✓ usedColors pairs primary and CB-safe hexes by pitch class
+  ✓ sectionC emits the procedure scaffolding (set!/lambda/let/cond)
+  ✓ sectionC groups identical configs into memv clauses (default: naturals vs sharps)
+  ✓ sectionC uses (= pc N) for single-pc groups
+  ✓ sectionC resolves palette colors to their scheme symbols
+  ✓ sectionC emits hollow #f when the shape has no hollow path
+  ✓ sectionC emits attachment #f for stemless shapes
+  ✓ sectionC repeat field follows representationMode
+  ✓ sectionC emits a fallback else clause closing the procedure
+  ✓ sectionC warns and emits no procedure when no rules are defined
+  ✓ sectionC default config has no duration conditions (uniform across durations)
+  ✓ sectionC emits compound (and pc duration) clauses for duration-varying pcs
+  ✓ generate concatenates header, A, B, C in mandatory order
+  ✓ generate output contains the complete Section C procedure
+  ✓ generate throws on blocking validation errors
+  ✓ generate throws when a used shape has no path data
+  ✓ sectionC throws when a duration-varying duration lacks lilypondDuration
+  ✓ parity: sectionC is semantically equivalent to the legacy exporter for the default 4-8 config
+  ✓ parity: pc-condition helper matches legacy buildPitchClassCondition
+  ✓ parity: generate() vs legacy generateLy(), section by section, for the default 4-8 config
+  ✓ generate: clef-enabled config passes validation and exports byte-identically to clef-disabled (no engine clef hook — s1 coordination)
+  ✓ generate: key-signature-enabled config passes validation and exports byte-identically to key-signature-disabled (engine renders keysigs from the score's \key — s1 coordination)
+  ✓ fail-loud gate (§8a): generate() throws on a pitchAxis-enabled config, naming the missing engine capability
+  ✓ fail-loud gate (§8a): the gate fires on the enabled flag alone, even when the section is otherwise malformed
+  ✓ fail-loud gate (§8a): a disabled pitchAxis section does not trip the gate and exports byte-identically to the default
+  ✓ fail-loud gate (§8a): strict boolean — non-boolean truthy enabled values do not trip the gate and follow the normal validation/export rules
+
+cnb-svg-importer-tests (35 tests)
+  ✓ shapeNameFromFilename strips path and extension
+  ✓ displayNameFromShapeName title-cases kebab names
+  ✓ parseViewBox handles space and comma separators
+  ✓ parseViewBox rejects missing or malformed values
+  ✓ parseRectAttrs converts strings, defaults invalid to 0
+  ✓ anchorsFromStemRects: up = bottom-center of stem-up rect, down = top-center of stem-down rect
+  ✓ anchorsFromStemRects reproduces the default config's crotchet-minim anchors
+  ✓ anchorsFromStemRects: 4-point model duplicates the toolkit's single up/down pair
+  ✓ anchorsFromStemRects: no rects → null (stemless), one rect → other defaults to origin
+  ✓ toLilypondAnchors divides by SVG-units-per-semitone and inverts Y
+  ✓ toLilypondAnchors inverts a nonzero Y (SVG Y-down → LilyPond Y-up)
+  ✓ toLilypondAnchors returns null for stemless or unmeasurable shapes
+  ✓ import-time lilypondAnchors match the exporter's fallback conversion (Section A parity)
+  ✓ extract reads all fields from a toolkit-shaped document
+  ✓ extract errors on missing notehead element or empty path
+  ✓ extract tolerates absent hollow, stems, viewBox, and data attributes
+  ✓ extract flags non-rect stem elements instead of misreading them
+  ✓ extract accepts legacy false-hollow id and flags it
+  ✓ buildShape produces a complete Module A shape entry from toolkit data
+  ✓ buildShape derives semitoneHeight from viewBox when data attribute missing (with warning)
+  ✓ buildShape errors when size is undeterminable (no data attribute, no viewBox)
+  ✓ buildShape imports stemless shapes with null anchors and null lilypondAnchors
+  ✓ buildShape warns when pre-baked LilyPond data is absent (exporter fallback path)
+  ✓ buildShape warns on non-rect stems and single stem rect
+  ✓ imported shape works with CNBNotehead.measure (renders at semitoneHeight × pxPerSemi)
+  ✓ imported shape passes Module A validation inside a default config
+  ✓ parseSvgText names the shape from the filename and builds the entry
+  ✓ buildShape reads natural dims from root width/height when viewBox is missing
+  ✓ buildShape errors instead of inventing a square width (no viewBox, no width attr)
+  ✓ anchorsFromStemPoints builds the 4-point model from explicit points
+  ✓ extract + buildShape fall back to LY spec §7.1 data-stem-* attributes (no rects)
+  ✓ stem placemarker rects take precedence over data-stem-* attributes
+  ✓ extract ignores partial or non-numeric data-stem-* attributes
+  ✓ renderImportControl builds the drop zone + hidden file input and parses picked files
+  ✓ parseSvgText surfaces XML parse errors
+
+cnb-palette-editor-tests (39 tests)
+  ✓ deltaE: identical colors have distance 0
+  ✓ deltaE: black vs white is the maximum (100)
+  ✓ deltaE: symmetric
+  ✓ hexToRgb/rgbToHex round-trip, 3-digit hex expansion
+  ✓ hexToLab: white is L=100, a=b=0
+  ✓ distanceFromWhite: white is 0, black is 100
+  ✓ nearestColorName: exact dictionary color matches itself
+  ✓ colorSchemeSymbol: spec example #1b9e77 → shamrock-1b9e77 (LY spec §4.5)
+  ✓ toSchemeSymbol: lowercases, collapses non-alphanumerics, trims hyphens
+  ✓ colorSchemeSymbol: non-string falls back to black-000000
+  ✓ baseColorName strips the hex suffix, keeps hyphenated names intact
+  ✓ matchToCBSafe: CB-safe source colors map to themselves at distance 0
+  ✓ matchToCBSafe: result aligned with input, one-to-one, distances rounded
+  ✓ matchToCBSafe: more than 12 inputs throws
+  ✓ presetColors: every registered preset resolves with the declared size
+  ✓ preset labels reference no external notation system (naming check)
+  ✓ buildPalette: standard preset cycles the pool across all 12 PCs
+  ✓ buildPalette: cbSafeColors pair with primaries index-for-index (matchToCBSafe)
+  ✓ buildPalette: schemeSymbols map every unique primary hex
+  ✓ buildPalette: CB-safe preset uses the identity mapping (LY spec §4.5)
+  ✓ buildPalette: custom palette uses nearest names and Custom · N label
+  ✓ buildPalette: custom under the CB-safe tab is CB-safe-as-primary (identity)
+  ✓ buildPalette: useCBSafe passes through; empty custom yields empty palette
+  ✓ buildPalette: duplicate custom hexes share one CB-safe mapping per hex
+  ✓ selectionFromPalette: preset palettes round-trip (key, family, useCBSafe)
+  ✓ selectionFromPalette: custom palettes recover the cycled pool
+  ✓ selectionFromPalette: CB-safe custom palettes keep the identity branch
+  ✓ selectionFromPalette: empty/missing palette falls back to the default
+  ✓ randomDistinctColor: deterministic with injected rng, valid hex, distinct
+  ✓ integration: built palette validates against Module A
+  ✓ integration: CNBConfig.resolveColor honors the built useCBSafe toggle
+  ✓ integration: exporter emits the palette's scheme symbols and both A5 branches
+  ✓ render: builds tabs, presets, custom, CB match, toggle, 12-cell preview
+  ✓ render: clicking a preset fires onChange with the built config.palette
+  ✓ render: family tab switch lists CB presets and remaps to the same size
+  ✓ render: selecting custom seeds the legacy default colors
+  ✓ render: custom color edit, add (max 12), and remove (min 1)
+  ✓ render: CB-safe toggle flips useCBSafe and the preview swatches
+  ✓ render: initializes from a saved config.palette (selectionFromPalette path)
+
+cnb-staff-rule-editor-tests (42 tests)
+  ✓ derivedGeometry: 4-8 → sps 4, midpoint 12, LY positions (-4 -2 2 4)
+  ✓ derivedGeometry: 3-6-9 → sps 3, LY positions (-6 -4 -2 2 4 6)
+  ✓ derivedGeometry: dedupes and sorts the input pattern
+  ✓ derivedGeometry: throws on out-of-range or non-integer entries
+  ✓ derivedGeometry: degenerate patterns (<2 lines) get sps 1, no throw
+  ✓ derivedGeometry: LY positions match Module 11's computeStaffLinePositions
+  ✓ buildStaff: produces a schema-shaped staff slice with derived geometry
+  ✓ buildStaff: copies lineDefaults (no shared reference with state)
+  ✓ buildStaff: prunes empty override entries, keeps populated ones
+  ✓ buildStaff: overrides for lines outside the active pattern are not emitted
+  ✓ buildStaff: out-of-pattern overrides survive in state — switching back restores them
+  ✓ buildStaff: unknown patternKey throws (no silent fallback)
+  ✓ buildLedgers: dedupes and sorts triggerPCs, keeps template order
+  ✓ buildLedgers: proximityRule is a boolean, defaults preserved
+  ✓ buildLedgers: throws on invalid position or trigger mode
+  ✓ applyToConfig: does not mutate the input config
+  ✓ applyToConfig: default state produces a config that validates clean
+  ✓ validation pass-through: 1-line custom pattern surfaces the Module A error
+  ✓ stateFromConfig: default config → 4-8 preset, 3 templates, proximity on
+  ✓ stateFromConfig: recognizes 3-6-9 preset; unknown patterns open as custom
+  ✓ round-trip: preset branch (apply → recover → apply is stable)
+  ✓ round-trip: custom pattern branch
+  ✓ round-trip: overrides, edited templates, and flags survive
+  ✓ integration: 3-6-9 state yields CNBStaff positions [3,6,9,15,18,21] over 0–24
+  ✓ integration: removing the C template stops CNBLedgerSet showing a ledger for C
+  ✓ render: builds pattern options, derived panel, override rows, template rows, validation
+  ✓ render: clicking the 3-6-9 preset updates state, onChange slice, and derived panel
+  ✓ render: custom pattern seeds from current preset; PC toggles edit it
+  ✓ render: staff defaults inputs update lineDefaults through onChange
+  ✓ render: non-numeric thickness input is ignored (no NaN in state)
+  ✓ render: enabling an override seeds it from defaults; editing and disabling work
+  ✓ render: add / edit / remove ledger templates through the UI
+  ✓ render: trigger pills toggle PCs without duplicates; mode select switches to proximity
+  ✓ render: proximity checkbox and ledger defaults (width multiplier, rounded ends)
+  ✓ render: invalid transient state (custom, 1 line) shows the validation error inline
+  ✓ render: seeds from a passed config (3-6-9 preset recognized)
+  ✓ renderPreview: default config over 0–24 → 4 staff lines, 25 note columns
+  ✓ renderPreview: 3-6-9 applied config → 6 staff lines
+  ✓ renderPreview: ledger columns match Module 5 resolution (C has a ledger, F none)
+  ✓ renderPreview: octave awareness — C'' column carries the upper C ledger only
+  ✓ renderPreview: marker dots sit at each note's grid Y; edge notes padded, not clipped
+  ✓ renderPreview: honors exampleNotes and pxPerSemi options
+
+cnb-notehead-rule-editor-tests (44 tests)
+  ✓ buildRules: priority equals list index; sparse apply preserved
+  ✓ buildRules: default state round-trips the default config byte-identically
+  ✓ buildRules: dedupes and sorts explicit pitch classes and durations
+  ✓ buildRules: empty apply block is legal and emitted as-is; blank name defaulted
+  ✓ buildRules: throws on out-of-range PCs, bad shape, bad color (no silent repair)
+  ✓ buildRules: color must be null or #RRGGBB — Module A's hex rule, enforced at build
+  ✓ buildRules: offKeyMark must be false or a non-empty identifier
+  ✓ applyToConfig: does not mutate the input config; replaces only noteheadRules
+  ✓ applyToConfig: default state produces a config that validates clean
+  ✓ validation pass-through: unknown shape and uncovered PCs surface Module A errors
+  ✓ stateFromConfig: orders rules by ascending priority (stable), keeps sparse apply
+  ✓ round-trip: arbitrary priorities normalize to 0..n-1 with identical resolution
+  ✓ round-trip: explicit full-12 PC list is NOT collapsed to "all"
+  ✓ round-trip: offKeyMark and explicit keys lists pass through untouched
+  ✓ round-trip: explicit color hex and color:null (palette) both survive
+  ✓ resolveAll: default config — sharps hollow, naturals solid, all 12 PCs
+  ✓ resolveAll: effective color precedence — explicit hex > palette > black
+  ✓ resolveAll: duration-specific rule only affects its duration
+  ✓ reordering: swapping list order flips which rule wins (later overrides earlier)
+  ✓ partial-apply inheritance: later hollow-only rule keeps earlier shape and color
+  ✓ render: default config → 2 rule cards, resolved strip with 12 cells, valid banner
+  ✓ render: add rule appends an all/all/all no-op rule and reports it through onChange
+  ✓ render: remove rule updates slice; removing every rule surfaces coverage errors
+  ✓ render: move down/up swaps rules and the resolved strip follows
+  ✓ render: first card's up and last card's down buttons are disabled
+  ✓ render: PC pills — clicking a pill while "all" narrows to all-except-clicked
+  ✓ render: PC pills — explicit list toggles add/remove without duplicates
+  ✓ render: duration pills narrow a rule to specific durations
+  ✓ render: shape toggle enables apply.shape seeded with the first shape; select edits it
+  ✓ render: hollow select flips between hollow cutout and solid fill
+  ✓ render: color toggle defaults to palette mode (null); custom mode edits a hex
+  ✓ render: keys row — pills from config.keys.definitions, narrowing and All restore
+  ✓ render: keys row without definitions shows the nothing-to-narrow note, no pills
+  ✓ render: key names on a loaded rule stay editable even without definitions (union)
+  ✓ render: resolved strip key selector changes which key-matched rules apply
+  ✓ render: off-key mark toggle — enable emits false, mark mode edits an identifier
+  ✓ render: emptying the mark identifier holds the onChange (invalid transient state)
+  ✓ render: rule name edits reach the slice without a redraw (focus preserved)
+  ✓ render: hollow rule on a shape without a hollow path surfaces the Module A warning
+  ✓ renderResolvedPreview: 12 cells, hollow PCs draw two paths, solid PCs one
+  ✓ renderResolvedPreview: duration option changes which rules apply
+  ✓ renderResolvedPreview: missing shape renders a labelled placeholder, svg null
+  ✓ renderResolvedPreview: key option and off-key mark badge follow the resolution
+  ✓ renderResolvedPreview: notehead color and labels come from the resolution
+
+cnb-common-props-editor-tests (43 tests)
+  ✓ ENGINE_DEFAULTS matches plan §4.10 / LY spec §5.2
+  ✓ stateFromConfig: default config → shape mode, default counts + engine
+  ✓ stateFromConfig: repeat mode recognized; anything else normalizes to shape
+  ✓ stateFromConfig: missing engine fields fall back to §4.10 defaults
+  ✓ stateFromConfig: state is independent of the config (deep clone)
+  ✓ buildDurations: default state emits the plan §4.8 slice unchanged
+  ✓ buildDurations: emitted slice shares no references with state
+  ✓ buildDurations: throws on representationMode outside {shape, repeat}
+  ✓ buildDurations: throws on non-array definitions
+  ✓ buildDurations: throws on repeat counts that are not integers ≥ 1
+  ✓ buildDurations: prunes stray repeatCounts keys at emit, retains them in state
+  ✓ buildEngine: default state emits the plan §4.10 slice unchanged
+  ✓ buildEngine: throws on empty or non-string lilypondVersion
+  ✓ buildEngine: defaultMagnify accepts integer, decimal, and N/M fraction strings
+  ✓ buildEngine: throws on malformed defaultMagnify (empty, non-numeric, zero denominator, number type)
+  ✓ buildEngine: throws on non-finite multinotePadding / indent / collisionThreshold
+  ✓ buildEngine: stemThickness accepts null (auto) and finite positives; rejects the rest
+  ✓ buildEngine: falseHollow / useAccessibleColors coerce to booleans
+  ✓ applyToConfig: replaces only durations and engine; other sections untouched
+  ✓ applyToConfig: result passes CNBConfig.validate for the default config
+  ✓ round-trip: default state survives applyToConfig → stateFromConfig
+  ✓ round-trip: repeat mode with edited counts
+  ✓ round-trip: fully edited engine including a set stemThickness
+  ✓ round-trip: stemThickness null (engine auto) branch
+  ✓ exporter: representationMode drives Section C's repeat field (LY spec §6.1)
+  ✓ exporter: default engine state emits no engine settings in Section B (emit-if-changed)
+  ✓ exporter: changed engine values reach Section B
+  ✓ render: structure — definitions (read-only), mode, repeats, engine, validation
+  ✓ render: mode toggle — click repeat → slice, selected class, repeats section active
+  ✓ render: mode help text names the exporter's repeat field for both modes
+  ✓ render: repeat count edit commits integers ≥ 1 and ignores invalid input
+  ✓ render: engine checkbox edits propagate and flip the emit-if-changed badge
+  ✓ render: defaultMagnify commits valid forms and ignores malformed input
+  ✓ render: lilypondVersion commits non-empty strings and ignores empty input
+  ✓ render: stem auto toggle — input only exists while auto is off; last value restored
+  ✓ render: stem thickness input ignores values ≤ 0
+  ✓ render: onChange slices and getState are clones — mutating them cannot corrupt state
+  ✓ render: setState + applyTo produce a config that validates
+  ✓ render: seeded from a non-default config
+  ✓ renderPreview: shape mode — one collection row per duration, no legend
+  ✓ renderPreview: repeat mode — single base row plus repeat legend with counts
+  ✓ renderPreview: base duration is the first definition without a repeat count
+  ✓ renderPreview: throws on empty definitions and on invalid representationMode
+
+cnb-clef-editor-tests (21 tests)
+  ✓ stateFromConfig: default config opens as the default-off state
+  ✓ stateFromConfig: clef-enabled config preserves glyphs, active, and gutter
+  ✓ stateFromConfig: glyphs are deep-cloned (editing state never mutates the config)
+  ✓ stateFromConfig: missing or malformed clef section opens as default-off
+  ✓ buildClef: builds a ready config.clef slice with deep-cloned glyphs
+  ✓ buildClef: throws on structurally invalid state (glyphs, paddingH, active type)
+  ✓ buildClef: enabled with no active glyph builds without throwing (validation reports it)
+  ✓ applyToConfig: replaces only the clef section and mutates neither argument
+  ✓ round-trip: default-off, glyph-kind, and text-kind states survive applyToConfig → stateFromConfig
+  ✓ render: enable checkbox reflects state and toggling fires onChange with the built slice
+  ✓ render: glyph rows list every definition and clicking one sets it active
+  ✓ render: with no glyphs the list and anchor sections show explicit empty-state notes
+  ✓ render: anchor input edits the ACTIVE definition's anchorSemi, accepting floats
+  ✓ render: non-numeric anchor input is ignored (no state change, no onChange)
+  ✓ render: switching the active glyph re-seeds the anchor input from that definition
+  ✓ render: gutter padding input edits gutter.paddingH; negative input is ignored
+  ✓ render: importClefText adds the glyph, activates it, and fires onChange
+  ✓ render: a failed clef import leaves state untouched and shows the error (no onChange)
+  ✓ render: the imported glyph's default anchor centers on the seeded config's staff midpoint
+  ✓ render: validation section reports enabled-without-active as an error, valid config as ✓
+  ✓ render: setState applies a partial state and applyTo returns a config with it
+
+cnb-key-signature-editor-tests (29 tests)
+  ✓ stateFromConfig: default config opens as the default-off state
+  ✓ stateFromConfig: tolerant of missing/malformed sections (pre-set-010 configs)
+  ✓ stateFromConfig: unknown style/rule STRINGS are preserved (preserve-and-report)
+  ✓ buildKeys ∘ stateFromConfig round-trips the default keys slice deep-equal
+  ✓ buildKeys ∘ stateFromConfig round-trips a fully-populated keys section
+  ✓ applyToConfig replaces only the keys section and mutates neither argument
+  ✓ buildKeys: offKeyMark passes through untouched (deferred per plan §11)
+  ✓ buildKeys: throws on structurally invalid state (caller-bug policy)
+  ✓ buildKeys: mid-edit-reachable states do NOT throw (validation reports them)
+  ✓ tonicInfo: explicit tonicPc → name letter → first-pc fallback, with the source named
+  ✓ editorWarnings: duplicate definition names are flagged; unique/empty names are not
+  ✓ render: keys disabled → explicit disabled note, controls disabled, master toggle live
+  ✓ render: enabling keys through the master toggle removes the note and enables controls
+  ✓ render: empty definitions → explicit empty note; add button appends the visible C-major template
+  ✓ render: definition name input, pitch-class pills, and remove button edit the definition
+  ✓ render: tonic select writes/clears tonicPc; the hint names the D3 resolution source
+  ✓ render: duplicate definition names surface as an editor warning in the validation panel
+  ✓ render: signature enable toggle writes keySignature.enabled
+  ✓ render: style options — the single notehead-chords style, selected, with engine attribution
+  ✓ render: an unrecognized loaded style is shown as an extra option and reported by validation
+  ✓ render: placement rule select offers the implemented vocabulary and writes the rule
+  ✓ render: an unrecognized loaded placement rule is preserved in the select and reported
+  ✓ render: tonic octave — auto checkbox ↔ explicit integer input (preview-only note shown)
+  ✓ render: separator controls write enabled/color/thicknessPct/extentSemis
+  ✓ render: gutter padding control writes its field
+  ✓ render: validation panel — valid default state shows Config valid ✓
+  ✓ render: signature enabled while keys are disabled surfaces the Module A warning
+  ✓ render: getState/getKeys/applyTo/setState round the editor state through the builders
+  ✓ export invariance: an editor-built keysig-enabled config exports byte-identically to default
+
+cnb-config-io-tests (40 tests)
+  ✓ deriveFilename: default config name → default-4-8-system.cnb.json
+  ✓ deriveFilename: punctuation/space runs collapse to one hyphen; case lowered; edges trimmed
+  ✓ deriveFilename: throws on non-string, empty, whitespace, and no-alphanumeric names
+  ✓ stampMeta: first save sets created AND modified (plan §4.11)
+  ✓ stampMeta: later saves preserve created and update only modified
+  ✓ stampMeta: does not mutate the input config
+  ✓ stampMeta: empty-string created counts as unset; missing meta object is created
+  ✓ stampMeta: throws on a timestamp that is not a parseable ISO string
+  ✓ buildSaveFile: returns stamped config, pretty JSON of it, and derived filename
+  ✓ buildSaveFile: does not mutate input; throws on non-object config and missing configName
+  ✓ parseConfigFile: valid JSON object parses; root must be a plain object
+  ✓ parseConfigFile: descriptive throws on non-string input and malformed JSON
+  ✓ mergeLoaded: partial config gains defaults for everything it omits
+  ✓ mergeLoaded: provided open-keyed maps REPLACE defaults (no resurrected entries)
+  ✓ mergeLoaded: map sections the file omits stay at defaults
+  ✓ REPLACE_PATHS: includes the set-009 clef.glyphs open-keyed map
+  ✓ mergeLoaded: provided clef.glyphs REPLACE defaults wholesale; sibling clef fields still merge
+  ✓ mergeLoaded: a config file predating the clef section gains the default-off clef
+  ✓ mergeLoaded: a null/wrong-typed map section falls back to merge behavior (defaults kept)
+  ✓ mergeLoaded: version notes — missing version and drifted version are advisories
+  ✓ mergeLoaded: validation is returned but does not block the load
+  ✓ mergeLoaded: throws on a non-object argument (caller bug)
+  ✓ round-trip: default config save → load is deep-equal (stamped config)
+  ✓ round-trip: custom-shape config is deep-equal (map replacement, no default bleed-through)
+  ✓ round-trip: clef-enabled config (glyph + text entries, float anchor) is deep-equal after save → load
+  ✓ round-trip: keys-enabled config (definitions with tonicPc, non-default keySignature) is deep-equal after save → load
+  ✓ mergeLoaded: a config file predating the keySignature subsection gains it default-off (no REPLACE_PATHS entry needed — s1 decision D6: fixed-shape object + array definitions)
+  ✓ round-trip: second save of a loaded config preserves created, updates modified
+  ✓ loadFromText: malformed text throws (the render() load path catches this)
+  ✓ render: throws without getConfig; builds save row, load row, status/error/validation areas
+  ✓ render: filename preview shows the derived name, or the derive error for a bad name
+  ✓ render save: button click delivers the file via download() and reports through onSave
+  ✓ render save: underivable filename → error shown, no download, no onSave
+  ✓ render save: download() failure is surfaced and onSave is not called
+  ✓ render load: valid text → onLoad(config, {validation, notes}), status + validation shown
+  ✓ render load: validation errors and warnings render in the validation area (load not blocked)
+  ✓ render load: version-drift note renders in the validation area
+  ✓ render load: malformed file → error shown, onLoad NOT called, app state untouched
+  ✓ render load: filename preview reflects the LOADED config once the host adopts it
+  ✓ render: a failed load keeps the previous successful load's validation display
+
+cnb-config-export-tests (27 tests)
+  ✓ deriveFilename: fileSuffix takes precedence — default config → default48.ly
+  ✓ deriveFilename: fileSuffix slugged with the Module 17 rule (case, punctuation runs, edge trim)
+  ✓ deriveFilename: falls back to configName when fileSuffix is empty, missing, non-string, or slugs empty
+  ✓ deriveFilename: throws when meta is not an object or neither field derives a slug
+  ✓ validateForExport: default config is exportable — valid, no errors, warnings present
+  ✓ validateForExport: throws on a non-object config (caller bug)
+  ✓ validateForExport: Module A blocking errors pass through (single staff line)
+  ✓ validateForExport: exporter-side path-data check mirrors CNBLilypond.generate()'s throw
+  ✓ validateForExport: a shape without path data that no rule uses does NOT block
+  ✓ key-scoped rules: validateForExport and generate() agree (both resolve with key=null)
+  ✓ validateForExport: an underivable filename is a blocking error
+  ✓ validateForExport: missing meta section reports the filename block instead of crashing
+  ✓ buildExport: success carries ok, filename, validation, and a complete .ly text
+  ✓ buildExport: ly is EXACTLY CNBLilypond.generate(config) — default config (spec step 3)
+  ✓ buildExport: ly parity holds on a customized config (3-6-9 pattern, repeat mode)
+  ✓ buildExport: blocked on errors — ok false, ly and filename null, no throw
+  ✓ buildExport: proceeds with warnings (default config warns but exports)
+  ✓ buildExport: throws on a non-object config; does not mutate the input
+  ✓ render: throws without getConfig; builds export row, status/error/validation areas
+  ✓ render: filename preview shows the derived name, or the derive error for a bad meta
+  ✓ render export: button click delivers the .ly via download() and reports through onExport
+  ✓ render export: download() failure is surfaced and onExport is not called
+  ✓ render export: exportLy() returns the built result on success
+  ✓ render blocked: validation errors → no download, no onExport, reasons in .cnb-cex-verror
+  ✓ render blocked: underivable filename blocks through the same validation path
+  ✓ render blocked-then-fixed: host fixes the config and the next export succeeds
+  ✓ fail-loud gate parity: validateForExport blocks a pitchAxis-enabled config with the exact message generate() throws; buildExport blocks without throwing
+
+cnb-preview-display-tests (31 tests)
+  ✓ pcOptionLabel: naturals, sharps, and the upper C prime (0→C, 1→C♯, 11→B, 12→C′)
+  ✓ durationNames: definition order from the config (default → crotchet/minim/semibreve/breve)
+  ✓ durationNames: falls back to ["crotchet"] when the config defines none (Modules 11/18 fallback)
+  ✓ keyNames: [] when keys are disabled (default config) even if definitions exist
+  ✓ keyNames: definition names when keys.enabled; [] when enabled without definitions
+  ✓ buildPitchClasses: inclusive contiguous ranges (0–12 full row, 3–7 subrange, single PC)
+  ✓ buildPitchClasses: throws on an inverted range
+  ✓ buildPitchClasses: throws on non-integer and out-of-range endpoints
+  ✓ defaultState: full chromatic row, first config duration, no key
+  ✓ defaultState: fallback duration when the config defines none
+  ✓ buildOptions: default state → full row, single crotchet row, keys null
+  ✓ buildOptions: durations pruned against the CURRENT config vocabulary (retain in state, prune at build)
+  ✓ buildOptions: durations come out in config vocabulary order regardless of selection order
+  ✓ buildOptions: key passes through only when keys.enabled AND currently defined
+  ✓ buildOptions: throws on malformed state (non-object, non-array durations, non-string key, inverted range)
+  ✓ render: throws without the getConfig accessor (the host owns config state)
+  ✓ render: root appended; controls hold two 13-option range selects and one pill per config duration; no key section when keys are disabled
+  ✓ render: default preview drives the REAL Module 10 collection — 13 cards, one caption-less row
+  ✓ render: onRender reports the exact collection options and the preview element
+  ✓ render: toggling a second pill on renders two captioned duration rows; toggling it off returns to one
+  ✓ render: deselecting every pill shows the explicit empty message, renders no collection, and reports onRender(options, null)
+  ✓ render: narrowing the range re-renders with fewer cards
+  ✓ render: endpoint-drag rule — moving one endpoint past the other drags the other along (both directions)
+  ✓ render: key section appears when keys.enabled — (none) + definitions, deferral note, selection passes through options.keys
+  ✓ render: keys enabled with EMPTY definitions — section stays visible with a disabled (none) select and an explicit empty-definitions note; options.keys null
+  ✓ render: a selected key survives the config disabling keys (section hidden, keys null) and returns when re-enabled
+  ✓ render: setState merges a partial, validates BEFORE adopting (invalid partial throws, state and DOM untouched)
+  ✓ render: getState returns a copy — mutating it does not affect the display
+  ✓ render: redraw() follows host config changes — a new duration definition appears as a pill
+  ✓ render: redraw() follows host config changes — a staff pattern change re-renders the preview's background staff (line count matches CNBStaff.getPositions on the same config)
+  ✓ render: collection injection seam — the recorder receives (container, config, options) and replaces Module 10
+
+check-gallery-examples (18 tests)
+  ✓ gallery corpus is non-empty
+  ✓ fixture 0-5-7-notation.json validates, resolves 12 PCs, and exports
+  ✓ fixture 6-6-trigram-notation.json validates, resolves 12 PCs, and exports
+  ✓ fixture ambros-system.json validates, resolves 12 PCs, and exports
+  ✓ fixture avique-notation.json validates, resolves 12 PCs, and exports
+  ✓ fixture axlomafi.json validates, resolves 12 PCs, and exports
+  ✓ fixture chromatic-lyre-notation.json validates, resolves 12 PCs, and exports
+  ✓ fixture clairnote-dn.json validates, resolves 12 PCs, and exports
+  ✓ fixture clairnote-sn.json validates, resolves 12 PCs, and exports
+  ✓ fixture express-stave-jazz-6-6.json validates, resolves 12 PCs, and exports
+  ✓ fixture express-stave-original.json validates, resolves 12 PCs, and exports
+  ✓ fixture express-stave-pianoforte.json validates, resolves 12 PCs, and exports
+  ✓ fixture hass-notation-3-line.json validates, resolves 12 PCs, and exports
+  ✓ fixture lautus-notation.json validates, resolves 12 PCs, and exports
+  ✓ fixture notagraph.json validates, resolves 12 PCs, and exports
+  ✓ fixture numbered-notes-notes-only.json validates, resolves 12 PCs, and exports
+  ✓ fixture schoenberg-untitled.json validates, resolves 12 PCs, and exports
+  ✓ fixture trilinear-notation.json validates, resolves 12 PCs, and exports
+
+──────────────────────────────────────────────────
+Results: 758 passed, 0 failed
+All tests passed.
+exit: 0
