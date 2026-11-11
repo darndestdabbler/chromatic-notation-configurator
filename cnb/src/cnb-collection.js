@@ -237,7 +237,7 @@ function splitSystems(pitchClasses, rows) {
  * card, and the cards are placed explicitly beside it.
  */
 function renderFluidSystem(config, { pitchClasses, duration, key, slots, colMin, first, ledgerSpots, labelStrip }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration]));
   const clefGutterWidth = CNBClef.gutterWidth(config, grid.pxPerSemi);
   const stripWidth = labelStrip ? LABEL_STRIP_PX : 0;
   const keySig = fluidKeySigTrack(config, grid, key, pitchClasses, duration,
@@ -383,7 +383,7 @@ function durationCaption(config, duration) {
 
 /** One duration row: background staff SVG + flex row of cards. */
 function renderRow(config, { pitchClasses, duration, key, showCaption }) {
-  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config));
+  const grid = CNBGrid.create(config, CNBCollection.gridRange(pitchClasses, config, [duration]));
 
   const row = document.createElement("div");
   row.className = "cnb-duration-row";
@@ -469,13 +469,16 @@ export const CNBCollection = {
    * 4 semis (ledger/stem headroom) to the highest upper-note (pc + 12) up 4.
    * With a config, the range also holds the shown clef (CNBClef.extent,
    * session 45), to the whole semitone, so a clef that reaches past the
-   * noteheads is not cut off.
+   * noteheads is not cut off. With durations, it also holds a breve's tie
+   * under the lower noteheads (CNBCard.tieBottom, session 46), whole
+   * semitones lower until it fits.
    *
    * @param {number[]} pitchClasses
    * @param {object} [config]
+   * @param {string[]} [durations]  the durations the cards draw
    * @returns {{minSemi:number, maxSemi:number}}
    */
-  gridRange(pitchClasses, config) {
+  gridRange(pitchClasses, config, durations = []) {
     const range = {
       minSemi: Math.min(...pitchClasses) - 4,
       maxSemi: Math.max(...pitchClasses) + 12 + 4,
@@ -484,6 +487,14 @@ export const CNBCollection = {
     if (clef) {
       range.minSemi = Math.min(range.minSemi, Math.floor(clef.bottom));
       range.maxSemi = Math.max(range.maxSemi, Math.ceil(clef.top));
+    }
+    if (config) {
+      const clipped = () => {
+        const grid = CNBGrid.create(config, range);
+        return durations.some(duration => pitchClasses.some(pc =>
+          (CNBCard.tieBottom(config, grid, { pc, duration }) ?? 0) > grid.svgHeight));
+      };
+      while (clipped()) range.minSemi -= 1;
     }
     return range;
   },

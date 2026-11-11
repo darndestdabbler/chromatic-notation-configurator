@@ -16,7 +16,7 @@ import { CNBCard } from "../src/cnb-card.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
-import { findEngine, measureNoteheads, measureStems } from "./engine-probe.js";
+import { findEngine, measureNoteheads, measureStems, measureTies } from "./engine-probe.js";
 import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -426,9 +426,9 @@ export const tests = [
       eq(CNBCard.tiedGroups(rep, "breve"), 2, "breve");
     }},
 
-  { name: "repeatLayout (breve): two semibreve groups 1 staff space apart, a tie spanning the gap", fn: () => {
+  { name: "repeatLayout (breve): two semibreve groups 1 staff space apart, one tie below the heads from the first head's centre to the last's", fn: () => {
       const { config, grid, shape } = repeatFixture();
-      const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      const { pixelWidth: w, pixelHeight: hh } = CNBNotehead.measure(shape, grid.pxPerSemi);
       const step = w - 0.5 * 4 * 16;
       const semibreve = CNBCard.repeatLayout(config, grid, shape, "semibreve");
       const ws = semibreve.groupWidth;
@@ -443,8 +443,9 @@ export const tests = [
         approx(breve.offsets[i + 4], pitch / 2 + k * step, `right group head ${i}`);
       });
       eq(breve.ties.length, 1, "one tie");
-      approx(breve.ties[0].x1, -gap / 2, "tie from the left group's right edge");
-      approx(breve.ties[0].x2, gap / 2, "to the right group's left edge");
+      approx(breve.ties[0].x1, breve.offsets[0], "tie from the first head's centre");
+      approx(breve.ties[0].x2, breve.offsets[7], "to the last head's centre");
+      approx(breve.ties[0].dy, hh / 2, "its ends at the heads' bottom");
       eq(semibreve.ties.length, 0, "semibreve: no tie");
       eq(CNBCard.repeatLayout(fixture().config, grid, shape, "breve").count, 1, "shape mode: one head");
     }},
@@ -480,8 +481,8 @@ export const tests = [
         const ties = svg.children.filter(c => c.getAttribute("class") === "cnb-tie");
         eq(ties.length, 2, "a tie on each notehead of the pair");
         ties.forEach((t, i) => {
-          const y = grid.semiToY(i === 0 ? 0 : 12);
-          eq(t.getAttribute("d"), CNBCard.tiePath(centerX + layout.ties[0].x1, centerX + layout.ties[0].x2, y, 64).d, `tie ${i}`);
+          const y = grid.semiToY(i === 0 ? 0 : 12) + CNBNotehead.measure(shape, grid.pxPerSemi).pixelHeight / 2;
+          eq(t.getAttribute("d"), CNBCard.tiePath(centerX + layout.offsets[0], centerX + layout.offsets[7], y, 64).d, `tie ${i}: below the heads, first head's centre to the last's`);
           eq(t.getAttribute("fill"), "#000000", "black, whatever the notehead's colour, as the engine engraves it");
           eq(t.getAttribute("stroke"), "#000000", "outlined black");
         });
@@ -492,6 +493,16 @@ export const tests = [
         const { svg } = dissect(CNBCard.render(container, grid, config, { pc: 0, duration: "semibreve" }));
         eq(svg.children.filter(c => c.getAttribute("class") === "cnb-tie").length, 0, "semibreve: no tie");
       });
+    }},
+
+  { name: "tieBottom: the lowest ink of the tie under the lower notehead; null without a tie", fn: () => {
+      const { config, grid, shape } = repeatFixture();
+      const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
+      const tie = CNBCard.tiePath(layout.offsets[0], layout.offsets[7], 0, 64);
+      approx(CNBCard.tieBottom(config, grid, { pc: 2, duration: "breve" }),
+        grid.semiToY(2) + layout.ties[0].dy + tie.height + tie.strokeWidth / 2, "bow's middle plus half the stroke");
+      eq(CNBCard.tieBottom(config, grid, { pc: 2, duration: "semibreve" }), null, "semibreve: no tie");
+      eq(CNBCard.tieBottom(fixture().config, grid, { pc: 2, duration: "breve" }), null, "shape mode: no tie");
     }},
 
   { name: "repeatLayout: copies edge to edge, default padding -0.5 staff space (linear, sps 4)", fn: () => {
@@ -583,9 +594,18 @@ export const tests = [
   // has 8 of them, so its width is compared with the preview's layout of the
   // engraved head: the preview's group width plus 8 × the head's difference.
   // Measured at session 44: Kite 8.6680 engraved vs 8.6667 previewed
-  // (8.6683 from the engraved head), 45deg-369 8.6681 vs 8.6674 (8.6682);
-  // height 1.3335 / 1.3334 vs 1.3333 for both.
-  { name: "repeatLayout (engine): Kite and 45deg-369 repeated heads engrave at the preview's group width (±5%; the breve to 0.001 staff spaces)", fn: async () => {
+  // (8.6683 from the engraved head), 45deg-369 8.6681 vs 8.6674 (8.6682).
+  //
+  // The tie (session 46, engine session 28, engine 1.3.1) runs below the
+  // heads, from the first head's centre to the last's, and is held to 0.001
+  // staff spaces too, read from the engraved stencil (measureTies): its ends
+  // half a head in from each edge and at the heads' bottom, its lowest ink,
+  // and the breve's height from the heads' top to it. Measured at session
+  // 46, every pitch class: Kite ends at y −0.6667 (preview −0.6667), span
+  // 7.3345 (7.3333 from the preview's narrower heads), lowest ink −1.5530
+  // (−1.5529), height 2.2198 (2.2196); 45deg-369 ends at −0.6668 (−0.6667),
+  // span 7.3346 (7.3340), lowest −1.5530 (−1.5529), height 2.2197 (2.2196).
+  { name: "repeatLayout (engine): Kite and 45deg-369 repeated heads engrave at the preview's group width (±5%; the breve and its tie to 0.001 staff spaces)", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
       const failures = [];
@@ -615,13 +635,32 @@ export const tests = [
             if (!(Math.abs(width - expected) <= 0.001)) {
               failures.push(`${file} breve pc ${pc}: engraved ${width} staff spaces wide, preview ${expected} (${preview} at the preview's head)`);
             }
-            // The tie bows down from the centre line; its ink reaches half its
-            // outline's stroke beyond the bow.
-            const tie = CNBCard.tiePath(0, ss, 0, ss);
-            const below = Math.max(head.pixelHeight / 2, tie.height + tie.strokeWidth / 2);
-            const previewHeight = (head.pixelHeight / 2 + below) / ss;
+            // From the heads' top to the tie's lowest ink (session 46).
+            const previewHeight = (head.pixelHeight / 2 + CNBCard.tieBottom(config, grid, { pc, duration }) - grid.semiToY(pc)) / ss;
             if (!(Math.abs(height - previewHeight) <= 0.001)) {
               failures.push(`${file} breve pc ${pc}: engraved ${height} staff spaces tall, preview ${previewHeight}`);
+            }
+          }
+        }
+        // The breve's tie (session 46, engine session 28): its ends at the
+        // centres of the first and last heads, each measured from its own
+        // edge of the stencil (half the engraved head's width in), and at the
+        // heads' bottom; its lowest ink the stencil's bottom.
+        const { ties, error } = await measureTies(engine, ly);
+        if (error) { failures.push(`${file} tie: ${error}`); continue; }
+        for (const { pc, start, end, x, y } of ties) {
+          const shape = config.shapes[CNBCard.resolveNotehead(config, pc, "breve", null).shape];
+          const { ties: [tie] } = CNBCard.repeatLayout(config, grid, shape, "breve");
+          const half = CNBNotehead.measure(shape, grid.pxPerSemi).pixelWidth / 2 / ss;
+          const ends = -tie.dy / ss;
+          const lowest = (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss;
+          const measured = [
+            ["start x", start[0] - x[0], half], ["end x", x[1] - end[0], half],
+            ["start y", start[1], ends], ["end y", end[1], ends], ["lowest point", y[0], lowest],
+          ];
+          for (const [what, engraved, preview] of measured) {
+            if (!(Math.abs(engraved - preview) <= 0.001)) {
+              failures.push(`${file} breve pc ${pc}: tie ${what} engraved ${engraved} staff spaces, preview ${preview}`);
             }
           }
         }

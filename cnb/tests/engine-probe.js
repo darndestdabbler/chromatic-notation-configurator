@@ -73,6 +73,75 @@ export function measureNoteheads(engine, ly, duration = "4") {
   });
 }
 
+// One chromatic octave of breves (session 46). In repeat mode the engine's
+// breve stencil holds its tie (engine 1.3.1, cnb:build-duration-stencil) as
+// the one path not inside a color form: the heads are coloured, the tie is
+// not. Each NoteHead prints its pitch class, the tie's two end points (the
+// path's moveto and its first curveto's end, through the stencil's scale and
+// translations) and the stencil's X and Y extents, in staff spaces, x from
+// the grob's reference point (the first head's) and y from the head's
+// centre line.
+const tieScore = `\\version "2.24.2"
+\\include "config.ly"
+#(define (cnb-probe:ties e sx sy dx dy)
+   (cond ((not (pair? e)) '())
+         ((eq? (car e) 'color) '())
+         ((eq? (car e) 'scale-stencil)
+          (cnb-probe:ties (caddr e) (* sx (car (cadr e))) (* sy (cadr (cadr e))) dx dy))
+         ((eq? (car e) 'translate-stencil)
+          (cnb-probe:ties (caddr e) sx sy (+ dx (* sx (car (cadr e)))) (+ dy (* sy (cdr (cadr e))))))
+         ((eq? (car e) 'combine-stencil)
+          (append-map (lambda (x) (cnb-probe:ties x sx sy dx dy)) (cdr e)))
+         ((eq? (car e) 'path)
+          (let ((c (caddr e)))
+            (list (map (lambda (v s d) (+ d (* s v)))
+                       (list (list-ref c 1) (list-ref c 2) (list-ref c 8) (list-ref c 9))
+                       (list sx sy sx sy) (list dx dy dx dy)))))
+         (else '())))
+{
+  \\override NoteHead.after-line-breaking = #(lambda (grob)
+    (let* ((stil (ly:grob-property grob 'stencil))
+           (pitch (ly:event-property (event-cause grob) 'pitch))
+           (space (ly:staff-symbol-staff-space grob))
+           (ties (cnb-probe:ties (ly:stencil-expr stil) 1 1 0 0))
+           (x (ly:stencil-extent stil X))
+           (y (ly:stencil-extent stil Y)))
+      (if (= (length ties) 1)
+          (format #t "CNB-TIE ~a ~{~a ~}~a ~a ~a ~a\\n"
+            (modulo (ly:pitch-semitones pitch) 12)
+            (map (lambda (v) (/ v space)) (car ties))
+            (/ (car x) space) (/ (cdr x) space) (/ (car y) space) (/ (cdr y) space)))))
+  ${["c'", "cis'", "d'", "dis'", "e'", "f'", "fis'", "g'", "gis'", "a'", "ais'", "b'"]
+    .map(p => p + "\\breve").join(" ")}
+}
+`;
+
+/**
+ * Compile an exported config (.ly text) in repeat mode with the engine
+ * under a score of the twelve pitch classes as breves, and return each
+ * engraved breve's tie (session 46): { ties: [{ pc, start, end, x, y }] },
+ * start and end the tie's end points as [x, y], x and y the whole stencil's
+ * extents as [min, max], in staff spaces (x from the first head's reference
+ * point, y up from the head's centre line), or { error } with LilyPond's
+ * output when it fails or prints no tie.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @returns {Promise<{ties?:{pc:number, start:number[], end:number[], x:number[], y:number[]}[], error?:string}>}
+ */
+export function measureTies(engine, ly) {
+  return compile(engine, ly, tieScore).then(({ error, output }) => {
+    const ties = [...output.matchAll(/^CNB-TIE (\d+)((?: \S+){8})$/gm)].map(([, pc, rest]) => {
+      const n = rest.trim().split(" ").map(schemeNumber);
+      return { pc: Number(pc), start: [n[0], n[1]], end: [n[2], n[3]], x: [n[4], n[5]], y: [n[6], n[7]] };
+    });
+    if (error || ties.length === 0) {
+      return { error: `${error ? error.message : "no tie was measured"}\n${output}` };
+    }
+    return { ties };
+  });
+}
+
 // The same octave of quarter notes; each NoteHead prints its pitch class and
 // its staff-position (half-staff-spaces from the middle line), and the staff
 // prints its line-positions.

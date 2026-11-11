@@ -161,6 +161,23 @@ export const tests = [
       eq(CNBCollection.gridRange([0, 1, 2, 3, 4, 5, 6], config).maxSemi, 22, "off: unchanged");
     }},
 
+  { name: "gridRange: a breve row in repeat mode holds the tie under the lowest notehead", fn: () => {
+      const pcs = [0, 1, 2, 3, 4, 5, 6];
+      const config = CNBConfig.createDefault();
+      config.durations.representationMode = "repeat";
+      eq(CNBCollection.gridRange(pcs, config, ["semibreve"]).minSemi, -4, "no tie: unchanged");
+      const range = CNBCollection.gridRange(pcs, config, ["breve"]);
+      assert(range.minSemi < -4, `widened below −4 (${range.minSemi})`);
+      const fits = r => {
+        const grid = CNBGrid.create(config, r);
+        return pcs.every(pc => CNBCard.tieBottom(config, grid, { pc, duration: "breve" }) <= grid.svgHeight);
+      };
+      assert(fits(range), "every tie fits");
+      assert(!fits({ ...range, minSemi: range.minSemi + 1 }), "by the whole semitones it needs, no more");
+      config.durations.representationMode = "shape";
+      eq(CNBCollection.gridRange(pcs, config, ["breve"]).minSemi, -4, "shape mode: unchanged");
+    }},
+
   { name: "render: a tall clef makes the row's staff and cards taller", fn: () => {
       const config = CNBConfig.createDefault();
       const plain = CNBGrid.create(config, CNBCollection.gridRange([0, 1, 2]));

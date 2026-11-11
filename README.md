@@ -382,8 +382,9 @@ it (session 34, LY export spec 1.3.9):
   notehead, the preview draws what the engine engraves: minim ×2 and
   semibreve ×4, each head edge to edge with the multinote padding
   (`engine.multinotePadding`, in staff spaces) between them. A breve is two
-  tied semibreves, 1 staff space apart, the tie black (engine 1.3.0 and
-  later). How many heads there are, the gap and the tie are not settings.
+  tied semibreves, 1 staff space apart, the tie black and below the heads,
+  from the first head's centre to the last's (engine 1.3.1 and later). How
+  many heads there are, the gap and the tie are not settings.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem

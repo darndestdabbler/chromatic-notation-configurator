@@ -35,10 +35,12 @@
  *
  * Session 44 (the breve as tied semibreves, engine session 25): in repeat
  * mode a breve draws as two semibreve groups of 4 heads, 1 staff space
- * apart, with a tie in the gap on each notehead of the octave pair:
- * LilyPond's make-tie-stencil, bowing down from the head's centre line
- * (CNBCard.tiePath), drawn black whatever the notehead's colour, as the
- * engine engraves it. The ledgers and the column follow the whole width.
+ * apart, with a tie on each notehead of the octave pair: LilyPond's
+ * make-tie-stencil (CNBCard.tiePath), drawn black whatever the notehead's
+ * colour, as the engine engraves it. The ledgers and the column follow the
+ * whole width. Session 46 (engine session 28): the tie runs below the
+ * heads, from the centre of the first head to the centre of the last, its
+ * ends at the heads' bottom, curving down (CNBCard.tieBottom says how low).
  *
  * Session 22 (notehead size): the resolved heightSemis / widthSemis set the
  * notehead measurement, and the ledger width, column width, repeated group,
@@ -172,8 +174,10 @@ export const CNBCard = {
   /**
    * Horizontal layout of a duration's repeated heads (pure). Copies sit
    * edge to edge with engine.multinotePadding staff spaces between them.
-   * A breve's two groups sit 1 staff space apart, with a tie in the gap.
-   * Offsets and tie ends are relative to the centre of the whole.
+   * A breve's two groups sit 1 staff space apart, with one tie below the
+   * heads from the first head's centre to the last head's (session 46).
+   * Offsets and tie ends are relative to the centre of the whole; a tie's
+   * dy is its ends' height below the head's centre, the heads' bottom.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -182,13 +186,13 @@ export const CNBCard = {
    * @param {{heightSemis?:number|null, widthSemis?:number|null}} [size]
    *        the resolved notehead size (session 22); absent = the shape's own
    * @returns {{count:number, offsets:number[], groupWidth:number,
-   *            ties:Array<{x1:number, x2:number}>, staffSpacePx:number}} px;
+   *            ties:Array<{x1:number, x2:number, dy:number}>, staffSpacePx:number}} px;
    *          count is the number of heads, groupWidth the whole width
    */
   repeatLayout(config, gridContext, shape, duration, size) {
     const perGroup = CNBCard.repeatCount(config, duration);
     const groups = CNBCard.tiedGroups(config, duration);
-    const { pixelWidth } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
+    const { pixelWidth, pixelHeight } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
     const axis = gridContext.axis;
     const unitsPerStaffSpace = axis && axis.enabled
       ? axis.unitsPerStaffSpace
@@ -201,12 +205,13 @@ export const CNBCard = {
     const gap = TIE_GAP * staffSpacePx;
     const pitch = width + gap;
     const offsets = [];
-    const ties = [];
     for (let g = 0; g < groups; g++) {
       const centre = (g - (groups - 1) / 2) * pitch;
       for (let i = 0; i < perGroup; i++) offsets.push(centre + (i - (perGroup - 1) / 2) * step);
-      if (g > 0) ties.push({ x1: centre - pitch + width / 2, x2: centre - width / 2 });
     }
+    const ties = groups > 1
+      ? [{ x1: offsets[0], x2: offsets[offsets.length - 1], dy: pixelHeight / 2 }]
+      : [];
     return {
       count: perGroup * groups,
       offsets,
@@ -240,6 +245,27 @@ export const CNBCard = {
     const d = `M ${at(0, 0)} C ${at(0.25, outer)} ${at(0.75, outer)} ${at(1, 0)} ` +
       `C ${at(0.75, inner)} ${at(0.25, inner)} ${at(0, 0)} Z`;
     return { d, strokeWidth: Math.min(2 * TIE_THICKNESS, 0.1) * staffSpacePx, height: height * staffSpacePx };
+  },
+
+  /**
+   * How low a card's lowest tie reaches (session 46): the y, in px on the
+   * grid, of the lowest ink of the tie under the card's lower notehead (the
+   * bow's middle, plus half the outline's stroke), or null when the card
+   * draws no tie. The collection widens its grid to hold it.
+   *
+   * @param {object} config
+   * @param {object} gridContext
+   * @param {{pc:number, duration:string, key?:string|null}} example
+   * @returns {number|null} px
+   */
+  tieBottom(config, gridContext, { pc, duration, key = null }) {
+    const resolved = CNBCard.resolveNotehead(config, pc, duration, key);
+    const shape = config.shapes[resolved.shape];
+    const { ties, staffSpacePx } = CNBCard.repeatLayout(config, gridContext, shape, duration, resolved);
+    if (ties.length === 0) return null;
+    const { x1, x2, dy } = ties[0];
+    const tie = CNBCard.tiePath(x1, x2, 0, staffSpacePx);
+    return gridContext.semiToY(pc) + dy + tie.height + tie.strokeWidth / 2;
   },
 
   /**
@@ -410,10 +436,10 @@ export const CNBCard = {
       });
     }
 
-    // 4. A breve's ties (session 44), one per gap on each notehead
+    // 4. A breve's tie (sessions 44 and 46), below the heads of each notehead
     for (const semi of [lowerSemi, upperSemi]) {
-      for (const { x1, x2 } of repeat.ties) {
-        const tie = CNBCard.tiePath(headX + x1, headX + x2, gridContext.semiToY(semi), repeat.staffSpacePx);
+      for (const { x1, x2, dy } of repeat.ties) {
+        const tie = CNBCard.tiePath(headX + x1, headX + x2, gridContext.semiToY(semi) + dy, repeat.staffSpacePx);
         const path = document.createElementNS(NS, "path");
         path.setAttribute("class", "cnb-tie");
         path.setAttribute("d", tie.d);

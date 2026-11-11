@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.13 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from)
-**Date:** November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.14 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads)
+**Date:** November 11, 2026 (1.3.14); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -63,7 +63,8 @@ exports new attachment values. 1.3.12, for both: the breve as tied
 semibreves, §4.1d. The export text is unchanged; engine 1.3.0 engraves a
 repeat-mode breve differently. 1.3.13, for both: clefs to choose from,
 §5.5a. Only a config showing the dozenal clef exports anything new,
-`'dozenal`.)*
+`'dozenal`. 1.3.14, for both: the breve's tie below the heads, §4.1d. The
+export text is unchanged; engine 1.3.1 engraves the tie differently.)*
 
 Summary of additions:
 
@@ -76,7 +77,7 @@ Summary of additions:
 | Clef and key signature (1.3.7, linear and axis alike) | nothing written | `cnb:clef-*`, A6 `cnb:register-clef!`, `cnb:keysig-*` (§5.5, §5.6) |
 | Ledger lines and key-scoped rules (1.3.9, linear and axis alike) | the engine's own ledgers; Section C resolved with no key | `cnb:ledgers-by-semitone` and NoteHead overrides (§5.7); Section C dispatch on the key (§6.4) |
 | Section A5 colours (1.3.10, linear and axis alike) | palette colours, with a `cnb:use-accessible-colors` branch | each colour the noteheads use, once, named from its hex; no branch (§4.5a) |
-| The breve in repeat mode (1.3.12, linear and axis alike) | 4 heads, as a semibreve | two semibreve groups, tied, as engine 1.3.0 engraves it; export text unchanged (§4.1d) |
+| The breve in repeat mode (1.3.12, linear and axis alike) | 4 heads, as a semibreve | two semibreve groups, tied, as engine 1.3.0 engraves it; since 1.3.14 one tie below the heads, first head's centre to the last's, as engine 1.3.1 engraves it; export text unchanged (§4.1d) |
 | Clefs to choose from (1.3.13, linear and axis alike) | glyph and text clefs | the dozenal clef as `cnb:clef-style 'dozenal`; treble, bass and alto as registered glyphs (§5.5a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
@@ -191,13 +192,20 @@ groups, tied**, and the preview draws the same (session 44):
 - **Gap.** The second group starts 1 staff space after the first group's
   right edge (stencil extents). The breve is therefore
   `2 × semibreve width + 1` staff spaces wide.
-- **Tie.** One in the gap, on the head's centre line: LilyPond's
-  `(make-tie-stencil (cons x1 0) (cons x2 0) 0.12 DOWN)`, x1 the first
-  group's right edge and x2 = x1 + 1, with LilyPond's default height limit
-  1.0 and ratio 0.33. Its bow is (2/π)·atan(π·0.33·1/2) = 0.3046 staff
-  spaces below the centre line, a bézier sandwich 0.12 staff spaces thick
-  (angularity 0.5), filled and outlined with a 0.1 line
-  (`CNBCard.tiePath`). It is on each notehead of the card's octave pair.
+- **Tie (1.3.14).** One for the whole breve, below the heads: LilyPond's
+  `(make-tie-stencil (cons xa y0) (cons xb y0) 0.12 DOWN)`, xa the centre
+  of the first head of the first group, xb the centre of the last head of
+  the last group, and y0 the heads' bottom (the group's lower Y edge), so
+  it curves down below them as LilyPond's ties under a note do, with
+  LilyPond's default height limit 1.0 and ratio 0.33. Its bow is
+  (2/π)·atan(π·0.33·span/2) staff spaces below y0, a bézier sandwich 0.12
+  staff spaces thick (angularity 0.5), filled and outlined with a 0.1 line
+  (`CNBCard.tiePath`). It is on each notehead of the card's octave pair,
+  and a breve row's grid reaches low enough to hold it
+  (`CNBCard.tieBottom`, `CNBCollection.gridRange`). Since engine 1.3.1
+  (engine session 28, its handoff in
+  `docs/session-sets/028-breve-tie-below/`); engine 1.3.0 drew the tie in
+  the gap between the groups, on the head's centre line (1.3.12).
 - **The tie is black**, whatever the notehead's colour: the engine adds it
   after colouring the head, so it takes LilyPond's default colour (or a
   score's own `NoteHead.color`). The preview draws it black.
@@ -214,7 +222,8 @@ groups, tied**, and the preview draws the same (session 44):
 added: what changed is how engine 1.3.0 engraves what was always exported.
 The five export baselines are byte-identical to 1.3.11. **An export
 engraved with an engine before 1.3.0 draws a repeat-mode breve as 4
-heads**, which the preview no longer draws.
+heads**, which the preview no longer draws, **and one engraved with engine
+1.3.0 ties the gap** rather than below the heads (1.3.14).
 
 **Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`,
 measured through `cnb/tests/engine-probe.js`): for the Kite 4-369 and
@@ -224,9 +233,15 @@ width is compared with the preview's layout of the engraved head, since
 each engraved head is about 0.0002 staff spaces wider than the preview's
 (the export writes path coordinates to 4 places) and a breve has 8 heads:
 Kite 8.6680 engraved against 8.6683, 45deg-369 8.6681 against 8.6682;
-the preview's own heads give 8.6667 and 8.6674. Heights are 1.3335 and
-1.3334 against 1.3333; on these fixtures the tie lies within the head's
-height.
+the preview's own heads give 8.6667 and 8.6674. Since 1.3.14 the round
+trip also reads each engraved tie from the stencil (`measureTies`) and
+holds it to 0.001 staff spaces, every pitch class, against engine 1.3.1:
+its ends half a head in from each edge of the breve and at the heads'
+bottom (Kite −0.6667, 45deg-369 −0.6668, against the preview's −0.6667),
+its lowest ink (−1.5530 against −1.5529 for both) and the breve's height
+from the heads' top to it (Kite 2.2198, 45deg-369 2.2197, against
+2.2196). The engraved span, 7.3345 and 7.3346, is the preview's 7.3333
+and 7.3340 widened by the engraved heads.
 
 ### 4.4a Stem Attachment Registrations under a pitch axis
 
@@ -1071,7 +1086,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.13** | **Nov 10, 2026** | **Clefs to choose from (session 45): new §5.5a. The dozenal clef, kind `"dozenal"`, exports `cnb:clef-style 'dozenal` and its gutter and registers nothing; the preview draws the engine's numeral 50. LilyPond's treble, bass and alto clefs (Emmentaler, SIL OFL) are glyph clefs placed on the pitch each marks, exported through `cnb:register-clef!`. A glyph clef's range, set in the panel or by dragging it on the canvas, is its top and height. Output changes only for a config showing the dozenal clef; the five export baselines are byte-identical. Engine round trips hold the dozenal and a moved and resized treble clef to the preview.** |
+| **1.3.14** | **Nov 11, 2026** | **The breve's tie below the noteheads (session 46, engine session 28): §4.1d. Since engine 1.3.1 a repeat-mode breve has one tie, from the centre of the first head of the first group to the centre of the last head of the last group, at the heads' bottom, curving down; the groups and the gap are unchanged, and the preview draws the same, its breve row deep enough to hold the tie. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the tie's ends, its lowest point and the breve's height to 0.001 staff spaces.** |
+| 1.3.13 | Nov 10, 2026 | Clefs to choose from (session 45): new §5.5a. The dozenal clef, kind `"dozenal"`, exports `cnb:clef-style 'dozenal` and its gutter and registers nothing; the preview draws the engine's numeral 50. LilyPond's treble, bass and alto clefs (Emmentaler, SIL OFL) are glyph clefs placed on the pitch each marks, exported through `cnb:register-clef!`. A glyph clef's range, set in the panel or by dragging it on the canvas, is its top and height. Output changes only for a config showing the dozenal clef; the five export baselines are byte-identical. Engine round trips hold the dozenal and a moved and resized treble clef to the preview. |
 | 1.3.12 | Nov 10, 2026 | The breve as tied semibreves (session 44, engine session 25): new §4.1d. Since engine 1.3.0 a repeat-mode breve engraves as two semibreve groups 1 staff space apart, joined by LilyPond's `make-tie-stencil` in black, and the preview draws the same. The breve stays one note. §5.2a's repeat counts follow. Export output is UNCHANGED; the five export baselines are byte-identical. An engine round trip holds the breve to 0.001 staff spaces. |
 | 1.3.11 | Nov 9, 2026 | Stems where the notehead's SVG puts them (session 40): new §4.4c. A stem anchor is the stem's centre, as the SVG's stem rect draws it, so the Kite 4-369 and 45deg-369 stems are centred. Each `cnb:register-attachment!` point's x is the anchor moved half the engine's 0.13-staff-space stem outward, relative to the registered extent; a sized variant's points are computed at its scale. The default notehead's anchors move to ±146.426 SVG units, so on its staff the up stem's right edge and the down stem's left edge are on its sides (`(1 . 0.3157)`); each gallery file sets them for its own staff. Output CHANGES for every config with stems; the five export baselines were regenerated. |
 | 1.3.10 | Nov 8, 2026 | Colours on the noteheads (session 37): new §4.5a. A config has no palette: a notehead's colour is its rules' `apply.color`. Section A5 registers each colour the resolved noteheads use, once, named from its hex (`nearestColorName` → `toSchemeSymbol`), with no `cnb:use-accessible-colors` branch; the engine is unchanged and the variable is never set. A saved palette is moved onto the noteheads on load (`CNBConfig.paletteToRules`). §5.2a: nothing is preview-only, and the header loses its palette and preview-only lines. `palette` and `engine.useAccessibleColors` are retired. Output CHANGES for every config (the header) and every config with colours (A5, and the symbol names where a palette had named them); the five export baselines were regenerated. |

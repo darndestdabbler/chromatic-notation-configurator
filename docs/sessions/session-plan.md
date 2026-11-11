@@ -1653,6 +1653,13 @@ of the last group.
    trip in `cnb/tests/cnb-card-tests.js` follow, the round trip measuring
    the tie's ends and lowest point against the preview.
 
+*(Amended during session 46, 2026-11-11: the engine work is engine
+session 28, "The breve's tie below the noteheads", in the engine
+repository's plan, followed by its session 29, the 1.3.1 release. The
+tie's ends sit at the bottom of the heads (the group's lower edge), where
+LilyPond's own ties under a note start. This session's round trip waits
+for engine session 28 to land.)*
+
 ### Session 47: Designing the key-signature designer
 
 **Why.** A signature should be as easy to design as the noteheads, and

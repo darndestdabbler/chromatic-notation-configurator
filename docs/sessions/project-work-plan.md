@@ -57,7 +57,8 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 43 | Nudges you can see and drag | no | 2026-11-10 |
 | 44 | The breve as tied semibreves | no | 2026-11-10 |
 | 45 | Clefs | no | 2026-11-10 |
-| 46 | Designing the key-signature designer | — | not declared |
+| 46 | The breve's tie below the noteheads | no | 2026-11-11 |
+| 47 | Designing the key-signature designer | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -449,3 +450,13 @@ Make the clef a choice that works. The Clef panel gains buttons for the engine's
 **Amended after acceptance:**
 
 - 2026-11-10 — step 'dozenal-and-range-preview': its files: The key signature spaces itself from the clef's width through CNBClef.measure, which needs the staff space to measure the dozenal clef, so cnb-key-signature.js passes it (one line). (claude-code (anthropic, claude-opus-5-5))
+
+### Session 46 — The breve's tie below the noteheads
+
+**Releasable: no.**
+
+In repeat mode a breve's tie moves below the noteheads (the operator's finding in the session-45 try-out, 2026-11-11). Today each notehead of the breve carries a tie in the 1-staff-space gap between its two semibreve groups, on the heads' centre line. Instead, each notehead carries one tie whose ends are at the centres of the first head of the first group and the last head of the last group, at the bottom of the heads (the group stencil's lower Y edge, which for LilyPond's own heads is where its ties under a note start), curving down as LilyPond's ties under a note do: LilyPond's make-tie-stencil, 0.12 staff spaces thick, DOWN, default height limit 1.0 and ratio 0.33, still black. The two groups and the gap between them stay as they are, so the breve's width, its ledgers and its column are unchanged. Engine 1.3.0 draws the tie, so the engine work is the engine repository's own session: this session inserts it into the engine's plan as its session 28, followed by its patch release 1.3.1 as session 29, with the geometry above, its goldens, version.json 1.3.1 and a configurator handoff. Here, the card (cnb/src/cnb-card.js: CNBCard.repeatLayout's ties and the render) draws the tie so through CNBCard.tiePath. Once the engine session has landed, the engine round trip in cnb/tests/cnb-card-tests.js measures the engraved tie's ends and lowest point against the preview's, and the LY spec's section 4.1d (1.3.14), the architecture plan and the README follow.
+
+**Amended after acceptance:**
+
+- 2026-11-11 — step 'preview': its files: The tie below the heads reaches about 5 semitones below a pc-0 breve (Kite 4.7, default 5.0), past the card grid's 4-semitone headroom, so CNBCollection.gridRange must widen a breve row's range for the tie not to be clipped (the step's own requirement); its test follows. (claude-code (anthropic, claude-opus-5-5))

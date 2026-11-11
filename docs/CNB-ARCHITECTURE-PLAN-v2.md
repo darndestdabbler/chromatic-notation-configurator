@@ -1881,10 +1881,13 @@ Build Module X: [one-line description]
    stem-attachment does, and the ledgers widen with the group
    (`CNBCard.repeatCount` / `CNBCard.repeatLayout`). Since session 44 (engine
    session 25, engine 1.3.0) a breve is two semibreve groups 1 staff space
-   apart, with a tie in the gap on each notehead, LilyPond's
-   `make-tie-stencil`, drawn black whatever the notehead's colour
-   (`CNBCard.tiedGroups` / `CNBCard.tiePath`; LY spec 1.3.12 §4.1d). The
-   ledgers and the column follow the whole width.
+   apart, tied on each notehead with LilyPond's `make-tie-stencil`, drawn
+   black whatever the notehead's colour (`CNBCard.tiedGroups` /
+   `CNBCard.tiePath`; LY spec §4.1d). Since session 46 (engine session 28,
+   engine 1.3.1) the tie runs below the heads, from the first head's centre
+   to the last's, curving down, and a breve row's grid reaches low enough
+   to hold it (`CNBCard.tieBottom`, `CNBCollection.gridRange`). The ledgers
+   and the column follow the whole width.
 4. **Off-key marking:** Visual treatment. Deferred.
 5. **Accidentals and clefs:** *Clefs settled in set 009:* custom clefs
    render in a left gutter placed on the semitone grid (Modules 20 and 21,
