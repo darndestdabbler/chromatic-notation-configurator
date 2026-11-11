@@ -759,6 +759,29 @@
       "what": "step 'preview': its files",
       "reason": "The tie below the heads reaches about 5 semitones below a pc-0 breve (Kite 4.7, default 5.0), past the card grid's 4-semitone headroom, so CNBCollection.gridRange must widen a breve row's range for the tie not to be clipped (the step's own requirement); its test follows.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T02:47:35.926000-05:00",
+      "task": "Design the key-signature designer, as a document only, for the operator's approval. docs/planning/key-signature-designer-design.md works from the operator's outline in docs/uat-status.md (session 42): two kinds of signature, traditional accidentals or scale notes, chosen once rather than defined per key and mode. For scale notes it covers the shape, colour and size of the signature's noteheads for naturals, flats and sharps across all pitches; the upper tonic shown or hidden; the option of showing only the tonic and the notes a half step apart; the stacking (two stacks of odd and even notes, optionally with the gold stem, or a new stack to the right at each half step, optionally alternating fill, colour or shape, enough for Clairnote's signatures); and how the signature repeats across the staff's line groups (once, placed on the bottom group, the top group or near the notes, or repeated across every visible group with the root as a double notehead). It says how the choices are stored in keys.keySignature, how a config saved today (the notehead-chords scale stack) loads and looks the same, how the preview draws each choice and how each reaches LilyPond, naming the engine work: the mark-list rendering hook the engine backlog section 2.3 says to reopen, and whatever else the engine needs. The design then goes to a cross-provider consult, one identical brief to GPT and Gemini, recorded verbatim with a synthesis in docs/planning/key-signature-designer-consult.md, and the design is revised from it. The operator reviews and approves the revised design, and the approval is recorded in the document. Finally the design's proposed program becomes numbered sessions in docs/sessions/session-plan.md: the sessions that build the designer (sessions 48 and on, each naming its engine work), then the session in which the operator declares the UI stable, then the 1.1.0 release, numbered.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T04:09:59.104000-05:00",
+      "what": "step 'operator-approval': its files",
+      "reason": "The operator asked, before approving, for mock-ups of normal and edge cases to review visually (placement on the bottom set, top set or both, and a signature starting midway up a set); static mock-ups under docs/planning, as session 19's, nothing under cnb/.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T04:34:14.578000-05:00",
+      "what": "step 'operator-approval': its files",
+      "reason": "The operator, reviewing the mock-ups, added four stack-membership rules, custom symbols and a styleable gold stem, and asked for a second consult with Sol and Argon (gpt-6.1-sol, gemini-4-argon) before approving; the consult record gains that round.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

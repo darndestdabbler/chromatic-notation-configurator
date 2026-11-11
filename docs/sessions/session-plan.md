@@ -1684,12 +1684,112 @@ reach Clairnote's, traditional ones and the scale stack alike (operator,
 3. The design goes to a cross-provider consult (GPT and Gemini) before the
    operator approves it, and it plans the sessions that build it.
 
-### Sessions 48 and on: The key-signature designer
+*(Done in session 47: the design is
+[`docs/planning/key-signature-designer-design.md`](../planning/key-signature-designer-design.md),
+approved by the operator on 2026-11-11 after two consult rounds (GPT and
+Gemini, then Sol and Argon at the operator's request,
+[`key-signature-designer-consult.md`](../planning/key-signature-designer-consult.md))
+and a review of mock-ups
+([`key-signature-mockups/`](../planning/key-signature-mockups/index.html)).
+It plans sessions 48–51 below; the UI-stable session is 52 and the 1.1.0
+release 53.)*
 
-As session 47 plans them, with their engine work. Then a session in which
-the operator declares the UI stable, and the release:
+### Session 48: Scale notes on the canvas, and the engine's hook planned
 
-### Release 1.1.0 (release: 1.1.0), numbered once session 47 has planned
+**Why.** The approved key-signature design (session 47), first its scale
+notes: the operator's outline, their four stacking rules and placement on
+the staff's line sets. Its engine contract is settled here, before
+anything is built on it (both consult rounds).
+
+1. Register.
+2. First, a LilyPond probe (`cnb/tests/engine-probe.js`) confirms that the
+   engine can read the tonic's spelling and the key's pitch classes from
+   real `\key` events, for a sharp key, a flat key and an enharmonic pair.
+   If it cannot, the session stops and the design is revisited.
+3. The `keys.keySignature` fields of design §6, each defaulting to today's
+   signature, with validation, and the architecture plan's §4.9.
+4. `CNBKeySignature.marks` (design §8) for every scale-note choice of
+   design §4: the looks of all marks, flats, sharps and every second stack;
+   the upper tonic; the whole scale or the tonic and the half steps; the
+   four stacking rules; the direction; the gold stems, with their colour,
+   thickness and shared thickness; and the middle, bottom, top and every
+   line set, centred. `render` draws from it, with the overlap warning's
+   test. The staff's picker offers each mode's 15 spellings (design §3).
+   Tests in `cnb/tests/cnb-key-signature-tests.js` and
+   `cnb/tests/cnb-preview-display-tests.js`: each choice, C major, A minor,
+   odd and even tonics under each rule, a sharp and a flat key, and every
+   fixture and gallery file drawing exactly as before.
+5. *Engine work:* insert the engine's session 30, the mark-list hook
+   (design §9: `cnb:keysig-style 'marks` and `cnb:keysig-marks` with column
+   offsets and bars, heads, Emmentaler sharps and flats, no cancelling
+   naturals; tests for a key change, enharmonic spellings, a transposed
+   score and system starts; goldens on LilyPond 2.24 and 2.26; the
+   handoff), and its session 31, the 1.4.0 release, into the engine's plan.
+
+### Session 49: Scale notes reach LilyPond
+
+**Why.** The engraving has to draw what the canvas draws (design §9).
+
+1. Register.
+2. Once engine session 30 has landed (otherwise the step is blocked): the
+   exporter writes the mark table, 105 keys, for any signature whose
+   effective settings are not today's; today's signature exports byte for
+   byte as before. LY spec 1.3.15 §5.6a, the architecture plan, the README.
+3. An engine round trip on a representative set (the default and
+   Clairnote DN fixtures; each stacking rule; the upper tonic on and off;
+   the half steps alone; the bottom, top and every line set; several gold
+   stems) holds each engraved mark's height, column and look, each bar,
+   and the signature's width to the preview's within 0.001 staff spaces. A
+   key the table lacks engraves no signature and warns. The five export
+   baselines stay byte-identical.
+
+### Session 50: The Key signature panel
+
+**Why.** A designer sets the signature in the panel, in a designer's words
+(design §7).
+
+1. Register.
+2. The panel of design §7: what is drawn, the notes, the stacks and the
+   gold stem, the looks (the notehead panel's own controls), the place,
+   and the overlap note.
+3. The Clairnote SN and DN gallery files take Clairnote-style signatures:
+   dot and tailed-dot symbols, each placed by the dot's centre, tails thick
+   and steep enough to read; a new stack at each change of parity, going
+   left in sharp keys; no upper tonic; no gold stem. They are checked at
+   concert size on an engraved page.
+4. A UAT driver for each choice on the canvas; screenshots at 1440 and
+   1280 px, judged against the mock-ups. *Engine work:* none.
+
+### Session 51: Accidentals
+
+**Why.** Traditional accidentals, which may help pianists (operator,
+session 42), the design's second kind of signature (design §5).
+
+1. Register.
+2. `CNBKeySignature.marks` for accidentals: in the traditional order, each
+   sign at the pitch it makes, in its own column, each copy's columns
+   starting again on every line set, no ledgers; Emmentaler's sharp and
+   flat (SIL OFL 1.1, its licence already in `cnb/assets/fonts/`); the
+   panel's "Sharps or flats".
+3. The export writes them through the mark table; an engine round trip for
+   C, a sharp key and a flat key, on the bottom line set and on every line
+   set; tests and the UAT. *Engine work:* none beyond engine session 30,
+   which draws sharps and flats.
+
+### Session 52: The UI is stable
+
+**Why.** The release waits for a stable UI (operator, 2026-11-06); the
+declaration moved here in session 42.
+
+1. Register.
+2. The operator tries sessions 43–51 in the app. Rough edges found are
+   fixed here, or planned as sessions before 53 if they are large.
+3. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+4. The operator declares the UI stable, which is the condition for
+   session 53.
+
+### Session 53: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
@@ -1757,7 +1857,9 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
   010 s2 notes D11, D12 and its design consult; record 40). The engine
   backlog §2.3 says to reopen a mark-list rendering hook when this is
   scheduled. *Planned since 2026-11-08 as session 42 and on; since
-  2026-11-09, 44 and on; since 2026-11-10, 46 and on.*
+  2026-11-09, 44 and on; since 2026-11-10, 46 and on; since 2026-11-11,
+  designed in session 47 and built in sessions 48–51, the mark-list hook
+  being engine session 30.*
 - **Gallery fidelity** (`reproduction-report.md`):
   - Gap A, a ledger rule that hides a ledger when a staff line lies between
     it and the note, which would let the Clairnote SN/DN, Chromatic Lyre
