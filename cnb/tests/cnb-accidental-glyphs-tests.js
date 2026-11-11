@@ -58,4 +58,20 @@ export const tests = [
       eq(G.glyph("flat", 1).x[0], -0.12, "emmentaler-20's flat");
       eq(G.glyph("flat", 7 / 4).x[0], -0.1037, "emmentaler-26's flat, the engine's default magnification");
     }},
+
+  { name: "glyph: each size's sharp bars, the top left of its upper bar to the top left of its lower bar, as its outline draws them", fn: () => {
+      for (const m of [0.5, 0.65, 0.7, 0.8, 0.9, 1, 1.15, 7 / 4]) {
+        const sharp = G.glyph("sharp", m);
+        // The bars' left edges are at x 0: the top of each, upper (y < 0 in
+        // the path) and lower.
+        const left = points(sharp.path).filter(p => p[0] === 0).map(p => p[1]);
+        const upper = Math.min(...left.filter(y => y < 0));
+        const lower = Math.min(...left.filter(y => y > 0));
+        eq(sharp.bars, (lower - upper) / G.UNITS_PER_STAFF_SPACE, `magnify ${m}: emmentaler-${G.designSize(m)}`);
+        eq(G.glyph("flat", m).bars, undefined, `magnify ${m}: a flat has no bars`);
+      }
+      eq(G.glyph("sharp", 7 / 4).bars, 1.052, "emmentaler-26's, the engine's default magnification");
+      eq(G.glyph("sharp", 1).bars, 1.052, "emmentaler-20's");
+      eq(G.glyph("sharp", 0.5).bars, 1.048, "emmentaler-11's");
+    }},
 ];

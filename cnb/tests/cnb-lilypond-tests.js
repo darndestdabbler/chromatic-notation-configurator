@@ -1321,7 +1321,9 @@ export const tests = [
   // each setting, in D major, B♭ major and C major (key changes in one
   // score), every mark's height, column and look (size, fill and colour),
   // every bar and the signature's ink are held to the preview's within 0.001
-  // staff spaces, and again at other magnifications. Since engine 1.4.1
+  // staff spaces, and again at other magnifications, which a plain score
+  // engraves since engine 1.5.0 (before it, these ran at 7/4: session 52),
+  // and under a staff's own \magnifyStaff. Since engine 1.4.1
   // (engine session 33) the signature's heads take the notation's ledgers, so
   // every stack's ledgers are held to the canvas's and the ink is compared
   // in every signature (session 50).
@@ -1590,10 +1592,22 @@ export const tests = [
       contains(out, "#(set! cnb:keysig-style 'marks)", "the mark table");
       eq(entry(out, "C major"), "     (((0 . 0) . (0 2 4 5 7 9 11))\n      . ((columns)\n         (bars)\n         (marks)))",
         "C major: no signs");
-      contains(entry(out, "D major"), "(columns 0.55 1.65)", "D major's columns");
-      contains(entry(out, "D major"), "(marks (6 0 sharp)\n                (13 1 sharp))", "F♯ C♯ at the notes they make");
-      contains(entry(out, "B♭ major"), "(columns 0.4519 1.3556)", "B♭ major's columns, emmentaler-26's flat apart");
-      contains(entry(out, "B♭ major"), "(marks (10 0 flat)\n                (15 1 flat))", "B♭ E♭ from the tonic B♭ at 10");
+      // Each sign at its scale (session 52, engine 1.5.0): automatic, 2.724
+      // semitones between a sharp's bars, so 0.6473 of LilyPond's size.
+      contains(entry(out, "D major"), "(columns 0.356 1.0681)", "D major's columns, the scaled sharp's width apart");
+      contains(entry(out, "D major"), "(marks (6 0 sharp 0.6473)\n                (13 1 sharp 0.6473))", "F♯ C♯ at the notes they make, at their scale");
+      contains(entry(out, "B♭ major"), "(columns 0.2925 0.8775)", "B♭ major's columns, emmentaler-26's scaled flat apart");
+      contains(entry(out, "B♭ major"), "(marks (10 0 flat 0.6473)\n                (15 1 flat 0.6473))", "B♭ E♭ from the tonic B♭ at 10");
+      // A size set by hand: 5 semitones, 5 / 1.052 / 4 of LilyPond's size.
+      const big = CNBConfig.clone(config);
+      big.keys.keySignature.signs = { heightSemis: 5 };
+      contains(entry(CNBLilypond.generate(big), "D major"), "(marks (6 0 sharp 1.1882)\n                (13 1 sharp 1.1882))", "5 semitones set by hand");
+      // A size whose scale is 1 writes none, as an engine before 1.5.0 reads it.
+      const full = CNBConfig.clone(config);
+      full.keys.keySignature.signs = { heightSemis: 1.052 * 4 };
+      const fullOut = CNBLilypond.generate(full);
+      contains(entry(fullOut, "D major"), "(columns 0.55 1.65)", "LilyPond's size: a sharp's width apart");
+      contains(entry(fullOut, "D major"), "(marks (6 0 sharp)\n                (13 1 sharp))", "scale 1: no fourth element");
       const table = out.slice(out.indexOf("cnb:keysig-marks"));
       lacks(table.slice(0, table.indexOf("\n\n")), " head ", "no heads");
 
@@ -1601,8 +1615,8 @@ export const tests = [
       // the cards' pitches add no ledger entry (signs have no ledgers).
       config.keys.keySignature.placement.position = "every-set";
       const every = CNBLilypond.generate(config);
-      contains(entry(every, "D major"), "(marks (6 0 sharp)\n                (13 1 sharp)\n                (18 0 sharp)\n                (25 1 sharp))", "D major twice");
-      contains(entry(every, "B♭ major"), "(marks (-2 0 flat)\n                (3 1 flat)\n                (10 0 flat)\n                (15 1 flat))", "B♭ major twice, the lower below the cards");
+      contains(entry(every, "D major"), "(marks (6 0 sharp 0.6473)\n                (13 1 sharp 0.6473)\n                (18 0 sharp 0.6473)\n                (25 1 sharp 0.6473))", "D major twice");
+      contains(entry(every, "B♭ major"), "(marks (-2 0 flat 0.6473)\n                (3 1 flat 0.6473)\n                (10 0 flat 0.6473)\n                (15 1 flat 0.6473))", "B♭ major twice, the lower below the cards");
       lacks(every, "(25 . (", "no ledger entry for C♯ at 25");
       lacks(every, "(-2 . (", "no ledger entry for B♭ at −2");
       eq(every.split("#(cnb:register-path!").length, CNBLilypond.generate(CNBConfig.createDefault()).split("#(cnb:register-path!").length,
@@ -1612,7 +1626,8 @@ export const tests = [
   // Engine-backed (session 51): the traditional signature engraves where the
   // canvas draws it. For the default config and Kite 4-369, in the middle, on
   // the bottom line set and on every line set, in C, D and B♭ major (key
-  // changes in one score), and at magnifications 1, 4/5 and 5/2: every engraved
+  // changes in one score), at the automatic size and one set by hand (session
+  // 52), and at magnifications 1, 7/4, 4/5 and 5/2: every engraved
   // sign's kind, its origin's height, its box (so its column and size, in the
   // optical size LilyPond picks) and the signature's ink within 0.001 staff
   // spaces of the preview's, and no ledgers, paths or bars. C major engraves
@@ -1626,25 +1641,39 @@ export const tests = [
         config.keys.keySignature.enabled = true;
         return config;
       };
+      // Each at the automatic size and at 4 semitones set by hand (session
+      // 52, engine 1.5.0: each sign scaled by its mark's fourth element).
+      const sizes = [["automatic", null], ["4 semitones", 4]];
       const runs = [];
       for (const [name, base] of [["default", keySignatureConfig], ["Kite 4-369", kite]]) {
         for (const position of ["middle", "bottom-set", "every-set"]) {
-          const config = base();
-          config.keys.keySignature.style = "accidentals";
-          config.keys.keySignature.placement.position = position;
-          runs.push({ label: `${name}, ${position}`, config, music: "" });
+          for (const [size, heightSemis] of sizes) {
+            const config = base();
+            config.keys.keySignature.style = "accidentals";
+            config.keys.keySignature.placement.position = position;
+            config.keys.keySignature.signs = { heightSemis };
+            runs.push({ label: `${name}, ${position}, ${size}`, config, music: "" });
+          }
         }
       }
-      // The engine magnifies every staff by cnb:default-magnify as it stands
-      // when the engine is included (cnb/score-defaults.ly), before the
-      // export set!s it, so a score that wants the config's own magnification
-      // magnifies its staff with it, as these do. Each picks its optical size.
+      // Since engine 1.5.0 (engine handoff 035 §1b) a plain score engraves at
+      // the cnb:default-magnify the export sets, so these scores need no
+      // \magnifyStaff of their own. Each picks its optical size.
+      // Both notations, in the middle and on every line set, at each size.
       for (const magnify of ["1", "4/5", "5/2"]) {
-        const config = keySignatureConfig();
-        config.keys.keySignature.style = "accidentals";
-        config.keys.keySignature.placement.position = "every-set";
-        config.engine.defaultMagnify = magnify;
-        runs.push({ label: `default, every-set, magnify ${magnify}`, config, music: "\\magnifyStaff #cnb:default-magnify " });
+        for (const [name, base] of [["default", keySignatureConfig], ["Kite 4-369", kite]]) {
+          for (const position of ["middle", "every-set"]) {
+            for (const [size, heightSemis] of sizes) {
+              if (magnify === "4/5" && (name !== "default" || position !== "every-set")) continue;
+              const config = base();
+              config.keys.keySignature.style = "accidentals";
+              config.keys.keySignature.placement.position = position;
+              config.keys.keySignature.signs = { heightSemis };
+              config.engine.defaultMagnify = magnify;
+              runs.push({ label: `${name}, ${position}, magnify ${magnify}, ${size}`, config, music: "" });
+            }
+          }
+        }
       }
       const keys = [["c", "major", "C"], ["d", "major", "D"], ["bes", "major", "B♭"]];
       const near = (a, b) => Math.abs(a - b) < 1e-3;
@@ -1674,7 +1703,9 @@ export const tests = [
           let left = Infinity;
           let right = -Infinity;
           for (const { semi, column, mark } of sig.marks) {
-            const glyph = CNBAccidentalGlyphs.glyph(mark.sign, magnify);
+            // The sign at its scale (session 52), about its origin.
+            const raw = CNBAccidentalGlyphs.glyph(mark.sign, magnify);
+            const glyph = { x: raw.x.map(v => v * mark.scale), y: raw.y.map(v => v * mark.scale) };
             const x = sig.columns[column];
             const y = CNBStaff.lilypondPosition(config, semi) / 2;
             const e = engraved.glyphs.find(g => near((g.x[0] + g.x[1]) / 2, x) && near(g.origin[1], y));

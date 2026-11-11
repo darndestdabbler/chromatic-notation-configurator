@@ -779,7 +779,8 @@ function markTable(config) {
  * its bars' x in staff spaces, its bars' ends and its marks' semitones as
  * engine semitones (§5.7's numbering), and each head's registered shape (a
  * sized variant where sized), cutout and colour, or a sign, sharp or flat
- * (session 51, LY spec 1.3.17). A mark whose shape is not defined is left
+ * (session 51, LY spec 1.3.17), with its scale unless it is 1 (session 52,
+ * LY spec 1.3.18). A mark whose shape is not defined is left
  * out, as the preview leaves it undrawn.
  */
 function markTableLines(config, table) {
@@ -792,7 +793,7 @@ function markTableLines(config, table) {
     "%% The signature of each key: (tonic note name . alteration) and its",
     "%% pitch classes → columns' centres (staff spaces), gold bars (x, ends in",
     "%% engine semitones, colour, thickness) and marks (engine semitone, column,",
-    "%% head shape, cutout, colour, or sharp or flat).",
+    "%% head shape, cutout, colour, or sharp or flat and its scale).",
     "#(define cnb:keysig-marks",
     "   '(",
   ];
@@ -801,7 +802,11 @@ function markTableLines(config, table) {
     const bars = e.sig.bars.map(b => `(${fmtNum(b.x, "key-signature bar")} ${semi(b.bottom)} ${semi(b.top)} ` +
       `${hexString(b.color, "keys.keySignature.separator.color")} ${fmtNum(b.thickness, "keys.keySignature.separator.thicknessPct")})`);
     const marks = e.sig.marks.filter(({ mark }) => mark.sign || shapes[mark.shape]).map(({ semi: s, column, mark }) => {
-      if (mark.sign) return `(${semi(s)} ${column} ${mark.sign})`;
+      if (mark.sign) {
+        // Its scale, left out at 1 (session 52, engine 1.5.0).
+        const scale = fmtNum(mark.scale ?? 1, "keys.keySignature.signs.heightSemis");
+        return `(${semi(s)} ${column} ${mark.sign}${scale === "1" ? "" : " " + scale})`;
+      }
       const f = sectionCFields(config, mark);
       return `(${semi(s)} ${column} head ${f.shapeSym} ${f.hollowSym} ${f.colorSym})`;
     });

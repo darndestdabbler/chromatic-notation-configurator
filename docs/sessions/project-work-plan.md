@@ -63,8 +63,10 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 49 | Scale notes reach LilyPond | no | 2026-11-11 |
 | 50 | The Key signature panel | no | 2026-11-11 |
 | 51 | Accidentals | no | 2026-11-11 |
-| 52 | The UI is stable | — | not declared |
-| 53 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 52 | Sharps and flats sized to the noteheads | no | 2026-11-11 |
+| 53 | Designing the key-signature editor | — | not declared |
+| 54 | The UI is stable | — | not declared |
+| 55 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -520,3 +522,13 @@ Give the key-signature designer its second kind of signature, the traditional ac
 **Amended after acceptance:**
 
 - 2026-11-11 — step 'export-accidentals': its files: The first engine round trip showed LilyPond draws the flat from Emmentaler's optical size nearest 20 pt x the staff's magnification (emmentaler-26 at the default 7/4), whose box differs from emmentaler-20's by up to 0.06 staff spaces; the preview needs each design size's sharp and flat, kept in their own data module with tests, so the signs engrave where and as large as the canvas draws them. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 52 — Sharps and flats sized to the noteheads
+
+**Releasable: no.**
+
+Size the traditional key signature's sharps and flats in semitones, as the noteheads are, instead of at LilyPond's 3-staff-space size (12 semitones on the default staff). keys.keySignature.signs.heightSemis is the sharp's height from the top left of its upper bar to the top left of its lower bar, in semitones (axis units under a pitch axis); null, the default, is automatic: the least of the mean height of the twelve pitch classes' crotchet noteheads resolved with no key, one staff space, and 3 semitones (2.72 on the default staff, 3 on Kite 4-369, 1 on 0-5-7 and Avique, 2 on the rest of the gallery). The sharp and flat are scaled by one factor, the size / the sharp's bar spacing (measured from the outline in each optical size, about 1.05 staff spaces) / the semitones per staff space, and the columns are the scaled signs' widths apart. Validation accepts null or a finite number > 0 and warns outside 1-12. The key-signature panel gains a Size row under Sharps or flats (Automatic (n), or a number in semitones, with a way back to automatic), and the Place hint stops mentioning the tonic and the half steps there. Against engine 1.5.0 (engine sessions 35 and 36, released), the export writes each sign's factor as the mark's fourth element, (semi column sharp 0.6473), left out when it is 1; an engine round trip holds every sign's origin, box and the ink to 0.001 staff spaces and the spacing to 0.005, for the default and Kite 4-369, middle and every line set, C, D and B flat major, automatic and hand-set sizes, at magnifications 1, 7/4 and 5/2; and, since engine 1.5.0 makes a plain score engrave at the exported cnb:default-magnify, the round trips drop their \magnifyStaff #cnb:default-magnify prefix and LY spec section 5.6a's magnification paragraph is rewritten. LY spec 1.3.18, the architecture plan, the README, the UAT and docs/uat-status.md follow, and the five export baselines stay byte-identical.
+
+**Amended after acceptance:**
+
+- 2026-11-11 — step 'sign-size': its files: Scaling the signs moves their columns, so the existing sharps-and-flats engine round trips and export-text test fail until the export writes each sign's scale (cnb-lilypond.js, its tests); the editor's buildKeys/stateFromConfig must carry the new keySignature.signs or its default round-trip test fails. With engine 1.5.0 the gutter round trip at magnify 1 and 5/2 now really engraves at those sizes, so the preview's spacing must follow the clef's X-offset and the time signature's optical width in cnb-key-signature.js. (claude-code (anthropic, claude-opus-5-5))

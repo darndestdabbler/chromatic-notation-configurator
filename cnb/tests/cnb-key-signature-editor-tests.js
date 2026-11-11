@@ -17,6 +17,12 @@ import { CNBKeySignatureEditor } from "../ui/key-signature-editor.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBBuiltinShapes } from "../ui/builtin-shapes.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -127,6 +133,7 @@ function fancyKeys() {
       columns: "left-in-sharp-keys",
       placement: { rule: "scale-from-tonic", tonicOctave: 2, position: "every-set" },
       separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6, shareThickness: false },
+      signs: { heightSemis: 3.5 },
     },
   };
 }
@@ -207,6 +214,20 @@ export const tests = [
       }
       eq(state.keySignature.placement.position, "middle", "placement.position");
       eq(state.keySignature.separator.shareThickness, true, "separator.shareThickness");
+      eq(state.keySignature.signs.heightSemis, null, "signs.heightSemis (session 52): automatic");
+  } },
+
+  { name: "stateFromConfig / buildKeys: signs.heightSemis kept as stored, automatic when absent; a non-number in state throws", fn: () => {
+      const stored = h => E.stateFromConfig({ keys: { keySignature: { signs: { heightSemis: h } } } }).keySignature.signs.heightSemis;
+      eq(stored(2.5), 2.5, "a number kept");
+      eq(stored(0), 0, "an invalid number kept, for validation to report");
+      eq(stored("big"), null, "a non-number: automatic");
+      eq(E.stateFromConfig({ keys: { keySignature: {} } }).keySignature.signs.heightSemis, null, "absent: automatic");
+      const state = E.stateFromConfig(CNBConfig.createDefault());
+      state.keySignature.signs.heightSemis = "3";
+      let threw = false;
+      try { E.buildKeys(state); } catch (e) { threw = /signs\.heightSemis/.test(e.message); }
+      assert(threw, "buildKeys throws on a non-number");
   } },
 
   { name: "applyToConfig replaces only the keys section and mutates neither argument", fn: () => {
@@ -619,6 +640,73 @@ export const tests = [
         assert(findAll(api.root, "cnb-kse-stacking")[0].children.find(o => o.className.includes("on"))
           .getAttribute("data-value") === "parity-stacks", "the stacking restored");
       });
+  } },
+
+  { name: "render: Size — automatic with the rule's size, or set by hand in semitones, under sharps or flats only (session 52)", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const config = keysConfig();
+        const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
+        const shown = token => findAll(api.root, token).length > 0;
+        const style = value => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio")
+          .find(o => o.getAttribute("data-value") === value).children[0].onchange();
+        const options = () => findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio");
+        const pick = value => options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+        const on = () => options().find(o => o.className.includes("on")).getAttribute("data-value");
+        const height = () => findAll(api.root, "cnb-kse-size-height")[0];
+        assert(!shown("cnb-kse-size"), "hidden under the key's notes");
+
+        style("accidentals");
+        assert(shown("cnb-kse-size"), "shown under sharps or flats");
+        deepEq(options().map(o => subtreeText(o)), ["Automatic (2.72)", "Set by hand"], "the default staff's automatic size");
+        eq(on(), "auto", "automatic by default");
+        eq(height().value, "2.72", "the field shows the automatic size");
+
+        height().value = "5";
+        height().onchange();
+        eq(last.keys.keySignature.signs.heightSemis, 5, "a typed size written");
+        eq(on(), "set", "…as a size set by hand");
+        eq(height().value, "5", "…and kept in the field");
+        for (const bad of ["0", "-2", "abc", ""]) {
+          height().value = bad;
+          height().onchange();
+          eq(last.keys.keySignature.signs.heightSemis, 5, `${JSON.stringify(bad)} not written`);
+        }
+        eq(subtreeText(options()[0]), "Automatic (2.72)", "the automatic label stays the rule's");
+
+        style("notehead-chords");
+        assert(!shown("cnb-kse-size"), "hidden again under the key's notes");
+        eq(last.keys.keySignature.signs.heightSemis, 5, "its value kept");
+        style("accidentals");
+        eq(height().value, "5", "and back");
+
+        pick("auto");
+        eq(last.keys.keySignature.signs.heightSemis, null, "back to automatic: null");
+        pick("set");
+        eq(last.keys.keySignature.signs.heightSemis, 2.72, "set by hand starts from the automatic size");
+      });
+      // Kite 4-369's noteheads are held to 3 semitones.
+      withDomStub((container) => {
+        const kite = CNBConfigIO.loadFromText(readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
+        kite.keys.enabled = true;
+        kite.keys.keySignature.enabled = true;
+        kite.keys.keySignature.style = "accidentals";
+        const api = E.render(container, { config: kite });
+        eq(subtreeText(findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio")[0]), "Automatic (3)", "Kite 4-369");
+      });
+  } },
+
+  { name: "render: Place's hint names the tonic and the half steps only under the key's notes (session 52)", fn: () => {
+      for (const [style, mentions] of [["notehead-chords", true], ["accidentals", false]]) {
+        withDomStub((container) => {
+          const config = keysConfig();
+          config.keys.keySignature.style = style;
+          const api = E.render(container, { config });
+          const hint = subtreeText(findAll(findAll(api.root, "cnb-kse-place")[0], "cnb-kse-hint")[0]);
+          assert(hint.includes("On every line set the signature repeats"), `${style}: the line sets`);
+          eq(hint.includes("half steps"), mentions, `${style}: the tonic and the half steps`);
+        });
+      }
   } },
 
   { name: "render: the gold stem's show, colour and thickness, the thickness in staff spaces at 4 and 3 semitones per staff space", fn: () => {

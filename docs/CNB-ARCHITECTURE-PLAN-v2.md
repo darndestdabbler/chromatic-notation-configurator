@@ -610,11 +610,23 @@ keys: {
     // LilyPond's own sign (Emmentaler, in the optical size LilyPond draws
     // the staff with, cnb/src/cnb-accidental-glyphs.js), black, in its own
     // column at the semitone of the note it makes, with no ledgers or gold
-    // stems; the settings below but placement do not apply to it. The
-    // field stays the extension point for further styles (validation
-    // rejects unknown values; the renderer treats an unknown style as
-    // inactive).
+    // stems; the settings below but placement and signs do not apply to
+    // it. The field stays the extension point for further styles
+    // (validation rejects unknown values; the renderer treats an unknown
+    // style as inactive).
     style: "notehead-chords",   // | "accidentals"
+
+    // The sharps' and flats' size (session 52), under "accidentals" only:
+    // the sharp's height from the top left of its upper bar to the top left
+    // of its lower bar, in semitones (axis units under a pitch axis); the
+    // flat is scaled with it. null is automatic: the least of the
+    // noteheads' mean height (the twelve crotchet noteheads, no key), one
+    // staff space and 3 (CNBKeySignature.signHeight): 2.724 on the default
+    // staff, 3 on Kite 4-369. A number set by hand stays when the
+    // noteheads or the staff change. Validation: null or a finite number
+    // above 0, a warning outside 1–12. Exported as each sign's scale
+    // (LY spec 1.3.18 §5.6a), which needs engine 1.5.0.
+    signs: { heightSemis: null },
 
     // The designer's settings (session 48, design
     // docs/planning/key-signature-designer-design.md §4, §6). Each default
@@ -711,7 +723,9 @@ keys: {
   show. A key the table lacks engraves no signature. Sharps and flats
   (session 51, LY spec 1.3.17 §5.6a) are marks of the same table,
   `(semi column sharp)` or `(semi column flat)`, which the engine draws from
-  its music font; they register nothing and add no ledger entries.
+  its music font; they register nothing and add no ledger entries. Since
+  session 52 (LY spec 1.3.18) each carries its scale,
+  `(semi column sharp 0.6473)`, left out at 1, which engine 1.5.0 reads.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -1614,10 +1628,15 @@ from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
 optional `spelling`, the marks as `{ semi, column, mark }`, the columns'
 centres and the gold stems in staff spaces, and the marks that overlap in a
 stack, for every scale-note setting of §4.9; under the style
-"accidentals" (session 51) each mark is `{ sign: "sharp" | "flat" }`, in
+"accidentals" (session 51) each mark is `{ sign: "sharp" | "flat", scale }`, in
 the traditional order, each in its own column, every line set's copy from
-column 0; null for an unknown style or rule), `isScaleStack(config)` (the
-signature the engine's `'chord` draws), `signatureSemis(config, keyName)`
+column 0, the columns the scaled signs' widths apart; null for an unknown
+style or rule), `isScaleStack(config)` (the
+signature the engine's `'chord` draws), `signHeight(config)` (session 52:
+the signs' size in semitones, `{ semis, automatic }`, §4.9),
+`signScale(config)` (the factor the signs are drawn and exported at: the
+size ÷ the sharp's bar spacing in the optical size drawn ÷ the semitones
+per staff space), `signatureSemis(config, keyName)`
 (the marks' semitones),
 `measure(config,
 pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
@@ -1639,8 +1658,11 @@ geometry, one bar for the default two). `measure` and `render` draw from
 `cnb-accidental-glyphs.js`, in the optical size LilyPond picks for
 `engine.defaultMagnify` (the design size nearest 20 pt × the
 magnification), black, its box centred on its column and its origin at its
-semitone, with no ledgers or stems; the signature is spaced by the signs'
-boxes, as a mark-table signature is. An unknown style renders nothing.
+semitone, with no ledgers or stems, scaled about its origin by
+`signScale` (session 52); the signature is spaced by the signs'
+boxes, as a mark-table signature is. The spacing after a clef and to
+the first note follows `engine.defaultMagnify` as the engine engraves it
+(session 52, LY spec §5.6a). An unknown style renders nothing.
 Integrated into Module 10 as a `div.keysig-col`
 after the clef column. Dependencies: Modules A, B, 1 (grid context passed
 in), 5, 6, the accidental glyphs. Visual test page: `test-key-signature.html`. Since session 30
@@ -1658,7 +1680,8 @@ signature is the panel of the key-signature design §7
 (`docs/planning/key-signature-designer-design.md`), in a designer's
 words: Show the key signature; Draw (`style`: "The key's notes" or, since
 session 51, "Sharps or flats", which hides Notes, Stacks and Looks, their
-values kept); Notes (`notes`, `upperTonic`); Stacks
+values kept, and shows Size, session 52: "Automatic (n)", the size
+`signHeight` gives, or a number set by hand, `signs.heightSemis`); Notes (`notes`, `upperTonic`); Stacks
 (`stacking`, `columns` hidden under `"parity"`, and the gold stem:
 `separator.enabled`, `color`, its thickness shown in staff spaces and
 written as `thicknessPct`, and `shareThickness`, saying what each stem gets
@@ -2124,6 +2147,7 @@ Complete default config for development and testing.
       placement: { rule: "scale-from-tonic", tonicOctave: null, position: "middle" },
       separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12,
                    shareThickness: true },
+      signs: { heightSemis: null },
     },
   },
 

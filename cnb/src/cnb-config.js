@@ -160,6 +160,12 @@ function buildDefault() {
       // "left-in-sharp-keys"); placement.position "middle" (or "bottom-set",
       // "top-set", "every-set"); separator.shareThickness, several stems
       // sharing thicknessPct.
+      //
+      // signs.heightSemis (session 52): under the style "accidentals", the
+      // sharp's height from the top left of its upper bar to the top left of
+      // its lower bar, in semitones (axis units under a pitch axis); the flat
+      // is scaled with it. null is automatic: the least of the noteheads'
+      // mean height, one staff space and 3 (CNBKeySignature.signHeight).
       keySignature: {
         enabled: false,
         style: "notehead-chords",
@@ -181,6 +187,7 @@ function buildDefault() {
           extentSemis: 12,
           shareThickness: true,
         },
+        signs: { heightSemis: null },
       },
     },
 
@@ -523,6 +530,20 @@ export const CNBConfig = {
           }
           if (sep.shareThickness !== undefined && typeof sep.shareThickness !== "boolean") {
             errors.push(`keys.keySignature.separator.shareThickness must be true or false (got ${JSON.stringify(sep.shareThickness)})`);
+          }
+        }
+      }
+      // The signs' size (session 52): null is automatic.
+      const signs = keySig.signs;
+      if (signs !== undefined && signs !== null) {
+        if (!isPlainObject(signs)) {
+          errors.push("keys.keySignature.signs must be an object");
+        } else if (signs.heightSemis !== undefined && signs.heightSemis !== null) {
+          const h = signs.heightSemis;
+          if (typeof h !== "number" || !Number.isFinite(h) || h <= 0) {
+            errors.push(`keys.keySignature.signs.heightSemis must be a finite number greater than 0, or null for automatic (got ${JSON.stringify(h)})`);
+          } else if (h < 1 || h > 12) {
+            warnings.push(`keys.keySignature.signs.heightSemis is ${h} semitones, outside 1–12: the sharps and flats are unlikely to look right`);
           }
         }
       }

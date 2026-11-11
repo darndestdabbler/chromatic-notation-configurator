@@ -31,9 +31,11 @@ export function findEngine() {
 // each NoteHead prints its pitch
 // class and its stencil's X and Y extents once laid out, in its own staff's
 // staff spaces. The engine magnifies every staff by cnb:default-magnify
-// (engine cnb/score-defaults.ly, its session 18), which scales the staff
-// space and the notehead alike; dividing by the staff space measures the
-// size relative to the staff, the unit the preview is drawn in.
+// (engine cnb/score-defaults.ly, its session 18), since engine 1.5.0 the
+// value the exported config sets, as each staff is created (engine session
+// 35), which scales the staff space and the notehead alike; dividing by the
+// staff space measures the size relative to the staff, the unit the preview
+// is drawn in.
 const probeScore = (duration) => `\\version "2.24.2"
 \\include "config.ly"
 {

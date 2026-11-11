@@ -75,8 +75,11 @@
  * at the semitone of the note it makes, in the octave the place gives that
  * note in the scale; on every line set each copy's columns start again.
  * The signs are Emmentaler's (cnb-accidental-glyphs.js), in the optical
- * size LilyPond uses at the config's magnification, black, at LilyPond's
- * size, with no ledgers and no gold stems; the scale-note settings do not apply, and the place does.
+ * size LilyPond uses at the config's magnification, black, with no ledgers
+ * and no gold stems; the scale-note settings do not apply, and the place
+ * does. Since session 52 the signs are sized in semitones, as the noteheads
+ * are (signHeight, signScale): the sharp and the flat are scaled about their
+ * origins by one factor, and the columns are the scaled signs' widths apart.
  *
  * Set 014 (pitch axis): mark placement already flows through semiToY; on
  * an axis config each mark also takes its resolved xOffsetStaffSpaces
@@ -109,16 +112,30 @@ const NS = "http://www.w3.org/2000/svg";
 // notehead (measured). The ink is the marks and any ledger of the first or
 // last stack (session 50, engine 1.4.1).
 const SPACE_BEFORE = 0.75;
-const SPACE_FROM_CLEF = 3.5;
 const FIRST_NOTE_CENTRE = 4.8636;
 // A signature drawn from the mark table (LY spec 1.3.15 §5.6a) is spaced by
 // its ink (session 49, measured from renders, a time signature after it as
 // in a score): the ink starts 0.75 after the staff's start, and the first
 // note's head is centred 4.8636 after it ends. After a clef, LilyPond places
 // the signature's origin, the first stack's left edge, 2.9286 after the
-// clef's left edge, whatever its ink (the scale stack's ink starts 0.5689
-// into its stencil, hence its 3.5).
-const MARKS_FROM_CLEF = 2.9286;
+// clef's left edge, whatever its ink, and the scale stack's marks 3.5 (they
+// start 4/7 into its stencil).
+//
+// Both at the engine's default magnification, 7/4 (session 52, measured
+// against engine 1.5.0, which engraves a score at the config's): LilyPond
+// puts the origin 3.5 after the clef's box, its clef-to-signature minimum
+// space, and the engine draws every clef 1 unmagnified staff space, 1/m of
+// the staff's, right of its box (clefs.ly X-offset), so the origin is 3.5 −
+// 1/m after the clef's ink. And the first note follows a 4/4 time signature,
+// 1.15 after the signature and 2 before the note's centre, as wide as its
+// optical size draws it (below).
+const CLEF_SPACE = 3.5;
+const SCALE_STACK_INSET = 4 / 7;
+// The 4/4 time signature's width in staff spaces in each Emmentaler optical
+// size, measured from LilyPond 2.24 renders (session 52). Below emmentaler-16
+// (magnifications under 0.8) LilyPond also keeps the staff lines and the
+// note's spacing at their unmagnified sizes, which the preview does not follow.
+const TIME_SIGNATURE_WIDTH = { 11: 1.6486, 13: 1.6614, 14: 1.6728, 16: 1.6829, 18: 1.692, 20: 1.7, 23: 1.7072, 26: 1.7135 };
 
 // The engine's signature ledger (keysig.ly cnb:add-keysig-ledgers): 4/3 of
 // its head's width, drawn as a line 0.2 staff spaces thick with round caps,
@@ -129,15 +146,26 @@ const LEDGER_CAP = 0.1;
 // sharp and flat in the optical size LilyPond draws the staff with
 // (cnb-accidental-glyphs.js), at the config's own magnification.
 function signGlyph(config, sign) {
-  const r = CNBScheme.parseRatio((config.engine || {}).defaultMagnify ?? "7/4");
-  return CNBAccidentalGlyphs.glyph(sign, r ? r.num / (r.den ?? 1) : 7 / 4);
+  return CNBAccidentalGlyphs.glyph(sign, magnification(config));
 }
+
+/** The staff's magnification, engine.defaultMagnify (7/4 unless set). */
+function magnification(config) {
+  const r = CNBScheme.parseRatio((config.engine || {}).defaultMagnify ?? "7/4");
+  return r && r.num > 0 ? r.num / (r.den ?? 1) : 7 / 4;
+}
+
+/** The automatic size's cap, in semitones (session 52). */
+const SIGN_HEIGHT_CAP = 3;
 
 /** The order of a signature's sharps (and, reversed, its flats) by letter. */
 const SHARP_ORDER = "FCGDAEB";
 
-/** A sign's width in staff spaces. */
-const signWidth = (config, sign) => { const { x } = signGlyph(config, sign); return x[1] - x[0]; };
+/** A sign's width in staff spaces, at its size (session 52). */
+const signWidth = (config, sign) => {
+  const { x } = signGlyph(config, sign);
+  return (x[1] - x[0]) * CNBKeySignature.signScale(config);
+};
 
 /** One staff space in px. */
 const spacePx = (config, pxPerSemi) =>
@@ -153,7 +181,10 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const space = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) });
   const clef = CNBClef.activeGlyph(config);
   const scaleStack = CNBKeySignature.isScaleStack(config);
-  const fromClef = (scaleStack ? SPACE_FROM_CLEF : MARKS_FROM_CLEF) * space;
+  const mag = magnification(config);
+  const fromClef = (CLEF_SPACE + (scaleStack ? SCALE_STACK_INSET : 0) - 1 / mag) * space;
+  const firstNote = FIRST_NOTE_CENTRE -
+    (TIME_SIGNATURE_WIDTH[26] - TIME_SIGNATURE_WIDTH[CNBAccidentalGlyphs.designSize(mag)]);
   const left = clef
     ? Math.max(0, fromClef - CNBClef.measure(clef.def, pxPerSemi, space).pixelWidth -
         (config.clef?.gutter?.paddingH ?? 12))
@@ -169,7 +200,7 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const ink = inkExtent(config, pxPerSemi, m, space);
   const before = clef ? 0 : -ink.left;
   const after = ink.right - m.columns * m.markWidth;
-  return { left: Math.max(0, left + before), right: Math.max(0, after + FIRST_NOTE_CENTRE * space - inset) };
+  return { left: Math.max(0, left + before), right: Math.max(0, after + firstNote * space - inset) };
 }
 
 /** A mark's drawn width in px: a sign's, its shape's at its size, or the widest's. */
@@ -284,8 +315,9 @@ function copyTonics(config, key, tonic) {
  * §5): the key spelled, its sharps in the order F C G D A E B or its flats
  * in the order B E A D G C F, each sign at the semitone of the note it makes
  * in the scale from each copy's tonic, in its own column from 0, every
- * copy's columns starting again at 0. No bars, no overlaps; the columns'
- * centres a sign's width apart, in staff spaces. A key with neither, or
+ * copy's columns starting again at 0, each at the signs' scale (session 52).
+ * No bars, no overlaps; the columns' centres the scaled sign's width apart,
+ * in staff spaces. A key with neither, or
  * none the seven letters spell, draws nothing.
  */
 function accidentalMarks(config, key, pcs) {
@@ -300,8 +332,9 @@ function accidentalMarks(config, key, pcs) {
   altered.sort((a, b) => order.indexOf(a.letter) - order.indexOf(b.letter));
 
   const { tonics } = copyTonics(config, key, tonic);
+  const scale = CNBKeySignature.signScale(config);
   const marks = tonics.flatMap(t => altered.map((note, column) =>
-    ({ semi: t + CNBMusic.pitchClass(note.pc - tonic), column, mark: { sign } })));
+    ({ semi: t + CNBMusic.pitchClass(note.pc - tonic), column, mark: { sign, scale } })));
   const width = signWidth(config, sign);
   const columns = altered.map((_, c) => (c + 0.5) * width);
   return { marks, columns, bars: [], overlaps: [] };
@@ -367,6 +400,48 @@ export const CNBKeySignature = {
       (ks.stacking ?? "degrees") === "degrees" && (ks.columns ?? "right") === "right" &&
       ((ks.placement || {}).position ?? "middle") === "middle" &&
       ["all", "flat", "sharp"].every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate);
+  },
+
+  /**
+   * The size of a traditional signature's signs (session 52): the sharp's
+   * height from the top left of its upper bar to the top left of its lower
+   * bar, in semitones (axis units under a pitch axis). A number set in
+   * keySignature.signs.heightSemis is kept as it is. Otherwise it is
+   * automatic, the least of the noteheads' mean height (the twelve pitch
+   * classes' crotchet noteheads as they resolve with no key), one staff
+   * space and 3 semitones: 2.724 on the default staff, 3 on Kite 4-369, 1 on
+   * a staff with a line every semitone.
+   *
+   * @param {object} config
+   * @returns {{semis:number, automatic:boolean}}
+   */
+  signHeight(config) {
+    const set = (((config.keys || {}).keySignature || {}).signs || {}).heightSemis;
+    if (typeof set === "number" && Number.isFinite(set) && set > 0) return { semis: set, automatic: false };
+    const shapes = config.shapes || {};
+    const heights = [];
+    for (let pc = 0; pc < 12; pc++) {
+      const head = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
+      const shape = shapes[head.shape];
+      if (shape) heights.push(head.heightSemis ?? shape.semitoneHeight);
+    }
+    const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
+    const mean = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : Infinity;
+    return { semis: Math.min(mean, space, SIGN_HEIGHT_CAP), automatic: true };
+  },
+
+  /**
+   * The factor a traditional signature's sharp and flat are drawn at, and
+   * exported with (session 52): signHeight ÷ the sharp's bar spacing in the
+   * optical size drawn (cnb-accidental-glyphs.js) ÷ the semitones (axis
+   * units) per staff space. 0.6473 on the default staff.
+   *
+   * @param {object} config
+   * @returns {number}
+   */
+  signScale(config) {
+    const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
+    return CNBKeySignature.signHeight(config).semis / signGlyph(config, "sharp").bars / space;
   },
 
   /**
@@ -465,7 +540,8 @@ export const CNBKeySignature = {
    * in one stack nearer on the grid than half their heights' sum.
    *
    * Under the style "accidentals" (session 51, design §5) each mark is
-   * { sign: "sharp" | "flat" }: the key's sharps in the order F C G D A E B
+   * { sign: "sharp" | "flat", scale } (scale: signScale, session 52), the
+   * columns the scaled sign's width apart: the key's sharps in the order F C G D A E B
    * or its flats in the order B E A D G C F, each at the semitone of the
    * note it makes, in its own column, every copy's columns from 0; no bars
    * or overlaps, and nothing for a key with neither.
@@ -665,7 +741,10 @@ export const CNBKeySignature = {
    * glyph's left edge (2.9286 for a mark-table signature; the clef column
    * pads the glyph on both sides); the first card's notehead is centred
    * 4.8636 after the ink. The ink is the marks and the ledgers of the first
-   * and last stacks (session 50). Null when nothing renders.
+   * and last stacks (session 50). These are at the default magnification;
+   * at another, both follow the engine (session 52): the clef's offset is
+   * 1/m staff spaces and the time signature's width its optical size's.
+   * Null when nothing renders.
    *
    * @param {object} config
    * @param {number} pxPerSemi
@@ -791,15 +870,17 @@ export const CNBKeySignature = {
     m.marks.forEach(({ semi, column, mark }, i) => {
       const x = m.offsets ? columnX(column) + m.offsets[i] : columnX(column);
       if (mark.sign) {
-        // A sign, black at LilyPond's size, its extent centred on its column
-        // and its origin at its semitone's height (engine handoff 030 §1).
+        // A sign, black at its size (session 52), scaled about its origin,
+        // its extent centred on its column and its origin at its semitone's
+        // height (engine handoffs 030 §1, 035 §1a).
         const sign = signGlyph(config, mark.sign);
-        const scale = space / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
+        const size = space * (mark.scale ?? 1);
+        const scale = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
         const path = document.createElementNS(NS, "path");
         path.setAttribute("class", "cnb-key-signature-sign");
         path.setAttribute("d", sign.path);
         path.setAttribute("fill", "#000000");
-        path.setAttribute("transform", `translate(${x - (sign.x[0] + sign.x[1]) / 2 * space} ` +
+        path.setAttribute("transform", `translate(${x - (sign.x[0] + sign.x[1]) / 2 * size} ` +
           `${gridContext.semiToY(semi)}) scale(${scale})`);
         g.appendChild(path);
         return;

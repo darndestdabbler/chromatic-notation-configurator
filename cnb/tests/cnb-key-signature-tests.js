@@ -545,7 +545,7 @@ export const tests = [
       // The spacing is in staff spaces, so it holds at any magnification.
       // Sharps or flats (session 51) are spaced by their boxes, the flat's in
       // the optical size LilyPond picks for the staff's magnification.
-      for (const { label, clef, wideG, stacking, position, magnify, gallery, style, flat } of [
+      for (const { label, clef, wideG, stacking, position, magnify, gallery, style, flat, signs, kite } of [
         { label: "no clef" }, { label: "text clef", clef: true }, { label: "a wide G mark", wideG: true },
         { label: "text clef, magnify 1", clef: true, magnify: "1" },
         { label: "mark table, no clef", stacking: "parity-stacks" },
@@ -560,12 +560,34 @@ export const tests = [
         { label: "sharps, text clef", style: "accidentals", clef: true },
         { label: "flats, no clef", style: "accidentals", flat: true },
         { label: "flats, text clef", style: "accidentals", flat: true, clef: true },
+        // Sized by hand (session 52), and at other magnifications.
+        { label: "sharps 5 semitones, no clef", style: "accidentals", signs: 5 },
+        { label: "sharps 5 semitones, text clef", style: "accidentals", signs: 5, clef: true },
+        { label: "flats 1.5 semitones, text clef", style: "accidentals", flat: true, signs: 1.5, clef: true },
+        { label: "sharps, text clef, magnify 1", style: "accidentals", clef: true, magnify: "1" },
+        { label: "flats 5 semitones, text clef, magnify 5/2", style: "accidentals", flat: true, signs: 5, clef: true, magnify: "5/2" },
+        // Kite 4-369's staff, 3 semitones a staff space, at each magnification.
+        { label: "Kite, sharps, no clef", style: "accidentals", kite: true },
+        { label: "Kite, flats 4 semitones, text clef", style: "accidentals", flat: true, signs: 4, clef: true, kite: true },
+        { label: "Kite, sharps, text clef, magnify 1", style: "accidentals", clef: true, magnify: "1", kite: true },
+        { label: "Kite, flats 4 semitones, no clef, magnify 1", style: "accidentals", flat: true, signs: 4, magnify: "1", kite: true },
+        { label: "Kite, sharps 4 semitones, text clef, magnify 5/2", style: "accidentals", signs: 4, clef: true, magnify: "5/2", kite: true },
+        { label: "Kite, flats, no clef, magnify 5/2", style: "accidentals", flat: true, magnify: "5/2", kite: true },
       ]) {
-        const config = gallery
-          ? CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, gallery), "utf8")).config
-          : keysigConfig([C_MAJOR, G, BF]);
+        let config;
+        if (gallery) {
+          config = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, gallery), "utf8")).config;
+        } else if (kite) {
+          config = CNBConfigIO.loadFromText(fs.readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8")).config;
+          config.keys.enabled = true;
+          config.keys.definitions = CNBConfig.clone([C_MAJOR, G, BF]);
+          config.keys.keySignature.enabled = true;
+        } else {
+          config = keysigConfig([C_MAJOR, G, BF]);
+        }
         const key = flat ? "B♭" : "G";
         if (style) config.keys.keySignature.style = style;
+        if (signs) config.keys.keySignature.signs = { heightSemis: signs };
         if (stacking) config.keys.keySignature.stacking = stacking;
         if (position) config.keys.keySignature.placement.position = position;
         if (magnify) config.engine.defaultMagnify = magnify;
@@ -579,7 +601,7 @@ export const tests = [
           config.noteheadRules.push({ name: "wide G", priority: 9,
             match: { pitchClasses: [7], durations: "all", keys: "all" }, apply: { widthSemis: 6 } });
         }
-        const space = 64;                                  // 4 semitones × 16 px
+        const space = config.staff.semitonesPerStaffSpace * PX_PER_SEMI;   // 64 px, Kite's 48
         const preview = withDomStub(container => {
           const root = CNBCollection.render(container, config, { keys: [key] });
           const pc = root.children[0].children.find(c => c.className === "preview-container");
@@ -597,12 +619,12 @@ export const tests = [
           heads.forEach((h, i) => {
             const { mark } = measured[i];
             if (mark.sign) {
-              // A sign's box, from its origin.
+              // A sign's box, from its origin, at its scale (session 52).
               const r = CNBScheme.parseRatio(config.engine.defaultMagnify);
               const box = CNBAccidentalGlyphs.glyph(mark.sign, r.num / (r.den ?? 1)).x;
               const origin = kStart + parseFloat(/translate\(([-\d.eE+]+) /.exec(h.getAttribute("transform"))[1]);
-              left = Math.min(left, origin + box[0] * space);
-              right = Math.max(right, origin + box[1] * space);
+              left = Math.min(left, origin + box[0] * space * mark.scale);
+              right = Math.max(right, origin + box[1] * space * mark.scale);
               return;
             }
             const w = CNBNotehead.measure(config.shapes[mark.shape], PX_PER_SEMI, mark).pixelWidth;
@@ -887,12 +909,17 @@ export const tests = [
       deepEq(signs({ name: "E minor", pitchClasses: [4, 6, 7, 9, 11, 0, 2], tonicPc: 4 }), [["sharp", 6, 0]], "E minor: F♯");
       deepEq(signs({ name: "D minor", pitchClasses: [2, 4, 5, 7, 9, 10, 0], tonicPc: 2 }), [["flat", 10, 0]], "D minor: B♭");
       deepEq(signs({ name: "Pentatonic", pitchClasses: [0, 2, 4, 7, 9], tonicPc: 0 }), [], "a key no letters spell: none");
-      acc(D_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 1.1, "columns a sharp's 1.1 staff spaces apart"));
+      // Each sign at its scale (session 52): 2.724 semitones between a
+      // sharp's bars, emmentaler-26's 1.052 staff spaces at 4 semitones each.
+      const s = 2.724 / 1.052 / 4;
+      acc(D_KEY).marks.forEach(m => approx(m.mark.scale, s, "each sign carries its scale"));
+      acc(D_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 1.1 * s, "columns a scaled sharp's 1.1 staff spaces apart"));
       // At the default magnification, 7/4, LilyPond draws emmentaler-26's flat, 0.9037 wide.
-      acc(EB_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 0.9037, "columns a flat's 0.9037 staff spaces apart"));
+      acc(EB_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 0.9037 * s, "columns a scaled flat's 0.9037 staff spaces apart"));
       const one = keysigConfig([], { style: "accidentals" });
       one.engine.defaultMagnify = "1";
-      CNBKeySignature.marks(one, EB_KEY).columns.forEach((x, c) => approx(x, (c + 0.5) * 0.92, "at magnify 1, emmentaler-20's 0.92"));
+      CNBKeySignature.marks(one, EB_KEY).columns.forEach((x, c) =>
+        approx(x, (c + 0.5) * 0.92 * (2.724 / 1.052 / 4), "at magnify 1, emmentaler-20's 0.92 and bars 1.052"));
       deepEq(acc(D_KEY).bars, [], "no gold stems");
       deepEq(acc(FS_KEY).overlaps, [], "no overlaps");
     }},
@@ -916,28 +943,81 @@ export const tests = [
       deepEq(at("bottom-set", EB_KEY, kite), [[10, 0], [3, 1], [8, 2]], "Kite's bottom set 3–9: E♭ at 3");
     }},
 
+  // ─── The signs' size (session 52) ─────────────────────────────────────────
+
+  { name: "signHeight: automatic, the least of the noteheads' mean height, one staff space and 3 semitones; a size set by hand kept", fn: () => {
+      const gallery = f => CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, f), "utf8")).config;
+      const kite = CNBConfigIO.loadFromText(fs.readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
+      for (const [label, config, semis] of [
+        ["the default: its noteheads, 2.724", keysigConfig(), 2.724],
+        ["Kite 4-369: its 4-semitone noteheads held to 3", kite, 3],
+        ["0-5-7: a line every semitone, one staff space", gallery("0-5-7-notation.json"), 1],
+        ["Avique: one staff space", gallery("avique-notation.json"), 1],
+        ["Clairnote DN: its noteheads, 2", gallery("clairnote-dn.json"), 2],
+        ["Twinline, a pitch axis: its noteheads, 2", gallery("twinline-compact.json"), 2],
+      ]) {
+        const h = CNBKeySignature.signHeight(config);
+        assert(h.automatic, `${label}: automatic`);
+        approx(h.semis, semis, label);
+      }
+      // The mean of the twelve crotchet noteheads, as they resolve with no key.
+      const mixed = keysigConfig();
+      mixed.noteheadRules.push({ name: "small sharps", priority: 9,
+        match: { pitchClasses: [1, 3, 6, 8, 10], durations: "all", keys: "all" }, apply: { heightSemis: 1.5 } });
+      approx(CNBKeySignature.signHeight(mixed).semis, (7 * 2.724 + 5 * 1.5) / 12, "seven at 2.724, five at 1.5");
+      const minims = keysigConfig();
+      minims.noteheadRules.push({ name: "small minims", priority: 9,
+        match: { pitchClasses: "all", durations: ["minim"], keys: "all" }, apply: { heightSemis: 1 } });
+      approx(CNBKeySignature.signHeight(minims).semis, 2.724, "the crotchets' alone");
+      // A number set by hand stays when the noteheads or the staff change.
+      const set = keysigConfig([], { signs: { heightSemis: 5 } });
+      deepEq(CNBKeySignature.signHeight(set), { semis: 5, automatic: false }, "set by hand");
+      set.noteheadRules[0].apply.heightSemis = 1;
+      set.staff = { semitonePattern: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], midpoint: 12, semitonesPerStaffSpace: 1 };
+      deepEq(CNBKeySignature.signHeight(set), { semis: 5, automatic: false }, "…kept on other noteheads and staff");
+      deepEq(CNBKeySignature.signHeight(keysigConfig([], { signs: { heightSemis: null } })), { semis: 2.724, automatic: true }, "null: automatic");
+    }},
+
+  { name: "signScale: the size ÷ the sharp's bars in the optical size drawn ÷ the semitones per staff space", fn: () => {
+      approx(CNBKeySignature.signScale(keysigConfig()), 2.724 / 1.052 / 4, "the default: 0.6473");
+      const kite = CNBConfigIO.loadFromText(fs.readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
+      approx(CNBKeySignature.signScale(kite), 3 / 1.052 / 3, "Kite 4-369: 3 semitones at 3 a staff space");
+      const small = keysigConfig();
+      small.engine.defaultMagnify = "1/2";                 // emmentaler-11, bars 1.048
+      approx(CNBKeySignature.signScale(small), 2.724 / 1.048 / 4, "emmentaler-11's bars");
+      approx(CNBKeySignature.signScale(keysigConfig([], { signs: { heightSemis: 1.052 * 4 } })), 1, "LilyPond's own size: 1");
+      const twinline = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "twinline-compact.json"), "utf8")).config;
+      approx(CNBKeySignature.signScale(twinline), 2 / 1.052 / 2, "a pitch axis: axis units per staff space");
+    }},
+
   { name: "accidentals: not the scale stack; validation accepts the style", fn: () => {
       assert(CNBKeySignature.isScaleStack(keysigConfig()), "the default is the scale stack");
       assert(!CNBKeySignature.isScaleStack(keysigConfig([], { style: "accidentals" })), "accidentals are not");
       assert(CNBConfig.validate(keysigConfig([D_KEY], { style: "accidentals" })).valid, "valid");
     }},
 
-  { name: "render: accidentals — black Emmentaler signs at LilyPond's size, in its optical size, centred on their columns, no ledgers or stems", fn: () => {
+  { name: "render: accidentals — black Emmentaler signs at their size, in LilyPond's optical size, centred on their columns, no ledgers or stems", fn: () => {
       const EB_KEY = { name: "E♭ major", pitchClasses: [3, 5, 7, 8, 10, 0, 2], tonicPc: 3 };
       const space = 4 * PX_PER_SEMI;                       // the default staff: 64 px a staff space
-      for (const [key, sign, extent, width, magnify, height] of [
+      for (const [key, sign, extent, width, magnify, height, heightSemis] of [
         [D_KEY, "sharp", [0, 1.1], 1.1, "1", 3], [EB_KEY, "flat", [-0.12, 0.8], 0.92, "1", 2.512],
         [EB_KEY, "flat", [-0.1037, 0.8], 0.9037, "7/4", 2.508],      // emmentaler-26
+        [D_KEY, "sharp", [0, 1.1], 1.1, "7/4", 3, 5],                // a size set by hand
       ]) {
         withSvgStub(svg => {
           const config = keysigConfig([key], { style: "accidentals" });
           config.engine.defaultMagnify = magnify;
+          if (heightSemis) config.keys.keySignature.signs = { heightSemis };
+          // Sized in semitones (session 52): bars 1.052 staff spaces apart
+          // in emmentaler-20 and -26, at 4 semitones a staff space.
+          const s = (heightSemis ?? 2.724) / 1.052 / 4;
+          approx(CNBKeySignature.signScale(config), s, `${key.name} at ${magnify}: the scale`);
           const grid = CNBGrid.create(config, GRID_RANGE);
           const g = CNBKeySignature.render(svg, grid, config, key.name);
           const marks = CNBKeySignature.marks(config, key).marks;
           eq(g.children.length, marks.length, `${key.name}: the signs alone, no ledgers or stems`);
           const m = CNBKeySignature.measure(config, PX_PER_SEMI, key.name);
-          approx(m.markWidth, width * space, `${key.name}: a column is a ${sign}'s width`);
+          approx(m.markWidth, width * s * space, `${key.name}: a column is a scaled ${sign}'s width`);
           const { left } = CNBKeySignature.padding(config, PX_PER_SEMI, key.name);
           approx(left, 0.75 * space, `${key.name}: its ink 0.75 staff spaces after the staff's start`);
           g.children.forEach((p, c) => {
@@ -946,15 +1026,19 @@ export const tests = [
             eq(p.getAttribute("fill"), "#000000", "black");
             const t = /translate\(([-\d.eE+]+) ([-\d.eE+]+)\) scale\(([-\d.eE+]+)\)/.exec(p.getAttribute("transform"));
             assert(t, "translate and scale");
-            approx(parseFloat(t[3]), space / 250, "250 font units a staff space");
-            // The glyph's extent centred on its column.
-            const centre = left + (c + 0.5) * width * space;
-            approx(parseFloat(t[1]) + (extent[0] + extent[1]) / 2 * space, centre, `${sign} ${c} centred`);
+            approx(parseFloat(t[3]), space * s / 250, "250 font units a staff space, at the scale");
+            // The scaled glyph's extent centred on its column.
+            const centre = left + (c + 0.5) * width * s * space;
+            approx(parseFloat(t[1]) + (extent[0] + extent[1]) / 2 * s * space, centre, `${sign} ${c} centred`);
             approx(parseFloat(t[2]), semiToYExpected(marks[c].semi), `${sign} ${c}: its origin at its semitone`);
           });
-          // The glyph's outline, at that scale: a sharp 3 staff spaces tall.
+          // The glyph's outline: a sharp 3 staff spaces tall at LilyPond's
+          // size, drawn at the scale.
           const ys = g.children[0].getAttribute("d").match(/-?\d+(\.\d+)?/g).map(Number).filter((_, i) => i % 2 === 1);
           approx((Math.max(...ys) - Math.min(...ys)) / 250, height, `${sign} at magnify ${magnify}: its outline's height in staff spaces`, 1e-3);
+          if (sign === "sharp" && !heightSemis && magnify === "1") {
+            approx(height * s * 4, 7.768, "on the default staff a sharp is 7.77 semitones tall, not 12", 1e-3);
+          }
         });
       }
       eq(CNBKeySignature.gutterWidth(keysigConfig([C_KEY], { style: "accidentals" }), PX_PER_SEMI, C_KEY.name), 0,

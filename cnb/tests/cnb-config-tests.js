@@ -731,6 +731,24 @@ export const tests = [
     assert(CNBConfig.validate(absent).valid, "absent style valid (defaults to notehead-chords)");
   }},
 
+  { name: "keysig: validate — signs.heightSemis is null (automatic) or a number above 0, with a warning outside 1–12 (session 52)", fn: () => {
+    eq(JSON.stringify(CNBConfig.createDefault().keys.keySignature.signs), '{"heightSemis":null}', "the default: automatic");
+    const at = signs => { const cfg = keysigConfig(); cfg.keys.keySignature.signs = signs; return CNBConfig.validate(cfg); };
+    const warned = r => r.warnings.some(w => w.includes("signs.heightSemis"));
+    for (const signs of [undefined, null, {}, { heightSemis: null }, { heightSemis: 1 }, { heightSemis: 2.724 }, { heightSemis: 12 }]) {
+      const r = at(signs);
+      assert(r.valid && !warned(r), `${JSON.stringify(signs)}: valid, no warning`);
+    }
+    for (const h of [0.5, 13]) {
+      const r = at({ heightSemis: h });
+      assert(r.valid && warned(r), `${h}: valid, with a warning`);
+    }
+    for (const h of [0, -1, NaN, Infinity, "3", true]) {
+      assert(at({ heightSemis: h }).errors.some(e => e.includes("signs.heightSemis")), `${String(h)} rejected`);
+    }
+    assert(at("big").errors.some(e => e.includes("signs must be an object")), "signs not an object rejected");
+  }},
+
   { name: "keysig: validate — placement.rule must be a known rule; absent placement/rule defaults", fn: () => {
     const badRule = keysigConfig();
     badRule.keys.keySignature.placement = { rule: "spiral", tonicOctave: null };

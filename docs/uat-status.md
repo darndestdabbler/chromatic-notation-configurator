@@ -21,6 +21,66 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Sharps and flats sized to the noteheads — 2026-11-11 (session 52)
+
+Session 51 drew the signs at LilyPond's size, a sharp 3 staff spaces tall:
+12 semitones on the default staff, an octave, far too big beside its
+noteheads.
+
+- **The size.** `keys.keySignature.signs.heightSemis`, the sharp's height
+  from the top left of its upper bar to the top left of its lower bar, in
+  semitones. `null`, the default, is automatic: the least of the noteheads'
+  mean height, one staff space and 3 semitones, which gives 2.72 on the
+  default staff, 3 on Kite 4-369, 1 on 0-5-7 and Avique, and 2 on the rest
+  of the gallery (`CNBKeySignature.signHeight`). The sharp and flat are
+  scaled by the size ÷ the sharp's bar spacing (1.048 or 1.052 staff
+  spaces, measured from its outline in each optical size) ÷ the semitones
+  per staff space (`signScale`, 0.6473 on the default staff), so the sharp
+  is 7.77 semitones tall instead of 12, and the columns are the scaled
+  signs' widths apart.
+- **The panel.** Under Sharps or flats, a Size row: "Automatic (2.72)" or
+  "Set by hand" with a number of semitones; Automatic writes `null` again.
+  The Place hint no longer mentions the tonic and the half steps there.
+- **The export** writes each sign's scale, `(6 0 sharp 0.6473)`, left out
+  at 1 (LY export spec 1.3.18), which engine 1.5.0 reads. The five export
+  baselines are byte-identical. Engine round trips hold every sign's kind,
+  origin, scaled box and the ink to 0.001 staff spaces, for the default and
+  Kite 4-369, middle, bottom and every line set, C, D and B♭ major, at the
+  automatic size and 4 semitones set by hand, at magnifications 1, 7/4, 4/5
+  and 5/2, and the spacing with and without a clef to 0.005.
+- **The magnification a config sets.** Since engine 1.5.0 a plain score
+  engraves at the config's `cnb:default-magnify`, so the round trips no
+  longer magnify their staff with `\magnifyStaff #cnb:default-magnify`.
+  The spacing round trips at magnifications 1 and 5/2, which had been
+  engraved at 7/4 all along, then showed two real differences, fixed in the
+  preview: the engine draws every clef 1 unmagnified staff space (1/m of
+  the staff's) right of its box, so the signature starts 3.5 − 1/m staff
+  spaces after the clef's ink; and the first note follows a 4/4 time
+  signature whose width depends on the optical size (1.7 in emmentaler-20,
+  1.7135 in -26). Below magnification 0.8 LilyPond also keeps the staff
+  lines and the note spacing at their unmagnified sizes, which the preview
+  does not follow (LY spec §5.6a).
+
+**What the UAT checks.** `uat-key-signature.mjs` now also checks that the
+Size row shows under Sharps or flats, automatic with "Automatic (2.72)" on
+the default staff; that 5 semitones typed by hand is written and the canvas
+redraws D major's sharps at 5 ÷ 2.724 of the automatic scale, exactly as the
+Node-side renderer draws them; that the export writes `(6 0 sharp 1.1882)`;
+that Automatic again writes `null` and restores the canvas; and that the
+Place hint no longer names the half steps: **pass, 84/84 checks**.
+`uat-app-layout.mjs`: **pass, 79/79 checks**.
+
+**The screenshots, judged.** `uat-052-signs-auto-1440.png`,
+`uat-052-signs-auto-1280.png`, `uat-052-signs-5-1440.png` and
+`uat-052-signs-5-1280.png` (in the UAT's screenshot folder) show D major's
+sharps in the middle of the default staff and the panel's Draw, Size and
+Place rows, at both widths with no sideways scroll. At the automatic size
+each sharp's bars are a notehead's height apart, so F♯ and C♯ sit in
+proportion to the noteheads beside them, where session 51's spanned an
+octave. At 5 semitones they are visibly larger, as set. The full-page
+captures at 1280 px show the app's sticky header partway down the page, an
+artifact of the capture, not of the layout.
+
 ## Sharps or flats — 2026-11-11 (session 51)
 
 The key signature's second kind, the traditional accidentals (design

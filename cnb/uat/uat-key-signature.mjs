@@ -16,7 +16,9 @@
  * and place choice, the canvas checked against CNBKeySignature after each,
  * and the overlap note) → Sharps or flats (session 51: C, D and B♭ major in
  * the middle, on the bottom and on every line set, each checked against
- * CNBKeySignature, the export's signs, and the key's notes restored) → clef
+ * CNBKeySignature, the export's signs, and the key's notes restored; since
+ * session 52 the Size row, automatic and 5 semitones by hand, checked
+ * against CNBKeySignature and the export's scale) → clef
  * composition → save the config (real
  * download) and load it back → export a .ly file (real download, the mark
  * table) → the Clairnote SN gallery file's signature → screenshots at 1440
@@ -684,10 +686,18 @@ const signsMatch = (got, want) => got.length === want.length && got.every((s, i)
 const before51 = JSON.parse(JSON.stringify((await fullConfig()).keys.keySignature));
 await radio("cnb-kse-style", "accidentals");
 cfg = await fullConfig();
-check("DRAW: Sharps or flats is written as the style \"accidentals\"; the Notes, Stacks and Looks rows hide and Place stays",
+check("DRAW: Sharps or flats is written as the style \"accidentals\"; the Notes, Stacks and Looks rows hide, Size shows (session 52) and Place stays",
   cfg.keys.keySignature.style === "accidentals" &&
   await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
-    .map(e => e.textContent)) === JSON.stringify(["Draw", "Place"])));
+    .map(e => e.textContent)) === JSON.stringify(["Draw", "Size", "Place"])));
+check("SIZE: automatic by default, showing the rule's size for the default staff, 2.72 semitones, and Place's hint no longer names the half steps",
+  cfg.keys.keySignature.signs.heightSemis === null &&
+  await page.evaluate(() => {
+    const on = document.querySelector(".cnb-kse-size-choice .cnb-kse-radio.on");
+    const hint = document.querySelector(".cnb-kse-place .cnb-kse-hint").textContent;
+    return on && on.getAttribute("data-value") === "auto" && on.textContent === "Automatic (2.72)" &&
+      document.querySelector(".cnb-kse-size-height").value === "2.72" && !hint.includes("half steps");
+  }));
 for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D major", 2], [BF_MAJOR_KEY, "B♭ major", 2]]) {
   await pickKey(key.spelling, key.mode);
   for (const place of ["middle", "bottom-set", "every-set"]) {
@@ -707,16 +717,52 @@ for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D
   const ly = CNBLilypond.generate(await fullConfig());
   const table = ly.slice(ly.indexOf("#(define cnb:keysig-marks"));
   const marks = table.slice(0, table.indexOf("\n\n"));
-  check("DRAW: the export carries the signs through the mark table — D major's (6 0 sharp) (13 1 sharp) and B♭ major's flats, no heads",
-    ly.includes("cnb:keysig-style 'marks") && /\(marks \(6 0 sharp\)\s+\(13 1 sharp\)/.test(marks) &&
-    /\(-?\d+ 0 flat\)/.test(marks) && !/ head /.test(marks), marks.slice(0, 600));
+  check("DRAW: the export carries the signs through the mark table, at their scale — D major's (6 0 sharp 0.6473) (13 1 sharp 0.6473) and B♭ major's flats, no heads",
+    ly.includes("cnb:keysig-style 'marks") && /\(marks \(6 0 sharp 0\.6473\)\s+\(13 1 sharp 0\.6473\)/.test(marks) &&
+    /\(-?\d+ 0 flat 0\.6473\)/.test(marks) && !/ head /.test(marks), marks.slice(0, 600));
 }
-// The panel and the canvas with sharps, at the page's two widths.
+// Size set by hand (session 52): 5 semitones between a sharp's bars.
+{
+  await pickKey("D", "major");
+  await radio("cnb-kse-position", "middle");
+  const auto = await canvasSigns();
+  await page.evaluate(() => {
+    const input = document.querySelector(".cnb-kse-size-height");
+    input.value = "5";
+    input.dispatchEvent(new Event("change"));
+  });
+  const live = await fullConfig();
+  const got = await canvasSigns();
+  const want = expectedSigns(live, D_MAJOR_KEY);
+  const scale = s => numbers(s.transform)[2];
+  check("SIZE: 5 semitones typed by hand is written, and the canvas redraws its sharps at that size as the Node-side renderer draws them",
+    live.keys.keySignature.signs.heightSemis === 5 && signsMatch(got, want) && got.length === 2 &&
+    close(scale(got[0]) / scale(auto[0]), 5 / 2.724) &&
+    await page.evaluate(() => document.querySelector(".cnb-kse-size-choice .cnb-kse-radio.on").getAttribute("data-value") === "set"),
+    `actual=${JSON.stringify(got.map(s => s.transform))} expected=${JSON.stringify(want.map(s => s.transform))}`);
+  const ly = CNBLilypond.generate(live);
+  check("SIZE: the export writes the hand-set size as each sign's scale, (6 0 sharp 1.1882)", /\(marks \(6 0 sharp 1\.1882\)/.test(ly));
+  await radio("cnb-kse-size-choice", "auto");
+  const back = await fullConfig();
+  check("SIZE: Automatic again writes null and the canvas draws the automatic size",
+    back.keys.keySignature.signs.heightSemis === null && signsMatch(await canvasSigns(), auto));
+}
+const setSize = (v) => page.evaluate((value) => {
+  const input = document.querySelector(".cnb-kse-size-height");
+  input.value = value;
+  input.dispatchEvent(new Event("change"));
+}, v);
+// The panel and the canvas with sharps, at the page's two widths: at the
+// automatic size, and at 5 semitones set by hand (session 52).
 await pickKey("D", "major");
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
-  await page.screenshot({ path: path.join(SHOT_DIR, `uat-051-accidentals-${width}.png`), fullPage: true });
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-052-signs-auto-${width}.png`), fullPage: true });
+  await setSize("5");
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: path.join(SHOT_DIR, `uat-052-signs-5-${width}.png`), fullPage: true });
+  await radio("cnb-kse-size-choice", "auto");
 }
 await page.setViewportSize({ width: 1600, height: 1800 });
 await page.waitForTimeout(150);

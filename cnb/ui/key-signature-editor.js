@@ -65,6 +65,11 @@
  * sharps or flats the Notes, Stacks and Looks rows are hidden, their values
  * kept, and Place stays.
  *
+ * Size (session 52), under sharps or flats only: "Automatic (n)", the size
+ * CNBKeySignature.signHeight's rule gives, or "Set by hand", a number of
+ * semitones between a sharp's bars written as signs.heightSemis (automatic
+ * writes null). Hidden under the key's notes, its value kept.
+ *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
  *     enabled: boolean,                    // keys.enabled (master gate)
@@ -77,7 +82,8 @@
  *                        // the designer's settings (session 48), edited
  *                        // in the panel since session 50
  *       placement: { rule: string, tonicOctave: number|null, position },
- *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness }
+ *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness },
+ *       signs: { heightSemis: number|null }   // session 52; null = automatic
  *     }
  *   }
  *
@@ -219,6 +225,10 @@ export const CNBKeySignatureEditor = {
     if (typeof sep.extentSemis !== "number" || !Number.isFinite(sep.extentSemis) || sep.extentSemis <= 0) {
       throw new Error(`keySignature.separator.extentSemis must be a finite positive number (got ${JSON.stringify(sep.extentSemis)})`);
     }
+    const height = isPlainObject(ks.signs) ? ks.signs.heightSemis ?? null : null;
+    if (height !== null && (typeof height !== "number" || !Number.isFinite(height))) {
+      throw new Error(`keySignature.signs.heightSemis must be a finite number or null for automatic (got ${JSON.stringify(height)})`);
+    }
     return {
       enabled: !!state.enabled,
       definitions: deepClone(state.definitions),
@@ -239,6 +249,7 @@ export const CNBKeySignatureEditor = {
           extentSemis: sep.extentSemis,
           shareThickness: sep.shareThickness,
         },
+        signs: { heightSemis: height },
       },
     };
   },
@@ -297,6 +308,8 @@ export const CNBKeySignatureEditor = {
           extentSemis: finite(sep.extentSemis, 0, 12, true),
           shareThickness: sep.shareThickness ?? DEFAULT_KS.separator.shareThickness,
         },
+        // A stored number is kept as it is, for validation to judge.
+        signs: { heightSemis: Number.isFinite(ks.signs?.heightSemis) ? ks.signs.heightSemis : null },
       },
     };
   },
@@ -415,8 +428,9 @@ export const CNBKeySignatureEditor = {
    *   div.cnb-key-signature-editor
    *   ├── label.cnb-kse-keys-enable    (keys.enabled master toggle)
    *   ├── div.cnb-kse-disabled-note    (ONLY while keys.enabled is false)
-   *   ├── div.cnb-kse-signature       (show, Notes, Stacks with the gold
-   *   │                                stem and the overlap note, Place)
+   *   ├── div.cnb-kse-signature       (show, Draw, Notes, Stacks with the gold
+   *   │                                stem and the overlap note, Looks, or
+   *   │                                Size under sharps or flats, Place)
    *   ├── div.cnb-kse-definitions     (Keys for notehead rules: rows + add)
    *   └── div.cnb-kse-validation      (Module A pass-through + editor checks)
    *
@@ -669,6 +683,8 @@ export const CNBKeySignatureEditor = {
         wrap.appendChild(drawNotes(ks));
         wrap.appendChild(drawStacks(ks, sig));
         wrap.appendChild(drawLooks(ks));
+      } else {
+        wrap.appendChild(drawSize(ks));
       }
       wrap.appendChild(drawPlace(ks));
       return wrap;
@@ -964,7 +980,49 @@ export const CNBKeySignatureEditor = {
       return group;
     }
 
+    // ── Size (session 52): the sharps' and flats' size in semitones ──────
+    /** The size the automatic rule gives the config as edited. */
+    function automaticHeight() {
+      let config;
+      try { config = CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { config = CNBConfig.clone(baseConfig); }
+      config.keys.keySignature.signs = { heightSemis: null };
+      return CNBKeySignature.signHeight(config).semis;
+    }
+
+    function drawSize(ks) {
+      if (!isPlainObject(ks.signs)) ks.signs = { heightSemis: null };
+      const signs = ks.signs;
+      const auto = automaticHeight();
+      const shown = Number(auto.toFixed(2));
+      const choice = radios("cnb-kse-size-choice", signs.heightSemis === null ? "auto" : "set", [
+        ["auto", `Automatic (${shown})`],
+        ["set", "Set by hand"],
+      ], (v) => { signs.heightSemis = v === "auto" ? null : (signs.heightSemis ?? shown); });
+
+      const height = el("input", "cnb-kse-size-height");
+      height.type = "number";
+      height.min = "0";
+      height.step = "0.25";
+      height.value = String(signs.heightSemis ?? shown);
+      height.title = "The sharp's height, from the top of one bar to the top of the other";
+      height.onchange = (e) => {
+        const v = numberFrom(e, height);
+        if (v !== null && v > 0) { signs.heightSemis = v; changed(); }
+      };
+      const fields = el("div", "cnb-kse-fields");
+      fields.appendChild(control(height));
+      fields.appendChild(el("span", "cnb-kse-field-unit", "semitones between a sharp's bars"));
+      return row("cnb-kse-size", "Size", choice, fields,
+        el("div", "cnb-kse-hint",
+          "Automatic is the noteheads' mean height, at most one staff space and 3 semitones. " +
+          "The flats are sized with the sharps."));
+    }
+
     function drawPlace(ks) {
+      // The tonic and the half steps are a choice of the key's notes alone.
+      const hint = "A line set is a run of staff lines one staff space apart. On every line set the " +
+        (ks.style === "accidentals" ? "signature repeats."
+          : "signature repeats; the tonic and the half steps alone keep it less busy.");
       return row("cnb-kse-place", "Place",
         radios("cnb-kse-position", ks.placement.position, [
           ["middle", "In the middle of the staff"],
@@ -972,9 +1030,7 @@ export const CNBKeySignatureEditor = {
           ["top-set", "On the top line set"],
           ["every-set", "On every line set"],
         ], (v) => { ks.placement.position = v; }),
-        el("div", "cnb-kse-hint",
-          "A line set is a run of staff lines one staff space apart. On every line set the " +
-          "signature repeats; the tonic and the half steps alone keep it less busy."));
+        el("div", "cnb-kse-hint", hint));
     }
 
     // ── Validation pass-through (Module A) + editor checks ───────────────
