@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Card Collection Test — Module 10</title>
+  <link rel="stylesheet" href="../assets/fonts/oswald.css">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 24px 0 4px; }
+    h1:first-of-type { margin-top: 0; }
+    p  { font-size: 13px; color: #666; margin: 0 0 16px; max-width: 820px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .cnb-duration-caption {
+      font-size: 15px;
+      margin: 12px 0 2px;
+    }
+    .cnb-duration-row:first-child .cnb-duration-caption { margin-top: 0; }
+  </style>
+</head>
+<body>
+
+<h1>Module 10: Card Collection — full chromatic row (default 4-8 config)</h1>
+<p>
+  The Phase 3 deliverable: PCs 0–12 as octave-chord cards over a single
+  continuous background staff SVG. Expected: staff lines run unbroken behind
+  all 13 columns at semis −4, 4, 8, 16, 20, 28 · ledgers per column follow
+  the default override templates (C/C♯/D trigger the C ledger, D its own,
+  A♯ its own) · stems flip from up to down at the staff midpoint (semi 12):
+  C–F chords stem up, F♯ and above stem down · sharps are hollow · labels
+  render in Oswald on material cards top and bottom.
+</p>
+<div class="card" id="full-row"></div>
+
+<h1>Rule colors + duration rows</h1>
+<p>
+  Twelve rule colors (one rule per pitch class) with two duration rows (crotchet, minim) — one captioned
+  row per duration, sharing the column layout.
+</p>
+<div class="card" id="color-rows"></div>
+
+<h1>3-6-9 staff pattern</h1>
+<p>
+  Staff pattern [3, 6, 9] with the same ledger templates. Checks staff-line
+  continuity for a non-default pattern and the C′ ledger inside the 9–15 gap.
+</p>
+<div class="card" id="pattern-369"></div>
+
+<h1>Debug grid</h1>
+<p>
+  Subset row (C, E, G, C′) with <code>display.debugGrid</code> enabled — the
+  semitone grid renders behind the staff lines in the shared background SVG.
+</p>
+<div class="card" id="debug-row"></div>
+
+<script type="module">
+  import { CNBConfig }     from "../src/cnb-config.js";
+  import { CNBCollection } from "../src/cnb-collection.js";
+
+  // ── 1. Full chromatic row, default config ─────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("full-row"),
+    CNBConfig.createDefault()
+  );
+
+  // ── 2. Rule colors, two duration rows ─────────────────────────────────────
+  const colored = CNBConfig.createDefault();
+  [
+    "#e6194b", "#f58231", "#ffb300", "#bfa000", "#3cb44b", "#469990",
+    "#42d4f4", "#4363d8", "#911eb4", "#f032e6", "#a05195", "#808000",
+  ].forEach((hex, pc) => colored.noteheadRules.push({
+    name: `PC${pc}`, priority: 2 + pc,
+    match: { pitchClasses: [pc], durations: "all", keys: "all" }, apply: { color: hex },
+  }));
+  CNBCollection.render(
+    document.getElementById("color-rows"),
+    colored,
+    { durations: ["crotchet", "minim"] }
+  );
+
+  // ── 3. 3-6-9 staff pattern ────────────────────────────────────────────────
+  const config369 = CNBConfig.createDefault();
+  config369.staff.semitonePattern = [3, 6, 9];
+  config369.staff.semitonesPerStaffSpace = 3;
+  CNBCollection.render(
+    document.getElementById("pattern-369"),
+    config369
+  );
+
+  // ── 4. Debug grid on a subset row ─────────────────────────────────────────
+  const debugConfig = CNBConfig.createDefault();
+  debugConfig.display.debugGrid = true;
+  CNBCollection.render(
+    document.getElementById("debug-row"),
+    debugConfig,
+    { pitchClasses: [0, 4, 7, 12] }
+  );
+</script>
+
+</body>
+</html>
