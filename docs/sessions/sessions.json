@@ -990,9 +990,9 @@
     {
       "number": 47,
       "title": "Designing the key-signature designer",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-11T02:45:57.523000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-11T04:56:01.069000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
