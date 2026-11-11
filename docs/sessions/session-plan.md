@@ -1632,7 +1632,28 @@ range of semitones.
    in the preview and the engraving (engine work, if the engine has no
    such setting).
 
-### Session 46: Designing the key-signature designer
+### Session 46: The breve's tie below the noteheads
+
+**Why.** In the session-45 try-out the operator found the breve's tie wrong
+(2026-11-11): it should be below the noteheads, not in the gap between the
+two groups on the heads' centre line. Ideally one tie spans from the centre
+of the first notehead of the first group to the centre of the last notehead
+of the last group.
+
+1. Register.
+2. With the engine's repository (engine 1.3.0 draws the tie, so this is an
+   engine session and an engine patch release, 1.3.1): in repeat mode a
+   breve's tie is one tie under each notehead, its ends at the centres of
+   the first head of the first group and the last head of the last group,
+   below the heads, curving down as LilyPond's ties under a note do. The
+   two groups and the gap between them stay as they are. The preview draws
+   it so (`CNBCard.tiedGroups`, `CNBCard.tiePath`), the tie still black,
+   and the ledgers and column still the breve's whole width.
+3. The engine's golden files, the LY spec (§4.1d) and the engine round
+   trip in `cnb/tests/cnb-card-tests.js` follow, the round trip measuring
+   the tie's ends and lowest point against the preview.
+
+### Session 47: Designing the key-signature designer
 
 **Why.** A signature should be as easy to design as the noteheads, and
 reach Clairnote's, traditional ones and the scale stack alike (operator,
@@ -1656,12 +1677,12 @@ reach Clairnote's, traditional ones and the scale stack alike (operator,
 3. The design goes to a cross-provider consult (GPT and Gemini) before the
    operator approves it, and it plans the sessions that build it.
 
-### Sessions 47 and on: The key-signature designer
+### Sessions 48 and on: The key-signature designer
 
-As session 46 plans them, with their engine work. Then a session in which
+As session 47 plans them, with their engine work. Then a session in which
 the operator declares the UI stable, and the release:
 
-### Release 1.1.0 (release: 1.1.0), numbered once session 46 has planned
+### Release 1.1.0 (release: 1.1.0), numbered once session 47 has planned
 
 **Why.** The first release since the UI work, and the site's first deploy.
 

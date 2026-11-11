@@ -60,9 +60,11 @@ down on the canvas, checking the range written, the fields and the export:
 **pass, 46/46 checks**. `uat-app-layout.mjs`: **pass, 79/79 checks**. The
 full suite runs at the close as the run of record.
 
-**The operator's try-out** of the clefs is still to come: they try them
-with sessions 43 and 44 before declaring the UI stable, in the session
-before the 1.1.0 release.
+**The operator's try-out** (2026-11-11): the clefs look fine as they are.
+The breve's tie (session 44) is not right: it should be below the
+noteheads, ideally one tie from the centre of the first notehead of the
+first group to the centre of the last notehead of the last group. That is
+session 46, with engine work.
 
 ## Nudges you can see and drag — 2026-11-10 (session 43)
 
@@ -127,7 +129,7 @@ that all the planned ones come before the 1.1.0 release.
 6. **The clef** (*planned*, session 45): the engine's dozenal clef should be a choice,
    drawn in the preview, and an imported clef symbol should be resizable
    and placed vertically, with the semitone range over which it is shown.
-7. **Key signatures** (*planned*, the designer: its design in session 46, then the sessions it plans): fewer
+7. **Key signatures** (*planned*, the designer: its design in session 47, then the sessions it plans): fewer
    options, so a designer does not have to define every key in every mode.
    The operator's outline:
    - **A. Accidentals**: traditional accidentals, which may help pianists.
@@ -166,8 +168,8 @@ that there is enough work above to occupy a few sessions -- possibly
 requiring some work in the engine, as well", and chose that all of it come
 before the release (2026-11-10). So the operator will declare the UI stable
 in the session before the 1.1.0 release, once sessions 43 (nudges),
-44 (the breve), 45 (clefs) and 46 and on (the key-signature designer) are
-done; that session and the release are numbered when session 46 has planned
+44 (the breve), 45 (clefs), 46 (the breve's tie) and 47 and on (the key-signature designer) are
+done; that session and the release are numbered when session 47 has planned
 the designer.
 
 ## Undo and redo — 2026-11-09 (session 41)
