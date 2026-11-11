@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 040 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 040 transcript</h1>
+<p class="stamp">Rendered 2026-11-09T11:59:01.376Z by dabbler-ai-router 3.29.0 at 9921ec4badaec623700f298d36ed6fa22458336a.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-09T05:53:01.690-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 40: Stems where the notehead's SVG puts them</h3>
+<p><strong>Why.</strong> Since session 33 a stem's edge sits on its anchor, as LilyPond's does, so a stem drawn centred in the notehead's SVG (Kite 4-369, 45deg-369) previews and engraves half a stem off centre. Session 33 left this to the operator, who chose: a stem goes where the SVG's stem rect puts it, and the default notehead's stems take the conventional positions, up on the right and down on the left (operator, 2026-11-09).</p>
+<ol><li>Register.</li><li>A stem rect in an imported SVG places the stem itself, in the preview and in the engraving: the Kite and 45deg stems are centred.</li><li>The default notehead's up stem is on its right and its down stem on its left, in the preview and the engraving. The operator may supply the positions.</li><li>The fixtures and export baselines follow, with an engine round trip, and the LY spec records the change.</li></ol>
+<h2>Work Plan</h2>
+<p>Make a shape's stem anchor the stem's own position rather than the place its edge sits. The importer already reads an anchor as the centre of the SVG's stem rect, so the preview now draws the stem centred on its anchor (CNBStem.geometry drops the half-thickness inward shift), and the export writes each cnb:register-attachment! point as the anchor moved outward by half the engine's stem thickness (0.065 staff spaces, in semitones by semitonesPerStaffSpace or axisUnitsPerStaffSpace), because LilyPond puts the stem's edge on that point; preview and engraving keep the same edge in repeat mode and for sized variants, whose attachment points are then computed at the variant's scale. The Kite 4-369 and 45deg-369 stems, whose rects are drawn centred, therefore preview and engrave centred. The default crotchet-minim notehead's anchors move so that on its default staff (4 semitones per staff space) the up stem's right edge is on the notehead's right extent and the down stem's left edge on its left extent, heights unchanged; the default config, the gallery files and the sized fixture that carry that shape take the new anchors. The five export baselines and the preview baseline are regenerated, the engine round trip in cnb/tests/cnb-card-tests.js also pins each stem's x for the default, Kite and 45deg fixtures, and LY spec 1.3.11 and the architecture plan record the change.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/faf96297611a627f63ef5ace80d9e731d6c5b029"><code>faf96297611a627f63ef5ace80d9e731d6c5b029</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Stem centre</td><td><p>In cnb/src/cnb-stem.js draw the stem centred on its anchor: for one head at its own size the stem's centre x is centerX + anchor.x × scaleX. In repeat mode (widthScale) and for a sized head the edge LilyPond engraves is the attachment point scaled across the extent, so put the preview's anchored edge (up: right, down: left) at centerX + (anchor.x × scaleX + side × thickness/2) × widthScale and the centre half a thickness inward of it. Expose the engine's stem thickness in staff spaces as CNBStem.THICKNESS. In cnb/src/cnb-lilypond.js attachmentPoints takes the registration's scale and the staff-space size in semitones (staff.semitonesPerStaffSpace, or pitchAxis.axisUnitsPerStaffSpace under an axis) and writes each point's x as the anchor (at the variant's scale) moved outward by half CNBStem.THICKNESS staff spaces, relative to the registered path's extent; y is unchanged. Update the tests in cnb/tests/cnb-stem-tests.js, cnb/tests/cnb-card-tests.js (the stemEdge-based assertions, and the session-34 engine round trip also compares each engraved stem's centre x with the card's, for the default, Kite 4-369 and 45deg-369 fixtures; a non-engine test checks that the Kite and 45deg crotchet stems are centred on the notehead in the preview) and cnb/tests/cnb-lilypond-tests.js (the attachment numbers). Regenerate the five export baselines with cnb/fixtures/export-config.mjs and the preview baseline with capturePreviewBaseline(), adding a session-40 note to its description.</p></td><td></td><td><code>node cnb/tests/run-tests.js</code><br><code>node cnb/fixtures/rebuild-kite-shapes.mjs --check</code></td><td>yes</td></tr>
+<tr><td>Default stems</td><td><p>Move the default crotchet-minim notehead's anchors in cnb/src/cnb-config.js so that at the default staff (4 semitones per staff space) the up stem's right edge is on the notehead path's right extent and the down stem's left edge on its left extent, crotchet and minim, with the anchors' y unchanged: x = ±(extent − 0.065 × 4 semitones), in SVG units. Give the same anchors to every gallery file in cnb/assets/examples/gallery and to cnb/fixtures/sized-config.json where they carry the default shape with its old anchors (±157.2926 / ±157.2934). Test in cnb/tests/cnb-config-tests.js that the default export writes the up attachments at x 1 and the down at x −1, and in cnb/tests/cnb-card-tests.js that the default card's up stem's right edge is at the notehead's right edge. Regenerate the default, sized and Twinline export baselines and the preview baseline.</p></td><td></td><td><code>node cnb/tests/run-tests.js</code><br><code>node -e const f=require('fs'),p=require('path');const d='cnb/assets/examples/gallery';const bad=[...f.readdirSync(d).filter(n=&gt;n.endsWith('.json')).map(n=&gt;p.join(d,n)),'cnb/fixtures/sized-config.json','cnb/src/cnb-config.js'].filter(n=&gt;/157\.29/.test(f.readFileSync(n,'utf8')));if(bad.length){console.error(bad.join('\n'));process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Record the change. docs/CNB-LY-EXPORT-SPEC-v1_3.md: version 1.3.11, a new §4.4c (an anchor is the stem's centre, as the SVG's stem rect draws it; the attachment point is the anchor moved outward by half the engine's 0.13-staff-space stem, so a sized variant's points are its own; the default notehead's stems sit on its sides; the Kite and 45deg exports change; 1.0.0 and 1.1.0-development exports with stems should be regenerated), the summary table, the §4.4b and §4.1c notes it amends, and a change-log row. docs/CNB-ARCHITECTURE-PLAN-v2.md: the §4.2 anchor notes, Module 8's note on the stem's edge, §9 A4 and Appendix A's default anchors. cnb/fixtures/kite-up.svg: its comment says the centred rects centre the stems (session 40) rather than marking the engine reference's attachment.</p></td><td></td><td><code>node -e const f=require('fs');const s=f.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=f.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\*\*Version:\*\* 1\.3\.11/.test(s)||!/### 4\.4c/.test(s)||!/\| \*\*1\.3\.11\*\*/.test(s)||!/session 40/i.test(a)||/157\.29/.test(a.split('## Appendix A')[1]||''))process.exit(1)</code><br><code>node cnb/fixtures/rebuild-kite-shapes.mjs --check</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to how the importer reads a stem rect (its end-centre, through its transform) or to the toolkit contract.</li><li>No change to the stem's thickness, length or direction, and no engine change.</li><li>No migration of configs users saved before this session: a saved shape keeps its stored anchors, which now place the stem's centre.</li><li>No new config field or per-shape setting for stem placement.</li><li>No undo and redo (session 41) and no other UI work (session 42).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[10:53:01]</span> <span class="muted">run-started</span> session=040 mode=pull</div>
+<div class="line"><span class="at">[10:53:01]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:58:14]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[10:58:14]</span> <span class="muted">plan-accepted</span> steps=[&quot;stem-centre&quot;,&quot;default-stems&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[10:58:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:58:29]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=stem-centre</div>
+<div class="line"><span class="at">[11:11:00]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:13:20]</span> <span class="muted">check-passed</span> step=stem-centre argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:13:20]</span> <span class="muted">check-passed</span> step=stem-centre argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;]</div>
+<div class="line"><span class="at">[11:13:23]</span> <span class="muted">report-accepted</span> seq=2 step=stem-centre files=[] notes=Stems centre on their anchor in the preview; the export writes each attachment half the engine's stem outward (at a sized variant's scale); Kite/45deg stems centred; baselines regenerated; engine round trip pins stem x for default, Kite and 45deg (1139 passed, engine ran).</div>
+<div class="line"><span class="at">[11:13:23]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=default-stems</div>
+<div class="line"><span class="at">[11:18:29]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:20:44]</span> <span class="muted">check-passed</span> step=default-stems argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:20:44]</span> <span class="muted">check-passed</span> step=default-stems argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs'),p=require('path');const d='cnb/assets/examples/gallery';const bad=[...f.readdirSync(d).filter(n=&gt;n.endsWith('.json')).map(n=&gt;p.join(d,n)),'cnb/fixtures/sized-config.json','cnb/src/cnb-config.js'].filter(n=&gt;/157\\.29/.test(f.readFileSync(n,'utf8')));if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[11:20:47]</span> <span class="muted">report-accepted</span> seq=3 step=default-stems files=[] notes=Default crotchet-minim anchors moved to x +146.426 / -146.4267 so at sps 4 the stems' outer edges are on the notehead's sides (export x 1 / -1); same anchors in 18 gallery files and sized-config.json (Twinline's stored lilypondAnchors to 1.0751 to match); baselines regenerated; 1141 passed, engine ran.</div>
+<div class="line"><span class="at">[11:20:47]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=docs</div>
+<div class="line"><span class="at">[11:23:01]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:23:18]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs');const s=f.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=f.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\\*\\*Version:\\*\\* 1\\.3\\.11/.test(s)||!/### 4\\.4c/.test(s)||!/\\| \\*\\*1\\.3\\.11\\*\\*/.test(s)||!/session 40/i.test(a)||/157\\.29/.test(a.split('## Appendix A')[1]||''))process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[11:23:18]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;]</div>
+<div class="line"><span class="at">[11:23:19]</span> <span class="muted">report-accepted</span> seq=4 step=docs files=[] notes=LY spec 1.3.11 with new section 4.4c (anchor is the stem's centre; attachment half a stem outward; default stems on the notehead's sides), amended 4.1c/4.4b notes, summary table and change log; architecture plan 4.2, Module 8, section 9 A4 and Appendix A anchors; kite-up.svg comment.</div>
+<div class="line"><span class="at">[11:23:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:23:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:23:25]</span> <span class="muted">job-started</span> name=verification pid=46292 log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:25:30]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:25:30]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[11:25:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[11:25:30]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[11:25:57]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[11:25:57]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[11:25:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[11:25:57]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[11:32:26]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=stem-centre</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;] owner=stem-centre</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=default-stems</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs'),p=require('path');const d='cnb/assets/examples/gallery';const bad=[...f.readdirSync(d).filter(n=&gt;n.endsWith('.json')).map(n=&gt;p.join(d,n)),'cnb/fixtures/sized-config.json','cnb/src/cnb-config.js'].filter(n=&gt;/157\\.29/.test(f.readFileSync(n,'utf8')));if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;] owner=default-stems</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs');const s=f.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=f.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\\*\\*Version:\\*\\* 1\\.3\\.11/.test(s)||!/### 4\\.4c/.test(s)||!/\\| \\*\\*1\\.3\\.11\\*\\*/.test(s)||!/session 40/i.test(a)||/157\\.29/.test(a.split('## Appendix A')[1]||''))process.exit(1)&quot;] owner=docs</div>
+<div class="line"><span class="at">[11:37:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;] owner=docs</div>
+<div class="line"><span class="at">[11:37:19]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[] notes=Each gallery file's default-notehead anchors set for its own staff spacing (semitones or axis units per staff space; Schoenberg's slashed ovals from the oval body), Twinline's lilypondAnchors to match; tests that every shipped config exports the default notehead's attachments at x +/-1 and every gallery card draws the stem's outer edge on the notehead's side; Twinline and preview baselines regenerated; spec and plan sentences corrected; 1143 passed.</div>
+<div class="line"><span class="at">[11:37:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:37:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:37:20]</span> <span class="muted">job-started</span> name=verification pid=59156 log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:38:34]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:38:34]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[11:38:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[11:38:38]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[11:38:38]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=56656 log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:41:28]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:41:33]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[11:41:33]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=17468 log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:43:31]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="bad">1</span> log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:43:31]</span> <span class="muted">tests-failed</span> command=npm run uat</div>
+<div class="line"><span class="at">[11:43:31]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-run-of-record</div>
+<div class="line"><span class="at">[11:46:02]</span> <span class="muted">run-resumed</span> session=040 phase=<span class="milestone">run-of-record</span> mode=pull</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=stem-centre</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;] owner=stem-centre</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=default-stems</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs'),p=require('path');const d='cnb/assets/examples/gallery';const bad=[...f.readdirSync(d).filter(n=&gt;n.endsWith('.json')).map(n=&gt;p.join(d,n)),'cnb/fixtures/sized-config.json','cnb/src/cnb-config.js'].filter(n=&gt;/157\\.29/.test(f.readFileSync(n,'utf8')));if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;] owner=default-stems</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const f=require('fs');const s=f.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=f.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\\*\\*Version:\\*\\* 1\\.3\\.11/.test(s)||!/### 4\\.4c/.test(s)||!/\\| \\*\\*1\\.3\\.11\\*\\*/.test(s)||!/session 40/i.test(a)||/157\\.29/.test(a.split('## Appendix A')[1]||''))process.exit(1)&quot;] owner=docs</div>
+<div class="line"><span class="at">[11:51:01]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/fixtures/rebuild-kite-shapes.mjs&quot;,&quot;--check&quot;] owner=docs</div>
+<div class="line"><span class="at">[11:51:04]</span> <span class="muted">report-accepted</span> seq=7 step=fix-run-of-record files=[&quot;cnb/uat/uat-kite-pipeline.mjs&quot;] notes=uat-kite-pipeline's export check still expected the pre-session Kite attachments (0 . 0.9)/(-0.365 . 0.9); it now expects the centred stems' (0.0975 . 0.9)/(-0.2675 . 0.9). Drivers 11-17 run by hand all pass.</div>
+<div class="line"><span class="at">[11:51:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:51:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:51:13]</span> <span class="muted">job-started</span> name=verification pid=53528 log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:51:52]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:51:52]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[11:51:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[11:52:00]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[11:52:00]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=51116 log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:54:47]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:54:49]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[11:54:50]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=49612 log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:57:19]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:57:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[11:57:58]</span> <span class="muted">landed</span> commit=faf96297611a627f63ef5ace80d9e731d6c5b029</div>
+<div class="line"><span class="at">[11:57:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[11:58:01]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[11:58:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[11:58:05]</span> <span class="muted">job-started</span> name=close pid=33976 log=.dabbler/runs/s40/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:59:01]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:59:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Shipped gallery configurations with a non-4-semitone staff do not put the default notehead’s stems on its sides.</td><td>fixed — Each gallery file's default-notehead anchors set for its own staff spacing (semitones or axis units per staff space; Schoenberg's slashed ovals from the oval body), Twinline's lilypondAnchors to match; tests that every shipped config exports the default notehead's attachments at x +/-1 and every gallery card draws the stem's outer edge on the notehead's side; Twinline and preview baselines regenerated; spec and plan sentences corrected; 1143 passed.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** Session-40 documentation retains a mathematically inconsistent default-anchor value. `docs/CNB-ARCHITECTURE-PLAN-v2.md` and `docs/CNB-LY-EXPORT-SPEC-v1_3.md` say the default anchors are `±146.426` while also saying that, at four semitones per staff space, the exported attachment is `±1`. Under the documented `0.065 × sps` half-stem calculation, the side-placement anchor is approximately `±137.014`, matching the updated four-semitone gallery files (`cnb/assets/examples/gallery/chromatic-lyre-notation.json`, `cnb/assets/examples/gallery/clairnote-dn.json`, and `cnb/assets/examples/gallery/clairnote-sn.json`). The prose should be corrected to avoid directing future maintainers to restore the pre-fix value.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The Round 2 documentation inconsistency remains unresolved: `docs/CNB-ARCHITECTURE-PLAN-v2.md` and `docs/CNB-LY-EXPORT-SPEC-v1_3.md` reportedly retain default anchor values of `±146.426` despite the documented four-semitone calculation and gallery anchors implying approximately `±137.014`. This is documentation-only and non-blocking, but it can mislead future maintainers about the default shape’s geometry.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>160s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="bad">failed</span></td><td>105s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>158s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>137s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
