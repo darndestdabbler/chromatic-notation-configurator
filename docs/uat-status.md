@@ -21,6 +21,64 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The key signature's model reaches LilyPond — 2026-11-12 (session 55)
+
+Engine 1.6.0 (engine sessions 37 and 38) reads the mark table's new fields,
+and the export now writes them (LY export spec 1.3.19 §5.6a).
+
+- **The export.** Each mark is written as its symbols, base then added
+  ones, at one semitone and column: a head; the new `symbol` kind for a base
+  whose shape takes no ledgers and for every added symbol; or a sharp or
+  flat. A symbol the canvas places off its stack's centre (a reference
+  point, an offset) ends with `(at dx . dy)`, and a coloured sign writes its
+  colour after its scale. A table that uses none of this, and the five
+  export baselines, are byte-identical.
+- **A placed symbol's box.** The canvas measured every symbol as if its box
+  were centred on its origin. A tail's box is not, so the canvas now
+  measures a placed symbol by its path's exact extent (`CNBNotehead.box`,
+  the extent the exporter's attachments already used), and the column step,
+  the ink and a head's ledgers follow it, as the engine's stencil does.
+  Nothing saved before moves: it applies only to a symbol placed by its
+  origin.
+- **Clairnote.** The SN and DN gallery files draw Clairnote's own
+  signatures: a dot for each note (SN solid on a line or ledger and hollow in
+  a space, DN taking its noteheads' fill), a tail up on each flat and down on
+  each sharp, each tail an imported filled shape
+  (`cnb/assets/examples/gallery/clairnote-symbols/`) placed by its reference
+  point, the dot's centre, with no ledgers. The panel's Looks name the tails
+  in words. The signature, styles and preview baselines re-capture only
+  their Clairnote probes. The concert-size pages and their judgement are in
+  `docs/sessions/session-055/`: no tail touches another dot or shows inside
+  a hollow one, and at 100% the tails are small ticks whose direction can be
+  told.
+- **The engine round trip** (`cnb/tests/cnb-lilypond-tests.js`) holds every
+  head, symbol and sign, every stack's ledgers and the ink to the canvas
+  within 0.001 staff spaces in C, D, B♭, A and E♭ major, across eleven
+  setups: the default, Kite 4-369, both Clairnote files, the traditional
+  signature on the bottom and every line set, an asymmetric head with a
+  reference point, offsets, added symbols of other sizes, a hollow base with
+  no ledgers, coloured and moved signs, and the Twinline pitch axis.
+
+**What the UAT checks.** `uat-key-signature.mjs` now finds each drawn
+symbol where the Node-side renderer places it (a mark's base, then its added
+symbols, each at its stack's line plus its own placement), and checks that
+the Clairnote SN file in D major draws seven dots on the bottom line set, D,
+E and F♯ solid and G, A, B and C♯ hollow, F♯ and C♯ each with a tail down,
+and that the Sharps look reads "with Clairnote key-signature tail, down
+(sharp)": **pass, 88/88 checks**. `uat-app-layout.mjs`: **pass, 79/79
+checks**. The whole UAT (`npm run uat`, 18 drivers) passes.
+
+**The screenshots, judged.** `uat-050-clairnote-1440.png` and
+`uat-050-clairnote-1280.png` show the Clairnote SN file in D major: on the
+staff and in the Key signature section's canvas, the signature's two stacks
+of dots on the bottom line set, the hollow ones above the solid, a short
+tail falling to the left from F♯ and from C♯, each clear of the dot below
+it; the Looks list reads "Clairnote key-signature dot" for all marks and
+"with Clairnote key-signature tail, up (flat)" and "… down (sharp)" for
+flats and sharps. At both widths nothing scrolls sideways and nothing
+overlaps. The header's one warning is the file's own, from before this
+session (its notehead has no pre-baked LilyPond path).
+
 ## One model for the key signature — 2026-11-12 (session 54)
 
 The approved key-signature editor design (session 53,

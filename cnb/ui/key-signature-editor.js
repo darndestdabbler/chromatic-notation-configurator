@@ -369,6 +369,15 @@ export const CNBKeySignatureEditor = {
         : l.heightSemis === undefined ? `${l.widthSemis} semitones wide`
         : `${l.heightSemis} × ${l.widthSemis} semitones`);
     }
+    // Added symbols (session 55), each by its shape's name: the Clairnote
+    // files' tails read "with Clairnote key-signature tail, down (sharp)".
+    if (Array.isArray(l.added)) {
+      const names = l.added.map(a => {
+        const shape = (shapes || {})[a && a.shape] || CNBBuiltinShapes.get(a && a.shape);
+        return (shape && shape.displayName) || (a && a.shape);
+      });
+      words.push(names.length === 0 ? "no added symbols" : `with ${names.join(" and ")}`);
+    }
     return words.length === 0 ? AS_BENEATH[kind] : words.join(", ");
   },
 

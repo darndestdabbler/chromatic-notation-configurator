@@ -758,17 +758,27 @@ keys: {
   `(semi column sharp)` or `(semi column flat)`, which the engine draws from
   its music font; they register nothing and add no ledger entries. Since
   session 52 (LY spec 1.3.18) each carries its scale,
-  `(semi column sharp 0.6473)`, left out at 1, which engine 1.5.0 reads.
+  `(semi column sharp 0.6473)`, left out at 1, which engine 1.5.0 reads,
+  and since session 55 (LY spec 1.3.19) its colour and placement, which
+  engine 1.6.0 reads.
 - **One model (session 54, key-signature design §13).** The two styles
   became one model, drawn on the canvas first. A config saved with a style
   loads converted (`CNBConfig.signatureStyleToModel`, called by
   `CNBConfigIO.mergeLoaded` before the defaults are merged) and draws and
-  exports exactly as before. What the model adds beyond today's two
-  signatures (placed and added symbols, coloured signs, symbols with no
-  ledgers) reaches the mark table in session 55, once engine 1.6.0 (engine
-  sessions 37 and 38) reads `(at dx . dy)`, a sign's colour and the
-  `symbol` kind; until then the export writes what it wrote before for each
-  mark's base.
+  exports exactly as before.
+- **The model reaches the mark table (session 55, LY spec 1.3.19 §5.6a).**
+  What the model adds beyond the two old signatures exports through the
+  table, as engine 1.6.0 (engine sessions 37 and 38) reads it: each mark is
+  written as its symbols, base then added ones, at one semitone and column,
+  the table's order the layer order; a base whose shape takes no ledgers and
+  every added symbol is the `symbol` kind, with no ledgers; a symbol the
+  canvas does not centre on its stack (a reference point, an offset) ends
+  with `(at dx . dy)`, its origin in staff spaces; and a coloured sign writes
+  its colour after its scale. A table that uses none of these is written as
+  before. The canvas measures a placed symbol by its path's box
+  (`CNBNotehead.box`), as the engine's stencil is measured. The Clairnote SN
+  and DN gallery files draw Clairnote's own signatures, dots with imported
+  tails.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -1374,6 +1384,15 @@ CNBNotehead.render(svgParent, {
   hollow: boolean,
   color: string               // fill color
 }) → SVGGElement
+
+// A shape's box: its svgPath's exact extent about its origin, native SVG
+// units, Y down (session 55). The key signature measures a symbol placed by
+// its origin with it; the exporter's attachments use the same extent.
+CNBNotehead.box(shape) → { x: [min, max], y: [min, max] }
+
+// The SVG path parser, its LilyPond commands and their exact extent
+// (moved here from Module 11 in session 55, which shares them)
+CNBNotehead.parseSvgPath(d), CNBNotehead.svgCommands(d), CNBNotehead.pathExtent(commands)
 ```
 
 **Dependencies:** Module A (shape config structure)
@@ -1592,7 +1611,9 @@ For the colours the noteheads use (§4.6):
 - The clef and the key signature (LY spec §5.5, §5.6); a signature that is
   not the engine's scale stack as the mark table, from
   `CNBKeySignature.marks`, whose looks Section A also registers (§5.6a);
-  a traditional signature's sharps and flats as the table's signs (1.3.17)
+  a traditional signature's sharps and flats as the table's signs (1.3.17);
+  each mark as its symbols, placed with `(at dx . dy)`, the `symbol` kind
+  and a sign's colour (1.3.19, engine 1.6.0)
 - B2: Emit-if-changed engine settings from `config.engine`
 - B3: Metadata from `config.meta`
 
@@ -1994,7 +2015,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:notation-footnote` | `""` | `meta.notationFootnote` | If non-empty |
 | `cnb:clef-style` (+ name, text, size, gutter; A6 `cnb:register-clef!`) | `'dozenal` | `clef` (§4.12) | Always: `'none` when no clef is shown (LY spec 1.3.7 §5.5) |
 | `cnb:keysig-style` | `'chord` | `keys.enabled`, `keys.keySignature.enabled` | `'none` unless both are on (LY spec 1.3.7 §5.6); `'marks` for a signature not the scale stack (1.3.15 §5.6a) |
-| `cnb:keysig-marks` | `'()` | `keys.keySignature`, through `CNBKeySignature.marks` for 105 keys | With `'marks` (LY spec 1.3.15 §5.6a) |
+| `cnb:keysig-marks` | `'()` | `keys.keySignature`, through `CNBKeySignature.marks` for 105 keys | With `'marks` (LY spec 1.3.15 §5.6a); each mark's symbols, `at` and signs' colours since 1.3.19 (engine 1.6.0) |
 | `cnb:keysig-bar-color` / `-thickness` / `-extent-semis`, `cnb:keysig-tonic-octave` | `"#ffd42a"` / `4` / `12`, `#f` | `keys.keySignature.separator`, `.placement.tonicOctave` | If changed, signature on (LY spec 1.3.7 §5.6) |
 
 ### Section C — Configuration Procedure

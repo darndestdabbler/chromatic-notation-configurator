@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.18 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones)
-**Date:** November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.19 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols)
+**Date:** November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -76,7 +76,11 @@ mark table; the five export baselines are byte-identical. 1.3.18, for
 both: sharps and flats sized in semitones, §5.6a. Only a config whose
 signature draws sharps or flats exports anything new, each sign's scale
 and the columns laid out for it; it needs engine 1.5.0. The five export
-baselines are byte-identical.)*
+baselines are byte-identical. 1.3.19, for both: the key signature's
+placed, coloured and layered symbols, §5.6a. Only a mark-table signature
+using the model's placements, added symbols, symbols without ledgers or
+coloured signs exports anything new; it needs engine 1.6.0. Every table
+that uses none of them, and the five export baselines, are byte-identical.)*
 
 Summary of additions:
 
@@ -95,6 +99,7 @@ Summary of additions:
 | The signature's ledgers (1.3.16, linear and axis alike) | the engine's own rule for signature heads | the notation's, through `cnb:ledgers-by-semitone`, as engine 1.4.1 reads it; an entry for each mark beyond the cards' pitches (§5.6a, §5.7) |
 | Sharps and flats (1.3.17, linear and axis alike) | a signature of noteheads only | the traditional signature, each sign `(semi column sharp)` or `(semi column flat)` in the mark table (§5.6a) |
 | Sharps and flats sized in semitones (1.3.18, linear and axis alike) | LilyPond's size, a sharp 3 staff spaces tall | each sign's scale as its fourth element, `(semi column sharp 0.6473)`, left out at 1, as engine 1.5.0 reads it (§5.6a) |
+| The key signature's model (1.3.19, linear and axis alike) | one mark a head or a sign, its box centred on its column, signs black | each mark its symbols in order, layered at one semitone and column; `(at dx . dy)` placing a symbol's origin; the `symbol` kind, with no ledgers; a sign's colour, as engine 1.6.0 reads them (§5.6a) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -927,7 +932,9 @@ place of §5.6's lines:
   the shape, cutout and colour symbols Section A registers, a sized
   variant (§4.1c) where its look is sized. A mark whose shape is not
   defined is left out, as the preview leaves it undrawn. Or, since 1.3.17,
-  a sign, `sharp` or `flat` (see *Sharps and flats* below).
+  a sign, `sharp` or `flat` (see *Sharps and flats* below). Since 1.3.19 a
+  mark is written as its symbols, and may be placed, coloured or a `symbol`
+  (see *The model's symbols* below).
 - **Engine semitones** are §5.7's: the preview semitone, less
   `staff.midpoint − 12` on a linear staff, as it is under a pitch axis.
 - **Section A** registers the shapes, sized variants and colours the
@@ -1083,9 +1090,105 @@ and to the first note, with and without a clef, sharps and flats, at the
 automatic size and sizes set by hand, at magnifications 1, 7/4 and 5/2, on
 the default staff and Kite 4-369's, is within 0.005.
 
+**The model's symbols (1.3.19).** Since session 54 one model draws every
+signature (key-signature design §13): a mark is a base, a notehead, a shape
+or a sign, and up to two added symbols drawn over it, placed by a shape's
+reference point plus an offset or centred on its stack, and a sign may take a
+colour from a look. Since engine 1.6.0 (engine session 37, its handoff in
+`docs/session-sets/037-placed-keysig-marks/configurator-handoff.md`; released
+by engine session 38) the table carries all of it (session 55), and each
+entry is still `CNBKeySignature.marks` for its key:
+
+```lilypond
+     ;; D major, the Clairnote SN gallery file: dots, and a tail on each sharp
+     (((1 . 0) . (1 2 4 6 7 9 11))
+      . ((columns 0.3914 0.9828)
+         (bars)
+         (marks (2 1 head clairnote-dot #f black-000000)
+                (4 1 head clairnote-dot #f black-000000)
+                (6 1 head clairnote-dot #f black-000000)
+                (6 1 symbol clairnote-tail-down #f black-000000 (at 0 . 0))
+                (7 0 head clairnote-dot clairnote-dot-cutout black-000000)
+                (9 0 head clairnote-dot clairnote-dot-cutout black-000000)
+                (11 0 head clairnote-dot clairnote-dot-cutout black-000000)
+                (13 0 head clairnote-dot clairnote-dot-cutout black-000000)
+                (13 0 symbol clairnote-tail-down #f black-000000 (at 0 . 0)))))
+     ;; D major, the traditional signature, its sharps red and moved
+     ;; 0.4 semitones right and 0.5 up (0.1 and 0.125 staff spaces)
+     (((1 . 0) . (1 2 4 6 7 9 11))
+      . ((columns 0.256 0.9681)
+         (bars)
+         (marks (6 0 sharp 0.6473 fire-engine-red-cc0000 (at -0.256 . 0.125))
+                (13 1 sharp 0.6473 fire-engine-red-cc0000 (at -0.256 . 0.125)))))
+```
+
+- **A mark is its symbols, in order**: its base, then each added symbol, all
+  at the mark's semitone and column. The engine draws the bars, then every
+  head's ledgers, then the marks in the table's order, so the table's order
+  is the layer order: a dot, then its tail over it. The preview removes
+  repeated marks before it splits a mark into its symbols, so a dot and its
+  tail are never merged.
+- **Kinds.** A base whose shape takes ledgers is a `head`, as before. A base
+  whose shape has `ledgers: false`, and every added symbol, is the new
+  `symbol` kind, `(semi column symbol shape cutout color [at])`, drawn as a
+  head is but with no ledger lines and no entry in `cnb:ledgers-by-semitone`
+  (§5.7). A base `symbol` may be hollow, with its cutout; an added symbol is
+  solid, in its mark's colour. Each names its registered shape, a sized
+  variant (§4.1c) where its size is not its shape's own, and Section A
+  registers the shapes, variants, cutouts and colours the symbols use.
+- **`(at dx . dy)`**, the optional last element of a `head`, `symbol`,
+  `sharp` or `flat` mark, in staff spaces: the stencil's origin goes to the
+  column's x plus `dx` and the semitone's height plus `dy`, and its box is
+  not centred. The exporter writes it where the canvas places a symbol other
+  than the engine's default (its X box centred on its column, its origin at
+  the semitone's height): a shape with a reference point, or whose point is
+  moved by an offset or, for an added symbol, by its own; a sign whose mark is
+  moved. `dx` and `dy` are the symbol's origin from its stack's line and the
+  mark's pitch, Y up, as `marks` gives them: the offset (in semitones, axis
+  units under a pitch axis) less the reference point scaled to the symbol's
+  size, converted as its path is (§4.1b), so the engine places only origins
+  and reads no reference point. A head's ledgers stay at its semitone's staff
+  positions and span its placed box, so they move with it along the staff.
+- **A sign's colour** follows its scale, `(13 1 sharp 0.6473
+  fire-engine-red-cc0000)`, the registered symbol of the look's colour, named
+  from its hex (§4.5a). A black sign writes none. A sign's `at` is its
+  origin, so an unmoved sign is centred as before and writes none. A
+  sign with a colour or an `at` writes its scale even at 1, `(13 1 sharp 1
+  (at 0.1 . 0.25))`, so the elements keep their positions.
+- **The canvas measures a placed symbol by its path's box** (session 55,
+  `CNBNotehead.box`, the exact extent §4.4b's attachments use), not by its
+  natural width about its origin: a tail's box lies to one side of its
+  reference point. The column step, the ink and a head's ledgers follow that
+  box, as the engine's stencils do.
+- **The spacing** needs nothing new: the engine's ink is the placed stencils'
+  extent, and the preview spaces a mark-table signature by its ink.
+
+The Clairnote SN and DN gallery files use it (session 55): a dot for each
+note, solid on a line or ledger and hollow in a space, and on each flat a
+tail up and on each sharp a tail down, each tail an imported filled shape
+whose reference point is the dot's centre and which takes no ledgers.
+
+**Verified** by an engine round trip (`cnb/tests/cnb-lilypond-tests.js`,
+"the model's symbols", through `cnb/tests/engine-probe.js`, which reads each
+glyph's colour since session 55), against engine 1.6.0, in C, D, B♭, A and
+E♭ major: every head, symbol and sign, by its box at its placement and size,
+its fill and its colour, every stack's ledgers and the signature's ink, are
+within 0.001 staff spaces of the canvas's, for the default and Kite 4-369
+(a false hollow), the Clairnote SN and DN files, the traditional signature on
+the bottom line set and on every line set (where two copies meet), an
+asymmetric head placed by a reference point, offsets in x and in y, added
+symbols at other sizes, a hollow base with no ledgers, coloured and moved
+sharps and flats, and the Twinline pitch axis. With every `at` removed from
+the export the same round trip fails, symbol by symbol. The spacing round
+trip holds the Clairnote SN signature's spacing within 0.005.
+
 **Compatibility.** A config whose signature is off, or is `'chord`'s,
 exports byte for byte as in 1.3.14; the five export baselines are
-unchanged. A table needs engine 1.4.0 or later: an earlier engine does not
+unchanged. A mark table that uses no placement, added symbol, symbol without
+ledgers or coloured sign is written as in 1.3.18. One that does needs engine
+1.6.0: on 1.5.0 an `at` is ignored and the mark is centred on its column, a
+sign's colour is ignored and the sign drawn black, and a `symbol` mark is not
+drawn. A table needs engine 1.4.0 or later: an earlier engine does not
 know `'marks`. Signature ledgers as the preview draws them need engine
 1.4.1; with 1.4.0 they follow the engine's own rule. Sized sharps and
 flats need engine 1.5.0: 1.4.1 and earlier ignore a sign's fourth element
@@ -1316,7 +1419,7 @@ engine round-trip test as evidence.
 | `cnb:clef-size-semitones` | number | `#f` | For a text clef (§5.5) — **new 1.3.7** |
 | `cnb:clef-gutter-semitones` | number | `#f` | For a shown clef (§5.5) — **new 1.3.7** |
 | `cnb:keysig-style` | `'chord` \| `'none` \| `'marks` | `'chord` | `'none` unless keys and the signature are on (§5.6) — **new 1.3.7**; `'marks` for a signature not `'chord`'s (§5.6a) — **1.3.15** |
-| `cnb:keysig-marks` | list of entries | `'()` | With `'marks` (§5.6a) — **new 1.3.15**, engine 1.4.0 |
+| `cnb:keysig-marks` | list of entries | `'()` | With `'marks` (§5.6a) — **new 1.3.15**, engine 1.4.0; signs' scales 1.3.18, engine 1.5.0; `at`, `symbol` and signs' colours **1.3.19**, engine 1.6.0 |
 | `cnb:keysig-bar-color` | `"#RRGGBB"` | `"#ffd42a"` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
@@ -1334,7 +1437,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.18** | **Nov 11, 2026** | **Sharps and flats sized in semitones (session 52, engine session 35): §5.6a. `keys.keySignature.signs.heightSemis` sets the sharp's height between its bars in semitones, automatic (`null`) the least of the noteheads' mean height, one staff space and 3; each sign mark writes its scale, the height ÷ the sharp's bar spacing ÷ the semitones per staff space, as a fourth element, `(semi column sharp 0.6473)`, left out at 1, and the columns are laid out for the scaled signs. Engine round trips hold every sign, its scaled box and the ink to the preview's, at the automatic size and one set by hand. Output changes only for a signature of sharps or flats; the five export baselines are byte-identical. Needs engine 1.5.0. Since engine 1.5.0 a plain score engraves at the config's magnification, so the round trips drop their `\magnifyStaff #cnb:default-magnify`, and the preview's spacing after a clef and to the first note follows the magnification (§5.6a).** |
+| **1.3.19** | **Nov 12, 2026** | **The key signature's placed, coloured and layered symbols (session 55, engine sessions 37 and 38): §5.6a. A mark is written as its symbols, base then added ones, at one semitone and column, the table's order the layer order; a base whose shape takes no ledgers and every added symbol are the new `symbol` kind, with no ledgers or ledger entry; `(at dx . dy)`, the optional last element, places a symbol's origin in staff spaces where the canvas does not centre it (a reference point, an offset); a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an `at` writes its scale at 1 too. The canvas measures a placed symbol by its path's box. The Clairnote SN and DN gallery files take dots with imported tails. An engine round trip holds every symbol, every stack's ledgers and the ink to the canvas within 0.001 staff spaces. Output changes only for a table using the model; the five export baselines are byte-identical. Needs engine 1.6.0.** |
+| 1.3.18 | Nov 11, 2026 | Sharps and flats sized in semitones (session 52, engine session 35): §5.6a. `keys.keySignature.signs.heightSemis` sets the sharp's height between its bars in semitones, automatic (`null`) the least of the noteheads' mean height, one staff space and 3; each sign mark writes its scale, the height ÷ the sharp's bar spacing ÷ the semitones per staff space, as a fourth element, `(semi column sharp 0.6473)`, left out at 1, and the columns are laid out for the scaled signs. Engine round trips hold every sign, its scaled box and the ink to the preview's, at the automatic size and one set by hand. Output changes only for a signature of sharps or flats; the five export baselines are byte-identical. Needs engine 1.5.0. Since engine 1.5.0 a plain score engraves at the config's magnification, so the round trips drop their `\magnifyStaff #cnb:default-magnify`, and the preview's spacing after a clef and to the first note follows the magnification (§5.6a). |
 | 1.3.17 | Nov 11, 2026 | Sharps and flats (session 51): §5.6a. A signature whose `style` is `"accidentals"` exports the mark table with each key's sharps (F C G D A E B) or flats (B E A D G C F) as `(semi column sharp)` / `(semi column flat)`, each at the note it makes, in its own column, the columns a sign's width apart by the box LilyPond measures in the optical size it draws the staff with; no Section A registration, ledger entries or bars. Engine round trips hold every sign, its box and the ink to the preview's. Output changes only for such a signature; the five export baselines are byte-identical. |
 | 1.3.16 | Nov 11, 2026 | The signature's ledgers (session 50, engine session 33): §5.6a and §5.7. Since engine 1.4.1 a signature head takes its semitone's `cnb:ledgers-by-semitone` entry, for `'chord` and `'marks` alike, so the signature's ledgers are the notation's; the table gains an entry for each mark of the mark table beyond the cards' pitches, and the preview spaces the scale stack by its ink, as it does the mark table. The known divergence of 1.3.15 is gone: engine round trips hold every stack's ledgers and every signature's ink to the preview's. Output changes only for a mark-table signature with marks beyond semitones 0–24; the five export baselines are byte-identical. |
 | 1.3.15 | Nov 11, 2026 | The key signature's mark table (session 49, engine session 30): new §5.6a. A signature whose applicable settings are not the scale stack's exports `cnb:keysig-style 'marks` and `cnb:keysig-marks`, 105 keys (15 spellings × 7 modes), each keyed by its tonic's note name and alteration and its pitch classes, with the columns, gold bars and marks `CNBKeySignature.marks` gives; Section A registers the looks the marks use. A key the table lacks engraves no signature. Output changes only for such a signature; the five export baselines are byte-identical. Needs engine 1.4.0. |

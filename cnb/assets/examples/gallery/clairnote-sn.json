@@ -42,29 +42,39 @@
       "lilypondHollowPath": null,
       "lilypondAnchors": null
     },
-    "clairnote-dot-sharp": {
-      "displayName": "Clairnote key-signature dot, rising slash (sharp)",
-      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z M 29.698 -57.983 L 91.924 -120.208 L 120.208 -91.924 L 57.983 -29.698 Z M -29.698 57.983 L -91.924 120.208 L -120.208 91.924 L -57.983 29.698 Z",
-      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
-      "naturalHeight": 160,
-      "naturalWidth": 240.416,
-      "semitoneHeight": 1.6,
+    "clairnote-tail-up": {
+      "displayName": "Clairnote key-signature tail, up (flat)",
+      "svgPath": "M -44.694 -46.588 L -129.564 -95.588 C -138.174 -100.559 -149.182 -97.61 -154.153 -89 C -159.123 -80.39 -156.174 -69.382 -147.564 -64.412 L -62.694 -15.412 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 82.591,
+      "naturalWidth": 111.873,
+      "semitoneHeight": 0.82591,
       "anchors": null,
       "lilypondPath": null,
       "lilypondHollowPath": null,
-      "lilypondAnchors": null
+      "lilypondAnchors": null,
+      "reference": {
+        "x": 0,
+        "y": 0
+      },
+      "ledgers": false
     },
-    "clairnote-dot-flat": {
-      "displayName": "Clairnote key-signature dot, falling slash (flat)",
-      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z M 57.983 29.698 L 120.208 91.924 L 91.924 120.208 L 29.698 57.983 Z M -57.983 -29.698 L -120.208 -91.924 L -91.924 -120.208 L -29.698 -57.983 Z",
-      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
-      "naturalHeight": 160,
-      "naturalWidth": 240.416,
-      "semitoneHeight": 1.6,
+    "clairnote-tail-down": {
+      "displayName": "Clairnote key-signature tail, down (sharp)",
+      "svgPath": "M -62.694 15.412 L -147.564 64.412 C -156.174 69.382 -159.123 80.39 -154.153 89 C -149.182 97.61 -138.174 100.559 -129.564 95.588 L -44.694 46.588 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 82.591,
+      "naturalWidth": 111.873,
+      "semitoneHeight": 0.82591,
       "anchors": null,
       "lilypondPath": null,
       "lilypondHollowPath": null,
-      "lilypondAnchors": null
+      "lilypondAnchors": null,
+      "reference": {
+        "x": 0,
+        "y": 0
+      },
+      "ledgers": false
     }
   },
   "staff": {
@@ -158,7 +168,6 @@
     "offKeyMark": {},
     "keySignature": {
       "enabled": true,
-      "style": "notehead-chords",
       "notes": "all",
       "upperTonic": false,
       "looks": {
@@ -166,10 +175,24 @@
           "shape": "clairnote-dot"
         },
         "flat": {
-          "shape": "clairnote-dot-flat"
+          "added": [
+            {
+              "shape": "clairnote-tail-up"
+            }
+          ]
         },
         "sharp": {
-          "shape": "clairnote-dot-sharp"
+          "added": [
+            {
+              "shape": "clairnote-tail-down"
+            }
+          ]
+        },
+        "line": {
+          "hollow": false
+        },
+        "space": {
+          "hollow": true
         }
       },
       "stacking": "parity-stacks",
@@ -194,7 +217,7 @@
     "notationLabel": "Clairnote SN — reproduction study",
     "notationFootnote": "",
     "author": "Paul Morris",
-    "description": "Reproduction study — inspired by Clairnote SN (Paul Morris, 2018). Major-third 2-line staff at E/G#; the internal floating ledgers for D/F#/A# plus the C ledger are override templates (per the operator reference). The C ledger shows for C/C#/D; the operator's rule also lists A#/B, but those sit below the C-boundary where the platform's C-aligned ledger regions would place the ledger at the wrong (lower) C across an intervening staff line, so they are trimmed and the limitation is documented as a gap. Uniform duration-carrying ovals. Clairnote's alternative key signatures (E2) are exercised via the platform's notehead-chords signature (set 010, itself inspired by Clairnote DN's stacked signatures) — this follows Clairnote's stacked-signature layout design but is NOT identical to Clairnote's specific accidental-sign signatures. Clairnote's alternative CLEF form is not shown in the sources, so no clef is authored (omission); its alternative accidental signs need the unimplemented accidental enhancement (E4) — documented deviation. Design CC BY-SA 4.0; no code ported from clairnote.ly. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "description": "Reproduction study — inspired by Clairnote SN (Paul Morris, 2018). Major-third 2-line staff at E/G#; the internal floating ledgers for D/F#/A# plus the C ledger are override templates (per the operator reference). The C ledger shows for C/C#/D; the operator's rule also lists A#/B, but those sit below the C-boundary where the platform's C-aligned ledger regions would place the ledger at the wrong (lower) C across an intervening staff line, so they are trimmed and the limitation is documented as a gap. Uniform duration-carrying ovals. Clairnote's own key signatures (session 55): a dot for each note of the key in stacks that change at each change of odd and even, a tail up on each flat and down on each sharp, the tails imported as filled shapes. Clairnote's alternative CLEF form is not shown in the sources, so no clef is authored (omission); its alternative accidental signs need the unimplemented accidental enhancement (E4) — documented deviation. Design CC BY-SA 4.0; no code ported from clairnote.ly. Built from the public gallery description/image; not endorsed by or derived from the original.",
     "systemName": "Clairnote SN",
     "systemCreator": "Paul Morris",
     "systemYear": 2018,

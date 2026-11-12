@@ -34,7 +34,8 @@ const PREVIEW_BASELINE = path.join(FIXTURES, "preview-baseline.json");
 // axis-disabled preview is byte-identical to the pre-rethread code. The
 // fixture's description lists each intentional re-capture since: in session
 // 50 the probes with a key signature, for the scale stack spaced by its ink,
-// and the Clairnote SN and DN files again, for their own dot signatures.
+// and the Clairnote SN and DN files again, for their own dot signatures, and
+// once more in session 55, for Clairnote's own signatures, dots with tails.
 
 /** The 013 Twinline-like map (design §1.1) — five shared pairs. */
 export const TWINLINE_PITCH_AXIS = {

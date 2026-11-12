@@ -851,6 +851,12 @@ export const tests = [
       assert(E.lookSummary({ color: "#0072b2" }, "flat").length > 0 && !E.lookSummary({ color: "#0072b2" }, "flat").startsWith("as"),
         "a colour by its name");
       eq(E.lookSummary({ heightSemis: 2 }, "all"), "2 semitones tall", "a height alone");
+      // Added symbols by their shapes' names (session 55), and none set to none.
+      const tails = { tail: { displayName: "Tail, down" } };
+      eq(E.lookSummary({ added: [{ shape: "tail" }] }, "sharp", tails), "with Tail, down", "an added symbol");
+      eq(E.lookSummary({ hollow: true, added: [{ shape: "tail" }, { shape: "kite-up" }] }, "flat", tails),
+        `hollow, with Tail, down and ${CNBBuiltinShapes.get("kite-up").displayName}`, "two added symbols");
+      eq(E.lookSummary({ added: [] }, "sharp"), "no added symbols", "the added symbols beneath removed");
   } },
 
   { name: "render: Looks — a menu for all marks, flats, sharps and every second stack, each saying its look", fn: () => {

@@ -1,5 +1,5 @@
 {
-  "description": "Pre-designer canvas key-signature baseline (sha256 + length of the stub-DOM JSON of CNBCollection.render at crotchet, keys and the signature on, one key defined), per fixture and gallery file in four keys, captured in session 48 before the key-signature designer's settings (docs/planning/key-signature-designer-design.md), so their defaults are proved to draw today's signature. Regenerate only with captureSignatureBaseline() in cnb/tests/cnb-key-signature-tests.js, and only when an intentional change to how a signature at its defaults is drawn is approved. Re-captured in session 49, when every signature's gold stems took round caps and its ledgers their engraved length (4/3 of a head plus their 0.1-staff-space caps), as the engine draws them; with those two undone, every probe matched its session-48 hash. Re-captured in session 50, when the scale stack came to be spaced by its ink (the ledgers of its first and last stacks), as engine 1.4.1 engraves it since its signature heads take the notation's ledgers; with that undone, every probe matched its session-49 hash. The sized fixture and the Hass and Trilinear gallery files were re-captured in session 50, when each signature head's ledgers took the head's own width, as the engine draws them (their ledgered heads are narrower than their widest mark, so their ledgers were drawn too long), and the Clairnote SN and DN probes once more, when the two gallery files took their own Clairnote-style signatures (dots and slashed dots, a new stack at each change of parity, on the bottom line set).",
+  "description": "Pre-designer canvas key-signature baseline (sha256 + length of the stub-DOM JSON of CNBCollection.render at crotchet, keys and the signature on, one key defined), per fixture and gallery file in four keys, captured in session 48 before the key-signature designer's settings (docs/planning/key-signature-designer-design.md), so their defaults are proved to draw today's signature. Regenerate only with captureSignatureBaseline() in cnb/tests/cnb-key-signature-tests.js, and only when an intentional change to how a signature at its defaults is drawn is approved. Re-captured in session 49, when every signature's gold stems took round caps and its ledgers their engraved length (4/3 of a head plus their 0.1-staff-space caps), as the engine draws them; with those two undone, every probe matched its session-48 hash. Re-captured in session 50, when the scale stack came to be spaced by its ink (the ledgers of its first and last stacks), as engine 1.4.1 engraves it since its signature heads take the notation's ledgers; with that undone, every probe matched its session-49 hash. The sized fixture and the Hass and Trilinear gallery files were re-captured in session 50, when each signature head's ledgers took the head's own width, as the engine draws them (their ledgered heads are narrower than their widest mark, so their ledgers were drawn too long), and the Clairnote SN and DN probes once more, when the two gallery files took their own Clairnote-style signatures (dots and slashed dots, a new stack at each change of parity, on the bottom line set). The Clairnote SN and DN probes were re-captured in session 55, when the two gallery files took Clairnote's own signatures: dots, solid on a line or ledger and hollow in a space (SN through the line and space looks, DN through its noteheads), with a tail up on each flat and down on each sharp, each tail an imported filled shape placed by its reference point with no ledgers; every other probe matched its hash.",
   "capturedAt": "e83d251",
   "probes": [
     {
@@ -214,33 +214,33 @@
     },
     {
       "id": "gallery/clairnote-dn.json · D major",
-      "sha256": "59c69a629b3093f323f7efbca2cff73e91b71721b097e4061ff4f3103f35e622",
-      "length": 47158
+      "sha256": "121488a09b723f7bc52dce149ea5bb957e4fe05de2f1c24e2de5e8d5f19cdcc2",
+      "length": 47649
     },
     {
       "id": "gallery/clairnote-dn.json · E♭ major",
-      "sha256": "c63e52615c1bfb6e608ec0bfe9cb2f44c93c1e589aff3f647520e5115ba8e749",
-      "length": 47153
+      "sha256": "c04fbd9f0609fea10bcf9e8684f1aee811fdbfb49139798658a1990fc5fdd878",
+      "length": 47816
     },
     {
       "id": "gallery/clairnote-sn.json · C major",
-      "sha256": "df28efa726f45a9f476ea8b272f31ec5cb87c3d0205da60889a82e0bf9d81fdf",
-      "length": 43532
+      "sha256": "f46b645a6374f38bd8e813a2f90ad89436bedab2e8c2a6e409e9232fe9212842",
+      "length": 44428
     },
     {
       "id": "gallery/clairnote-sn.json · A minor",
-      "sha256": "0e90664a20a50c328292de782a9c15c79873d0139e3278e93e70caf8e9f36847",
-      "length": 43537
+      "sha256": "84f01422e13c86f86bcd6f960d1635b3b631e29df19171367e7d5380c51139b8",
+      "length": 44433
     },
     {
       "id": "gallery/clairnote-sn.json · D major",
-      "sha256": "fb15eb0e4856c7cc07e3cdbc9b76df2543a2a8d3dbcaf3bb3fc6595f1579775d",
-      "length": 44261
+      "sha256": "4e6335c73634345670d298681655d5a741b7ca9f50aca0f25b964fa45476fa3d",
+      "length": 45654
     },
     {
       "id": "gallery/clairnote-sn.json · E♭ major",
-      "sha256": "7e58eaba9823a78e9c2210067b46760dd741d69c5e97392cb573184fd48bc64e",
-      "length": 44238
+      "sha256": "ecd327c3de66b80ec0a47d7b02c2d746498e50c5623a5d057ed4e60835e00983",
+      "length": 45574
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · C major",

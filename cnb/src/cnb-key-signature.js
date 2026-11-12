@@ -239,9 +239,18 @@ function symbolsOf(config, mark, pxPerSemi) {
     const ref = shape.reference;
     const x = ref ? point.x - ref.x * scaleX : point.x;
     const y = ref ? point.y - ref.y * scaleY : point.y;
+    // A symbol placed by its origin (a reference point, or a moved point)
+    // reaches as far as its path's box does, which need not be centred on
+    // the origin (a tail's is not): the engine places that box, so the
+    // columns, the ink and a head's ledgers follow it (session 55). One
+    // centred on its stack keeps its natural width there, as before.
+    const placed = !!ref || point.x !== 0 || point.y !== 0;
+    const box = placed ? CNBNotehead.box(shape).x : null;
+    const cx = box ? x + (box[0] + box[1]) / 2 * scaleX : x;
+    const width = box ? (box[1] - box[0]) * scaleX : pixelWidth;
     return { kind, shape: name, hollow: look.hollow, color: look.color,
       heightSemis: size.heightSemis ?? null, widthSemis: size.widthSemis ?? null,
-      reference: !!ref, x, y, cx: x, width: pixelWidth, scaleFactor, scaleX, scaleY };
+      reference: !!ref, x, y, cx, width, scaleFactor, scaleX, scaleY };
   };
   const point = place({ x: 0, y: 0 }, mark.offset);
   let base;

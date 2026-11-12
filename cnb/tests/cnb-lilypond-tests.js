@@ -1479,103 +1479,84 @@ export const tests = [
       if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
-  // Engine-backed (session 50): the Clairnote SN and DN gallery files' own
-  // signatures, dots and slashed dots on the bottom line set, a new stack at
-  // each change of parity, going left in sharp keys. The engine centres a
-  // mark's box on its stack and the canvas its origin, so the symbols are
-  // symmetric about the dot (a slash through it); each engraved mark is
-  // held, by its whole extent, to the box the canvas draws around its
-  // origin, and its fill, colour, ledgers and the ink too, a plain dot's
-  // ledgers narrower than a slashed dot's.
-  { name: "mark table (engine): the Clairnote gallery files' dot signatures engrave where the canvas draws them", fn: async () => {
+  // Engine-backed (session 55, LY spec 1.3.19 §5.6a, engine 1.6.0; it
+  // replaces session 50's Clairnote round trip, which held box-centred marks):
+  // the model's mark table engraves what the canvas draws. In C, D, B♭, A and
+  // E♭ major, every symbol of every mark (each base and added symbol, heads,
+  // symbols and signs), every stack's ledgers and the ink are held to the
+  // canvas's within 0.001 staff spaces (holdMarkTable), for the default and
+  // Kite 4-369; the Clairnote SN and DN gallery files' own signatures, dots
+  // with tails placed by their reference points; the traditional starting
+  // point on the bottom line set and on every line set, where two line sets'
+  // copies meet; an asymmetric head with a reference point; offsets in x and
+  // in y; added symbols at sizes other than their shape's own; a hollow base
+  // whose shape takes no ledgers; coloured and moved signs; and the Twinline
+  // pitch axis.
+  { name: "mark table (engine): the model's symbols — placed, sized, coloured and layered — engrave where the canvas draws them", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
       const keys = [["c", "major", "C"], ["d", "major", "D"], ["bes", "major", "B♭"], ["a", "major", "A"], ["ees", "major", "E♭"]];
-      const near = (a, b) => Math.abs(a - b) < 1e-3;
-      const failures = [];
-      for (const file of ["clairnote-sn", "clairnote-dn"]) {
-        const config = CNBConfigIO.loadFromText(readFileSync(
-          path.join(CNB_DIR, "assets", "examples", "gallery", `${file}.json`), "utf8")).config;
-        const ly = CNBLilypond.generate(config);
-        const got = await measureKeySignatureMarks(engine, ly, keys.map(([t, mode]) => `\\key ${t} \\${mode} c'1`).join(" "));
-        if (got.error) { failures.push(`${file}: ${got.error.slice(0, 400)}`); continue; }
-        if (got.signatures.length !== keys.length) { failures.push(`${file}: ${got.signatures.length} signatures engraved`); continue; }
-        const table = _internals.markTable(config);
-        const axis = CNBPitchAxis.create(config);
-        const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
-        const movetos = sym => {
-          const m = new RegExp(`#\\(define cnb:${sym}-path ([\\s\\S]*?)\\n\\n`).exec(ly);
-          return m ? (m[1].match(/moveto/g) || []).length : 0;
-        };
-        /** A shape's box around its origin, in staff spaces, Y up. */
-        const box = (mark) => {
-          const shape = config.shapes[mark.shape];
-          const pts = _internals.parseSvgPath(shape.svgPath).flatMap(({ args }) =>
-            args.reduce((acc, v, i) => (i % 2 ? (acc[acc.length - 1].push(v), acc) : [...acc, [v]]), []));
-          const sx = (mark.widthSemis ?? shape.semitoneHeight * shape.naturalWidth / shape.naturalHeight) / shape.naturalWidth / space;
-          const sy = (mark.heightSemis ?? shape.semitoneHeight) / shape.naturalHeight / space;
-          return { x: [Math.min(...pts.map(p => p[0])) * sx, Math.max(...pts.map(p => p[0])) * sx],
-            y: [-Math.max(...pts.map(p => p[1])) * sy, -Math.min(...pts.map(p => p[1])) * sy] };
-        };
-        keys.forEach(([, mode, spelling], k) => {
-          const where = `${file}, ${spelling} ${mode}`;
-          const sig = table.find(e => e.spelling === spelling && e.mode === mode).sig;
-          const engraved = got.signatures[k];
-          // Each head is drawn twice, under and over its ledgers (keysig.ly's
-          // two passes), and a false hollow's overlay is white.
-          const seen = new Set();
-          const heads = engraved.paths.filter(p => {
-            if (p.color.every(c => c === 1)) return false;
-            const id = [...p.x, ...p.y].map(v => v.toFixed(4)).join(" ");
-            return seen.has(id) ? false : (seen.add(id), true);
-          });
-          if (heads.length !== sig.marks.length) failures.push(`${where}: ${heads.length} heads engraved, ${sig.marks.length} drawn`);
-          if (sig.bars.length !== 0) failures.push(`${where}: ${sig.bars.length} gold stems drawn, none wanted`);
-          for (const { semi, column, mark } of sig.marks) {
-            const b = box(mark);
-            const x = sig.columns[column];
-            const y = CNBStaff.lilypondPosition(config, semi) / 2;
-            const h = heads.find(p => near(p.x[0], x + b.x[0]) && near(p.x[1], x + b.x[1]) &&
-              near(p.y[0], y + b.y[0]) && near(p.y[1], y + b.y[1]));
-            if (!h) { failures.push(`${where}: no ${mark.shape} at column ${column} (${x}), semitone ${semi} (${y})`); continue; }
-            const rgb = [1, 3, 5].map(j => parseInt(mark.color.slice(j, j + 2), 16) / 255);
-            if (!rgb.every((c, j) => Math.abs(c - h.color[j]) < 1e-3)) failures.push(`${where}: semitone ${semi} colour ${h.color}, drawn ${mark.color}`);
-            const f = _internals.sectionCFields(config, mark);
-            const subpaths = movetos(f.shapeSym) + (f.hollowSym === "#f" ? 0 : movetos(`${f.shapeSym}-cutout`));
-            if (h.subpaths !== subpaths) failures.push(`${where}: semitone ${semi} has ${h.subpaths} subpaths, ${mark.hollow ? "hollow" : "solid"} wants ${subpaths}`);
-          }
-          const ledgers = engraved.lines.filter(l => near(l.y1, l.y2));
-          const stackOf = l => sig.columns.findIndex(c => near((l.x1 + l.x2) / 2, c));
-          const drawnLedgers = c => {
-            const semis = sig.marks.filter(m => m.column === c).map(m => m.semi);
-            return semis.length === 0 ? [] : CNBLedgerSet.ledgersFor(config, semis,
-              { minSemi: Math.min(...semis) - 12, maxSemi: Math.max(...semis) + 12 }, axis)
-              .map(s => CNBStaff.lilypondPosition(config, s) / 2);
-          };
-          sig.columns.forEach((_, c) => {
-            const e = [...new Set(ledgers.filter(l => stackOf(l) === c).map(l => l.y1.toFixed(3)))].sort().join(" ");
-            const d = [...new Set(drawnLedgers(c).map(v => v.toFixed(3)))].sort().join(" ");
-            if (e !== d) failures.push(`${where}: stack ${c} engraved ledgers at ${e || "none"}, drawn at ${d || "none"}`);
-          });
-          // The ink: each head's box on its stack, and each head's own
-          // ledgers, 4/3 of its own width and their 0.1-staff-space caps (a
-          // plain dot is narrower than a slashed one).
-          let left = Infinity;
-          let right = -Infinity;
-          for (const { semi, column, mark } of sig.marks) {
-            const b = box(mark);
-            const w = b.x[1] - b.x[0];
-            const ledgered = CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
-            const half = ledgered ? w * 2 / 3 + 0.1 : w / 2;
-            left = Math.min(left, sig.columns[column] - half);
-            right = Math.max(right, sig.columns[column] + half);
-          }
-          if (!near(engraved.x[0], left) || !near(engraved.x[1], right)) {
-            failures.push(`${where}: ink ${engraved.x[0]} … ${engraved.x[1]}, drawn ${left} … ${right}`);
-          }
-        });
+      const load = (...p) => CNBConfigIO.loadFromText(readFileSync(path.join(CNB_DIR, ...p), "utf8")).config;
+      const keysOn = config => {
+        config.keys.enabled = true;
+        config.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
+        config.keys.keySignature = { ...CNBConfig.createDefault().keys.keySignature, enabled: true };
+        return config;
+      };
+      const base = () => keySignatureConfig();
+      const runs = [];
+      const run = (label, config, change) => { change(config.keys.keySignature, config); runs.push({ label, config }); };
+
+      run("default, solid on a line, hollow in a space", base(), ks => {
+        ks.looks.line = { hollow: false };
+        ks.looks.space = { hollow: true };
+      });
+      run("Kite 4-369, sharps with a small added kite", keysOn(load("fixtures", "kite-4-369-config.json")), ks => {
+        ks.looks.sharp = { added: [{ shape: "kite-up", heightSemis: 1, widthSemis: 1, offset: { x: 1.6, y: 0.5 } }] };
+      });
+      for (const file of ["clairnote-sn", "clairnote-dn"]) runs.push({ label: file, config: load("assets", "examples", "gallery", `${file}.json`) });
+      for (const position of ["bottom-set", "every-set"]) {
+        run(`traditional, ${position}`, base(), (ks, config) => { traditional(config); config.keys.keySignature.placement.position = position; });
       }
+      run("an asymmetric head placed by its reference point", base(), (ks, config) => {
+        // A one-sided quadrilateral whose reference point is off its box's centre.
+        config.shapes.wedge = { displayName: "Wedge", svgPath: "M -60 -50 L 140 -20 L 60 60 L -60 40 Z", svgHollowPath: null,
+          naturalHeight: 110, naturalWidth: 200, semitoneHeight: 2, anchors: null, lilypondPath: null,
+          lilypondHollowPath: null, lilypondAnchors: null, reference: { x: -20, y: 10 } };
+        ks.looks.all = { shape: "wedge" };
+        ks.placement.position = "every-set";
+      });
+      run("offsets in x and in y", base(), ks => {
+        ks.looks.flat = { offset: { x: 0.5, y: 0.75 } };
+        ks.looks.sharp = { offset: { x: -0.4, y: -0.6 } };
+        ks.looks.natural = { offset: { x: 0, y: 0.3 } };
+        ks.placement.position = "bottom-set";
+      });
+      run("added symbols of other sizes", base(), ks => {
+        ks.looks.all = { added: [
+          { shape: "crotchet-minim", heightSemis: 1, widthSemis: 1.5, offset: { x: 1.6, y: 0.5 } },
+          { shape: "crotchet-minim", heightSemis: 0.6, offset: { x: -1.5, y: -0.5 } }] };
+        ks.looks.flat = { color: "#0072b2" };
+      });
+      run("a hollow base whose shape takes no ledgers", base(), (ks, config) => {
+        config.shapes.ring = { ...CNBConfig.clone(config.shapes["crotchet-minim"]), ledgers: false };
+        ks.looks.all = { shape: "ring", hollow: true };
+        ks.looks.flat = { shape: "crotchet-minim" };
+        ks.placement.position = "bottom-set";
+      });
+      run("coloured and moved signs", base(), (ks, config) => {
+        traditional(config);
+        ks.looks.sharp = { sign: "sharp", color: "#cc0000", offset: { x: 0.3, y: 0.5 } };
+        ks.looks.flat = { sign: "flat", color: "#0072b2", offset: { x: 0, y: -0.5 } };
+      });
+      run("the Twinline pitch axis", keysOn(load("assets", "examples", "gallery", "twinline-compact.json")), ks => {
+        ks.looks.sharp = { added: [{ shape: "crotchet-minim", heightSemis: 0.8, offset: { x: 1.2, y: -0.4 } }] };
+        ks.looks.flat = { offset: { x: 0.3, y: 0.4 } };
+      });
+
+      const { failures, symbols } = await holdMarkTable(engine, runs, keys);
       if (failures.length > 0) throw new Error(failures.join("\n    "));
+      assert(symbols.head > 0 && symbols.symbol > 0 && symbols.sign > 0, `every kind compared: ${JSON.stringify(symbols)}`);
     }},
 
   // ─── Accidentals (session 51, LY spec 1.3.17) ─────────────────────────────
@@ -1621,6 +1602,91 @@ export const tests = [
       lacks(every, "(-2 . (", "no ledger entry for B♭ at −2");
       eq(every.split("#(cnb:register-path!").length, CNBLilypond.generate(CNBConfig.createDefault()).split("#(cnb:register-path!").length,
         "Section A registers only the noteheads' paths");
+      lacks(every, "(at ", "unmoved signs are centred, as before");
+    }},
+
+  // ─── The model's symbols (session 55, LY spec 1.3.19, engine 1.6.0) ───────
+
+  { name: "mark table: a shape with a reference point, or a moved one, writes (at dx . dy); a centred, unmoved one does not", fn: () => {
+      const config = keySignatureConfig();
+      const ks = config.keys.keySignature;
+      // The default head with its reference point 1 semitone right of its
+      // centre: its origin goes 1 semitone (¼ staff space) left of the line.
+      config.shapes.dot = { ...CNBConfig.clone(config.shapes["crotchet-minim"]), reference: { x: 100, y: 0 } };
+      ks.looks.all = { shape: "dot" };
+      const out = CNBLilypond.generate(config);
+      // The default draws sharps hollow, so a dot names its cutout or #f.
+      const heads = out.match(/ head dot \S+ black-000000[^\n]*/g) || [];
+      eq(heads.length, 105 * 8, "every key's eight dots");
+      assert(heads.every(h => h.includes(" (at -0.25 . 0))")), "every dot placed by its reference point");
+
+      // No reference point: an offset moves the origin from the line, in staff spaces.
+      const moved = keySignatureConfig();
+      moved.keys.keySignature.looks.all = { offset: { x: 0.4, y: -0.8 } };
+      contains(CNBLilypond.generate(moved), " head crotchet-minim #f black-000000 (at 0.1 . -0.2))", "an offset head");
+      // Centred and unmoved: as before.
+      const plain = keySignatureConfig();
+      plain.keys.keySignature.notes = "tonic-and-half-steps";
+      const plainOut = CNBLilypond.generate(plain);
+      contains(plainOut, "#(set! cnb:keysig-style 'marks)", "a mark table");
+      lacks(plainOut, "(at ", "no head placed");
+      lacks(plainOut, " symbol ", "no symbol kind");
+    }},
+
+  { name: "mark table: an added symbol follows its base as a solid symbol mark, adds no ledger entry and registers its size", fn: () => {
+      const config = keySignatureConfig();
+      config.keys.keySignature.placement.position = "every-set";
+      config.shapes.tail = { ...CNBConfig.clone(config.shapes["crotchet-minim"]), reference: { x: 0, y: 0 }, ledgers: false };
+      const without = CNBLilypond.generate(config);
+      config.keys.keySignature.looks.sharp = { added: [{ shape: "tail" }] };
+      const out = CNBLilypond.generate(config);
+      const d = out.slice(out.indexOf(";; D major"), out.indexOf(";; D♯ major") > 0 ? out.indexOf(";; D♯ major") : out.indexOf(";; E♭ major"));
+      // The default draws sharps hollow; the tail is solid all the same.
+      const layered = d.match(/\((-?\d+) (\d+) head crotchet-minim crotchet-minim-cutout black-000000\)\n\s+\(\1 \2 symbol tail #f black-000000 \(at 0 \. 0\)\)/g) || [];
+      eq(layered.length, 4, "F♯ and C♯ in both copies, each a head and then its solid tail");
+      eq((d.match(/ symbol /g) || []).length, 4, "no other symbol");
+      const ledgers = ly => ly.slice(ly.indexOf("#(define cnb:ledgers-by-semitone"), ly.indexOf("#(define (cnb:ledgers-of"));
+      eq(ledgers(out), ledgers(without), "the tails add no ledger entry");
+      contains(out, "#(cnb:register-path! 'tail ", "the tail registered");
+
+      // A size of its own: a sized variant, named in the table.
+      config.keys.keySignature.looks.sharp = { added: [{ shape: "tail", heightSemis: 1 }] };
+      const sized = CNBLilypond.generate(config);
+      contains(sized, "#(cnb:register-path! 'tail-h1-w", "the sized tail registered");
+      contains(sized, " symbol tail-h1-w", "and named in the table");
+      lacks(sized, "#(cnb:register-path! 'tail ", "the tail at its own size is not used");
+    }},
+
+  { name: "mark table: a hollow base whose shape takes no ledgers is a symbol with its cutout and no ledger entry", fn: () => {
+      const config = keySignatureConfig();
+      config.keys.keySignature.placement.position = "every-set";
+      config.shapes.ring = { ...CNBConfig.clone(config.shapes["crotchet-minim"]), ledgers: false };
+      config.keys.keySignature.looks.all = { shape: "ring", hollow: true };
+      const out = CNBLilypond.generate(config);
+      contains(out, " symbol ring ring-cutout black-000000)", "a hollow symbol, centred");
+      lacks(out, " head ring", "no head");
+      contains(out, "#(define cnb:ring-cutout-path", "its cutout registered");
+      // B♭ major's low B♭ on the bottom set (−2) takes no ledger entry now.
+      lacks(out, "(-2 . (", "no ledger entry below the cards");
+    }},
+
+  { name: "mark table: a coloured sign writes its registered colour after its scale; a moved one writes its scale and at", fn: () => {
+      const config = keySignatureConfig();
+      traditional(config);
+      config.keys.keySignature.looks.sharp.color = "#cc0000";
+      const out = CNBLilypond.generate(config);
+      const red = "fire-engine-red-cc0000";   // named from the hex (cnb-color.js)
+      contains(out, `#(cnb:register-color! '${red} "#cc0000")`, "the sign's colour registered");
+      contains(out, `(6 0 sharp 0.6473 ${red})\n                (13 1 sharp 0.6473 ${red}))`, "D major's red sharps");
+      contains(out, "(10 0 flat 0.6473)\n                (15 1 flat 0.6473))", "B♭ major's black flats as before");
+      // At LilyPond's size the scale is written all the same.
+      config.keys.keySignature.signs = { heightSemis: 1.052 * 4 };
+      contains(CNBLilypond.generate(config), `(6 0 sharp 1 ${red})`, "scale 1 kept before the colour");
+      // A black sign moved: its scale, then its origin placed.
+      config.keys.keySignature.looks.flat.offset = { x: 0, y: 1 };
+      const placed = CNBLilypond.generate(config);
+      assert(/\(10 0 flat 1 \(at -?[\d.]+ \. 0\.25\)\)/.test(placed), "B♭ moved up a semitone, ¼ staff space");
+      lacks(placed, "flat 1 black", "no colour on a black sign");
     }},
 
   // Engine-backed (session 51): the traditional signature engraves where the
@@ -2273,6 +2339,165 @@ function glyphClefConfig(overrides = {}) {
     gutter: { paddingH: 20 },
   };
   return config;
+}
+
+/**
+ * Hold engraved mark-table signatures to the canvas (session 55, LY spec
+ * 1.3.19 §5.6a, engine 1.6.0): each run's config is exported and engraved in
+ * the given keys (key changes in one score), and for every key, every symbol
+ * of every mark the preview draws (CNBKeySignature.marks: each base and added
+ * symbol, heads, symbols and signs) is matched to an engraved path or glyph
+ * by its box, within 0.001 staff spaces: a shape at its origin (its stack's
+ * line plus the symbol's x, the mark's pitch plus its y) plus its path's box
+ * at its size, with its fill (subpaths) and colour; a sign by its origin and
+ * box at its scale, its colour. Then every stack's ledgers (each head base's
+ * own, 4/3 of its box and their caps, centred on it), the gold stems' count
+ * and the signature's ink. Returns { failures, symbols } with the number of
+ * symbols compared of each kind.
+ *
+ * @param {object} engine  from findEngine()
+ * @param {{label:string, config:object, music?:string}[]} runs
+ * @param {[string, string, string][]} keys  [LilyPond tonic, mode, spelling]
+ */
+async function holdMarkTable(engine, runs, keys) {
+  const near = (a, b) => Math.abs(a - b) < 1e-3;
+  const failures = [];
+  const symbols = { head: 0, symbol: 0, sign: 0 };
+  const results = [];
+  for (let i = 0; i < runs.length; i += 4) {   // four compiles at a time
+    results.push(...await Promise.all(runs.slice(i, i + 4).map(run => {
+      const ly = CNBLilypond.generate(run.config);
+      const music = (run.music || "") + keys.map(([t, mode]) => `\\key ${t} \\${mode} c'1`).join(" ");
+      return measureKeySignatureMarks(engine, ly, music).then(got => ({ run, ly, got }));
+    })));
+  }
+  for (const { run: { label, config }, ly, got } of results) {
+    if (got.error) { failures.push(`${label}: ${got.error.slice(0, 400)}`); continue; }
+    if (got.warnings.length > 0) failures.push(`${label}: ${got.warnings.join("; ")}`);
+    const table = _internals.markTable(config);
+    const sigOf = ([, mode, spelling]) => table.find(e => e.spelling === spelling && e.mode === mode).sig;
+    // A key with no marks (C major's sharps or flats) engraves no signature.
+    const drawnKeys = keys.filter(key => sigOf(key).marks.length > 0);
+    if (got.signatures.length !== drawnKeys.length) {
+      failures.push(`${label}: ${got.signatures.length} signatures engraved, ${drawnKeys.length} drawn`);
+      continue;
+    }
+    const axis = CNBPitchAxis.create(config);
+    const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
+    const ratio = CNBScheme.parseRatio(config.engine.defaultMagnify);
+    const magnify = ratio.num / (ratio.den ?? 1);
+    const movetos = sym => {
+      const m = new RegExp(`#\\(define cnb:${sym}-path ([\\s\\S]*?)\\n\\n`).exec(ly);
+      return m ? (m[1].match(/moveto/g) || []).length : 0;
+    };
+    const rgbOf = hex => [1, 3, 5].map(j => parseInt(hex.slice(j, j + 2), 16) / 255);
+    const sameColor = (hex, got) => rgbOf(hex).every((c, j) => Math.abs(c - (got || [0, 0, 0])[j]) < 1e-3);
+    /** A shape symbol's ink, in staff spaces, Y up: its path's box at its size about its origin. */
+    const inkOf = (sym, line, pitch) => {
+      const shape = config.shapes[sym.shape];
+      const b = CNBNotehead.box(shape);
+      const sx = (sym.widthSemis ?? shape.semitoneHeight * shape.naturalWidth / shape.naturalHeight) / shape.naturalWidth / space;
+      const sy = (sym.heightSemis ?? shape.semitoneHeight) / shape.naturalHeight / space;
+      const ox = line + sym.x, oy = pitch + sym.y;
+      return { x: [ox + b.x[0] * sx, ox + b.x[1] * sx], y: [oy - b.y[1] * sy, oy - b.y[0] * sy] };
+    };
+    drawnKeys.forEach((key, k) => {
+      const [, mode, spelling] = key;
+      const where = `${label}, ${spelling} ${mode}`;
+      const sig = sigOf(key);
+      const engraved = got.signatures[k];
+      // A false hollow's overlay is white; since engine 1.6.0 each mark is drawn once.
+      const paths = engraved.paths.filter(p => !p.color.every(c => c === 1));
+      const used = new Set();
+      const wanted = sig.marks.flatMap(m => m.symbols.filter(s => s.kind !== "sign")).length;
+      if (paths.length !== wanted) failures.push(`${where}: ${paths.length} shapes engraved, ${wanted} drawn`);
+      const signs = sig.marks.flatMap(m => m.symbols.filter(s => s.kind === "sign")).length;
+      if (engraved.glyphs.length !== signs) failures.push(`${where}: ${engraved.glyphs.length} signs engraved, ${signs} drawn`);
+      if (engraved.lines.filter(l => near(l.x1, l.x2)).length !== sig.bars.length) {
+        failures.push(`${where}: ${engraved.lines.filter(l => near(l.x1, l.x2)).length} gold stems engraved, ${sig.bars.length} drawn`);
+      }
+      let left = Infinity;
+      let right = -Infinity;
+      const widen = x => { left = Math.min(left, x[0]); right = Math.max(right, x[1]); };
+      const bases = [];   // each head base: its box and its semitone, for the ledgers
+      let whites = 0;     // the false hollows drawn, each a white overlay engraved
+      for (const { semi, column, symbols: syms } of sig.marks) {
+        const line = sig.columns[column];
+        const pitch = CNBStaff.lilypondPosition(config, semi) / 2;
+        syms.forEach((sym, s) => {
+          const what = `${where}: semitone ${semi}, ${s === 0 ? "base" : `added ${s}`} ${sym.shape || sym.sign}`;
+          symbols[sym.kind]++;
+          if (sym.kind === "sign") {
+            const glyph = signGlyphBox(sym.sign, magnify);
+            const scale = sym.scale;
+            const ox = line + sym.x, oy = pitch + sym.y;
+            const g = engraved.glyphs.find(e => e.name === `accidentals.${sym.sign}` &&
+              near(e.origin[0], ox) && near(e.origin[1], oy));
+            if (!g) { failures.push(`${what}: no sign with its origin at ${ox}, ${oy}`); return; }
+            const want = { x: [ox + glyph.x[0] * scale, ox + glyph.x[1] * scale], y: [oy + glyph.y[0] * scale, oy + glyph.y[1] * scale] };
+            if (!near(g.x[0], want.x[0]) || !near(g.x[1], want.x[1]) || !near(g.y[0], want.y[0]) || !near(g.y[1], want.y[1])) {
+              failures.push(`${what}: engraved box ${JSON.stringify([g.x, g.y])}, drawn ${JSON.stringify([want.x, want.y])}`);
+            }
+            if (!sameColor(sym.color, g.color)) failures.push(`${what}: colour ${g.color}, drawn ${sym.color}`);
+            widen(want.x);
+            return;
+          }
+          const ink = inkOf(sym, line, pitch);
+          const p = paths.find((e, j) => !used.has(j) && near(e.x[0], ink.x[0]) && near(e.x[1], ink.x[1]) &&
+            near(e.y[0], ink.y[0]) && near(e.y[1], ink.y[1]) && (used.add(j), true));
+          if (!p) { failures.push(`${what}: nothing engraved at ${JSON.stringify(ink)}`); return; }
+          if (!sameColor(sym.color, p.color)) failures.push(`${what}: colour ${p.color}, drawn ${sym.color}`);
+          const f = _internals.sectionCFields(config, sym);
+          const hollow = f.hollowSym !== "#f";
+          // A true hollow is one path with its cutout as a further subpath; a
+          // false hollow (engine.falseHollow) a solid path under a white one.
+          const falseHollow = hollow && config.engine.falseHollow;
+          const subpaths = movetos(f.shapeSym) + (hollow && !falseHollow ? movetos(`${f.shapeSym}-cutout`) : 0);
+          if (p.subpaths !== subpaths) failures.push(`${what}: ${p.subpaths} subpaths, ${sym.hollow ? "hollow" : "solid"} wants ${subpaths}`);
+          if (falseHollow) whites++;
+          widen(ink.x);
+          if (s === 0 && sym.kind === "head") bases.push({ semi, ink });
+        });
+      }
+      const overlays = engraved.paths.length - paths.length;
+      if (overlays !== whites) failures.push(`${where}: ${overlays} white overlays engraved, ${whites} false hollows drawn`);
+      // The ledgers: each head base's own (cnb:ledgers-by-semitone), centred on
+      // its box and 4/3 of it plus their caps; a base sharing its box with
+      // another shares its ledgers.
+      const ledgers = engraved.lines.filter(l => near(l.y1, l.y2));
+      const groups = new Map();
+      for (const { semi, ink } of bases) {
+        const centre = (ink.x[0] + ink.x[1]) / 2;
+        const width = ink.x[1] - ink.x[0];
+        const id = `${centre.toFixed(3)} ${width.toFixed(3)}`;
+        if (!groups.has(id)) groups.set(id, { centre, width, ys: new Set() });
+        for (const s of CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis)) {
+          groups.get(id).ys.add((CNBStaff.lilypondPosition(config, s) / 2).toFixed(3));
+        }
+      }
+      const matched = new Set();
+      for (const { centre, width, ys } of groups.values()) {
+        const length = width * 4 / 3 + 0.2;
+        const mine = ledgers.filter((l, j) => near((l.x1 + l.x2) / 2, centre) && near(l.x2 - l.x1 + l.thickness, length) && (matched.add(j), true));
+        const e = [...new Set(mine.map(l => l.y1.toFixed(3)))].sort().join(" ");
+        const d = [...ys].sort().join(" ");
+        if (e !== d) failures.push(`${where}: ledgers at x ${centre.toFixed(3)} engraved at ${e || "none"}, drawn at ${d || "none"}`);
+        if (ys.size > 0) widen([centre - length / 2, centre + length / 2]);
+      }
+      if (matched.size !== ledgers.length) failures.push(`${where}: ${ledgers.length - matched.size} ledgers engraved under no head`);
+      if (!Number.isFinite(left)) { left = 0; right = 0; }
+      if (!near(engraved.x[0], left) || !near(engraved.x[1], right)) {
+        failures.push(`${where}: ink ${engraved.x[0]} … ${engraved.x[1]}, drawn ${left} … ${right}`);
+      }
+    });
+  }
+  return { failures, symbols };
+}
+
+/** A sign's box about its origin at scale 1, in staff spaces, Y up, in the optical size LilyPond draws at magnify. */
+function signGlyphBox(sign, magnify) {
+  const g = CNBAccidentalGlyphs.glyph(sign, magnify);
+  return { x: g.x, y: g.y };
 }
 
 /**

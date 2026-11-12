@@ -59,7 +59,10 @@ const STYLES_BASELINE = path.join(FIXTURES, "key-signature-styles-baseline.json"
 // 1.4.1); the sized fixture and the Hass and Trilinear files, when each
 // head's ledgers took its own width; and the Clairnote SN and DN files,
 // which took their own Clairnote-style signatures (dots and slashed dots),
-// so their probes pin those signatures instead.
+// so their probes pin those signatures instead, and again in session 55, when
+// the files took Clairnote's own signatures (dots with tails, the tails
+// imported shapes placed by their reference points). The Clairnote probes of
+// key-signature-styles-baseline.json were re-captured in session 55 too.
 
 /** The keys each probe draws: name, pitch classes and tonic. */
 const SIGNATURE_KEYS = [
@@ -98,6 +101,45 @@ export function captureSignatureBaseline() {
     const json = withDomStub(container => JSON.stringify(CNBCollection.render(container, p.config, p.options)));
     return { id: p.id, sha256: createHash("sha256").update(json).digest("hex"), length: json.length };
   });
+}
+
+/**
+ * The probes of key-signature-styles-baseline.json, hashed (session 54; a
+ * function since session 55, to re-capture the Clairnote files): each
+ * fixture and gallery file saved with one of session 53's styles and a place,
+ * in four keys, loaded through CNBConfigIO.loadFromText, which converts the
+ * style, then drawn, and exported with all four keys.
+ */
+export function captureStylesBaseline() {
+  const load = file => CNBConfigIO.loadFromText(fs.readFileSync(file, "utf8")).config;
+  const sources = [
+    ["default", CNBConfig.createDefault()],
+    ...["kite-4-369-config.json", "45deg-369-config.json", "sized-config.json"].map(f => [f, load(path.join(FIXTURES, f))]),
+    ...fs.readdirSync(GALLERY_DIR).filter(f => f.endsWith(".json")).sort().map(f => [`gallery/${f}`, load(path.join(GALLERY_DIR, f))]),
+  ];
+  const saved = (source, style, position, definitions) => {
+    const config = CNBConfig.clone(source);
+    config.keys.enabled = true;
+    config.keys.definitions = CNBConfig.clone(definitions);
+    const ks = config.keys.keySignature;
+    config.keys.keySignature = { ...ks, enabled: true, style, placement: { ...ks.placement, position } };
+    return CNBConfigIO.loadFromText(JSON.stringify(config)).config;
+  };
+  const sha = text => createHash("sha256").update(text).digest("hex");
+  const current = [];
+  for (const [id, source] of sources) {
+    for (const [style, position] of [["notehead-chords", "middle"], ["accidentals", "middle"], ["accidentals", "every-set"]]) {
+      for (const key of SIGNATURE_KEYS) {
+        const config = saved(source, style, position, [key]);
+        assert(!("style" in config.keys.keySignature), `${id} ${style}: no style after load`);
+        const json = withDomStub(c => JSON.stringify(CNBCollection.render(c, config, { durations: ["crotchet"], keys: [key.name] })));
+        current.push({ id: `${id} · ${style} · ${position} · ${key.name}`, sha256: sha(json), length: json.length });
+      }
+      const ly = CNBLilypond.generate(saved(source, style, position, SIGNATURE_KEYS)).replace(/^%% Date: .*$/m, "");
+      current.push({ id: `${id} · ${style} · ${position} · export`, sha256: sha(ly), length: ly.length });
+    }
+  }
+  return current;
 }
 
 function assert(condition, message) {
@@ -557,9 +599,9 @@ export const tests = [
         { label: "mark table, text clef", clef: true, stacking: "parity-stacks" },
         { label: "mark table, the top line set", position: "top-set" },
         { label: "mark table, text clef, magnify 5/2", clef: true, stacking: "parity", magnify: "5/2" },
-        // Marks of two widths (session 50): plain dots and slashed dots, each
-        // with its own ledgers, a stack of narrow marks starting its ink later.
-        { label: "Clairnote SN, slashed and plain dots", gallery: "clairnote-sn.json" },
+        // Clairnote's dots, each with its own ledgers, and their tails (session
+        // 55), which reach out to the left and take no ledgers.
+        { label: "Clairnote SN, dots and tails", gallery: "clairnote-sn.json" },
         { label: "Clairnote SN, text clef", gallery: "clairnote-sn.json", clef: true },
         { label: "sharps, no clef", traditional: true },
         { label: "sharps, text clef", traditional: true, clef: true },
@@ -615,27 +657,30 @@ export const tests = [
           const k = clef ? 1 : 0;                          // the keysig column
           const kStart = widths.slice(0, k).reduce((a, b) => a + b, 0);
           const sig = cols[k].children[1].children[0];
-          // Every drawn mark (in the order measure gives them), each its own
-          // width about its centre: a stack may go left, or hold narrower marks.
+          // Every drawn symbol (in the order measure gives the marks, each
+          // mark's base then its added symbols, session 55), each its own box
+          // about its origin: a stack may go left, or hold narrower marks, and
+          // a tail reaches out to one side.
           const heads = sig.children.filter(c => String(c.getAttribute("transform") || "").startsWith("translate"));
-          const measured = CNBKeySignature.measure(config, PX_PER_SEMI, key).marks;
+          const symbols = CNBKeySignature.measure(config, PX_PER_SEMI, key).layouts.flat();
+          eq(heads.length, symbols.length, `${label}: one drawing per symbol`);
           let left = Infinity;
           let right = -Infinity;
           heads.forEach((h, i) => {
-            const { mark } = measured[i];
-            if (mark.sign) {
+            const sym = symbols[i];
+            if (sym.kind === "sign") {
               // A sign's box, from its origin, at its scale (session 52).
               const r = CNBScheme.parseRatio(config.engine.defaultMagnify);
-              const box = CNBAccidentalGlyphs.glyph(mark.sign, r.num / (r.den ?? 1)).x;
+              const box = CNBAccidentalGlyphs.glyph(sym.sign, r.num / (r.den ?? 1)).x;
               const origin = kStart + parseFloat(/translate\(([-\d.eE+]+) /.exec(h.getAttribute("transform"))[1]);
-              left = Math.min(left, origin + box[0] * space * mark.scale);
-              right = Math.max(right, origin + box[1] * space * mark.scale);
+              left = Math.min(left, origin + box[0] * space * sym.scale);
+              right = Math.max(right, origin + box[1] * space * sym.scale);
               return;
             }
-            const w = CNBNotehead.measure(config.shapes[mark.shape], PX_PER_SEMI, mark).pixelWidth;
+            const box = CNBNotehead.box(config.shapes[sym.shape]).x;
             const x = kStart + parseTranslate(h.getAttribute("transform")).x;
-            left = Math.min(left, x - w / 2);
-            right = Math.max(right, x + w / 2);
+            left = Math.min(left, x + box[0] * sym.scaleX);
+            right = Math.max(right, x + box[1] * sym.scaleX);
           });
           // The ink, as drawn: the ledgers reach past the marks. Since engine
           // 1.4.1 the scale stack's heads take the notation's ledgers too, so
@@ -1011,38 +1056,8 @@ export const tests = [
     }},
 
   { name: "model: every fixture and gallery file, saved with each of session 53's styles, loads, draws and exports exactly as before (key-signature-styles-baseline.json)", fn: () => {
-      // The probes of the fixture, built as it was captured with session
-      // 53's code: each config saved with a style and a place, in four keys,
-      // loaded through CNBConfigIO.loadFromText, which now converts the style.
       const baseline = JSON.parse(fs.readFileSync(STYLES_BASELINE, "utf8")).probes;
-      const load = file => CNBConfigIO.loadFromText(fs.readFileSync(file, "utf8")).config;
-      const sources = [
-        ["default", CNBConfig.createDefault()],
-        ...["kite-4-369-config.json", "45deg-369-config.json", "sized-config.json"].map(f => [f, load(path.join(FIXTURES, f))]),
-        ...fs.readdirSync(GALLERY_DIR).filter(f => f.endsWith(".json")).sort().map(f => [`gallery/${f}`, load(path.join(GALLERY_DIR, f))]),
-      ];
-      const saved = (source, style, position, definitions) => {
-        const config = CNBConfig.clone(source);
-        config.keys.enabled = true;
-        config.keys.definitions = CNBConfig.clone(definitions);
-        const ks = config.keys.keySignature;
-        config.keys.keySignature = { ...ks, enabled: true, style, placement: { ...ks.placement, position } };
-        return CNBConfigIO.loadFromText(JSON.stringify(config)).config;
-      };
-      const sha = text => createHash("sha256").update(text).digest("hex");
-      const current = [];
-      for (const [id, source] of sources) {
-        for (const [style, position] of [["notehead-chords", "middle"], ["accidentals", "middle"], ["accidentals", "every-set"]]) {
-          for (const key of SIGNATURE_KEYS) {
-            const config = saved(source, style, position, [key]);
-            assert(!("style" in config.keys.keySignature), `${id} ${style}: no style after load`);
-            const json = withDomStub(c => JSON.stringify(CNBCollection.render(c, config, { durations: ["crotchet"], keys: [key.name] })));
-            current.push({ id: `${id} · ${style} · ${position} · ${key.name}`, sha256: sha(json), length: json.length });
-          }
-          const ly = CNBLilypond.generate(saved(source, style, position, SIGNATURE_KEYS)).replace(/^%% Date: .*$/m, "");
-          current.push({ id: `${id} · ${style} · ${position} · export`, sha256: sha(ly), length: ly.length });
-        }
-      }
+      const current = captureStylesBaseline();
       deepEq(current.map(p => p.id), baseline.map(p => p.id), "the probes");
       const changed = current.filter((p, i) => p.sha256 !== baseline[i].sha256 || p.length !== baseline[i].length);
       assert(changed.length === 0, `drawn or exported differently: ${changed.map(p => p.id).join(", ")}`);
@@ -1143,8 +1158,11 @@ export const tests = [
       const sig = CNBKeySignature.marks(config, C_KEY);
       approx(sig.marks[0].symbols[0].x, 100 * k / 64, "its origin 100 units right of its point, in staff spaces");
       eq(sig.marks[0].symbols[0].reference, true, "placed by its reference point");
-      approx(sig.columns[1] - sig.columns[0], MARK_W / 64, "every mark shifted alike: the step is a mark's width");
-      approx(sig.columns[0], MARK_W / 64 / 2 - 100 * k / 64, "the first line its farthest reach left from the start");
+      // Placed by its origin, a mark reaches as far as its path's box (session 55).
+      const boxW = (b => (b[1] - b[0]) * k)(CNBNotehead.box(tail).x);
+      const boxC = (b => (b[0] + b[1]) / 2 * k)(CNBNotehead.box(tail).x);
+      approx(sig.columns[1] - sig.columns[0], boxW / 64, "every mark shifted alike: the step is a mark's width");
+      approx(sig.columns[0], boxW / 64 / 2 - 100 * k / 64, "the first line its farthest reach left from the start");
       withSvgStub(svg => {
         const m = CNBKeySignature.measure(config, PX_PER_SEMI, "C");
         const g = CNBKeySignature.render(svg, CNBGrid.create(config, GRID_RANGE), config, "C");
@@ -1153,15 +1171,25 @@ export const tests = [
         const head = g.children.find(c => c.tag === "g" && c.getAttribute("class") !== "cnb-ledger-set");
         approx(parseTranslate(head.getAttribute("transform")).x, line + 100 * k, "the head's origin right of the stack's line");
         const ledger = g.children.find(c => c.getAttribute("class") === "cnb-ledger-set").children[0];
-        approx(Number(ledger.getAttribute("x")) + Number(ledger.getAttribute("width")) / 2, line + 100 * k, "its ledger centred on it");
-        approx(Number(ledger.getAttribute("width")), MARK_W * 4 / 3 + 0.2 * 64, "as long as its base");
+        approx(Number(ledger.getAttribute("x")) + Number(ledger.getAttribute("width")) / 2, line + 100 * k + boxC, "its ledger centred on its box");
+        approx(Number(ledger.getAttribute("width")), boxW * 4 / 3 + 0.2 * 64, "as long as its base");
       });
+      // A box off its origin, as a tail's is: the reach is the box's, all to the right.
+      const bar = keysigConfig();
+      bar.shapes.bar = { displayName: "Bar", svgPath: "M 0 -10 L 100 -10 L 100 10 L 0 10 Z", svgHollowPath: null,
+        naturalHeight: 20, naturalWidth: 100, semitoneHeight: 0.2, anchors: null, reference: { x: 0, y: 0 } };
+      bar.keys.keySignature.looks.all = { shape: "bar" };
+      const one = CNBKeySignature.marks(bar, C_KEY);
+      approx(one.columns[0], 0, "its line at the stacks' start: nothing reaches left");
+      approx(one.columns[1] - one.columns[0], PX_PER_SEMI / 64, "the step its box's width, 1 semitone");
       // An added symbol reaching out to the right widens every column.
       const added = keysigConfig();
       added.keys.keySignature.looks.all = { added: [{ shape: "crotchet-minim", offset: { x: 2, y: 0 } }] };
       const wide = CNBKeySignature.marks(added, C_KEY);
-      approx(wide.columns[1] - wide.columns[0], (MARK_W + 2 * PX_PER_SEMI) / 64, "the step: half a mark left, 2 semitones and half a mark right");
-      approx(CNBKeySignature.measure(added, PX_PER_SEMI, "C").markWidth, MARK_W + 2 * PX_PER_SEMI, "measure's step in px");
+      // The moved symbol reaches as far as its box; the base, centred, as far as its natural width.
+      const reach = MARK_W / 2 + 2 * PX_PER_SEMI + boxC + boxW / 2;
+      approx(wide.columns[1] - wide.columns[0], reach / 64, "the step: half a mark left, 2 semitones and half a mark right");
+      approx(CNBKeySignature.measure(added, PX_PER_SEMI, "C").markWidth, reach, "measure's step in px");
     }},
 
   { name: "model: added symbols are drawn over the base, solid, in the mark's colour, with no ledgers; a shape with ledgers false takes none", fn: () => {

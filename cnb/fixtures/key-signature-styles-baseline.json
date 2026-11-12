@@ -1,5 +1,5 @@
 {
-  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes.",
+  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes. The Clairnote SN and DN probes saved with notehead-chords were re-captured in session 55, when the two gallery files took Clairnote's own signatures (dots with tails, the tails imported shapes placed by their reference points), so those probes draw and export the files' new looks; every other probe matched its hash.",
   "probes": [
     {
       "id": "default · notehead-chords · middle · C major",
@@ -763,18 +763,18 @@
     },
     {
       "id": "gallery/clairnote-dn.json · notehead-chords · middle · D major",
-      "sha256": "59c69a629b3093f323f7efbca2cff73e91b71721b097e4061ff4f3103f35e622",
-      "length": 47158
+      "sha256": "121488a09b723f7bc52dce149ea5bb957e4fe05de2f1c24e2de5e8d5f19cdcc2",
+      "length": 47649
     },
     {
       "id": "gallery/clairnote-dn.json · notehead-chords · middle · E♭ major",
-      "sha256": "c63e52615c1bfb6e608ec0bfe9cb2f44c93c1e589aff3f647520e5115ba8e749",
-      "length": 47153
+      "sha256": "c04fbd9f0609fea10bcf9e8684f1aee811fdbfb49139798658a1990fc5fdd878",
+      "length": 47816
     },
     {
       "id": "gallery/clairnote-dn.json · notehead-chords · middle · export",
-      "sha256": "7c2e87eda6d975b9108471ff0b997556fa4ce5a26a9bb531b350f6280889dd6b",
-      "length": 71478
+      "sha256": "a28e2b796224d1c007d9ef9db843e481a5792497b86d598c7615a7f5ddb6f3ca",
+      "length": 96836
     },
     {
       "id": "gallery/clairnote-dn.json · accidentals · middle · C major",
@@ -828,28 +828,28 @@
     },
     {
       "id": "gallery/clairnote-sn.json · notehead-chords · middle · C major",
-      "sha256": "dcdb66e6fddfc7f26bb51da29ae6e1dc066b9080391a1b6730368ce06322ec5d",
-      "length": 43531
+      "sha256": "75d7a0c5fa0d09549d07c35752bf02afd9511716b31872b7156b6a7105b2c3ad",
+      "length": 44427
     },
     {
       "id": "gallery/clairnote-sn.json · notehead-chords · middle · A minor",
-      "sha256": "12bc886a5216bddc0102b557b07593015cfc6f0cdba4e9347c6e9559de2582e1",
-      "length": 43537
+      "sha256": "8e4d5b1403f872a4d9c25f25b88c8d742ccaebc6252c7a559596c95dd223849a",
+      "length": 44433
     },
     {
       "id": "gallery/clairnote-sn.json · notehead-chords · middle · D major",
-      "sha256": "fb15eb0e4856c7cc07e3cdbc9b76df2543a2a8d3dbcaf3bb3fc6595f1579775d",
-      "length": 44261
+      "sha256": "4e6335c73634345670d298681655d5a741b7ca9f50aca0f25b964fa45476fa3d",
+      "length": 45654
     },
     {
       "id": "gallery/clairnote-sn.json · notehead-chords · middle · E♭ major",
-      "sha256": "7e58eaba9823a78e9c2210067b46760dd741d69c5e97392cb573184fd48bc64e",
-      "length": 44238
+      "sha256": "ecd327c3de66b80ec0a47d7b02c2d746498e50c5623a5d057ed4e60835e00983",
+      "length": 45574
     },
     {
       "id": "gallery/clairnote-sn.json · notehead-chords · middle · export",
-      "sha256": "96105714de567382db12cb854725ea1656fd19a9b455082810846cfdfd29fcf7",
-      "length": 63698
+      "sha256": "5b74dc16bb3cad6e6c9da222b3eac3feb834a2a78f676f536087e01033369a06",
+      "length": 96532
     },
     {
       "id": "gallery/clairnote-sn.json · accidentals · middle · C major",

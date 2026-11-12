@@ -13,7 +13,8 @@
  * (engine settings), Section C (configuration procedure), and generate().
  *
  * Dependencies: Module A (config), Module B (music), Module 22 (key
- * signature: the mark table, LY spec 1.3.15 §5.6a), Module 24 (pitch axis)
+ * signature: the mark table, LY spec 1.3.15 §5.6a; its placed, coloured and
+ * layered symbols, 1.3.19), Module 24 (pitch axis)
  */
 
 import { CNBConfig } from "./cnb-config.js";
@@ -26,6 +27,7 @@ import { CNBStaff } from "./cnb-staff.js";
 import { CNBStem } from "./cnb-stem.js";
 import { CNBLedgerSet } from "./cnb-ledger-set.js";
 import { CNBKeySignature } from "./cnb-key-signature.js";
+import { CNBNotehead } from "./cnb-notehead.js";
 
 // ─── Engine defaults (LY spec §5.2 / Appendix A) ─────────────────────────────
 // Values the CNB engine assumes when a setting is not emitted. Section B
@@ -41,124 +43,10 @@ const ENGINE_DEFAULTS = {
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-/**
- * Parse an SVG path `d` attribute string into a command array.
- * Handles absolute M, L, C, Z (H, V for robustness). Relative commands and
- * arcs are expected to have been normalized upstream (Baker/toolkit output).
- * Ported verbatim from legacy parseSvgPath().
- */
-function parseSvgPath(d) {
-  if (!d || typeof d !== "string") return [];
-
-  const commands = [];
-  const re = /([MLCSQTAHVZmlcsqtahvz])([^MLCSQTAHVZmlcsqtahvz]*)/g;
-  let match;
-
-  while ((match = re.exec(d)) !== null) {
-    const cmd = match[1];
-    const argStr = match[2].trim();
-    const args = argStr.length > 0
-      ? argStr.split(/[\s,]+/).map(Number).filter(n => !isNaN(n))
-      : [];
-    commands.push({ cmd, args });
-  }
-
-  return commands;
-}
-
-/**
- * An SVG path `d` string as LilyPond path commands (moveto, lineto, curveto,
- * closepath) in the SVG's own units, Y down: absolute M/L/C/Z, with H/V
- * folded into lineto at the tracked position. Unsupported commands (S, Q,
- * T, A, relatives) are skipped — the toolkit normalizes paths to absolute
- * M/L/C/Z before they reach a config.
- */
-function svgCommands(svgPath) {
-  const commands = [];
-  let curX = 0, curY = 0;
-  for (const { cmd, args } of parseSvgPath(svgPath)) {
-    switch (cmd) {
-      case "M":
-        commands.push({ cmd: "moveto", args: [args[0], args[1]] });
-        curX = args[0]; curY = args[1];
-        break;
-      case "L":
-        commands.push({ cmd: "lineto", args: [args[0], args[1]] });
-        curX = args[0]; curY = args[1];
-        break;
-      case "H":
-        commands.push({ cmd: "lineto", args: [args[0], curY] });
-        curX = args[0];
-        break;
-      case "V":
-        commands.push({ cmd: "lineto", args: [curX, args[0]] });
-        curY = args[0];
-        break;
-      case "C":
-        commands.push({ cmd: "curveto", args: args.slice(0, 6) });
-        curX = args[4]; curY = args[5];
-        break;
-      case "Z":
-      case "z":
-        commands.push({ cmd: "closepath", args: [] });
-        break;
-      default:
-        break;
-    }
-  }
-  return commands;
-}
-
-/**
- * The exact extent of path commands, as LilyPond's make-path-stencil
- * measures it: every line segment's end points and every curve's true
- * extremes (where its derivative is zero), not its control points.
- * @returns {{x:[number,number], y:[number,number]}}
- */
-function pathExtent(commands) {
-  const x = [Infinity, -Infinity], y = [Infinity, -Infinity];
-  const add = (px, py) => {
-    x[0] = Math.min(x[0], px); x[1] = Math.max(x[1], px);
-    y[0] = Math.min(y[0], py); y[1] = Math.max(y[1], py);
-  };
-  // Parameters in (0, 1) where one coordinate of a cubic Bézier is extreme.
-  const extremes = (p0, p1, p2, p3) => {
-    const a = p1 - p0, b = p2 - p1, c = p3 - p2;
-    const A = a - 2 * b + c, B = 2 * (b - a), C = a;
-    const roots = Math.abs(A) < 1e-12
-      ? (Math.abs(B) < 1e-12 ? [] : [-C / B])
-      : (() => {
-          const d = B * B - 4 * A * C;
-          if (d < 0) return [];
-          const s = Math.sqrt(d);
-          return [(-B + s) / (2 * A), (-B - s) / (2 * A)];
-        })();
-    return roots.filter(t => t > 0 && t < 1);
-  };
-  const bezier = (p0, p1, p2, p3, t) =>
-    (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
-
-  let cx = 0, cy = 0, ox = 0, oy = 0;
-  for (const { cmd, args } of commands) {
-    if (cmd === "moveto") {
-      [cx, cy] = args; ox = cx; oy = cy;
-    } else if (cmd === "lineto") {
-      add(cx, cy); add(args[0], args[1]);
-      [cx, cy] = args;
-    } else if (cmd === "curveto") {
-      const [x1, y1, x2, y2, x3, y3] = args;
-      add(cx, cy); add(x3, y3);
-      for (const t of [...extremes(cx, x1, x2, x3), ...extremes(cy, y1, y2, y3)]) {
-        add(bezier(cx, x1, x2, x3, t), bezier(cy, y1, y2, y3, t));
-      }
-      cx = x3; cy = y3;
-    } else if (cmd === "closepath") {
-      add(cx, cy); add(ox, oy);
-      cx = ox; cy = oy;
-    }
-  }
-  return { x, y };
-}
+// The SVG path parser, its LilyPond commands and their exact extent live in
+// Module 6 since session 55, where the key signature's preview measures a
+// placed symbol's box with them too.
+const { parseSvgPath, svgCommands, pathExtent } = CNBNotehead;
 
 // Every config value reaches the .ly through a CNBScheme emitter (audit
 // 2026-11-02, H1): comment text, Scheme strings, symbols, numbers, ratios,
@@ -230,9 +118,15 @@ function resolveAll(config) {
  * no notehead has.
  */
 function drawnLooks(config) {
-  // A sign (session 51) is the engine's own glyph: nothing to register.
+  // Each symbol a mark draws (session 55, LY spec 1.3.19 §5.6a): its base and
+  // added symbols, which may have shapes, sizes and colours no notehead has.
+  // A sign (session 51) is the engine's own glyph, so only a sign's colour
+  // registers, and a black sign registers nothing.
+  const looks = mark => mark.sign
+    ? (isBlack(mark.color) ? [] : [{ color: mark.color }])
+    : mark.symbols.length > 0 ? mark.symbols : [mark.mark];
   return [...resolveAll(config),
-    ...markTable(config).flatMap(e => e.sig.marks.filter(m => !m.mark.sign).map(m => m.mark))];
+    ...markTable(config).flatMap(e => e.sig.marks.flatMap(m => looks({ ...m, sign: m.mark.sign, color: m.mark.color })))];
 }
 
 /**
@@ -610,8 +504,10 @@ function ledgerLines(config, axis) {
   // line set beyond the cards' pitches gets the ledgers the canvas draws it.
   const semis = new Set();
   for (let s = PREVIEW_SEMIS.min; s <= PREVIEW_SEMIS.max; s++) semis.add(s);
-  // A sign has no ledgers (session 51), so it adds no entry.
-  for (const entry of markTable(config)) for (const m of entry.sig.marks) if (!m.mark.sign) semis.add(m.semi);
+  // Only a head takes ledgers: a sign (session 51) and a symbol (a base whose
+  // shape has ledgers false, session 55) add no entry.
+  const ledgered = m => !m.mark.sign && (m.symbols.length === 0 || m.symbols[0].kind === "head");
+  for (const entry of markTable(config)) for (const m of entry.sig.marks) if (ledgered(m)) semis.add(m.semi);
   const entries = [];
   for (const s of [...semis].sort((a, b) => a - b)) {
     const ledgers = CNBLedgerSet.ledgersFor(config, [s], { minSemi: s - 12, maxSemi: s + 12 }, axis)
@@ -782,11 +678,22 @@ function markTable(config) {
  * (session 51, LY spec 1.3.17), with its scale unless it is 1 (session 52,
  * LY spec 1.3.18). A mark whose shape is not defined is left
  * out, as the preview leaves it undrawn.
+ *
+ * Since session 55 (LY spec 1.3.19 §5.6a, engine 1.6.0) a mark is written as
+ * the symbols CNBKeySignature.marks gives it, in order, at its semitone and
+ * column: its base, a head, a symbol (a shape with ledgers false, solid or
+ * hollow, taking no ledgers) or a sign, then each added symbol as a solid
+ * symbol. A symbol the canvas places away from the engine's default (its box
+ * centred on its column, its origin at the semitone's height) ends with
+ * (at dx . dy), its origin in staff spaces from the column and the pitch, Y
+ * up: a shape with a reference point or a moved point, a sign whose mark is
+ * moved. A coloured sign writes its colour after its scale, and a sign with a
+ * colour or an at writes its scale at 1 too. A table using none of this is
+ * written as before.
  */
 function markTableLines(config, table) {
   const axis = CNBPitchAxis.create(config);
   const shift = axis.enabled ? 0 : ((config.staff || {}).midpoint || 0) - 12;
-  const shapes = config.shapes || {};
   const semi = s => fmtNum(s - shift, "key-signature mark semitone");
   const lines = [
     "#(set! cnb:keysig-style 'marks)",
@@ -801,15 +708,24 @@ function markTableLines(config, table) {
     const columns = e.sig.columns.map(x => fmtNum(x, "key-signature column")).join(" ");
     const bars = e.sig.bars.map(b => `(${fmtNum(b.x, "key-signature bar")} ${semi(b.bottom)} ${semi(b.top)} ` +
       `${hexString(b.color, "keys.keySignature.separator.color")} ${fmtNum(b.thickness, "keys.keySignature.separator.thicknessPct")})`);
-    const marks = e.sig.marks.filter(({ mark }) => mark.sign || shapes[mark.shape]).map(({ semi: s, column, mark }) => {
-      if (mark.sign) {
-        // Its scale, left out at 1 (session 52, engine 1.5.0).
-        const scale = fmtNum(mark.scale ?? 1, "keys.keySignature.signs.heightSemis");
-        return `(${semi(s)} ${column} ${mark.sign}${scale === "1" ? "" : " " + scale})`;
+    const marks = e.sig.marks.flatMap(({ semi: s, column, mark, symbols }) => symbols.map(sym => {
+      const at = `(at ${fmtNum(sym.x, "key-signature offset")} . ${fmtNum(sym.y, "key-signature offset")})`;
+      if (sym.kind === "sign") {
+        // Its scale, left out at 1 (session 52, engine 1.5.0), unless a colour
+        // or an at follows it (engine 1.6.0). A sign is centred on its
+        // column unless its mark is moved.
+        const scale = fmtNum(sym.scale ?? 1, "keys.keySignature.signs.heightSemis");
+        const color = isBlack(sym.color) ? "" : " " + colorSymbolFor(sym.color);
+        const moved = mark.offset && (Math.abs(mark.offset.x || 0) > 1e-9 || Math.abs(mark.offset.y || 0) > 1e-9);
+        const tail = color + (moved ? " " + at : "");
+        return `(${semi(s)} ${column} ${sym.sign}${scale === "1" && !tail ? "" : " " + scale}${tail})`;
       }
-      const f = sectionCFields(config, mark);
-      return `(${semi(s)} ${column} head ${f.shapeSym} ${f.hollowSym} ${f.colorSym})`;
-    });
+      // A shape is centred on its column unless it has a reference point or
+      // its point is moved; its origin is then placed (engine 1.6.0).
+      const placed = sym.reference || Math.abs(sym.x) > 1e-9 || Math.abs(sym.y) > 1e-9;
+      const f = sectionCFields(config, sym);
+      return `(${semi(s)} ${column} ${sym.kind} ${f.shapeSym} ${f.hollowSym} ${f.colorSym}${placed ? " " + at : ""})`;
+    }));
     lines.push(`     ;; ${CNBScheme.comment(`${e.spelling} ${e.mode}`)}`);
     lines.push(`     (((${e.notename} . ${e.alteration}) . (${e.pcs.join(" ")}))`);
     // A key with no sharps or flats has no columns or marks (session 51).

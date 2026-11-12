@@ -250,9 +250,11 @@ function expectedMarks(cfg, keyName) {
   if (!m) return null;
   const grid = CNBGrid.create(cfg, CNBCollection.gridRange(FULL_ROW, cfg, ["crotchet"], keyName));
   const left = marksLeft(cfg, keyName);
-  return m.marks
-    .filter(({ mark }) => cfg.shapes[mark.shape])
-    .map(({ semi, column }) => ({ x: left + (column + 0.5) * m.markWidth, y: grid.semiToY(semi) }));
+  // Each drawn shape (session 55: a mark's base, then its added symbols) at
+  // its stack's line plus its own placement; a centred mark's is its line.
+  return m.marks.flatMap(({ semi, column }, i) => (m.layouts[i] || [])
+    .filter(sym => sym.kind !== "sign")
+    .map(sym => ({ x: left + m.lead + column * m.markWidth + sym.x, y: grid.semiToY(semi) + sym.y })));
 }
 
 /** The same for a key picked on the staff ({ tonic, mode, spelling }), as the
@@ -976,7 +978,7 @@ check("EXPORT: valid badge shown, no error rows",
     document.querySelectorAll(".cnb-cex-verror").length === 0));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-exported.png"), fullPage: true });
 
-// ── STEP 9b: the Clairnote SN gallery file's own signature (session 50) ─────
+// ── STEP 9b: the Clairnote SN gallery file's own signature (sessions 50, 55) ─
 await page.setInputFiles("#open-file", path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-sn.json"));
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
@@ -984,11 +986,17 @@ await openSection(page, "key-signature");
 await pickKey("D", "major");
 {
   const r = await canvasDraws(D_MAJOR_KEY, "Clairnote SN, D major");
-  const slashed = r.cfg.shapes["clairnote-dot-sharp"].svgPath;
-  const sharps = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
-    (ps, d) => ps.filter(p => p.getAttribute("d") === d).length, slashed);
-  check("CLAIRNOTE SN: D major draws as the Node-side renderer draws it — dots on the bottom line set, F♯ and C♯ slashed, no gold stem",
-    r.ok && sharps === 2 && (await canvasStems()).length === 0, `${r.detail} slashed=${sharps}`);
+  // Since session 55: Clairnote's own signature, a dot for each note, solid
+  // on a line or ledger and hollow in a space, and a tail down on each sharp.
+  const drawn = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g:not(.cnb-ledger-set)",
+    (gs, [dot, tail]) => ({
+      tails: gs.filter(g => g.querySelector("path")?.getAttribute("d") === tail).length,
+      dots: gs.filter(g => g.querySelector("path")?.getAttribute("d") === dot).length,
+      hollow: gs.filter(g => g.querySelector("path")?.getAttribute("d") === dot && g.querySelectorAll("path").length > 1).length,
+    }), [r.cfg.shapes["clairnote-dot"].svgPath, r.cfg.shapes["clairnote-tail-down"].svgPath]);
+  check("CLAIRNOTE SN: D major draws as the Node-side renderer draws it — seven dots on the bottom line set, D, E and F♯ solid and G, A, B and C♯ hollow, F♯ and C♯ with a tail down, no gold stem",
+    r.ok && drawn.dots === 7 && drawn.hollow === 4 && drawn.tails === 2 && (await canvasStems()).length === 0,
+    `${r.detail} ${JSON.stringify(drawn)}`);
   check("CLAIRNOTE SN: the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set, and its looks in words",
     await page.evaluate(() => {
       const on = (group, value) => document.querySelector(`.${group} .cnb-kse-radio[data-value="${value}"] input`).checked;
@@ -996,7 +1004,7 @@ await pickKey("D", "major");
         on("cnb-kse-position", "bottom-set") &&
         !document.querySelector(".cnb-kse-upper-tonic-check").checked &&
         !document.querySelector(".cnb-kse-sep-enable-check").checked &&
-        document.querySelector('.cnb-kse-look[data-look="sharp"] .cnb-kse-look-words').textContent.includes("rising slash");
+        document.querySelector('.cnb-kse-look[data-look="sharp"] .cnb-kse-look-words').textContent.includes("tail, down");
     }));
 }
 

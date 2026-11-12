@@ -16,6 +16,17 @@ function approx(a, b, msg, epsilon = 1e-9) {
 }
 
 export const tests = [
+  { name: "box: a shape's exact path extent around its origin, a curve's true extremes and not its control points", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const b = CNBNotehead.box(cfg.shapes["crotchet-minim"]);
+      approx(b.x[0] + b.x[1], 0, "the default notehead centred across its origin", 1e-3);
+      approx(b.x[1] - b.x[0], cfg.shapes["crotchet-minim"].naturalWidth, "as wide as its viewBox", 1e-3);
+      // A one-sided box, and a curve whose control point overshoots its ink.
+      const bar = CNBNotehead.box({ svgPath: "M 0 -10 L 100 -10 L 100 10 L 0 10 Z" });
+      assert(JSON.stringify(bar) === JSON.stringify({ x: [0, 100], y: [-10, 10] }), `a bar right of its origin: ${JSON.stringify(bar)}`);
+      const arch = CNBNotehead.box({ svgPath: "M 0 0 C 0 -40 100 -40 100 0 Z" });
+      approx(arch.y[0], -30, "the arch's top at 3/4 of its control points' height");
+    }},
   { name: "measure formula with crotchet-minim shape and pxPerSemi=16", fn: () => {
       const cfg = CNBConfig.createDefault();
       const shape = cfg.shapes["crotchet-minim"];

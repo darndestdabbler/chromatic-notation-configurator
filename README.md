@@ -231,7 +231,8 @@ conventional notehead on the 4-8 staff.
   **Place**, the middle of the staff or the bottom, top or every line set. A
   note says when marks in a stack run together. Below it, the keys a
   notehead rule can be for. The Clairnote SN and DN gallery files show
-  Clairnote-style signatures: dots, slashed for sharps and flats.
+  Clairnote's own signatures: dots, with a tail up on each flat and down on
+  each sharp (an added symbol, which the panel's Looks name in words).
 - **Clef** — **Dozenal**, **Treble**, **Bass**
   and **Alto** buttons choose the engine's dozenal clef (drawn as the
   engine engraves it, the numeral 50 of the default treble register) or
@@ -435,7 +436,15 @@ signature. Sharps or flats export through the same table (LY export spec
 1.3.17), drawn by the engine from its music font in the optical size it
 uses for the staff, as the preview draws them, each at its size (LY export
 spec 1.3.18), which needs engine 1.5.0 or later. Since engine 1.5.0 a score
-engraves at the config's own magnification (`engine.defaultMagnify`).
+engraves at the config's own magnification (`engine.defaultMagnify`). The
+signature's model exports through the same table too (LY export spec
+1.3.19), which needs engine 1.6.0 or later: each mark's symbols in order (a
+dot, then a tail added over it), a symbol placed by its reference point or
+moved by an offset where the canvas places it, a symbol that takes no
+ledger lines, and sharps and flats in a colour. The Clairnote SN and DN
+gallery files use it for Clairnote's own signatures: a dot for each note,
+solid on a line or ledger and hollow in a space, with a tail up on each flat
+and down on each sharp.
 
 Notehead height and width are not on this list either: they do export. A rule's
 size (`apply.heightSemis` / `apply.widthSemis`, in semitones; the rule

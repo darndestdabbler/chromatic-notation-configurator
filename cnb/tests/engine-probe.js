@@ -554,13 +554,14 @@ export function measureKeySignature(engine, ly, key) {
  * its subpaths and its colour, and each line (a bar, or a ledger) with its
  * ends, thickness and colour, and each font glyph (a sharp or a flat,
  * session 51) with its name, its origin and its extent as LilyPond measures
- * the glyph. Everything is in the staff's own staff spaces,
+ * the glyph, and its colour (session 55: a sign may be coloured since engine
+ * 1.6.0). Everything is in the staff's own staff spaces,
  * whatever the magnification, x from the signature's reference point and y
  * from the staff's middle line.
  *
  * Returns { signatures: [{ x: [left, right], paths: [{ x, y, subpaths,
  * color }], lines: [{ x1, y1, x2, y2, thickness, color }], glyphs: [{ name,
- * origin: [x, y], x, y }] }], warnings },
+ * origin: [x, y], x, y, color }] }], warnings },
  * extents as [min, max], colours as [r, g, b] (0–1), and LilyPond's warnings
  * that name cnb:keysig-marks; or { error } with LilyPond's output when it
  * fails.
@@ -621,9 +622,10 @@ export function measureKeySignatureMarks(engine, ly, music) {
               (let ((c (or (last leaf) '(0 0 0))))
                 (cond
                   ((eq? (car leaf) 'glyph)
-                    (format #t "CNB-GLYPH ~a ~a ~a ~a ~a ~a ~a\\n" (list-ref leaf 1)
+                    (format #t "CNB-GLYPH ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a\\n" (list-ref leaf 1)
                       (s (list-ref leaf 2)) (s (list-ref leaf 3)) (s (list-ref leaf 4))
-                      (s (+ y0 (list-ref leaf 5))) (s (+ y0 (list-ref leaf 6))) (s (+ y0 (list-ref leaf 7)))))
+                      (s (+ y0 (list-ref leaf 5))) (s (+ y0 (list-ref leaf 6))) (s (+ y0 (list-ref leaf 7)))
+                      (exact->inexact (car c)) (exact->inexact (cadr c)) (exact->inexact (caddr c))))
                   ((eq? (car leaf) 'path)
                     (format #t "CNB-PATH ~a ~a ~a ~a ~a ~a ~a ~a\\n"
                       (s (list-ref leaf 1)) (s (list-ref leaf 2))
@@ -646,9 +648,10 @@ export function measureKeySignatureMarks(engine, ly, music) {
       let m;
       if ((m = /^CNB-SIG (\S+) (\S+)$/.exec(line))) {
         signatures.push({ x: [schemeNumber(m[1]), schemeNumber(m[2])], paths: [], lines: [], glyphs: [] });
-      } else if ((m = /^CNB-GLYPH (\S+)((?: \S+){6})$/.exec(line)) && signatures.length > 0) {
+      } else if ((m = /^CNB-GLYPH (\S+)((?: \S+){9})$/.exec(line)) && signatures.length > 0) {
         const v = n(m[2]);
-        signatures[signatures.length - 1].glyphs.push({ name: m[1], origin: [v[0], v[3]], x: [v[1], v[2]], y: [v[4], v[5]] });
+        signatures[signatures.length - 1].glyphs.push({ name: m[1], origin: [v[0], v[3]], x: [v[1], v[2]], y: [v[4], v[5]],
+          color: v.slice(6) });
       } else if ((m = /^CNB-PATH((?: \S+){8})$/.exec(line)) && signatures.length > 0) {
         const v = n(m[1]);
         signatures[signatures.length - 1].paths.push({ x: [v[0], v[1]], y: [v[2], v[3]], subpaths: v[4], color: v.slice(5) });
