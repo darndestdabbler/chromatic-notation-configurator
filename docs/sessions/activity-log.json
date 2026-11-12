@@ -950,6 +950,29 @@
       "what": "step 'clairnote-signatures': its files",
       "reason": "The Clairnote files are also pinned by the collection preview baseline (cnb/fixtures/preview-baseline.json, its comment in cnb-collection-tests.js); session 50's Clairnote round trip in cnb-lilypond-tests.js assumed one box-centred head per mark and is brought to the model's symbols (holdMarkTable, which step engine-round-trip extends); and the panel words the sharps' and flats' added tails (lookSummary in key-signature-editor.js, with its test), as the non-goal on the panel allows.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:08:50.838000-05:00",
+      "task": "Build the key-signature editor of design docs/planning/key-signature-designer-design.md section 13.8 in the Key signature panel (cnb/ui/key-signature-editor.js, Module 23), as the mock-ups in docs/planning/key-signature-editor-mockups/ show it. The panel heads with Show the key signature and Start from (The noteheads, Traditional sharps and flats), which replaces the signature's settings after asking to confirm, keeping Show and the picked key. Beneath it the key picker (the staff's own tonic and mode, which it changes too), the Edit layer chips (all marks, naturals, flats, sharps, on a line or ledger, in a space, every second stack) and the magnified canvas: the picked key's signature drawn through CNBKeySignature.render on a grid context at 24 px a semitone, with the staff's lines near the marks and the marks' ledgers, its height capped at 360 px and scrolling inside. A click on a mark selects its spelling's layer, or the layer picked in Edit, and the base or the added symbol clicked; the selection shows its reference point, its box and a corner handle. Dragging a symbol sets the layer's offset, or an added symbol's own offset; the handle sets the symbol's size, or signs.heightSemis for a sign; values snap to tenths of a semitone and show beside the handle while dragging, and one drag is one change, so one step of undo. Beside the canvas the look card: the notehead panel's thumbnails with Emmentaler's sharp and flat as two more, Import from SVG with the imported symbol shown enlarged, its reference point set by a click, and Takes ledger lines (on for naturals and all marks, off for flats and sharps), fill, colour, size (Automatic for the signs, kept), offset fields, and up to two added symbols, the selection named Base, Added 1 or Added 2, each removable, each field's as-beneath clearing it, and a line saying the edit applies to the category in every key. Beneath the canvas the picked mode's 15 keys as small signatures at the staff's scale, a click picking one, a key whose marks touch outlined with the number of places, and a line saying how many of the 105 keys have touching marks, opening a list whose keys pick their tonic and mode. The touch check of design section 13.7 runs over the 105 keys (every line set's copy and the seams included), comparing whole marks in the same and neighbouring stacks by their boxes and then by their ink rasterised into a small mask, a hollow mark's cut-out excluded, after a change and not while a drag moves; it is a warning in the checks list, never blocking the export. Notes gains The sharps or flats only and Stacks the cycle of fifths with its heights and window; Place stays. The rows the editor replaces are removed: Draw, Looks, Size and the overlap note (with marks().overlaps, which only the note read). A UAT driver covers each drag and choice, with screenshots at 1440 and 1280 px judged against the mock-ups; the architecture plan, the README and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:14:14.258000-05:00",
+      "what": "step 'touch-check': its checks",
+      "reason": "The planned check expected the default signature under parity stacking to touch nowhere, but parity puts the 2.724-semitone default heads 2 semitones apart in one stack, so they do touch (session 50's overlap note reported the same). The amended check asserts the default stacked sevenths touch nowhere and parity does, with the same 105-key count and time budget.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:53:04.357000-05:00",
+      "what": "step 'uat-and-docs': its files",
+      "reason": "The step asks to fix what the screenshots' judgement against the mock-ups finds; it found the canvas's 2-semitone margins pushing B-flat major's lowest mark past the 360 px cap and the other keys' small signatures too wide for one row at 1440 px, both fixed in cnb/ui/key-signature-editor.js, which the step's file list did not name.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

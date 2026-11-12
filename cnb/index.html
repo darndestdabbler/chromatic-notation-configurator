@@ -432,6 +432,8 @@
     let canvasOptions = { durations: ["crotchet"], keys: null };
     // The key the Key signature panel was mounted for (session 50).
     let keySignatureEditorKey = null;
+    // The layer and symbol picked in its editor, kept across re-mounts (session 56).
+    const keySignatureView = {};
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
       const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
@@ -749,8 +751,10 @@
      *  match.keys pills), so that editor is re-seeded after every keys
      *  change — same rationale as the SVG-import re-mount below. The canvas
      *  can turn the signature on (session 36), so it re-seeds this one. It
-     *  is told the key picked on the staff, for which it counts the stems
-     *  and finds marks that run together (session 50). */
+     *  is told the key picked on the staff, which it draws on its canvas
+     *  and for which it counts the stems; its own key picker picks the
+     *  staff's key, which re-mounts it, and the layer and symbol picked in
+     *  it are kept across re-mounts (session 56, keySignatureView). */
     function mountKeySignatureEditor() {
       const key = previewApi ? previewApi.getState().key : null;
       keySignatureEditorKey = JSON.stringify(key);
@@ -758,6 +762,8 @@
       CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
         config: appConfig,
         key,
+        view: keySignatureView,
+        onKey: (picked) => previewApi.setState({ key: picked }),
         // A look's Import from SVG (session 50): the shape is added to the
         // notation and given to that look.
         importControl: drawLookImporter,
@@ -772,8 +778,9 @@
     }
 
     /** The Key signature panel's Import from SVG for one look: an imported
-     *  shape joins the notation's shapes and is given to the look, and the
-     *  editors re-seed with it (session 50). */
+     *  shape is handed to the panel, which gives it to the look and adds it
+     *  to the notation's shapes (session 50; since session 56 through the
+     *  panel's onChange, with its reference point and ledgers). */
     function drawLookImporter(slot, give) {
       const control = document.createElement("div");
       control.className = "cnb-kse-look-importer";
@@ -788,10 +795,10 @@
             status.textContent = "Import failed: " + result.error;
             return;   // config untouched
           }
-          appConfig.shapes[result.name] = result.shape;
+          // The panel adds the shape to the notation and reports it through
+          // its onChange, with its reference point and ledgers, so it is not
+          // re-mounted and its reference picker stays open (session 56).
           give(result.name, result.shape);
-          mountEditors();
-          refreshShared();
         },
       });
     }

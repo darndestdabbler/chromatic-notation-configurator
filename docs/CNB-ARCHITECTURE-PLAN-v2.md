@@ -1695,8 +1695,9 @@ from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
 `tonicPc(def)`, `tonicSemi(config, def)`, `marks(config, key)` (session
 48, key-signature design §8: for a key definition, with its tonic and
 optional `spelling`, the marks as `{ semi, column, mark }`, the columns'
-centres and the gold stems in staff spaces, and the marks that overlap in a
-stack, for every setting of §4.9; since session 54 the one model of
+centres and the gold stems in staff spaces, for every setting of §4.9
+(the marks that overlapped in a stack until session 56, which replaced
+them with `touches`); since session 54 the one model of
 design §13, each mark `{ semi, column, mark, symbols }`, `mark` its
 resolved look (a sign mark `{ sign, scale, color, … }`) and `symbols` its
 base then its added symbols, each `{ kind: "head" | "sign" | "symbol",
@@ -1711,7 +1712,16 @@ the signs' size in semitones, `{ semis, automatic }`, §4.9),
 `signScale(config)` (the factor the signs are drawn and exported at: the
 size ÷ the sharp's bar spacing in the optical size drawn ÷ the semitones
 per staff space), `signatureSemis(config, keyName)`
-(the marks' semitones),
+(the marks' semitones), `keys(config)` (session 56: the 105 keys, the 7
+modes' 15 spellings, each as the canvas's picker gives it, which the mark
+table and the touch check share), `touches(config, key)` (session 56,
+design §13.7: the pairs of whole marks, a base with its added symbols, in
+one stack or neighbouring stacks, every line set's copy and the seams
+included, whose ink meets, found by their boxes and then by their paths
+filled into a mask of 40 cells a staff space, a hollow head's cut-out left
+out), `touchingKeys(config)` (the keys of the 105 whose marks touch, with
+their counts, empty while the signature is off; the checks list warns
+"Marks touch in N keys", never blocking the export),
 `measure(config,
 pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
 firstHeadCenter)` (the engine's spacing either side of the marks, session
@@ -1751,38 +1761,61 @@ edits the whole `keys` section — the `keys.enabled` master gate, the key
 definitions (name, pitch-class pills, optional explicit tonic; the
 definition controls live here because sets 005–006 shipped only key
 CONSUMERS — the rule editor's `match.keys` pills and the preview's key
-selector), and the `keySignature` subsection. Since session 50 the
-signature is the panel of the key-signature design §7
-(`docs/planning/key-signature-designer-design.md`), in a designer's
-words: Show the key signature; Draw ("The key's notes" or, since session
-51, "Sharps or flats"; since session 54 a starting point on the one model
-until session 56's editor: the key's notes set the signature's defaults
-and sharps or flats the traditional signature, each keeping Show the key
-signature; Sharps or flats is shown on when `notes` is `"altered"`, and
-hides Notes, Stacks and Looks, their values kept, and shows Size, session
-52: "Automatic (n)", the size
-`signHeight` gives, or a number set by hand, `signs.heightSemis`); Notes (`notes`, `upperTonic`); Stacks
-(`stacking`, `columns` hidden under `"parity"`, and the gold stem:
-`separator.enabled`, `color`, its thickness shown in staff spaces and
-written as `thicknessPct`, and `shareThickness`, saying what each stem gets
-in the key picked on the staff); Looks (`looks.all`, `.flat`, `.sharp` and
-`alternate`, each a menu with the notehead panel's controls, its thumbnails
-shared as `CNBNoteheadPanel.thumbnail`, and the host's Import from SVG;
-each field's "as …" clears it; a built-in shape the config lacks is added,
-reported as `onChange({ keys, shapes })`); Place (`placement.position`);
-and a note when two marks of a stack overlap in the picked key (the host
-passes it as `opts.key` and re-mounts the panel when it changes).
-`placement.rule`, `placement.tonicOctave` and `separator.extentSemis` have
-no controls and keep their stored values. The key definitions follow,
-under "Keys for notehead rules". While `keys.enabled` is false the
-panel renders an explicit DISABLED state (controls shown but inert, with
-a note) rather than hiding. Same editor contract as Modules 12–17:
-property-based event wiring (Node-testable `render()`), pure `buildKeys`
-/ `applyToConfig` / `stateFromConfig` builders, Module A validation
-pass-through plus editor-level duplicate-name checks,
-`onChange({ keys }, state)`. Dependencies: Module A, Module B,
-Module 22 (tonic-resolution chain for the hint, and the picked key's
-marks), the notehead panel, the built-in shapes.
+selector), and the `keySignature` subsection. Since session 56 the
+signature is the editor of the key-signature design §13.8
+(`docs/planning/key-signature-designer-design.md`), in a designer's words:
+Show the key signature, and **Start from**, the noteheads (the defaults) or
+traditional sharps and flats (`startFrom`), which replaces the signature's
+settings once confirmed, keeping Show and the picked key. The **key
+picker** is the staff's key and mode (`opts.key`), and a change picks the
+staff's key through `opts.onKey`. **Edit** picks the layer edited: all
+marks, naturals, flats, sharps, a line or ledger, a space, or every second
+stack (design §13.4). The **canvas** draws the picked key's signature at
+24 px a semitone through `CNBKeySignature.render` (its symbols marked with
+`{ marked: true }`), its height capped at 360 px: a click on a mark selects
+its spelling's layer, or the layer picked in Edit, which stays picked
+(`layerFor`), and the base or the added symbol clicked; dragging a symbol
+sets its layer's `offset` or an added symbol's own (`dragOffset`), and the
+corner handle its size, or `signs.heightSemis` for a sign (`dragSize`),
+snapped to tenths of a semitone (`snap`) and shown beside the handle; the
+canvas alone redraws while the pointer moves, and the change is reported
+once, when it is released, so one drag is one step of undo. The **look
+card** edits the layer's look in every key: Base, Added 1 or Added 2 (up to
+two, each removable, the layer's `added` replaced whole, `addedWith`), the
+symbol (as beneath, the notation's and the built-in shapes as
+`CNBNoteheadPanel.thumbnail` draws them, Emmentaler's sharp and flat for a
+base, one slot with the shape, `lookWith`), Import from SVG (the host's
+control, `opts.importControl`; the panel adds the shape with its
+`reference` at the SVG's origin and, for flats or sharps, `ledgers: false`,
+and opens a picker where a click on the enlarged symbol moves its reference
+point, `referenceGeometry` / `referenceAt`, and "Takes ledger lines" sets
+its ledgers), fill and colour, the size (a shape's height and width, or
+the signs' one size, automatic or a number) and the offset, each field's
+"as …" clearing it; a shape the config lacks is added, reported as
+`onChange({ keys, shapes })`. Beneath the canvas, the picked mode's 15 keys
+as small signatures, sharp keys then flat keys (`keyOrder`), a click
+picking one, a key whose marks touch outlined with its count, and a line
+saying how many of the 105 keys have marks that touch
+(`CNBKeySignature.touchingKeys`), which opens their list. Then Notes
+(`notes`, the sharps or flats only among them, and `upperTonic`, not under
+the cycle of fifths), Stacks (`stacking`, the cycle of fifths among them
+with its `heights` and `window`; else `columns`, hidden under `"parity"`,
+and the gold stem: `separator.enabled`, `color`, its thickness shown in
+staff spaces and written as `thicknessPct`, and `shareThickness`, saying
+what each stem gets in the picked key) and Place (`placement.position`).
+The layer and symbol picked are editor state (`opts.view`, which the host
+keeps across re-mounts). Session 56 removed the Draw, Looks and Size rows
+and the overlap note. `placement.rule`, `placement.tonicOctave` and
+`separator.extentSemis` have no controls and keep their stored values. The
+key definitions follow, under "Keys for notehead rules". While
+`keys.enabled` is false the panel renders an explicit DISABLED state
+(controls shown but inert, with a note) rather than hiding. Same editor
+contract as Modules 12–17: property-based event wiring (Node-testable
+`render()`), pure `buildKeys` / `applyToConfig` / `stateFromConfig`
+builders, Module A validation pass-through plus editor-level duplicate-name
+checks, `onChange({ keys }, state)`. Dependencies: Module A, Module B,
+Modules 1, 3 and 22 (the canvas, the picked key's marks, the touch check),
+the notehead panel, the built-in shapes, the accidental glyphs.
 
 ---
 

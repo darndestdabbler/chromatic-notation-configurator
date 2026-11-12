@@ -18,6 +18,9 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBBuiltinShapes } from "../ui/builtin-shapes.js";
 import { CNBConfigIO } from "../ui/config-io.js";
+import { CNBMusic } from "../src/cnb-music.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
+import { CNBNotehead } from "../src/cnb-notehead.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -95,6 +98,27 @@ function findAll(el, token) {
 function subtreeText(el) {
   let out = String(el.textContent || "");
   for (const child of el.children || []) out += subtreeText(child);
+  return out;
+}
+
+/** All descendants whose attribute holds the value (as one of its tokens). */
+function findAttr(el, attr, value) {
+  const out = [];
+  for (const child of el.children || []) {
+    const v = child.getAttribute ? child.getAttribute(attr) : null;
+    if (v !== null && v !== undefined && String(v).split(/\s+/).includes(value)) out.push(child);
+    out.push(...findAttr(child, attr, value));
+  }
+  return out;
+}
+
+/** The canvas's drawn symbols: every element marked with data-mark. */
+function symbolsIn(el) {
+  const out = [];
+  for (const child of el.children || []) {
+    if (child.getAttribute && child.getAttribute("data-mark") !== null) out.push(child);
+    out.push(...symbolsIn(child));
+  }
   return out;
 }
 
@@ -384,12 +408,12 @@ export const tests = [
         const api = E.render(container, { config });
         let status = findAll(api.root, "cnb-kse-sig-status");
         eq(status.length, 1, "status shown");
-        eq(status[0].textContent, "The signature draws for the key and mode picked on the staff.", "with no key defined");
+        eq(status[0].textContent, "The signature draws for the key picked here, which is the staff's key too.", "with no key defined");
 
         findAll(api.root, "cnb-kse-def-add")[0].onclick();
         status = findAll(api.root, "cnb-kse-sig-status");
         eq(status.length, 1, "status still shown");
-        eq(status[0].textContent, "The signature draws for the key and mode picked on the staff.", "with a key defined");
+        eq(status[0].textContent, "The signature draws for the key picked here, which is the staff's key too.", "with a key defined");
 
         api.setState({ keySignature: { ...api.getState().keySignature, enabled: false } });
         eq(findAll(api.root, "cnb-kse-sig-status").length, 0, "no status while the signature is off");
@@ -552,35 +576,41 @@ export const tests = [
       });
   } },
 
-  { name: "render: Notes — the whole scale or the tonic and the half steps, and the tonic an octave up", fn: () => {
+  { name: "render: Notes — the whole scale, the tonic and the half steps, or the sharps or flats only; the tonic an octave up, not under the cycle of fifths", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const options = findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio");
-        deepEq(options.map(o => o.getAttribute("data-value")), ["all", "tonic-and-half-steps"], "two choices");
-        assert(options[0].className.includes("on"), "the whole scale by default");
-        eq(subtreeText(options[1]), "The tonic and the half steps", "in words");
-        options[1].children[0].onchange();
-        eq(last.keys.keySignature.notes, "tonic-and-half-steps", "notes written");
-        findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio")[0].children[0].onchange();
-        eq(last.keys.keySignature.notes, "all", "and back");
+        const options = () => findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio");
+        deepEq(options().map(o => o.getAttribute("data-value")), ["all", "tonic-and-half-steps", "altered"], "three choices");
+        assert(options()[0].className.includes("on"), "the whole scale by default");
+        deepEq(options().map(o => subtreeText(o)), ["The whole scale", "The tonic and the half steps", "The sharps or flats only"], "in words");
+        for (const value of ["tonic-and-half-steps", "altered", "all"]) {
+          options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          eq(last.keys.keySignature.notes, value, `${value} written`);
+        }
 
         const upper = findAll(api.root, "cnb-kse-upper-tonic-check")[0];
         eq(upper.checked, true, "upper tonic on by default");
         upper.checked = false;
         upper.onchange();
         eq(last.keys.keySignature.upperTonic, false, "upper tonic written");
+
+        findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio")
+          .find(o => o.getAttribute("data-value") === "fifths").children[0].onchange();
+        eq(findAll(api.root, "cnb-kse-upper-tonic").length, 0, "hidden under the cycle of fifths");
+        eq(last.keys.keySignature.upperTonic, false, "its value kept");
       });
   } },
 
-  { name: "render: Stacks — the four rules write stacking; the direction is hidden under odd-left-even-right", fn: () => {
+  { name: "render: Stacks — the four rules and the cycle of fifths write stacking; the direction is hidden under odd-left-even-right", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
         const values = () => findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio");
         deepEq(values().map(o => o.getAttribute("data-value")),
-          ["degrees", "parity", "parity-stacks", "parity-zigzag"], "four rules");
+          ["degrees", "parity", "parity-stacks", "parity-zigzag", "fifths"], "five rules");
         eq(subtreeText(values()[0]), "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right", "the default in words");
+        eq(subtreeText(values()[4]), "Cycle of fifths, one to a column", "the cycle of fifths in words");
         for (const value of ["parity-stacks", "parity-zigzag", "parity", "degrees"]) {
           values().find(o => o.getAttribute("data-value") === value).children[0].onchange();
           eq(last.keys.keySignature.stacking, value, `${value} written`);
@@ -591,6 +621,39 @@ export const tests = [
         deepEq(direction.map(o => o.getAttribute("data-value")), ["right", "left-in-sharp-keys"], "two directions");
         direction[1].children[0].onchange();
         eq(last.keys.keySignature.columns, "left-in-sharp-keys", "direction written");
+      });
+  } },
+
+  { name: "render: the cycle of fifths — its heights, in a window raised for sharps and flats or climbing; no direction or gold stem", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
+        eq(findAll(api.root, "cnb-kse-heights").length, 0, "no heights under stacked sevenths");
+        findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio")
+          .find(o => o.getAttribute("data-value") === "fifths").children[0].onchange();
+        eq(last.keys.keySignature.stacking, "fifths", "written");
+        for (const token of ["cnb-kse-columns", "cnb-kse-separator"]) eq(findAll(api.root, token).length, 0, `${token} hidden`);
+        const heights = () => findAll(findAll(api.root, "cnb-kse-heights-choice")[0], "cnb-kse-radio");
+        deepEq(heights().map(o => o.getAttribute("data-value")), ["window", "scale"], "two heights");
+        assert(heights()[0].className.includes("on"), "in a window by default");
+
+        const sharp = findAll(api.root, "cnb-kse-window-sharp")[0];
+        eq(sharp.value, "0", "raised by 0");
+        sharp.value = "3";
+        sharp.onchange();
+        deepEq(last.keys.keySignature.window, { sharp: 3, flat: 0 }, "the sharps' window raised");
+        const flat = findAll(api.root, "cnb-kse-window-flat")[0];
+        flat.value = "-2";
+        flat.onchange();
+        deepEq(last.keys.keySignature.window, { sharp: 3, flat: -2 }, "the flats' lowered");
+        flat.value = "abc";
+        flat.onchange();
+        deepEq(last.keys.keySignature.window, { sharp: 3, flat: -2 }, "not a number: not written");
+
+        heights()[1].children[0].onchange();
+        eq(last.keys.keySignature.heights, "scale", "climbing written");
+        eq(findAll(api.root, "cnb-kse-window").length, 0, "no window while climbing");
+        deepEq(last.keys.keySignature.window, { sharp: 3, flat: -2 }, "its values kept");
       });
   } },
 
@@ -608,110 +671,63 @@ export const tests = [
       });
   } },
 
-  { name: "render: Draw — the key's notes or sharps or flats, each a starting point (session 54); sharps or flats hide Notes, Stacks and Looks and keep Place", fn: () => {
+  { name: "startFrom: the noteheads are the defaults and the traditional signature its settings over them, Show the key signature kept", fn: () => {
+      const ks = { ...fancyKeys().keySignature, enabled: true };
+      deepEq(E.startFrom(ks, "noteheads"), { ...CNBConfig.createDefault().keys.keySignature, enabled: true }, "the defaults");
+      const traditional = E.startFrom(ks, "traditional");
+      deepEq([traditional.enabled, traditional.notes, traditional.stacking, traditional.heights, traditional.placement.position],
+        [true, "altered", "fifths", "window", "middle"], "the traditional starting point");
+      deepEq(traditional.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, line: {}, space: {} },
+        "Emmentaler's signs with no colour, the other looks cleared");
+      deepEq(traditional.alternate, {}, "every second stack cleared");
+      eq(E.startFrom({ ...ks, enabled: false }, "traditional").enabled, false, "off stays off");
+      eq(ks.notes, "tonic-and-half-steps", "the input unchanged");
+  } },
+
+  { name: "render: Start from — asks first, then replaces the signature's settings, keeping Show the key signature (design §13.8)", fn: () => {
       withDomStub((container) => {
         let last = null;
+        let answer = false;
+        const asked = [];
         const config = keysConfig();
         config.keys.keySignature.notes = "tonic-and-half-steps";
-        config.keys.keySignature.stacking = "parity-stacks";
-        config.keys.keySignature.looks.all = { hollow: true };
-        config.keys.keySignature.alternate = { color: "#ff0000" };
         config.keys.keySignature.placement.position = "top-set";
-        const api = E.render(container, { config, key: { tonic: 2, mode: "major" }, onChange: (slices) => { last = slices; } });
-        const options = () => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio");
-        const pick = value => options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
-        const shown = token => findAll(api.root, token).length > 0;
-        deepEq(options().map(o => o.getAttribute("data-value")), ["noteheads", "traditional"], "two choices");
-        deepEq(options().map(o => subtreeText(o)), ["The key's notes", "Sharps or flats"], "in a designer's words");
-        assert(options()[0].className.includes("on"), "the key's notes for a notehead signature");
-        for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks", "cnb-kse-place"]) assert(shown(token), `${token} shown`);
+        const api = E.render(container, { config, confirm: (q) => { asked.push(q); return answer; },
+          onChange: (slices) => { last = slices; } });
+        const start = (which) => findAll(api.root, "cnb-kse-start-button").find(b => b.getAttribute("data-start") === which);
+        deepEq(findAll(api.root, "cnb-kse-start-button").map(b => subtreeText(b)),
+          ["The noteheads", "Traditional sharps and flats"], "two starting points, in words");
 
-        pick("traditional");
+        start("traditional").onclick();
+        eq(asked.length, 1, "it asks");
+        assert(asked[0].includes("replaces"), "saying the settings are replaced");
+        eq(last, null, "cancelled: nothing written");
+
+        answer = true;
+        start("traditional").onclick();
         const ks = last.keys.keySignature;
+        deepEq([ks.enabled, ks.notes, ks.stacking, ks.placement.position], [true, "altered", "fifths", "middle"], "the traditional signature");
         assert(!("style" in ks), "no style written");
-        deepEq([ks.enabled, ks.notes, ks.stacking, ks.heights, ks.placement.position], [true, "altered", "fifths", "window", "middle"],
-          "the traditional starting point, Show the key signature kept");
-        deepEq(ks.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, line: {}, space: {} },
-          "Emmentaler's signs with no colour, the other looks cleared");
-        deepEq(ks.alternate, {}, "every second stack cleared");
         assert(CNBConfig.validate({ ...CNBConfig.clone(config), keys: last.keys }).valid, "the starting point validates");
-        assert(options()[1].className.includes("on"), "sharps or flats read from the model");
-        for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks"]) assert(!shown(token), `${token} hidden`);
-        assert(shown("cnb-kse-place"), "Place stays");
-        findAll(findAll(api.root, "cnb-kse-position")[0], "cnb-kse-radio")
-          .find(o => o.getAttribute("data-value") === "every-set").children[0].onchange();
-        eq(last.keys.keySignature.placement.position, "every-set", "Place still writes under sharps or flats");
+        for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-look-card", "cnb-kse-place"]) {
+          assert(findAll(api.root, token).length > 0, `${token} still shown`);
+        }
 
-        pick("noteheads");
+        start("noteheads").onclick();
         deepEq(last.keys.keySignature, { ...CNBConfig.createDefault().keys.keySignature, enabled: true },
-          "the key's notes: the defaults, Show the key signature kept");
-        for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks"]) assert(shown(token), `${token} back`);
-        assert(findAll(api.root, "cnb-kse-stacking")[0].children.find(o => o.className.includes("on"))
-          .getAttribute("data-value") === "degrees", "stacked sevenths");
-      });
-      // A loaded config whose notes are the sharps or flats only opens on Sharps or flats.
-      withDomStub((container) => {
-        const config = keysConfig();
-        config.keys.keySignature.notes = "altered";
-        const api = E.render(container, { config });
-        const on = findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio").find(o => o.className.includes("on"));
-        eq(on.getAttribute("data-value"), "traditional", "read from the model");
+          "the noteheads: the defaults, Show the key signature kept");
       });
   } },
 
-  { name: "render: Size — automatic with the rule's size, or set by hand in semitones, under sharps or flats only (session 52)", fn: () => {
+  { name: "render: the rows the editor replaced are gone — Draw, Looks, Size and the overlap note (session 56)", fn: () => {
       withDomStub((container) => {
-        let last = null;
         const config = keysConfig();
-        const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
-        const shown = token => findAll(api.root, token).length > 0;
-        const draw = value => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio")
-          .find(o => o.getAttribute("data-value") === value).children[0].onchange();
-        const options = () => findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio");
-        const pick = value => options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
-        const on = () => options().find(o => o.className.includes("on")).getAttribute("data-value");
-        const height = () => findAll(api.root, "cnb-kse-size-height")[0];
-        assert(!shown("cnb-kse-size"), "hidden under the key's notes");
-
-        draw("traditional");
-        assert(shown("cnb-kse-size"), "shown under sharps or flats");
-        deepEq(options().map(o => subtreeText(o)), ["Automatic (2.72)", "Set by hand"], "the default staff's automatic size");
-        eq(on(), "auto", "automatic by default");
-        eq(height().value, "2.72", "the field shows the automatic size");
-
-        height().value = "5";
-        height().onchange();
-        eq(last.keys.keySignature.signs.heightSemis, 5, "a typed size written");
-        eq(on(), "set", "…as a size set by hand");
-        eq(height().value, "5", "…and kept in the field");
-        for (const bad of ["0", "-2", "abc", ""]) {
-          height().value = bad;
-          height().onchange();
-          eq(last.keys.keySignature.signs.heightSemis, 5, `${JSON.stringify(bad)} not written`);
+        config.keys.keySignature.stacking = "parity-stacks";   // marks that touch in C major
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" } });
+        for (const token of ["cnb-kse-draw", "cnb-kse-style", "cnb-kse-looks-row", "cnb-kse-look", "cnb-kse-size",
+          "cnb-kse-size-choice", "cnb-kse-overlap-note"]) {
+          eq(findAll(api.root, token).length, 0, `${token} gone`);
         }
-        eq(subtreeText(options()[0]), "Automatic (2.72)", "the automatic label stays the rule's");
-
-        draw("noteheads");
-        assert(!shown("cnb-kse-size"), "hidden again under the key's notes");
-        eq(last.keys.keySignature.signs.heightSemis, null, "the defaults: automatic");
-        draw("traditional");
-        eq(height().value, "2.72", "and back, automatic");
-        height().value = "5";
-        height().onchange();
-
-        pick("auto");
-        eq(last.keys.keySignature.signs.heightSemis, null, "back to automatic: null");
-        pick("set");
-        eq(last.keys.keySignature.signs.heightSemis, 2.72, "set by hand starts from the automatic size");
-      });
-      // Kite 4-369's noteheads are held to 3 semitones.
-      withDomStub((container) => {
-        const kite = CNBConfigIO.loadFromText(readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
-        kite.keys.enabled = true;
-        kite.keys.keySignature.enabled = true;
-        kite.keys.keySignature.notes = "altered";
-        const api = E.render(container, { config: kite });
-        eq(subtreeText(findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio")[0]), "Automatic (3)", "Kite 4-369");
       });
   } },
 
@@ -808,35 +824,6 @@ export const tests = [
       });
   } },
 
-  { name: "render: the overlap note shows when two marks of one stack run together in the picked key, and only then", fn: () => {
-      const key = { tonic: 0, mode: "major" };
-      withDomStub((container) => {
-        // Stacked sevenths: a stack's notes are a third apart, clear of the 2.7-semitone notehead.
-        const api = E.render(container, { config: keysConfig(), key });
-        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "no note under stacked sevenths");
-      });
-      withDomStub((container) => {
-        // A new stack at each change of parity: whole steps, 2 semitones, in one stack.
-        const config = keysConfig();
-        config.keys.keySignature.stacking = "parity-stacks";
-        const api = E.render(container, { config, key });
-        const note = findAll(api.root, "cnb-kse-overlap-note");
-        eq(note.length, 1, "the note shows");
-        assert(subtreeText(note[0]).includes("run together") && subtreeText(note[0]).includes("Looks"),
-          "it says the marks run together and points to the looks' size");
-        // A smaller look clears it.
-        api.setState({ keySignature: { ...api.getState().keySignature, looks: { all: { heightSemis: 1.5, widthSemis: 1.5 }, flat: {}, sharp: {} } } });
-        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "smaller marks: no note");
-      });
-      withDomStub((container) => {
-        const config = keysConfig();
-        config.keys.keySignature.stacking = "parity-stacks";
-        const api = E.render(container, { config });
-        eq(findAll(api.root, "cnb-kse-overlap-note").length, 0, "no key picked: no note");
-      });
-  } },
-
-  // ─── render(): the looks (design §4.1, §7; session 50) ─────────────────
 
   { name: "lookSummary: 'as …' beneath for an empty look, else what it sets, in words", fn: () => {
       eq(E.lookSummary({}, "all"), "as the noteheads", "all marks");
@@ -857,52 +844,109 @@ export const tests = [
       eq(E.lookSummary({ hollow: true, added: [{ shape: "tail" }, { shape: "kite-up" }] }, "flat", tails),
         `hollow, with Tail, down and ${CNBBuiltinShapes.get("kite-up").displayName}`, "two added symbols");
       eq(E.lookSummary({ added: [] }, "sharp"), "no added symbols", "the added symbols beneath removed");
+      eq(E.lookSummary({ offset: { x: 0.5, y: -1 } }, "flat"), "moved 0.5, -1 semitones", "an offset (session 56)");
   } },
 
-  { name: "render: Looks — a menu for all marks, flats, sharps and every second stack, each saying its look", fn: () => {
+  { name: "lookWith / addedWith: a field of a layer's base or added symbol set and cleared, shape and sign one slot, the input unchanged", fn: () => {
+      const ks = CNBConfig.createDefault().keys.keySignature;
+      const a = E.lookWith(ks, "flat", "base", "shape", "kite-up");
+      deepEq(a.looks.flat, { shape: "kite-up" }, "a shape");
+      deepEq(ks.looks.flat, {}, "the input unchanged");
+      deepEq(E.lookWith(a, "flat", "base", "sign", "flat").looks.flat, { sign: "flat" }, "a sign replaces the shape");
+      deepEq(E.lookWith(E.lookWith(a, "flat", "base", "sign", "flat"), "flat", "base", "shape", "dot").looks.flat,
+        { shape: "dot" }, "and a shape the sign");
+      deepEq(E.lookWith(E.lookWith(a, "flat", "base", "hollow", true), "flat", "base", "shape", undefined).looks.flat,
+        { hollow: true }, "clearing the shape clears the slot, the rest kept");
+      deepEq(E.lookWith(ks, "alternate", "base", "color", null).alternate, { color: null }, "every second stack's look");
+      deepEq(E.lookWith({ ...ks, looks: undefined }, "line", "base", "hollow", false).looks, { line: { hollow: false } },
+        "a missing look is made");
+
+      const tailed = E.addedWith(ks, "sharp", [{ shape: "tail" }]);
+      deepEq(tailed.looks.sharp, { added: [{ shape: "tail" }] }, "added symbols written whole");
+      deepEq(E.lookWith(tailed, "sharp", 0, "offset", { x: 0.5, y: 0 }).looks.sharp.added, [{ shape: "tail", offset: { x: 0.5, y: 0 } }],
+        "an added symbol's field");
+      deepEq(E.lookWith(tailed, "sharp", 0, "shape", "dot").looks.sharp.added, [{ shape: "dot" }], "an added symbol's shape");
+      deepEq(E.addedWith(tailed, "sharp", []).looks.sharp, { added: [] }, "[] removes those beneath");
+      deepEq(E.addedWith(tailed, "sharp", undefined).looks.sharp, {}, "undefined clears it: as beneath");
+  } },
+
+  { name: "render: Edit — seven layers; the card names the picked one and says it edits the category in every key", fn: () => {
       withDomStub((container) => {
-        const config = keysConfig();
-        config.keys.keySignature.looks.flat = { color: null };
-        const api = E.render(container, { config });
-        const menus = findAll(api.root, "cnb-kse-look");
-        deepEq(menus.map(m => m.getAttribute("data-look")), ["all", "flat", "sharp", "alternate"], "four looks");
-        deepEq(menus.map(m => subtreeText(findAll(m, "cnb-kse-look-label")[0])),
-          ["All marks", "Flats", "Sharps", "Every second stack"], "in words");
-        deepEq(menus.map(m => subtreeText(findAll(m, "cnb-kse-look-words")[0])),
-          ["as the noteheads", "no colour", "as all marks", "as the others"], "each says its look");
-        eq(menus[0].tag, "details", "a menu that opens");
-        eq(findAll(menus[3], "cnb-kse-look-height").length, 0, "every second stack has no size");
-        eq(findAll(menus[0], "cnb-kse-look-height").length, 1, "the others have one");
+        const view = {};
+        const api = E.render(container, { config: keysConfig(), view });
+        const layers = () => findAll(api.root, "cnb-kse-layer");
+        deepEq(layers().map(b => b.getAttribute("data-layer")), ["all", "natural", "flat", "sharp", "line", "space", "alternate"],
+          "seven layers");
+        deepEq(layers().map(b => subtreeText(b)),
+          ["All marks", "Naturals", "Flats", "Sharps", "On a line or ledger", "In a space", "Every second stack"], "in words");
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        eq(card().getAttribute("data-look"), "all", "all marks at first");
+        eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all marks in every key", "its scope");
+
+        layers().find(b => b.getAttribute("data-layer") === "flat").onclick();
+        eq(card().getAttribute("data-look"), "flat", "flats picked");
+        assert(layers().find(b => b.getAttribute("data-layer") === "flat").className.includes("on"), "shown on");
+        eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all flats in every key", "every flat in every key");
+        deepEq([view.layer, view.pinned], ["flat", false], "a spelling's layer follows clicks on marks");
+        layers().find(b => b.getAttribute("data-layer") === "space").onclick();
+        deepEq([view.layer, view.pinned], ["space", true], "any other stays picked");
+        eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all marks in a space in every key", "its scope");
+      });
+      // The host keeps the view across a re-mount.
+      withDomStub((container) => {
+        const view = { layer: "sharp", symbol: "base", pinned: false };
+        const api = E.render(container, { config: keysConfig(), view });
+        eq(findAll(api.root, "cnb-kse-look-card")[0].getAttribute("data-look"), "sharp", "re-mounted on sharps");
       });
   } },
 
-  { name: "render: a look's shape, fill and colour are set and cleared through its 'as …' choice", fn: () => {
+  { name: "render: the look card's symbol — as beneath, the notation's and built-in shapes, and Emmentaler's sharp and flat, one slot", fn: () => {
       withDomStub((container) => {
         let last = null;
-        const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const menu = (kind) => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === kind);
-        const pick = (kind, token, attr, value) => findAll(menu(kind), token).find(b => b.getAttribute(attr) === value);
+        const api = E.render(container, { config: keysConfig(), view: { layer: "sharp" }, onChange: (slices) => { last = slices; } });
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const shape = (name) => findAll(card(), "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === name);
+        const sign = (name) => findAll(card(), "cnb-kse-look-sign").find(b => b.getAttribute("data-sign") === name);
+        deepEq(findAll(card(), "cnb-kse-look-sign").map(b => b.getAttribute("data-sign")), ["sharp", "flat"], "two signs");
+        eq(sign("flat").children[0].tag, "svg", "each with its thumbnail");
 
-        pick("sharp", "cnb-kse-look-shape", "data-shape", "crotchet-minim").onclick();
+        shape("crotchet-minim").onclick();
         eq(last.keys.keySignature.looks.sharp.shape, "crotchet-minim", "shape set");
         assert(!("shapes" in last), "a shape the notation has adds none");
-        assert(pick("sharp", "cnb-kse-look-shape", "data-shape", "crotchet-minim").className.includes("on"), "and shown on");
-        pick("sharp", "cnb-kse-look-shape", "data-shape", "").onclick();
-        assert(!("shape" in last.keys.keySignature.looks.sharp), "'as all marks' clears it");
+        assert(shape("crotchet-minim").className.includes("on"), "and shown on");
+        sign("sharp").onclick();
+        deepEq(last.keys.keySignature.looks.sharp, { sign: "sharp" }, "the sign replaces the shape");
+        assert(sign("sharp").className.includes("on"), "shown on");
+        eq(findAll(card(), "cnb-kse-look-fill").length, 0, "a sign has no fill");
+        assert(CNBConfig.validate({ ...keysConfig(), keys: last.keys }).valid, "valid");
+        shape("").onclick();
+        deepEq(last.keys.keySignature.looks.sharp, {}, "'as all marks' clears the slot");
+      });
+  } },
 
-        pick("flat", "cnb-kse-look-fill", "data-fill", "hollow").onclick();
+  { name: "render: a look's fill and colour are set and cleared through its 'as …' choice", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const view = { layer: "flat" };
+        const api = E.render(container, { config: keysConfig(), view, onChange: (slices) => { last = slices; } });
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const pick = (token, attr, value) => findAll(card(), token).find(b => b.getAttribute(attr) === value);
+
+        pick("cnb-kse-look-fill", "data-fill", "hollow").onclick();
         eq(last.keys.keySignature.looks.flat.hollow, true, "hollow");
-        pick("flat", "cnb-kse-look-fill", "data-fill", "solid").onclick();
+        pick("cnb-kse-look-fill", "data-fill", "solid").onclick();
         eq(last.keys.keySignature.looks.flat.hollow, false, "solid");
-        pick("flat", "cnb-kse-look-fill", "data-fill", "").onclick();
+        pick("cnb-kse-look-fill", "data-fill", "").onclick();
         assert(!("hollow" in last.keys.keySignature.looks.flat), "cleared");
 
-        pick("alternate", "cnb-kse-look-colour", "data-color", "none").onclick();
+        findAll(api.root, "cnb-kse-layer").find(b => b.getAttribute("data-layer") === "alternate").onclick();
+        pick("cnb-kse-look-colour", "data-color", "none").onclick();
         eq(last.keys.keySignature.alternate.color, null, "none: no colour");
-        findAll(menu("alternate"), "cnb-kse-look-colour-input")[0].onchange({ target: { value: "#CC79A7" } });
+        findAll(card(), "cnb-kse-look-colour-input")[0].onchange({ target: { value: "#CC79A7" } });
         eq(last.keys.keySignature.alternate.color, "#cc79a7", "a colour, when the picker closes");
-        pick("alternate", "cnb-kse-look-colour", "data-color", "").onclick();
+        pick("cnb-kse-look-colour", "data-color", "").onclick();
         assert(!("color" in last.keys.keySignature.alternate), "'as the others' clears it");
+        eq(findAll(card(), "cnb-kse-look-height").length, 0, "every second stack has no size");
       });
   } },
 
@@ -910,25 +954,25 @@ export const tests = [
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const menu = () => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
         const shape = CNBConfig.createDefault().shapes["crotchet-minim"];
         const ratio = shape.naturalWidth / shape.naturalHeight;
-        const height = findAll(menu(), "cnb-kse-look-height")[0];
+        const height = findAll(card(), "cnb-kse-look-height")[0];
         height.value = "1.5";
         height.onchange();
         eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height");
         eq(last.keys.keySignature.looks.all.widthSemis, Math.round(1.5 * ratio * 1e4) / 1e4, "width at the notehead's ratio");
 
-        const lock = findAll(menu(), "cnb-kse-look-lock-check")[0];
+        const lock = findAll(card(), "cnb-kse-look-lock-check")[0];
         lock.checked = false;
         lock.onchange();
-        const width = findAll(menu(), "cnb-kse-look-width")[0];
+        const width = findAll(card(), "cnb-kse-look-width")[0];
         width.value = "1";
         width.onchange();
         eq(last.keys.keySignature.looks.all.widthSemis, 1, "width alone with the ratio unlocked");
         eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height kept");
 
-        findAll(menu(), "cnb-kse-look-size-as")[0].onclick();
+        findAll(card(), "cnb-kse-look-size-as")[0].onclick();
         assert(!("heightSemis" in last.keys.keySignature.looks.all) && !("widthSemis" in last.keys.keySignature.looks.all),
           "'as the noteheads' clears both");
       });
@@ -938,9 +982,9 @@ export const tests = [
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const menu = () => findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
-        const shapeButton = (name) => findAll(menu(), "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === name);
-        const height = findAll(menu(), "cnb-kse-look-height")[0];
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const shapeButton = (name) => findAll(card(), "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === name);
+        const height = findAll(card(), "cnb-kse-look-height")[0];
         height.value = "1.5";
         height.onchange();
         shapeButton("kite-up").onclick();
@@ -949,10 +993,10 @@ export const tests = [
         eq(last.keys.keySignature.looks.all.widthSemis, Math.round(1.5 * kite.naturalWidth / kite.naturalHeight * 1e4) / 1e4,
           "width at the kite's proportions");
 
-        const lock = findAll(menu(), "cnb-kse-look-lock-check")[0];
+        const lock = findAll(card(), "cnb-kse-look-lock-check")[0];
         lock.checked = false;
         lock.onchange();
-        const width = findAll(menu(), "cnb-kse-look-width")[0];
+        const width = findAll(card(), "cnb-kse-look-width")[0];
         width.value = "1";
         width.onchange();
         shapeButton("crotchet-minim").onclick();
@@ -975,7 +1019,7 @@ export const tests = [
         height.onchange();
         const dot = { displayName: "Dot", svgPath: "M 80 0 L 0 80 L -80 0 L 0 -80 Z", naturalHeight: 160, naturalWidth: 240,
           semitoneHeight: 1.6, anchors: null };
-        gives[0]("dot", dot);   // the first look's, all marks
+        gives[gives.length - 1]("dot", dot);
         eq(last.keys.keySignature.looks.all.shape, "dot", "the imported shape given to the look");
         eq(last.keys.keySignature.looks.all.heightSemis, 1.5, "height kept");
         eq(last.keys.keySignature.looks.all.widthSemis, 2.25, "width at the imported shape's proportions (1.5 × 240 / 160)");
@@ -986,8 +1030,8 @@ export const tests = [
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const menu = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "all");
-        const kite = findAll(menu, "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up");
+        const card = findAll(api.root, "cnb-kse-look-card")[0];
+        const kite = findAll(card, "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up");
         assert(kite, "the built-in shapes are offered");
         kite.onclick();
         eq(last.keys.keySignature.looks.all.shape, "kite-up", "given to the look");
@@ -996,31 +1040,437 @@ export const tests = [
       });
   } },
 
-  { name: "render: a look's Import from SVG is the host's, and gives the imported shape to that look", fn: () => {
+  { name: "render: the look card's Import from SVG is the host's, and gives the imported shape to the picked layer", fn: () => {
       withDomStub((container) => {
         let last = null;
-        const gives = {};
+        const gives = [];
         const api = E.render(container, {
           config: keysConfig(),
+          view: { layer: "sharp" },
           onChange: (slices) => { last = slices; },
-          importControl: (slot, give) => { slot.setAttribute("data-import", "yes"); gives[Object.keys(gives).length] = give; },
+          importControl: (slot, give) => { slot.setAttribute("data-import", "yes"); gives.push(give); },
         });
-        eq(findAll(api.root, "cnb-kse-look-import").length, 4, "one per look");
-        gives[2]("dot");   // the third look's, Sharps
+        eq(findAll(api.root, "cnb-kse-look-import").length, 1, "one, in the look card");
+        gives[gives.length - 1]("dot");
         eq(last.keys.keySignature.looks.sharp.shape, "dot", "the imported shape given to Sharps");
       });
   } },
 
-  { name: "render: an open look menu stays open across a change", fn: () => {
+  { name: "render: a sign's size is the signs' — automatic with the rule's size, or a number in semitones (session 52)", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const config = keysConfig();
+        config.keys.keySignature.looks.flat = { sign: "flat" };
+        const api = E.render(container, { config, view: { layer: "flat" }, onChange: (slices) => { last = slices; } });
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const auto = () => findAll(card(), "cnb-kse-sign-size-auto")[0];
+        const field = () => findAll(card(), "cnb-kse-sign-size")[0];
+        eq(findAll(card(), "cnb-kse-look-height").length, 0, "no height and width for a sign");
+        eq(subtreeText(auto()), "Automatic (2.72)", "the default staff's automatic size");
+        assert(auto().className.includes("on"), "automatic by default");
+        eq(field().value, "2.72", "the field shows the automatic size");
+
+        field().value = "5";
+        field().onchange();
+        eq(last.keys.keySignature.signs.heightSemis, 5, "a typed size written to the signs' size");
+        assert(!auto().className.includes("on"), "no longer automatic");
+        for (const bad of ["0", "-2", "abc", ""]) {
+          field().value = bad;
+          field().onchange();
+          eq(last.keys.keySignature.signs.heightSemis, 5, `${JSON.stringify(bad)} not written`);
+        }
+        auto().onclick();
+        eq(last.keys.keySignature.signs.heightSemis, null, "back to automatic: null");
+      });
+      // Kite 4-369's noteheads are held to 3 semitones.
+      withDomStub((container) => {
+        const kite = CNBConfigIO.loadFromText(readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
+        kite.keys.enabled = true;
+        kite.keys.keySignature.enabled = true;
+        kite.keys.keySignature.looks.sharp = { sign: "sharp" };
+        const api = E.render(container, { config: kite, view: { layer: "sharp" } });
+        eq(subtreeText(findAll(api.root, "cnb-kse-sign-size-auto")[0]), "Automatic (3)", "Kite 4-369");
+      });
+  } },
+
+  { name: "render: a look's offset — x and y in semitones, written whole, cleared through 'as …'", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, { config: keysConfig(), view: { layer: "flat" }, onChange: (slices) => { last = slices; } });
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const x = findAll(card(), "cnb-kse-look-offset-x")[0];
+        eq(x.value, "0", "none: 0");
+        x.value = "0.5";
+        x.onchange();
+        deepEq(last.keys.keySignature.looks.flat.offset, { x: 0.5, y: 0 }, "x written, y 0");
+        const y = findAll(card(), "cnb-kse-look-offset-y")[0];
+        y.value = "-1.2";
+        y.onchange();
+        deepEq(last.keys.keySignature.looks.flat.offset, { x: 0.5, y: -1.2 }, "y written, x kept");
+        findAll(card(), "cnb-kse-look-offset-as")[0].onclick();
+        assert(!("offset" in last.keys.keySignature.looks.flat), "'as all marks' clears it");
+      });
+  } },
+
+  { name: "render: added symbols — up to two, each selected as Added 1 or 2 with its own shape, size and offset, removable, and cleared together", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const config = keysConfig();
+        let shapes = config.shapes;
+        const api = E.render(container, { config, view: { layer: "sharp" },
+          onChange: (slices) => { last = slices; if (slices.shapes) shapes = slices.shapes; } });
+        const card = () => findAll(api.root, "cnb-kse-look-card")[0];
+        const add = () => findAll(card(), "cnb-kse-look-add")[0];
+        const select = (s) => findAll(card(), "cnb-kse-look-select").find(b => b.getAttribute("data-symbol") === String(s));
+        eq(findAll(card(), "cnb-kse-look-added-as").length, 0, "none set: as all marks");
+
+        add().onclick();
+        deepEq(last.keys.keySignature.looks.sharp.added, [{ shape: "crotchet-minim" }], "one added, the notehead's shape");
+        assert(select(0).className.includes("on"), "and selected as Added 1");
+        eq(subtreeText(select(0)), "Added 1", "in words");
+        eq(findAll(card(), "cnb-kse-look-sign").length, 0, "an added symbol is a shape, never a sign");
+        eq(findAll(card(), "cnb-kse-look-fill").length + findAll(card(), "cnb-kse-look-colour").length, 0,
+          "solid, in the mark's colour");
+        findAll(card(), "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up").onclick();
+        eq(last.keys.keySignature.looks.sharp.added[0].shape, "kite-up", "its shape");
+        const height = findAll(card(), "cnb-kse-look-height")[0];
+        height.value = "1";
+        height.onchange();
+        eq(last.keys.keySignature.looks.sharp.added[0].heightSemis, 1, "its size");
+        const x = findAll(card(), "cnb-kse-look-offset-x")[0];
+        x.value = "0.8";
+        x.onchange();
+        deepEq(last.keys.keySignature.looks.sharp.added[0].offset, { x: 0.8, y: 0 }, "its offset");
+        assert(!("offset" in last.keys.keySignature.looks.sharp), "not the base's");
+        assert(CNBConfig.validate({ ...CNBConfig.clone(config), shapes, keys: last.keys }).valid,
+          "valid");
+
+        add().onclick();
+        eq(last.keys.keySignature.looks.sharp.added.length, 2, "a second");
+        assert(select(1).className.includes("on"), "selected as Added 2");
+        eq(findAll(card(), "cnb-kse-look-add").length, 0, "no third");
+
+        findAll(card(), "cnb-kse-look-remove").find(b => b.getAttribute("data-symbol") === "0").onclick();
+        eq(last.keys.keySignature.looks.sharp.added.length, 1, "the first removed");
+        eq(last.keys.keySignature.looks.sharp.added[0].shape, "crotchet-minim", "the second kept");
+        assert(select("base").className.includes("on"), "the base selected again");
+        findAll(card(), "cnb-kse-look-remove")[0].onclick();
+        deepEq(last.keys.keySignature.looks.sharp.added, [], "none: those beneath removed too");
+        findAll(card(), "cnb-kse-look-added-as")[0].onclick();
+        assert(!("added" in last.keys.keySignature.looks.sharp), "'Added symbols as all marks' clears the field");
+      });
+  } },
+
+  // ─── render(): the canvas (design §13.8, session 56) ────────────────────
+
+  { name: "snap / layerFor / dragOffset / dragSize: the canvas's pure rules", fn: () => {
+      eq(E.snap(0.26), 0.3, "to tenths");
+      eq(E.snap(-0.04), 0, "and no negative zero");
+      eq(E.snap(1.25), 1.3, "half up");
+      eq(E.CANVAS_PX_PER_SEMI, 24, "24 px a semitone");
+      const members = { natural: new Set([0, 1]), flat: new Set([2]), sharp: new Set(), space: new Set([1, 2]) };
+      eq(E.layerFor(members, 2, { layer: "all", pinned: false }), "flat", "a flat's spelling");
+      eq(E.layerFor(members, 0, { layer: "flat", pinned: false }), "natural", "a natural's, from flats");
+      eq(E.layerFor(members, 2, { layer: "space", pinned: true }), "space", "a picked layer stays picked");
+      deepEq(E.dragOffset({ x: 0, y: 0 }, 37, -14, 24), { x: 1.5, y: 0.6 }, "37 px right, 14 up, snapped, y up");
+      deepEq(E.dragOffset({ x: 0.37, y: 0 }, 0, 0, 24), { x: 0.4, y: 0 }, "a drag's result snaps");
+      deepEq(E.dragSize({ heightSemis: 2, widthSemis: 3 }, 24, 24), { heightSemis: 3, widthSemis: 4.5 }, "taller by 24 px, the proportions kept");
+      deepEq(E.dragSize({ heightSemis: 2, widthSemis: 3 }, -240, 24), { heightSemis: 0.1, widthSemis: 0.15 }, "at least a tenth");
+  } },
+
+  { name: "render: the canvas draws the picked key's signature magnified, each symbol marked; a note without a key or with the signature off", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" } });
+        const canvas = findAll(api.root, "cnb-kse-canvas")[0];
+        const svg = canvas.children[0];
+        eq(svg.tag, "svg", "a drawing");
+        eq(svg.getAttribute("class"), "cnb-kse-canvas-svg", "the canvas's");
+        const marks = symbolsIn(svg);
+        eq(new Set(marks.map(m => m.getAttribute("data-mark"))).size, 8, "D major's eight marks");
+        assert(findAttr(svg, "class", "cnb-staff").length === 1, "the staff's lines");
+        eq(findAttr(svg, "class", "cnb-kse-instance").length, 8, "all marks outlined: the layer picked");
+        eq(findAttr(svg, "data-handle", "1").length, 1, "one handle, on the focused mark");
+      });
       withDomStub((container) => {
         const api = E.render(container, { config: keysConfig() });
-        const menu = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "flat");
-        eq(menu.open, false, "closed at first");
-        menu.open = true;
-        menu.ontoggle();
-        findAll(menu, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "hollow").onclick();
-        const after = findAll(api.root, "cnb-kse-look").find(m => m.getAttribute("data-look") === "flat");
-        assert(after !== menu && after.open === true, "redrawn open");
+        assert(subtreeText(findAll(api.root, "cnb-kse-canvas")[0]).includes("Pick a key on the staff"), "no key: a note");
+      });
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.enabled = false;
+        const api = E.render(container, { config, key: { tonic: 2, mode: "major" } });
+        assert(subtreeText(findAll(api.root, "cnb-kse-canvas")[0]).includes("Show the key signature"), "off: a note");
+      });
+  } },
+
+  { name: "render: a click on a mark selects its spelling's layer, unless another is picked; a click alone writes nothing", fn: () => {
+      withDomStub((container) => {
+        let emitted = 0;
+        const view = {};
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" }, view,
+          onChange: () => { emitted++; } });
+        const click = (mark) => {
+          const canvas = findAll(api.root, "cnb-kse-canvas")[0];
+          const target = symbolsIn(canvas).find(e => e.getAttribute("data-mark") === String(mark));
+          canvas.onpointerdown({ target, clientX: 100, clientY: 100, pointerId: 1 });
+          canvas.onpointerup({ clientX: 100, clientY: 100 });
+        };
+        click(2);   // F♯
+        eq(view.layer, "sharp", "F♯: sharps");
+        eq(findAll(api.root, "cnb-kse-look-card")[0].getAttribute("data-look"), "sharp", "the card follows");
+        click(0);   // D
+        eq(view.layer, "natural", "D: naturals");
+        eq(emitted, 0, "a click writes nothing");
+        findAll(api.root, "cnb-kse-layer").find(b => b.getAttribute("data-layer") === "space").onclick();
+        click(2);
+        eq(view.layer, "space", "a picked layer stays picked");
+      });
+  } },
+
+  { name: "render: dragging a mark sets its layer's offset, snapped, and reports it once, when released", fn: () => {
+      withDomStub((container) => {
+        const changes = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" },
+          onChange: (slices) => { changes.push(slices); } });
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        const target = symbolsIn(canvas()).find(e => e.getAttribute("data-mark") === "2");
+        canvas().onpointerdown({ target, clientX: 100, clientY: 100, pointerId: 1 });
+        canvas().onpointermove({ clientX: 110, clientY: 95 });
+        canvas().onpointermove({ clientX: 137, clientY: 86 });
+        eq(changes.length, 0, "nothing reported while it moves");
+        assert(subtreeText(canvas()).includes("offset x 1.5 y 0.6"), "the values beside the handle");
+        canvas().onpointerup({ clientX: 137, clientY: 86 });
+        eq(changes.length, 1, "one change: one step of undo");
+        deepEq(changes[0].keys.keySignature.looks.sharp.offset, { x: 1.5, y: 0.6 }, "every sharp's offset");
+        eq(findAll(api.root, "cnb-kse-look-offset-x")[0].value, "1.5", "the field shows it");
+      });
+  } },
+
+  { name: "render: the corner handle sizes the selected symbol, or the signs' one size for a sign", fn: () => {
+      withDomStub((container) => {
+        const changes = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" },
+          view: { layer: "sharp" }, onChange: (slices) => { changes.push(slices); } });
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        const handle = findAttr(canvas(), "data-handle", "1")[0];
+        canvas().onpointerdown({ target: handle, clientX: 0, clientY: 0, pointerId: 1 });
+        canvas().onpointermove({ clientX: 0, clientY: 24 });
+        canvas().onpointerup({});
+        eq(changes.length, 1, "once");
+        const shape = CNBConfig.createDefault().shapes["crotchet-minim"];
+        const look = changes[0].keys.keySignature.looks.sharp;
+        eq(look.heightSemis, 3.7, "2.724 and a semitone, snapped");
+        eq(look.widthSemis, Math.round(3.7 * shape.naturalWidth / shape.naturalHeight * 1e4) / 1e4, "the width in proportion");
+      });
+      withDomStub((container) => {
+        const changes = [];
+        const config = keysConfig();
+        config.keys.keySignature.looks.sharp = { sign: "sharp" };
+        const api = E.render(container, { config, key: { tonic: 2, mode: "major" },
+          view: { layer: "sharp" }, onChange: (slices) => { changes.push(slices); } });
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        canvas().onpointerdown({ target: findAttr(canvas(), "data-handle", "1")[0], clientX: 0, clientY: 0, pointerId: 1 });
+        canvas().onpointermove({ clientX: 0, clientY: 24 });
+        canvas().onpointerup({});
+        eq(changes[0].keys.keySignature.signs.heightSemis, 3.7, "the signs' size, from the automatic 2.724");
+        deepEq(changes[0].keys.keySignature.looks.sharp, { sign: "sharp" }, "the sharps' look unchanged");
+      });
+  } },
+
+  { name: "render: a sign's selection box and handle are where the renderer draws the sign — finite, enclosing each sharp's outline (traditional D major)", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature = E.startFrom({ enabled: true }, "traditional");
+        const api = E.render(container, { config, key: { tonic: 2, mode: "major" }, view: { layer: "sharp" } });
+        const canvas = findAll(api.root, "cnb-kse-canvas")[0];
+        const svg = canvas.children[0];
+        assert(Number.isFinite(Number(svg.getAttribute("width"))) && Number(svg.getAttribute("width")) > 0 &&
+          Number.isFinite(Number(svg.getAttribute("height"))) && Number(svg.getAttribute("height")) > 0, "a finite canvas");
+        const signs = findAttr(svg, "class", "cnb-key-signature-sign");
+        eq(signs.length, 2, "D major's two sharps");
+        // Each drawn sign's outline, through its own transform, in canvas px.
+        const outlines = signs.map(p => {
+          const t = /translate\(([-\d.eE+]+) ([-\d.eE+]+)\) scale\(([-\d.eE+]+)\)/.exec(p.getAttribute("transform"));
+          const [tx, ty, k] = [Number(t[1]), Number(t[2]), Number(t[3])];
+          const b = CNBNotehead.box({ svgPath: p.getAttribute("d") });
+          return { x0: tx + b.x[0] * k, x1: tx + b.x[1] * k, y0: ty + b.y[0] * k, y1: ty + b.y[1] * k };
+        });
+        const rects = findAttr(svg, "class", "cnb-kse-instance");
+        eq(rects.length, 2, "both sharps outlined");
+        const near = (a, b) => Math.abs(a - b) < 1e-6;
+        for (const r of rects) {
+          const box = { x0: Number(r.getAttribute("x")), y0: Number(r.getAttribute("y")) };
+          box.x1 = box.x0 + Number(r.getAttribute("width"));
+          box.y1 = box.y0 + Number(r.getAttribute("height"));
+          assert(Object.values(box).every(Number.isFinite), "finite");
+          assert(outlines.some(o => near(o.x0, box.x0) && near(o.x1, box.x1) && near(o.y0, box.y0) && near(o.y1, box.y1)),
+            `the box ${JSON.stringify(box)} is a drawn sharp's outline ${JSON.stringify(outlines)}`);
+        }
+        const focus = rects.find(r => r.getAttribute("class").includes("focus"));
+        const handle = findAttr(svg, "data-handle", "1")[0];
+        assert(near(Number(handle.getAttribute("x")) + 4, Number(focus.getAttribute("x")) + Number(focus.getAttribute("width"))) &&
+          near(Number(handle.getAttribute("y")) + 4, Number(focus.getAttribute("y")) + Number(focus.getAttribute("height"))),
+          "the handle on the focused sharp's corner");
+      });
+  } },
+
+  { name: "render: a click on an added symbol selects it, and its drag sets its own offset", fn: () => {
+      withDomStub((container) => {
+        const changes = [];
+        const config = keysConfig();
+        config.keys.keySignature.looks.sharp = { added: [{ shape: "crotchet-minim", heightSemis: 1, widthSemis: 1, offset: { x: 1, y: 0 } }] };
+        const view = {};
+        const api = E.render(container, { config, key: { tonic: 2, mode: "major" }, view,
+          onChange: (slices) => { changes.push(slices); } });
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        const tail = symbolsIn(canvas()).find(e => e.getAttribute("data-mark") === "2" && e.getAttribute("data-symbol") === "1");
+        assert(tail, "the added symbol is drawn and marked");
+        canvas().onpointerdown({ target: tail, clientX: 0, clientY: 0, pointerId: 1 });
+        canvas().onpointermove({ clientX: 12, clientY: 0 });
+        canvas().onpointerup({});
+        deepEq([view.layer, view.symbol], ["sharp", 0], "Added 1 of the sharps");
+        deepEq(changes[0].keys.keySignature.looks.sharp.added[0].offset, { x: 1.5, y: 0 }, "its own offset, from where it was");
+        assert(!("offset" in changes[0].keys.keySignature.looks.sharp), "not the base's");
+      });
+  } },
+
+  // ─── render(): the key picker and the other keys (design §13.8) ────────
+
+  { name: "render: the key picker is the staff's key and mode; a change picks the staff's key through onKey", fn: () => {
+      withDomStub((container) => {
+        const picks = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 3, mode: "major", spelling: "E♭" },
+          onKey: (key) => { picks.push(key); } });
+        const tonic = findAll(api.root, "cnb-kse-key-tonic")[0];
+        const mode = findAll(api.root, "cnb-kse-key-mode")[0];
+        eq(tonic.value, "E♭", "the staff's spelling");
+        eq(tonic.children.length, 15, "the mode's 15 spellings");
+        eq(mode.value, "major", "and mode");
+        tonic.onchange({ target: { value: "F♯" } });
+        deepEq(picks[0], { tonic: 6, mode: "major", spelling: "F♯" }, "a tonic picked");
+        mode.onchange({ target: { value: "minor" } });
+        deepEq(picks[1], { tonic: 3, mode: "minor", spelling: "E♭" }, "a mode, the spelling kept where it has one");
+        mode.onchange({ target: { value: "locrian" } });
+        eq(picks[2].mode, "locrian", "locrian");
+        eq(picks[2].tonic, 3, "the tonic kept");
+      });
+  } },
+
+  { name: "render: the other keys — the picked mode's 15 keys as small signatures, the picked one marked, a click picking one", fn: () => {
+      withDomStub((container) => {
+        const picks = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" },
+          onKey: (key) => { picks.push(key); } });
+        const minis = findAll(api.root, "cnb-kse-mini");
+        deepEq(minis.map(b => b.getAttribute("data-key")),
+          ["C", "G", "D", "A", "E", "B", "F♯", "C♯", "F", "B♭", "E♭", "A♭", "D♭", "G♭", "C♭"],
+          "the mode's 15 keys, sharp keys then flat keys");
+        deepEq(E.keyOrder("minor").slice(0, 3), ["A", "E", "B"], "in minor, from A");
+        deepEq(E.keyOrder("minor").slice(-2), ["E♭", "A♭"], "to A♭");
+        assert(minis.every(b => b.children[0].tag === "svg"), "each a drawing");
+        deepEq(minis.filter(b => b.className.includes(" on")).map(b => b.getAttribute("data-key")), ["D"], "D picked");
+        eq(findAll(api.root, "cnb-kse-mini").filter(b => b.className.includes("touch")).length, 0, "none touch");
+        eq(subtreeText(findAll(api.root, "cnb-kse-touch-summary")[0]), "No marks touch in any of the 105 keys.", "the line says so");
+        minis.find(b => b.getAttribute("data-key") === "B♭").onclick();
+        deepEq(picks[0], { tonic: 10, mode: "major", spelling: "B♭" }, "B♭ major picked");
+      });
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.enabled = false;
+        const api = E.render(container, { config, key: { tonic: 2, mode: "major" } });
+        eq(findAll(api.root, "cnb-kse-mini").length, 0, "none while the signature is off");
+      });
+  } },
+
+  { name: "render: keys whose marks touch are outlined with their count, and the line opens their list, a click picking one", fn: () => {
+      withDomStub((container) => {
+        const picks = [];
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity";   // the default noteheads a whole step apart
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" }, onKey: (key) => { picks.push(key); } });
+        const minis = findAll(api.root, "cnb-kse-mini");
+        assert(minis.every(b => b.className.includes("touch")), "every key outlined");
+        const c = minis.find(b => b.getAttribute("data-key") === "C");
+        const count = CNBKeySignature.touches(config, { name: "C", pitchClasses: [0, 2, 4, 5, 7, 9, 11], tonicPc: 0 }).length;
+        eq(subtreeText(findAll(c, "cnb-kse-mini-name")[0]), `C · ${count} touch`, "with the number of places");
+        const list = findAll(api.root, "cnb-kse-touch-list")[0];
+        eq(list.tag, "details", "a list that opens");
+        eq(subtreeText(findAll(list, "cnb-kse-touch-summary")[0]), "Marks touch in 105 of the 105 keys", "the line");
+        const keys = findAll(list, "cnb-kse-touch-key");
+        eq(keys.length, 105, "every key listed");
+        keys.find(b => b.getAttribute("data-key") === "G♯ minor").onclick();
+        deepEq(picks[0], { tonic: 8, mode: "minor", spelling: "G♯" }, "a click picks its tonic and mode");
+      });
+  } },
+
+  // ─── render(): an imported symbol's reference point (design §13.3) ─────
+
+  { name: "referenceGeometry / referenceAt: the enlarged drawing, and the native point a click gives", fn: () => {
+      const dot = { svgPath: "M 80 0 L 0 80 L -80 0 L 0 -80 Z" };
+      const g = E.referenceGeometry(dot);
+      eq(g.k, 0.75, "120 px for its 160 units");
+      deepEq([g.ox, g.oy, g.width, g.height], [72, 72, 144, 144], "its origin 12 px in, past half its box");
+      deepEq(E.referenceAt(g, 72, 72), { x: 0, y: 0 }, "the origin");
+      deepEq(E.referenceAt(g, 102, 57), { x: 40, y: -20 }, "30 px right, 15 up: 40 units right, 20 up (y down)");
+      const wide = E.referenceGeometry({ svgPath: "M -400 -20 L 400 -20 L 400 20 L -400 20 Z" });
+      eq(wide.k, 0.3, "a wide symbol held to 240 px wide");
+      const tail = E.referenceGeometry({ svgPath: "M 40 -20 L 100 -60 L 100 -40 L 40 0 Z" });
+      deepEq([tail.ox, tail.oy], [12, 12 + 60 * tail.k], "a tail's box takes in its origin, the dot's centre");
+      const moved = E.referenceGeometry({ svgPath: "M 40 -20 L 100 -60 L 100 -40 L 40 0 Z", reference: { x: -20, y: 10 } });
+      eq(moved.ox, 12 + 20 * moved.k, "and its reference point");
+  } },
+
+  { name: "render: a symbol imported for flats takes no ledgers and its reference at the origin; a click moves the point, the box sets its ledgers", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const gives = [];
+        const config = keysConfig();
+        const api = E.render(container, { config, view: { layer: "flat" },
+          onChange: (slices) => { last = slices; },
+          importControl: (slot, give) => { gives.push(give); } });
+        const tail = { displayName: "Tail", svgPath: "M 0 0 L 100 -40 L 100 -20 L 0 20 Z", naturalHeight: 60, naturalWidth: 100,
+          semitoneHeight: 0.6, anchors: null };
+        gives[gives.length - 1]("tail", tail);
+        eq(last.keys.keySignature.looks.flat.shape, "tail", "given to the flats");
+        deepEq(last.shapes.tail.reference, { x: 0, y: 0 }, "its reference at the SVG's origin");
+        eq(last.shapes.tail.ledgers, false, "for flats: no ledger lines");
+        eq(last.shapes.tail.svgPath, tail.svgPath, "the imported shape itself");
+        assert(CNBConfig.validate({ ...CNBConfig.clone(config), shapes: last.shapes, keys: last.keys }).valid, "valid");
+
+        const picker = () => findAll(api.root, "cnb-kse-reference-picker")[0];
+        assert(picker(), "the reference picker opens");
+        const takes = findAll(picker(), "cnb-kse-takes-ledgers-check")[0];
+        eq(takes.checked, false, "Takes ledger lines: off");
+        eq(subtreeText(findAll(picker(), "cnb-kse-takes-ledgers")[0]), "Takes ledger lines", "in words");
+
+        const g = E.referenceGeometry(tail);
+        findAttr(picker(), "class", "cnb-kse-reference-svg")[0].onclick({ clientX: g.ox + 50 * g.k, clientY: g.oy });
+        deepEq(last.shapes.tail.reference, { x: 50, y: 0 }, "a click moves the point");
+
+        takes.checked = true;
+        takes.onchange();
+        assert(!("ledgers" in last.shapes.tail), "on: the field removed, so it takes them");
+        const again = findAll(picker(), "cnb-kse-takes-ledgers-check")[0];
+        again.checked = false;
+        again.onchange();
+        eq(last.shapes.tail.ledgers, false, "and off again");
+
+        findAll(picker(), "cnb-kse-reference-done")[0].onclick();
+        eq(findAll(api.root, "cnb-kse-reference-picker").length, 0, "Done closes it");
+      });
+  } },
+
+  { name: "render: a symbol imported for naturals takes ledger lines", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const gives = [];
+        const api = E.render(container, { config: keysConfig(), view: { layer: "natural" },
+          onChange: (slices) => { last = slices; },
+          importControl: (slot, give) => { gives.push(give); } });
+        gives[gives.length - 1]("dot", { displayName: "Dot", svgPath: "M 80 0 L 0 80 L -80 0 L 0 -80 Z",
+          naturalHeight: 160, naturalWidth: 160, semitoneHeight: 1.6, anchors: null });
+        assert(!("ledgers" in last.shapes.dot), "no ledgers field: it takes them");
+        eq(findAll(api.root, "cnb-kse-takes-ledgers-check")[0].checked, true, "the box on");
       });
   } },
 

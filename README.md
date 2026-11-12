@@ -207,32 +207,41 @@ conventional notehead on the 4-8 staff.
   A new shape keeps the notehead's height, at the new shape's proportions.
   The section lists the rules the looks are kept as.
 - **Key signature** — the signature, drawn for the key picked on the
-  staff. One model draws every signature. **Draw** starts it from the
-  key's notes (the defaults) or from **Sharps or flats**: the traditional
-  signature, the key's sharps or flats only, LilyPond's own signs in the
-  cycle of fifths, F C G D A E B (or B E A D G C F), one to a column at the
-  pitch each makes, in an octave's window around the middle of the staff
-  (or of its line set), so they zigzag as a treble signature's do. Each
-  choice replaces the signature's settings. Sharps or flats show only
-  their **Size** (automatic, the noteheads' mean height held to at most
-  one staff space and 3 semitones, or a number of semitones between a
-  sharp's bars) and the Place below. A config saved with the older
-  sharps-or-flats style loads as this model and draws as it did, its signs
-  climbing from the tonic. The model has more than the panel shows yet
-  (looks for naturals, lines and spaces, symbols with a reference point,
-  offsets and added symbols); the key-signature editor will show it. For
-  the key's notes: which **Notes** (the whole scale, or the tonic and the half steps,
-  with or without the tonic an octave up); the **Stacks** (stacked sevenths,
-  odd semitones left and even right, a new stack at each change of odd and
-  even, or a zigzag), which way they go, and the gold stem between them, its
-  colour, its thickness in staff spaces and whether several stems share it;
-  the **Looks** of all marks, flats, sharps and every second stack, with the
-  notehead panel's controls (shape, fill, colour and size); and the
-  **Place**, the middle of the staff or the bottom, top or every line set. A
-  note says when marks in a stack run together. Below it, the keys a
-  notehead rule can be for. The Clairnote SN and DN gallery files show
-  Clairnote's own signatures: dots, with a tail up on each flat and down on
-  each sharp (an added symbol, which the panel's Looks name in words).
+  staff, and its editor. One model draws every signature. **Start from**
+  sets the noteheads (the defaults) or **traditional sharps and flats**:
+  the key's sharps or flats only, LilyPond's own signs in the cycle of
+  fifths, F C G D A E B (or B E A D G C F), one to a column at the pitch
+  each makes, in an octave's window around the middle of the staff (or of
+  its line set), so they zigzag as a treble signature's do. It asks first,
+  since it replaces the signature's settings. A config saved with the
+  older sharps-or-flats style loads as this model and draws as it did, its
+  signs climbing from the tonic. The editor shows the picked key's
+  signature magnified, with the panel's own **Key** picker, which is the
+  staff's too. **Edit** picks what an edit reaches: all marks, the
+  naturals, flats or sharps, the marks on a line or ledger or in a space,
+  or every second stack, in every key at once. A click on a mark picks its
+  naturals, flats or sharps (or keeps the layer picked in Edit); dragging
+  it moves the whole category, and its corner handle resizes it (for
+  sharps and flats, their one size), snapped to tenths of a semitone, each
+  drag one step of undo. The look card beside it sets the symbol (the
+  notehead's own, a shape, LilyPond's sharp or flat, or one imported from
+  SVG, whose reference point you click and which takes ledger lines or
+  not), fill, colour, size and offset, and up to two added symbols drawn
+  over it. Beneath, the mode's 15 keys as small signatures; a key whose
+  marks touch is outlined, and a line says in how many of the 105 keys
+  they do and lists them (the checks warn too, without blocking the
+  export). Then which **Notes** (the whole scale, the tonic and the half
+  steps, or the sharps or flats only, with or without the tonic an octave
+  up); the **Stacks** (stacked sevenths, odd semitones left and even
+  right, a new stack at each change of odd and even, a zigzag, or the
+  cycle of fifths with its heights in a window or climbing), which way
+  they go, and the gold stem between them, its colour, its thickness in
+  staff spaces and whether several stems share it; and the **Place**, the
+  middle of the staff or the bottom, top or every line set. Below it, the
+  keys a notehead rule can be for. The Clairnote SN and DN gallery files
+  show Clairnote's own signatures: dots, with a tail up on each flat and
+  down on each sharp (an added symbol, which the look card names in
+  words).
 - **Clef** — **Dozenal**, **Treble**, **Bass**
   and **Alto** buttons choose the engine's dozenal clef (drawn as the
   engine engraves it, the numeral 50 of the default treble register) or

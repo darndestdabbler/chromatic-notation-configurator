@@ -32,7 +32,10 @@
  *     CNBConfig.resolveNotehead API so the block is explained BEFORE
  *     generate() would throw), and (3) filename derivability. Warnings pass
  *     through from CNBConfig.validate() and never block (spec step 3:
- *     "blocked on errors, proceeds with warnings").
+ *     "blocked on errors, proceeds with warnings"). Since session 56 one
+ *     more warning, never an error, says in how many of the 105 keys the
+ *     key signature's marks touch (CNBKeySignature.touchingKeys, design
+ *     §13.7).
  *   - buildExport() returns a blocked result ({ok:false, validation, ...})
  *     instead of throwing for validation failures — an unexportable config
  *     is user state to surface, not a caller bug. It still THROWS on a
@@ -57,11 +60,13 @@
  * label and footnote (META_FIELDS), handing the new meta to the host,
  * and it names the preview-only settings once (PREVIEW_ONLY_SENTENCE).
  *
- * Dependencies: Module A (config), Module 11 (LilyPond exporter).
+ * Dependencies: Module A (config), Module 11 (LilyPond exporter), Module 22
+ * (the key signature's touch check).
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBKeySignature } from "../src/cnb-key-signature.js";
 
 const LY_EXTENSION = ".ly";
 
@@ -201,6 +206,14 @@ export const CNBConfigExport = {
       if (!shape.lilypondPath && !shape.svgPath) {
         errors.push(`Shape "${name}" has no path data (lilypondPath or svgPath)`);
       }
+    }
+
+    // The touch check (session 56, design §13.7): advice, never a block. A
+    // config too broken to draw a signature has its own messages above.
+    let touching = [];
+    try { touching = CNBKeySignature.touchingKeys(config); } catch (_) { /* reported above */ }
+    if (touching.length > 0) {
+      warnings.push(`Key signature marks touch in ${touching.length} of the 105 keys`);
     }
 
     // Filename derivability: an export that cannot name its file is blocked.

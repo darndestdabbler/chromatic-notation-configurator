@@ -317,6 +317,135 @@ function inkExtent(config, pxPerSemi, m, space) {
   return Number.isFinite(left) ? { left, right } : { left: 0, right: m.columns * m.markWidth };
 }
 
+// ── The touch check (session 56, design §13.7) ──────────────────────────────
+
+/** The touch check's mask: cells per staff space. */
+const TOUCH_CELLS = 40;
+/** Line segments a cubic Bézier is flattened into for the mask. */
+const CURVE_STEPS = 8;
+
+/** Each path's subpaths flattened into polygons, in its own units, by its d. */
+const flattened = new Map();
+function polygonsOf(d) {
+  if (flattened.has(d)) return flattened.get(d);
+  const polys = [];
+  let poly = null;
+  let cx = 0, cy = 0, ox = 0, oy = 0;
+  const start = () => { poly = [[cx, cy]]; polys.push(poly); };
+  for (const { cmd, args } of CNBNotehead.svgCommands(d)) {
+    if (cmd === "moveto") {
+      [cx, cy] = args; ox = cx; oy = cy;
+      start();
+    } else if (cmd === "lineto") {
+      if (!poly) start();
+      [cx, cy] = args;
+      poly.push([cx, cy]);
+    } else if (cmd === "curveto") {
+      if (!poly) start();
+      const [x1, y1, x2, y2, x3, y3] = args;
+      const at = (p0, p1, p2, p3, t) =>
+        (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
+      for (let k = 1; k <= CURVE_STEPS; k++) {
+        const t = k / CURVE_STEPS;
+        poly.push([at(cx, x1, x2, x3, t), at(cy, y1, y2, y3, t)]);
+      }
+      cx = x3; cy = y3;
+    } else if (cmd === "closepath") {
+      cx = ox; cy = oy;
+      poly = null;
+    }
+  }
+  flattened.set(d, polys);
+  return polys;
+}
+
+/**
+ * A mark's ink in staff spaces, y up, about the signature's start and the
+ * staff's middle: each symbol { fill, cut } (polygons; cut a hollow head's
+ * cut-out) and the box of them all. Null when it draws nothing.
+ */
+function inkOf(config, sig, m, axis) {
+  const shapes = config.shapes || {};
+  const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
+  const X = sig.columns[m.column] + (axis.enabled ? (m.mark.xOffsetStaffSpaces || 0) : 0);
+  const Y = CNBStaff.lilypondPosition(config, m.semi) / 2;
+  const parts = [];
+  for (const s of m.symbols || []) {
+    let d, cutD = null, kx, ky;
+    if (s.kind === "sign") {
+      d = signGlyph(config, s.sign).path;
+      kx = ky = s.scale / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
+    } else {
+      const shape = shapes[s.shape];
+      if (!shape || !shape.svgPath) continue;
+      const { scaleX, scaleY } = CNBNotehead.measure(shape, 1, s);
+      d = shape.svgPath;
+      if (s.hollow && shape.svgHollowPath) cutD = shape.svgHollowPath;
+      kx = scaleX / space;
+      ky = scaleY / space;
+    }
+    const map = polys => polys.map(p => p.map(([u, v]) => [X + s.x + u * kx, Y + s.y - v * ky]));
+    parts.push({ fill: map(polygonsOf(d)), cut: cutD ? map(polygonsOf(cutD)) : [] });
+  }
+  const points = parts.flatMap(p => p.fill.flat());
+  if (points.length === 0) return null;
+  const box = {
+    x0: Math.min(...points.map(p => p[0])), x1: Math.max(...points.map(p => p[0])),
+    y0: Math.min(...points.map(p => p[1])), y1: Math.max(...points.map(p => p[1])),
+  };
+  return { parts, box };
+}
+
+/** Set the mask's cells (cells per staff space, origin cell i0, j0, w wide)
+ *  whose centres the polygons fill, by the non-zero rule, to value. */
+function fillCells(mask, w, h, i0, j0, polys, value) {
+  for (let j = 0; j < h; j++) {
+    const y = (j0 + j + 0.5) / TOUCH_CELLS;
+    const crossings = [];
+    for (const poly of polys) {
+      for (let k = 0; k < poly.length; k++) {
+        const [xa, ya] = poly[k];
+        const [xb, yb] = poly[(k + 1) % poly.length];
+        if ((ya <= y && yb > y) || (yb <= y && ya > y)) {
+          crossings.push([xa + (y - ya) / (yb - ya) * (xb - xa), yb > ya ? 1 : -1]);
+        }
+      }
+    }
+    crossings.sort((a, b) => a[0] - b[0]);
+    let winding = 0;
+    for (let k = 0; k < crossings.length - 1; k++) {
+      winding += crossings[k][1];
+      if (winding === 0) continue;
+      const from = Math.max(0, Math.ceil(crossings[k][0] * TOUCH_CELLS - 0.5) - i0);
+      const to = Math.min(w - 1, Math.floor(crossings[k + 1][0] * TOUCH_CELLS - 0.5) - i0);
+      for (let i = from; i <= to; i++) mask[j * w + i] = value;
+    }
+  }
+}
+
+/** Whether two marks' ink meets where their boxes do. */
+function inkTouches(a, b) {
+  const x0 = Math.max(a.box.x0, b.box.x0), x1 = Math.min(a.box.x1, b.box.x1);
+  const y0 = Math.max(a.box.y0, b.box.y0), y1 = Math.min(a.box.y1, b.box.y1);
+  if (x0 > x1 || y0 > y1) return false;
+  const i0 = Math.floor(x0 * TOUCH_CELLS), j0 = Math.floor(y0 * TOUCH_CELLS);
+  const w = Math.floor(x1 * TOUCH_CELLS) - i0 + 1, h = Math.floor(y1 * TOUCH_CELLS) - j0 + 1;
+  const draw = ink => {
+    const mask = new Uint8Array(w * h);
+    const part = new Uint8Array(w * h);
+    for (const { fill, cut } of ink.parts) {
+      part.fill(0);
+      fillCells(part, w, h, i0, j0, fill, 1);
+      fillCells(part, w, h, i0, j0, cut, 0);
+      for (let k = 0; k < part.length; k++) mask[k] |= part[k];
+    }
+    return mask;
+  };
+  const ma = draw(a), mb = draw(b);
+  for (let k = 0; k < ma.length; k++) if (ma[k] && mb[k]) return true;
+  return false;
+}
+
 /** A look that sets nothing: every field unset (design §6). */
 const lookUnset = look => Object.values(look || {}).every(v => v === undefined);
 
@@ -661,8 +790,8 @@ export const CNBKeySignature = {
    * the stack before it), over the staff's middle ± separator.extentSemis
    * (middle: true, a length under a pitch axis) or a line-set copy's marks,
    * thicknessPct in staff spaces, shared among a copy's stems when
-   * separator.shareThickness. overlaps: neighbouring marks in one stack
-   * nearer on the grid than half their heights' sum.
+   * separator.shareThickness. (Marks that touch are found by touches(),
+   * session 56, which replaced the overlap note.)
    *
    * Null for an unknown placement rule, or a key with no pitch classes.
    *
@@ -671,8 +800,7 @@ export const CNBKeySignature = {
    *        a key definition
    * @returns {{marks:{semi:number, column:number, mark:object, symbols:object[]}[], columns:number[],
    *            bars:{x:number, column:number, top:number, bottom:number, color:string,
-   *                  thickness:number, middle:boolean}[],
-   *            overlaps:{column:number, semis:number[]}[]}|null}
+   *                  thickness:number, middle:boolean}[]}|null}
    */
   marks(config, key) {
     const ks = (config.keys || {}).keySignature || {};
@@ -750,7 +878,6 @@ export const CNBKeySignature = {
     });
 
     // Columns and the gold stems, in staff spaces.
-    const shapes = config.shapes || {};
     const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
     const layouts = marks.map(({ mark }) => symbolsOf(config, mark, 1));
     const reach = reachOf(layouts);
@@ -779,17 +906,85 @@ export const CNBKeySignature = {
       }
     }
 
-    const height = ({ mark }) => mark.heightSemis ?? shapes[mark.shape]?.semitoneHeight ?? 0;
-    const overlaps = [];
-    for (let c = 0; c < n; c++) {
-      const stack = marks.filter(m => m.column === c).sort((a, b) => a.semi - b.semi);
-      for (let j = 1; j < stack.length; j++) {
-        if (axis.distance(stack[j - 1].semi, stack[j].semi) < (height(stack[j - 1]) + height(stack[j])) / 2) {
-          overlaps.push({ column: c, semis: [stack[j - 1].semi, stack[j].semi] });
-        }
+    return { marks, columns, bars };
+  },
+
+  /**
+   * The 105 keys a signature is drawn in (LY spec 1.3.15 §5.6a): the 7
+   * modes' 15 spellings (CNBMusic.spellings), each as the canvas's picker
+   * gives it (CNBPreviewDisplay.withKey): the defined key with those pitch
+   * classes that a rule names, else the first defined with them, else one
+   * named "<spelling> <mode>", with the picked tonic and spelling. The mark
+   * table and the touch check both read it (session 56).
+   *
+   * @param {object} config
+   * @returns {{spelling:string, mode:string, tonic:number, pcs:number[], def:object}[]}
+   */
+  keys(config) {
+    const keys = config.keys || {};
+    const defs = Array.isArray(keys.definitions) ? keys.definitions : [];
+    const named = new Set((config.noteheadRules || [])
+      .flatMap(r => (r && r.match && Array.isArray(r.match.keys)) ? r.match.keys : []));
+    const setOf = pcs => [...new Set(pcs.map(CNBMusic.pitchClass))].sort((a, b) => a - b).join(" ");
+    const out = [];
+    for (const mode of Object.keys(CNBMusic.MODES)) {
+      for (const spelling of CNBMusic.spellings(mode)) {
+        const tonic = CNBKeySignature.parseTonicPc(spelling);
+        const pcs = CNBMusic.scale(tonic, mode).sort((a, b) => a - b);
+        const sameSet = d => d && Array.isArray(d.pitchClasses) && setOf(d.pitchClasses) === pcs.join(" ");
+        const match = defs.find(d => sameSet(d) && named.has(d.name)) || defs.find(sameSet);
+        const def = { ...(match || { pitchClasses: pcs }), name: match ? match.name : `${spelling} ${mode}`,
+          tonicPc: tonic, spelling };
+        out.push({ spelling, mode, tonic, pcs, def });
       }
     }
-    return { marks, columns, bars, overlaps };
+    return out;
+  },
+
+  /**
+   * Where the marks of a key's signature touch (session 56, design §13.7):
+   * each pair of whole marks (a base with its added symbols) in one stack or
+   * neighbouring stacks, every line set's copy and the seams between copies
+   * included, whose ink meets. Their boxes are compared first, and where two
+   * meet, their ink, each drawn into a mask of TOUCH_CELLS cells a staff
+   * space (a hollow head's cut-out left out). A tail joined to its own dot
+   * is one mark, and staff lines and ledgers do not count. Advice only: no
+   * mark is moved.
+   *
+   * @param {object} config
+   * @param {object} key  a key definition, as for marks()
+   * @returns {number[][]} pairs of indices into marks(config, key).marks
+   */
+  touches(config, key) {
+    const sig = CNBKeySignature.marks(config, key);
+    if (!sig) return [];
+    const axis = CNBPitchAxis.create(config);
+    const inks = sig.marks.map(m => inkOf(config, sig, m, axis));
+    const pairs = [];
+    for (let i = 0; i < inks.length; i++) {
+      for (let j = i + 1; j < inks.length; j++) {
+        const a = inks[i], b = inks[j];
+        if (!a || !b || Math.abs(sig.marks[i].column - sig.marks[j].column) > 1) continue;
+        if (a.box.x0 > b.box.x1 || b.box.x0 > a.box.x1 || a.box.y0 > b.box.y1 || b.box.y0 > a.box.y1) continue;
+        if (inkTouches(a, b)) pairs.push([i, j]);
+      }
+    }
+    return pairs;
+  },
+
+  /**
+   * The keys of the 105 (keys()) whose marks touch (touches()), each with the
+   * number of places; empty while keys or the signature are off.
+   *
+   * @param {object} config
+   * @returns {{spelling:string, mode:string, tonic:number, pcs:number[], def:object, count:number}[]}
+   */
+  touchingKeys(config) {
+    const keys = config.keys || {};
+    if (!keys.enabled || !(keys.keySignature || {}).enabled) return [];
+    return CNBKeySignature.keys(config)
+      .map(k => ({ ...k, count: CNBKeySignature.touches(config, k.def).length }))
+      .filter(k => k.count > 0);
   },
 
   /**
@@ -934,9 +1129,12 @@ export const CNBKeySignature = {
    * @param {object} gridContext   From CNBGrid.create()
    * @param {object} config
    * @param {string|null} keyName  Selected key (example data)
+   * @param {{marked?: boolean}} [opts]  marked: mark each symbol with
+   *        data-mark and data-symbol (session 56, the editor's canvas); off,
+   *        the drawing is byte for byte as before
    * @returns {SVGGElement|null}
    */
-  render(svgParent, gridContext, config, keyName) {
+  render(svgParent, gridContext, config, keyName, { marked: markSymbols = false } = {}) {
     const m = CNBKeySignature.measure(config, gridContext.pxPerSemi, keyName);
     if (!m) return null;
 
@@ -1018,11 +1216,18 @@ export const CNBKeySignature = {
       CNBLedgerSet.render(g, gridContext, config, semis, { width: ledgerLength(width, space), centerX: x });
     }
 
-    // Each mark's symbols, the base then the added ones.
+    // Each mark's symbols, the base then the added ones, each marked with
+    // its mark's index and its own (data-mark, data-symbol: 0 the base) when
+    // the editor's canvas asks, so it can tell which was clicked (session 56).
+    const marked = (e, i, k) => {
+      if (!markSymbols) return;
+      e.setAttribute("data-mark", String(i));
+      e.setAttribute("data-symbol", String(k));
+    };
     m.marks.forEach(({ semi, column }, i) => {
       const lineX = m.offsets ? columnX(column) + m.offsets[i] : columnX(column);
       const y = gridContext.semiToY(semi);
-      for (const sym of m.layouts[i] || []) {
+      (m.layouts[i] || []).forEach((sym, k) => {
         if (sym.kind === "sign") {
           // A sign at its size (session 52), scaled about its origin, its
           // box centred on its point and its origin at its point's height
@@ -1036,10 +1241,11 @@ export const CNBKeySignature = {
           path.setAttribute("fill", sym.color);
           path.setAttribute("transform", `translate(${lineX + sym.cx - (sign.x[0] + sign.x[1]) / 2 * size} ` +
             `${y + sym.y}) scale(${scale})`);
+          marked(path, i, k);
           g.appendChild(path);
-          continue;
+          return;
         }
-        CNBNotehead.render(g, {
+        marked(CNBNotehead.render(g, {
           shape: (config.shapes || {})[sym.shape],
           x: lineX + sym.x,
           y: y + sym.y,
@@ -1048,8 +1254,8 @@ export const CNBKeySignature = {
           scaleY: sym.scaleY,
           hollow: sym.hollow,
           color: sym.color,
-        });
-      }
+        }), i, k);
+      });
     });
 
     svgParent.appendChild(g);

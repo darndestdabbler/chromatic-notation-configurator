@@ -167,6 +167,22 @@ export const tests = [
     },
   },
   {
+    name: "validateForExport: marks that touch are a warning, never an error (session 56, design §13.7)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.keys.enabled = true;
+      cfg.keys.keySignature.enabled = true;
+      const quiet = EX.validateForExport(cfg);
+      assert(!quiet.warnings.some(w => w.includes("touch")), "the default signature: no touch warning");
+      cfg.keys.keySignature.stacking = "parity";
+      const v = EX.validateForExport(cfg);
+      assert(v.valid === true, "still exportable");
+      assert(v.warnings.includes("Key signature marks touch in 105 of the 105 keys"), "the warning, with the count");
+      assert(!v.errors.some(e => e.includes("touch")), "not an error");
+      assert(EX.buildExport(cfg).ok, "the export proceeds");
+    },
+  },
+  {
     name: "validateForExport: throws on a non-object config (caller bug)",
     fn: () => {
       assertThrows(() => EX.validateForExport(null), "must be an object", "null");

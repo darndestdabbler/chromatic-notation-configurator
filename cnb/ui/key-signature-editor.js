@@ -41,37 +41,35 @@
  * preview-only, and a config's keySignature.gutter is not carried.
  *
  * The panel (session 50, key-signature design §7) speaks a designer's
- * words: Show the key signature; Notes (the whole scale, or the tonic and
- * the half steps; the tonic an octave up); Stacks (the four stacking rules,
- * the direction, hidden under odd-left-even-right, and the gold stem with
- * its colour, its thickness in staff spaces and whether several stems share
- * it); Looks (all marks, flats, sharps and every second stack: each a menu
- * saying its look in words and opening the notehead panel's controls,
- * shape with its thumbnails and the host's Import from SVG (opts.importControl),
- * fill, colour and, but for every second stack, size, each field with an
- * "as …" choice that clears it; a built-in shape the notation lacks is
- * added, reported as onChange({ keys, shapes })); Place (the middle of the
- * staff, the bottom, top or every line set);
- * and a note when two marks of one stack run together in the key picked on
- * the staff (opts.key, which also counts the stems). The key definitions
- * follow, under "Keys for notehead rules". The placement rule, the tonic
- * octave and the gold stem's extent have no controls: their stored values
- * are kept as they are, and an unknown rule is reported by validation
- * rather than rewritten.
- *
- * Draw (session 51, design §5, §7; a starting point since session 54,
- * design §13.2, until session 56's editor replaces this panel): "The key's
- * notes" sets the signature's defaults and "Sharps or flats" the traditional
- * signature (notes "altered", Emmentaler's sharp and flat as the sharps' and
- * flats' looks with no colour, the cycle of fifths in a window, the middle
- * of the staff), each keeping Show the key signature. The row shows "Sharps
- * or flats" when the notes are the sharps or flats only; then the Notes,
- * Stacks and Looks rows are hidden, their values kept, and Place stays.
- *
- * Size (session 52), under sharps or flats only: "Automatic (n)", the size
- * CNBKeySignature.signHeight's rule gives, or "Set by hand", a number of
- * semitones between a sharp's bars written as signs.heightSemis (automatic
- * writes null). Hidden under the key's notes, its value kept.
+ * words, and since session 56 it is the editor of design §13.8. Its head
+ * has Show the key signature and Start from, which replaces the signature's
+ * settings with the defaults (the noteheads) or the traditional signature
+ * once confirmed (opts.confirm), keeping Show the key signature. Edit picks
+ * the layer edited: all marks, naturals, flats, sharps, a line or ledger, a
+ * space, or every second stack (design §13.4). The look card edits that
+ * layer's look in every key: which symbol (its base, or Added 1 or Added 2,
+ * up to two, each removable), the symbol (as beneath, the notation's and the
+ * built-in shapes as CNBNoteheadPanel.thumbnail draws them, Emmentaler's
+ * sharp and flat for a base, and the host's Import from SVG,
+ * opts.importControl), the fill and colour (a base's), the size (a shape's
+ * height and width, or the signs' one size, signs.heightSemis, automatic
+ * or a number) and the offset in semitones, each field's "as …" clearing
+ * it; a built-in shape the notation lacks is added, reported as
+ * onChange({ keys, shapes }). Which layer and symbol are picked is editor
+ * state, not config (opts.view, which the host may keep across re-mounts).
+ * Then Notes (the whole scale, the tonic and the half steps, or the sharps
+ * or flats only; the tonic an octave up), Stacks (the four stacking rules
+ * and the cycle of fifths; the direction, hidden under odd-left-even-right,
+ * and the gold stem with its colour, its thickness in staff spaces and
+ * whether several stems share it, counted in the key picked on the staff,
+ * opts.key; under the cycle of fifths its heights instead, in a window
+ * raised in sharp and flat keys, or climbing), and Place (the middle of the
+ * staff, the bottom, top or every line set). Session 56 removed the Draw,
+ * Looks and Size rows and the overlap note, which the touch check replaces
+ * (CNBKeySignature.touches). The key definitions follow, under "Keys for
+ * notehead rules". The placement rule, the tonic octave and the gold stem's
+ * extent have no controls: their stored values are kept as they are, and an
+ * unknown rule is reported by validation rather than rewritten.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -121,6 +119,12 @@ import { CNBPreviewDisplay } from "./preview-display.js";
 import { CNBNoteheadPanel } from "./notehead-panel.js";
 import { CNBBuiltinShapes } from "./builtin-shapes.js";
 import { CNBColor } from "../src/cnb-color.js";
+import { CNBNotehead } from "../src/cnb-notehead.js";
+import { CNBAccidentalGlyphs } from "../src/cnb-accidental-glyphs.js";
+import { CNBGrid } from "../src/cnb-grid.js";
+import { CNBScheme } from "../src/cnb-scheme.js";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -143,8 +147,14 @@ const TRADITIONAL_START = {
   looks: { ...DEFAULT_KS.looks, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null } },
 };
 
-/** Whether a keySignature is the traditional kind: the sharps or flats only. */
-const isTraditional = ks => ks.notes === "altered";
+/** Start from (design §13.8): each starting point, its button and the
+ *  question it asks before replacing the signature's settings. */
+const START_FROM = [
+  ["noteheads", "The noteheads",
+    "Start from the noteheads? This replaces the key signature's settings (Undo puts them back)."],
+  ["traditional", "Traditional sharps and flats",
+    "Start from traditional sharps and flats? This replaces the key signature's settings (Undo puts them back)."],
+];
 
 /** The designer's settings (session 48) of a keySignature, copied as they
  *  are: the panel has no controls for them yet, and validation checks them. */
@@ -163,11 +173,124 @@ function isValidHex(v) {
 /** Known vocabulary (Module A validate() accepts exactly these). */
 const PLACEMENT_RULES = ["scale-from-tonic"];
 
-/** The looks the panel edits (design §4.1, §7), in its words. */
-const LOOK_KINDS = [["all", "All marks"], ["flat", "Flats"], ["sharp", "Sharps"], ["alternate", "Every second stack"]];
+/** The layers Edit picks (design §13.4, §13.8), in its words. */
+const LAYERS = [
+  ["all", "All marks"], ["natural", "Naturals"], ["flat", "Flats"], ["sharp", "Sharps"],
+  ["line", "On a line or ledger"], ["space", "In a space"], ["alternate", "Every second stack"],
+];
+
+/** Each layer's name and what its edits reach, for the look card. */
+const LAYER_WORDS = {
+  all: { name: "All marks", scope: "all marks" },
+  natural: { name: "Naturals", scope: "all naturals" },
+  flat: { name: "Flats", scope: "all flats" },
+  sharp: { name: "Sharps", scope: "all sharps" },
+  line: { name: "On a line or ledger", scope: "all marks on a line or ledger" },
+  space: { name: "In a space", scope: "all marks in a space" },
+  alternate: { name: "Every second stack", scope: "the marks of every second stack" },
+};
+
+/** The layers a mark's spelling picks: a click on a mark follows them. */
+const SPELLINGS = ["natural", "flat", "sharp"];
 
 /** What an unset field of each look is: the look beneath. */
-const AS_BENEATH = { all: "as the noteheads", flat: "as all marks", sharp: "as all marks", alternate: "as the others" };
+const AS_BENEATH = {
+  all: "as the noteheads", natural: "as all marks", flat: "as all marks", sharp: "as all marks",
+  line: "as beneath", space: "as beneath", alternate: "as the others",
+};
+
+/** A layer's look in a keySignature, created when missing (mutates ks). */
+function lookIn(ks, layer) {
+  if (layer === "alternate") {
+    if (!isPlainObject(ks.alternate)) ks.alternate = {};
+    return ks.alternate;
+  }
+  if (!isPlainObject(ks.looks)) ks.looks = {};
+  if (!isPlainObject(ks.looks[layer])) ks.looks[layer] = {};
+  return ks.looks[layer];
+}
+
+const round4 = (v) => Math.round(v * 1e4) / 1e4;
+
+/** The canvas's magnification: px a semitone (axis unit), about twice the
+ *  staff's Medium size (design §13.8). */
+const CANVAS_PX_PER_SEMI = 24;
+
+/** An imported symbol's enlarged drawing, for its reference point: px tall. */
+const REFERENCE_PX = 120;
+
+/** The other keys' small signatures: px a semitone, as the mock-ups draw them. */
+const MINI_PX = 4;
+
+/** Snap a dragged value to tenths of a semitone (design §13.8). */
+function snap(v) {
+  const r = Math.round(v * 10) / 10;
+  return r === 0 ? 0 : r;
+}
+
+/** The staff's magnification, engine.defaultMagnify (7/4 unless set). */
+function magnification(config) {
+  const r = CNBScheme.parseRatio((config.engine || {}).defaultMagnify ?? "7/4");
+  return r && r.num > 0 ? r.num / (r.den ?? 1) : 7 / 4;
+}
+
+/**
+ * Which marks of a key's signature each layer reaches (design §13.4): for
+ * each layer, the indices into CNBKeySignature.marks(config, def).marks
+ * whose look it is laid over. Found by marking the layer's look and reading
+ * the mark back, so it follows the model's own rules.
+ */
+function layerMembers(config, def) {
+  const out = {};
+  for (const [layer] of LAYERS) {
+    const probe = CNBConfig.clone(config);
+    lookIn(probe.keys.keySignature, layer).__layer = true;
+    const sig = CNBKeySignature.marks(probe, def);
+    out[layer] = new Set();
+    (sig ? sig.marks : []).forEach((m, i) => { if (m.mark.__layer) out[layer].add(i); });
+  }
+  return out;
+}
+
+/**
+ * A symbol's box in px about its mark's line and pitch, y down, as
+ * CNBKeySignature.render draws it at pxPerSemi (a layout of
+ * CNBKeySignature.measure): a sign's outline at the renderer's own size,
+ * one staff space times its scale, its box centred on its cx and its origin
+ * at its y; a shape's path from its origin, at its scales.
+ */
+function symbolBox(config, s, pxPerSemi) {
+  if (s.kind === "sign") {
+    const glyph = CNBAccidentalGlyphs.glyph(s.sign, magnification(config));
+    const size = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) }) * s.scale;
+    const b = CNBNotehead.box({ svgPath: glyph.path });
+    const k = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
+    const x = s.cx - (glyph.x[0] + glyph.x[1]) / 2 * size;
+    return { x0: x + b.x[0] * k, x1: x + b.x[1] * k, y0: s.y + b.y[0] * k, y1: s.y + b.y[1] * k };
+  }
+  const b = CNBNotehead.box(config.shapes[s.shape]);
+  return { x0: s.x + b.x[0] * s.scaleX, x1: s.x + b.x[1] * s.scaleX, y0: s.y + b.y[0] * s.scaleY, y1: s.y + b.y[1] * s.scaleY };
+}
+
+/** A small drawing of Emmentaler's sharp or flat, the look card's thumbnail. */
+function signThumbnail(sign) {
+  const glyph = CNBAccidentalGlyphs.glyph(sign, 7 / 4);
+  const box = CNBNotehead.box({ svgPath: glyph.path });
+  const k = 24 / (box.y[1] - box.y[0]);
+  const w = Math.ceil((box.x[1] - box.x[0]) * k) + 4;
+  const h = 28;
+  const doc = globalThis.document;
+  const svg = doc.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", w);
+  svg.setAttribute("height", h);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", glyph.path);
+  path.setAttribute("fill", "#1c1c1e");
+  path.setAttribute("transform", `translate(${2 - box.x[0] * k} ${2 - box.y[0] * k}) scale(${k})`);
+  svg.appendChild(path);
+  return svg;
+}
 
 /** Pitch-class display label: "C", "C♯", … (Module B). */
 function pcName(pc) {
@@ -184,6 +307,111 @@ function definitionTemplate() {
 export const CNBKeySignatureEditor = {
 
   PLACEMENT_RULES,
+
+  /** The canvas's px a semitone (design §13.8). */
+  CANVAS_PX_PER_SEMI,
+
+  /**
+   * A dragged value snapped to tenths of a semitone (design §13.8). A value
+   * loaded from a file is never snapped: only a drag's result is.
+   * @param {number} v
+   * @returns {number}
+   */
+  snap,
+
+  /**
+   * The layer a click on a mark selects (design §13.8): its spelling's
+   * (naturals, flats or sharps), unless another layer is picked in Edit,
+   * which then stays picked.
+   * @param {Object<string, Set<number>>} members  each layer's marks (by index)
+   * @param {number} index  the mark clicked
+   * @param {{layer: string, pinned?: boolean}} view
+   * @returns {string}
+   */
+  layerFor(members, index, view) {
+    if (view.pinned) return view.layer;
+    return SPELLINGS.find(layer => members[layer] && members[layer].has(index)) ?? view.layer;
+  },
+
+  /**
+   * How the reference picker draws a shape enlarged (design §13.3): k px a
+   * native SVG unit, its box REFERENCE_PX tall (at most twice that wide),
+   * the box taking in its origin and its reference point (a tail's lie
+   * outside its path), with 12 px around it; (ox, oy) where the shape's
+   * origin falls.
+   * @param {object} shape  a config.shapes entry
+   * @returns {{k:number, ox:number, oy:number, width:number, height:number}}
+   */
+  referenceGeometry(shape) {
+    const box = CNBNotehead.box(shape);
+    const ref = shape.reference || { x: 0, y: 0 };
+    for (const [x, y] of [[0, 0], [ref.x, ref.y]]) {
+      box.x = [Math.min(box.x[0], x), Math.max(box.x[1], x)];
+      box.y = [Math.min(box.y[0], y), Math.max(box.y[1], y)];
+    }
+    const w = box.x[1] - box.x[0], h = box.y[1] - box.y[0];
+    const k = Math.min(REFERENCE_PX / h, 2 * REFERENCE_PX / w);
+    const pad = 12;
+    return { k, ox: pad - box.x[0] * k, oy: pad - box.y[0] * k, width: w * k + 2 * pad, height: h * k + 2 * pad };
+  },
+
+  /**
+   * The reference point a click at (px, py) on the enlarged drawing gives,
+   * in the shape's native SVG units, to 2 places.
+   * @param {{k:number, ox:number, oy:number}} geometry  referenceGeometry's
+   * @param {number} px
+   * @param {number} py
+   * @returns {{x:number, y:number}}
+   */
+  referenceAt(geometry, px, py) {
+    const at = v => Math.round(v * 100) / 100 || 0;
+    return { x: at((px - geometry.ox) / geometry.k), y: at((py - geometry.oy) / geometry.k) };
+  },
+
+  /**
+   * A mode's 15 spellings in the order the other keys show them (design
+   * §13.8): the sharp keys by their number of sharps, C first in major,
+   * then the flat keys by their number of flats.
+   * @param {string} mode  a CNBMusic.MODES name
+   * @returns {string[]}
+   */
+  keyOrder(mode) {
+    const count = (spelling, alteration) => {
+      const spelled = CNBMusic.spell(spelling, CNBMusic.scale(CNBKeySignature.parseTonicPc(spelling), mode)) || [];
+      return spelled.filter(n => n.alteration === alteration).length;
+    };
+    const flats = name => count(name, -1);
+    const sharps = name => count(name, 1);
+    return CNBMusic.spellings(mode).slice()
+      .sort((a, b) => (flats(a) > 0) - (flats(b) > 0) || sharps(a) - sharps(b) || flats(a) - flats(b));
+  },
+
+  /**
+   * The offset a drag of (dx, dy) px writes, from the offset it started at,
+   * in semitones, y up, snapped (design §13.6, §13.8).
+   * @param {{x:number, y:number}} start
+   * @param {number} dx
+   * @param {number} dy   px, down
+   * @param {number} pxPerSemi
+   * @returns {{x:number, y:number}}
+   */
+  dragOffset(start, dx, dy, pxPerSemi) {
+    return { x: snap(start.x + dx / pxPerSemi), y: snap(start.y - dy / pxPerSemi) };
+  },
+
+  /**
+   * The size a drag of the corner handle by dy px down writes, from the size
+   * it started at: the height grows by dy, snapped and at least a tenth, and
+   * the width keeps the proportions it started with.
+   * @param {{heightSemis:number, widthSemis:number}} start
+   * @param {number} dy
+   * @param {number} pxPerSemi
+   * @returns {{heightSemis:number, widthSemis:number}}
+   */
+  dragSize(start, dy, pxPerSemi) {
+    const heightSemis = Math.max(0.1, snap(start.heightSemis + dy / pxPerSemi));
+    return { heightSemis, widthSemis: round4(heightSemis * start.widthSemis / start.heightSemis) };
+  },
 
   /**
    * Build a ready `config.keys` slice from editor state. Pure function;
@@ -346,6 +574,63 @@ export const CNBKeySignatureEditor = {
   },
 
   /**
+   * A starting point (design §13.2, §13.8): the signature's defaults (the
+   * noteheads) or the traditional signature over them, keeping enabled.
+   * @param {object} ks     a keySignature
+   * @param {"noteheads"|"traditional"} which
+   * @returns {object} a new keySignature
+   */
+  startFrom(ks, which) {
+    const start = deepClone(DEFAULT_KS);
+    if (which === "traditional") Object.assign(start, deepClone(TRADITIONAL_START));
+    start.enabled = !!(ks && ks.enabled);
+    return start;
+  },
+
+  /**
+   * A keySignature with one field of a layer's look set, or cleared when
+   * value is undefined (design §13.4): the base's (symbol "base") or an
+   * added symbol's (its index). A base's shape and sign are one slot
+   * (§13.3): setting either removes the other, and clearing either clears
+   * both. The input is not changed.
+   * @param {object} ks
+   * @param {string} layer   "all" | "natural" | "flat" | "sharp" | "line" | "space" | "alternate"
+   * @param {"base"|number} symbol
+   * @param {string} field
+   * @param {*} value
+   * @returns {object}
+   */
+  lookWith(ks, layer, symbol, field, value) {
+    const out = deepClone(ks);
+    const look = lookIn(out, layer);
+    const target = symbol === "base" ? look : look.added[symbol];
+    if (value === undefined) delete target[field];
+    else target[field] = value;
+    if (symbol === "base" && (field === "shape" || field === "sign")) {
+      if (value === undefined) { delete target.shape; delete target.sign; }
+      else delete target[field === "shape" ? "sign" : "shape"];
+    }
+    return out;
+  },
+
+  /**
+   * A keySignature with a layer's added symbols replaced whole (design
+   * §13.4), or cleared, "as …" beneath, when added is undefined; [] removes
+   * those beneath. The input is not changed.
+   * @param {object} ks
+   * @param {string} layer
+   * @param {object[]|undefined} added
+   * @returns {object}
+   */
+  addedWith(ks, layer, added) {
+    const out = deepClone(ks);
+    const look = lookIn(out, layer);
+    if (added === undefined) delete look.added;
+    else look.added = deepClone(added);
+    return out;
+  },
+
+  /**
    * A look in words, for its menu's summary: "as the noteheads" (all marks),
    * "as all marks" (flats, sharps) or "as the others" (every second stack)
    * when it sets nothing, else what it sets: the shape's name, the fill, the
@@ -369,6 +654,8 @@ export const CNBKeySignatureEditor = {
         : l.heightSemis === undefined ? `${l.widthSemis} semitones wide`
         : `${l.heightSemis} × ${l.widthSemis} semitones`);
     }
+    // An offset (session 56), in semitones.
+    if (isPlainObject(l.offset)) words.push(`moved ${l.offset.x ?? 0}, ${l.offset.y ?? 0} semitones`);
     // Added symbols (session 55), each by its shape's name: the Clairnote
     // files' tails read "with Clairnote key-signature tail, down (sharp)".
     if (Array.isArray(l.added)) {
@@ -447,9 +734,9 @@ export const CNBKeySignatureEditor = {
    *   div.cnb-key-signature-editor
    *   ├── label.cnb-kse-keys-enable    (keys.enabled master toggle)
    *   ├── div.cnb-kse-disabled-note    (ONLY while keys.enabled is false)
-   *   ├── div.cnb-kse-signature       (show, Draw, Notes, Stacks with the gold
-   *   │                                stem and the overlap note, Looks, or
-   *   │                                Size under sharps or flats, Place)
+   *   ├── div.cnb-kse-signature       (the head: show and Start from; Edit and
+   *   │                                the look card; Notes; Stacks with the
+   *   │                                gold stem or the heights; Place)
    *   ├── div.cnb-kse-definitions     (Keys for notehead rules: rows + add)
    *   └── div.cnb-kse-validation      (Module A pass-through + editor checks)
    *
@@ -458,9 +745,14 @@ export const CNBKeySignatureEditor = {
    *
    * @param {HTMLElement} container
    * @param {{config?: object, key?: {tonic:number, mode:string, spelling?:string}|null,
-   *          onChange?: (slices: {keys: object}, state: object) => void}} [opts]
-   *        `key` is the key picked on the staff, for the stems' count and
-   *        the overlap note (neither without it).
+   *          view?: {layer?: string, symbol?: "base"|number, pinned?: boolean},
+   *          confirm?: (question: string) => boolean,
+   *          importControl?: (slot: HTMLElement, give: (name: string, shape?: object) => void) => void,
+   *          onChange?: (slices: {keys: object, shapes?: object}, state: object) => void}} [opts]
+   *        `key` is the key picked on the staff, for the stems' count.
+   *        `view` is the editor's picked layer and symbol, kept by the host
+   *        across re-mounts; `confirm` asks before Start from (the
+   *        browser's confirm by default).
    *        `config` seeds the editor state and is the base for the
    *        validation pass-through (defaults to CNBConfig.createDefault()).
    * @returns {{root: HTMLElement, getState: () => object,
@@ -506,9 +798,16 @@ export const CNBKeySignatureEditor = {
       emit(extra);
     };
 
-    // Editor state only: which look menus are open, and the size lock.
-    const openLooks = new Set();
+    // Editor state only, not config: the layer picked in Edit, the symbol
+    // selected (the base, or an added symbol's index) and whether the layer
+    // stays picked when a mark is clicked (design §13.8). The host may keep
+    // it across re-mounts (opts.view). And the size lock.
+    const view = opts.view || {};
+    if (!LAYER_WORDS[view.layer]) Object.assign(view, { layer: "all", symbol: "base", pinned: false });
+    if (view.symbol !== "base" && !Number.isInteger(view.symbol)) view.symbol = "base";
     let lockLooks = true;
+    const confirm = opts.confirm ||
+      ((question) => (typeof globalThis.confirm === "function" ? globalThis.confirm(question) : true));
 
     /** Everything below the master toggle is disabled while keys.enabled
      *  is false (explicit disabled state — set-006 s3 lesson). */
@@ -676,7 +975,29 @@ export const CNBKeySignatureEditor = {
     function drawSignature() {
       const ks = state.keySignature;
       const wrap = el("div", "cnb-kse-section cnb-kse-signature");
-      wrap.appendChild(el("div", "cnb-kse-title", "Key signature"));
+      wrap.appendChild(drawHead(ks));
+
+      // Which key draws (session 36): the one picked on the staff, whether
+      // or not a key is defined here.
+      if (state.enabled && ks.enabled) {
+        wrap.appendChild(el("div", "cnb-kse-sig-status",
+          "The signature draws for the key picked here, which is the staff's key too."));
+      }
+
+      wrap.appendChild(drawEditor(ks));
+      wrap.appendChild(drawNotes(ks));
+      wrap.appendChild(drawStacks(ks, pickedSignature()));
+      wrap.appendChild(drawPlace(ks));
+      return wrap;
+    }
+
+    // The head (design §13.8): Show the key signature, and Start from, which
+    // replaces the signature's settings with the defaults or the traditional
+    // signature once confirmed, keeping Show the key signature (session 56;
+    // session 54's Draw row).
+    function drawHead(ks) {
+      const head = el("div", "cnb-kse-head");
+      head.appendChild(el("div", "cnb-kse-title", "Key signature"));
 
       const enable = el("label", "cnb-kse-sig-enable");
       const cb = el("input", "cnb-kse-sig-enable-check");
@@ -685,45 +1006,369 @@ export const CNBKeySignatureEditor = {
       cb.onchange = (e) => { ks.enabled = checkedFrom(e, cb); changed(); };
       enable.appendChild(control(cb));
       enable.appendChild(el("span", "cnb-kse-sig-enable-text", "Show the key signature"));
-      wrap.appendChild(enable);
+      head.appendChild(enable);
 
-      // Which key draws (session 36): the one picked on the staff, whether
-      // or not a key is defined here.
-      if (state.enabled && ks.enabled) {
-        wrap.appendChild(el("div", "cnb-kse-sig-status",
-          "The signature draws for the key and mode picked on the staff."));
+      const start = el("div", "cnb-kse-start");
+      start.appendChild(el("span", "cnb-kse-field-label", "Start from"));
+      for (const [which, text, question] of START_FROM) {
+        const b = el("button", "cnb-kse-start-button", text);
+        b.type = "button";
+        b.setAttribute("data-start", which);
+        b.onclick = () => {
+          if (!confirm(question)) return;
+          state.keySignature = CNBKeySignatureEditor.startFrom(state.keySignature, which);
+          pickLayer("all");
+          changed();
+        };
+        start.appendChild(control(b));
       }
+      head.appendChild(start);
+      return head;
+    }
 
-      wrap.appendChild(drawDraw(ks));
-      // The scale-note rows are hidden for the traditional signature (design
-      // §5, §7), until session 56's editor replaces this panel.
-      if (!isTraditional(ks)) {
-        const sig = pickedSignature();
-        wrap.appendChild(drawNotes(ks));
-        wrap.appendChild(drawStacks(ks, sig));
-        wrap.appendChild(drawLooks(ks));
-      } else {
-        wrap.appendChild(drawSize(ks));
-      }
-      wrap.appendChild(drawPlace(ks));
+    // The editor (design §13.8): Edit picks the layer, and the look card
+    // edits it, every key at once.
+    function drawEditor(ks) {
+      const wrap = el("div", "cnb-kse-editor");
+      const bar = el("div", "cnb-kse-bar");
+      bar.appendChild(drawKeyPicker());
+      bar.appendChild(drawLayers());
+      wrap.appendChild(bar);
+      const workspace = el("div", "cnb-kse-workspace");
+      workspace.appendChild(drawStage());
+      workspace.appendChild(drawLookCard(ks));
+      wrap.appendChild(workspace);
       return wrap;
     }
 
-    // Draw (session 54, design §13.2): a starting point, not a style. Each
-    // choice replaces the signature's settings with the defaults or the
-    // traditional signature, keeping Show the key signature.
-    function drawDraw(ks) {
-      return row("cnb-kse-draw", "Draw",
-        radios("cnb-kse-style", isTraditional(ks) ? "traditional" : "noteheads", [
-          ["noteheads", "The key's notes"],
-          ["traditional", "Sharps or flats"],
-        ], (v) => {
-          const start = deepClone(DEFAULT_KS);
-          if (v === "traditional") Object.assign(start, deepClone(TRADITIONAL_START));
-          start.enabled = ks.enabled;
-          for (const field of Object.keys(ks)) delete ks[field];
-          Object.assign(ks, start);
-        }));
+    // ── The canvas (design §13.8): the picked key's signature, magnified ──
+    const PX = CANVAS_PX_PER_SEMI;
+    const SVG = (tag, attrs) => {
+      const e = doc.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v));
+      return e;
+    };
+    let drag = null;   // while a pointer is down on a symbol or the handle
+    let touchListOpen = false;   // the list of keys whose marks touch, open
+    let model = null;  // what the canvas last drew
+
+    /** The picked key's signature as the canvas draws it, or null. */
+    function canvasModel() {
+      if (!opts.key || !state.enabled || !state.keySignature.enabled) return null;
+      let config;
+      try { config = CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { return null; }
+      const { config: picked, name } = CNBPreviewDisplay.withKey(config, opts.key);
+      const active = CNBKeySignature.activeKey(picked, name);
+      if (!active) return null;
+      picked.display = { ...(picked.display || {}), pxPerSemi: PX };
+      const m = CNBKeySignature.measure(picked, PX, name);
+      if (!m) return null;
+      // Each symbol's box and reference point about its mark's line and pitch.
+      const symbols = m.marks.map((mk, i) => (m.layouts[i] || []).map((s, k) => {
+        const base = mk.mark.offset || { x: 0, y: 0 };
+        const own = k === 0 ? { x: 0, y: 0 } : ((mk.mark.added || [])[k - 1] || {}).offset || { x: 0, y: 0 };
+        return { s, box: symbolBox(picked, s, PX), point: { x: (base.x + own.x) * PX, y: -(base.y + own.y) * PX } };
+      }));
+      // The grid reaches every symbol, with a semitone to spare, so most
+      // signatures fit the canvas's 360 px.
+      let low = Infinity, high = -Infinity;
+      m.marks.forEach((mk, i) => symbols[i].forEach(({ box }) => {
+        low = Math.min(low, mk.semi - box.y1 / PX);
+        high = Math.max(high, mk.semi - box.y0 / PX);
+      }));
+      const grid = CNBGrid.create(picked, { minSemi: Math.floor(low) - 1, maxSemi: Math.ceil(high) + 1 });
+      const left = CNBKeySignature.padding(picked, PX, name).left + (m.extraLeftPx || 0);
+      const lineX = (mk, i) => left + m.lead + mk.column * m.markWidth + (m.offsets ? m.offsets[i] : 0);
+      return { config: picked, name, m, grid, symbols, lineX, width: 2 * left + m.contentWidth,
+        members: layerMembers(picked, active.def) };
+    }
+
+    /** The symbol of a mark the selection edits, by its index (0 the base). */
+    const selectedIndex = () => (view.symbol === "base" ? 0 : view.symbol + 1);
+
+    /** The mark the selection is shown on: the one clicked, else the
+     *  layer's first. */
+    function focusOf(md) {
+      const members = md.members[view.layer] || new Set();
+      if (members.has(view.mark) && md.symbols[view.mark][selectedIndex()]) return view.mark;
+      return [...members].find(i => md.symbols[i][selectedIndex()]) ?? null;
+    }
+
+    /** Draw the canvas into its box: the staff's lines, the signature, and
+     *  the selection: every instance of the layer's selected symbol outlined,
+     *  and on the focused one its box, reference point and corner handle. */
+    function drawCanvas(box) {
+      box.textContent = "";
+      model = canvasModel();
+      if (!model) {
+        box.appendChild(el("div", "cnb-kse-canvas-empty",
+          !state.enabled || !state.keySignature.enabled ? "Show the key signature to edit it here."
+            : !opts.key ? "Pick a key on the staff to edit its signature here."
+            : "This key's signature has no marks."));
+        return;
+      }
+      const { config, m, grid, symbols } = model;
+      const svg = SVG("svg", { width: Math.ceil(model.width), height: Math.ceil(grid.svgHeight),
+        class: "cnb-kse-canvas-svg" });
+      CNBStaff.render(svg, grid, config, model.width);
+      CNBKeySignature.render(svg, grid, config, model.name, { marked: true });
+
+      const overlay = SVG("g", { class: "cnb-kse-selection" });
+      const sel = selectedIndex();
+      const focus = focusOf(model);
+      for (const i of model.members[view.layer] || []) {
+        const sym = symbols[i][sel];
+        if (!sym) continue;
+        const x = model.lineX(m.marks[i], i), y = grid.semiToY(m.marks[i].semi);
+        overlay.appendChild(SVG("rect", { class: "cnb-kse-instance" + (i === focus ? " focus" : ""),
+          x: x + sym.box.x0, y: y + sym.box.y0, width: sym.box.x1 - sym.box.x0, height: sym.box.y1 - sym.box.y0 }));
+        if (i !== focus) continue;
+        const px = x + sym.point.x, py = y + sym.point.y;
+        overlay.appendChild(SVG("path", { class: "cnb-kse-reference",
+          d: `M ${px - 5} ${py} H ${px + 5} M ${px} ${py - 5} V ${py + 5}` }));
+        const hx = x + sym.box.x1, hy = y + sym.box.y1;
+        overlay.appendChild(SVG("rect", { class: "cnb-kse-handle", "data-handle": "1", x: hx - 4, y: hy - 4, width: 8, height: 8 }));
+        if (drag && drag.moved) {
+          const look = selectedLook();
+          const h = sym.s.kind === "sign" ? CNBKeySignature.signHeight(config).semis
+            : sym.s.heightSemis ?? config.shapes[sym.s.shape].semitoneHeight;
+          const off = (sel === 0 ? m.marks[i].mark.offset : look && look.offset) || { x: 0, y: 0 };
+          const readout = SVG("text", { class: "cnb-kse-readout", x: hx + 8, y: hy + 4 });
+          readout.textContent = `h ${Number(h.toFixed(2))} · offset x ${off.x.toFixed(1)} y ${off.y.toFixed(1)}`;
+          overlay.appendChild(readout);
+        }
+      }
+      svg.appendChild(overlay);
+      box.appendChild(svg);
+    }
+
+    /** The symbol or handle a pointer went down on, or null. */
+    function hitOf(target, box) {
+      for (let t = target; t && t !== box; t = t.parentNode) {
+        if (!t.getAttribute) return null;
+        if (t.getAttribute("data-handle")) return { handle: true };
+        const mark = t.getAttribute("data-mark");
+        if (mark !== null && mark !== undefined) return { mark: Number(mark), symbol: Number(t.getAttribute("data-symbol")) };
+      }
+      return null;
+    }
+
+    /** Select what a click hit (design §13.8): its layer by layerFor, and
+     *  the added symbol clicked when that layer sets it, else the base. */
+    function selectHit(hit) {
+      const layer = CNBKeySignatureEditor.layerFor(model.members, hit.mark, view);
+      const look = lookOf(state.keySignature, layer);
+      view.layer = layer;
+      view.symbol = hit.symbol > 0 && Array.isArray(look.added) && look.added[hit.symbol - 1] ? hit.symbol - 1 : "base";
+      view.mark = hit.mark;
+    }
+
+    // ── The key picker and the other keys (design §13.8) ──────────────────
+    /** The key picked on the staff, spelled; C major when none is. */
+    function pickedKey() {
+      const key = opts.key || CNBPreviewDisplay.DEFAULT_KEY;
+      const spelling = key.spelling ?? CNBMusic.defaultSpelling(key.tonic, CNBMusic.scale(key.tonic, key.mode));
+      return { tonic: key.tonic, mode: key.mode, spelling };
+    }
+
+    /** Pick a key: the host changes the staff's picker, and so this one. */
+    const pickKey = (key) => { if (opts.onKey) opts.onKey(key); };
+
+    function drawKeyPicker() {
+      const key = pickedKey();
+      const wrap = el("div", "cnb-kse-key");
+      wrap.appendChild(el("span", "cnb-kse-field-label", "Key"));
+      const tonic = el("select", "cnb-kse-key-tonic");
+      tonic.setAttribute("aria-label", "Key");
+      for (const name of CNBMusic.spellings(key.mode)) {
+        const option = el("option", "", name);
+        option.value = name;
+        if (name === key.spelling) option.selected = true;
+        tonic.appendChild(option);
+      }
+      tonic.value = key.spelling;
+      tonic.onchange = (e) => {
+        const spelling = valueFrom(e, tonic);
+        pickKey({ tonic: CNBKeySignature.parseTonicPc(spelling), mode: key.mode, spelling });
+      };
+      wrap.appendChild(control(tonic));
+      const mode = el("select", "cnb-kse-key-mode");
+      mode.setAttribute("aria-label", "Mode");
+      for (const name of Object.keys(CNBMusic.MODES)) {
+        const option = el("option", "", name);
+        option.value = name;
+        if (name === key.mode) option.selected = true;
+        mode.appendChild(option);
+      }
+      mode.value = key.mode;
+      mode.onchange = (e) => {
+        // As the staff's picker: the spelling stays where the new mode has
+        // it, else the tonic takes the new mode's default.
+        const next = valueFrom(e, mode);
+        const spelling = CNBMusic.spellings(next).includes(key.spelling) ? key.spelling
+          : CNBMusic.defaultSpelling(key.tonic, CNBMusic.scale(key.tonic, next));
+        pickKey({ tonic: key.tonic, mode: next, spelling });
+      };
+      wrap.appendChild(control(mode));
+      return wrap;
+    }
+
+    /** A key's name as the picker says it: "G major". */
+    const keyName = (k) => `${k.spelling} ${k.mode}`;
+
+    /** A small drawing of a key's signature, at MINI_PX a semitone. */
+    function miniSignature(config, key) {
+      const { config: picked, name } = CNBPreviewDisplay.withKey(config, key);
+      picked.display = { ...(picked.display || {}), pxPerSemi: MINI_PX };
+      const m = CNBKeySignature.measure(picked, MINI_PX, name);
+      if (!m) return null;
+      const grid = CNBGrid.create(picked, { minSemi: Math.min(...m.semis) - 3, maxSemi: Math.max(...m.semis) + 3 });
+      const left = CNBKeySignature.padding(picked, MINI_PX, name).left + (m.extraLeftPx || 0);
+      const width = 2 * left + m.contentWidth;
+      // Shown from just before the marks to just after them, so the mode's
+      // 15 keys fit a row.
+      const shown = m.contentWidth + 8;
+      const svg = SVG("svg", { width: Math.ceil(shown), height: Math.ceil(grid.svgHeight), class: "cnb-kse-mini-svg",
+        viewBox: `${left - 4} 0 ${shown} ${grid.svgHeight}` });
+      CNBStaff.render(svg, grid, picked, width);
+      CNBKeySignature.render(svg, grid, picked, name);
+      return svg;
+    }
+
+    /** Beneath the canvas: the picked mode's 15 keys, each a small
+     *  signature, a key whose marks touch outlined with its count; and the
+     *  line saying how many of the 105 keys have marks that touch, which
+     *  opens their list. The touch check runs here, when the panel draws
+     *  after a change, never while a drag moves. */
+    function drawOtherKeys() {
+      const wrap = el("div", "cnb-kse-keys");
+      if (!state.enabled || !state.keySignature.enabled) return wrap;
+      let config;
+      try { config = CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { return wrap; }
+      const touching = CNBKeySignature.touchingKeys(config);
+      const counts = new Map(touching.map(k => [keyName(k), k.count]));
+      const picked = pickedKey();
+
+      wrap.appendChild(el("div", "cnb-kse-field-label cnb-kse-keys-title", `Other keys in ${picked.mode}`));
+      const strip = el("div", "cnb-kse-key-strip");
+      for (const spelling of CNBKeySignatureEditor.keyOrder(picked.mode)) {
+        const key = { tonic: CNBKeySignature.parseTonicPc(spelling), mode: picked.mode, spelling };
+        const count = counts.get(keyName(key)) || 0;
+        const b = el("button", "cnb-kse-mini" + (spelling === picked.spelling ? " on" : "") + (count ? " touch" : ""));
+        b.type = "button";
+        b.setAttribute("data-key", spelling);
+        b.title = keyName(key) + (count ? `: marks touch in ${count} ${count === 1 ? "place" : "places"}` : "");
+        const svg = miniSignature(config, key);
+        if (svg) b.appendChild(svg);
+        b.appendChild(el("span", "cnb-kse-mini-name", spelling + (count ? ` · ${count} touch` : "")));
+        b.onclick = () => pickKey(key);
+        strip.appendChild(control(b));
+      }
+      wrap.appendChild(strip);
+
+      if (touching.length === 0) {
+        wrap.appendChild(el("div", "cnb-kse-touch-summary", "No marks touch in any of the 105 keys."));
+        return wrap;
+      }
+      const list = el("details", "cnb-kse-touch-list");
+      list.open = touchListOpen;
+      list.ontoggle = () => { touchListOpen = list.open; };
+      list.appendChild(el("summary", "cnb-kse-touch-summary",
+        `Marks touch in ${touching.length} of the 105 ${touching.length === 1 ? "key" : "keys"}`));
+      const keys = el("div", "cnb-kse-touch-keys");
+      for (const k of touching) {
+        const b = el("button", "cnb-kse-touch-key", `${keyName(k)} · ${k.count}`);
+        b.type = "button";
+        b.setAttribute("data-key", keyName(k));
+        b.onclick = () => pickKey({ tonic: k.tonic, mode: k.mode, spelling: k.spelling });
+        keys.appendChild(control(b));
+      }
+      list.appendChild(keys);
+      wrap.appendChild(list);
+      return wrap;
+    }
+
+    function drawStage() {
+      const stage = el("div", "cnb-kse-stage");
+      const box = el("div", "cnb-kse-canvas");
+      box.onpointerdown = (e) => {
+        const hit = model && hitOf(e.target, box);
+        if (!hit) return;
+        if (!hit.handle) selectHit(hit);
+        const focus = focusOf(model);
+        if (focus === null) return;
+        const mk = model.m.marks[focus];
+        const sym = model.symbols[focus][selectedIndex()];
+        let start;
+        if (!hit.handle) {
+          start = (view.symbol === "base" ? mk.mark.offset : ((mk.mark.added || [])[view.symbol] || {}).offset) || { x: 0, y: 0 };
+        } else if (sym.s.kind === "sign") {
+          start = CNBKeySignature.signHeight(model.config).semis;
+        } else {
+          const shape = model.config.shapes[sym.s.shape];
+          const own = shape.semitoneHeight;
+          start = { heightSemis: sym.s.heightSemis ?? own,
+            widthSemis: sym.s.widthSemis ?? shape.naturalWidth * own / shape.naturalHeight };
+        }
+        drag = { kind: hit.handle ? (sym.s.kind === "sign" ? "signs" : "size") : "move",
+          x0: e.clientX, y0: e.clientY, start, moved: false };
+        if (box.setPointerCapture && e.pointerId !== undefined) box.setPointerCapture(e.pointerId);
+        drawCanvas(box);
+      };
+      box.onpointermove = (e) => {
+        if (!drag) return;
+        const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+        if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+        drag.moved = true;
+        const E = CNBKeySignatureEditor;
+        if (drag.kind === "move") {
+          state.keySignature = E.lookWith(state.keySignature, view.layer, view.symbol, "offset",
+            E.dragOffset(drag.start, dx, dy, PX));
+        } else if (drag.kind === "signs") {
+          state.keySignature = { ...state.keySignature, signs: { heightSemis: Math.max(0.1, snap(drag.start + dy / PX)) } };
+        } else {
+          const size = E.dragSize(drag.start, dy, PX);
+          const sized = E.lookWith(state.keySignature, view.layer, view.symbol, "heightSemis", size.heightSemis);
+          state.keySignature = E.lookWith(sized, view.layer, view.symbol, "widthSemis", size.widthSemis);
+        }
+        // Only the canvas redraws while the pointer moves; the change is
+        // reported once, when it is released: one drag, one step of undo.
+        drawCanvas(box);
+      };
+      box.onpointerup = box.onpointercancel = () => {
+        if (!drag) return;
+        const moved = drag.moved;
+        drag = null;
+        if (moved) changed();
+        else redraw();
+      };
+      drawCanvas(box);
+      stage.appendChild(box);
+      stage.appendChild(el("div", "cnb-kse-hint",
+        "Drag a mark to move its category, the corner handle to resize it; values snap to tenths of a semitone. A click picks another mark."));
+      stage.appendChild(drawOtherKeys());
+      return stage;
+    }
+
+    /** Pick a layer to edit: a spelling's (naturals, flats, sharps) follows
+     *  a click on a mark, any other stays picked (design §13.8). */
+    function pickLayer(layer) {
+      view.layer = layer;
+      view.symbol = "base";
+      view.pinned = !SPELLINGS.includes(layer);
+    }
+
+    function drawLayers() {
+      const bar = el("div", "cnb-kse-layers");
+      bar.appendChild(el("span", "cnb-kse-field-label", "Edit"));
+      for (const [layer, label] of LAYERS) {
+        const b = el("button", "cnb-kse-layer" + (layer === view.layer ? " on" : ""), label);
+        b.type = "button";
+        b.setAttribute("data-layer", layer);
+        b.onclick = () => { pickLayer(layer); redraw(); };
+        bar.appendChild(control(b));
+      }
+      return bar;
     }
 
     function drawNotes(ks) {
@@ -731,9 +1376,12 @@ export const CNBKeySignatureEditor = {
         radios("cnb-kse-notes-choice", ks.notes, [
           ["all", "The whole scale"],
           ["tonic-and-half-steps", "The tonic and the half steps"],
+          ["altered", "The sharps or flats only"],
         ], (v) => { ks.notes = v; }),
-        checkbox("cnb-kse-upper-tonic", ks.upperTonic !== false, "The tonic an octave up",
-          (v) => { ks.upperTonic = v; }));
+        // Each letter has one mark under the cycle of fifths (design §13.5).
+        ks.stacking === "fifths" ? null
+          : checkbox("cnb-kse-upper-tonic", ks.upperTonic !== false, "The tonic an octave up",
+            (v) => { ks.upperTonic = v; }));
     }
 
     function drawStacks(ks, sig) {
@@ -742,7 +1390,11 @@ export const CNBKeySignatureEditor = {
         ["parity", "Odd semitones left, even right"],
         ["parity-stacks", "A new stack at each change of odd and even"],
         ["parity-zigzag", "Zigzag at each change of odd and even"],
+        ["fifths", "Cycle of fifths, one to a column"],
       ], (v) => { ks.stacking = v; });
+
+      // The cycle of fifths has its heights, and no direction or gold stem.
+      if (ks.stacking === "fifths") return row("cnb-kse-stacks", "Stacks", stacking, drawHeights(ks));
 
       // Odd-left-even-right fixes each side, so the direction does not apply.
       let direction = null;
@@ -754,12 +1406,36 @@ export const CNBKeySignatureEditor = {
           ["left-in-sharp-keys", "to the left in sharp keys"],
         ], (v) => { ks.columns = v; }));
       }
+      return row("cnb-kse-stacks", "Stacks", stacking, direction, drawGoldStem(ks, sig));
+    }
 
-      const overlap = sig && sig.overlaps.length > 0
-        ? el("div", "cnb-kse-overlap-note",
-          "In this key some marks in one stack run together. A smaller height under Looks keeps them apart.")
-        : null;
-      return row("cnb-kse-stacks", "Stacks", stacking, direction, drawGoldStem(ks, sig), overlap);
+    // The cycle of fifths' heights (design §13.5): in a window around the
+    // line set, raised in sharp and in flat keys, or climbing with the scale.
+    function drawHeights(ks) {
+      const wrap = el("div", "cnb-kse-heights");
+      wrap.appendChild(radios("cnb-kse-heights-choice", ks.heights, [
+        ["window", "Heights in a window around the line set"],
+        ["scale", "Climbing with the scale"],
+      ], (v) => { ks.heights = v; }));
+      if (ks.heights === "scale") return wrap;
+      const fields = el("div", "cnb-kse-fields cnb-kse-window");
+      fields.appendChild(el("span", "cnb-kse-field-label", "Window raised"));
+      for (const [family, label] of [["sharp", "sharps"], ["flat", "flats"]]) {
+        fields.appendChild(el("span", "cnb-kse-field-unit", label));
+        const input = el("input", "cnb-kse-window-" + family);
+        input.type = "number";
+        input.step = "1";
+        input.value = String((ks.window || {})[family] ?? 0);
+        input.title = `How far the window is raised in ${family} keys, in semitones (negative lowers it)`;
+        input.onchange = (e) => {
+          const v = numberFrom(e, input);
+          if (v !== null) { ks.window = { sharp: 0, flat: 0, ...(ks.window || {}), [family]: v }; changed(); }
+        };
+        fields.appendChild(control(input));
+      }
+      fields.appendChild(el("span", "cnb-kse-field-unit", "semitones"));
+      wrap.appendChild(fields);
+      return wrap;
     }
 
     function drawGoldStem(ks, sig) {
@@ -813,65 +1489,133 @@ export const CNBKeySignatureEditor = {
       return wrap;
     }
 
-    // ── Looks (design §4.1, §7): the notehead panel's own controls ────────
-    /** The look a kind edits, created when missing. */
-    function lookOf(ks, kind) {
-      if (kind === "alternate") {
-        if (!isPlainObject(ks.alternate)) ks.alternate = {};
-        return ks.alternate;
-      }
-      if (!isPlainObject(ks.looks)) ks.looks = {};
-      if (!isPlainObject(ks.looks[kind])) ks.looks[kind] = {};
-      return ks.looks[kind];
+    // ── The look card (design §13.3, §13.8): the picked layer's look ──────
+    /** The look a layer edits, created when missing. */
+    const lookOf = (ks, layer) => lookIn(ks, layer);
+
+    /** The selected symbol's look: the layer's own, or one of its added symbols. */
+    function selectedLook() {
+      const look = lookOf(state.keySignature, view.layer);
+      return view.symbol === "base" ? look : look.added[view.symbol];
     }
 
-    /** Set a look's field, or clear it (undefined): "as …" beneath. */
-    function setLookField(kind, field, value, extra) {
-      const look = lookOf(state.keySignature, kind);
-      if (value === undefined) delete look[field];
-      else look[field] = value;
-      // A new shape keeps the look's height, and with the aspect ratio kept
+    /** Set a field of the selected symbol, or clear it (undefined): "as …" beneath. */
+    function writeLook(field, value, extra) {
+      state.keySignature = CNBKeySignatureEditor.lookWith(state.keySignature, view.layer, view.symbol, field, value);
+      // A new shape keeps the symbol's height, and with the aspect ratio kept
       // its width follows the shape's proportions, as in the notehead panel.
-      if (field === "shape" && lockLooks && look.heightSemis !== undefined) {
-        const shape = sizedShape(state.keySignature, kind);
-        if (shape) look.widthSemis = Math.round(look.heightSemis * shape.naturalWidth / shape.naturalHeight * 1e4) / 1e4;
+      const sym = selectedLook();
+      if (field === "shape" && value !== undefined && lockLooks && sym.heightSemis !== undefined) {
+        const shape = shapeOf(value);
+        if (shape) sym.widthSemis = round4(sym.heightSemis * shape.naturalWidth / shape.naturalHeight);
       }
       changed(extra);
+    }
+
+    /** Set the layer's added symbols whole, or clear them (undefined). */
+    function writeAdded(added, symbol = "base") {
+      state.keySignature = CNBKeySignatureEditor.addedWith(state.keySignature, view.layer, added);
+      view.symbol = symbol;
+      changed();
     }
 
     /** A shape by name, from the config or else the built-in set. */
     const shapeOf = (name) => (baseConfig.shapes || {})[name] || CNBBuiltinShapes.get(name);
 
-    /** The shape a look's size is measured on: its own, else the one beneath. */
-    function sizedShape(ks, kind) {
-      const look = lookOf(ks, kind);
-      const name = look.shape ?? (kind !== "all" ? lookOf(ks, "all").shape : undefined) ??
+    /** The shape a base's size is measured on: its own, else the one beneath. */
+    function sizedShape(ks, layer) {
+      const look = lookOf(ks, layer);
+      const name = look.shape ?? (layer !== "all" ? lookOf(ks, "all").shape : undefined) ??
         CNBConfig.resolveNotehead(baseConfig, 0, "crotchet", null).shape;
       return shapeOf(name);
     }
 
-    function drawLooks(ks) {
-      const wrap = el("div", "cnb-kse-looks");
-      for (const [kind, label] of LOOK_KINDS) {
-        const look = lookOf(ks, kind);
-        const menu = el("details", "cnb-kse-look");
-        menu.setAttribute("data-look", kind);
-        menu.open = openLooks.has(kind);
-        menu.ontoggle = () => { if (menu.open) openLooks.add(kind); else openLooks.delete(kind); };
-        const summary = el("summary", "cnb-kse-look-summary");
-        summary.appendChild(el("span", "cnb-kse-look-label", label));
-        summary.appendChild(el("span", "cnb-kse-look-words",
-          CNBKeySignatureEditor.lookSummary(look, kind, baseConfig.shapes)));
-        menu.appendChild(summary);
-        const body = el("div", "cnb-kse-look-body");
-        body.appendChild(drawLookShape(kind, look));
-        body.appendChild(drawLookFill(kind, look));
-        body.appendChild(drawLookColour(kind, look));
-        if (kind !== "alternate") body.appendChild(drawLookSize(ks, kind, look));
-        menu.appendChild(body);
-        wrap.appendChild(menu);
+    // ── An imported symbol's reference point and ledgers (design §13.3) ───
+    let importing = null;   // the shape just imported, its reference being set
+
+    /** Set a field of one of the notation's shapes, or remove it
+     *  (undefined), and report the shapes with the keys. */
+    function writeShape(name, field, value) {
+      const shape = { ...baseConfig.shapes[name] };
+      if (value === undefined) delete shape[field];
+      else shape[field] = value;
+      baseConfig.shapes = { ...baseConfig.shapes, [name]: shape };
+      changed({ shapes: deepClone(baseConfig.shapes) });
+    }
+
+    /** An imported symbol: added to the notation with its reference point
+     *  at the SVG's origin (the toolkit's notehead centre) and, for flats or
+     *  sharps, no ledger lines; given to the selected symbol; and its
+     *  reference picker opened. */
+    function adoptImport(name, shape) {
+      if (!shape) { writeLook("shape", name); return; }
+      const adopted = { ...shape, reference: { x: 0, y: 0 } };
+      if (view.layer === "flat" || view.layer === "sharp") adopted.ledgers = false;
+      baseConfig.shapes = { ...(baseConfig.shapes || {}), [name]: adopted };
+      importing = name;
+      writeLook("shape", name, { shapes: deepClone(baseConfig.shapes) });
+    }
+
+    /** The imported symbol enlarged, its reference point marked; a click
+     *  moves the point. Then Takes ledger lines, and Done. */
+    function drawReferencePicker(name) {
+      const shape = baseConfig.shapes[name];
+      const wrap = el("div", "cnb-kse-reference-picker");
+      wrap.appendChild(el("div", "cnb-kse-hint",
+        "Click the symbol at the point that sits on the mark's pitch, such as a dot's centre."));
+      const g = CNBKeySignatureEditor.referenceGeometry(shape);
+      const svg = SVG("svg", { width: Math.ceil(g.width), height: Math.ceil(g.height), class: "cnb-kse-reference-svg" });
+      svg.appendChild(SVG("path", { d: shape.svgPath, fill: "#1c1c1e",
+        transform: `translate(${g.ox} ${g.oy}) scale(${g.k})` }));
+      const ref = shape.reference || { x: 0, y: 0 };
+      const cx = g.ox + ref.x * g.k, cy = g.oy + ref.y * g.k;
+      svg.appendChild(SVG("path", { class: "cnb-kse-reference",
+        d: `M ${cx - 8} ${cy} H ${cx + 8} M ${cx} ${cy - 8} V ${cy + 8}` }));
+      svg.onclick = (e) => {
+        const rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : { left: 0, top: 0 };
+        writeShape(name, "reference", CNBKeySignatureEditor.referenceAt(g, e.clientX - rect.left, e.clientY - rect.top));
+      };
+      wrap.appendChild(svg);
+      const ledgers = el("label", "cnb-kse-check cnb-kse-takes-ledgers");
+      const box = el("input", "cnb-kse-takes-ledgers-check");
+      box.type = "checkbox";
+      box.checked = shape.ledgers !== false;
+      box.onchange = (e) => writeShape(name, "ledgers", checkedFrom(e, box) ? undefined : false);
+      ledgers.appendChild(control(box));
+      ledgers.appendChild(el("span", "", "Takes ledger lines"));
+      wrap.appendChild(ledgers);
+      const done = el("button", "cnb-kse-reference-done", "Done");
+      done.type = "button";
+      done.onclick = () => { importing = null; redraw(); };
+      wrap.appendChild(control(done));
+      return wrap;
+    }
+
+    function drawLookCard(ks) {
+      const layer = view.layer;
+      const look = lookOf(ks, layer);
+      if (view.symbol !== "base" && !(Array.isArray(look.added) && look.added[view.symbol])) view.symbol = "base";
+      const base = view.symbol === "base";
+      const sym = selectedLook();
+      const words = LAYER_WORDS[layer];
+
+      const card = el("div", "cnb-kse-look-card");
+      card.setAttribute("data-look", layer);
+      card.appendChild(el("div", "cnb-kse-look-title", words.name));
+      card.appendChild(el("div", "cnb-kse-look-scope", `Edits ${words.scope} in every key`));
+      card.appendChild(el("div", "cnb-kse-look-words",
+        CNBKeySignatureEditor.lookSummary(look, layer, baseConfig.shapes)));
+      card.appendChild(drawSymbols(layer, look));
+      card.appendChild(drawLookShape(layer, sym));
+      if (importing && sym.shape === importing && (baseConfig.shapes || {})[importing]) {
+        card.appendChild(drawReferencePicker(importing));
       }
-      return row("cnb-kse-looks-row", "Looks", wrap);
+      if (base && look.sign === undefined) card.appendChild(drawLookFill(layer, look));
+      if (base) card.appendChild(drawLookColour(layer, look));
+      if (base && look.sign !== undefined) card.appendChild(drawSignSize(ks));
+      else if (layer !== "alternate" || !base) card.appendChild(drawLookSize(ks, layer, sym));
+      card.appendChild(drawLookOffset(layer, sym));
+      return card;
     }
 
     /** A segmented button: on when the look's field is that value. */
@@ -888,59 +1632,101 @@ export const CNBKeySignatureEditor = {
       return group;
     }
 
-    function drawLookShape(kind, look) {
-      const group = lookGroup("Shape");
-      const asBeneath = lookButton("cnb-kse-look-shape cnb-kse-look-as", AS_BENEATH[kind], look.shape === undefined,
-        () => setLookField(kind, "shape", undefined));
-      asBeneath.setAttribute("data-shape", "");
-      group.appendChild(asBeneath);
+    // Which symbol is edited (design §13.8): the base, or an added one, each
+    // removable; up to two added (§13.3), the layer's added field replaced whole.
+    function drawSymbols(layer, look) {
+      const group = lookGroup("Symbols");
+      const added = Array.isArray(look.added) ? look.added : null;
+      const select = (symbol, text) => {
+        const b = lookButton("cnb-kse-look-select", text, view.symbol === symbol, () => { view.symbol = symbol; redraw(); });
+        b.setAttribute("data-symbol", String(symbol));
+        return b;
+      };
+      group.appendChild(select("base", "Base"));
+      (added || []).forEach((_, i) => {
+        group.appendChild(select(i, `Added ${i + 1}`));
+        const remove = lookButton("cnb-kse-look-remove", "×", false,
+          () => writeAdded(added.filter((__, j) => j !== i)));
+        remove.setAttribute("data-symbol", String(i));
+        remove.title = `Remove added symbol ${i + 1}`;
+        group.appendChild(remove);
+      });
+      if (!added || added.length < 2) {
+        const list = added || [];
+        group.appendChild(lookButton("cnb-kse-look-add", "+ Add a symbol", false, () =>
+          writeAdded([...list, { shape: CNBConfig.resolveNotehead(baseConfig, 0, "crotchet", null).shape }], list.length)));
+      }
+      if (added) {
+        group.appendChild(lookButton("cnb-kse-look-added-as", `Added symbols ${AS_BENEATH[layer]}`, false,
+          () => writeAdded(undefined)));
+      }
+      return group;
+    }
+
+    // The symbol (design §13.3): a notehead shape, imported or built in, or,
+    // for a base, Emmentaler's sharp or flat; one slot.
+    function drawLookShape(layer, sym) {
+      const base = view.symbol === "base";
+      const group = lookGroup("Symbol");
+      if (base) {
+        const asBeneath = lookButton("cnb-kse-look-shape cnb-kse-look-as", AS_BENEATH[layer],
+          sym.shape === undefined && sym.sign === undefined, () => writeLook("shape", undefined));
+        asBeneath.setAttribute("data-shape", "");
+        group.appendChild(asBeneath);
+      }
       const names = Object.keys(baseConfig.shapes || {});
       for (const name of CNBBuiltinShapes.NAMES) if (!names.includes(name)) names.push(name);
       for (const name of names) {
         const shape = shapeOf(name);
-        const b = lookButton("cnb-kse-look-shape", "", look.shape === name, () => {
+        const b = lookButton("cnb-kse-look-shape", "", sym.shape === name, () => {
           // A built-in shape the notation lacks is added to it (session 50).
           const added = !(name in (baseConfig.shapes || {}));
           if (added) baseConfig.shapes = CNBBuiltinShapes.withShape(baseConfig, name).shapes;
-          setLookField(kind, "shape", name, added ? { shapes: deepClone(baseConfig.shapes) } : undefined);
+          writeLook("shape", name, added ? { shapes: deepClone(baseConfig.shapes) } : undefined);
         });
         b.setAttribute("data-shape", name);
         b.title = shape.displayName || name;
         b.appendChild(CNBNoteheadPanel.thumbnail(shape));
         group.appendChild(b);
       }
+      if (base) {
+        for (const [sign, title] of [["sharp", "Sharp"], ["flat", "Flat"]]) {
+          const b = lookButton("cnb-kse-look-shape cnb-kse-look-sign", "", sym.sign === sign, () => writeLook("sign", sign));
+          b.setAttribute("data-sign", sign);
+          b.title = `${title} (Emmentaler's)`;
+          b.appendChild(signThumbnail(sign));
+          group.appendChild(b);
+        }
+      }
       if (opts.importControl) {
         const slot = el("div", "cnb-kse-look-import");
-        // The host adds the imported shape to the notation and hands it
-        // here too, so the look's width can follow its proportions.
-        opts.importControl(slot, (name, shape) => {
-          if (shape) baseConfig.shapes = { ...(baseConfig.shapes || {}), [name]: shape };
-          setLookField(kind, "shape", name);
-        });
+        // The host hands the imported shape here; the panel adds it to the
+        // notation, with its reference point and ledgers (session 56).
+        opts.importControl(slot, adoptImport);
         group.appendChild(slot);
       }
       return group;
     }
 
-    function drawLookFill(kind, look) {
+    function drawLookFill(layer, look) {
       const group = lookGroup("Fill");
-      for (const [value, text] of [[undefined, AS_BENEATH[kind]], [false, "Solid"], [true, "Hollow"]]) {
+      for (const [value, text] of [[undefined, AS_BENEATH[layer]], [false, "Solid"], [true, "Hollow"]]) {
         const b = lookButton("cnb-kse-look-fill", text, look.hollow === value,
-          () => setLookField(kind, "hollow", value));
+          () => writeLook("hollow", value));
         b.setAttribute("data-fill", value === undefined ? "" : value ? "hollow" : "solid");
         group.appendChild(b);
       }
       return group;
     }
 
-    function drawLookColour(kind, look) {
+    function drawLookColour(layer, look) {
       const group = lookGroup("Colour");
-      const asBeneath = lookButton("cnb-kse-look-colour", AS_BENEATH[kind], look.color === undefined,
-        () => setLookField(kind, "color", undefined));
+      const asBeneath = lookButton("cnb-kse-look-colour", AS_BENEATH[layer], look.color === undefined,
+        () => writeLook("color", undefined));
       asBeneath.setAttribute("data-color", "");
       group.appendChild(asBeneath);
       const none = lookButton("cnb-kse-look-colour", "None", look.color === null,
-        () => setLookField(kind, "color", null));
+        () => writeLook("color", null));
       none.setAttribute("data-color", "none");
       group.appendChild(none);
       const input = el("input", "cnb-kse-look-colour-input");
@@ -950,53 +1736,50 @@ export const CNBKeySignatureEditor = {
       // The colour applies once, when the picker closes (session 36).
       input.onchange = (e) => {
         const v = String(valueFrom(e, input)).toLowerCase();
-        if (isValidHex(v)) setLookField(kind, "color", v);
+        if (isValidHex(v)) writeLook("color", v);
       };
       group.appendChild(control(input));
       return group;
     }
 
-    function drawLookSize(ks, kind, look) {
+    /** A number field writing a value through onValue when it is accepted. */
+    function numberField(className, label, value, unit, step, onValue, accept = v => v > 0) {
+      const wrap = el("label", "cnb-kse-look-field");
+      if (label) wrap.appendChild(el("span", "", label));
+      const input = el("input", className);
+      input.type = "number";
+      input.step = step;
+      input.value = value === undefined ? "" : String(value);
+      input.placeholder = "—";
+      input.onchange = (e) => {
+        const v = numberFrom(e, input);
+        if (v !== null && accept(v)) onValue(v);
+      };
+      wrap.appendChild(control(input));
+      if (unit) wrap.appendChild(el("span", "cnb-kse-field-unit", unit));
+      return wrap;
+    }
+
+    function drawLookSize(ks, layer, sym) {
       const group = lookGroup("Size");
-      const asBeneath = lookButton("cnb-kse-look-size-as", AS_BENEATH[kind],
-        look.heightSemis === undefined && look.widthSemis === undefined, () => {
-          const target = lookOf(state.keySignature, kind);
-          delete target.heightSemis;
-          delete target.widthSemis;
+      const base = view.symbol === "base";
+      group.appendChild(lookButton("cnb-kse-look-size-as", base ? AS_BENEATH[layer] : "its shape's own",
+        sym.heightSemis === undefined && sym.widthSemis === undefined, () => {
+          const cleared = CNBKeySignatureEditor.lookWith(state.keySignature, layer, view.symbol, "heightSemis", undefined);
+          state.keySignature = CNBKeySignatureEditor.lookWith(cleared, layer, view.symbol, "widthSemis", undefined);
           changed();
-        });
-      group.appendChild(asBeneath);
-      const shape = sizedShape(ks, kind);
+        }));
+      const shape = base ? sizedShape(ks, layer) : shapeOf(sym.shape);
       const ratio = shape ? shape.naturalWidth / shape.naturalHeight : 1;
-      const round4 = (v) => Math.round(v * 1e4) / 1e4;
       const setSize = (h, w) => {
-        const target = lookOf(state.keySignature, kind);
-        target.heightSemis = round4(h);
-        target.widthSemis = round4(w);
+        const sized = CNBKeySignatureEditor.lookWith(state.keySignature, layer, view.symbol, "heightSemis", round4(h));
+        state.keySignature = CNBKeySignatureEditor.lookWith(sized, layer, view.symbol, "widthSemis", round4(w));
         changed();
       };
-      const field = (className, label, value, onValue) => {
-        const wrap = el("label", "cnb-kse-look-field");
-        wrap.appendChild(el("span", "", label));
-        const input = el("input", className);
-        input.type = "number";
-        input.min = "0.25";
-        input.max = "4";
-        input.step = "0.05";
-        input.value = value === undefined ? "" : String(value);
-        input.placeholder = "—";
-        input.onchange = (e) => {
-          const v = numberFrom(e, input);
-          if (v !== null && v > 0) onValue(v);
-        };
-        wrap.appendChild(control(input));
-        wrap.appendChild(el("span", "cnb-kse-field-unit", "semitones"));
-        return wrap;
-      };
-      group.appendChild(field("cnb-kse-look-height", "Height", look.heightSemis,
-        (h) => setSize(h, lockLooks || look.widthSemis === undefined ? h * ratio : look.widthSemis)));
-      group.appendChild(field("cnb-kse-look-width", "Width", look.widthSemis,
-        (w) => setSize(lockLooks || look.heightSemis === undefined ? w / ratio : look.heightSemis, w)));
+      group.appendChild(numberField("cnb-kse-look-height", "Height", sym.heightSemis, "semitones", "0.05",
+        (h) => setSize(h, lockLooks || sym.widthSemis === undefined ? h * ratio : sym.widthSemis)));
+      group.appendChild(numberField("cnb-kse-look-width", "Width", sym.widthSemis, "semitones", "0.05",
+        (w) => setSize(lockLooks || sym.heightSemis === undefined ? w / ratio : sym.heightSemis, w)));
       const lock = el("label", "cnb-kse-check cnb-kse-look-lock");
       const box = el("input", "cnb-kse-look-lock-check");
       box.type = "checkbox";
@@ -1008,7 +1791,7 @@ export const CNBKeySignatureEditor = {
       return group;
     }
 
-    // ── Size (session 52): the sharps' and flats' size in semitones ──────
+    // ── The signs' size (session 52): one size for the sharps and flats ───
     /** The size the automatic rule gives the config as edited. */
     function automaticHeight() {
       let config;
@@ -1017,39 +1800,39 @@ export const CNBKeySignatureEditor = {
       return CNBKeySignature.signHeight(config).semis;
     }
 
-    function drawSize(ks) {
+    function drawSignSize(ks) {
       if (!isPlainObject(ks.signs)) ks.signs = { heightSemis: null };
       const signs = ks.signs;
-      const auto = automaticHeight();
-      const shown = Number(auto.toFixed(2));
-      const choice = radios("cnb-kse-size-choice", signs.heightSemis === null ? "auto" : "set", [
-        ["auto", `Automatic (${shown})`],
-        ["set", "Set by hand"],
-      ], (v) => { signs.heightSemis = v === "auto" ? null : (signs.heightSemis ?? shown); });
+      const shown = Number(automaticHeight().toFixed(2));
+      const group = lookGroup("Size");
+      group.appendChild(lookButton("cnb-kse-sign-size-auto", `Automatic (${shown})`, signs.heightSemis === null,
+        () => { signs.heightSemis = null; changed(); }));
+      group.appendChild(numberField("cnb-kse-sign-size", "", signs.heightSemis ?? shown,
+        "semitones between a sharp's bars", "0.25", (v) => { signs.heightSemis = v; changed(); }));
+      group.appendChild(el("div", "cnb-kse-hint", "The sharps and flats share one size."));
+      return group;
+    }
 
-      const height = el("input", "cnb-kse-size-height");
-      height.type = "number";
-      height.min = "0";
-      height.step = "0.25";
-      height.value = String(signs.heightSemis ?? shown);
-      height.title = "The sharp's height, from the top of one bar to the top of the other";
-      height.onchange = (e) => {
-        const v = numberFrom(e, height);
-        if (v !== null && v > 0) { signs.heightSemis = v; changed(); }
-      };
-      const fields = el("div", "cnb-kse-fields");
-      fields.appendChild(control(height));
-      fields.appendChild(el("span", "cnb-kse-field-unit", "semitones between a sharp's bars"));
-      return row("cnb-kse-size", "Size", choice, fields,
-        el("div", "cnb-kse-hint",
-          "Automatic is the noteheads' mean height, at most one staff space and 3 semitones. " +
-          "The flats are sized with the sharps."));
+    // The offset (design §13.6), in semitones: the base's from the mark's
+    // pitch on its stack, an added symbol's from the base's point.
+    function drawLookOffset(layer, sym) {
+      const group = lookGroup("Offset");
+      const base = view.symbol === "base";
+      group.appendChild(lookButton("cnb-kse-look-offset-as", base ? AS_BENEATH[layer] : "none",
+        sym.offset === undefined, () => writeLook("offset", undefined)));
+      const offset = sym.offset || { x: 0, y: 0 };
+      for (const axisName of ["x", "y"]) {
+        group.appendChild(numberField("cnb-kse-look-offset-" + axisName, axisName, offset[axisName], null, "0.1",
+          (v) => writeLook("offset", { ...offset, [axisName]: v }), () => true));
+      }
+      group.appendChild(el("span", "cnb-kse-field-unit", "semitones"));
+      return group;
     }
 
     function drawPlace(ks) {
       // The tonic and the half steps are a choice of the key's notes alone.
       const hint = "A line set is a run of staff lines one staff space apart. On every line set the " +
-        (isTraditional(ks) ? "signature repeats."
+        (ks.notes === "altered" ? "signature repeats."
           : "signature repeats; the tonic and the half steps alone keep it less busy.");
       return row("cnb-kse-place", "Place",
         radios("cnb-kse-position", ks.placement.position, [

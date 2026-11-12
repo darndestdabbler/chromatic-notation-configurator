@@ -21,6 +21,77 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## The key-signature editor — 2026-11-12 (session 56)
+
+The Key signature section holds the editor of the key-signature design
+§13.8, as its mock-ups (`docs/planning/key-signature-editor-mockups/`)
+show it. The export and the engine are unchanged; the five export
+baselines and every mark table are byte-identical.
+
+- **The canvas** draws the picked key's signature at 24 px a semitone, its
+  height capped at 360 px. A click on a mark picks its naturals, flats or
+  sharps, unless another layer is picked in **Edit** (all marks, a line or
+  ledger, a space, every second stack), which stays picked; it picks the
+  base or the added symbol clicked. Dragging a symbol sets its layer's
+  offset, the corner handle its size (for a sign, the signs' one size),
+  snapped to tenths of a semitone and shown beside the handle. Only the
+  canvas redraws while the pointer moves, so one drag is one change and
+  one step of undo. Its symbols are marked for the click only when the
+  editor draws them, so every other drawing is byte for byte as before.
+- **The look card** edits the picked layer in every key: Base, Added 1 and
+  Added 2, the symbol (the notation's and the built-in shapes, LilyPond's
+  sharp and flat), Import from SVG with its reference point (a click on the
+  enlarged symbol) and Takes ledger lines (off for flats and sharps), fill,
+  colour, size (the signs' Automatic size kept) and offset.
+- **The keys.** The panel's own key picker is the staff's. Beneath the
+  canvas, the mode's 15 keys as small signatures, sharp keys then flat
+  keys, a click picking one.
+- **The touch check** (design §13.7, `CNBKeySignature.touches`) compares
+  whole marks in a stack and its neighbours, every line set's copy and the
+  seams included, by their boxes and then their ink, filled into a mask of
+  40 cells a staff space; all 105 keys take under 40 ms. A key whose marks
+  touch is outlined with its count, a line says in how many keys they do
+  and opens their list, and the checks list warns "Marks touch in N keys."
+  without blocking the export.
+- **Start from** (the noteheads, or traditional sharps and flats) replaces
+  the Draw row and asks first. The Looks and Size rows and the overlap note
+  are gone.
+
+**What the UAT checks.** `uat-key-signature.mjs` now drives the panel
+through Edit and the look card, Start from and the signs' size in the card,
+and a new step drives the editor with the pointer: the canvas and its cap,
+each of the seven layers, a click picking the sharps and the pinned layer
+staying, a drag of F♯ (37 px right and 14 up: every sharp moved x 1.5, y
+0.6, the readout beside the handle), Undo and Redo of that one drag, the
+offset field, the corner handle (the sharps 2.724 to 3.7 semitones tall) and
+a sign's (the signs' size, its box and handle on the drawn sharp, within
+1.5 px), an added symbol added, shaped, dragged alone by its own offset (one
+step of undo) and removed,
+Import from SVG of the Clairnote tail for the flats with its reference
+point and ledgers, the key picker and the other keys picking the staff's
+key, the touch line, its list and the checks' warning, and Start from
+cancelled: **pass, 107/107 checks**. `uat-app-layout.mjs`: **pass, 79/79
+checks**. The whole UAT (`npm run uat`, 18 drivers) passes.
+
+**The screenshots, judged against the mock-ups.** `uat-056-clairnote-1440.png`
+and `uat-056-clairnote-1280.png` show the mock-ups' own view, the Clairnote
+SN file in B♭ major with the flats picked: the head with Show and Start
+from, the key and Edit on one bar, the magnified signature (hollow dots in
+the spaces, solid on the lines, a tail up on B♭ and E♭) with the flats'
+boxes outlined and the focused one's reference point and handle, the look
+card beside it (Flats, "Edits all flats in every key", Base and Added 1,
+the shapes with LilyPond's sharp and flat, Import from SVG, fill, colour,
+size, offset), and beneath it the 15 major keys, B♭ picked, and "No marks
+touch in any of the 105 keys." Judging them found two things, both fixed:
+the canvas's margins pushed B♭ major's lowest mark past the 360 px cap
+(now a semitone each side, and the signature fits), and the small
+signatures were too wide for one row at 1440 px (now cut to their marks).
+At 1280 px C♭ wraps to a second row, as the design allows.
+`uat-056-editor-1440.png` and `-1280.png` show the default notation in D
+major with the sharps picked; its stacked noteheads and the gold stem are
+taller than 360 px, and the canvas scrolls inside its cap, as the design
+says. At both widths nothing scrolls sideways and nothing overlaps.
+
 ## The key signature's model reaches LilyPond — 2026-11-12 (session 55)
 
 Engine 1.6.0 (engine sessions 37 and 38) reads the mark table's new fields,

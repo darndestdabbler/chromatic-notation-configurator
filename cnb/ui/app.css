@@ -384,7 +384,8 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 /* Numeric and short text fields keep a compact width. */
 .cnb-cle-anchor-input, .cnb-cle-range-bottom, .cnb-cle-range-top, .cnb-cle-gutter-input,
-.cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-size-height,
+.cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-sign-size,
+.cnb-kse-window-sharp, .cnb-kse-window-flat,
 .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
 .cnb-nre-size-height, .cnb-nre-size-width, .cnb-cpe-engine-row input {
   width: 84px;
@@ -494,8 +495,80 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-cpe-engine-row { min-height: 32px; }
 
 /* Key signature editor (set 010). */
-.cnb-kse-sig-enable { margin-bottom: var(--space-2); }
-/* The panel of design §7 (session 50): a label column, then the row's controls. */
+/* The head (session 56, design §13.8): the title, Show the key signature and Start from on one line. */
+.cnb-kse-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.cnb-kse-head .cnb-kse-title { margin: 0; }
+.cnb-kse-head .cnb-kse-sig-enable { margin: 0; }
+.cnb-kse-start { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.cnb-kse-start .cnb-kse-field-label { width: auto; }
+.cnb-kse-start-button { font-size: 13px; }
+/* The key picker and Edit's layer chips, on one bar. */
+.cnb-kse-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5, 24px); margin-bottom: var(--space-2); }
+.cnb-kse-key { display: flex; align-items: center; gap: var(--space-2); }
+.cnb-kse-key .cnb-kse-field-label { width: auto; }
+.cnb-kse-layers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.cnb-kse-layers .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
+.cnb-kse-layer { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
+.cnb-kse-layer.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* The workspace: the canvas and the other keys, then the look card beside them. */
+.cnb-kse-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start; margin-bottom: var(--space-3); }
+/* The canvas (design §13.8): the picked key's signature at 24 px a semitone, its height capped. */
+.cnb-kse-stage { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-kse-canvas {
+  max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-m);
+  background: var(--surface); padding: var(--space-3); touch-action: none; user-select: none;
+}
+.cnb-kse-canvas-svg { display: block; margin: 0 auto; }
+.cnb-kse-canvas-svg [data-mark] { cursor: move; }
+.cnb-kse-canvas-empty { font-size: 13px; color: var(--ink-2); padding: var(--space-4); text-align: center; }
+.cnb-kse-selection { pointer-events: none; }
+.cnb-kse-instance { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+.cnb-kse-instance.focus { stroke-dasharray: none; stroke-width: 1.5; }
+.cnb-kse-reference { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.cnb-kse-handle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; pointer-events: all; cursor: nwse-resize; }
+.cnb-kse-readout { font-size: 12px; fill: var(--accent); font-family: var(--font); }
+/* The other keys: the mode's 15 keys as small signatures, a key whose marks touch outlined. */
+.cnb-kse-keys { display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-kse-keys-title { width: auto; }
+.cnb-kse-key-strip { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.cnb-kse-mini {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;
+  min-width: 44px; padding: var(--space-1); background: var(--surface); border-radius: var(--radius-s);
+}
+.cnb-kse-mini.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-mini.touch { border-color: var(--error); }
+.cnb-kse-mini-name { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.cnb-kse-mini.touch .cnb-kse-mini-name { color: var(--error); }
+.cnb-kse-touch-summary { font-size: 13px; color: var(--ink-2); }
+.cnb-kse-touch-list .cnb-kse-touch-summary { color: var(--error); cursor: pointer; }
+.cnb-kse-touch-keys { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+.cnb-kse-touch-key { font-size: 12px; min-height: 26px; }
+.cnb-kse-look-card {
+  border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--bg);
+  padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+}
+.cnb-kse-look-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.cnb-kse-look-scope { font-size: 12px; color: var(--accent); }
+.cnb-kse-look-words { font-size: 12px; color: var(--ink-2); }
+.cnb-kse-look-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.cnb-kse-look-group-label { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+.cnb-kse-look-group > button { min-height: 28px; font-size: 13px; }
+.cnb-kse-look-shape { min-width: 44px; min-height: 40px; padding: var(--space-1) var(--space-2); }
+.cnb-kse-look-group > button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-look-remove { min-width: 28px; padding: 0 var(--space-1); color: var(--ink-2); }
+.cnb-kse-look-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; }
+.cnb-kse-look-height, .cnb-kse-look-width, .cnb-kse-look-offset-x, .cnb-kse-look-offset-y { width: 64px; }
+.cnb-kse-look-import { flex-basis: 100%; }
+.cnb-kse-look-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
+.cnb-kse-look-import-status { font-size: 13px; color: var(--error); }
+/* An imported symbol's reference point (session 56, design §13.3): enlarged, a click sets it. */
+.cnb-kse-reference-picker {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2);
+  border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--surface);
+}
+.cnb-kse-reference-svg { align-self: center; cursor: crosshair; background: var(--bg); border-radius: var(--radius-s); }
+.cnb-kse-reference-done { align-self: flex-start; font-size: 13px; }
+/* Notes, Stacks and Place (design §7): a label column, then the row's controls. */
 .cnb-kse-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-3); margin: var(--space-3) 0; max-width: 720px; }
 .cnb-kse-row-label { font-size: 13px; font-weight: 600; color: var(--ink-2); padding-top: 2px; }
 .cnb-kse-row-body { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -504,32 +577,14 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-kse-radio, .cnb-kse-check { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; font-size: 13px; }
 .cnb-kse-radio.on { color: var(--accent); font-weight: 600; }
 .cnb-kse-direction { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.cnb-kse-direction .cnb-kse-field-label { width: auto; }
+.cnb-kse-direction .cnb-kse-field-label, .cnb-kse-window .cnb-kse-field-label { width: auto; }
+.cnb-kse-heights { display: flex; flex-direction: column; gap: var(--space-2); margin-left: var(--space-5, 24px); }
 .cnb-kse-separator .cnb-kse-sep-share { margin-left: var(--space-5, 24px); }
 .cnb-kse-share-text { font-size: 12px; color: var(--ink-2); }
-.cnb-kse-overlap-note {
-  font-size: 13px; color: var(--warn); background: var(--warn-soft);
-  border: 1px solid #f1dcb4; border-radius: var(--radius-s);
-  padding: var(--space-2) var(--space-3); max-width: 560px;
-}
 .cnb-kse-definitions { margin-top: var(--space-5, 24px); }
-/* Looks (session 50): a menu per look, opening the notehead panel's controls. */
-.cnb-kse-looks { display: flex; flex-direction: column; gap: var(--space-1); }
-.cnb-kse-look { border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); max-width: 720px; }
-.cnb-kse-look-summary { display: flex; gap: var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); cursor: pointer; font-size: 13px; }
-.cnb-kse-look-label { width: 140px; flex: none; color: var(--ink); }
-.cnb-kse-look-words { color: var(--ink-2); }
-.cnb-kse-look-body { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
-.cnb-kse-look-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.cnb-kse-look-group-label { width: 64px; flex: none; font-size: 12px; color: var(--ink-2); }
-.cnb-kse-look-group > button { min-height: 30px; font-size: 13px; }
-.cnb-kse-look-shape { min-width: 52px; min-height: 40px; padding: var(--space-1) var(--space-2); }
-.cnb-kse-look-group > button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.cnb-kse-look-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; }
-.cnb-kse-look-height, .cnb-kse-look-width { width: 72px; }
-.cnb-kse-look-import { flex-basis: 100%; }
-.cnb-kse-look-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
-.cnb-kse-look-import-status { font-size: 13px; color: var(--error); }
+@media (max-width: 1100px) {
+  .cnb-kse-workspace { grid-template-columns: 1fr; }
+  }
 
 /* ── Selecting noteheads (session 27, design §2, §6.2) ─────────────────── */
 /* A column is the hit target. Selection: a 2 px accent outline and a faint

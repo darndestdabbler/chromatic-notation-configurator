@@ -136,6 +136,9 @@ const TABLE = [
   [/^Key definition "(.*)" has no tonicPc and its name does not begin with a note letter/, ([, k]) => ({
     text: `The key “${k}” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.`,
     link: sectionLink("key-signature") })],
+  [/^Key signature marks touch in (\d+) of the 105 keys$/, ([, n]) => ({
+    text: `Marks touch in ${n} ${+n === 1 ? "key" : "keys"}.`,
+    link: sectionLink("key-signature") })],
   [/^Key definition "(.*)" needs a non-empty pitchClasses array/, ([, k]) => ({
     text: `The key “${k}” has no notes.`, link: sectionLink("key-signature") })],
   [/^clef\.enabled is true but clef\.active names no glyph$/, () => ({

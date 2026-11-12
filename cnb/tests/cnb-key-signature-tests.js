@@ -869,7 +869,7 @@ export const tests = [
       deepEq([bar.top, bar.bottom, bar.column, bar.middle, bar.color], [24, 0, 0, true, "#ffd42a"], "the stem");
       approx(bar.x, MARK_W / 64, "between the stacks");
       approx(bar.thickness, 0.4, "160% of a semitone at 4 semitones per staff space");
-      deepEq(sig.overlaps, [], "no marks run together");
+      assert(!("overlaps" in sig), "overlaps are the touch check's (session 56)");
       deepEq(CNBKeySignature.signatureSemis(keysigConfig(), "C"), [12, 14, 16, 17, 19, 21, 23, 24], "signatureSemis");
       eq(CNBKeySignature.marks(keysigConfig([], { placement: { rule: "spiral" } }), C_KEY), null, "an unknown placement rule");
     }},
@@ -971,7 +971,6 @@ export const tests = [
       CNBKeySignature.marks(one, EB_KEY).columns.forEach((x, c) =>
         approx(x, (c + 0.5) * 0.92 * (2.724 / 1.052 / 4), "at magnify 1, emmentaler-20's 0.92 and bars 1.052"));
       deepEq(acc(D_KEY).bars, [], "no gold stems");
-      deepEq(acc(FS_KEY).overlaps, [], "no overlaps");
     }},
 
   { name: "marks: accidentals — each sign at the note it makes, in the octave of the scale from the place's tonic; every line set restarts the columns", fn: () => {
@@ -1389,16 +1388,6 @@ export const tests = [
       deepEq(every.map(b => [b.bottom, b.top, b.middle]), [[0, 12, false], [12, 24, false]], "each copy's stem over its marks");
     }},
 
-  { name: "marks: marks that run together in one stack are reported — the default notehead a whole step apart, and not small marks", fn: () => {
-      const overlaps = ks => CNBKeySignature.marks(keysigConfig([], ks), C_KEY).overlaps;
-      const parity = overlaps({ stacking: "parity" });
-      assert(parity.some(o => o.column === 0 && o.semis[0] === 17 && o.semis[1] === 19),
-        `F and G, 2 semitones apart, overlap at 2.724 tall: ${JSON.stringify(parity)}`);
-      deepEq(overlaps({ stacking: "parity", looks: { all: { heightSemis: 1.2, widthSemis: 1.2 }, flat: {}, sharp: {} } }), [],
-        "Clairnote-sized marks do not");
-      deepEq(overlaps({}), [], "stacked sevenths, 3 and 4 semitones apart, do not");
-    }},
-
   { name: "render: marks of two widths — each head's ledgers at its own width, and the ink from them (session 50, as the engine draws them)", fn: () => {
       // C narrower than the other marks: its in-gap ledger (semitone 12)
       // is 4/3 of its own width and its caps, not of the widest mark's.
@@ -1486,6 +1475,127 @@ export const tests = [
         approx(Math.abs(root[0].x - root[1].x), MARK_W, "side by side");
         eq(g.children.filter(c => c.getAttribute("class") === "cnb-key-signature-separator").length, 2, "a stem per copy");
       });
+    }},
+
+  { name: "render: marked, each drawn symbol carries its mark's index and its own, the base 0 (session 56, for the editor's canvas); unmarked by default", fn: () => {
+      const sn = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "clairnote-sn.json"), "utf8")).config;
+      sn.keys.enabled = true;
+      sn.keys.keySignature.enabled = true;
+      sn.keys.definitions = [{ name: "D major", pitchClasses: [2, 4, 6, 7, 9, 11, 1], tonicPc: 2 }];
+      const sig = CNBKeySignature.marks(sn, sn.keys.definitions[0]);
+      withSvgStub(svg => {
+        CNBKeySignature.render(svg, CNBGrid.create(sn, { minSemi: -6, maxSemi: 30 }), sn, "D major", { marked: true });
+        const found = [];
+        const walk = el => {
+          if (el.getAttribute && el.getAttribute("data-mark") !== null && el.getAttribute("data-mark") !== undefined) {
+            found.push([Number(el.getAttribute("data-mark")), Number(el.getAttribute("data-symbol"))]);
+          }
+          for (const c of el.children || []) walk(c);
+        };
+        walk(svg);
+        const expected = sig.marks.flatMap((m, i) => m.symbols.map((_, k) => [i, k]));
+        deepEq(found, expected, "every symbol, in order: D major's sharps a dot then its tail");
+        assert(expected.some(([, k]) => k === 1), "the added tails are marked 1");
+      });
+      withSvgStub(svg => {
+        CNBKeySignature.render(svg, CNBGrid.create(sn, { minSemi: -6, maxSemi: 30 }), sn, "D major");
+        const marked = [];
+        const walk = el => { if (el.getAttribute && el.getAttribute("data-mark") !== null) marked.push(el); (el.children || []).forEach(walk); };
+        walk(svg);
+        eq(marked.length, 0, "not marked unless asked: the preview's drawing is unchanged");
+      });
+    }},
+
+  // ── The touch check (session 56, design §13.7) ──────────────────────────
+  { name: "keys: the 105 keys, the 7 modes' 15 spellings, each as the picker gives it (session 56)", fn: () => {
+      const config = keysigConfig([{ name: "Mine", pitchClasses: [7, 9, 11, 0, 2, 4, 6] }]);
+      const keys = CNBKeySignature.keys(config);
+      eq(keys.length, 105, "105 keys");
+      eq(new Set(keys.map(k => `${k.spelling} ${k.mode}`)).size, 105, "each once");
+      const g = keys.find(k => k.spelling === "G" && k.mode === "major");
+      deepEq(g.pcs, [0, 2, 4, 6, 7, 9, 11], "its pitch classes, ascending");
+      eq(g.tonic, 7, "its tonic");
+      eq(g.def.name, "Mine", "a defined key with those notes gives its name");
+      eq(g.def.spelling, "G", "and the spelling picked");
+      eq(keys.find(k => k.spelling === "D" && k.mode === "major").def.name, "D major", "else '<spelling> <mode>'");
+    }},
+
+  { name: "touches: the default signature and the Clairnote SN file touch nowhere, in any of the 105 keys", fn: () => {
+      deepEq(CNBKeySignature.touchingKeys(keysigConfig()), [], "the default");
+      const sn = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "clairnote-sn.json"), "utf8")).config;
+      sn.keys.enabled = true;
+      sn.keys.keySignature.enabled = true;
+      deepEq(CNBKeySignature.touchingKeys(sn), [], "Clairnote SN: a dot and its own tail are one mark");
+    }},
+
+  { name: "touches: the default noteheads a whole step apart touch, and touchingKeys counts the places", fn: () => {
+      const config = keysigConfig([], { stacking: "parity" });
+      const sig = CNBKeySignature.marks(config, C_KEY);
+      const pairs = CNBKeySignature.touches(config, C_KEY);
+      assert(pairs.some(([i, j]) => sig.marks[i].column === sig.marks[j].column &&
+        Math.abs(sig.marks[i].semi - sig.marks[j].semi) === 2), `F and G, 2 semitones apart: ${JSON.stringify(pairs)}`);
+      const keys = CNBKeySignature.touchingKeys(config);
+      eq(keys.length, 105, "every key");
+      eq(keys.find(k => k.spelling === "C" && k.mode === "major").count, pairs.length, "C major's count");
+      deepEq(CNBKeySignature.touchingKeys(keysigConfig([], { stacking: "parity", looks: { all: { heightSemis: 1.2, widthSemis: 1.2 } } })),
+        [], "marks 1.2 semitones tall do not");
+      const off = keysigConfig([], { stacking: "parity" });
+      off.keys.keySignature.enabled = false;
+      deepEq(CNBKeySignature.touchingKeys(off), [], "nothing while the signature is off");
+    }},
+
+  { name: "touches: by ink, not boxes — parallel diagonal strokes whose boxes overlap do not touch", fn: () => {
+      const config = keysigConfig([], { stacking: "parity", looks: { all: { shape: "diag" } } });
+      config.shapes.diag = { displayName: "Diagonal", svgPath: "M -150 130 L 130 -150 L 150 -130 L -130 150 Z",
+        svgHollowPath: null, naturalHeight: 300, naturalWidth: 300, semitoneHeight: 3, anchors: null,
+        lilypondPath: null, lilypondHollowPath: null, lilypondAnchors: null };
+      // A whole step apart in one stack, 3 semitones tall: the boxes overlap
+      // by a semitone, the strokes stay about 1.4 semitones apart.
+      deepEq(CNBKeySignature.touches(config, C_KEY), [], "no touch");
+    }},
+
+  { name: "touches: a hollow mark's cut-out is not ink — marks that overlap only inside it do not touch", fn: () => {
+      // A square 6 semitones tall whose cut-out leaves only its top band,
+      // 1.9 semitones: a whole step apart in one stack, the squares overlap
+      // by 4 semitones, the bands not at all.
+      const config = hollow => {
+        const c = keysigConfig([], { stacking: "parity", looks: { all: { shape: "cup", hollow } } });
+        c.shapes.cup = { displayName: "Cup", svgPath: "M -300 -300 L 300 -300 L 300 300 L -300 300 Z",
+          svgHollowPath: "M -300 -110 L 300 -110 L 300 300 L -300 300 Z", naturalHeight: 600, naturalWidth: 600,
+          semitoneHeight: 6, anchors: null, lilypondPath: null, lilypondHollowPath: null, lilypondAnchors: null };
+        return c;
+      };
+      const inStack = c => {
+        const sig = CNBKeySignature.marks(c, C_KEY);
+        return CNBKeySignature.touches(c, C_KEY).filter(([i, j]) => sig.marks[i].column === sig.marks[j].column);
+      };
+      assert(inStack(config(false)).length > 0, "solid, the squares touch in their stacks");
+      deepEq(inStack(config(true)), [], "hollow, the overlap is all cut-out: no touch");
+    }},
+
+  { name: "touches: a tail made steep and long reaches the next dot (Clairnote SN, B♭ major)", fn: () => {
+      const sn = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "clairnote-sn.json"), "utf8")).config;
+      const BB_KEY = { name: "B♭ major", pitchClasses: [10, 0, 2, 3, 5, 7, 9], tonicPc: 10 };
+      deepEq(CNBKeySignature.touches(sn, BB_KEY), [], "the gallery's tail clears");
+      const flat = sn.keys.keySignature.looks.flat;
+      const tail = sn.shapes[flat.added[0].shape];
+      flat.added = [{ ...flat.added[0], heightSemis: tail.semitoneHeight * 3,
+        widthSemis: tail.naturalWidth / tail.naturalHeight * tail.semitoneHeight }];
+      const sig = CNBKeySignature.marks(sn, BB_KEY);
+      const pairs = CNBKeySignature.touches(sn, BB_KEY);
+      assert(pairs.length > 0, "three times as tall, it touches");
+      assert(pairs.every(([i, j]) => sig.marks[i].column === sig.marks[j].column), "a dot of its own stack");
+    }},
+
+  { name: "touches: the seam between two line sets' copies — tall flats on every line set meet", fn: () => {
+      const BB_KEY = { name: "B♭ major", pitchClasses: [10, 0, 2, 3, 5, 7, 9], tonicPc: 10 };
+      const ks = h => ({ ...CNBConfig.clone(TRADITIONAL), heights: "window",
+        placement: { rule: "scale-from-tonic", tonicOctave: null, position: "every-set" }, signs: { heightSemis: h } });
+      deepEq(CNBKeySignature.touches(keysigConfig([], ks(3)), BB_KEY), [], "signs 3 semitones tall do not");
+      const config = keysigConfig([], ks(6));
+      const sig = CNBKeySignature.marks(config, BB_KEY);
+      const seams = CNBKeySignature.touches(config, BB_KEY).map(([i, j]) => [sig.marks[i].semi, sig.marks[j].semi]);
+      assert(seams.some(([a, b]) => Math.abs(a - b) === 12), `a copy's B♭ meets the next copy's: ${JSON.stringify(seams)}`);
     }},
 
 ];

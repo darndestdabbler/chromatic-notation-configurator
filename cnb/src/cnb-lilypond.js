@@ -634,36 +634,22 @@ const ALTERATIONS = { "": "0", "♯": "1/2", "♭": "-1/2" };
 /**
  * The mark table (LY spec 1.3.15 §5.6a, engine handoff 030 §1): with keys
  * and the signature on and the signature not the scale stack 'chord draws
- * (CNBKeySignature.isScaleStack), one entry for each
- * of the 7 modes' 15 spellings (CNBMusic.spellings), its marks from
- * CNBKeySignature.marks for the key as the canvas's picker gives it
- * (CNBPreviewDisplay.withKey): the defined key with those pitch classes
- * that a rule names, else the first defined with them, else one named
- * "<spelling> <mode>", with the picked tonic and spelling. Each entry is
+ * (CNBKeySignature.isScaleStack), one entry for each of the 105 keys
+ * CNBKeySignature.keys gives (the 7 modes' 15 spellings, each as the
+ * canvas's picker gives it; the touch check reads the same list), its marks
+ * from CNBKeySignature.marks. Each entry is
  * { spelling, mode, notename, alteration, pcs, sig }. Empty otherwise.
  */
 function markTable(config) {
   const keys = config.keys || {};
   const ks = keys.keySignature || {};
   if (!keys.enabled || !ks.enabled || CNBKeySignature.isScaleStack(config)) return [];
-  const defs = Array.isArray(keys.definitions) ? keys.definitions : [];
-  const named = new Set((config.noteheadRules || [])
-    .flatMap(r => (r && r.match && Array.isArray(r.match.keys)) ? r.match.keys : []));
-  const setOf = pcs => [...new Set(pcs.map(CNBMusic.pitchClass))].sort((a, b) => a - b).join(" ");
   const table = [];
-  for (const mode of Object.keys(CNBMusic.MODES)) {
-    for (const spelling of CNBMusic.spellings(mode)) {
-      const tonic = CNBKeySignature.parseTonicPc(spelling);
-      const pcs = CNBMusic.scale(tonic, mode).sort((a, b) => a - b);
-      const sameSet = d => d && Array.isArray(d.pitchClasses) && setOf(d.pitchClasses) === pcs.join(" ");
-      const match = defs.find(d => sameSet(d) && named.has(d.name)) || defs.find(sameSet);
-      const def = { ...(match || { pitchClasses: pcs }), name: match ? match.name : `${spelling} ${mode}`,
-        tonicPc: tonic, spelling };
-      const sig = CNBKeySignature.marks(config, def);
-      if (!sig) continue;
-      table.push({ spelling, mode, notename: "CDEFGAB".indexOf(spelling[0]),
-        alteration: ALTERATIONS[spelling.slice(1)], pcs, sig });
-    }
+  for (const { spelling, mode, pcs, def } of CNBKeySignature.keys(config)) {
+    const sig = CNBKeySignature.marks(config, def);
+    if (!sig) continue;
+    table.push({ spelling, mode, notename: "CDEFGAB".indexOf(spelling[0]),
+      alteration: ALTERATIONS[spelling.slice(1)], pcs, sig });
   }
   return table;
 }

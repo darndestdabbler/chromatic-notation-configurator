@@ -204,6 +204,8 @@ export const tests = [
         "The key “Mode 1” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.", open("key-signature"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.definitions = [{ name: "D", pitchClasses: [] }]; }, "Key definition \"D\" needs",
         "The key “D” has no notes.", open("key-signature"));
+      check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.keySignature.stacking = "parity"; },
+        "Key signature marks touch", "Marks touch in 105 keys.", open("key-signature"));
       check(c => { c.clef.enabled = true; }, "clef.enabled",
         "The clef is on but none is chosen, so none is drawn.", open("clef"));
       check(c => { c.clef.enabled = true; c.clef.active = "gone"; }, "clef.active",
