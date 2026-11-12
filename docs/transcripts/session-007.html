@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 007 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 007 transcript</h1>
+<p class="stamp">Rendered 2026-11-02T00:15:07.213Z by dabbler-ai-router 3.27.0 at e1583a6203efd03b5f2e730192fd0c6010d5f679.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-01T18:58:43.796-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 7: Retire <code>legacy/</code>, rewrite the README and the guidance</h3>
+<p>Policy: fast</p>
+<p><strong>Why.</strong> The README still says the tool &quot;is being rebuilt from a monolithic HTML file&quot; and cites export spec v1.2; <code>CLAUDE.md</code> describes <code>legacy/</code> and v1.2; <code>legacy/</code> (about 9,900 lines, reference only) has had no reader since the rewrite reached parity; <code>docs/planning/lessons-learned.md</code> is still the v1 template placeholder.</p>
+<ol><li>Register.</li><li>Tag the current commit <code>legacy-monolith-final</code>, delete <code>legacy/</code>, and update every reference to it (README, <code>CLAUDE.md</code>, the architecture plan's file-structure section) to point at the tag.</li><li>Rewrite the README for a 1.0.0 product: status &quot;complete&quot;, spec v1.3, a &quot;Known limitations&quot; section that summarizes and links Part 2 of <code>docs/playbook/notation-builder-playbook.md</code> (the five invariants, as amended by sessions 2–4), and a &quot;Running the tests and UAT&quot; section that matches <code>dabbler.yaml</code>. Where it names the LilyPond needed to engrave an export, say 2.24.x or 2.26.x (the engine supports 2.26 from 1.1.0); the current &quot;LilyPond 2.24+&quot; overclaims versions nobody tested. Update <code>CLAUDE.md</code> (spec v1.3, Module 24, no legacy section).</li><li>Replace the placeholder <code>lessons-learned.md</code> with real lessons harvested from the session-set <code>change-log.md</code> files, or delete it with <code>lessons-archive.md</code> and <code>project-guidance.md</code>; remove v1 <code>ai_router</code> instructions from whatever is kept. Add a root <code>version.json</code> reading <code>{ &quot;version&quot;: &quot;1.0.0&quot; }</code>: it is the file the release reads its version and tag from.</li></ol>
+<p><strong>Non-goals.</strong> Code changes beyond deleting <code>legacy/</code>.</p>
+<p><strong>Tests.</strong> The unit suite (no <code>legacy/</code> import exists in <code>cnb/</code>).</p>
+<h2>Work Plan</h2>
+<p>Retire the legacy monolith and bring the repository's front-door documentation up to a 1.0.0 product. Tag the current commit <code>legacy-monolith-final</code>, delete <code>legacy/</code>, and repoint every live reference to it at the tag: the architecture plan's file-structure section, <code>docs/planning/project-plan.md</code>, the port-origin comments in four <code>cnb/</code> files, and <code>cnb/tests/cnb-lilypond-tests.js</code>, which (contrary to the session plan's note) still requires <code>legacy/configurator-core.js</code> for three legacy-parity tests; those tests and their now-unused helpers go with the code they compared against. Rewrite the README for a complete 1.0.0 product: status complete, export spec v1.3, no <code>legacy/</code>, a &quot;Known limitations&quot; section summarizing and linking Part 2 of the notation-builder playbook (I1, I3, I4, I5 as hard limits; I2 relaxed by the optional <code>pitchAxis</code> section per the feasibility matrix §9), a &quot;Running the tests and UAT&quot; section matching <code>dabbler.yaml</code>, and LilyPond 2.24.x or 2.26.x for engraving. Update <code>CLAUDE.md</code> (spec v1.3, Module 24 <code>cnb-pitch-axis.js</code>, no legacy section or legacy test command). Replace the placeholder <code>docs/planning/lessons-learned.md</code> with real lessons harvested from the session-set change logs, delete the empty <code>lessons-archive.md</code> and the TODO-template <code>project-guidance.md</code>, leaving no v1 <code>ai_router</code> instructions, and add a root <code>version.json</code> reading <code>{ &quot;version&quot;: &quot;1.0.0&quot; }</code>.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/d7dc7e7be0411220a918bba0e1c82d3bd65e6567"><code>d7dc7e7be0411220a918bba0e1c82d3bd65e6567</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Retire legacy</td><td><p>Create the lightweight tag <code>legacy-monolith-final</code> on the current commit (HEAD, before any change). Delete the <code>legacy/</code> directory. In <code>cnb/tests/cnb-lilypond-tests.js</code> remove the <code>createRequire</code> import, the <code>Legacy</code> require, the three tests under the &quot;Legacy parity&quot; banner, and the helpers used only by them (<code>legacyDefaultApp</code>, <code>splitSections</code>, <code>semanticLines</code>, <code>parseSettings</code>). Repoint the comment references to <code>legacy/...</code> files in <code>cnb/src/cnb-lilypond.js</code>, <code>cnb/ui/staff-rule-editor.js</code>, <code>cnb/ui/palette-editor.js</code> and <code>cnb/ui/notehead-rule-editor.js</code> at the tag (comment text only). Replace the <code>legacy/</code> entry in the file-structure section of <code>docs/CNB-ARCHITECTURE-PLAN-v2.md</code> and the <code>legacy/</code> description in <code>docs/planning/project-plan.md</code> with a note that the monolith is preserved at tag <code>legacy-monolith-final</code>.</p></td><td><span class="mono">legacy/chromatic-configurator.html</span><br><span class="mono">legacy/configurator-core.js</span><br><span class="mono">legacy/configurator-tests.html</span><br><span class="mono">legacy/music-color-palettes.js</span><br><span class="mono">legacy/palette-config.html</span><br><span class="mono">legacy/run-tests.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/ui/palette-editor.js</span><br><span class="mono">cnb/ui/notehead-rule-editor.js</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">docs/planning/project-plan.md</span></td><td><code>git cat-file -e legacy-monolith-final:legacy/configurator-core.js</code><br><code>node -e const fs=require('fs');if(fs.existsSync('legacy'))process.exit(1);const files=['cnb/tests/cnb-lilypond-tests.js','cnb/src/cnb-lilypond.js','cnb/ui/staff-rule-editor.js','cnb/ui/palette-editor.js','cnb/ui/notehead-rule-editor.js','docs/CNB-ARCHITECTURE-PLAN-v2.md'];const hit=files.filter(f=&gt;/legacy\//.test(fs.readFileSync(f,'utf8')));if(hit.length){console.error(hit);process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Rewrite readme</td><td><p>Rewrite README.md for a 1.0.0 product: status complete (drop &quot;being rebuilt&quot; and the legacy description; mention the monolith only as preserved at tag <code>legacy-monolith-final</code>); cite and link <code>docs/CNB-LY-EXPORT-SPEC-v1_3.md</code>; list Module 24 (pitch axis) and the clef/key-signature modules in the architecture and project-structure sections; replace &quot;LilyPond 2.24+&quot; with LilyPond 2.24.x or 2.26.x; add a &quot;Known limitations&quot; section summarizing the playbook's Part 2 invariants (I1, I3, I4, I5 hard; I2 relaxed by the optional <code>pitchAxis</code> section, feasibility matrix §9) with links; and fold the test and browser-UAT instructions into one &quot;Running the tests and UAT&quot; section matching the two suites in <code>dabbler.yaml</code> (<code>node cnb/tests/run-tests.js</code>, <code>npm run uat</code> and its per-machine prerequisites).</p></td><td><span class="mono">README.md</span></td><td><code>node -e const s=require('fs').readFileSync('README.md','utf8');const bad=[/legacy\//,/being rebuilt/,/v1_2/,/2\.24\+/].filter(r=&gt;r.test(s));const need=[/Known limitations/,/Running the tests and UAT/,/CNB-LY-EXPORT-SPEC-v1_3\.md/,/2\.24\.x/,/2\.26\.x/,/npm run uat/,/node cnb\/tests\/run-tests\.js/,/legacy-monolith-final/,/notation-builder-playbook\.md/,/pitchAxis/].filter(r=&gt;!r.test(s));if(bad.length||need.length){console.error('bad',bad,'missing',need);process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Update claude md</td><td><p>Update CLAUDE.md: point the export-spec import and every v1.2 mention at <code>docs/CNB-LY-EXPORT-SPEC-v1_3.md</code>; add <code>cnb-pitch-axis.js</code> (Module 24) to the Foundation module list; remove the legacy test command and the Legacy Code section. Leave the <code>@AGENTS.md</code> import and the engine tail unchanged.</p></td><td><span class="mono">CLAUDE.md</span></td><td><code>node -e const s=require('fs').readFileSync('CLAUDE.md','utf8');const bad=[/legacy/i,/v1_2/,/v1\.2/].filter(r=&gt;r.test(s));const need=[/CNB-LY-EXPORT-SPEC-v1_3\.md/,/cnb-pitch-axis\.js/,/@AGENTS\.md/].filter(r=&gt;!r.test(s));if(bad.length||need.length){console.error('bad',bad,'missing',need);process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Lessons and guidance</td><td><p>Replace the placeholder <code>docs/planning/lessons-learned.md</code> with a short file of real lessons harvested from the session-set <code>change-log.md</code> files (each lesson naming the set it came from), with no <code>ai_router</code> instructions, metadata trailers or TODO placeholders. Delete <code>docs/planning/lessons-archive.md</code> (empty archive tier) and <code>docs/planning/project-guidance.md</code> (unfilled v1 template).</p></td><td><span class="mono">docs/planning/lessons-learned.md</span><br><span class="mono">docs/planning/lessons-archive.md</span><br><span class="mono">docs/planning/project-guidance.md</span></td><td><code>node -e const fs=require('fs');if(fs.existsSync('docs/planning/lessons-archive.md')||fs.existsSync('docs/planning/project-guidance.md'))process.exit(1);const s=fs.readFileSync('docs/planning/lessons-learned.md','utf8');if(/ai_router|TODO|delete me|&lt;!-- lesson:/.test(s)||!/change-log/.test(s))process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Version file</td><td><p>Add a root <code>version.json</code> containing exactly <code>{ &quot;version&quot;: &quot;1.0.0&quot; }</code>, the file the release reads its version and tag from.</p></td><td><span class="mono">version.json</span></td><td><code>node -e const v=JSON.parse(require('fs').readFileSync('version.json','utf8'));if(v.version!=='1.0.0'||Object.keys(v).length!==1)process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No code changes beyond deleting <code>legacy/</code>: the only <code>cnb/</code> edits are the removal of the legacy-parity tests that import it and comment-only repointing of port-origin references.</li><li>Historical records (<code>docs/session-sets/</code>, <code>docs/batons/</code>, <code>docs/checklists/</code>, <code>docs/transcripts/</code>) are left as they are, even where they mention <code>legacy/</code>.</li><li>No packaging block in <code>dabbler.yaml</code> and no release: packaging is session 8 and the 1.0.0 release is session 9.</li><li>The playbook, the feasibility matrix and the export specs are linked, not edited.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[23:58:43]</span> <span class="muted">run-started</span> session=007 mode=pull</div>
+<div class="line"><span class="at">[23:58:43]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[00:01:28]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[00:01:28]</span> <span class="muted">plan-accepted</span> steps=[&quot;retire-legacy&quot;,&quot;rewrite-readme&quot;,&quot;update-claude-md&quot;,&quot;lessons-and-guidance&quot;,&quot;version-file&quot;] non_goals=4</div>
+<div class="line"><span class="at">[00:01:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[00:01:36]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=retire-legacy</div>
+<div class="line"><span class="at">[00:04:19]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:04:29]</span> <span class="muted">check-passed</span> step=retire-legacy argv=[&quot;git&quot;,&quot;cat-file&quot;,&quot;-e&quot;,&quot;legacy-monolith-final:legacy/configurator-core.js&quot;]</div>
+<div class="line"><span class="at">[00:04:32]</span> <span class="muted">check-failed</span> step=retire-legacy argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(fs.existsSync('legacy'))process.exit(1);const files=['cnb/tests/cnb-lilypond-tests.js','cnb/src/cnb-lilypond.js','cnb/ui/staff-rule-editor.js','cnb/ui/palette-editor.js','cnb/ui/notehead-rule-editor.js','docs/CNB-ARCHITECTURE-PLAN-v2.md'];const hit=files.filter(f=&gt;/legacy\\//.test(fs.readFileSync(f,'utf8')));if(hit.length){console.error(hit);process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[00:04:36]</span> <span class="muted">check-passed</span> step=retire-legacy argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[00:04:36]</span> <span class="muted">report-rejected</span> seq=2 step=retire-legacy rejection=1 reasons=[&quot;[check-failed] check failed: node -e const fs=require('fs');if(fs.existsSync('legacy'))process.exit(1);const files=['cnb/tests/cnb-lilypond-tests.js','cnb/src/cnb-lilypond.js','cnb/ui/staff-rule-editor.js','cnb/ui/palette-editor.js','cnb/ui/notehead-rule-editor.js','docs/CNB-ARCHITECTURE-PLAN-v2.md'];const hit=files.filter(f=&gt;/legacy\\//.test(fs.readFileSync(f,'utf8')));if(hit.length){console.error(hit);process.exit(1)} -&gt; exit 1\n[ 'cnb/tests/cnb-lilypond-tests.js' ]\nA check that no longer describes its step is amended, not fought: dabbler session plan amend --step &lt;id&gt; --checks-file &lt;path&gt; --reason \&quot;&lt;why&gt;\&quot;. A step that cannot be done is reported --status blocked, with the reason in --notes.&quot;]</div>
+<div class="line"><span class="at">[00:04:36]</span> <span class="muted">instruction-issued</span> seq=3 kind=rejection step=retire-legacy reasons=1</div>
+<div class="line"><span class="at">[00:05:04]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:05:15]</span> <span class="muted">check-passed</span> step=retire-legacy argv=[&quot;git&quot;,&quot;cat-file&quot;,&quot;-e&quot;,&quot;legacy-monolith-final:legacy/configurator-core.js&quot;]</div>
+<div class="line"><span class="at">[00:05:16]</span> <span class="muted">check-passed</span> step=retire-legacy argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(fs.existsSync('legacy'))process.exit(1);const files=['cnb/tests/cnb-lilypond-tests.js','cnb/src/cnb-lilypond.js','cnb/ui/staff-rule-editor.js','cnb/ui/palette-editor.js','cnb/ui/notehead-rule-editor.js','docs/CNB-ARCHITECTURE-PLAN-v2.md'];const hit=files.filter(f=&gt;/legacy\\//.test(fs.readFileSync(f,'utf8')));if(hit.length){console.error(hit);process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[00:05:22]</span> <span class="muted">check-passed</span> step=retire-legacy argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[00:05:27]</span> <span class="muted">report-accepted</span> seq=3 step=retire-legacy files=[&quot;legacy/chromatic-configurator.html&quot;,&quot;legacy/configurator-core.js&quot;,&quot;legacy/configurator-tests.html&quot;,&quot;legacy/music-color-palettes.js&quot;,&quot;legacy/palette-config.html&quot;,&quot;legacy/run-tests.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/ui/palette-editor.js&quot;,&quot;cnb/ui/notehead-rule-editor.js&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;docs/planning/project-plan.md&quot;] notes=Reworded the test-file header comment that still named the legacy/ path; otherwise as before (tag, deletion, parity tests removed, comment refs repointed).</div>
+<div class="line"><span class="at">[00:05:27]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=rewrite-readme</div>
+<div class="line"><span class="at">[00:07:30]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:07:39]</span> <span class="muted">check-passed</span> step=rewrite-readme argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('README.md','utf8');const bad=[/legacy\\//,/being rebuilt/,/v1_2/,/2\\.24\\+/].filter(r=&gt;r.test(s));const need=[/Known limitations/,/Running the tests and UAT/,/CNB-LY-EXPORT-SPEC-v1_3\\.md/,/2\\.24\\.x/,/2\\.26\\.x/,/npm run uat/,/node cnb\\/tests\\/run-tests\\.js/,/legacy-monolith-final/,/notation-builder-playbook\\.md/,/pitchAxis/].filter(r=&gt;!r.test(s));if(bad.length||need.length){console.error('bad',bad,'missing',need);process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[00:07:42]</span> <span class="muted">report-accepted</span> seq=4 step=rewrite-readme files=[&quot;README.md&quot;] notes=README rewritten for 1.0.0: status complete, spec v1.3, Known limitations (I1/I3/I4/I5 hard, I2 relaxed by pitchAxis), one Running the tests and UAT section per dabbler.yaml, LilyPond 2.24.x/2.26.x, module tables and structure updated, monolith noted at tag.</div>
+<div class="line"><span class="at">[00:07:42]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=update-claude-md</div>
+<div class="line"><span class="at">[00:08:35]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:08:46]</span> <span class="muted">check-passed</span> step=update-claude-md argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('CLAUDE.md','utf8');const bad=[/legacy/i,/v1_2/,/v1\\.2/].filter(r=&gt;r.test(s));const need=[/CNB-LY-EXPORT-SPEC-v1_3\\.md/,/cnb-pitch-axis\\.js/,/@AGENTS\\.md/].filter(r=&gt;!r.test(s));if(bad.length||need.length){console.error('bad',bad,'missing',need);process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[00:08:52]</span> <span class="muted">report-accepted</span> seq=5 step=update-claude-md files=[&quot;CLAUDE.md&quot;] notes=CLAUDE.md: spec import and mentions to v1.3, Module 24 cnb-pitch-axis.js added (plus clef/keysig line), legacy test command and Legacy Code section removed, UAT command added, staff-line-positions formula corrected to the x2 half-staff-space form; managed block untouched.</div>
+<div class="line"><span class="at">[00:08:52]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=lessons-and-guidance</div>
+<div class="line"><span class="at">[00:10:35]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:10:44]</span> <span class="muted">check-passed</span> step=lessons-and-guidance argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(fs.existsSync('docs/planning/lessons-archive.md')||fs.existsSync('docs/planning/project-guidance.md'))process.exit(1);const s=fs.readFileSync('docs/planning/lessons-learned.md','utf8');if(/ai_router|TODO|delete me|&lt;!-- lesson:/.test(s)||!/change-log/.test(s))process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[00:10:47]</span> <span class="muted">report-accepted</span> seq=6 step=lessons-and-guidance files=[&quot;docs/planning/lessons-learned.md&quot;,&quot;docs/planning/lessons-archive.md&quot;,&quot;docs/planning/project-guidance.md&quot;] notes=lessons-learned.md replaced with nine real lessons harvested from the set 001-013 change logs (each naming its set); empty lessons-archive.md and TODO-template project-guidance.md deleted; no ai_router instructions remain.</div>
+<div class="line"><span class="at">[00:10:48]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=version-file</div>
+<div class="line"><span class="at">[00:11:14]</span> <span class="muted">run-resumed</span> session=007 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:11:24]</span> <span class="muted">check-passed</span> step=version-file argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const v=JSON.parse(require('fs').readFileSync('version.json','utf8'));if(v.version!=='1.0.0'||Object.keys(v).length!==1)process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[00:11:28]</span> <span class="muted">report-accepted</span> seq=7 step=version-file files=[&quot;version.json&quot;] notes=Added root version.json reading { version: 1.0.0 }.</div>
+<div class="line"><span class="at">[00:11:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[00:11:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[00:11:35]</span> <span class="muted">job-started</span> name=verification pid=78628 log=.dabbler/runs/s7/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[00:12:31]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s7/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[00:12:31]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[00:12:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[00:12:34]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[00:12:36]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=33384 log=.dabbler/runs/s7/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[00:12:42]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s7/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[00:12:44]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[00:12:44]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=18700 log=.dabbler/runs/s7/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[00:13:59]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s7/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[00:13:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[00:14:17]</span> <span class="muted">landed</span> commit=d7dc7e7be0411220a918bba0e1c82d3bd65e6567</div>
+<div class="line"><span class="at">[00:14:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[00:14:19]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[00:14:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[00:14:24]</span> <span class="muted">job-started</span> name=close pid=45796 log=.dabbler/runs/s7/driver/jobs/close.log</div>
+<div class="line"><span class="at">[00:15:07]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s7/driver/jobs/close.log</div>
+<div class="line"><span class="at">[00:15:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `docs/planning/project-plan.md` remains internally stale: its “Current state” says “Two codebases coexist” and describes `cnb/` as only Phase 1 with no exporter or UI, despite the same change declaring the monolith retired and the README declaring 1.0.0 complete.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>2s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>66s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
