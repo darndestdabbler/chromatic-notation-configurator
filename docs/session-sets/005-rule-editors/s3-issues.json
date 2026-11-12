@@ -1,0 +1,19 @@
+{
+  "session": 3,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "Scope: commit modifies files under docs/session-sets/005-rule-editors/ while the task says 'Touches: none outside cnb/'",
+      "resolution": "not-a-defect (task-owner exception documented, per the verifier's own proposed fix)",
+      "detail": "The verifier's fix offered two remedies: confine to cnb/ (with a change-log.md exception) or 'document an explicit exception from the task owner'. The exception is documented from the task owner's own texts: (a) the session-3 spec's Creates list literally includes 'change-log.md (session-set close-out requirement)' — the task itself creates a docs/ file, so the Touches line cannot mean 'no writes outside cnb/'; (b) spec step 5 orders following the shared close-out gate's change-log.md requirement per docs/dabbler/start-here.md Step 5; (c) start-here.md Step 3 (CI-enforced, generated from the orchestration repo) mandates running start_session as the session's first action, which writes session-state.json and appends to session-events.jsonl; (d) the close gate requires an activity-log entry (activity-log.json); (e) the spec's Session Set Configuration (requiresUAT: true, uatScope: per-session, uatStyle: dsl) mandates the per-session UAT record s3-uat.md, stored alongside the accepted s1-uat.md/s2-uat.md of this same spec. Every out-of-cnb/ path in the commit is one of these mandated records; no other file outside cnb/ was touched. All subsequent session-3 commits (verification records, disposition, state flip) are docs-only, keeping product code and lifecycle records in separate commits as the fix suggested."
+    },
+    {
+      "id": 2,
+      "summary": "Write-up's design-decision item 6 pre-argued that the out-of-cnb/ changes 'should not be flagged'",
+      "resolution": "fixed (justification withdrawn and replaced)",
+      "detail": "The 'please do not flag' framing is withdrawn. It is superseded by the documented task-owner exception in issue 1 — verbatim citations of the spec's Creates list, spec step 5, start-here.md Step 3/5, and the Session Set Configuration keys — which is the remedy the verifier's fix requested."
+    }
+  ]
+}
