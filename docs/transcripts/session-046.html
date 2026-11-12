@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 046 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 046 transcript</h1>
+<p class="stamp">Rendered 2026-11-11T07:09:47.807Z by dabbler-ai-router 3.29.1 at 5f0f233221966ba6cab7183cc62e29037afe66e8.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-11T01:30:03.721-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 46: The breve's tie below the noteheads</h3>
+<p><strong>Why.</strong> In the session-45 try-out the operator found the breve's tie wrong (2026-11-11): it should be below the noteheads, not in the gap between the two groups on the heads' centre line. Ideally one tie spans from the centre of the first notehead of the first group to the centre of the last notehead of the last group.</p>
+<ol><li>Register.</li><li>With the engine's repository (engine 1.3.0 draws the tie, so this is an engine session and an engine patch release, 1.3.1): in repeat mode a breve's tie is one tie under each notehead, its ends at the centres of the first head of the first group and the last head of the last group, below the heads, curving down as LilyPond's ties under a note do. The two groups and the gap between them stay as they are. The preview draws it so (<code>CNBCard.tiedGroups</code>, <code>CNBCard.tiePath</code>), the tie still black, and the ledgers and column still the breve's whole width.</li><li>The engine's golden files, the LY spec (§4.1d) and the engine round trip in <code>cnb/tests/cnb-card-tests.js</code> follow, the round trip measuring the tie's ends and lowest point against the preview.</li></ol>
+<p>*(Amended during session 46, 2026-11-11: the engine work is engine session 28, &quot;The breve's tie below the noteheads&quot;, in the engine repository's plan, followed by its session 29, the 1.3.1 release. The tie's ends sit at the bottom of the heads (the group's lower edge), where LilyPond's own ties under a note start. This session's round trip waits for engine session 28 to land.)*</p>
+<h2>Work Plan</h2>
+<p>In repeat mode a breve's tie moves below the noteheads (the operator's finding in the session-45 try-out, 2026-11-11). Today each notehead of the breve carries a tie in the 1-staff-space gap between its two semibreve groups, on the heads' centre line. Instead, each notehead carries one tie whose ends are at the centres of the first head of the first group and the last head of the last group, at the bottom of the heads (the group stencil's lower Y edge, which for LilyPond's own heads is where its ties under a note start), curving down as LilyPond's ties under a note do: LilyPond's make-tie-stencil, 0.12 staff spaces thick, DOWN, default height limit 1.0 and ratio 0.33, still black. The two groups and the gap between them stay as they are, so the breve's width, its ledgers and its column are unchanged. Engine 1.3.0 draws the tie, so the engine work is the engine repository's own session: this session inserts it into the engine's plan as its session 28, followed by its patch release 1.3.1 as session 29, with the geometry above, its goldens, version.json 1.3.1 and a configurator handoff. Here, the card (cnb/src/cnb-card.js: CNBCard.repeatLayout's ties and the render) draws the tie so through CNBCard.tiePath. Once the engine session has landed, the engine round trip in cnb/tests/cnb-card-tests.js measures the engraved tie's ends and lowest point against the preview's, and the LY spec's section 4.1d (1.3.14), the architecture plan and the README follow.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/8f5bfca92eeeff8563f3236f6f03d467593c58bb"><code>8f5bfca92eeeff8563f3236f6f03d467593c58bb</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Engine session</td><td><p>Insert 'Session 28: The breve's tie below the noteheads' into the engine repository's plan (../lilypond-chromatic-notation-base/docs/sessions/session-plan.md), after its session 27, and 'Session 29: Release 1.3.1 (release: 1.3.1)' after it. Session 28 gives the why (Configurator session 46, the operator's finding, 2026-11-11) and the exact geometry from this plan's task: in cnb:build-duration-stencil (cnb/stencils.ly), for groups above 1, one (make-tie-stencil (cons xa y0) (cons xb y0) 0.12 DOWN) replaces the ties in the gaps, xa the centre of the first head of the first group, xb the centre of the last head of the last group, y0 the bottom of the group stencil's Y extent; the groups and gaps are unchanged, so the X extent is too. It lists the work: the integration specs on 2.24 and 2.26 asserting the breve's (and longa's) unchanged width and its new lower Y extent, the regenerated harvests and goldens containing breves, the test-unit.ly case updated, the README and CHANGELOG (1.3.1) lines, version.json to 1.3.1 (a patch release: one stencil corrected, nothing added), and docs/session-sets/028-breve-tie-below/configurator-handoff.md giving the measured tie for the default Configurator notehead at 4 semitones per staff space (its end points, lowest point and thickness, and the whole stencil's X and Y extents) and naming session 29 as the release. In this repository's plan, session 46's section names engine session 28.</p></td><td><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node -e const fs=require('fs');const p=fs.readFileSync('../lilypond-chromatic-notation-base/docs/sessions/session-plan.md','utf8');const c=fs.readFileSync('docs/sessions/session-plan.md','utf8');if(!/### Session 28: The breve's tie below the noteheads/.test(p)||!/### Session \d+: Release 1\.3\.1 \(release: 1\.3\.1\)/.test(p)||!/make-tie-stencil/.test(p)||!/engine session 28/i.test(c)){console.error('engine session 28 not planned');process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Preview</td><td><p>In cnb/src/cnb-card.js, CNBCard.repeatLayout gives a breve one tie, from the first head's offset to the last head's (relative to the centre of the whole), with its ends' y the heads' bottom (half the head's height below its centre); the render draws it on each notehead of the octave pair through CNBCard.tiePath, still black, and the tie is not clipped by the card's SVG. The groups, gap, offsets, groupWidth, ledgers and column are unchanged, and tiePath itself is unchanged. Update the module comment and the repeatLayout doc. In cnb/tests/cnb-card-tests.js, update the repeatLayout (breve) and render (repeat) breve tests for the one tie from the first head's centre to the last's below the heads; the minim and semibreve still have no tie.</p></td><td><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/src/cnb-collection.js</span><br><span class="mono">cnb/tests/cnb-collection-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Roundtrip</td><td><p>Once engine session 28 has landed (if it has not, report this step blocked and say so): in cnb/tests/cnb-card-tests.js, the engine-backed repeat-mode test holds the engraved breve to the preview for the Kite and 45deg-369 fixtures: its width as now, its height from the heads' top to the tie's lowest ink, and the tie's two end points and lowest point, each within 0.001 staff spaces. The tie is read from the engraved stencil by a probe in cnb/tests/engine-probe.js. Confirm that the five export baselines are unchanged. Record the measured numbers in the step notes and the test's comment.</p></td><td><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/tests/engine-probe.js</span></td><td><code>node -e const fs=require('fs');const s=fs.readFileSync('../lilypond-chromatic-notation-base/cnb/stencils.ly','utf8');if(!/make-tie-stencil/.test(s)||/\(cons \(\+ x1 1\) 0\)/.test(s)){console.error('engine session 28 has not landed: cnb/stencils.ly still ties the gap');process.exit(1)}const r=require('child_process').spawnSync('lilypond',['--version']);if(r.error||r.status!==0){console.error('lilypond is not on PATH, so the round trip would skip');process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>docs/CNB-LY-EXPORT-SPEC-v1_3.md becomes 1.3.14: section 4.1d's tie bullet gives the new geometry (one tie per notehead, from the first head's centre to the last head's, at the heads' bottom, curving down), engine 1.3.1 as the engine that engraves it (an export engraved with engine 1.3.0 ties the gap), the export text unchanged and the round trip's measured numbers; the version line, the section 1 note, the summary table row and the change log follow. docs/CNB-ARCHITECTURE-PLAN-v2.md (section 11 question 3) and README.md (the repeated-heads paragraph) say the tie runs below the heads from the first head's centre to the last's, engine 1.3.1 and later.</p></td><td><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\*\*Version:\*\* 1\.3\.14/.test(s)||!/\| \*\*1\.3\.14\*\* \|/.test(s)||!/engine 1\.3\.1/.test(r)||!/engine 1\.3\.1/.test(a)){console.error('spec 1.3.14 / README / architecture plan not updated');process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No engine code, golden or harvest is changed from this repository: the engine's session 28 makes the change, regenerates its goldens and writes the handoff, and its session 29 releases 1.3.1; this session only writes their plan entries.</li><li>The two semibreve groups, the 1-staff-space gap between them, the minim, the semibreve, shape mode and the ledgers' and column's width are unchanged.</li><li>The tie stays one composite stencil on the one breve note: no Tie grobs, no tie settings, and the tie stays black.</li><li>The export text does not change, so no export baseline is regenerated.</li><li>The CHANGELOG entry is left to the 1.1.0 release session, as session 44 left its own.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[06:30:03]</span> <span class="muted">run-started</span> session=046 mode=pull</div>
+<div class="line"><span class="at">[06:30:03]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[06:32:20]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[06:32:20]</span> <span class="muted">plan-accepted</span> steps=[&quot;engine-session&quot;,&quot;preview&quot;,&quot;roundtrip&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[06:32:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[06:32:20]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=engine-session</div>
+<div class="line"><span class="at">[06:32:58]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:32:59]</span> <span class="muted">check-passed</span> step=engine-session argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const p=fs.readFileSync('../lilypond-chromatic-notation-base/docs/sessions/session-plan.md','utf8');const c=fs.readFileSync('docs/sessions/session-plan.md','utf8');if(!/### Session 28: The breve's tie below the noteheads/.test(p)||!/### Session \\d+: Release 1\\.3\\.1 \\(release: 1\\.3\\.1\\)/.test(p)||!/make-tie-stencil/.test(p)||!/engine session 28/i.test(c)){console.error('engine session 28 not planned');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[06:32:59]</span> <span class="muted">report-accepted</span> seq=2 step=engine-session files=[&quot;docs/sessions/session-plan.md&quot;] notes=Engine plan gains session 28 (the breve's tie below the noteheads: one make-tie-stencil from the first head's centre to the last's at the group's lower Y edge) and session 29 (release 1.3.1); this plan's session 46 names engine session 28.</div>
+<div class="line"><span class="at">[06:32:59]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=preview</div>
+<div class="line"><span class="at">[06:36:18]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:36:48]</span> <span class="muted">check-passed</span> step=preview argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[06:36:48]</span> <span class="muted">report-accepted</span> seq=3 step=preview files=[&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/src/cnb-collection.js&quot;,&quot;cnb/tests/cnb-collection-tests.js&quot;] notes=repeatLayout gives a breve one tie from the first head's centre to the last's, its ends at the heads' bottom (dy = half the head's height), drawn black on each notehead; new CNBCard.tieBottom gives the tie's lowest ink, and CNBCollection.gridRange(pcs, config, durations) lowers a breve row's range by whole semitones until it fits; groups, gap, ledgers and column unchanged.</div>
+<div class="line"><span class="at">[06:36:48]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=roundtrip</div>
+<div class="line"><span class="at">[06:37:04]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:37:04]</span> <span class="muted">mechanic-called</span> stop=blocked model=claude-fable-5-1</div>
+<div class="line"><span class="at">[06:37:07]</span> <span class="muted">mechanic-handed-back</span> stop=blocked</div>
+<div class="line"><span class="at">[06:59:02]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull after=blocked</div>
+<div class="line"><span class="at">[06:59:02]</span> <span class="muted">mechanic-not-called</span> why=this stop has had its one attempt</div>
+<div class="line"><span class="at">[07:04:06]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull after=blocked</div>
+<div class="line"><span class="at">[07:04:37]</span> <span class="muted">check-passed</span> step=roundtrip argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('../lilypond-chromatic-notation-base/cnb/stencils.ly','utf8');if(!/make-tie-stencil/.test(s)||/\\(cons \\(\\+ x1 1\\) 0\\)/.test(s)){console.error('engine session 28 has not landed: cnb/stencils.ly still ties the gap');process.exit(1)}const r=require('child_process').spawnSync('lilypond',['--version']);if(r.error||r.status!==0){console.error('lilypond is not on PATH, so the round trip would skip');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[07:04:37]</span> <span class="muted">check-passed</span> step=roundtrip argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[07:04:37]</span> <span class="muted">report-accepted</span> seq=4 step=roundtrip files=[&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/tests/engine-probe.js&quot;] notes=Engine session 28 landed (engine 1.3.1). New measureTies probe reads each engraved breve's tie (the one uncoloured path in its stencil). Kite and 45deg-369, all 12 pcs, within 0.001 ss: Kite ends y -0.6667 (preview -0.6667), half a head in from each edge, span 7.3345 (7.3333 preview, narrower heads), lowest ink -1.5530 (-1.5529), height 2.2198 (2.2196); 45deg-369 ends -0.6668 (-0.6667), span 7.3346 (7.3340), lowest -1.5530 (-1.5529), height 2.2197 (2.2196). Five export baselines byte-identical; suite 1203 pass.</div>
+<div class="line"><span class="at">[07:04:37]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=docs</div>
+<div class="line"><span class="at">[07:06:12]</span> <span class="muted">run-resumed</span> session=046 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/\\*\\*Version:\\*\\* 1\\.3\\.14/.test(s)||!/\\| \\*\\*1\\.3\\.14\\*\\* \\|/.test(s)||!/engine 1\\.3\\.1/.test(r)||!/engine 1\\.3\\.1/.test(a)){console.error('spec 1.3.14 / README / architecture plan not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="muted">report-accepted</span> seq=5 step=docs files=[&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;README.md&quot;] notes=LY spec 1.3.14: section 4.1d's tie is one tie below the heads, first head's centre to the last's, at the heads' bottom, since engine 1.3.1 (engine 1.3.0 tied the gap), export text unchanged, the round trip's measured tie numbers; version, date, section 1 note, summary row and change log follow. Architecture plan section 11 q3 and README say the same, engine 1.3.1 and later.</div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="good">progress-resumed</span> past=blocked from=work phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:06:44]</span> <span class="muted">job-started</span> name=verification pid=7080 log=.dabbler/runs/s46/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:08:14]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s46/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:08:14]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:08:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:08:14]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[07:08:14]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=1512 log=.dabbler/runs/s46/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[07:08:47]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s46/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[07:08:47]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[07:08:47]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=4048 log=.dabbler/runs/s46/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[07:09:40]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s46/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[07:09:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:09:43]</span> <span class="muted">landed</span> commit=8f5bfca92eeeff8563f3236f6f03d467593c58bb</div>
+<div class="line"><span class="at">[07:09:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:09:43]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:09:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:09:43]</span> <span class="muted">job-started</span> name=close pid=52736 log=.dabbler/runs/s46/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:09:47]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s46/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:09:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The engine round-trip does not require a tie result for every pitch class.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>In `cnb/tests/engine-probe.js`, `measureTies` accepts any non-empty set of `CNB-TIE` records. In `cnb/tests/cnb-card-tests.js`, the test validates only returned records; it never asserts twelve distinct pitch classes or one tie per engraved breve.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>Test case: with complete notehead measurements but probe output containing `CNB-TIE` records for only eleven pitch classes, the round trip should fail and identify the missing pitch class. Today `measureTies` returns the eleven records and the loop validates only those, so the test can pass despite one breve having no measured tie.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>33s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>52s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
