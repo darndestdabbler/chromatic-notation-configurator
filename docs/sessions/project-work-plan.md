@@ -68,7 +68,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 54 | One model for the key signature, on the canvas | no | 2026-11-12 |
 | 55 | The key signature's model reaches LilyPond | no | 2026-11-12 |
 | 56 | The key-signature editor | no | 2026-11-12 |
-| 57 | The UI is stable | — | not declared |
+| 57 | The UI is stable | no | 2026-11-12 |
 | 58 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -576,3 +576,13 @@ Build the key-signature editor of design docs/planning/key-signature-designer-de
 
 - 2026-11-12 — step 'touch-check': its checks: The planned check expected the default signature under parity stacking to touch nowhere, but parity puts the 2.724-semitone default heads 2 semitones apart in one stack, so they do touch (session 50's overlap note reported the same). The amended check asserts the default stacked sevenths touch nowhere and parity does, with the same 105-key count and time budget. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-12 — step 'uat-and-docs': its files: The step asks to fix what the screenshots' judgement against the mock-ups finds; it found the canvas's 2-semitone margins pushing B-flat major's lowest mark past the 360 px cap and the other keys' small signatures too wide for one row at 1440 px, both fixed in cnb/ui/key-signature-editor.js, which the step's file list did not name. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 57 — The UI is stable
+
+**Releasable: no.**
+
+Make the UI stable for the 1.1.0 release. The operator tries what sessions 43-56 added in the app (nudging any notehead by dragging it on the canvas or by its framed field, the breve as two tied semibreves with the tie below the heads, the Dozenal, Treble, Bass and Alto clefs and a glyph clef's range set by typing or dragging, and the key signature: its one model, sharps and flats sized to the noteheads, the magnified canvas with its selection, drags and snapping, Edit and the look card, Import from SVG with its reference point, the key picker with the mode's 15 keys, the touch check and Start from), and the findings are recorded in a session-57 section of docs/uat-status.md. The small rough edges found are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 58. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 58), is recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-12 — step 'fix-rough-edges': its files: The one fix-here edge is the Pitch section's nudges hint (pitch-panel.js), decided by a consult the operator asked for, recorded in docs/planning; the key-signature and notehead panels are untouched. (claude-code (anthropic, claude-opus-5-5))

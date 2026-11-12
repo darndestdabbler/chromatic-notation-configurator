@@ -139,6 +139,14 @@ export const tests = [
       });
     }},
 
+  { name: "render: the nudges' hint says a nudge moves the pitch, and a staff line on it (session 57)", fn: () => {
+      withDomStub(container => {
+        const { api } = mount(container, CNBConfig.createDefault());
+        const hint = findOne(findOne(api.root, "cnb-pp-nudges-group"), "cnb-pp-hint").textContent;
+        assert(hint.includes("A nudge moves the pitch, not only its notehead: a staff line on that pitch moves with it."), hint);
+      });
+    }},
+
   { name: "render: Twinline shows the §3.3 nudges and marks the five shared pairs", fn: () => {
       withDomStub(container => {
         const { api, state, control } = mount(container, twinline());

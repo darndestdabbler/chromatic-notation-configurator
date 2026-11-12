@@ -2061,9 +2061,90 @@ declaration moved here in session 42.
 3. The README's text and picture follow the UI as it now is. The full UAT
    runs.
 4. The operator declares the UI stable, which is the condition for
-   session 58.
+   session 58. *(Amended during session 57: the operator's try-out found
+   rough edges too large for it (`docs/uat-status.md`, session 57) and
+   delayed the release: "This is too complicated as it stands. It needs to
+   be more user friendly before a release." They are sessions 58–61 and
+   the sessions 61 plans, and the declaration moves to the session before
+   the release, numbered once session 61 has planned the build.)*
 
-### Session 58: Release 1.1.0 (release: 1.1.0)
+### Session 58: The repeated noteheads' overlap and the breve's tie
+
+**Why.** The operator's try-out in session 57 (`docs/uat-status.md`,
+items 2 and 3): the overlap of repeated heads is slightly too much with the
+sample noteheads, may matter per shape, and its one control (Multinote
+padding, in staff spaces) is out of sight in Advanced; and the breve's tie,
+under all eight heads, looks a little odd.
+
+1. Register.
+2. Mock-ups first: the tie from the middle of the first semibreve group to
+   the middle of the second, beside today's, and the heads at 1/3 overlap
+   beside today's. The operator picks.
+3. The overlap is set as a fraction of each head's width, beside repeat
+   mode, for each shape if the mock-ups show it is needed; the tie as
+   picked. Preview and engraving alike, with an engine round trip.
+   *Engine work:* both (the engine builds the repeated stencil and its tie).
+
+### Session 59: Clefs sized about an anchor
+
+**Why.** The operator's try-out in session 57 (item 4): the clefs are too
+big, as the sharps and flats were, and their height should be adjustable
+without the clef leaving its pitch.
+
+1. Register.
+2. Each clef has an anchor point (the treble clef's curl, the point between
+   the bass clef's dots, the alto and dozenal clefs' middle; an imported
+   clef's picked by a click, as the key signature's reference point is) and
+   the pitch it sits on. Resizing scales the clef about its anchor, so the
+   anchor stays on its pitch. The default size follows the staff, as the
+   signs' does.
+3. Preview and engraving alike, with an engine round trip. *Engine work:*
+   the dozenal clef's size; a glyph clef needs none.
+
+### Session 60: Noteheads centred by their shape's reference point
+
+**Why.** The operator's try-out in session 57 (item 1): some shapes are
+better placed by their centre of mass than their vertical centre. The
+consult ([`nudge-staff-lines-consult.md`](../planning/nudge-staff-lines-consult.md))
+put it on the shape.
+
+1. Register.
+2. A shape's reference point (`shapes[name].reference`), which the key
+   signature already reads, is the point a notehead puts on its pitch too;
+   it can be picked when a shape is imported and changed after. Staff lines
+   and ledgers stay at the pitch; the stem follows the drawn head.
+3. Exported as a vertically translated shape variant, as sized variants
+   are, the key signature not applying it twice; stems, dots and repeated
+   heads with an asymmetric shape checked by an engine round trip.
+   *Engine work:* none.
+
+### Session 61: Designing the step-by-step Configurator
+
+**Why.** The operator's try-out in session 57 (item 5): the key-signature
+designer is too complicated, and the Configurator should read as a
+sequence of steps.
+
+1. Register.
+2. A design document only, no code, from the operator's outline in
+   `docs/uat-status.md` (session 57): the steps Notehead height, Staff,
+   Pitch, Ledger lines, Noteheads, Key signature symbol type (noteheads,
+   accidentals or custom marks), Custom key signature symbols (21 spelled
+   notes, multi-select, imported symbols, six for Clairnote; only when
+   needed), Key signature designer (stacking, column spacing, the gold
+   stem), Key signature preview (every key and mode), Clef symbol import and
+   sizing, Clef semitone/staff assignment; without the whole-staff canvas in
+   the key-signature steps. It considers grouping the navigation panel (as
+   `darndestdabbler/uat-checklist-editor` does) and numbering the steps or
+   enabling them in order.
+3. Mock-ups, and a cross-provider consult, before the operator approves it;
+   it plans the sessions that build it.
+
+### Sessions 62 and on: The step-by-step Configurator
+
+As session 61 plans them. Then a session in which the operator declares the
+UI stable, and the release:
+
+### Release 1.1.0 (release: 1.1.0), numbered once session 61 has planned
 
 **Why.** The first release since the UI work, and the site's first deploy.
 

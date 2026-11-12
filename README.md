@@ -15,13 +15,19 @@ The Configurator is the design environment where notation creators make creative
 - **Colour noteheads directly**, or start from suggested colour sets
   (colour-blind-safe ones among them); a colour-blind version of a
   notation is simply a second config saved under another name
+- **Nudge a notehead** up or down by dragging it on the staff
+- **Add a key signature** — the key's scale as noteheads, traditional
+  sharps and flats, or your own symbols, designed on a magnified canvas
+  and checked across all 105 keys
+- **Add a clef** — the dozenal, treble, bass or alto clef, or one imported
+  from SVG
 - **Preview your notation** on a staff of octave chords, as the engine engraves it
 - **Export `.ly` config files** that the ChromaticNotationBase engine consumes
 - **Save/load configurations** as JSON for iterative design, in the
   folder you choose
 - **Undo and redo** every change to the design
 
-![The Configurator with Kite 4-369 open: the top bar with Undo and Redo, the staff canvas with its durations and repeat mode, and under it the notehead panel for C♯, F and A selected together](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open in the Noteheads section: the top bar with Undo and Redo, the staff canvas with its durations, repeat mode and key, and under it the notehead panel for C♯, F and A selected together](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -197,7 +203,9 @@ conventional notehead on the 4-8 staff.
 - **Staff** — pick a staff pattern (which semitones within the octave
   carry lines, e.g. 4-8 or 3-6-9).
 - **Pitch** — the middle of the staff, the staff spacing, and nudges that
-  move a note up to a semitone from its place.
+  move a note up to a semitone from its place: drag its notehead up or
+  down on the staff, or type the nudge in its field. A nudge moves the
+  pitch, not only its notehead, so a staff line on that pitch moves with it.
 - **Ledger lines** — Automatic, or your own rules for which notes get
   which ledgers.
 - **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
@@ -506,8 +514,8 @@ example data in, DOM nodes out:
 | Staff/Ledger Rule Editor | Staff pattern and ledger template configuration |
 | Notehead Rule Editor | Shape/hollow/color rules by pitch, duration, key |
 | Common Properties Editor | Durations, representation mode, engine settings, metadata |
-| Clef Editor | Clef enable, glyph import and selection, anchor |
-| Key Signature Editor | Key definitions and key-signature settings |
+| Clef Editor | Clef enable, the dozenal, treble, bass and alto clefs, glyph import and selection, a glyph clef's range |
+| Key Signature Editor | The magnified signature canvas, Edit and the look card, the key picker and the touch check, the key definitions |
 | Pitch Axis Editor | Pitch-axis presets and the pitch-class → position map |
 | Config Save/Load | JSON import/export |
 | Config Export | Validated LilyPond download |

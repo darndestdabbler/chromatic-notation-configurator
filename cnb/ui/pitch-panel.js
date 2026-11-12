@@ -214,6 +214,7 @@ export const CNBPitchPanel = {
       group.appendChild(element("p", "cnb-pp-label", "Nudges"));
       group.appendChild(element("p", "cnb-pp-hint",
         "Each pitch class can sit up to a semitone above or below its own place. " +
+        "A nudge moves the pitch, not only its notehead: a staff line on that pitch moves with it. " +
         "Drag a notehead up or down on the canvas, or type its nudge here. Neighbours may meet, never cross."));
       const list = element("div", "cnb-pp-nudges");
       for (const pc of PCS) {

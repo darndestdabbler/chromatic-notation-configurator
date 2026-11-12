@@ -21,6 +21,107 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Trying sessions 43–56 — 2026-11-12 (session 57)
+
+The operator tried what sessions 43–56 added, in the app served locally
+(`python -m http.server 8000`): the nudges, the breve, the clefs and the
+key signature.
+
+**Works as intended.** The breve as two tied semibreves with its tie below
+the heads (sessions 44 and 46), and the four clefs, which look right apart
+from their size (45).
+
+**Rough edges**, each marked *fix here* or *planned*.
+
+1. **A nudge moves a staff line** (*fix here*, the hint; *planned*, optical
+   centring, session 60): nudging a notehead sometimes, not always, moves a staff line
+   with it. The staff lines are placed through the pitch map the nudges
+   write, so nudging a pitch class that has a line on it (E or G♯ on the
+   default 4-8 staff) moves the line. The operator asked for a consult,
+   adding that some shapes may be better placed by their centre of mass
+   than their vertical centre, which needs noteheads moved independently of
+   the staff lines. Sol and Argon agreed
+   ([`nudge-staff-lines-consult.md`](planning/nudge-staff-lines-consult.md)):
+   a nudge moves the pitch, and a line on it rightly follows (Twinline
+   needs its lines on its nudged notes); optical centring belongs on the
+   shape, as its reference point applied to noteheads. The operator chose
+   to say so here and plan the centring. *Fixed here:* the nudges' hint in
+   the Pitch section now says "A nudge moves the pitch, not only its
+   notehead: a staff line on that pitch moves with it."
+2. **The breve's tie spans the whole breve** (*planned*, session 58, with engine
+   work): the tie runs from the first head's centre to the last's, under all eight
+   heads, which looks a little odd. The operator and the orchestrator agree
+   it should run from the middle of the first semibreve group to the middle
+   of the second, as a tie joins two notes; the operator wants to see it
+   that way first.
+3. **The repeated heads' overlap** (*planned*, session 58): it should be configurable,
+   possibly for each notehead shape, since it matters for particular
+   shapes. With the sample noteheads the overlap is slightly too much (the
+   default −0.5 staff spaces is about 58% of the default head's width); the
+   operator wants to see it at 1/3 overlap. The one control there is,
+   Multinote padding, is out of sight in Advanced → Durations and engine,
+   and the operator did not find it. A fraction of each head's width, or a
+   value per shape, needs engine work.
+4. **Clefs too big, and sized about an anchor** (*planned*, session 59, with
+   engine work for the dozenal clef): as the sharps and flats were, the clefs are
+   too big, and their height should be adjustable. A designer picks an
+   anchor point on the clef (the middle of an alto or dozenal clef, the
+   middle of the treble clef's curl, the point between the bass clef's
+   dots) and the pitch on the staff it sits on, and resizing keeps the
+   anchor on that pitch. The operator suspects Paul Morris drew Clairnote's
+   own clefs partly because the standard ones looked a little funny on its
+   staff.
+5. **The key-signature designer is too complicated** (*planned*: session 61
+   designs it with mock-ups, then the sessions it plans). The operator's
+   outline, as steps:
+   - **a. The kind of mark**: noteheads, accidentals or custom marks.
+     Noteheads show in a designer like the notehead designer, with entries
+     for flats too. Accidentals appear where sharp and flat noteheads would
+     have been, naturals perhaps shown partly dimmed elsewhere. Custom
+     marks start as parallelograms 2 semitones high and 4 wide.
+   - **b. Custom marks**: on a canvas like the notehead canvas, select one
+     or more spelled notes (multi-select, as for noteheads, but with sharps
+     and flats both) and replace their parallelograms with imported
+     symbols, tails included. That is 21 entries, the 7 letters each
+     natural, sharp and flat (E♯, B♯, C♭ and F♭ included); their spacing may
+     need tightening, which the magnified designer allows. Clairnote's
+     signature takes six symbols (a solid and a hollow dot, each plain, with
+     a tail up and with a tail down), which keeps the variables to support
+     fewer than separate tails would.
+   - **c. The magnified designer**: the stacking, the spacing between
+     columns, and whether the gold stem between the stacks is drawn, and
+     its style.
+   - **d. The preview**: every key, tonic and mode, to see the results.
+
+   The whole-staff canvas at the top of the page is not needed in these
+   steps: the canvas of step b takes its place. The operator sees the whole
+   Configurator as a sequence of steps: Notehead height, Staff, Pitch,
+   Ledger lines, Noteheads, Key signature symbol type, Custom key signature
+   symbols (only enabled when needed), Key signature designer (c), Key
+   signature preview (d), Clef symbol import and sizing, Clef
+   semitone/staff assignment. They want that sequence designed in the same
+   session as the key-signature designer, considering groupings in the
+   navigation panel (as `darndestdabbler/uat-checklist-editor` has) and
+   whether the steps should be numbered, or enabled in turn, to suggest or
+   enforce their order.
+
+**Found while starting the try-out.** The first load threw `CNBClef.extent
+is not a function`: the browser had kept a `cnb-clef.js` from before
+session 45, which `python -m http.server` lets it cache, beside the newer
+`cnb-collection.js`. A hard reload (Ctrl+Shift+R) cured it; the code was
+right.
+
+**What the UAT checks.** No driver changed: the one fix is the nudges'
+hint, which `cnb-pitch-panel-tests.js` checks. `npm run uat` passes 18 of
+18 drivers (2026-11-12).
+
+**The release waits.** The operator did not declare the UI stable, and
+chose that items 1–5 above come before the 1.1.0 release: "Delay the
+release. This is too complicated as it stands. It needs to be more user
+friendly before a release." (2026-11-12.) They are sessions 58–61 and the
+sessions 61 plans, and the operator will declare the UI stable in the
+session before the release, numbered once session 61 has planned the build.
+
 ## The key-signature editor — 2026-11-12 (session 56)
 
 The Key signature section holds the editor of the key-signature design
