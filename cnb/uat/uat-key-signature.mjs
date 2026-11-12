@@ -18,7 +18,11 @@
  * the middle, on the bottom and on every line set, each checked against
  * CNBKeySignature, the export's signs, and the key's notes restored; since
  * session 52 the Size row, automatic and 5 semitones by hand, checked
- * against CNBKeySignature and the export's scale) → clef
+ * against CNBKeySignature and the export's scale; since session 54 a
+ * starting point on the one model: the traditional signature's settings, the
+ * window's zigzag in C♯ major, the key's notes restoring the defaults, and
+ * configs saved with the accidentals and notehead-chords styles loading as
+ * before) → clef
  * composition → save the config (real
  * download) and load it back → export a .ly file (real download, the mark
  * table) → the Clairnote SN gallery file's signature → screenshots at 1440
@@ -507,7 +511,7 @@ check("PANEL: no Marks style, placement-rule, tonic-octave or bar-extent control
   await page.evaluate(() =>
     !document.querySelector(".cnb-kse-style-option, .cnb-kse-placement-rule, .cnb-kse-octave-auto-check, .cnb-kse-octave-input, .cnb-kse-sep-extent, .cnb-kse-gutter-input") &&
     document.querySelectorAll(".cnb-key-signature-editor .cnb-badge").length === 0) &&
-  cfg.keys.keySignature.style === "notehead-chords" && cfg.keys.keySignature.placement.rule === "scale-from-tonic");
+  !("style" in cfg.keys.keySignature) && cfg.keys.keySignature.placement.rule === "scale-from-tonic");
 
 // Notes.
 await radio("cnb-kse-notes-choice", "tonic-and-half-steps");
@@ -683,11 +687,22 @@ const signsMatch = (got, want) => got.length === want.length && got.every((s, i)
   s.d === want[i].d && s.fill === want[i].fill &&
   numbers(s.transform).every((v, j) => close(v, numbers(want[i].transform)[j])));
 
-const before51 = JSON.parse(JSON.stringify((await fullConfig()).keys.keySignature));
-await radio("cnb-kse-style", "accidentals");
+// The whole config before Sharps or flats: the Draw row is a starting point
+// (session 54, design §13.2), so it is loaded back afterwards.
+const before51Full = await fullConfig();
+const before51 = JSON.parse(JSON.stringify(before51Full.keys.keySignature));
+await radio("cnb-kse-style", "traditional");
 cfg = await fullConfig();
-check("DRAW: Sharps or flats is written as the style \"accidentals\"; the Notes, Stacks and Looks rows hide, Size shows (session 52) and Place stays",
-  cfg.keys.keySignature.style === "accidentals" &&
+{
+  const ks = cfg.keys.keySignature;
+  check("DRAW: Sharps or flats sets the traditional starting point (session 54) — the sharps or flats only, Emmentaler's signs with no colour, the cycle of fifths in a window, the middle of the staff, the other looks and every second stack cleared, Show kept, no style",
+    !("style" in ks) && ks.enabled === true && ks.notes === "altered" && ks.stacking === "fifths" && ks.heights === "window" &&
+    ks.placement.position === "middle" && JSON.stringify(ks.alternate) === "{}" &&
+    JSON.stringify(ks.looks) === JSON.stringify({ all: {}, natural: {}, flat: { sign: "flat", color: null },
+      sharp: { sign: "sharp", color: null }, line: {}, space: {} }), JSON.stringify(ks));
+}
+check("DRAW: under Sharps or flats the Notes, Stacks and Looks rows hide, Size shows (session 52) and Place stays",
+  cfg.keys.keySignature.notes === "altered" &&
   await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
     .map(e => e.textContent)) === JSON.stringify(["Draw", "Size", "Place"])));
 check("SIZE: automatic by default, showing the rule's size for the default staff, 2.72 semitones, and Place's hint no longer names the half steps",
@@ -717,8 +732,11 @@ for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D
   const ly = CNBLilypond.generate(await fullConfig());
   const table = ly.slice(ly.indexOf("#(define cnb:keysig-marks"));
   const marks = table.slice(0, table.indexOf("\n\n"));
-  check("DRAW: the export carries the signs through the mark table, at their scale — D major's (6 0 sharp 0.6473) (13 1 sharp 0.6473) and B♭ major's flats, no heads",
-    ly.includes("cnb:keysig-style 'marks") && /\(marks \(6 0 sharp 0\.6473\)\s+\(13 1 sharp 0\.6473\)/.test(marks) &&
+  // On every line set, the last place drawn, each copy has its own window
+  // (session 54): the bottom set's 0–11 and the top set's 12–23.
+  check("DRAW: the export carries the signs through the mark table, at their scale — D major's (6 0 sharp 0.6473) (1 1 sharp 0.6473) (18 0 sharp 0.6473) (13 1 sharp 0.6473), each line set's window, and B♭ major's flats, no heads",
+    ly.includes("cnb:keysig-style 'marks") &&
+    /\(marks \(6 0 sharp 0\.6473\)\s+\(1 1 sharp 0\.6473\)\s+\(18 0 sharp 0\.6473\)\s+\(13 1 sharp 0\.6473\)/.test(marks) &&
     /\(-?\d+ 0 flat 0\.6473\)/.test(marks) && !/ head /.test(marks), marks.slice(0, 600));
 }
 // Size set by hand (session 52): 5 semitones between a sharp's bars.
@@ -767,15 +785,82 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 await page.setViewportSize({ width: 1600, height: 1800 });
 await page.waitForTimeout(150);
 await radio("cnb-kse-position", "middle");
-await radio("cnb-kse-style", "notehead-chords");
+// The window's zigzag (session 54, design §13.5): C♯ major's seven sharps in
+// the octave around the staff's middle, 6–17, a fifth up or a fourth down
+// each, not climbing from the tonic as session 51 drew them.
+const CS_MAJOR_KEY = { tonic: 1, mode: "major", spelling: "C♯" };
+{
+  await pickKey("C♯", "major");
+  const live = await fullConfig();
+  const picked = CNBPreviewDisplay.withKey(live, CS_MAJOR_KEY);
+  const sig = CNBKeySignature.marks(picked.config, CNBKeySignature.activeKey(picked.config, picked.name).def);
+  const got = await canvasSigns();
+  const want = expectedSigns(live, CS_MAJOR_KEY);
+  check("DRAW: the window's zigzag — C♯ major's sharps on semitones 6 13 8 15 10 17 12, one to a column, drawn as the Node-side renderer draws them",
+    JSON.stringify(sig.marks.map(m => [m.semi, m.column])) === JSON.stringify([[6, 0], [13, 1], [8, 2], [15, 3], [10, 4], [17, 5], [12, 6]]) &&
+    signsMatch(got, want) && got.length === 7,
+    `semis=${JSON.stringify(sig.marks.map(m => m.semi))} actual=${JSON.stringify(got.map(s => s.transform))}`);
+  for (const [width, height] of [[1440, 900], [1280, 800]]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: path.join(SHOT_DIR, `uat-054-window-${width}.png`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1600, height: 1800 });
+  await page.waitForTimeout(150);
+}
+await radio("cnb-kse-style", "noteheads");
 await pickKey("C", "major");
 {
   const r = await canvasDraws(C_MAJOR_KEY, "the key's notes again");
   const after = (await fullConfig()).keys.keySignature;
-  check("DRAW: The key's notes again — the Notes, Stacks and Looks rows return, the settings are as they were, and the canvas draws the noteheads as the Node-side renderer does",
-    JSON.stringify(after) === JSON.stringify(before51) && r.ok && (await canvasSigns()).length === 0 &&
+  check("DRAW: The key's notes sets the defaults, Show kept — the Notes, Stacks and Looks rows return, and the canvas draws the noteheads as the Node-side renderer does",
+    JSON.stringify(after) === JSON.stringify({ ...CNBConfig.createDefault().keys.keySignature, enabled: true }) &&
+    r.ok && (await canvasSigns()).length === 0 &&
     await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
       .map(e => e.textContent)) === JSON.stringify(["Draw", "Notes", "Stacks", "Looks", "Place"])),
+    `${r.detail} after=${JSON.stringify(after)}`);
+}
+/** Load a config as a file, and wait for the shell to adopt it. */
+async function loadConfig(json, name, adopted) {
+  await page.setInputFiles("#open-file", { name, mimeType: "application/json", buffer: Buffer.from(JSON.stringify(json), "utf8") });
+  await page.waitForFunction(adopted, null, { timeout: 10000 });
+}
+// A config saved with session 51's style "accidentals" loads as the one
+// model, its signs drawn where session 51 drew them: climbing from the tonic.
+{
+  const saved = JSON.parse(JSON.stringify(before51Full));
+  saved.keys.keySignature = { ...saved.keys.keySignature, style: "accidentals" };
+  for (const field of ["heights", "window"]) delete saved.keys.keySignature[field];
+  delete saved.keys.keySignature.looks.natural;
+  delete saved.keys.keySignature.looks.line;
+  delete saved.keys.keySignature.looks.space;
+  await loadConfig(saved, "saved-accidentals.cnb.json",
+    () => JSON.parse(document.querySelector("#state-json").textContent).keys.keySignature.notes === "altered");
+  await pickKey("C♯", "major");
+  const live = await fullConfig();
+  const ks = live.keys.keySignature;
+  const picked = CNBPreviewDisplay.withKey(live, CS_MAJOR_KEY);
+  const sig = CNBKeySignature.marks(picked.config, CNBKeySignature.activeKey(picked.config, picked.name).def);
+  const got = await canvasSigns();
+  check("LOAD: a config saved with the style \"accidentals\" loads as the sharps or flats only, black signs and the cycle of fifths climbing, no style — C♯ major's sharps at 6 1 8 3 10 5 12, as session 51 drew them, and the canvas matches",
+    !("style" in ks) && ks.notes === "altered" && ks.stacking === "fifths" && ks.heights === "scale" &&
+    JSON.stringify(sig.marks.map(m => m.semi)) === JSON.stringify([6, 1, 8, 3, 10, 5, 12]) &&
+    signsMatch(got, expectedSigns(live, CS_MAJOR_KEY)) && got.length === 7 && got.every(s => s.fill === "#000000") &&
+    await page.evaluate(() => !!document.querySelector(".cnb-kse-style .cnb-kse-radio.on[data-value=\"traditional\"]")),
+    `${JSON.stringify(ks)} semis=${JSON.stringify(sig.marks.map(m => m.semi))}`);
+}
+// The settings of STEP 5 back, as a config saved with the style
+// "notehead-chords", which loads as it was.
+{
+  const saved = JSON.parse(JSON.stringify(before51Full));
+  saved.keys.keySignature = { style: "notehead-chords", ...saved.keys.keySignature };
+  await loadConfig(saved, "saved-noteheads.cnb.json",
+    () => JSON.parse(document.querySelector("#state-json").textContent).keys.keySignature.notes !== "altered");
+  await pickKey("C", "major");
+  const r = await canvasDraws(C_MAJOR_KEY, "loaded noteheads");
+  const after = (await fullConfig()).keys.keySignature;
+  check("LOAD: a config saved with the style \"notehead-chords\" loads with no style and every setting as saved, and the canvas draws its noteheads as the Node-side renderer does",
+    JSON.stringify(after) === JSON.stringify(before51) && r.ok,
     `${r.detail} before=${JSON.stringify(before51)} after=${JSON.stringify(after)}`);
 }
 cfg = await fullConfig();
@@ -824,7 +909,7 @@ check("SAVE: the keys section is in the file — enabled, 2 definitions, the sig
   savedJson.keys.definitions.length === 2 &&
   savedJson.keys.definitions[1].name === "D Dorian" &&
   savedJson.keys.keySignature.enabled === true &&
-  savedJson.keys.keySignature.style === "notehead-chords" &&
+  !("style" in savedJson.keys.keySignature) &&
   savedJson.keys.keySignature.stacking === "parity-stacks" &&
   savedJson.keys.keySignature.columns === "left-in-sharp-keys" &&
   savedJson.keys.keySignature.separator.shareThickness === false &&

@@ -1587,7 +1587,7 @@ export const tests = [
         return m[1];
       };
       const config = keySignatureConfig();
-      config.keys.keySignature.style = "accidentals";
+      traditional(config);
       const out = CNBLilypond.generate(config);
       contains(out, "#(set! cnb:keysig-style 'marks)", "the mark table");
       eq(entry(out, "C major"), "     (((0 . 0) . (0 2 4 5 7 9 11))\n      . ((columns)\n         (bars)\n         (marks)))",
@@ -1649,7 +1649,7 @@ export const tests = [
         for (const position of ["middle", "bottom-set", "every-set"]) {
           for (const [size, heightSemis] of sizes) {
             const config = base();
-            config.keys.keySignature.style = "accidentals";
+            traditional(config);
             config.keys.keySignature.placement.position = position;
             config.keys.keySignature.signs = { heightSemis };
             runs.push({ label: `${name}, ${position}, ${size}`, config, music: "" });
@@ -1666,7 +1666,7 @@ export const tests = [
             for (const [size, heightSemis] of sizes) {
               if (magnify === "4/5" && (name !== "default" || position !== "every-set")) continue;
               const config = base();
-              config.keys.keySignature.style = "accidentals";
+              traditional(config);
               config.keys.keySignature.placement.position = position;
               config.keys.keySignature.signs = { heightSemis };
               config.engine.defaultMagnify = magnify;
@@ -2273,6 +2273,15 @@ function glyphClefConfig(overrides = {}) {
     gutter: { paddingH: 20 },
   };
   return config;
+}
+
+/**
+ * The traditional signature (session 54, key-signature design §13.2): session
+ * 51's "accidentals" style as the one model converts it, black signs climbing.
+ */
+function traditional(config) {
+  Object.assign(config.keys.keySignature,
+    CNBConfig.signatureStyleToModel({ keys: { keySignature: { style: "accidentals" } } }).keys.keySignature);
 }
 
 /** The default config with keys and a key signature on, at the engine's defaults, and a G key. */

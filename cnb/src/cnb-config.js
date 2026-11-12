@@ -116,16 +116,15 @@ function buildDefault() {
 
       // Key signature (set 010). Default-off: with enabled:false the preview
       // and the LilyPond export are byte-identical to the pre-set-010 output.
-      // The style "notehead-chords" mirrors the engine's keysig.ly: the key's
-      // scale rendered as real noteheads — 7 degrees ascending from the tonic
-      // plus the octave tonic, interleaved into two columns (two stacked 7th
-      // chords) — with a gold separator stem through the middle (engine
-      // cnb:gold #ffd42a). The other style, "accidentals" (session 51,
-      // key-signature design §5), is the traditional signature: the key's
-      // sharps or flats, Emmentaler's, each in its own column at the
-      // semitone of the note it makes. The field stays the extension point
-      // for further styles (validation rejects unknown values; the renderer
-      // treats an unknown style as inactive).
+      // The defaults mirror the engine's keysig.ly: the key's scale rendered
+      // as real noteheads — 7 degrees ascending from the tonic plus the
+      // octave tonic, interleaved into two columns (two stacked 7th chords) —
+      // with a gold separator stem through the middle (engine cnb:gold
+      // #ffd42a). Since session 54 (key-signature design §13) one model draws
+      // every signature: `style` is retired, and a saved one is converted on
+      // load (CNBConfig.signatureStyleToModel); the traditional signature is
+      // the sharps or flats only (notes "altered"), Emmentaler's signs as the
+      // flats' and sharps' looks, and the cycle of fifths.
       //
       // placement is the explicit placement-rule surface (binding rule 2;
       // session 2's placement-rule controls edit it): rule names how the
@@ -161,18 +160,32 @@ function buildDefault() {
       // "top-set", "every-set"); separator.shareThickness, several stems
       // sharing thicknessPct.
       //
-      // signs.heightSemis (session 52): under the style "accidentals", the
-      // sharp's height from the top left of its upper bar to the top left of
-      // its lower bar, in semitones (axis units under a pitch axis); the flat
-      // is scaled with it. null is automatic: the least of the noteheads'
-      // mean height, one staff space and 3 (CNBKeySignature.signHeight).
+      // The model (session 54, design §13.9): notes also "altered" (the
+      // sharps or flats only); looks.natural, .line and .space beside all,
+      // flat and sharp, laid in the order all, natural/flat/sharp, line or
+      // space, alternate; a look's sign ("sharp" | "flat", one slot with
+      // shape), offset { x, y } in semitones and added (at most two symbols
+      // { shape, heightSemis, widthSemis, offset }), offset and added each
+      // replaced whole by a layer that sets it; stacking also "fifths" (the
+      // cycle of fifths, one mark to a column), whose heights are "window"
+      // (an octave around the line set's middle, raised by window.sharp or
+      // window.flat semitones) or "scale" (each at its note in the scale from
+      // the tonic). A shape may carry reference { x, y } and ledgers (false =
+      // none), read by the key signature only.
+      //
+      // signs.heightSemis (session 52): the sharp's height from the top left
+      // of its upper bar to the top left of its lower bar, in semitones (axis
+      // units under a pitch axis); the flat is scaled with it. null is
+      // automatic: the least of the noteheads' mean height, one staff space
+      // and 3 (CNBKeySignature.signHeight).
       keySignature: {
         enabled: false,
-        style: "notehead-chords",
         notes: "all",
         upperTonic: true,
-        looks: { all: {}, flat: {}, sharp: {} },
+        looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} },
         stacking: "degrees",
+        heights: "window",
+        window: { sharp: 0, flat: 0 },
         alternate: {},
         columns: "right",
         placement: {
@@ -346,6 +359,21 @@ export const CNBConfig = {
       }
     }
 
+    // 1a. A shape's reference point and ledgers (session 54, key-signature
+    //     design §13.3), read by the key signature only: reference two
+    //     finite numbers in native SVG units, ledgers a boolean.
+    for (const [name, shape] of Object.entries(shapes)) {
+      if (!shape || typeof shape !== "object") continue;
+      const ref = shape.reference;
+      if (ref !== undefined && ref !== null &&
+          (typeof ref !== "object" || !Number.isFinite(ref.x) || !Number.isFinite(ref.y))) {
+        errors.push(`Shape "${name}" reference must be { x, y }, two finite numbers (got ${JSON.stringify(ref)})`);
+      }
+      if (shape.ledgers !== undefined && typeof shape.ledgers !== "boolean") {
+        errors.push(`Shape "${name}" ledgers must be true or false (got ${JSON.stringify(shape.ledgers)})`);
+      }
+    }
+
     // 2. Shapes referenced with hollow:true must have svgHollowPath
     //    (check rules that explicitly set hollow:true and reference a real shape)
     // We do this through resolution: for each PC, if resolved hollow=true check svgHollowPath.
@@ -494,10 +522,7 @@ export const CNBConfig = {
       if (!keysSection.enabled) {
         warnings.push("keys.keySignature.enabled is true but keys.enabled is false — the key signature will not render (rendering is gated on keys.enabled per the E2 requirements entry)");
       }
-      const ksStyle = keySig.style === undefined || keySig.style === null ? "notehead-chords" : keySig.style;
-      if (ksStyle !== "notehead-chords" && ksStyle !== "accidentals") {
-        errors.push(`keys.keySignature.style must be "notehead-chords" or "accidentals" (got ${JSON.stringify(keySig.style)}; the vocabulary extends when new mark styles are implemented)`);
-      }
+      // style is retired (session 54): converted on load, and not read.
       const placement = keySig.placement;
       if (placement !== undefined && placement !== null) {
         if (!isPlainObject(placement)) {
@@ -554,8 +579,21 @@ export const CNBConfig = {
           errors.push(`keys.keySignature.${field} must be one of ${values.map(v => `"${v}"`).join(", ")} (got ${JSON.stringify(value)})`);
         }
       };
-      vocabulary(keySig.notes, "notes", ["all", "tonic-and-half-steps"]);
-      vocabulary(keySig.stacking, "stacking", ["degrees", "parity", "parity-stacks", "parity-zigzag"]);
+      vocabulary(keySig.notes, "notes", ["all", "tonic-and-half-steps", "altered"]);
+      vocabulary(keySig.stacking, "stacking", ["degrees", "parity", "parity-stacks", "parity-zigzag", "fifths"]);
+      vocabulary(keySig.heights, "heights", ["window", "scale"]);
+      const finite = v => typeof v === "number" && Number.isFinite(v);
+      if (keySig.window !== undefined) {
+        if (!isPlainObject(keySig.window)) {
+          errors.push("keys.keySignature.window must be an object { sharp, flat }");
+        } else {
+          for (const side of ["sharp", "flat"]) {
+            if (keySig.window[side] !== undefined && !finite(keySig.window[side])) {
+              errors.push(`keys.keySignature.window.${side} must be a finite number of semitones (got ${JSON.stringify(keySig.window[side])})`);
+            }
+          }
+        }
+      }
       vocabulary(keySig.columns, "columns", ["right", "left-in-sharp-keys"]);
       if (isPlainObject(placement)) {
         vocabulary(placement.position, "placement.position", ["middle", "bottom-set", "top-set", "every-set"]);
@@ -585,26 +623,67 @@ export const CNBConfig = {
         if (look.color !== undefined && look.color !== null && !isValidHex(look.color)) {
           errors.push(`keys.keySignature.${field} has invalid color hex "${look.color}"`);
         }
-        for (const size of ["heightSemis", "widthSemis"]) {
-          const v = look[size];
-          if (v === undefined || !fields.includes(size)) continue;
-          if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
-            errors.push(`keys.keySignature.${field}.${size} must be a finite number greater than 0 (got ${JSON.stringify(v)})`);
-          } else if (v < 0.25 || v > 4) {
-            warnings.push(`keys.keySignature.${field}.${size} is ${v} semitones, outside the usual 0.25–4`);
+        // An added symbol's size of null is its shape's own (design §13.6).
+        const checkSizes = (owner, label, nullable = false) => {
+          for (const size of ["heightSemis", "widthSemis"]) {
+            const v = owner[size];
+            if (v === undefined || (nullable && v === null)) continue;
+            if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+              errors.push(`keys.keySignature.${label}.${size} must be a finite number greater than 0 (got ${JSON.stringify(v)})`);
+            } else if (v < 0.25 || v > 4) {
+              warnings.push(`keys.keySignature.${label}.${size} is ${v} semitones, outside the usual 0.25–4`);
+            }
+          }
+        };
+        const checkOffset = (offset, label) => {
+          if (offset === undefined) return;
+          if (!isPlainObject(offset) || !finite(offset.x) || !finite(offset.y)) {
+            errors.push(`keys.keySignature.${label}.offset must be { x, y }, two finite numbers of semitones (got ${JSON.stringify(offset)})`);
+          }
+        };
+        if (fields.includes("heightSemis")) checkSizes(look, field);
+        // The model's fields (session 54, design §13.9).
+        if (look.sign !== undefined && look.sign !== "sharp" && look.sign !== "flat") {
+          errors.push(`keys.keySignature.${field}.sign must be "sharp" or "flat" (got ${JSON.stringify(look.sign)})`);
+        }
+        if (look.sign !== undefined && look.shape !== undefined) {
+          errors.push(`keys.keySignature.${field} sets both shape and sign: a mark's base is one or the other`);
+        }
+        checkOffset(look.offset, field);
+        if (look.added !== undefined) {
+          if (!Array.isArray(look.added)) {
+            errors.push(`keys.keySignature.${field}.added must be an array of added symbols`);
+          } else {
+            if (look.added.length > 2) {
+              errors.push(`keys.keySignature.${field}.added has ${look.added.length} symbols; a mark adds at most 2`);
+            }
+            look.added.forEach((sym, i) => {
+              const label = `${field}.added[${i}]`;
+              if (!isPlainObject(sym)) {
+                errors.push(`keys.keySignature.${label} must be an object`);
+                return;
+              }
+              if (typeof sym.shape !== "string" || !(sym.shape in shapes)) {
+                errors.push(`keys.keySignature.${label} references unknown shape ${JSON.stringify(sym.shape)}`);
+              }
+              checkSizes(sym, label, true);
+              checkOffset(sym.offset, label);
+            });
           }
         }
       };
-      const LOOK = ["shape", "hollow", "color", "heightSemis", "widthSemis"];
+      const MODEL = ["sign", "offset", "added"];
+      const LOOK = ["shape", "hollow", "color", "heightSemis", "widthSemis", ...MODEL];
+      const LOOKS = ["all", "natural", "flat", "sharp", "line", "space"];
       if (keySig.looks !== undefined && !isPlainObject(keySig.looks)) {
         errors.push("keys.keySignature.looks must be an object");
       } else if (isPlainObject(keySig.looks)) {
         for (const key of Object.keys(keySig.looks)) {
-          if (!["all", "flat", "sharp"].includes(key)) errors.push(`keys.keySignature.looks.${key} is not a look (all, flat, sharp)`);
+          if (!LOOKS.includes(key)) errors.push(`keys.keySignature.looks.${key} is not a look (${LOOKS.join(", ")})`);
           else checkLook(keySig.looks[key], `looks.${key}`, LOOK);
         }
       }
-      checkLook(keySig.alternate, "alternate", ["shape", "hollow", "color"]);
+      checkLook(keySig.alternate, "alternate", ["shape", "hollow", "color", ...MODEL]);
       // Key definitions are what the signature renders from.
       if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
           !Array.isArray(keysSection.definitions)) {
@@ -1087,6 +1166,44 @@ export const CNBConfig = {
     }));
     for (const rule of rules) if (rule) rule.priority = ((rule.priority) || 0) + added.length;
     out.noteheadRules = [...added, ...rules];
+    return out;
+  },
+
+  /**
+   * A config saved with a key-signature style, converted to the one model
+   * (session 54, key-signature design §13.2). `style` is retired:
+   *
+   *   - "notehead-chords" (or any other value) needs nothing, since the
+   *     model's defaults are that style: the field is dropped.
+   *   - "accidentals" becomes the traditional signature as session 51 drew
+   *     it: looks.all, .flat, .sharp and alternate are cleared (the style
+   *     ignored them), then notes "altered", looks.flat { sign: "flat",
+   *     color: null }, looks.sharp { sign: "sharp", color: null }, stacking
+   *     "fifths" and heights "scale". signs and placement are kept.
+   *
+   * Runs on the loaded data before the defaults are merged; a config with
+   * no style comes back as it is, so running it twice changes nothing. The
+   * input is not changed.
+   * @param {object} config
+   * @returns {object}
+   */
+  signatureStyleToModel(config) {
+    const ks = config && config.keys && config.keys.keySignature;
+    if (!ks || typeof ks !== "object" || !("style" in ks)) return config;
+    const out = deepClone(config);
+    const sig = out.keys.keySignature;
+    const style = sig.style;
+    delete sig.style;
+    if (style !== "accidentals") return out;
+    const looks = sig.looks !== null && typeof sig.looks === "object" && !Array.isArray(sig.looks) ? sig.looks : {};
+    looks.all = {};
+    looks.flat = { sign: "flat", color: null };
+    looks.sharp = { sign: "sharp", color: null };
+    sig.looks = looks;
+    sig.alternate = {};
+    sig.notes = "altered";
+    sig.stacking = "fifths";
+    sig.heights = "scale";
     return out;
   },
 

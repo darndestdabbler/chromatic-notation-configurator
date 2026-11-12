@@ -888,6 +888,37 @@
       "dateTime": "2026-11-11T17:35:38.897000-05:00",
       "task": "Design the key-signature editor, as a design only, for the operator's approval: an amendment to docs/planning/key-signature-designer-design.md. It replaces the two styles with one model for every signature, four choices (which notes get a mark: the whole scale or the altered notes only; what each mark is drawn with; how the marks are arranged; their sizes and offsets), with the notehead signature the default and the traditional signature a starting point (altered notes, Emmentaler's signs, the cycle of fifths, no gold stem), and says how a config with either of today's styles loads and draws as it does now. It covers symbols (a notehead's own look or a chosen shape, Emmentaler's sharp or flat, or an imported SVG, chosen separately for naturals, flats and sharps; a mark as a base plus up to two added symbols such as a tail; each symbol's reference point and whether it takes ledgers, set on import); when a look applies (natural, flat or sharp; line or ledger, or space; every second stack); the arrangement (today's stacking rules, or the cycle of fifths one sign to a column, with a zigzag rule for a chromatic staff); the editor (the signature magnified on a canvas from the notehead panel's thumbnails, controls and import, drags that move or resize a symbol in semitones for its whole category, a key picker and small previews of other keys); placing a mark by its reference point plus an offset rather than by centring its box; how a tail clears the next dot of a stack; and the config, the panel rows the editor replaces, the preview, the mark table's format and the engine's work (imported symbols as signs, placement by reference point and offset, layered marks). Mock-ups follow before approval: the editor at 1440 and 1280 px with its key picker and previews of other keys, and the notehead signature, a traditional one with the zigzag, and Clairnote SN and DN with tails, each in a sharp and a flat key at concert size. One identical brief goes to two providers' models as a cross-provider consult, recorded with a synthesis, and the design is revised from it. The operator reviews the mock-ups and the design, approves it, and decides whether the sessions it plans come before the 1.1.0 release; those sessions, and the engine session they need, are then numbered in the session plan.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T02:58:04.492000-05:00",
+      "task": "Build the approved key-signature model of design docs/planning/key-signature-designer-design.md section 13 on the canvas, and plan the engine's part. keys.keySignature loses style and gains section 13.9's model: notes \"altered\" (the sharps or flats only), looks.natural, looks.line and looks.space beside all, flat and sharp, a look's sign (\"sharp\" or \"flat\", one slot with shape), offset { x, y } and added (at most two symbols, each replaced whole by a layer that sets it), stacking \"fifths\" (the cycle of fifths, one mark to a column) with heights \"window\" or \"scale\" and window { sharp, flat }; shapes gain optional reference { x, y } and ledgers. Validation covers each new field. CNBConfig.signatureStyleToModel, called by CNBConfigIO.mergeLoaded before the defaults are merged, drops a saved style, turning \"accidentals\" into the sharps or flats only, black Emmentaler signs and the cycle of fifths climbing (heights \"scale\"), its looks and alternate cleared first; it is idempotent. CNBKeySignature.marks, measure, the ink, padding and render draw the model: the layers in section 13.4's order with the line or space decided from the mark's pitch, the signs as a look (black unless a look colours them), added symbols drawn solid in the mark's colour over the base with no ledgers, placement by a shape's reference point plus offset (a shape without one centred as today, the offset moving it), a head's ledgers moving with it and as long as its base is wide, a shape with ledgers false taking none, the column step the farthest reach right plus the farthest reach left, and the cycle of fifths with its order by letter, no gold stem, columns left to right, no upper tonic, every second column as every second stack, and the window shared by each copy's key family. Every fixture and gallery file, and both of today's styles after conversion, draw (and export) exactly as before. Today's key-signature panel keeps working on the model: its Draw row sets the traditional starting point or the defaults, until session 56 replaces it. The engine's session of design section 13.10 and its 1.6.0 release are inserted into the engine repository's plan. The key-signature UAT, the architecture plan, the README and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:02:30.917000-05:00",
+      "what": "step 'config-model': its checks",
+      "reason": "The whole suite cannot pass after this step alone: the key-signature panel still reads and writes style until the panel-on-model step changes it, so this step's check runs the config and config-io tests, the files it changes; the panel step keeps the whole-suite check.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:02:48.942000-05:00",
+      "what": "step 'config-model': its checks",
+      "reason": "The second check validated a default config, whose signature is off, so validation never looked at the look; it now turns keys and the signature on before testing that shape plus sign is rejected.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:21:19.333000-05:00",
+      "what": "step 'signature-model': its checks",
+      "reason": "The key-signature panel still reads and writes style until the panel-on-model step, so two of its tests cannot pass after this step; this step's check runs every suite the runner lists except the panel's, and the panel step keeps the whole-suite check.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

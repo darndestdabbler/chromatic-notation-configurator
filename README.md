@@ -207,12 +207,21 @@ conventional notehead on the 4-8 staff.
   A new shape keeps the notehead's height, at the new shape's proportions.
   The section lists the rules the looks are kept as.
 - **Key signature** — the signature, drawn for the key picked on the
-  staff. **Draw** the key's notes, or **Sharps or flats**: the traditional
-  signature, LilyPond's own sharps or flats in the order F C G D A E B (or
-  B E A D G C F), each in its own column at the pitch it makes, with only
+  staff. One model draws every signature. **Draw** starts it from the
+  key's notes (the defaults) or from **Sharps or flats**: the traditional
+  signature, the key's sharps or flats only, LilyPond's own signs in the
+  cycle of fifths, F C G D A E B (or B E A D G C F), one to a column at the
+  pitch each makes, in an octave's window around the middle of the staff
+  (or of its line set), so they zigzag as a treble signature's do. Each
+  choice replaces the signature's settings. Sharps or flats show only
   their **Size** (automatic, the noteheads' mean height held to at most
   one staff space and 3 semitones, or a number of semitones between a
-  sharp's bars) and the Place below. For the key's notes: which **Notes** (the whole scale, or the tonic and the half steps,
+  sharp's bars) and the Place below. A config saved with the older
+  sharps-or-flats style loads as this model and draws as it did, its signs
+  climbing from the tonic. The model has more than the panel shows yet
+  (looks for naturals, lines and spaces, symbols with a reference point,
+  offsets and added symbols); the key-signature editor will show it. For
+  the key's notes: which **Notes** (the whole scale, or the tonic and the half steps,
   with or without the tonic an octave up); the **Stacks** (stacked sevenths,
   odd semitones left and even right, a new stack at each change of odd and
   even, or a zigzag), which way they go, and the gold stem between them, its

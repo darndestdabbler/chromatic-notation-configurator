@@ -21,6 +21,72 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## One model for the key signature — 2026-11-12 (session 54)
+
+The approved key-signature editor design (session 53,
+`docs/planning/key-signature-designer-design.md` §13) replaces the two
+styles with one model. This session builds it on the canvas; the export
+of what is new waits for engine 1.6.0 (session 55).
+
+- **The config.** `keys.keySignature.style` is retired. The model adds the
+  sharps or flats only (`notes: "altered"`), looks for naturals, a line or
+  ledger and a space, a look's `sign`, `offset` and up to two `added`
+  symbols, the cycle of fifths (`stacking: "fifths"`) with its `heights`
+  ("window" or "scale") and `window`, and a shape's `reference` and
+  `ledgers`, all validated. A config saved with a style is converted when
+  it loads (`CNBConfig.signatureStyleToModel`): "accidentals" becomes the
+  sharps or flats only, black Emmentaler signs and the cycle of fifths
+  climbing, as session 51 drew them.
+- **The canvas.** `CNBKeySignature.marks` and `render` draw the model:
+  each mark's base and added symbols, placed by a reference point plus an
+  offset; a sign black unless a look colours it; a head's ledgers following
+  its base; the step between stacks the farthest reach right plus the
+  farthest reach left; and the window's zigzag, C♯ major's sharps on 6 13 8
+  15 10 17 12 in the middle of the default staff.
+- **Nothing that was drawn moved.** Every fixture and gallery file draws
+  its signature exactly as before (the signature baseline,
+  `cnb/fixtures/key-signature-baseline.json`). Saved with each of session
+  53's styles (notehead-chords in the middle; accidentals in the middle and
+  on every line set) and loaded through the conversion, the default, the
+  three fixtures and all 18 gallery files render in four keys and export
+  byte-identically to session 53's code: 330 hashes in
+  `cnb/fixtures/key-signature-styles-baseline.json`, captured with that
+  code and checked by `cnb/tests/cnb-key-signature-tests.js`, which also
+  pins eight renders and three exports with a sized, coloured and
+  tonic-octave accidentals signature. The five export baselines are
+  unchanged.
+- **The panel** keeps working on the model until session 56's editor: Draw's
+  "Sharps or flats" sets the traditional starting point (the sharps or flats
+  only, the signs, the cycle of fifths in a window, the middle of the
+  staff), and "The key's notes" sets the defaults, each keeping Show the key
+  signature.
+- **The engine's work** is planned: engine session 37 (placed, coloured and
+  layered marks: `(at dx . dy)`, a sign's colour, the `symbol` kind, every
+  ledger before the marks) and session 38, the 1.6.0 release.
+
+**What the UAT checks.** `uat-key-signature.mjs` now checks that Sharps or
+flats writes the traditional starting point, with no style; that the
+signs in C, D and B♭ major, in the middle and on the bottom and every line
+set, are drawn exactly as the Node-side renderer draws them, and the export
+carries D major's window on every line set, `(6 0 …) (1 1 …) (18 0 …)
+(13 1 …)`; that C♯ major's sharps zigzag on 6 13 8 15 10 17 12; that The
+key's notes sets the defaults; that a config saved with the style
+"accidentals" loads as the model, its C♯ major sharps climbing on 6 1 8 3
+10 5 12 as session 51 drew them; and that one saved with
+"notehead-chords" loads with every setting as saved: **pass, 88/88
+checks**. `uat-app-layout.mjs`: **pass, 79/79 checks**. The whole UAT
+(`cnb/uat/run-uat.mjs`) passes.
+
+**The screenshots, judged.** `uat-054-window-1440.png` and
+`uat-054-window-1280.png` (in the UAT's screenshot folder) show C♯ major's
+seven sharps on the staff and in the Key signature section's canvas,
+falling a fourth and rising a fifth in turn as a treble signature's do,
+each its own column, black, in proportion to the noteheads, with no gold
+stem; the panel shows Draw on Sharps or flats, Size and Place. At both
+widths nothing scrolls sideways and nothing overlaps. As before, the
+full-page capture at 1440 px of the session-50 panel shows the sticky
+header partway down the page, an artifact of the capture.
+
 ## Sharps and flats sized to the noteheads — 2026-11-11 (session 52)
 
 Session 51 drew the signs at LilyPond's size, a sharp 3 staff spaces tall:

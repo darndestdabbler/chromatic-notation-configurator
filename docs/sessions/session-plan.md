@@ -1985,7 +1985,8 @@ the engine's work is planned.
 5. Today's panel keeps working on the model, its Draw row setting the
    traditional starting point or the defaults, until session 56.
 6. *Engine work:* insert into the engine's plan the session of design
-   §13.10 and its release, 1.6.0. The session covers:
+   §13.10 and its release, 1.6.0: engine sessions 37 and 38. Session 37
+   covers:
    - `(at dx . dy)` on every mark;
    - a colour on `sharp` and `flat`;
    - the `symbol` kind, solid or hollow, with no ledgers;
@@ -1997,8 +1998,9 @@ the engine's work is planned.
 (design §13.11, from the consult).
 
 1. Register.
-2. Once the engine session has landed (otherwise the step is blocked), the
-   mark table carries (design §13.10):
+2. Once engine session 37 has landed and engine 1.6.0 is released (engine
+   session 38; otherwise the step is blocked), the mark table carries
+   (design §13.10), as engine 1.6.0 reads it:
    - the `at` placement;
    - signs' colours;
    - the `symbol` kind;
@@ -2026,7 +2028,7 @@ the engine's work is planned.
    - the Twinline pitch axis;
    - the seam between two line sets' copies.
 
-   *Engine work:* the session planned in session 54.
+   *Engine work:* engine sessions 37 and 38, planned in session 54.
 
 ### Session 56: The key-signature editor
 

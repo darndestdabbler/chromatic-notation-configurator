@@ -123,12 +123,15 @@ function fancyKeys() {
     offKeyMark: { future: true },
     keySignature: {
       enabled: true,
-      style: "notehead-chords",
-      // The designer's settings (session 48), carried through unchanged.
+      // The designer's settings (session 48), carried through unchanged,
+      // the model's (session 54) among them.
       notes: "tonic-and-half-steps",
       upperTonic: false,
-      looks: { all: { heightSemis: 1.2, widthSemis: 1.2 }, flat: { color: "#0000ff" }, sharp: { hollow: true } },
+      looks: { all: { heightSemis: 1.2, widthSemis: 1.2, offset: { x: 0.5, y: 0 } }, natural: { added: [{ shape: "crotchet-minim", offset: { x: 1, y: 1 } }] },
+        flat: { color: "#0000ff" }, sharp: { hollow: true, sign: "sharp" }, line: { hollow: false }, space: { hollow: true } },
       stacking: "parity-stacks",
+      heights: "scale",
+      window: { sharp: 2, flat: -1 },
       alternate: { color: "#ff0000" },
       columns: "left-in-sharp-keys",
       placement: { rule: "scale-from-tonic", tonicOctave: 2, position: "every-set" },
@@ -147,7 +150,8 @@ export const tests = [
       eq(state.enabled, false, "keys disabled");
       deepEq(state.definitions, [], "no definitions");
       eq(state.keySignature.enabled, false, "signature disabled");
-      eq(state.keySignature.style, "notehead-chords", "default style");
+      assert(!("style" in state.keySignature), "no style (retired in session 54)");
+      eq(state.keySignature.heights, "window", "the model's defaults");
       eq(state.keySignature.placement.rule, "scale-from-tonic", "default rule");
       eq(state.keySignature.placement.tonicOctave, null, "auto octave");
       eq(state.keySignature.separator.enabled, true, "separator on by default");
@@ -163,7 +167,7 @@ export const tests = [
       const state = E.stateFromConfig({});
       eq(state.enabled, false, "missing keys → disabled");
       deepEq(state.definitions, [], "missing definitions → []");
-      eq(state.keySignature.style, "notehead-chords", "missing signature → defaults");
+      eq(state.keySignature.notes, "all", "missing signature → defaults");
 
       const malformed = E.stateFromConfig({ keys: {
         enabled: "yes", definitions: "nope", offKeyMark: 4,
@@ -173,7 +177,7 @@ export const tests = [
       eq(malformed.enabled, true, "truthy enabled coerced");
       deepEq(malformed.definitions, [], "non-array definitions → []");
       deepEq(malformed.offKeyMark, {}, "non-object offKeyMark → {}");
-      eq(malformed.keySignature.style, "notehead-chords", "non-string style → default");
+      assert(!("style" in malformed.keySignature), "a carried style is not read");
       eq(malformed.keySignature.placement.rule, "scale-from-tonic", "non-object placement → default rule");
       eq(malformed.keySignature.separator.color, "#ffd42a", "invalid hex → default");
       eq(malformed.keySignature.separator.thicknessPct, 160, "negative thickness → default");
@@ -181,11 +185,11 @@ export const tests = [
       assert(!("gutter" in malformed.keySignature), "a retired gutter is not carried");
   } },
 
-  { name: "stateFromConfig: unknown style/rule STRINGS are preserved (preserve-and-report)", fn: () => {
+  { name: "stateFromConfig: an unknown rule STRING is preserved (preserve-and-report); a style is not carried", fn: () => {
       const state = E.stateFromConfig({ keys: { keySignature: {
         style: "tonic-label", placement: { rule: "tonic-only" },
       } } });
-      eq(state.keySignature.style, "tonic-label", "unknown style kept");
+      assert(!("style" in state.keySignature), "style retired (session 54): not carried");
       eq(state.keySignature.placement.rule, "tonic-only", "unknown rule kept");
   } },
 
@@ -204,12 +208,12 @@ export const tests = [
 
   { name: "stateFromConfig: a keySignature saved before the designer's settings (session 48) opens with them at their defaults", fn: () => {
       const state = E.stateFromConfig({ keys: { keySignature: {
-        enabled: true, style: "notehead-chords",
+        enabled: true,
         placement: { rule: "scale-from-tonic", tonicOctave: null },
         separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
       } } });
       const ks = CNBConfig.createDefault().keys.keySignature;
-      for (const f of ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"]) {
+      for (const f of ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"]) {
         deepEq(state.keySignature[f], ks[f], f);
       }
       eq(state.keySignature.placement.position, "middle", "placement.position");
@@ -267,7 +271,6 @@ export const tests = [
         Object.assign(s.keySignature, patch);
         return s;
       };
-      assertThrows(() => E.buildKeys(withSig({ style: 4 })), "non-string style");
       assertThrows(() => E.buildKeys(withSig({ placement: { rule: 5, tonicOctave: null } })), "non-string rule");
       assertThrows(() => E.buildKeys(withSig({ placement: { rule: "scale-from-tonic", tonicOctave: 1.5 } })), "fractional tonicOctave");
       assertThrows(() => E.buildKeys(withSig({ separator: { enabled: true, color: "gold", thicknessPct: 25, extentSemis: 12 } })), "invalid hex");
@@ -501,19 +504,17 @@ export const tests = [
       });
   } },
 
-  { name: "render: an unrecognized loaded style or placement rule is kept, has no option of its own, and is reported by validation", fn: () => {
+  { name: "render: an unrecognized loaded placement rule is kept and reported by validation; a carried style is not", fn: () => {
       withDomStub((container) => {
         const config = keysConfig();
         config.keys.keySignature.style = "tonic-label";
         config.keys.keySignature.placement.rule = "tonic-only";
         const api = E.render(container, { config });
-        eq(api.getKeys().keySignature.style, "tonic-label", "style kept");
+        assert(!("style" in api.getKeys().keySignature), "style retired (session 54): not carried");
         eq(api.getKeys().keySignature.placement.rule, "tonic-only", "rule kept");
         const errors = findAll(api.root, "cnb-kse-error").map(subtreeText);
-        assert(errors.some(e => e.includes("keys.keySignature.style")), "style error surfaced");
+        assert(!errors.some(e => e.includes("style")), "no style error");
         assert(errors.some(e => e.includes("placement.rule")), "rule error surfaced");
-        eq(findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio").filter(o => o.className.includes("on")).length, 0,
-          "neither Draw choice is on for an unknown style");
       });
   } },
 
@@ -535,7 +536,7 @@ export const tests = [
         upper.onchange();
         eq(last.keys.keySignature.placement.tonicOctave, 2, "tonic octave kept");
         eq(last.keys.keySignature.separator.extentSemis, 6, "extent kept");
-        eq(last.keys.keySignature.style, "notehead-chords", "style kept");
+        assert(!("style" in last.keys.keySignature), "no style written");
       });
   } },
 
@@ -607,38 +608,54 @@ export const tests = [
       });
   } },
 
-  { name: "render: Draw — the key's notes or sharps or flats; sharps or flats hide Notes, Stacks and Looks, keep Place and keep their values (session 51)", fn: () => {
+  { name: "render: Draw — the key's notes or sharps or flats, each a starting point (session 54); sharps or flats hide Notes, Stacks and Looks and keep Place", fn: () => {
       withDomStub((container) => {
         let last = null;
         const config = keysConfig();
         config.keys.keySignature.notes = "tonic-and-half-steps";
         config.keys.keySignature.stacking = "parity-stacks";
         config.keys.keySignature.looks.all = { hollow: true };
+        config.keys.keySignature.alternate = { color: "#ff0000" };
+        config.keys.keySignature.placement.position = "top-set";
         const api = E.render(container, { config, key: { tonic: 2, mode: "major" }, onChange: (slices) => { last = slices; } });
         const options = () => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio");
         const pick = value => options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
         const shown = token => findAll(api.root, token).length > 0;
-        deepEq(options().map(o => o.getAttribute("data-value")), ["notehead-chords", "accidentals"], "two choices");
+        deepEq(options().map(o => o.getAttribute("data-value")), ["noteheads", "traditional"], "two choices");
         deepEq(options().map(o => subtreeText(o)), ["The key's notes", "Sharps or flats"], "in a designer's words");
-        assert(options()[0].className.includes("on"), "the key's notes by default");
+        assert(options()[0].className.includes("on"), "the key's notes for a notehead signature");
         for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks", "cnb-kse-place"]) assert(shown(token), `${token} shown`);
 
-        pick("accidentals");
-        eq(last.keys.keySignature.style, "accidentals", "sharps or flats written");
+        pick("traditional");
+        const ks = last.keys.keySignature;
+        assert(!("style" in ks), "no style written");
+        deepEq([ks.enabled, ks.notes, ks.stacking, ks.heights, ks.placement.position], [true, "altered", "fifths", "window", "middle"],
+          "the traditional starting point, Show the key signature kept");
+        deepEq(ks.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, line: {}, space: {} },
+          "Emmentaler's signs with no colour, the other looks cleared");
+        deepEq(ks.alternate, {}, "every second stack cleared");
+        assert(CNBConfig.validate({ ...CNBConfig.clone(config), keys: last.keys }).valid, "the starting point validates");
+        assert(options()[1].className.includes("on"), "sharps or flats read from the model");
         for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks"]) assert(!shown(token), `${token} hidden`);
         assert(shown("cnb-kse-place"), "Place stays");
         findAll(findAll(api.root, "cnb-kse-position")[0], "cnb-kse-radio")
           .find(o => o.getAttribute("data-value") === "every-set").children[0].onchange();
         eq(last.keys.keySignature.placement.position, "every-set", "Place still writes under sharps or flats");
-        eq(last.keys.keySignature.notes, "tonic-and-half-steps", "notes kept");
-        eq(last.keys.keySignature.stacking, "parity-stacks", "stacking kept");
-        deepEq(last.keys.keySignature.looks.all, { hollow: true }, "looks kept");
 
-        pick("notehead-chords");
-        eq(last.keys.keySignature.style, "notehead-chords", "the key's notes written");
+        pick("noteheads");
+        deepEq(last.keys.keySignature, { ...CNBConfig.createDefault().keys.keySignature, enabled: true },
+          "the key's notes: the defaults, Show the key signature kept");
         for (const token of ["cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-looks"]) assert(shown(token), `${token} back`);
         assert(findAll(api.root, "cnb-kse-stacking")[0].children.find(o => o.className.includes("on"))
-          .getAttribute("data-value") === "parity-stacks", "the stacking restored");
+          .getAttribute("data-value") === "degrees", "stacked sevenths");
+      });
+      // A loaded config whose notes are the sharps or flats only opens on Sharps or flats.
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.notes = "altered";
+        const api = E.render(container, { config });
+        const on = findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio").find(o => o.className.includes("on"));
+        eq(on.getAttribute("data-value"), "traditional", "read from the model");
       });
   } },
 
@@ -648,7 +665,7 @@ export const tests = [
         const config = keysConfig();
         const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
         const shown = token => findAll(api.root, token).length > 0;
-        const style = value => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio")
+        const draw = value => findAll(findAll(api.root, "cnb-kse-style")[0], "cnb-kse-radio")
           .find(o => o.getAttribute("data-value") === value).children[0].onchange();
         const options = () => findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio");
         const pick = value => options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
@@ -656,7 +673,7 @@ export const tests = [
         const height = () => findAll(api.root, "cnb-kse-size-height")[0];
         assert(!shown("cnb-kse-size"), "hidden under the key's notes");
 
-        style("accidentals");
+        draw("traditional");
         assert(shown("cnb-kse-size"), "shown under sharps or flats");
         deepEq(options().map(o => subtreeText(o)), ["Automatic (2.72)", "Set by hand"], "the default staff's automatic size");
         eq(on(), "auto", "automatic by default");
@@ -674,11 +691,13 @@ export const tests = [
         }
         eq(subtreeText(options()[0]), "Automatic (2.72)", "the automatic label stays the rule's");
 
-        style("notehead-chords");
+        draw("noteheads");
         assert(!shown("cnb-kse-size"), "hidden again under the key's notes");
-        eq(last.keys.keySignature.signs.heightSemis, 5, "its value kept");
-        style("accidentals");
-        eq(height().value, "5", "and back");
+        eq(last.keys.keySignature.signs.heightSemis, null, "the defaults: automatic");
+        draw("traditional");
+        eq(height().value, "2.72", "and back, automatic");
+        height().value = "5";
+        height().onchange();
 
         pick("auto");
         eq(last.keys.keySignature.signs.heightSemis, null, "back to automatic: null");
@@ -690,21 +709,21 @@ export const tests = [
         const kite = CNBConfigIO.loadFromText(readFileSync(path.join(__dirname, "..", "fixtures", "kite-4-369-config.json"), "utf8")).config;
         kite.keys.enabled = true;
         kite.keys.keySignature.enabled = true;
-        kite.keys.keySignature.style = "accidentals";
+        kite.keys.keySignature.notes = "altered";
         const api = E.render(container, { config: kite });
         eq(subtreeText(findAll(findAll(api.root, "cnb-kse-size-choice")[0], "cnb-kse-radio")[0]), "Automatic (3)", "Kite 4-369");
       });
   } },
 
   { name: "render: Place's hint names the tonic and the half steps only under the key's notes (session 52)", fn: () => {
-      for (const [style, mentions] of [["notehead-chords", true], ["accidentals", false]]) {
+      for (const [notes, mentions] of [["all", true], ["altered", false]]) {
         withDomStub((container) => {
           const config = keysConfig();
-          config.keys.keySignature.style = style;
+          config.keys.keySignature.notes = notes;
           const api = E.render(container, { config });
           const hint = subtreeText(findAll(findAll(api.root, "cnb-kse-place")[0], "cnb-kse-hint")[0]);
-          assert(hint.includes("On every line set the signature repeats"), `${style}: the line sets`);
-          eq(hint.includes("half steps"), mentions, `${style}: the tonic and the half steps`);
+          assert(hint.includes("On every line set the signature repeats"), `${notes}: the line sets`);
+          eq(hint.includes("half steps"), mentions, `${notes}: the tonic and the half steps`);
         });
       }
   } },

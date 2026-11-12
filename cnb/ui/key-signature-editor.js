@@ -24,10 +24,9 @@
  * rendered DISABLED with an explicit .cnb-kse-disabled-note — shown, not
  * hidden, and gated exactly on `keys.enabled`.
  *
- * Preserve-and-report: unknown `style` / `placement.rule` strings loaded
- * from a config file are kept in the editor state and shown as an extra
- * "(unrecognized)" option; the Module A validation pass-through reports
- * them. The editor never silently rewrites loaded values.
+ * Preserve-and-report: an unknown `placement.rule` string loaded from a
+ * config file is kept in the editor state; the Module A validation
+ * pass-through reports it. The editor never silently rewrites loaded values.
  *
  * Editor-level checks beyond Module A (labeled "Editor check" in the
  * validation panel): duplicate definition names — key selection and rule
@@ -57,13 +56,17 @@
  * the staff (opts.key, which also counts the stems). The key definitions
  * follow, under "Keys for notehead rules". The placement rule, the tonic
  * octave and the gold stem's extent have no controls: their stored values
- * are kept as they are, and an unknown style or rule is reported by
- * validation rather than rewritten.
+ * are kept as they are, and an unknown rule is reported by validation
+ * rather than rewritten.
  *
- * Draw (session 51, design §5, §7): "The key's notes" (style
- * "notehead-chords") or "Sharps or flats" (style "accidentals"). Under
- * sharps or flats the Notes, Stacks and Looks rows are hidden, their values
- * kept, and Place stays.
+ * Draw (session 51, design §5, §7; a starting point since session 54,
+ * design §13.2, until session 56's editor replaces this panel): "The key's
+ * notes" sets the signature's defaults and "Sharps or flats" the traditional
+ * signature (notes "altered", Emmentaler's sharp and flat as the sharps' and
+ * flats' looks with no colour, the cycle of fifths in a window, the middle
+ * of the staff), each keeping Show the key signature. The row shows "Sharps
+ * or flats" when the notes are the sharps or flats only; then the Notes,
+ * Stacks and Looks rows are hidden, their values kept, and Place stays.
  *
  * Size (session 52), under sharps or flats only: "Automatic (n)", the size
  * CNBKeySignature.signHeight's rule gives, or "Set by hand", a number of
@@ -77,10 +80,11 @@
  *     offKeyMark: object,                  // untouched passthrough
  *     keySignature: {
  *       enabled: boolean,
- *       style: string,   // "notehead-chords" | "accidentals" (session 51)
- *       notes, upperTonic, looks, stacking, alternate, columns,
- *                        // the designer's settings (session 48), edited
- *                        // in the panel since session 50
+ *       notes, upperTonic, looks, stacking, heights, window, alternate,
+ *       columns,         // the designer's settings (session 48), edited
+ *                        // in the panel since session 50; heights and
+ *                        // window and the looks' new fields (session 54)
+ *                        // carried through as they are
  *       placement: { rule: string, tonicOctave: number|null, position },
  *       separator: { enabled, color, thicknessPct, extentSemis, shareThickness },
  *       signs: { heightSemis: number|null }   // session 52; null = automatic
@@ -126,8 +130,21 @@ function deepClone(v) {
 
 /** The schema's keySignature, and the designer's settings at their defaults. */
 const DEFAULT_KS = CNBConfig.createDefault().keys.keySignature;
-const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"];
+const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"];
 const DESIGNER_DEFAULTS = Object.fromEntries(DESIGNER_FIELDS.map(f => [f, DEFAULT_KS[f]]));
+
+/** The traditional signature as a starting point (session 54, design
+ *  §13.2): the sharps or flats only, Emmentaler's signs with no colour, the
+ *  cycle of fifths in a window, over the defaults. */
+const TRADITIONAL_START = {
+  notes: "altered",
+  stacking: "fifths",
+  heights: "window",
+  looks: { ...DEFAULT_KS.looks, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null } },
+};
+
+/** Whether a keySignature is the traditional kind: the sharps or flats only. */
+const isTraditional = ks => ks.notes === "altered";
 
 /** The designer's settings (session 48) of a keySignature, copied as they
  *  are: the panel has no controls for them yet, and validation checks them. */
@@ -144,7 +161,6 @@ function isValidHex(v) {
 }
 
 /** Known vocabulary (Module A validate() accepts exactly these). */
-const STYLES = ["notehead-chords"];
 const PLACEMENT_RULES = ["scale-from-tonic"];
 
 /** The looks the panel edits (design §4.1, §7), in its words. */
@@ -167,7 +183,6 @@ function definitionTemplate() {
 
 export const CNBKeySignatureEditor = {
 
-  STYLES,
   PLACEMENT_RULES,
 
   /**
@@ -202,9 +217,6 @@ export const CNBKeySignatureEditor = {
     if (!isPlainObject(ks)) {
       throw new Error("keys.keySignature editor state must be an object");
     }
-    if (typeof ks.style !== "string") {
-      throw new Error(`keySignature.style must be a string (got ${JSON.stringify(ks.style)})`);
-    }
     const placement = ks.placement;
     if (!isPlainObject(placement) || typeof placement.rule !== "string") {
       throw new Error("keySignature.placement must be an object with a string rule");
@@ -235,7 +247,6 @@ export const CNBKeySignatureEditor = {
       offKeyMark: isPlainObject(state.offKeyMark) ? deepClone(state.offKeyMark) : {},
       keySignature: {
         enabled: !!ks.enabled,
-        style: ks.style,
         ...designerSettings(ks),
         placement: {
           rule: placement.rule,
@@ -294,7 +305,6 @@ export const CNBKeySignatureEditor = {
       offKeyMark: isPlainObject(keys.offKeyMark) ? deepClone(keys.offKeyMark) : {},
       keySignature: {
         enabled: !!ks.enabled,
-        style: typeof ks.style === "string" ? ks.style : "notehead-chords",
         ...designerSettings({ ...DESIGNER_DEFAULTS, ...ks }),
         placement: {
           rule: typeof placement.rule === "string" ? placement.rule : "scale-from-tonic",
@@ -676,9 +686,9 @@ export const CNBKeySignatureEditor = {
       }
 
       wrap.appendChild(drawDraw(ks));
-      // The scale-note settings do not apply to sharps or flats (design §5,
-      // §7): their rows are hidden and their values kept.
-      if (ks.style !== "accidentals") {
+      // The scale-note rows are hidden for the traditional signature (design
+      // §5, §7), until session 56's editor replaces this panel.
+      if (!isTraditional(ks)) {
         const sig = pickedSignature();
         wrap.appendChild(drawNotes(ks));
         wrap.appendChild(drawStacks(ks, sig));
@@ -690,12 +700,21 @@ export const CNBKeySignatureEditor = {
       return wrap;
     }
 
+    // Draw (session 54, design §13.2): a starting point, not a style. Each
+    // choice replaces the signature's settings with the defaults or the
+    // traditional signature, keeping Show the key signature.
     function drawDraw(ks) {
       return row("cnb-kse-draw", "Draw",
-        radios("cnb-kse-style", ks.style, [
-          ["notehead-chords", "The key's notes"],
-          ["accidentals", "Sharps or flats"],
-        ], (v) => { ks.style = v; }));
+        radios("cnb-kse-style", isTraditional(ks) ? "traditional" : "noteheads", [
+          ["noteheads", "The key's notes"],
+          ["traditional", "Sharps or flats"],
+        ], (v) => {
+          const start = deepClone(DEFAULT_KS);
+          if (v === "traditional") Object.assign(start, deepClone(TRADITIONAL_START));
+          start.enabled = ks.enabled;
+          for (const field of Object.keys(ks)) delete ks[field];
+          Object.assign(ks, start);
+        }));
     }
 
     function drawNotes(ks) {
@@ -1021,7 +1040,7 @@ export const CNBKeySignatureEditor = {
     function drawPlace(ks) {
       // The tonic and the half steps are a choice of the key's notes alone.
       const hint = "A line set is a run of staff lines one staff space apart. On every line set the " +
-        (ks.style === "accidentals" ? "signature repeats."
+        (isTraditional(ks) ? "signature repeats."
           : "signature repeats; the tonic and the half steps alone keep it less busy.");
       return row("cnb-kse-place", "Place",
         radios("cnb-kse-position", ks.placement.position, [

@@ -6,16 +6,14 @@
  * state, no event listeners. Composes with the set-009 clef gutter (clef
  * first, then key signature, left to right).
  *
- * One mark style is implemented, "notehead-chords" (mirroring the engine's
- * keysig.ly — the glyph-from-the-shape-pipeline arm of binding rule 2). The
- * task owner evaluated simple built-in marks (dot, interval blocks,
- * staggered ledgers) across set-010 s2 UAT and chose the note stack as the
- * sole style, deferring richer custom-symbol signatures to a future set
- * (s2-uat.md, s2-design-consult.md). `style` is a single-value vocabulary;
- * an unknown style renders nothing (validation reports it), keeping the
- * field the extension point for those future styles.
+ * The default signature mirrors the engine's keysig.ly (the
+ * glyph-from-the-shape-pipeline arm of binding rule 2). The task owner
+ * evaluated simple built-in marks (dot, interval blocks, staggered ledgers)
+ * across set-010 s2 UAT and chose the note stack, deferring richer
+ * custom-symbol signatures to a future set (s2-uat.md,
+ * s2-design-consult.md); session 54's one model is that future (below).
  *
- *   "notehead-chords": the key's scale as REAL noteheads — every pitch
+ *   The default: the key's scale as REAL noteheads — every pitch
  *   class of the key ascending from the tonic, plus the octave tonic —
  *   interleaved into two columns (even indices left, odd indices right).
  *   For a 7-note key this reads as two stacked 7th chords: degrees 1-3-5-7
@@ -69,17 +67,27 @@
  * and render draw from it; at the defaults it is the stack described above,
  * drawn exactly as before (cnb/fixtures/key-signature-baseline.json).
  *
- * Session 51 (design §5): the style "accidentals" is the traditional
- * signature, a sharp for each sharp of the key in the order F C G D A E B or
- * a flat for each flat in the order B E A D G C F, each in its own column,
- * at the semitone of the note it makes, in the octave the place gives that
- * note in the scale; on every line set each copy's columns start again.
- * The signs are Emmentaler's (cnb-accidental-glyphs.js), in the optical
- * size LilyPond uses at the config's magnification, black, with no ledgers
- * and no gold stems; the scale-note settings do not apply, and the place
- * does. Since session 52 the signs are sized in semitones, as the noteheads
- * are (signHeight, signScale): the sharp and the flat are scaled about their
- * origins by one factor, and the columns are the scaled signs' widths apart.
+ * Session 51 (design §5) drew the traditional signature as a style of its
+ * own, sized in semitones since session 52 (signHeight, signScale): the
+ * signs are Emmentaler's (cnb-accidental-glyphs.js), in the optical size
+ * LilyPond uses at the config's magnification, scaled about their origins by
+ * one factor, with no ledgers and no gold stems.
+ *
+ * Session 54 (design §13): one model draws every signature, and `style` is
+ * retired (CNBConfig.signatureStyleToModel converts a saved one on load).
+ * The notes can be the sharps or flats only; the looks for naturals, a line
+ * or ledger and a space join those of all marks, flats, sharps and every
+ * second stack; a look's sign makes a mark Emmentaler's sharp or flat, black
+ * unless a look colours it; a look may add up to two symbols, solid, in the
+ * mark's colour, with no ledgers. A shape's reference point is placed on the
+ * mark's pitch plus the look's offset, and a shape without one has its box
+ * centred there, as before; a shape with ledgers false takes none, and a
+ * head's ledgers follow its base. The step between stacks is the farthest
+ * any mark reaches right of its line plus the farthest any reaches left.
+ * Stacking "fifths" puts one mark in each column in the cycle of fifths, at
+ * its note in the scale ("scale", session 51's rule) or in an octave's
+ * window around its line set ("window"). The traditional signature is the
+ * sharps or flats only, the signs and the cycle of fifths.
  *
  * Set 014 (pitch axis): mark placement already flows through semiToY; on
  * an axis config each mark also takes its resolved xOffsetStaffSpaces
@@ -203,38 +211,108 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   return { left: Math.max(0, left + before), right: Math.max(0, after + firstNote * space - inset) };
 }
 
-/** A mark's drawn width in px: a sign's, its shape's at its size, or the widest's. */
-function markWidthOf(config, pxPerSemi, m, mark) {
-  if (mark.sign) return signWidth(config, mark.sign) * spacePx(config, pxPerSemi);
-  const shape = (config.shapes || {})[mark.shape];
-  return shape ? CNBNotehead.measure(shape, pxPerSemi, mark).pixelWidth : m.markWidth;
+/**
+ * A mark's symbols at pxPerSemi (session 54, design §13.3, §13.6): the base
+ * (a head, a sign, or a symbol, a shape with ledgers false), then the added
+ * ones. Each is { kind, shape | sign, hollow, color, heightSemis, widthSemis,
+ * scale, x, y, cx, width, ... } in px from the column's line and the mark's
+ * pitch, y down: x, y where its origin goes, cx its box's centre (a shape's
+ * box is centred on its origin, as the preview always draws it; a sign's on
+ * its reference) and width the box's. The base's point is the line plus the
+ * look's offset (semitones, axis units under an axis); a shape with a
+ * reference point has it there, one without has its box centred there, as
+ * today, and a sign has its reference (its box's centre across, its origin
+ * up and down). An added symbol is placed the same way at the base's point
+ * plus its own offset, solid, in the mark's colour. Null when the base's
+ * shape is not defined.
+ */
+function symbolsOf(config, mark, pxPerSemi) {
+  const shapes = config.shapes || {};
+  const place = (point, offset) => ({
+    x: point.x + ((offset && offset.x) || 0) * pxPerSemi,
+    y: point.y - ((offset && offset.y) || 0) * pxPerSemi,
+  });
+  const shaped = (kind, name, size, point, look) => {
+    const shape = shapes[name];
+    if (!shape) return null;
+    const { scaleFactor, scaleX, scaleY, pixelWidth } = CNBNotehead.measure(shape, pxPerSemi, size);
+    const ref = shape.reference;
+    const x = ref ? point.x - ref.x * scaleX : point.x;
+    const y = ref ? point.y - ref.y * scaleY : point.y;
+    return { kind, shape: name, hollow: look.hollow, color: look.color,
+      heightSemis: size.heightSemis ?? null, widthSemis: size.widthSemis ?? null,
+      reference: !!ref, x, y, cx: x, width: pixelWidth, scaleFactor, scaleX, scaleY };
+  };
+  const point = place({ x: 0, y: 0 }, mark.offset);
+  let base;
+  if (mark.sign) {
+    const glyph = signGlyph(config, mark.sign);
+    const size = spacePx(config, pxPerSemi) * (mark.scale ?? 1);
+    base = { kind: "sign", sign: mark.sign, scale: mark.scale ?? 1, color: mark.color, reference: true,
+      x: point.x - (glyph.x[0] + glyph.x[1]) / 2 * size, y: point.y, cx: point.x,
+      width: signWidth(config, mark.sign) * spacePx(config, pxPerSemi), size };
+  } else {
+    const shape = shapes[mark.shape];
+    base = shape && shaped(shape.ledgers === false ? "symbol" : "head", mark.shape, mark, point, mark);
+  }
+  if (!base) return null;
+  const added = (Array.isArray(mark.added) ? mark.added : []).map(a => a &&
+    shaped("symbol", a.shape, a, place(point, a.offset), { hollow: false, color: mark.color }));
+  return [base, ...added.filter(Boolean)];
 }
+
+/** How far a signature's marks reach left and right of their stacks' lines, in px. */
+function reachOf(layouts) {
+  let left = 0;
+  let right = 0;
+  for (const layout of layouts) {
+    for (const s of layout || []) {
+      left = Math.max(left, -(s.cx - s.width / 2));
+      right = Math.max(right, s.cx + s.width / 2);
+    }
+  }
+  return { left, right };
+}
+
+/** A head's ledgers at pitch semi: whether the notation draws any there. */
+function ledgered(config, semi, axis) {
+  return CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
+}
+
+/** A mark's base for ledgers, or a stand-in for one whose shape is missing. */
+const baseOf = (m, i) => (m.layouts[i] ? m.layouts[i][0] : { kind: "head", cx: 0, width: m.markWidth });
 
 /**
  * The signature's ink in px from the stacks' start, as the engine draws it
- * (session 50): each head's box centred on its stack, and each head's own
- * ledgers, 4/3 of its own width and their round caps (keysig.ly
- * cnb:add-keysig-ledgers), so a narrow mark beside a wide one draws shorter
+ * (session 50): each mark's symbols, and each head's own ledgers, 4/3 of its
+ * base's width and their round caps (keysig.ly cnb:add-keysig-ledgers),
+ * centred on its base, so a narrow mark beside a wide one draws shorter
  * ledgers and a stack of narrow marks starts its ink later.
  */
 function inkExtent(config, pxPerSemi, m, space) {
   const axis = CNBPitchAxis.create(config);
   let left = Infinity;
   let right = -Infinity;
-  for (const { semi, column, mark } of m.marks) {
-    const w = markWidthOf(config, pxPerSemi, m, mark);
-    const ledgered = !mark.sign &&
-      CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
-    const half = ledgered ? ledgerLength(w, space) / 2 : w / 2;
-    const x = (column + 0.5) * m.markWidth;
-    left = Math.min(left, x - half);
-    right = Math.max(right, x + half);
-  }
+  m.marks.forEach(({ semi, column }, i) => {
+    const base = baseOf(m, i);
+    const half = base.kind === "head" && ledgered(config, semi, axis)
+      ? ledgerLength(base.width, space) / 2 : base.width / 2;
+    const line = (column + 0.5) * m.markWidth + (m.lead - m.markWidth / 2);
+    left = Math.min(left, line + base.cx - half);
+    right = Math.max(right, line + base.cx + half);
+    for (const s of (m.layouts[i] || []).slice(1)) {
+      left = Math.min(left, line + s.cx - s.width / 2);
+      right = Math.max(right, line + s.cx + s.width / 2);
+    }
+  });
   return Number.isFinite(left) ? { left, right } : { left: 0, right: m.columns * m.markWidth };
 }
 
 /** A look that sets nothing: every field unset (design §6). */
 const lookUnset = look => Object.values(look || {}).every(v => v === undefined);
+
+/** The looks a mark can take (session 54, design §13.4). */
+const LOOK_NAMES = ["all", "natural", "flat", "sharp", "line", "space"];
 
 /** Signature duration: the engine resolves keysig noteheads at quarter
  *  note (duration 3) — stencils.ly cnb:get-keysig-note-stencil. */
@@ -252,13 +330,50 @@ function resolveMark(config, pc, keyName) {
 }
 
 /** A look laid over a mark (session 48, design §4.1): each field the look
- *  sets replaces the mark's; a colour of null is none, black. */
+ *  sets replaces the mark's, offset and added whole (session 54, §13.4); a
+ *  colour of null is none, black; shape and sign are one slot (§13.3). */
 function overLook(mark, look) {
   const out = { ...mark };
   for (const [field, value] of Object.entries(look || {})) {
-    if (value !== undefined) out[field] = field === "color" ? (value ?? "#000000") : value;
+    if (value === undefined) continue;
+    out[field] = field === "color" ? (value ?? "#000000") : value;
+    if (field === "sign") delete out.shape;
+    if (field === "shape") delete out.sign;
   }
   return out;
+}
+
+/**
+ * A mark's look (design §13.4): the notehead's own at crotchet in the key,
+ * then each layer over it. A sign takes its colour from the looks alone,
+ * black unless one sets it, and nothing else of the notehead's: no
+ * disambiguating x offset (§13.2); scale is the signs' (signScale).
+ */
+function markLook(config, pc, keyName, layers, scale) {
+  let mark = resolveMark(config, pc, keyName);
+  let lookColor;
+  for (const look of layers) {
+    mark = overLook(mark, look);
+    if (look && look.color !== undefined) lookColor = look.color ?? "#000000";
+  }
+  if (mark.sign) {
+    mark.color = lookColor ?? "#000000";
+    mark.scale = scale();
+    delete mark.xOffsetStaffSpaces;
+  }
+  return mark;
+}
+
+/**
+ * Whether a mark at semi is on a line (design §13.4): a staff line's pitch,
+ * or one of the notation's ledgers for a note there is its own; by axis
+ * position, within 1e-6, under a pitch axis.
+ */
+function onLine(config, semi, axis) {
+  const range = { minSemi: semi - 12, maxSemi: semi + 12 };
+  const at = s => Math.abs(axis.positionOfSemi(s) - axis.positionOfSemi(semi)) < 1e-6;
+  return CNBStaff.getPositions(config, range).some(at) ||
+    CNBLedgerSet.ledgersFor(config, [semi], range, axis).some(at);
 }
 
 /** The key's tonic spelled (design §3): the definition's spelling, else its
@@ -293,51 +408,29 @@ function lineSets(config) {
 }
 
 /**
- * The tonic semitone of each copy of the signature (design §4.5): the
- * middle's tonicSemi, or one copy on the bottom, the top or every line set,
- * each copy's octave the one whose middle is nearest its set's middle (the
- * higher on a tie). chosen: the line sets, empty for the middle.
+ * Each copy of the signature (design §4.5): { tonic, middle }, the middle's
+ * tonicSemi and staff.midpoint, or one copy on the bottom, the top or every
+ * line set, each copy's octave the one whose middle is nearest its set's
+ * middle (the higher on a tie), and its middle the set's. Copies sharing a
+ * tonic are one unless byMiddle (the window's heights, which follow the
+ * middle). chosen: the line sets, empty for the middle.
  */
-function copyTonics(config, key, tonic) {
+function copiesOf(config, key, tonic, byMiddle) {
   const position = (((config.keys || {}).keySignature || {}).placement || {}).position ?? "middle";
   const sets = position === "middle" ? [] : lineSets(config);
   const chosen = position === "bottom-set" ? sets.slice(0, 1)
     : position === "top-set" ? sets.slice(-1)
     : position === "every-set" ? sets : [];
-  const tonics = chosen.length === 0 ? [CNBKeySignature.tonicSemi(config, key)]
-    : [...new Set(chosen.map(s =>
-        CNBMusic.absoluteSemi(tonic, Math.round(((s.low + s.high) / 2 - 6 - tonic) / 12))))];
-  return { chosen, tonics };
-}
-
-/**
- * CNBKeySignature.marks under the style "accidentals" (session 51, design
- * §5): the key spelled, its sharps in the order F C G D A E B or its flats
- * in the order B E A D G C F, each sign at the semitone of the note it makes
- * in the scale from each copy's tonic, in its own column from 0, every
- * copy's columns starting again at 0, each at the signs' scale (session 52).
- * No bars, no overlaps; the columns' centres the scaled sign's width apart,
- * in staff spaces. A key with neither, or
- * none the seven letters spell, draws nothing.
- */
-function accidentalMarks(config, key, pcs) {
-  const tonic = CNBKeySignature.tonicPc(key);
-  const name = tonicName(key, tonic, pcs);
-  const spelled = CNBMusic.spell(name, pcs);
-  const letter = "CDEFGAB".indexOf(name[0]);
-  const altered = (spelled || []).map((note, i) => ({ ...note, letter: "CDEFGAB"[(letter + i) % 7] }))
-    .filter(note => note.alteration !== 0);
-  const sign = altered.some(note => note.alteration === 1) ? "sharp" : "flat";
-  const order = sign === "sharp" ? SHARP_ORDER : [...SHARP_ORDER].reverse().join("");
-  altered.sort((a, b) => order.indexOf(a.letter) - order.indexOf(b.letter));
-
-  const { tonics } = copyTonics(config, key, tonic);
-  const scale = CNBKeySignature.signScale(config);
-  const marks = tonics.flatMap(t => altered.map((note, column) =>
-    ({ semi: t + CNBMusic.pitchClass(note.pc - tonic), column, mark: { sign, scale } })));
-  const width = signWidth(config, sign);
-  const columns = altered.map((_, c) => (c + 0.5) * width);
-  return { marks, columns, bars: [], overlaps: [] };
+  if (chosen.length === 0) {
+    return { chosen, copies: [{ tonic: CNBKeySignature.tonicSemi(config, key), middle: (config.staff || {}).midpoint ?? 12 }] };
+  }
+  const copies = [];
+  for (const s of chosen) {
+    const middle = (s.low + s.high) / 2;
+    const copy = { tonic: CNBMusic.absoluteSemi(tonic, Math.round((middle - 6 - tonic) / 12)), middle };
+    if (byMiddle || !copies.some(c => c.tonic === copy.tonic)) copies.push(copy);
+  }
+  return { chosen, copies };
 }
 
 /**
@@ -389,17 +482,18 @@ export const CNBKeySignature = {
    * set. A setting that does not apply does not count: under "degrees" every
    * key has two stacks, so separator.shareThickness never applies. Any other
    * signature is drawn from the mark table, and spaced by its ink; so is
-   * every "accidentals" signature (session 51).
+   * the sharps or flats only and the cycle of fifths (session 54), and any
+   * look for naturals, a line or a space.
    *
    * @param {object} config
    * @returns {boolean}
    */
   isScaleStack(config) {
     const ks = (config.keys || {}).keySignature || {};
-    return ks.style !== "accidentals" && (ks.notes ?? "all") === "all" && ks.upperTonic !== false &&
+    return (ks.notes ?? "all") === "all" && ks.upperTonic !== false &&
       (ks.stacking ?? "degrees") === "degrees" && (ks.columns ?? "right") === "right" &&
       ((ks.placement || {}).position ?? "middle") === "middle" &&
-      ["all", "flat", "sharp"].every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate);
+      LOOK_NAMES.every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate);
   },
 
   /**
@@ -508,7 +602,8 @@ export const CNBKeySignature = {
 
   /**
    * What the signature draws for a key (session 48, key-signature design
-   * §4, §8): one pure answer the preview draws and the export will write.
+   * §4, §8; one model since session 54, §13): one pure answer the preview
+   * draws and the export writes.
    *
    * The scale is the key's pitch classes from the tonic and the tonic an
    * octave up. Each note joins a stack (keySignature.stacking, assigned over
@@ -518,41 +613,54 @@ export const CNBKeySignature = {
    * change of the semitone's parity) or "parity-zigzag" (the other stack at
    * each change). With columns "left-in-sharp-keys" a key with sharps
    * mirrors its stacks (not under "parity"). Then the upper tonic is left
-   * out unless upperTonic, and with notes "tonic-and-half-steps" every note
-   * but the tonic and both notes of each half step.
+   * out unless upperTonic; with notes "tonic-and-half-steps" every note but
+   * the tonic and both notes of each half step, and with "altered" every
+   * note but the key's sharps or flats.
+   *
+   * "fifths" (§13.5) is the cycle of fifths, one mark to a column, left to
+   * right, by letter: F C G D A E B in a sharp key, B E A D G C F otherwise
+   * (a key the seven letters do not spell keeps its scale's order). It has
+   * no gold stem, no direction and no upper tonic; every second stack is
+   * every second column. Its heights are "scale", each mark at its note in
+   * the scale from its copy's tonic, or "window", each at the octave of its
+   * note in [middle − 6, middle + 6) raised by window.sharp in a sharp key
+   * and window.flat in a flat key, middle the copy's line set's (the
+   * staff's midpoint in the middle), so every copy has its own window.
    *
    * Each mark's look is the notehead the rules give its pitch at crotchet
-   * in this key, then looks.all, then looks.flat or looks.sharp by the
+   * in this key, then looks.all, then looks.natural, .flat or .sharp by the
    * key's spelling (the definition's spelling, else its name's, else
-   * CNBMusic.defaultSpelling), then alternate on every second stack from the
-   * tonic's. The place (placement.position) is the middle of the staff
-   * (tonicSemi, an explicit tonicOctave included) or one copy on the bottom,
-   * the top or every line set, each copy's octave the one whose middle is
-   * nearest its set's middle (the higher on a tie); two marks at one
-   * semitone in one stack are one.
+   * CNBMusic.defaultSpelling), then looks.line or .space by the mark's pitch
+   * (onLine), then alternate on every second stack from the tonic's. A look's
+   * sign makes the mark Emmentaler's sharp or flat, black unless a look
+   * colours it, at signScale. The place (placement.position) is the middle of
+   * the staff (tonicSemi, an explicit tonicOctave included) or one copy on
+   * the bottom, the top or every line set, each copy's octave the one whose
+   * middle is nearest its set's middle (the higher on a tie); two marks at
+   * one semitone in one stack are one.
    *
-   * columns: each stack's centre, in staff spaces, the widest mark's width
-   * apart. bars: the gold stems, one between each pair of neighbouring
-   * stacks (column: the stack before it), over the staff's middle ±
-   * separator.extentSemis (middle: true, a length under a pitch axis) or a
-   * line-set copy's marks, thicknessPct in staff spaces, shared among a
-   * copy's stems when separator.shareThickness. overlaps: neighbouring marks
-   * in one stack nearer on the grid than half their heights' sum.
+   * Each mark gains symbols (§13.10): its base and added symbols in order,
+   * { kind: "head" | "sign" | "symbol", shape | sign, hollow, color,
+   * heightSemis, widthSemis, scale, reference, x, y }, x and y where the
+   * symbol's origin goes from its stack's line and the mark's pitch, in
+   * staff spaces, y up (symbolsOf); reference false for a box centred there.
    *
-   * Under the style "accidentals" (session 51, design §5) each mark is
-   * { sign: "sharp" | "flat", scale } (scale: signScale, session 52), the
-   * columns the scaled sign's width apart: the key's sharps in the order F C G D A E B
-   * or its flats in the order B E A D G C F, each at the semitone of the
-   * note it makes, in its own column, every copy's columns from 0; no bars
-   * or overlaps, and nothing for a key with neither.
+   * columns: each stack's line, in staff spaces, the farthest any mark
+   * reaches right of its line plus the farthest any reaches left apart
+   * (§13.6; the widest mark's width for marks centred on their lines). bars:
+   * the gold stems, one between each pair of neighbouring stacks (column:
+   * the stack before it), over the staff's middle ± separator.extentSemis
+   * (middle: true, a length under a pitch axis) or a line-set copy's marks,
+   * thicknessPct in staff spaces, shared among a copy's stems when
+   * separator.shareThickness. overlaps: neighbouring marks in one stack
+   * nearer on the grid than half their heights' sum.
    *
-   * Null for an unknown style or placement rule, or a key with no pitch
-   * classes.
+   * Null for an unknown placement rule, or a key with no pitch classes.
    *
    * @param {object} config
    * @param {{name:string, pitchClasses:number[], tonicPc?:number, spelling?:string}} key
    *        a key definition
-   * @returns {{marks:{semi:number, column:number, mark:object}[], columns:number[],
+   * @returns {{marks:{semi:number, column:number, mark:object, symbols:object[]}[], columns:number[],
    *            bars:{x:number, column:number, top:number, bottom:number, color:string,
    *                  thickness:number, middle:boolean}[],
    *            overlaps:{column:number, semis:number[]}[]}|null}
@@ -560,47 +668,72 @@ export const CNBKeySignature = {
   marks(config, key) {
     const ks = (config.keys || {}).keySignature || {};
     const placement = ks.placement || {};
-    const style = ks.style ?? "notehead-chords";
-    if (style !== "notehead-chords" && style !== "accidentals") return null;
     if ((placement.rule ?? "scale-from-tonic") !== "scale-from-tonic") return null;
     const pcs = [...new Set((key.pitchClasses || []).filter(pc => Number.isInteger(pc)))];
     if (pcs.length === 0) return null;
-    if (style === "accidentals") return accidentalMarks(config, key, pcs);
 
     const tonic = CNBKeySignature.tonicPc(key);
     const offsets = pcs.map(pc => CNBMusic.pitchClass(pc - tonic)).sort((a, b) => a - b);
     offsets.push(12);
-    const spelled = CNBMusic.spell(tonicName(key, tonic, pcs), pcs);
+    const spelling = tonicName(key, tonic, pcs);
+    const spelled = CNBMusic.spell(spelling, pcs);
     const alteration = pc => (spelled ? spelled.find(n => n.pc === pc).alteration : 0);
+    const sharpKey = !!spelled && spelled.some(note => note.alteration === 1);
+    const flatKey = !!spelled && spelled.some(note => note.alteration === -1);
 
     // Stacks, then the notes drawn, then the direction.
     const stacking = ks.stacking ?? "degrees";
-    const stacks = stacksOf(stacking, offsets, tonic);
+    const fifths = stacking === "fifths";
     const last = offsets.length - 1;
     const halfStep = i => offsets[i + 1] - offsets[i] === 1 || offsets[i] - offsets[i - 1] === 1;
-    const drawn = offsets.map((o, i) => (i < last || ks.upperTonic !== false) &&
-      (ks.notes !== "tonic-and-half-steps" || o === 0 || halfStep(i)));
-    const n = 1 + Math.max(...stacks.filter((_, i) => drawn[i]));
-    const mirror = ks.columns === "left-in-sharp-keys" && stacking !== "parity" &&
-      !!spelled && spelled.some(note => note.alteration === 1);
+    const drawn = offsets.map((o, i) => (i < last || (ks.upperTonic !== false && !fifths)) &&
+      (ks.notes === "tonic-and-half-steps" ? o === 0 || halfStep(i)
+        : ks.notes === "altered" ? alteration(CNBMusic.pitchClass(tonic + o)) !== 0 : true));
+    // The order the marks are listed in, and each one's stack.
+    let order = offsets.map((_, i) => i).filter(i => drawn[i]);
+    let stacks;
+    if (fifths) {
+      const letter = "CDEFGAB".indexOf(spelling[0]);
+      const letters = spelled ? new Map(spelled.map((note, i) => [note.pc, "CDEFGAB"[(letter + i) % 7]])) : null;
+      const cycle = sharpKey ? SHARP_ORDER : [...SHARP_ORDER].reverse().join("");
+      const rank = i => (letters ? cycle.indexOf(letters.get(CNBMusic.pitchClass(tonic + offsets[i]))) : i);
+      order = order.sort((a, b) => rank(a) - rank(b));
+      stacks = [];
+      order.forEach((i, column) => { stacks[i] = column; });
+    } else {
+      stacks = stacksOf(stacking, offsets, tonic);
+    }
+    const n = order.length === 0 ? 0 : 1 + Math.max(...order.map(i => stacks[i]));
+    const mirror = !fifths && ks.columns === "left-in-sharp-keys" && stacking !== "parity" && sharpKey;
     const columnOf = i => (mirror ? n - 1 - stacks[i] : stacks[i]);
+    const alternates = i => (fifths ? stacks[i] % 2 === 1 : (stacks[i] - stacks[0]) % 2 !== 0);
 
-    const { chosen, tonics } = copyTonics(config, key, tonic);
+    const windowed = fifths && ks.heights !== "scale";
+    const { chosen, copies: places } = copiesOf(config, key, tonic, windowed);
+    const raise = (sharpKey ? ks.window?.sharp : flatKey ? ks.window?.flat : 0) ?? 0;
+    const semiOf = (place, o) => {
+      if (!windowed) return place.tonic + o;
+      const low = Math.ceil(place.middle - 6 + raise);
+      return low + CNBMusic.pitchClass(tonic + o - low);
+    };
 
     const looks = ks.looks || {};
-    const copies = tonics.map(t => {
-      const marks = [];
-      offsets.forEach((o, i) => {
-        if (!drawn[i]) return;
-        const semi = t + o;
-        const pc = CNBMusic.pitchClass(semi);
-        let mark = overLook(resolveMark(config, pc, key.name), looks.all);
-        if (alteration(pc) !== 0) mark = overLook(mark, alteration(pc) === 1 ? looks.sharp : looks.flat);
-        if ((stacks[i] - stacks[0]) % 2 !== 0) mark = overLook(mark, ks.alternate);
-        marks.push({ semi, column: columnOf(i), mark });
-      });
-      return marks;
-    });
+    const byLine = !lookUnset(looks.line) || !lookUnset(looks.space);
+    const axis = CNBPitchAxis.create(config);
+    let scale;
+    const signScale = () => (scale ??= CNBKeySignature.signScale(config));
+    const copies = places.map(place => order.map(i => {
+      const semi = semiOf(place, offsets[i]);
+      const pc = CNBMusic.pitchClass(semi);
+      const alt = alteration(pc);
+      const mark = markLook(config, pc, key.name, [
+        looks.all,
+        alt === 1 ? looks.sharp : alt === -1 ? looks.flat : looks.natural,
+        byLine ? (onLine(config, semi, axis) ? looks.line : looks.space) : undefined,
+        alternates(i) ? ks.alternate : undefined,
+      ], signScale);
+      return { semi, column: columnOf(i), mark };
+    }));
     const seen = new Set();
     const marks = copies.flat().filter(m => {
       const id = `${m.semi} ${m.column}`;
@@ -609,15 +742,21 @@ export const CNBKeySignature = {
 
     // Columns and the gold stems, in staff spaces.
     const shapes = config.shapes || {};
-    const axis = CNBPitchAxis.create(config);
     const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
-    const width = Math.max(0, ...marks.map(({ mark }) =>
-      shapes[mark.shape] ? CNBNotehead.measure(shapes[mark.shape], 1, mark).pixelWidth : 0)) / space;
-    const columns = Array.from({ length: n }, (_, c) => (c + 0.5) * width);
+    const layouts = marks.map(({ mark }) => symbolsOf(config, mark, 1));
+    const reach = reachOf(layouts);
+    const width = (reach.left + reach.right) / space;
+    const lead = reach.left / space - width / 2;
+    const columns = Array.from({ length: n }, (_, c) => (c + 0.5) * width + lead);
+    marks.forEach((m, i) => {
+      m.symbols = (layouts[i] || []).map(({ kind, shape, sign, hollow, color, heightSemis, widthSemis, scale: s, reference, x, y }) =>
+        ({ kind, ...(sign ? { sign, scale: s } : { shape, hollow, heightSemis, widthSemis }), color, reference,
+          x: x / space, y: -y / space }));
+    });
     const sep = ks.separator || {};
     const pct = (sep.thicknessPct ?? 160) / (sep.shareThickness !== false ? Math.max(1, n - 1) : 1);
     const bars = [];
-    if (sep.enabled !== false && pct > 0) {
+    if (!fifths && sep.enabled !== false && pct > 0) {
       const midpoint = (config.staff || {}).midpoint ?? 12;
       const extent = sep.extentSemis ?? 12;
       const spans = chosen.length === 0
@@ -646,8 +785,8 @@ export const CNBKeySignature = {
 
   /**
    * The signature's absolute semitones, ascending: those of marks() for
-   * the key keyName names. Null when no key resolves, or the style or the
-   * placement rule is unknown.
+   * the key keyName names. Null when no key resolves, or the placement rule
+   * is unknown.
    *
    * @param {object} config
    * @param {string|null} keyName
@@ -666,24 +805,29 @@ export const CNBKeySignature = {
    *
    * marks() in px, for the key keyName names.
    *
-   * markWidth: the per-mark horizontal extent of ONE column in px — the
-   *            widest drawn mark (at its resolved size, session 22).
+   * markWidth: the step between columns in px — the farthest any mark
+   *            reaches right of its stack's line plus the farthest any reaches
+   *            left (session 54, design §13.6): the widest drawn mark (at its
+   *            resolved size, session 22) when every mark is centred.
+   * lead:      the first stack's line from the stacks' start, in px: the
+   *            farthest reach left (half markWidth when every mark is centred).
    * columns:   the number of stacks (2 under the default stacked sevenths).
    * separatorPx: one gold stem's thickness in px (0 when disabled), the
    *            thickness shared among a copy's stems when shareThickness.
    * contentWidth: columns × markWidth — the stems run between the columns,
    *            so they add no width of their own.
-   * marks, bars: marks()'s.
+   * marks, bars: marks()'s; layouts: each mark's symbols in px (symbolsOf),
+   *            null for a mark whose shape is not defined.
    *
-   * Null when no key resolves, the style or placement rule is unknown
-   * (validation reports it) or no referenced shape resolves.
+   * Null when no key resolves, the placement rule is unknown (validation
+   * reports it) or no referenced shape resolves.
    *
    * @param {object} config
    * @param {number} pxPerSemi
    * @param {string|null} keyName
-   * @returns {{style:string, markWidth:number, columns:number,
+   * @returns {{markWidth:number, lead:number, columns:number,
    *            separatorPx:number, contentWidth:number, semis:number[],
-   *            marks:object[], bars:object[]}|null}
+   *            marks:object[], layouts:object[], bars:object[]}|null}
    */
   measure(config, pxPerSemi, keyName) {
     const active = CNBKeySignature.activeKey(config, keyName);
@@ -691,17 +835,11 @@ export const CNBKeySignature = {
     if (!sig) return null;
 
     const ks = (config.keys || {}).keySignature || {};
-    const shapes = config.shapes || {};
     const columns = sig.columns.length;
 
-    let markWidth = 0;
-    for (const { mark } of sig.marks) {
-      const shape = shapes[mark.shape];
-      if (!shape && !mark.sign) continue;
-      const pixelWidth = mark.sign ? signWidth(config, mark.sign) * spacePx(config, pxPerSemi)
-        : CNBNotehead.measure(shape, pxPerSemi, mark).pixelWidth;
-      if (pixelWidth > markWidth) markWidth = pixelWidth;
-    }
+    const layouts = sig.marks.map(({ mark }) => symbolsOf(config, mark, pxPerSemi));
+    const reach = reachOf(layouts);
+    const markWidth = reach.left + reach.right;
     if (!(markWidth > 0)) return null;
 
     const sep = ks.separator || {};
@@ -711,13 +849,14 @@ export const CNBKeySignature = {
           (sep.shareThickness !== false ? Math.max(1, columns - 1) : 1), pxPerSemi);
 
     const result = {
-      style: ks.style ?? "notehead-chords",
       markWidth,
+      lead: reach.left,
       columns,
       separatorPx,
       contentWidth: columns * markWidth,
       semis: sig.marks.map(m => m.semi),
       marks: sig.marks,
+      layouts,
       bars: sig.bars,
     };
 
@@ -798,7 +937,6 @@ export const CNBKeySignature = {
     // the left padding is used unchanged.
     const { left } = gutterPadding(config, gridContext.pxPerSemi, m);
     const paddingH = m.offsets ? left + m.extraLeftPx : left;
-    const shapes = config.shapes || {};
 
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-key-signature");
@@ -832,72 +970,77 @@ export const CNBKeySignature = {
       }
     }
 
-    // Each stack's centre: the stems stand at the boundaries between them.
-    const leftX = paddingH + m.markWidth / 2;
+    // Each stack's line: the stems stand at the boundaries between stacks.
+    const leftX = paddingH + m.lead;
     const columnX = c => leftX + c * m.markWidth;
 
-    // Ledger layer first, noteheads on top (keysig.ly's two-pass
-    // layering). Ledger length = 4/3 × the head's own width, the engine's
-    // keysig ledger proportion, and its round caps (session 49); marks of
-    // one width in a stack share their ledgers, and a narrower mark draws
-    // its own shorter ones, as the engine does (session 50).
+    // Ledger layer first, the marks on top (keysig.ly's two-pass layering):
+    // every ledger is drawn before any mark. Ledger length = 4/3 × the
+    // head's base's width, the engine's keysig ledger proportion, and its
+    // round caps (session 49), centred on the base, so it moves with the
+    // base's offset (session 54); marks of one width in a stack share their
+    // ledgers, and a narrower mark draws its own shorter ones, as the engine
+    // does (session 50).
     const space = CNBStaff.staffSpacePx(config, gridContext);
     const groups = new Map();   // "x width" → { x, width, semis }
     const axis = CNBPitchAxis.create(config);
-    const join = ({ semi, mark }, x) => {
+    const join = ({ semi }, i, x) => {
+      const base = baseOf(m, i);
+      // Signs, and symbols whose shape takes no ledgers, have none.
+      if (base.kind !== "head") return;
       // A mark with no ledgers of its own joins the stack's usual group.
-      const ledgered = CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
-      const width = ledgered ? markWidthOf(config, gridContext.pxPerSemi, m, mark) : m.markWidth;
-      const id = `${x} ${width}`;
-      if (!groups.has(id)) groups.set(id, { x, width, semis: [] });
+      const width = ledgered(config, semi, axis) ? base.width : m.markWidth;
+      const at = x + base.cx;
+      const id = `${at} ${width}`;
+      if (!groups.has(id)) groups.set(id, { x: at, width, semis: [] });
       groups.get(id).semis.push(semi);
     };
-    // Signs have no ledgers (session 51).
     if (m.offsets) {
       // Axis path: ledgers follow their marks' offsets.
-      m.marks.forEach((mk, i) => { if (!mk.mark.sign) join(mk, columnX(mk.column) + m.offsets[i]); });
+      m.marks.forEach((mk, i) => join(mk, i, columnX(mk.column) + m.offsets[i]));
     } else {
       for (let c = 0; c < m.columns; c++) {
-        const stack = m.marks.filter(mk => mk.column === c);
+        const stack = m.marks.map((mk, i) => [mk, i]).filter(([mk]) => mk.column === c);
         if (stack.length === 0) groups.set(`empty ${c}`, { x: columnX(c), width: m.markWidth, semis: [] });
-        for (const mk of stack) if (!mk.mark.sign) join(mk, columnX(c));
+        for (const [mk, i] of stack) join(mk, i, columnX(c));
       }
     }
     for (const { x, width, semis } of groups.values()) {
       CNBLedgerSet.render(g, gridContext, config, semis, { width: ledgerLength(width, space), centerX: x });
     }
 
-    m.marks.forEach(({ semi, column, mark }, i) => {
-      const x = m.offsets ? columnX(column) + m.offsets[i] : columnX(column);
-      if (mark.sign) {
-        // A sign, black at its size (session 52), scaled about its origin,
-        // its extent centred on its column and its origin at its semitone's
-        // height (engine handoffs 030 §1, 035 §1a).
-        const sign = signGlyph(config, mark.sign);
-        const size = space * (mark.scale ?? 1);
-        const scale = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
-        const path = document.createElementNS(NS, "path");
-        path.setAttribute("class", "cnb-key-signature-sign");
-        path.setAttribute("d", sign.path);
-        path.setAttribute("fill", "#000000");
-        path.setAttribute("transform", `translate(${x - (sign.x[0] + sign.x[1]) / 2 * size} ` +
-          `${gridContext.semiToY(semi)}) scale(${scale})`);
-        g.appendChild(path);
-        return;
+    // Each mark's symbols, the base then the added ones.
+    m.marks.forEach(({ semi, column }, i) => {
+      const lineX = m.offsets ? columnX(column) + m.offsets[i] : columnX(column);
+      const y = gridContext.semiToY(semi);
+      for (const sym of m.layouts[i] || []) {
+        if (sym.kind === "sign") {
+          // A sign at its size (session 52), scaled about its origin, its
+          // box centred on its point and its origin at its point's height
+          // (engine handoffs 030 §1, 035 §1a), black unless a look colours it.
+          const sign = signGlyph(config, sym.sign);
+          const size = space * sym.scale;
+          const scale = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
+          const path = document.createElementNS(NS, "path");
+          path.setAttribute("class", "cnb-key-signature-sign");
+          path.setAttribute("d", sign.path);
+          path.setAttribute("fill", sym.color);
+          path.setAttribute("transform", `translate(${lineX + sym.cx - (sign.x[0] + sign.x[1]) / 2 * size} ` +
+            `${y + sym.y}) scale(${scale})`);
+          g.appendChild(path);
+          continue;
+        }
+        CNBNotehead.render(g, {
+          shape: (config.shapes || {})[sym.shape],
+          x: lineX + sym.x,
+          y: y + sym.y,
+          scaleFactor: sym.scaleFactor,
+          scaleX: sym.scaleX,
+          scaleY: sym.scaleY,
+          hollow: sym.hollow,
+          color: sym.color,
+        });
       }
-      const shape = shapes[mark.shape];
-      if (!shape) return;
-      const { scaleFactor, scaleX, scaleY } = CNBNotehead.measure(shape, gridContext.pxPerSemi, mark);
-      CNBNotehead.render(g, {
-        shape,
-        x,
-        y: gridContext.semiToY(semi),
-        scaleFactor,
-        scaleX,
-        scaleY,
-        hollow: mark.hollow,
-        color: mark.color,
-      });
     });
 
     svgParent.appendChild(g);

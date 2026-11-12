@@ -329,6 +329,28 @@ export const tests = [
     },
   },
   {
+    name: "mergeLoaded: a key signature saved with a style loads as the one model (session 54)",
+    fn: () => {
+      const saved = style => ({
+        version: "1.0",
+        keys: { enabled: true, keySignature: { enabled: true, style,
+          looks: { all: { color: "#ff0000" } }, signs: { heightSemis: 4 }, placement: { position: "bottom-set" } } },
+      });
+      const acc = IO.mergeLoaded(saved("accidentals"));
+      const ks = acc.config.keys.keySignature;
+      assert(!("style" in ks), "no style after load");
+      assertEqual([ks.notes, ks.stacking, ks.heights], ["altered", "fifths", "scale"], "the traditional signature, climbing");
+      assertEqual(ks.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null },
+        line: {}, space: {} }, "black signs, the defaults merged over the model");
+      assertEqual(ks.signs.heightSemis, 4, "the signs' size kept");
+      assertEqual(ks.placement.position, "bottom-set", "the place kept");
+      assertEqual(acc.validation.errors, [], "valid");
+      const chords = IO.mergeLoaded(saved("notehead-chords")).config.keys.keySignature;
+      assert(!("style" in chords), "notehead-chords: no style after load");
+      assertEqual([chords.notes, chords.stacking, chords.looks.all], ["all", "degrees", { color: "#ff0000" }], "the rest as saved");
+    },
+  },
+  {
     name: "REPLACE_PATHS: includes the set-009 clef.glyphs open-keyed map",
     fn: () => {
       assert(IO.REPLACE_PATHS.some(p => p.length === 2 && p[0] === "clef" && p[1] === "glyphs"),
@@ -444,10 +466,9 @@ export const tests = [
         keySignature: {
           ...cfg.keys.keySignature,
           enabled: true,
-          style: "notehead-chords",
           // The designer's settings (session 48), off their defaults.
           stacking: "parity-stacks",
-          looks: { all: { heightSemis: 1.2 }, flat: {}, sharp: { color: "#ff0000" } },
+          looks: { ...cfg.keys.keySignature.looks, all: { heightSemis: 1.2 }, sharp: { color: "#ff0000" } },
           placement: { rule: "scale-from-tonic", tonicOctave: 2, position: "bottom-set" },
           separator: { enabled: false, color: "#123abc", thicknessPct: 40, extentSemis: 6, shareThickness: false },
           gutter: { paddingH: 20 },

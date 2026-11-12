@@ -42,6 +42,9 @@
  *     Blocking on errors is Module 18's job (export), per LY spec §8.
  *   - A config saved with a palette (before session 37) loads with its
  *     colours moved onto the noteheads (CNBConfig.paletteToRules).
+ *   - A key signature saved with a style (before session 54) loads as the
+ *     one model (CNBConfig.signatureStyleToModel), converted on the parsed
+ *     data before the defaults are merged.
  *   - A malformed FILE is user input, not a caller bug: parseConfigFile()
  *     throws descriptive errors (non-string input, invalid JSON, non-object
  *     root) and render()'s load path catches them, shows the message in
@@ -274,7 +277,9 @@ export const CNBConfigIO = {
         `Config file version ${JSON.stringify(parsed.version)} differs from schema ` +
         `version ${CNBConfig.VERSION} — merged over current defaults`);
     }
-    let config = CNBConfig.merge(CNBConfig.createDefault(), parsed);
+    // A key signature saved with a style (before session 54) is converted
+    // to the one model first, so the defaults merge over the model.
+    let config = CNBConfig.merge(CNBConfig.createDefault(), CNBConfig.signatureStyleToModel(parsed));
     for (const pathKeys of REPLACE_PATHS) {
       const provided = getPath(parsed, pathKeys);
       // Replace only when the file provides an actual map object; a null or

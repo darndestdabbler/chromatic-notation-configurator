@@ -201,7 +201,16 @@ shapes: {
       crotchetDown: { x: -0.6889, y: 0 },
       minimUp:      { x: 1.0222, y: 0 },
       minimDown:    { x: -0.6889, y: 0 }
-    }
+    },
+
+    // ── Key signature only (session 54, key-signature design §13.3) ──
+    // OPTIONAL. reference: the point, in native SVG units, that a key
+    // signature mark places on its pitch (a dot's centre, a flat's bowl);
+    // without it the shape's box is centred there, as before. ledgers: false
+    // = the symbol takes no ledger lines in a signature. A notehead rule
+    // using the shape ignores both.
+    // reference: { x: -40, y: 0 },
+    // ledgers: false
   },
 
   "semibreve": {
@@ -599,24 +608,23 @@ keys: {
   keySignature: {
     enabled: false,
 
-    // Mark style. "notehead-chords" mirrors the engine's keysig.ly: the
-    // key's scale as REAL noteheads — 7 degrees ascending from the tonic
-    // plus the octave tonic, interleaved into two columns (even indices
-    // left, odd right), which reads as two stacked 7th chords — resolved
-    // through the normal notehead rule pipeline at crotchet duration with
-    // the selected key as rule-match context. "accidentals" (session 51,
-    // design §5) is the traditional signature: the key's sharps in the
-    // order F C G D A E B, or its flats in the order B E A D G C F, each
-    // LilyPond's own sign (Emmentaler, in the optical size LilyPond draws
-    // the staff with, cnb/src/cnb-accidental-glyphs.js), black, in its own
-    // column at the semitone of the note it makes, with no ledgers or gold
-    // stems; the settings below but placement and signs do not apply to
-    // it. The field stays the extension point for further styles
-    // (validation rejects unknown values; the renderer treats an unknown
-    // style as inactive).
-    style: "notehead-chords",   // | "accidentals"
+    // One model draws every signature (session 54, key-signature design
+    // §13). Its defaults mirror the engine's keysig.ly: the key's scale as
+    // REAL noteheads — 7 degrees ascending from the tonic plus the octave
+    // tonic, interleaved into two columns (even indices left, odd right),
+    // which reads as two stacked 7th chords — resolved through the normal
+    // notehead rule pipeline at crotchet duration with the selected key as
+    // rule-match context. The traditional signature is the sharps or flats
+    // only (notes "altered"), LilyPond's own sharp and flat (Emmentaler, in
+    // the optical size LilyPond draws the staff with,
+    // cnb/src/cnb-accidental-glyphs.js) as the sharps' and flats' looks,
+    // and the cycle of fifths. `style` ("notehead-chords" | "accidentals",
+    // sessions 10–53) is retired: CNBConfig.signatureStyleToModel converts
+    // a saved one on load ("accidentals" → the traditional signature with
+    // heights "scale", black signs; the looks and alternate cleared), and
+    // nothing reads it.
 
-    // The sharps' and flats' size (session 52), under "accidentals" only:
+    // The sharps' and flats' size (session 52), for every sign drawn:
     // the sharp's height from the top left of its upper bar to the top left
     // of its lower bar, in semitones (axis units under a pitch axis); the
     // flat is scaled with it. null is automatic: the least of the
@@ -635,22 +643,47 @@ keys: {
     // ignored. Exported as the mark table when any applies (session 49,
     // LY spec 1.3.15 §5.6a).
     notes: "all",               // | "tonic-and-half-steps": the tonic and both
-                                //   notes of each half step in the scale
-    upperTonic: true,           // the tonic an octave up
-    looks: {                    // each field unset = the look beneath: the
-      all: {},                  //   notehead's own (at crotchet, in the key),
-      flat: {},                 //   then all marks, then flats or sharps by
-      sharp: {}                 //   the key's spelling. { shape, hollow,
-    },                          //   color, heightSemis, widthSemis }
+                                //   notes of each half step in the scale;
+                                //   | "altered": the key's sharps or flats only
+    upperTonic: true,           // the tonic an octave up (not under "fifths")
+    looks: {                    // each field unset = the look beneath, laid
+      all: {},                  //   in this order: the notehead's own (at
+      natural: {},              //   crotchet, in the key), all marks,
+      flat: {},                 //   naturals, flats or sharps by the key's
+      sharp: {},                //   spelling, a line or ledger or a space by
+      line: {},                 //   the mark's pitch (session 54), then
+      space: {}                 //   alternate. { shape | sign ("sharp" |
+    },                          //   "flat"), hollow, color, heightSemis,
+                                //   widthSemis, offset: { x, y } in semitones,
+                                //   added: [≤ 2 × { shape, heightSemis,
+                                //   widthSemis, offset }] }; shape and sign
+                                //   are one slot, offset and added each
+                                //   replaced whole. A sign is black unless a
+                                //   look colours it; an added symbol is
+                                //   solid, in the mark's colour, no ledgers.
     stacking: "degrees",        // which stack a note joins: "degrees" (1 3 5 7
                                 //   left, 2 4 6 8 right), "parity" (odd
                                 //   semitones left, even right),
                                 //   "parity-stacks" (a new stack to the right
                                 //   at each change of parity, Clairnote's),
-                                //   "parity-zigzag" (the other stack at each)
-    alternate: {},              // every second stack's look, over the others:
-                                //   { shape, hollow, color }
-    columns: "right",           // | "left-in-sharp-keys" (not under "parity")
+                                //   "parity-zigzag" (the other stack at each),
+                                //   "fifths" (session 54: one mark to a
+                                //   column, by letter, F C G D A E B in a
+                                //   sharp key, B E A D G C F otherwise; no
+                                //   gold stem, direction or upper tonic)
+    heights: "window",          // under "fifths": "window", each mark at its
+                                //   note in the octave [middle − 6, middle + 6)
+                                //   of its line set (the staff's midpoint in
+                                //   the middle), so the signs zigzag; |
+                                //   "scale", at its note in the scale from the
+                                //   tonic (session 51's climbing signs)
+    window: { sharp: 0, flat: 0 },  // the window raised, semitones, in sharp
+                                //   keys and in flat keys
+    alternate: {},              // every second stack's (column's, under
+                                //   "fifths") look, over the others:
+                                //   { shape | sign, hollow, color, offset, added }
+    columns: "right",           // | "left-in-sharp-keys" (not under "parity"
+                                //   or "fifths")
 
     // Placement rule: how the key's pitch classes map to grid positions.
     // "scale-from-tonic" (the keysig.ly rule) is the only implemented
@@ -726,6 +759,16 @@ keys: {
   its music font; they register nothing and add no ledger entries. Since
   session 52 (LY spec 1.3.18) each carries its scale,
   `(semi column sharp 0.6473)`, left out at 1, which engine 1.5.0 reads.
+- **One model (session 54, key-signature design §13).** The two styles
+  became one model, drawn on the canvas first. A config saved with a style
+  loads converted (`CNBConfig.signatureStyleToModel`, called by
+  `CNBConfigIO.mergeLoaded` before the defaults are merged) and draws and
+  exports exactly as before. What the model adds beyond today's two
+  signatures (placed and added symbols, coloured signs, symbols with no
+  ledgers) reaches the mark table in session 55, once engine 1.6.0 (engine
+  sessions 37 and 38) reads `(at dx . dy)`, a sign's colour and the
+  `symbol` kind; until then the export writes what it wrote before for each
+  mark's base.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -997,6 +1040,11 @@ CNBConfig.resolveNotehead(config, pc, duration, key) → { shape, hollow, color,
 // A config saved with a palette, its colours moved onto the noteheads
 // (session 37, §4.6): called when a config loads
 CNBConfig.paletteToRules(config) → config
+
+// A config saved with a key-signature style, converted to the one model
+// (session 54, §4.9): called by CNBConfigIO.mergeLoaded before the
+// defaults are merged; idempotent
+CNBConfig.signatureStyleToModel(config) → config
 
 // Compute preview thickness in px from a percentage
 CNBConfig.pctToPx(pct, pxPerSemi) → number
@@ -1627,11 +1675,16 @@ from the config. API: `parseTonicPc(name)`, `activeKey(config, keyName)`,
 48, key-signature design §8: for a key definition, with its tonic and
 optional `spelling`, the marks as `{ semi, column, mark }`, the columns'
 centres and the gold stems in staff spaces, and the marks that overlap in a
-stack, for every scale-note setting of §4.9; under the style
-"accidentals" (session 51) each mark is `{ sign: "sharp" | "flat", scale }`, in
-the traditional order, each in its own column, every line set's copy from
-column 0, the columns the scaled signs' widths apart; null for an unknown
-style or rule), `isScaleStack(config)` (the
+stack, for every setting of §4.9; since session 54 the one model of
+design §13, each mark `{ semi, column, mark, symbols }`, `mark` its
+resolved look (a sign mark `{ sign, scale, color, … }`) and `symbols` its
+base then its added symbols, each `{ kind: "head" | "sign" | "symbol",
+shape | sign, hollow, color, heightSemis, widthSemis, scale, reference,
+x, y }`, x and y where its origin goes from its stack's line and the
+mark's pitch in staff spaces, y up; the columns the farthest reach right
+of a line plus the farthest reach left apart; under `"fifths"` one mark to
+a column in the cycle of fifths, its height in the scale or in its line
+set's window; null for an unknown rule), `isScaleStack(config)` (the
 signature the engine's `'chord` draws), `signHeight(config)` (session 52:
 the signs' size in semitones, `{ semis, automatic }`, §4.9),
 `signScale(config)` (the factor the signs are drawn and exported at: the
@@ -1644,25 +1697,27 @@ firstHeadCenter)` (the engine's spacing either side of the marks, session
 34; the collection passes the first card's `CNBCard.headCenterX`),
 `gutterWidth(config, pxPerSemi, keyName, firstHeadCenter)` (0 when
 nothing renders — no gutter reserved), and `render(svgParent,
-gridContext, config, keyName)`. Two mark styles are implemented. Under
-"notehead-chords" marks resolve through
+gridContext, config, keyName)`. Marks resolve through
 `CNBConfig.resolveNotehead(config, pc, "crotchet", keyName)` (the
-engine's quarter-note keysig resolution), with per-column ledger lines
-beneath re-drawn noteheads (keysig.ly's two-pass layering); since session
-48 the looks of §4.9 are laid over them. The separator runs between each
-pair of neighbouring columns beneath the marks (the engine's gold bar
-geometry, one bar for the default two). `measure` and `render` draw from
-`marks`, and at the defaults draw exactly as before
-(`cnb/fixtures/key-signature-baseline.json`). Under "accidentals"
-(session 51) each sign is Emmentaler's outline from
-`cnb-accidental-glyphs.js`, in the optical size LilyPond picks for
-`engine.defaultMagnify` (the design size nearest 20 pt × the
-magnification), black, its box centred on its column and its origin at its
-semitone, with no ledgers or stems, scaled about its origin by
-`signScale` (session 52); the signature is spaced by the signs'
-boxes, as a mark-table signature is. The spacing after a clef and to
-the first note follows `engine.defaultMagnify` as the engine engraves it
-(session 52, LY spec §5.6a). An unknown style renders nothing.
+engine's quarter-note keysig resolution), with ledger lines beneath the
+marks (keysig.ly's two-pass layering: every ledger before any mark); since
+session 48 the looks of §4.9 are laid over them. The separator runs
+between each pair of neighbouring columns beneath the marks (the engine's
+gold bar geometry, one bar for the default two). `measure` and `render`
+draw from `marks`, and at the defaults draw exactly as before
+(`cnb/fixtures/key-signature-baseline.json`). A sign (session 51) is
+Emmentaler's outline from `cnb-accidental-glyphs.js`, in the optical size
+LilyPond picks for `engine.defaultMagnify` (the design size nearest 20 pt
+× the magnification), black unless a look colours it (session 54), its
+box centred on its point and its origin at its semitone, with no ledgers,
+scaled about its origin by `signScale` (session 52). Since session 54 a
+symbol is placed by its shape's `reference` plus the look's `offset`, or
+its box centred there without one; a head's ledgers follow its base and
+are 4/3 of its base's width; a symbol whose shape has `ledgers: false`,
+a sign and an added symbol take none (design §13.3–§13.6). Every
+signature is spaced by its ink. The spacing after a clef and to the first
+note follows `engine.defaultMagnify` as the engine engraves it (session
+52, LY spec §5.6a). An unknown placement rule renders nothing.
 Integrated into Module 10 as a `div.keysig-col`
 after the clef column. Dependencies: Modules A, B, 1 (grid context passed
 in), 5, 6, the accidental glyphs. Visual test page: `test-key-signature.html`. Since session 30
@@ -1678,9 +1733,13 @@ CONSUMERS — the rule editor's `match.keys` pills and the preview's key
 selector), and the `keySignature` subsection. Since session 50 the
 signature is the panel of the key-signature design §7
 (`docs/planning/key-signature-designer-design.md`), in a designer's
-words: Show the key signature; Draw (`style`: "The key's notes" or, since
-session 51, "Sharps or flats", which hides Notes, Stacks and Looks, their
-values kept, and shows Size, session 52: "Automatic (n)", the size
+words: Show the key signature; Draw ("The key's notes" or, since session
+51, "Sharps or flats"; since session 54 a starting point on the one model
+until session 56's editor: the key's notes set the signature's defaults
+and sharps or flats the traditional signature, each keeping Show the key
+signature; Sharps or flats is shown on when `notes` is `"altered"`, and
+hides Notes, Stacks and Looks, their values kept, and shows Size, session
+52: "Automatic (n)", the size
 `signHeight` gives, or a number set by hand, `signs.heightSemis`); Notes (`notes`, `upperTonic`); Stacks
 (`stacking`, `columns` hidden under `"parity"`, and the gold stem:
 `separator.enabled`, `color`, its thickness shown in staff spaces and
@@ -2137,11 +2196,12 @@ Complete default config for development and testing.
     offKeyMark: {},
     keySignature: {
       enabled: false,
-      style: "notehead-chords",
       notes: "all",
       upperTonic: true,
-      looks: { all: {}, flat: {}, sharp: {} },
+      looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} },
       stacking: "degrees",
+      heights: "window",
+      window: { sharp: 0, flat: 0 },
       alternate: {},
       columns: "right",
       placement: { rule: "scale-from-tonic", tonicOctave: null, position: "middle" },

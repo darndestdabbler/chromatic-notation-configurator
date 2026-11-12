@@ -604,10 +604,10 @@ export const tests = [
 
   // ── keys.keySignature (set 010) ───────────────────────────────────────────
 
-  { name: "keysig: default config has keySignature section — disabled, notehead-chords style, scale-from-tonic placement, gold separator", fn: () => {
+  { name: "keysig: default config has keySignature section — disabled, no style (session 54), scale-from-tonic placement, gold separator", fn: () => {
     const ks = CNBConfig.createDefault().keys.keySignature;
     eq(ks.enabled, false, "enabled");
-    eq(ks.style, "notehead-chords", "default style per the operator directive (engine keysig.ly)");
+    assert(!("style" in ks), "style is retired: the model's defaults are the notehead signature (session 54)");
     eq(ks.placement.rule, "scale-from-tonic", "placement rule (s1 decision D1)");
     eq(ks.placement.tonicOctave, null, "tonicOctave auto");
     eq(ks.separator.enabled, true, "separator on");
@@ -615,9 +615,8 @@ export const tests = [
     eq(ks.separator.thicknessPct, 160, "separator thickness (0.4 staff-space at sps 4 — engine bar, s2 UAT measurement)");
     eq(ks.separator.extentSemis, 12, "±1 octave like the engine bar");
     assert(!("gutter" in ks), "no gutter setting: the spacing is the engine's (session 34)");
-    // style is a single-value vocabulary — no per-alternate-style config
-    // subsections (the simple-mark styles were removed at the task owner's
-    // s2 UAT direction; s2-uat.md).
+    // No per-style config subsections (the simple-mark styles were removed
+    // at the task owner's s2 UAT direction; s2-uat.md).
     assert(!("dot" in ks) && !("intervalBlocks" in ks) && !("staggeredLedgers" in ks),
       "no simple-mark style subsections");
   }},
@@ -626,14 +625,16 @@ export const tests = [
     const ks = CNBConfig.createDefault().keys.keySignature;
     eq(ks.notes, "all", "the whole scale");
     eq(ks.upperTonic, true, "the tonic an octave up");
-    deepEq(ks.looks, { all: {}, flat: {}, sharp: {} }, "every mark looks like its notehead");
+    deepEq(ks.looks, { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} }, "every mark looks like its notehead");
     eq(ks.stacking, "degrees", "stacked sevenths");
+    eq(ks.heights, "window", "under the cycle of fifths, heights in a window (session 54)");
+    deepEq(ks.window, { sharp: 0, flat: 0 }, "the window not raised");
     deepEq(ks.alternate, {}, "every second stack as the others");
     eq(ks.columns, "right", "stacks go to the right");
     eq(ks.placement.position, "middle", "in the middle of the staff");
     eq(ks.separator.shareThickness, true, "several stems share the thickness");
     const old = CNBConfig.createDefault();
-    for (const f of ["notes", "upperTonic", "looks", "stacking", "alternate", "columns"]) delete old.keys.keySignature[f];
+    for (const f of ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"]) delete old.keys.keySignature[f];
     delete old.keys.keySignature.placement.position;
     delete old.keys.keySignature.separator.shareThickness;
     deepEq(CNBConfig.merge(CNBConfig.createDefault(), old).keys.keySignature, ks, "merged");
@@ -679,7 +680,7 @@ export const tests = [
     assert(/looks\.flat has invalid color hex/.test(errorFor({ flat: { color: "blue" } })), "bad colour");
     assert(/looks\.sharp\.hollow must be true or false/.test(errorFor({ sharp: { hollow: 1 } })), "bad hollow");
     assert(/looks\.all\.heightSemis must be a finite number/.test(errorFor({ all: { heightSemis: 0 } })), "bad size");
-    assert(/looks\.natural is not a look/.test(errorFor({ natural: {} })), "no naturals look: all marks stands for them");
+    assert(/looks\.bold is not a look/.test(errorFor({ bold: {} })), "an unknown look");
     assert(/alternate\.heightSemis is not a look setting/.test(errorFor(null, { heightSemis: 1 })), "no size on every second stack");
     assert(/looks must be an object/.test(errorFor("small")), "looks not an object");
     const tiny = keysigConfig();
@@ -692,7 +693,7 @@ export const tests = [
     delete old.keys.keySignature;
     const merged = CNBConfig.merge(CNBConfig.createDefault(), old);
     eq(merged.keys.keySignature.enabled, false, "keySignature restored default-off");
-    eq(merged.keys.keySignature.style, "notehead-chords", "default style restored");
+    eq(merged.keys.keySignature.stacking, "degrees", "the default signature restored");
   }},
 
   { name: "keysig: validate — default (disabled) config produces no keysig errors or warnings", fn: () => {
@@ -714,21 +715,102 @@ export const tests = [
     assert(result.warnings.some(w => w.includes("keys.enabled is false")), "gate warning emitted");
   }},
 
-  { name: "keysig: validate — notehead-chords and accidentals pass; unknown style is an error; absent falls back to the default", fn: () => {
-    const ok = keysigConfig();
-    ok.keys.keySignature.style = "notehead-chords";
-    assert(CNBConfig.validate(ok).valid, "notehead-chords valid");
-    ok.keys.keySignature.style = "accidentals";
-    assert(CNBConfig.validate(ok).valid, "accidentals valid (session 51)");
-    for (const bad of ["sparkles", "dot", "interval-blocks", "staggered-ledgers", "Accidentals"]) {
+  { name: "keysig: validate — a carried style is not read (retired in session 54)", fn: () => {
+    for (const style of ["notehead-chords", "accidentals", "sparkles"]) {
       const cfg = keysigConfig();
-      cfg.keys.keySignature.style = bad;
-      assert(CNBConfig.validate(cfg).errors.some(e => e.includes("keys.keySignature.style")),
-        `${bad} rejected (only notehead-chords and accidentals are implemented)`);
+      cfg.keys.keySignature.style = style;
+      const r = CNBConfig.validate(cfg);
+      assert(r.valid && !r.errors.some(e => e.includes("style")), `${style}: not validated`);
     }
-    const absent = keysigConfig();
-    delete absent.keys.keySignature.style;
-    assert(CNBConfig.validate(absent).valid, "absent style valid (defaults to notehead-chords)");
+  }},
+
+  { name: "keysig: validate — the model's vocabularies (session 54): notes altered, stacking fifths, heights, window", fn: () => {
+    const good = keysigConfig();
+    Object.assign(good.keys.keySignature, { notes: "altered", stacking: "fifths", heights: "scale",
+      window: { sharp: 3, flat: -1.5 } });
+    assert(CNBConfig.validate(good).valid, `valid: ${CNBConfig.validate(good).errors}`);
+    for (const [field, bad] of [["heights", "zigzag"], ["window", 2], ["window.sharp", "up"], ["window.flat", Infinity],
+                                ["notes", "sharps"], ["stacking", "fourths"]]) {
+      const cfg = keysigConfig();
+      const [a, b] = field.split(".");
+      if (b) cfg.keys.keySignature[a][b] = bad; else cfg.keys.keySignature[a] = bad;
+      assert(CNBConfig.validate(cfg).errors.some(e => e.includes(`keys.keySignature.${field}`)), `${field} ${String(bad)}`);
+    }
+  }},
+
+  { name: "keysig: validate — a look's sign, offset and added (session 54), and the looks for naturals, a line and a space", fn: () => {
+    const good = keysigConfig();
+    good.keys.keySignature.looks = {
+      all: { offset: { x: 0.5, y: -0.25 } },
+      natural: { shape: "crotchet-minim", added: [] },
+      flat: { sign: "flat", color: null },
+      sharp: { sign: "sharp", color: "#cc0000", added: [{ shape: "crotchet-minim", heightSemis: 1, widthSemis: null, offset: { x: 1, y: 0 } },
+                                                    { shape: "crotchet-minim" }] },
+      line: { hollow: false },
+      space: { hollow: true },
+    };
+    good.keys.keySignature.alternate = { sign: "sharp", offset: { x: 0, y: 0 }, added: [] };
+    assert(CNBConfig.validate(good).valid, `valid: ${CNBConfig.validate(good).errors}`);
+    const errorFor = look => {
+      const cfg = keysigConfig();
+      cfg.keys.keySignature.looks.sharp = look;
+      return CNBConfig.validate(cfg).errors.join("\n");
+    };
+    assert(/looks\.sharp\.sign must be "sharp" or "flat"/.test(errorFor({ sign: "natural" })), "bad sign");
+    assert(/looks\.sharp sets both shape and sign/.test(errorFor({ sign: "sharp", shape: "crotchet-minim" })), "shape and sign");
+    assert(/looks\.sharp\.offset must be/.test(errorFor({ offset: { x: 1 } })), "offset missing y");
+    assert(/looks\.sharp\.offset must be/.test(errorFor({ offset: [1, 2] })), "offset not an object");
+    assert(/looks\.sharp\.added must be an array/.test(errorFor({ added: { shape: "crotchet-minim" } })), "added not an array");
+    const sym = { shape: "crotchet-minim" };
+    assert(/added has 3 symbols; a mark adds at most 2/.test(errorFor({ added: [sym, sym, sym] })), "three added");
+    assert(/added\[0\] references unknown shape "tail"/.test(errorFor({ added: [{ shape: "tail" }] })), "unknown added shape");
+    assert(/added\[1\]\.heightSemis must be a finite number/.test(errorFor({ added: [sym, { shape: "crotchet-minim", heightSemis: -1 }] })), "bad added size");
+    assert(/added\[0\]\.offset must be/.test(errorFor({ added: [{ shape: "crotchet-minim", offset: { x: "a", y: 0 } }] })), "bad added offset");
+    const warned = keysigConfig();
+    warned.keys.keySignature.looks.flat = { added: [{ shape: "crotchet-minim", widthSemis: 9 }] };
+    assert(CNBConfig.validate(warned).warnings.some(w => /looks\.flat\.added\[0\]\.widthSemis is 9/.test(w)), "added size warning");
+  }},
+
+  { name: "validate: a shape's reference point and ledgers (session 54)", fn: () => {
+    const cfg = CNBConfig.createDefault();
+    const shape = Object.values(cfg.shapes)[0];
+    shape.reference = { x: -40, y: 0 };
+    shape.ledgers = false;
+    assert(CNBConfig.validate(cfg).valid, `valid: ${CNBConfig.validate(cfg).errors}`);
+    for (const [field, bad, pattern] of [["reference", { x: 1 }, /reference must be \{ x, y \}/],
+                                         ["reference", "centre", /reference must be/],
+                                         ["ledgers", "no", /ledgers must be true or false/]]) {
+      const c = CNBConfig.createDefault();
+      Object.values(c.shapes)[0][field] = bad;
+      assert(CNBConfig.validate(c).errors.some(e => pattern.test(e)), `${field} ${JSON.stringify(bad)}`);
+    }
+  }},
+
+  { name: "signatureStyleToModel: a saved style becomes the one model (session 54, design §13.2)", fn: () => {
+    const chords = { keys: { keySignature: { style: "notehead-chords", stacking: "parity", looks: { all: { color: "#ff0000" } } } } };
+    const c = CNBConfig.signatureStyleToModel(chords);
+    deepEq(c.keys.keySignature, { stacking: "parity", looks: { all: { color: "#ff0000" } } }, "notehead-chords: the field dropped, the rest kept");
+    eq(chords.keys.keySignature.style, "notehead-chords", "the input not changed");
+    const acc = { keys: { keySignature: { style: "accidentals", notes: "tonic-and-half-steps", stacking: "parity-stacks",
+      looks: { all: { color: "#ff0000" }, flat: { shape: "dot" }, sharp: { hollow: true } }, alternate: { hollow: true },
+      signs: { heightSemis: 4 }, placement: { position: "every-set" } } } };
+    const a = CNBConfig.signatureStyleToModel(acc).keys.keySignature;
+    assert(!("style" in a), "no style");
+    eq(a.notes, "altered", "the sharps or flats only");
+    eq(a.stacking, "fifths", "the cycle of fifths");
+    eq(a.heights, "scale", "climbing, as session 51 drew them");
+    deepEq(a.looks, { all: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null } }, "black signs, the other looks cleared");
+    deepEq(a.alternate, {}, "every second stack cleared");
+    deepEq(a.signs, { heightSemis: 4 }, "the signs' size kept");
+    deepEq(a.placement, { position: "every-set" }, "the place kept");
+    const once = CNBConfig.signatureStyleToModel(acc);
+    deepEq(CNBConfig.signatureStyleToModel(once), once, "running it twice changes nothing");
+    const none = CNBConfig.createDefault();
+    assert(CNBConfig.signatureStyleToModel(none) === none, "no style: the config as it is");
+    const noKeys = { shapes: {} };
+    assert(CNBConfig.signatureStyleToModel(noKeys) === noKeys, "no key signature: as it is");
+    const merged = CNBConfig.merge(CNBConfig.createDefault(), CNBConfig.signatureStyleToModel(acc));
+    assert(CNBConfig.validate(merged).valid, `the converted config is valid: ${CNBConfig.validate(merged).errors}`);
   }},
 
   { name: "keysig: validate — signs.heightSemis is null (automatic) or a number above 0, with a warning outside 1–12 (session 52)", fn: () => {
