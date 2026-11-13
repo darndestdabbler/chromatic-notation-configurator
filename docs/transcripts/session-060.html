@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 060 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 060 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T12:15:48.463Z by dabbler-ai-router 3.32.4 at edfc5134f168ef9f372c3f3118f1008c6f8e387d.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T04:45:18.582-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 60: Noteheads centred by their shape's reference point</h3>
+<p><strong>Why.</strong> The operator's try-out in session 57 (item 1): some shapes are better placed by their centre of mass than their vertical centre. The consult ([<code>nudge-staff-lines-consult.md</code>](../planning/nudge-staff-lines-consult.md)) put it on the shape.</p>
+<ol><li>Register.</li><li>A shape's reference point (<code>shapes[name].reference</code>), which the key signature already reads, is the point a notehead puts on its pitch too; it can be picked when a shape is imported and changed after. Staff lines and ledgers stay at the pitch; the stem follows the drawn head.</li><li>Exported as a vertically translated shape variant, as sized variants are, the key signature not applying it twice; stems, dots and repeated heads with an asymmetric shape checked by an engine round trip. *Engine work:* none.</li></ol>
+<h2>Work Plan</h2>
+<p>Place each notehead by its shape's reference point (the session-57 try-out, docs/uat-status.md item 1; nudge-staff-lines-consult.md decisions 3-5). A shape's optional reference point (shapes[name].reference, native SVG units), which the key signature already reads, becomes the point a notehead puts on its pitch as well, vertically: the preview draws the notehead reference.y (scaled with the notehead's height) above or below where it draws it today, the stem's attached end and a breve's tie follow the drawn head, and the staff lines, the ledgers, the stem's far end and the head's horizontal place stay at the pitch. A shape without a reference, or with reference.y 0 (every shape in today's fixtures and gallery files), draws and exports exactly as before. In the notehead panel's Shape group the selected shape's reference point can be picked on the enlarged shape, as the key signature's and the clef's are (CNBKeySignatureEditor.referenceGeometry / referenceAt), and put back on the centre; the picker opens after a notehead SVG is imported. The export registers a vertically translated variant of the shape (or of its sized variant) for the noteheads, named after it with a -ref suffix, its path and cutout moved by the reference's height and its attachment points (relative to its extent) unchanged, which Section C names; the key signature's marks keep the untranslated registration and their (at dx . dy), so the reference is not applied twice. No engine change. An engine round trip holds an off-centre reference's heads, stems, dots (which stay at the pitch) and repeat-mode minim, semibreve and breve heads and tie to the preview within 0.001 staff spaces. The LY spec (1.3.22), the architecture plan and the README follow.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/84aa0de44c59416fc06ebaf7e4870ea63bc4224a"><code>84aa0de44c59416fc06ebaf7e4870ea63bc4224a</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Preview</td><td><p>Draw a notehead with its shape's reference point on its pitch, vertically. Add a CNBNotehead helper giving the vertical shift in px for a shape at a scaleY (minus reference.y times scaleY, 0 without a reference) and use it where noteheads are drawn and joined: CNBDoubleNotehead draws each head shifted, CNBStem.geometry starts the stem at the anchor's height less the reference's (its far end stays at LilyPond's length from the far notehead's pitch), and CNBCard's breve tie sits at the shifted heads' bottom (repeatLayout's tie dy and tieBottom). Update the comments that say a shape's reference is read by the key signature only (cnb-config.js, its defaults and validation 1a). Add tests for the helper and for the shifted head, stem start and tie, with and without a reference, in the files named after each module.</p></td><td><span class="mono">cnb/src/cnb-notehead.js</span><br><span class="mono">cnb/tests/cnb-notehead-tests.js</span><br><span class="mono">cnb/src/cnb-double-notehead.js</span><br><span class="mono">cnb/tests/cnb-double-notehead-tests.js</span><br><span class="mono">cnb/src/cnb-stem.js</span><br><span class="mono">cnb/tests/cnb-stem-tests.js</span><br><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/src/cnb-config.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Export</td><td><p>Export the translated notehead. In cnb/src/cnb-lilypond.js a notehead (resolveAll's entries, not the key signature's marks) whose shape has a nonzero reference.y draws with a vertically translated variant of its registration (the shape, or its sized variant), its symbol the registration's with -ref appended: its path and cutout are the registration's with every y moved by the reference's height at the variant's scale (in the §4.1b units, so the reference point lands on the stencil's origin), and its attachment points are the registration's, since they are relative to the extent. Section A registers it beside the others (a shape the key signature also uses keeps its untranslated registration for the marks, which keep their (at dx . dy)); Section C names it in shape, hollow and attachment. Configs without such a reference export byte for byte as before: the five export baselines are unchanged. Add tests in cnb/tests/cnb-lilypond-tests.js: the variant's name, its translated path, its unchanged attachment points, a sized and translated variant, Section C naming it, and a key signature whose marks use the shape registering the untranslated one with their at unchanged.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Editor</td><td><p>Let the reference point be picked in the notehead panel. In cnb/ui/notehead-panel.js the Shape group gains a Reference point row for the selected notehead's shape: 'Pick the point that sits on the pitch' opens the shape enlarged with its point marked (CNBKeySignatureEditor.referenceGeometry / referenceAt, as the clef editor uses them), a click moves the point (writing shapes[name].reference through onChange, a built-in shape being added to config.shapes with it), 'Centre' removes the reference, and Done closes the picker; a hint says the point is placed on the pitch, the staff lines staying where they are. The panel's API gains pickReference(name), which cnb/index.html calls after a notehead SVG is imported, so the picker opens on the imported shape. Style it in cnb/ui/app.css. Add tests in cnb/tests/cnb-notehead-panel-tests.js (the row, the picker writing and removing the reference, a built-in shape added with it, pickReference) and extend cnb/uat/uat-imported-notehead.mjs so that after the import the picker opens and a click moves the drawn head on the canvas while its ledgers stay.</p></td><td><span class="mono">cnb/ui/notehead-panel.js</span><br><span class="mono">cnb/tests/cnb-notehead-panel-tests.js</span><br><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span><br><span class="mono">cnb/uat/uat-imported-notehead.mjs</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node --check cnb/uat/uat-imported-notehead.mjs</code></td><td>yes</td></tr>
+<tr><td>Roundtrip</td><td><p>Hold the translated notehead to the engraving. Add to cnb/tests/engine-probe.js a measurer reporting each engraved notehead's Y extent and each dot's height above the staff's middle line, in staff spaces. In cnb/tests/cnb-card-tests.js add engine round trips, skipped without an engine as the others are, for a config whose notehead shape has a reference point well off its centre (an asymmetric head) on the default and Kite 4-369 fixtures: every card's octave chord, crotchet and minim, each head's Y extent and each stem's centre, width and both ends within 0.001 staff spaces of the preview's; dotted crotchets whose dots sit where the same config without the reference engraves them; and in repeat mode every minim, semibreve and breve's heads' Y extent and the breve's tie ends and lowest ink, within 0.001 staff spaces.</p></td><td><span class="mono">cnb/tests/engine-probe.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Document it. docs/CNB-LY-EXPORT-SPEC-v1_3.md: version 1.3.22, a new §4.1e (noteheads placed by their shape's reference point: the -ref variant, its translation and attachment points, the key signature keeping the untranslated registration, the round trip, compatibility) with the summary table row, the §1 compatibility note and a change-log entry. docs/CNB-ARCHITECTURE-PLAN-v2.md: the shape's reference comment in §4.2, the notehead's placement in §4.5, Module 6's helper and Module 8's stem start. README.md: in the import paragraph, the reference point picked after an import and changed later in the Shape row.</p></td><td><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const r=fs.readFileSync('README.md','utf8');if(!/\*\*1\.3\.22\*\*/.test(s)||!/### 4\.1e/.test(s)||!/-ref/.test(s)||!/reference point/i.test(a)||!/reference point/i.test(r.slice(r.indexOf('### 2. Import the shape'),r.indexOf('### 3. Design')))){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>The reference point's x is not applied to noteheads: a notehead stays centred on its column, with its ledgers and stem where they are; the key signature keeps placing its marks by x and y as it does.</li><li>No rule-level vertical offset and no new config field: the shape's existing reference is the one setting (consult decision 3).</li><li>No engine code, golden or harvest is changed: the translated variant is ordinary path data.</li><li>Staff lines, ledgers, the pitch axis and the Pitch section's nudges are unchanged; a nudge still moves the pitch and any line on it.</li><li>Saved configs are not converted, and no shape gains a reference it does not already have: an imported notehead keeps its origin as its point until one is picked.</li><li>The step-by-step Configurator (session 61 and on) and the CHANGELOG entry (the 1.1.0 release session) are not part of this session.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:45:18]</span> <span class="muted">run-started</span> session=060 mode=pull</div>
+<div class="line"><span class="at">[09:45:18]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:06:55]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[10:06:55]</span> <span class="muted">plan-accepted</span> steps=[&quot;preview&quot;,&quot;export&quot;,&quot;editor&quot;,&quot;roundtrip&quot;,&quot;docs&quot;] non_goals=6</div>
+<div class="line"><span class="at">[10:06:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:06:56]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=preview</div>
+<div class="line"><span class="at">[10:12:00]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:13:30]</span> <span class="muted">check-passed</span> step=preview argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[10:13:31]</span> <span class="muted">report-accepted</span> seq=2 step=preview files=[&quot;cnb/src/cnb-notehead.js&quot;,&quot;cnb/tests/cnb-notehead-tests.js&quot;,&quot;cnb/src/cnb-double-notehead.js&quot;,&quot;cnb/tests/cnb-double-notehead-tests.js&quot;,&quot;cnb/src/cnb-stem.js&quot;,&quot;cnb/tests/cnb-stem-tests.js&quot;,&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/src/cnb-config.js&quot;] notes=CNBNotehead.referenceShift; double notehead, stem start and breve tie follow the reference's y; ledgers and stem far end stay at the pitch</div>
+<div class="line"><span class="at">[10:13:31]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=export</div>
+<div class="line"><span class="at">[10:18:44]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:20:11]</span> <span class="muted">check-passed</span> step=export argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[10:20:12]</span> <span class="muted">report-accepted</span> seq=3 step=export files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=Noteheads (notehead flag) whose shape has reference.y != 0 register a -ref variant moved by the reference's height; marks keep the unmoved shape and their at; baselines unchanged</div>
+<div class="line"><span class="at">[10:20:12]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=editor</div>
+<div class="line"><span class="at">[11:46:13]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:47:54]</span> <span class="muted">check-passed</span> step=editor argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:47:54]</span> <span class="muted">check-passed</span> step=editor argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-imported-notehead.mjs&quot;]</div>
+<div class="line"><span class="at">[11:47:55]</span> <span class="muted">report-accepted</span> seq=4 step=editor files=[&quot;cnb/ui/notehead-panel.js&quot;,&quot;cnb/tests/cnb-notehead-panel-tests.js&quot;,&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;,&quot;cnb/uat/uat-imported-notehead.mjs&quot;] notes=Shape row's Pick the point that sits on the pitch (y only, x kept), Centre, Done; pickReference opened after an import; UAT import 18/18, notehead-panel 19/19, app-layout 79/79, key-signature 107/107</div>
+<div class="line"><span class="at">[11:47:55]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=roundtrip</div>
+<div class="line"><span class="at">[11:52:23]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:54:19]</span> <span class="muted">check-passed</span> step=roundtrip argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:54:19]</span> <span class="muted">report-accepted</span> seq=5 step=roundtrip files=[&quot;cnb/tests/engine-probe.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;] notes=measureHeads probe (head Y extents, dot heights); round trip on default, default repeat and Kite 4-369 with references 0.3 of each shape's height off centre: heads, stems, dots and breve ties within 0.001 staff spaces</div>
+<div class="line"><span class="at">[11:54:19]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[11:55:48]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:55:50]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const r=fs.readFileSync('README.md','utf8');if(!/\\*\\*1\\.3\\.22\\*\\*/.test(s)||!/### 4\\.1e/.test(s)||!/-ref/.test(s)||!/reference point/i.test(a)||!/reference point/i.test(r.slice(r.indexOf('### 2. Import the shape'),r.indexOf('### 3. Design')))){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[11:55:51]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;README.md&quot;] notes=LY spec 1.3.22 with new §4.1e, summary row, compatibility note and change log; architecture plan §4.2, §4.5 notehead placement, Module 6 referenceShift, Module 8 stem start; README import paragraph</div>
+<div class="line"><span class="at">[11:55:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:55:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:55:52]</span> <span class="muted">job-started</span> name=verification pid=55592 log=.dabbler/runs/s60/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:57:09]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s60/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:57:09]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[11:57:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[11:57:09]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[11:58:14]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[11:58:14]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[11:58:14]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1,2] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The stem is not given the moved head positions. CNBCard.render calls CNBStem.geometry with noteYPositions [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)], the unshifted pitch coordinates (cnb/src/cnb-card.js:423-436); CNBDoubleNotehead.layout's moved lowerY/upperY are used only to draw the heads (cnb/src/cnb-card.js:438-450) and never reach the stem. So low/high/farY are pitch-derived, the shift enters once, in anchorYpx (cnb/src/cnb-stem.js:82-111), y1 moves by exactly referenceShift and y2 is unchanged. The card test (cnb/tests/cnb-card-tests.js:499-523) asserts exactly that, y1 + shift and y2 unchanged, against the rendered card and passes, and the engine round trip (cnb/tests/cnb-card-tests.js:792-872) holds every card's rendered stem bottom and top to LilyPond's engraved stem within 0.001 staff spaces with the reference 0.3 of each head's height off centre: a doubled shift would be off by about 0.2 staff spaces and fail it.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[11:58:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[11:58:14]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[12:02:40]</span> <span class="muted">run-resumed</span> session=060 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=preview</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=export</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=editor</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-imported-notehead.mjs&quot;] owner=editor</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=roundtrip</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const r=fs.readFileSync('README.md','utf8');if(!/\\*\\*1\\.3\\.22\\*\\*/.test(s)||!/### 4\\.1e/.test(s)||!/-ref/.test(s)||!/reference point/i.test(a)||!/reference point/i.test(r.slice(r.indexOf('### 2. Import the shape'),r.indexOf('### 3. Design')))){console.error('documents not updated');process.exit(1)}&quot;] owner=docs</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;] notes=[1] the engine round trip measures every breve head's top and bottom (a repeat-mode breve down to its tie); [2] isScaleStack is false when a shape's reference has x != 0, so the signature exports the mark table placed by x and y while noteheads keep the y-only -ref variant; tests for both and spec 4.1e/5.6a updated</div>
+<div class="line"><span class="at">[12:10:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:10:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:10:52]</span> <span class="muted">job-started</span> name=verification pid=34488 log=.dabbler/runs/s60/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:11:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s60/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:11:50]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:11:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:11:50]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[12:11:51]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=64480 log=.dabbler/runs/s60/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[12:14:04]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s60/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[12:14:05]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[12:14:05]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=19212 log=.dabbler/runs/s60/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[12:15:30]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s60/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[12:15:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:15:37]</span> <span class="muted">landed</span> commit=84aa0de44c59416fc06ebaf7e4870ea63bc4224a</div>
+<div class="line"><span class="at">[12:15:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:15:37]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:15:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:15:38]</span> <span class="muted">job-started</span> name=close pid=24744 log=.dabbler/runs/s60/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:15:48]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s60/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:15:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Stem geometry applies the reference displacement twice and moves the far stem end.**</td><td>disputed — The stem is not given the moved head positions. CNBCard.render calls CNBStem.geometry with noteYPositions [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)], the unshifted pitch coordinates (cnb/src/cnb-card.js:423-436); CNBDoubleNotehead.layout's moved lowerY/upperY are used only to draw the heads (cnb/src/cnb-card.js:438-450) and never reach the stem. So low/high/farY are pitch-derived, the shift enters once, in anchorYpx (cnb/src/cnb-stem.js:82-111), y1 moves by exactly referenceShift and y2 is unchanged. The card test (cnb/tests/cnb-card-tests.js:499-523) asserts exactly that, y1 + shift and y2 unchanged, against the rendered card and passes, and the engine round trip (cnb/tests/cnb-card-tests.js:792-872) holds every card's rendered stem bottom and top to LilyPond's engraved stem within 0.001 staff spaces with the reference 0.3 of each head's height off centre: a doubled shift would be off by about 0.2 staff spaces and fail it.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The promised engine round trip says it checks repeat-mode “minim, semibreve and breve heads and tie,” but the new engine test calls `measureHeads` only for crotchet, minim, and semibreve. Add an engine case with repeat mode and an off-centre reference that engraves a breve chord and asserts every repeated breve head’s top and bottom against the preview, not only the tie’s endpoints and extent.</td><td>fixed — [1] the engine round trip measures every breve head's top and bottom (a repeat-mode breve down to its tie); [2] isScaleStack is false when a shape's reference has x != 0, so the signature exports the mark table placed by x and y while noteheads keep the y-only -ref variant; tests for both and spec 4.1e/5.6a updated — (cnb/src/cnb-key-signature.js, cnb/tests/cnb-key-signature-tests.js, cnb/tests/cnb-lilypond-tests.js, cnb/tests/cnb-card-tests.js, docs/CNB-LY-EXPORT-SPEC-v1_3.md)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Add a key-signature scale-stack (`'chord`) case with a shared shape whose reference has nonzero `x` and `y`. Drive the preview and export and assert the intended separation: ordinary noteheads use only `reference.y`, while key-signature marks retain both-coordinate placement without receiving the translated `-ref` registration.</td><td>fixed — [1] the engine round trip measures every breve head's top and bottom (a repeat-mode breve down to its tie); [2] isScaleStack is false when a shape's reference has x != 0, so the signature exports the mark table placed by x and y while noteheads keep the y-only -ref variant; tests for both and spec 4.1e/5.6a updated — (cnb/src/cnb-key-signature.js, cnb/tests/cnb-key-signature-tests.js, cnb/tests/cnb-lilypond-tests.js, cnb/tests/cnb-card-tests.js, docs/CNB-LY-EXPORT-SPEC-v1_3.md)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `CNBKeySignature.isScaleStack` treats a nonzero `reference.x` on **any** configured shape as grounds to replace a default `'chord` signature with the mark table, even if that shape is unused by the signature.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `cnb/src/cnb-key-signature.js: isScaleStack`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Case to add:** Start with a chord-eligible default key-signature config whose marks resolve only `crotchet-minim`; add an otherwise unused shape with `reference: { x: 10, y: 0 }`; generate LilyPond. Expect the key signature to remain `'chord`, since no signature mark shares that shape and the session compatibility promise covers `reference.y === 0`. Today `Object.values(config.shapes).some(...)` returns true and emits `'marks`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>132s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>84s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
