@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="111.873" height="82.591" viewBox="-156.567 -98.003 111.873 82.591">
+  <!-- Session 55: the Clairnote gallery files' flat tail (key-signature design
+       docs/planning/key-signature-designer-design.md sections 13.3, 13.6 and
+       13.7), in music-glyph-toolkit output format: 100 SVG units per
+       semitone, the viewBox the path's exact bounds. Its origin is the centre
+       of the 1.6-semitone key-signature dot it is added to, which the
+       gallery files set as its reference point. It leaves the dot up and to
+       the left at 30 degrees, starting 0.62 semitones from the centre, inside
+       the dot's solid ring (the hollow dot's cut-out is 0.44 across from the
+       centre), so it never shows through a hollow dot; its round tip is 1.6
+       semitones from the centre, about 0.77 past the dot's side, 0.8 above
+       its centre, and it is 0.36 semitones (0.09 staff spaces) thick. A dot a
+       whole step above is 0.75 semitones from it. -->
+  <path id="notehead"
+        d="M -44.694 -46.588 L -129.564 -95.588 C -138.174 -100.559 -149.182 -97.61 -154.153 -89 C -159.123 -80.39 -156.174 -69.382 -147.564 -64.412 L -62.694 -15.412 Z"
+        data-semitone-height="0.82591"
+        style="fill:#000000;stroke:none"/>
+</svg>

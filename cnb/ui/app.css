@@ -1,0 +1,826 @@
+/* app.css — the Configurator's one stylesheet (session 25).
+ *
+ * Design: docs/planning/notehead-first-editor-design.md §7 (layout),
+ * §8.1 (tokens), §8.2 (type), §8.3 (controls) and §6.1 (the canvas). The
+ * page is light only: hollow noteheads are drawn with a white overlay, so
+ * the notation always sits on a white surface (§8.1).
+ *
+ * Sections: tokens · base and type · controls · shell · canvas · checks ·
+ * panels · editor host styling (the editors ship structure only and are
+ * styled here through their .cnb-* class hooks).
+ */
+
+/* ── Tokens (§8.1) ─────────────────────────────────────────────────────── */
+:root {
+  --bg: #f4f3ef;
+  --surface: #ffffff;
+  --surface-2: #f9f8f5;
+  --ink: #1c1c1e;
+  --ink-2: #5b5d63;
+  --line: #e2e0da;
+  --accent: #2f5bd3;
+  --accent-soft: #e8eefc;
+  --warn: #9a5b00;
+  --warn-soft: #fdf3e1;
+  --error: #b3261e;
+  --error-soft: #fdecea;
+  --ok: #2e7d32;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+  --shadow-2: 0 8px 28px rgba(0,0,0,.14);
+
+  --font: system-ui, "Segoe UI", Roboto, sans-serif;
+  --topbar-h: 56px;
+  --sidebar-w: 200px;
+
+  color-scheme: light;
+}
+
+/* ── Base and type (§8.2): 20 / 16 / 14 / 12 px, nothing smaller ─────── */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font);
+}
+
+h1 { font-size: 20px; font-weight: 600; margin: 0; }
+h2 { font-size: 16px; font-weight: 600; margin: 0; }
+h3 { font-size: 14px; font-weight: 600; margin: 0; }
+p { margin: 0; }
+code, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+a { color: var(--accent); }
+
+.group-title {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-2); margin: 0 0 var(--space-2);
+}
+.muted { color: var(--ink-2); }
+.small { font-size: 12px; }
+
+/* ── Controls (§8.3) ───────────────────────────────────────────────────── */
+button, input, select, textarea { font: inherit; color: var(--ink); }
+
+button {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: 32px; padding: 0 var(--space-3);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-s); cursor: pointer; white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: #cfccc4; }
+button:disabled { opacity: .45; cursor: default; }
+
+input[type="text"], input[type="number"], input:not([type]), select, textarea {
+  height: 32px; padding: 0 var(--space-2);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+textarea { height: auto; padding: var(--space-2); }
+input[type="number"] { width: 84px; text-align: right; }
+input:disabled, select:disabled { background: var(--surface-2); color: var(--ink-2); }
+input[type="color"] {
+  width: 32px; height: 32px; padding: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); cursor: pointer;
+}
+input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+input[type="file"] { font-size: 13px; color: var(--ink-2); }
+/* The file picker's button, styled like every other button (§8.3). */
+input[type="file"]::file-selector-button {
+  font: inherit; color: var(--ink); min-height: 32px; padding: 0 var(--space-3); margin-right: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover { border-color: #cfccc4; }
+
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn-primary:hover:not(:disabled) { border-color: var(--accent); background: #2851c0; }
+.btn-ghost { background: transparent; border-color: transparent; }
+
+/* Segmented control: a row of buttons, one on. */
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.segmented > button {
+  min-height: 30px; padding: 0 var(--space-3); font-size: 13px;
+  border: 0; border-right: 1px solid var(--line); border-radius: 0;
+}
+.segmented > button:last-child { border-right: 0; }
+.segmented > button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* Pills (pitch classes, durations, keys): every editor's *-pill and toggle. */
+.cnb-pvd-duration-pill, .cnb-sre-pc-toggle, .cnb-sre-trigger-pill,
+.cnb-nre-pc-pill, .cnb-nre-dur-pill, .cnb-nre-key-pill, .cnb-nre-all-pill, .cnb-kse-pc-pill {
+  min-height: 28px; min-width: 36px; padding: 0 var(--space-2);
+  font-size: 13px; line-height: 1.2;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px;
+}
+.cnb-pvd-duration-pill.on, .cnb-sre-pc-toggle.on, .cnb-sre-trigger-pill.on,
+.cnb-nre-pc-pill.on, .cnb-nre-dur-pill.on, .cnb-nre-key-pill.on, .cnb-kse-pc-pill.on {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600;
+}
+.cnb-nre-all-pill.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+/* The clefs to choose from (session 45): the shown one marked like a pill. */
+.cnb-cle-choice.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ── Shell (§7): top bar, section list, one content column ────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: var(--space-3);
+  height: var(--topbar-h); padding: 0 var(--space-5);
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.topbar-app { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.topbar-doc { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.topbar-doc::before { content: "·"; margin-right: var(--space-3); color: var(--line); }
+.topbar-spacer { flex: 1; }
+.topbar-status { font-size: 13px; color: var(--ink-2); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-status.error { color: var(--error); }
+
+.shell { display: flex; align-items: stretch; min-height: calc(100vh - var(--topbar-h)); }
+
+.sidebar {
+  flex: 0 0 var(--sidebar-w);
+  padding: var(--space-4) var(--space-3);
+  background: var(--surface); border-right: 1px solid var(--line);
+}
+.sidebar-inner { position: sticky; top: calc(var(--topbar-h) + var(--space-4)); display: flex; flex-direction: column; gap: 2px; }
+.section-link {
+  justify-content: flex-start; width: 100%; min-height: 36px;
+  padding: 0 var(--space-3); border-color: transparent; background: transparent;
+  color: var(--ink); text-align: left;
+}
+.section-link:hover:not(:disabled) { border-color: transparent; background: var(--surface-2); }
+.section-link.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sidebar hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-3) 0; }
+
+/* The steps (session 63, step-by-step design §2.1): static group headings,
+ * numbered steps, a step with nothing to edit greyed with its reason. */
+.step-nav { display: flex; flex-direction: column; gap: 2px; }
+.step-group {
+  margin: var(--space-3) 0 var(--space-1); padding: 0 var(--space-3);
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
+}
+.step-group:first-child { margin-top: 0; }
+.section-link { gap: var(--space-2); }
+.step-number { flex: none; width: 1.6em; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.section-link.on .step-number { color: var(--accent); }
+.section-link.unavailable { color: var(--ink-2); opacity: .55; cursor: not-allowed; }
+.section-link.unavailable:hover { background: transparent; }
+
+/* Back and Next (design §2.2): at the bottom of the window while the panel
+ * scrolls. */
+.step-bar { position: sticky; bottom: 0; z-index: 5; }
+.step-bar[hidden] { display: none; }
+.step-bar-inner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-1);
+}
+.step-bar-spacer { flex: 1; }
+.step-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* The canvas hidden in the key-signature steps (session 63). */
+.canvas-card[hidden] { display: none; }
+
+.main { flex: 1; min-width: 0; padding: var(--space-5); }
+.main-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.intro { color: var(--ink-2); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-m); box-shadow: var(--shadow-1);
+  min-width: 0;
+}
+.card-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line);
+}
+.card-head .sub { color: var(--ink-2); font-size: 13px; }
+.card-body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.panel[hidden] { display: none; }
+
+/* ── Canvas (§6.1) ─────────────────────────────────────────────────────── */
+/* The preview display: its controls are the canvas toolbar. */
+.canvas-card .cnb-pvd-controls {
+  display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+  font-size: 13px; color: var(--ink-2);
+}
+.cnb-pvd-range, .cnb-pvd-durations, .cnb-pvd-key, .cnb-pvd-size {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+}
+.cnb-pvd-size { margin-left: auto; }
+.cnb-pvd-range-label, .cnb-pvd-durations-label, .cnb-pvd-key-label, .cnb-pvd-size-label {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
+}
+.cnb-pvd-range-to { font-size: 13px; color: var(--ink-2); }
+.cnb-pvd-size-options, .cnb-pvd-repeat-options { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.cnb-pvd-size-option, .cnb-pvd-repeat-option {
+  min-height: 26px; padding: 0 var(--space-2); font-size: 12px;
+  border: 0; border-right: 1px solid var(--line); border-radius: 0;
+}
+.cnb-pvd-size-option:last-child, .cnb-pvd-repeat-option:last-child { border-right: 0; }
+.cnb-pvd-size-option.on, .cnb-pvd-repeat-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+/* Shapes or repeated heads (session 36), beside the duration buttons. */
+.cnb-pvd-repeat { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: var(--space-2); }
+.cnb-pvd-repeat-hint { font-size: 12px; color: var(--ink-2); }
+/* The repeated heads' overlap, in repeat mode (session 58). */
+.cnb-pvd-overlap { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 12px; color: var(--ink-2); }
+.cnb-pvd-overlap-label { font-weight: 600; color: var(--ink); }
+.cnb-pvd-overlap input[type="number"] { width: 56px; min-height: 26px; }
+.cnb-pvd-hollow-minims { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; cursor: pointer; }
+.cnb-pvd-size-hint:empty { display: none; }
+.cnb-pvd-size-hint { font-size: 12px; color: var(--warn); }
+.cnb-pvd-key-note { font-size: 12px; color: var(--ink-2); max-width: 360px; }
+/* The key and mode picker's button that turns the signature on (session 36). */
+.cnb-pvd-signature-on { min-height: 26px; padding: 0 var(--space-2); font-size: 12px; }
+.cnb-pvd-empty { padding: var(--space-4); font-size: 13px; color: var(--warn); }
+
+/* The staff: scrolls inside its own card only below the two-row minimum,
+   with a fade at the cut edge; the page itself never scrolls sideways. */
+.cnb-pvd-preview { position: relative; padding: var(--space-3) var(--space-4) var(--space-4); overflow-x: auto; }
+.cnb-pvd-preview.cnb-pvd-overflow {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+.cnb-pvd-preview .cnb-duration-caption { font-size: 14px; margin: var(--space-3) 0 var(--space-1); }
+.cnb-pvd-preview .cnb-duration-row:first-child .cnb-duration-caption { margin-top: 0; }
+.cnb-pvd-preview .cnb-duration-row + .cnb-duration-row { margin-top: var(--space-5); }
+
+/* The Ledger lines section's canvas (§6): the columns that draw ledger
+   lines tinted, every candidate spot a faint dashed line. */
+.cnb-pvd-focus-ledgers .pc-col:not([data-ledgers="0"]) { background: rgba(47, 91, 211, .07); border-radius: var(--radius-s); }
+.cnb-pvd-preview .ledger-spot { stroke: var(--accent); }
+
+/* The Clef and Key signature sections' partial staff (§6). */
+.cnb-pvd-partial {
+  width: max-content; max-width: 100%; overflow-x: auto;
+  padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+/* Plain pitch labels on the canvas (§6.2); the chips stay the test pages'
+   default. The card sets them inline, hence !important. */
+.cnb-pvd-preview .cnb-label-card, .cnb-pvd-partial .cnb-label-card {
+  background: transparent !important; border-color: transparent !important; box-shadow: none !important;
+}
+
+/* ── Checks (§8.5): the one place validation shows ────────────────────── */
+.checks { position: relative; }
+.checks-indicator {
+  min-height: 32px; padding: 0 var(--space-3);
+  border-radius: 999px; font-size: 13px; font-weight: 600;
+}
+.checks-indicator::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.checks-indicator.ok { color: var(--ok); background: #eaf5eb; border-color: transparent; }
+.checks-indicator.warn { color: var(--warn); background: var(--warn-soft); border-color: #f1dcb4; }
+.checks-indicator.error { color: var(--error); background: var(--error-soft); border-color: #f4c7c3; }
+.checks-list {
+  position: absolute; right: 0; top: calc(100% + var(--space-2)); z-index: 20;
+  width: 420px; max-height: 60vh; overflow: auto;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-l); box-shadow: var(--shadow-2);
+}
+.checks-list[hidden] { display: none; }
+.checks-list h3 { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.checks-item { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.checks-item:last-child { border-bottom: 0; }
+.checks-item::before {
+  flex: none; width: 20px; height: 20px; border-radius: 50%;
+  font-size: 12px; font-weight: 700; line-height: 20px; text-align: center;
+}
+.checks-item.warn::before { content: "!"; background: var(--warn-soft); color: var(--warn); }
+.checks-item.error::before { content: "×"; background: var(--error-soft); color: var(--error); }
+.checks-empty { padding: var(--space-3) var(--space-4); color: var(--ink-2); }
+.checks-item p { margin: 0 0 var(--space-1); }
+/* The link that fixes the problem (mock-up 4): a button that reads as a link. */
+.checks-link {
+  min-height: 0; padding: 0; border: 0; background: none;
+  color: var(--accent); font-size: 13px; font-weight: 600;
+}
+.checks-link:hover { text-decoration: underline; }
+.checks-note { padding: var(--space-3) var(--space-4); color: var(--ink-2); font-size: 12px; }
+
+/* The editors' own validation lists: the checks list says it once. */
+.cnb-cio-validation, .cnb-cex-validation, .cnb-sre-validation, .cnb-nre-validation,
+.cnb-cpe-validation, .cnb-cle-validation, .cnb-kse-validation, .cnb-pae-validation { display: none; }
+
+/* ── Panels: Advanced and View file (JSON) ─────────────────────────────── */
+.disclosure { border: 1px solid var(--line); border-radius: var(--radius-s); }
+.disclosure + .disclosure { margin-top: var(--space-2); }
+.disclosure > summary { padding: var(--space-3); font-weight: 600; cursor: pointer; }
+.disclosure > summary .sub { font-weight: 400; color: var(--ink-2); font-size: 13px; margin-left: var(--space-2); }
+.disclosure > .disclosure-body { padding: 0 var(--space-3) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.json-view {
+  margin: 0; max-height: 480px; overflow: auto; padding: var(--space-3);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.json-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+/* Shown only when the page is opened from disk (file://). */
+#file-notice {
+  background: var(--warn-soft); border: 1px solid var(--warn); border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-4); margin: var(--space-4) var(--space-5) 0;
+  line-height: 1.5;
+}
+#file-notice code { background: var(--surface); padding: 1px 4px; border-radius: 3px; }
+
+/* ── Editor host styling (moved from index.html; restyled in session 26) ─ */
+/* Shared shapes: section titles, hints, option rows, small icon buttons. */
+.cnb-sre-title, .cnb-nre-title, .cnb-cpe-title, .cnb-cle-title, .cnb-kse-title, .cnb-kse-subtitle,
+.cnb-pae-title {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-2); margin: 0 0 var(--space-2);
+}
+.cnb-kse-subtitle { margin-top: var(--space-3); }
+.cnb-sre-hint, .cnb-nre-apply-hint, .cnb-cpe-hint, .cnb-cle-hint, .cnb-kse-hint, .cnb-pae-hint,
+.cnb-cpe-mode-help, .cnb-nre-size-hint {
+  font-size: 12px; color: var(--ink-2); margin-bottom: var(--space-2); max-width: 560px;
+}
+.cnb-sre-section, .cnb-cpe-section, .cnb-cle-section, .cnb-kse-section, .cnb-pae-section { margin-bottom: var(--space-4); }
+
+.cnb-sre-pattern-option, .cnb-cle-glyph-option, .cnb-cpe-mode-option, .cnb-kse-style-option {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); margin-bottom: var(--space-1);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+  cursor: pointer; color: var(--ink);
+}
+.cnb-cle-glyph-option { justify-content: space-between; }
+.cnb-kse-style-option { flex-direction: column; align-items: flex-start; gap: 2px; max-width: 560px; }
+.cnb-sre-pattern-option:hover, .cnb-cle-glyph-option:hover,
+.cnb-cpe-mode-option:hover, .cnb-kse-style-option:hover { border-color: #cfccc4; }
+.cnb-sre-pattern-option.selected, .cnb-cle-glyph-option.selected,
+.cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected .cnb-kse-style-label { color: var(--accent); font-weight: 600; }
+
+.cnb-sre-template-remove, .cnb-kse-def-remove,
+.cnb-nre-rule-up, .cnb-nre-rule-down, .cnb-nre-rule-remove {
+  min-height: 28px; min-width: 28px; padding: 0;
+}
+.cnb-sre-template-add, .cnb-nre-rule-add, .cnb-kse-def-add {
+  border-style: dashed; color: var(--accent);
+}
+
+/* Check-box rows. */
+.cnb-sre-proximity,
+.cnb-cle-enable, .cnb-kse-keys-enable, .cnb-kse-sig-enable, .cnb-kse-octave-auto, .cnb-kse-sep-enable,
+.cnb-pae-enable, .cnb-nre-apply-toggle, .cnb-nre-size-lock-label {
+  display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
+}
+.cnb-cle-enable, .cnb-kse-keys-enable, .cnb-pae-enable { margin-bottom: var(--space-4); }
+.cnb-sre-proximity { margin: var(--space-3) 0; }
+
+/* Field rows. */
+.cnb-cle-fields, .cnb-kse-fields, .cnb-pae-field, .cnb-pae-position,
+.cnb-cpe-engine-row, .cnb-nre-apply-row, .cnb-nre-match-row, .cnb-pae-preset {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-1) 0;
+}
+.cnb-nre-match-row { align-items: baseline; }
+.cnb-pae-preset .cnb-pae-title, .cnb-pae-preset .cnb-pae-hint { flex-basis: 100%; }
+.cnb-kse-field-label, .cnb-nre-match-label { width: 96px; flex: none; font-size: 13px; color: var(--ink-2); }
+.cnb-cpe-engine-label { width: 170px; flex: none; }
+.cnb-pae-label { width: 240px; flex: none; color: var(--ink-2); }
+.cnb-pae-pc-name { width: 32px; flex: none; color: var(--ink-2); }
+.cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-cle-range-label, .cnb-cle-dozenal-note, .cnb-kse-def-tonic-hint,
+.cnb-cle-glyph-detail, .cnb-kse-style-detail {
+  font-size: 12px; color: var(--ink-2);
+}
+.cnb-cpe-badge, .cnb-badge {
+  display: inline-block; padding: 1px var(--space-2);
+  font-size: 12px; font-weight: 600; color: var(--ink-2);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+}
+/* Preview only badges (§8.6): beside a control or a group title, never uppercase. */
+.cnb-badge {
+  margin-left: var(--space-2); line-height: 1.4; vertical-align: middle;
+  text-transform: none; letter-spacing: 0; cursor: help; white-space: nowrap;
+}
+
+/* Numeric and short text fields keep a compact width. */
+.cnb-cle-anchor-input, .cnb-cle-sits, .cnb-cle-height, .cnb-cle-gutter-input,
+.cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-sign-size,
+.cnb-kse-window-sharp, .cnb-kse-window-flat,
+.cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
+.cnb-nre-size-height, .cnb-nre-size-width, .cnb-cpe-engine-row input {
+  width: 84px;
+}
+.cnb-kse-def-name { width: 120px; }
+.cnb-nre-mark-input { width: 110px; }
+
+/* Messages the panels still show for their own actions. */
+.cnb-cio-status, .cnb-cex-status, .cnb-cle-import-status { font-size: 13px; color: var(--ok); }
+.cnb-cex-status-blocked { color: var(--warn); }
+.cnb-cio-error, .cnb-cex-error, .cnb-cle-import-error, .cnb-cio-filename-error, .cnb-cex-filename-error,
+.cnb-sre-derived-error { font-size: 13px; color: var(--error); }
+.cnb-cle-import-warnings, .cnb-cle-empty, .cnb-cle-anchor-empty, .cnb-kse-empty { font-size: 13px; color: var(--warn); }
+.cnb-cio-filename, .cnb-cex-filename { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--ink-2); }
+.cnb-cex-export-row, .cnb-cio-save-row, .cnb-cio-load-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+/* Export section: the notation's name, file suffix, label and footnote, then the one sentence. */
+.cnb-cex-meta { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.cnb-cex-meta-field { display: grid; grid-template-columns: 140px minmax(0, 420px); column-gap: var(--space-3); row-gap: 2px; align-items: center; }
+.cnb-cex-meta-label { font-size: 13px; color: var(--ink-2); }
+.cnb-cex-meta-input { width: 100%; }
+.cnb-cex-meta-hint { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+.cnb-cex-preview-only {
+  font-size: 13px; color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); max-width: 720px;
+}
+.cnb-cex-filename-label { font-size: 13px; color: var(--ink-2); }
+.cnb-kse-disabled-note {
+  font-size: 13px; color: var(--warn); background: var(--warn-soft);
+  border: 1px solid #f1dcb4; border-radius: var(--radius-s);
+  padding: var(--space-2) var(--space-3); margin-bottom: var(--space-4); max-width: 560px;
+}
+
+/* SVG importer (Module 16). */
+.cnb-svg-drop-zone {
+  border: 2px dashed var(--line); border-radius: var(--radius-m);
+  padding: var(--space-5); text-align: center; color: var(--ink-2);
+  cursor: pointer; margin-bottom: var(--space-3);
+}
+.cnb-svg-drop-zone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+#import-status { font-size: 13px; min-height: 18px; }
+#import-status.ok { color: var(--ok); }
+#import-status.err { color: var(--error); }
+#import-warnings { font-size: 13px; color: var(--warn); margin: var(--space-1) 0 0; padding-left: 18px; }
+
+/* Staff and ledger editor (Module 13). */
+.cnb-sre-custom-pcs, .cnb-sre-template-triggers, .cnb-nre-pills, .cnb-kse-def-pcs {
+  display: inline-flex; flex-wrap: wrap; gap: var(--space-1);
+}
+.cnb-sre-custom-pcs { margin-top: var(--space-2); }
+.cnb-sre-template-triggers.inactive { opacity: .35; }
+.cnb-sre-derived {
+  font-size: 13px; color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: var(--space-2) var(--space-3); margin-bottom: var(--space-4); line-height: 1.6;
+}
+.cnb-sre-template-row, .cnb-kse-def-row {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s); margin-bottom: var(--space-1);
+}
+/* Pattern options: a title and a one-line description, three across. */
+.cnb-sre-pattern-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+.cnb-sre-pattern-options .cnb-sre-pattern-option { flex-direction: column; align-items: flex-start; gap: 2px; margin: 0; }
+.cnb-sre-pattern-title { font-weight: 600; }
+.cnb-sre-pattern-option.selected .cnb-sre-pattern-title { color: var(--accent); }
+.cnb-sre-pattern-desc { font-size: 12px; color: var(--ink-2); }
+.cnb-sre-pattern .cnb-sre-custom-pcs { margin: 0; }
+.cnb-cle-unit { font-size: 12px; color: var(--ink-2); }
+/* Ledger lines: Automatic / My own rules, then the rule rows in words. */
+.cnb-sre-ledger-mode .segmented { margin-bottom: var(--space-2); }
+.cnb-sre-template-at, .cnb-sre-template-show { font-size: 13px; color: var(--ink-2); }
+.cnb-sre-template-pos { width: 72px; }
+.cnb-sre-template-row .cnb-sre-template-remove { margin-left: auto; }
+
+/* Notehead rule editor (Module 14). */
+.cnb-nre-rule-card {
+  border: 1px solid var(--line); border-radius: var(--radius-m);
+  padding: var(--space-3); margin-bottom: var(--space-3); background: var(--surface-2);
+}
+.cnb-nre-rule-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.cnb-nre-rule-num {
+  width: 24px; height: 24px; line-height: 24px; text-align: center; flex: none;
+  background: var(--accent); color: #fff; border-radius: 50%; font-size: 12px;
+}
+.cnb-nre-rule-name { flex: 1; }
+.cnb-nre-keys-note { font-size: 12px; color: var(--ink-2); }
+.cnb-nre-apply { margin-top: var(--space-2); border-top: 1px dashed var(--line); padding-top: var(--space-2); }
+.cnb-nre-apply-row { min-height: 32px; }
+.cnb-nre-apply-toggle { width: 100px; flex: none; }
+.cnb-nre-color-control, .cnb-nre-mark-control, .cnb-nre-size { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nre-rule-add { margin-bottom: var(--space-4); }
+.cnb-nre-resolved-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+.cnb-nre-resolved-row { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.cnb-nre-resolved-cell {
+  border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-1) var(--space-2);
+  font-size: 12px; color: var(--ink-2); text-align: center; min-width: 52px;
+}
+.cnb-nre-resolved-pc { font-weight: 600; color: var(--ink); font-size: 13px; }
+.cnb-nre-resolved-shape { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cnb-nre-resolved-swatch { width: 100%; height: 10px; border-radius: 3px; border: 1px solid rgba(0,0,0,.13); margin-top: 3px; }
+
+/* Common properties (Module 15). */
+.cnb-cpe-def-row {
+  font-size: 13px; color: var(--ink-2); padding: var(--space-2); margin-bottom: var(--space-1);
+  border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface-2);
+}
+.cnb-cpe-engine-row { min-height: 32px; }
+
+/* Key signature editor (set 010). */
+/* The head (session 56, design §13.8): the title, Show the key signature and Start from on one line. */
+.cnb-kse-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.cnb-kse-head .cnb-kse-title { margin: 0; }
+.cnb-kse-head .cnb-kse-sig-enable { margin: 0; }
+.cnb-kse-start { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.cnb-kse-start .cnb-kse-field-label { width: auto; }
+.cnb-kse-start-button { font-size: 13px; }
+/* Step 6's starting points (session 65, step-by-step design §3.1): three cards, the signature's highlighted. */
+.cnb-kse-start-cards { flex-basis: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.cnb-kse-start-card {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: var(--space-3); white-space: normal; text-align: center; border-radius: var(--radius-m);
+}
+.cnb-kse-start-card.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-start-card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.cnb-kse-start-card-words { font-size: 12px; color: var(--ink-2); }
+.cnb-kse-own { grid-column: 1 / -1; font-size: 13px; color: var(--accent); }
+/* The 21 spelled notes (session 65, design §3.2): the letters across, a row for sharp, natural and flat. */
+.cnb-kse-spelled {
+  display: grid; grid-template-columns: auto repeat(7, max-content); gap: var(--space-1);
+  align-items: center; justify-content: start; overflow-x: auto; margin-bottom: var(--space-3);
+}
+.cnb-kse-spelled > .cnb-kse-canvas-empty { grid-column: 1 / -1; }
+.cnb-kse-spelled-letter { text-align: center; font-size: 13px; color: var(--ink-2); }
+.cnb-kse-spelled-row { font-size: 12px; color: var(--ink-2); padding-right: var(--space-2); }
+.cnb-kse-spelled-note {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px;
+  border: 1px solid transparent; border-radius: var(--radius-s); background: var(--surface);
+}
+button.cnb-kse-spelled-note { cursor: pointer; }
+button.cnb-kse-spelled-note:hover { border-color: var(--line); }
+.cnb-kse-spelled-note.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-spelled-svg { display: block; overflow: visible; }
+/* Step 7 (session 65, design §3.3): the Select row, and the look card on the selection beneath the notes. */
+.cnb-kse-select { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-bottom: var(--space-2); }
+.cnb-kse-select .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
+.cnb-kse-select-button { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
+.cnb-kse-select-button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-part-custom-symbols .cnb-kse-look-card { max-width: 720px; }
+.cnb-kse-look-mixed { font-size: 12px; font-style: italic; color: var(--ink-2); }
+.cnb-kse-import-error { flex-basis: 100%; font-size: 13px; color: var(--error); }
+.cnb-kse-spelled-name { font-size: 12px; color: var(--ink-2); }
+/* The key picker and Edit's layer chips, on one bar. */
+.cnb-kse-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5, 24px); margin-bottom: var(--space-2); }
+.cnb-kse-key { display: flex; align-items: center; gap: var(--space-2); }
+.cnb-kse-key .cnb-kse-field-label { width: auto; }
+.cnb-kse-layers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.cnb-kse-layers .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
+.cnb-kse-layer { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
+.cnb-kse-layer.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* The workspace: the canvas and the other keys, then the look card beside them. */
+.cnb-kse-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start; margin-bottom: var(--space-3); }
+/* The canvas (design §13.8): the picked key's signature at 24 px a semitone, its height capped. */
+.cnb-kse-stage { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-kse-canvas {
+  max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-m);
+  background: var(--surface); padding: var(--space-3); touch-action: none; user-select: none;
+}
+.cnb-kse-canvas-svg { display: block; margin: 0 auto; }
+.cnb-kse-canvas-svg [data-mark] { cursor: move; }
+.cnb-kse-canvas-empty { font-size: 13px; color: var(--ink-2); padding: var(--space-4); text-align: center; }
+.cnb-kse-selection { pointer-events: none; }
+.cnb-kse-instance { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+.cnb-kse-instance.focus { stroke-dasharray: none; stroke-width: 1.5; }
+.cnb-kse-reference { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.cnb-kse-handle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; pointer-events: all; cursor: nwse-resize; }
+.cnb-kse-readout { font-size: 12px; fill: var(--accent); font-family: var(--font); }
+/* The other keys: the mode's 15 keys as small signatures, a key whose marks touch outlined. */
+.cnb-kse-keys { display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-kse-keys-title { width: auto; }
+.cnb-kse-key-strip { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.cnb-kse-mini {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;
+  min-width: 44px; padding: var(--space-1); background: var(--surface); border-radius: var(--radius-s);
+}
+.cnb-kse-mini.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-mini.touch { border-color: var(--error); }
+.cnb-kse-mini-name { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.cnb-kse-mini.touch .cnb-kse-mini-name { color: var(--error); }
+.cnb-kse-touch-summary { font-size: 13px; color: var(--ink-2); }
+.cnb-kse-touch-list .cnb-kse-touch-summary { color: var(--error); cursor: pointer; }
+.cnb-kse-touch-keys { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+.cnb-kse-touch-key { font-size: 12px; min-height: 26px; }
+.cnb-kse-look-card {
+  border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--bg);
+  padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+}
+.cnb-kse-look-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.cnb-kse-look-scope { font-size: 12px; color: var(--accent); }
+.cnb-kse-look-words { font-size: 12px; color: var(--ink-2); }
+.cnb-kse-look-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.cnb-kse-look-group-label { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+.cnb-kse-look-group > button { min-height: 28px; font-size: 13px; }
+.cnb-kse-look-shape { min-width: 44px; min-height: 40px; padding: var(--space-1) var(--space-2); }
+.cnb-kse-look-group > button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-look-remove { min-width: 28px; padding: 0 var(--space-1); color: var(--ink-2); }
+.cnb-kse-look-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; }
+.cnb-kse-look-height, .cnb-kse-look-width, .cnb-kse-look-offset-x, .cnb-kse-look-offset-y { width: 64px; }
+.cnb-kse-look-import { flex-basis: 100%; }
+.cnb-kse-look-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
+.cnb-kse-look-import-status { font-size: 13px; color: var(--error); }
+/* An imported symbol's reference point (session 56, design §13.3): enlarged, a click sets it. */
+.cnb-kse-reference-picker, .cnb-cle-anchor-picker {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2);
+  border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--surface);
+}
+.cnb-kse-reference-svg, .cnb-cle-anchor-svg { align-self: center; cursor: crosshair; background: var(--bg); border-radius: var(--radius-s); }
+.cnb-kse-reference-done, .cnb-cle-anchor-done { align-self: flex-start; font-size: 13px; }
+/* A clef's anchor point (session 59): marked as a symbol's reference point is. */
+.cnb-cle-anchor-mark { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.cnb-cle-pick-anchor { margin-top: var(--space-2); font-size: 13px; }
+.cnb-cle-pick-anchor.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.cnb-cle-anchor-picker { margin-top: var(--space-2); }
+.cnb-cle-size { margin-top: var(--space-2); }
+/* Notes, Stacks and Place (design §7): a label column, then the row's controls. */
+.cnb-kse-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-3); margin: var(--space-3) 0; max-width: 720px; }
+.cnb-kse-row-label { font-size: 13px; font-weight: 600; color: var(--ink-2); padding-top: 2px; }
+.cnb-kse-row-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-kse-radios { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.cnb-kse-stacking { flex-direction: column; }
+.cnb-kse-radio, .cnb-kse-check { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; font-size: 13px; }
+.cnb-kse-radio.on { color: var(--accent); font-weight: 600; }
+.cnb-kse-direction { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cnb-kse-direction .cnb-kse-field-label, .cnb-kse-window .cnb-kse-field-label { width: auto; }
+.cnb-kse-heights { display: flex; flex-direction: column; gap: var(--space-2); margin-left: var(--space-5, 24px); }
+.cnb-kse-separator .cnb-kse-sep-share { margin-left: var(--space-5, 24px); }
+.cnb-kse-share-text { font-size: 12px; color: var(--ink-2); }
+.cnb-kse-definitions { margin-top: var(--space-5, 24px); }
+@media (max-width: 1100px) {
+  .cnb-kse-workspace { grid-template-columns: 1fr; }
+  }
+
+/* ── Selecting noteheads (session 27, design §2, §6.2) ─────────────────── */
+/* A column is the hit target. Selection: a 2 px accent outline and a faint
+ * tint over the whole column, labels included; hover of a rule: the tint.
+ * A Shift+click selects noteheads, not the labels' text (session 42). */
+.canvas-card .cnb-pvd-preview .pc-col { cursor: pointer; border-radius: var(--radius-s); user-select: none; }
+.canvas-card .cnb-pvd-preview .pc-col:hover { background: rgba(47, 91, 211, .04); }
+.cnb-pvd-preview .pc-col.cnb-pvd-tint { background: rgba(47, 91, 211, .09); }
+.cnb-pvd-preview .pc-col.cnb-pvd-selected {
+  background: rgba(47, 91, 211, .07); box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* The Noteheads section's rule list (§5.4). */
+.cnb-nhp-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cnb-nhp-rule {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 36px;
+  padding: var(--space-1) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.cnb-nhp-rule:hover { background: var(--accent-soft); border-color: #c9d6f6; }
+.cnb-nhp-rule-marks { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; width: 88px; }
+.cnb-nhp-rule-swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+.cnb-nhp-rule-words { font-size: 14px; }
+
+/* The notehead panel (§2): three columns under the canvas. */
+.notehead-panel-card[hidden] { display: none; }
+.cnb-notehead-panel { display: flex; flex-direction: column; }
+.cnb-nhp-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line);
+}
+.cnb-nhp-title { font-size: 20px; }
+.cnb-nhp-summary { flex: 1; font-size: 13px; color: var(--ink-2); }
+.cnb-nhp-close { background: transparent; border-color: transparent; color: var(--ink-2); }
+.cnb-nhp-import #import-status:empty, .cnb-nhp-import #import-warnings:empty { display: none; }
+.cnb-nhp-kept {
+  margin: var(--space-3) var(--space-4) 0; padding: var(--space-2) var(--space-3); font-size: 13px;
+  color: var(--warn); background: var(--warn-soft); border-radius: var(--radius-s);
+}
+.cnb-nhp-body {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr) minmax(0, 300px);
+  gap: var(--space-5); padding: var(--space-4);
+}
+.cnb-nhp-col { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.cnb-nhp-closeup {
+  display: flex; justify-content: center; padding: var(--space-2);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.cnb-nhp-closeup .pc-col { cursor: default; }
+.cnb-nhp-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cnb-nhp-label {
+  flex-basis: 100%; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.cnb-nhp-swatches { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nhp-swatch {
+  width: 24px; height: 24px; min-height: 24px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.18);
+}
+.cnb-nhp-swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.cnb-nhp-none, .cnb-nhp-rule-swatch.cnb-nhp-none {
+  background: linear-gradient(135deg, #fff 45%, var(--error) 45%, var(--error) 55%, #fff 55%);
+}
+.cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock {
+  display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--ink-2);
+}
+/* Suggested colours (session 37): a help disclosure in the Colour group. */
+.cnb-nhp-suggest { flex-basis: 100%; font-size: 13px; }
+.cnb-nhp-suggest > summary { cursor: pointer; color: var(--accent); }
+.cnb-nhp-suggest-note { color: var(--ink-2); margin: var(--space-2) 0; max-width: 520px; }
+.cnb-nhp-suggest-sets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cnb-nhp-suggest-set { display: flex; align-items: center; gap: var(--space-2); }
+.cnb-nhp-suggest-swatches { display: inline-flex; gap: 2px; width: 150px; flex: none; }
+.cnb-nhp-suggest-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.15); }
+.cnb-nhp-suggest-label { flex: 1; color: var(--ink-2); }
+.cnb-nhp-suggest-apply { min-height: 26px; font-size: 12px; }
+.cnb-nhp-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.cnb-nhp-segmented > button { min-height: 30px; border: 0; border-right: 1px solid var(--line); border-radius: 0; font-size: 13px; }
+.cnb-nhp-segmented > button:last-child { border-right: 0; }
+.cnb-nhp-segmented > button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cnb-nhp-shapes { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.cnb-nhp-shape-option { min-width: 52px; min-height: 40px; padding: var(--space-1) var(--space-2); }
+.cnb-nhp-shape-option.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+/* The point of the shape that sits on the pitch (session 60), picked as a
+   key-signature symbol's reference point is: a line at the picked height. */
+.cnb-nhp-reference { flex-basis: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.cnb-nhp-reference-pick { font-size: 13px; }
+.cnb-nhp-reference-picker {
+  gap: var(--space-2); padding: var(--space-2);
+  border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--surface);
+}
+.cnb-nhp-reference-svg { align-self: center; cursor: crosshair; background: var(--bg); border-radius: var(--radius-s); }
+.cnb-nhp-reference-line { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.cnb-nhp-reference-buttons { display: flex; gap: var(--space-2); }
+.cnb-nhp-reference-buttons button { font-size: 13px; }
+.cnb-nhp-import { flex-basis: 100%; }
+.cnb-nhp-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
+.cnb-nhp-unit { font-size: 12px; color: var(--ink-2); }
+.cnb-nhp-hint { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+
+/* ── The label strip (session 28, design §4.2, §6.2) ──────────────────── */
+/* Quiet everywhere: plain grey labels on the inset surface with a hairline
+ * on its right, a guide, not notation. In the Pitch section the labels
+ * become chips that drag, and a blue line marks the middle of the staff. */
+.cnb-pvd-preview .label-col { background: var(--surface-2); border-right: 1px solid var(--line); }
+/* Visible: the first and last labels sit at the slice's edges and show in
+ * the strip's label-height spacers instead of being cut in half. */
+.cnb-pvd-preview .label-slice { overflow: visible; touch-action: none; }
+.cnb-pvd-preview .pitch-label text { fill: var(--ink-2); font-family: var(--font); font-size: 11px; }
+.cnb-pvd-preview .pitch-chip { fill: none; stroke: none; }
+.cnb-pvd-preview .staff-middle { stroke: none; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .label-slice { cursor: grab; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .label-slice:active { cursor: grabbing; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .pc-col { cursor: ns-resize; touch-action: none; }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-chip { fill: var(--surface); stroke: var(--line); }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-label text { fill: var(--ink); }
+.cnb-pvd-pitch-mode .cnb-pvd-preview .staff-middle { stroke: var(--accent); stroke-width: 1.5; }
+/* Clef mode (session 45): the clef drags up and down, its bottom edge resizes it. */
+.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col { cursor: grab; touch-action: none; }
+.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col:active { cursor: grabbing; }
+.cnb-pvd-clef-mode .cnb-pvd-preview .cnb-clef-resize {
+  visibility: visible; fill: var(--accent); fill-opacity: .35; cursor: ns-resize;
+}
+.cnb-pvd-pitch-hint:empty { display: none; }
+.cnb-pvd-pitch-hint { font-size: 12px; color: var(--ink-2); margin-left: auto; }
+.cnb-pvd-pitch-hint:not(:empty) + .cnb-pvd-size { margin-left: var(--space-3); }
+
+/* ── The Pitch section (session 28, design §3, mock-up 3) ─────────────── */
+.cnb-pitch-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.cnb-pp-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+.cnb-pp-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.cnb-pp-label, .cnb-nhp-name .cnb-nhp-label {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 0;
+}
+.cnb-pp-middle { max-width: 120px; }
+.cnb-pp-spacing-row { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cnb-pp-spacing { width: 90px; }
+.cnb-pp-unit { font-size: 13px; color: var(--ink-2); }
+.cnb-pp-hint { font-size: 12px; color: var(--ink-2); margin: 0; max-width: 560px; }
+.cnb-pp-error { font-size: 12px; color: var(--error); margin: 0; }
+.cnb-pp-custom {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); border-radius: var(--radius-s); background: var(--warn-soft); color: var(--warn);
+}
+.cnb-pp-custom-text { margin: 0; flex: 1 1 320px; font-size: 13px; }
+.cnb-pp-nudges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.cnb-pp-nudge {
+  /* Each pitch class's nudge in its own light grey frame (session 43), so
+   * the field reads as its notehead's and not its neighbour's. */
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s);
+  background: var(--surface-2);
+}
+.cnb-pp-nudge-head { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: var(--space-2); font-size: 13px; }
+.cnb-pp-nudge-name { font-weight: 600; }
+.cnb-pp-nudge-shares { font-size: 12px; color: var(--accent); }
+.cnb-pp-nudge-field { width: 64px; flex: none; }
+.cnb-pp-nudge.disabled { opacity: .6; }
+.cnb-nhp-name-select { max-width: 120px; }
+
+@media (max-width: 1180px) {
+  .cnb-pp-nudges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cnb-nhp-body { grid-template-columns: 180px minmax(0, 1fr); }
+  .cnb-nhp-right { grid-column: 1 / -1; }
+}

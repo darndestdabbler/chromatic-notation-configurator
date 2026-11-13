@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 049 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 049 transcript</h1>
+<p class="stamp">Rendered 2026-11-11T14:11:46.535Z by dabbler-ai-router 3.32.1 at 344c9a5fb0fc7209cd7d1a1909f8136f8d468ca7.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-11T07:12:08.924-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 49: Scale notes reach LilyPond</h3>
+<p><strong>Why.</strong> The engraving has to draw what the canvas draws (design §9).</p>
+<ol><li>Register.</li><li>Once engine session 30 has landed (otherwise the step is blocked): the exporter writes the mark table, 105 keys, for any signature whose effective settings are not today's; today's signature exports byte for byte as before. LY spec 1.3.15 §5.6a, the architecture plan, the README.</li><li>An engine round trip on a representative set (the default and Clairnote DN fixtures; each stacking rule; the upper tonic on and off; the half steps alone; the bottom, top and every line set; several gold stems) holds each engraved mark's height, column and look, each bar, and the signature's width to the preview's within 0.001 staff spaces. A key the table lacks engraves no signature and warns. The five export baselines stay byte-identical.</li></ol>
+<p>*(Done in session 49, 2026-11-11: the table exports and its marks, bars and ledger lengths engrave as drawn, at any magnification. At the operator's request the preview was made as true as possible: a mark-table signature is spaced by its ink as the engine spaces it, and every signature's gold stems have round caps and its ledgers their engraved length. The round trip also found that the engine's signature heads take ledgers from its own rule rather than the notation's, so the ink was held only where the two agree; at the operator's choice the fix is engine session 33 (engine 1.4.1, session 34 its release), and session 51 holds the rest once it lands.)*</p>
+<h2>Work Plan</h2>
+<p>Export the key-signature designer's scale-note signatures to LilyPond (design docs/planning/key-signature-designer-design.md section 9), once engine session 30, the mark-list hook (cnb:keysig-style 'marks and cnb:keysig-marks), has landed in the engine repository; until then the export step is reported blocked. The exporter decides from the signature's effective settings (those that apply to its kind and stacking rule, not every stored field) whether it is today's: today's signature exports byte for byte as before ('chord, or 'none when off), and any other writes cnb:keysig-style 'marks and a mark table of 105 entries, the 15 spellings of each of the 7 modes, each keyed by the tonic's note name and alteration and the key's sorted pitch classes, giving its columns' x offsets in staff spaces, its gold bars (x, two ends in engine semitones, colour, thickness) and its marks (engine semitone, column, head with the shape, hollow and colour names Section A registers, a sized variant where sized), all computed by CNBKeySignature.marks; Section A registers the shapes, variants and colours the table uses. The LY spec gains 1.3.15 section 5.6a, and the architecture plan and the README follow. An engine round trip on a representative set (the default and Clairnote DN fixtures; each stacking rule; the upper tonic on and off; the half steps alone; the bottom, top and every line set; several gold stems) holds each engraved mark's height, column and look, each bar, and the signature's width to the preview's within 0.001 staff spaces; a key the table lacks engraves no signature and warns; the five export baselines stay byte-identical.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/ac57b275f981ec7349797ae22590f19f186004a9"><code>ac57b275f981ec7349797ae22590f19f186004a9</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Export mark table</td><td><p>Requires engine session 30 to have landed (the engine repository's cnb sources define cnb:keysig-marks and its configurator-handoff.md exists under docs/session-sets/030-keysig-mark-list/); if it has not, report this step blocked with that diagnosis. Otherwise, in cnb/src/cnb-lilypond.js: decide from the signature's effective settings whether it is today's (keys and signature on, every design-section-6 setting that applies to the kind and stacking at today's value) and keep today's output for it byte for byte; for any other signature with keys and the signature on, write #(set! cnb:keysig-style 'marks) and #(define cnb:keysig-marks ...) in the format the engine's handoff records as landed, with one entry for each of the 7 modes' 15 spellings (CNBMusic.spellings, CNBMusic.scale), its columns, bars and marks from CNBKeySignature.marks, mark semitones in the engine numbering of LY spec section 5.7, and Section A registering every shape, sized variant and colour the table names. Tests in cnb/tests/cnb-lilypond-tests.js: today's signature (off, on at defaults, and with a stored but unused setting) exports unchanged; a non-default signature writes 105 entries, enharmonic spellings and C major against A minor told apart by their keys, the entry's columns, bars and marks matching CNBKeySignature.marks; the five export baselines stay byte-identical. Write LY spec 1.3.15 section 5.6a (header, summary table, Appendix A, change log), the architecture plan's section 4.9 and Module 11 notes, and the README's key-signature text.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');const h='../lilypond-chromatic-notation-base/docs/session-sets/030-keysig-mark-list/configurator-handoff.md';if(!fs.existsSync(h)){console.error('engine session 30 has not landed: '+h+' is missing');process.exit(1)}const s=fs.readFileSync('cnb/src/cnb-lilypond.js','utf8');if(!/cnb:keysig-marks/.test(s)){console.error('the exporter writes no mark table');process.exit(1)}if(!/5\.6a/.test(fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8'))){console.error('LY spec section 5.6a missing');process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Engine round trip</td><td><p>In cnb/tests/engine-probe.js extend measureKeySignature (or add one measurement beside it) to read, from the engraved KeySignature stencil under the engine's 'marks style, each mark's height, column x and look (shape, fill, colour), each bar's x, ends, colour and thickness, and the signature's width, in staff spaces, and to capture the engine's warning. In cnb/tests/cnb-lilypond-tests.js add engine-backed tests (skipped with their reason like the others when LilyPond or the engine is absent) that, for the default config and the Clairnote DN gallery file, under each stacking rule, the upper tonic on and off, the half steps alone, the bottom, top and every line set, and a signature with several gold stems, hold every engraved mark, bar and the width to the preview's (CNBKeySignature.marks and measure) within 0.001 staff spaces, in a sharp key, a flat key and C major; and that a key the table lacks (\key dis \major) engraves no signature and warns naming it.</p></td><td><span class="mono">cnb/tests/engine-probe.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/src/cnb-key-signature.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/fixtures/key-signature-baseline.json</span><br><span class="mono">cnb/fixtures/preview-baseline.json</span><br><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">README.md</span><br><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node -e const r=require('child_process').spawnSync('lilypond',['--version']);if(r.error||r.status!==0){console.error('lilypond is not on PATH, so the round trip would skip');process.exit(1)}if(!require('fs').existsSync('../lilypond-chromatic-notation-base/ChromaticNotationBase.ly')){console.error('engine repository not found');process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No engine code, golden or handoff is written from this repository: the mark-list hook is engine session 30's, and if it has not landed the export step is reported blocked rather than worked around (no fallback to 'chord for a non-default signature, no hand-written engine patch).</li><li>No Key signature panel controls for the new settings and no Clairnote-style dot signatures for the Clairnote SN and DN gallery files (session 50); the Clairnote DN fixture is round-tripped with the signatures session 48's settings can already describe.</li><li>No accidentals: no sharp or flat marks are exported (session 51), though the table's format leaves room for them.</li><li>No change to the preview's signature spacing unless engine session 30's handoff measures the space around a mark-list signature differently from today's 0.75, 3.5 and 4.8636 staff spaces; no other preview change.</li><li>The five export baselines are not regenerated: a config with today's signature exports exactly as before.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:12:08]</span> <span class="muted">run-started</span> session=049 mode=pull</div>
+<div class="line"><span class="at">[12:12:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:13:22]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:13:22]</span> <span class="muted">plan-accepted</span> steps=[&quot;export-mark-table&quot;,&quot;engine-round-trip&quot;] non_goals=5</div>
+<div class="line"><span class="at">[12:13:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:13:23]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=export-mark-table</div>
+<div class="line"><span class="at">[12:13:38]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:13:38]</span> <span class="muted">mechanic-called</span> stop=blocked model=claude-fable-5-1</div>
+<div class="line"><span class="at">[12:13:41]</span> <span class="muted">mechanic-handed-back</span> stop=blocked</div>
+<div class="line"><span class="at">[13:21:18]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">work</span> mode=pull after=blocked step=asked afresh</div>
+<div class="line"><span class="at">[13:21:18]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=export-mark-table</div>
+<div class="line"><span class="at">[13:27:21]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:27:54]</span> <span class="muted">check-passed</span> step=export-mark-table argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const h='../lilypond-chromatic-notation-base/docs/session-sets/030-keysig-mark-list/configurator-handoff.md';if(!fs.existsSync(h)){console.error('engine session 30 has not landed: '+h+' is missing');process.exit(1)}const s=fs.readFileSync('cnb/src/cnb-lilypond.js','utf8');if(!/cnb:keysig-marks/.test(s)){console.error('the exporter writes no mark table');process.exit(1)}if(!/5\\.6a/.test(fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8'))){console.error('LY spec section 5.6a missing');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[13:27:54]</span> <span class="muted">check-passed</span> step=export-mark-table argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[13:27:54]</span> <span class="muted">report-accepted</span> seq=3 step=export-mark-table files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;README.md&quot;] notes=Engine session 30 has landed (handoff 030). A signature whose applicable settings are not the scale stack exports 'marks and cnb:keysig-marks, 105 keys from CNBKeySignature.marks for the picker's key; Section A registers the marks' looks; today's signature and the five baselines are byte-identical; LY spec 1.3.15 s5.6a, architecture plan, README.</div>
+<div class="line"><span class="at">[13:27:54]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=engine-round-trip</div>
+<div class="line"><span class="at">[14:06:51]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="muted">check-passed</span> step=engine-round-trip argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const r=require('child_process').spawnSync('lilypond',['--version']);if(r.error||r.status!==0){console.error('lilypond is not on PATH, so the round trip would skip');process.exit(1)}if(!require('fs').existsSync('../lilypond-chromatic-notation-base/ChromaticNotationBase.ly')){console.error('engine repository not found');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="muted">check-passed</span> step=engine-round-trip argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="muted">report-accepted</span> seq=4 step=engine-round-trip files=[&quot;cnb/tests/engine-probe.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/fixtures/key-signature-baseline.json&quot;,&quot;cnb/fixtures/preview-baseline.json&quot;,&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;README.md&quot;,&quot;docs/sessions/session-plan.md&quot;] notes=measureKeySignatureMarks reads every engraved signature; round trip (default, Clairnote DN, every setting, D/Bb/C, magnify 1, 7/4, 5/2, magnifyStaff) holds heads, bars, ledger lengths and ink to 0.001 where the engine's ledger rule agrees; D# major warns. Per the operator, the preview follows the engine: mark-table spacing by ink, round bar caps, engraved ledger length (baselines re-captured, proven caps/length only); signature ledgers planned as engine session 33.</div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="good">progress-resumed</span> past=blocked from=work phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:07:30]</span> <span class="muted">job-started</span> name=verification pid=36616 log=.dabbler/runs/s49/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:09:18]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s49/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:09:18]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[14:09:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[14:09:18]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[14:09:55]</span> <span class="muted">run-resumed</span> session=049 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[14:09:56]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[14:09:56]</span> <span class="muted">dispute-recorded</span> round=1 finding=1</div>
+<div class="line"><span class="at">[14:09:56]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[] reject=[0,1] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The operator overrode that non-goal mid-session: asked whether the preview should follow the engine's spacing, they answered \&quot;Let's make the preview as true as possible\&quot; (2026-11-11). The step's files were amended on the record to carry it (cnb-key-signature.js, its tests, and both canvas baselines, whose descriptions each permit re-capture for an approved change), with the operator's request as the stated reason. Every change is an engine-measured fact, not a design choice: the gold stems' round caps and the ledgers' 4/3-plus-caps length are read from the engraved stencils by the new round trip, and the mark-table spacing from renders. Before re-capturing, the session showed that with only the caps and the ledger length undone, all 88 signature probes and all 22 preview probes still matched their old hashes, so nothing else in the preview moved. The session plan's record of session 49 states the operator's request.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The test asked for cannot pass, and making it pass is engine work outside this session. Engine 1.4.0's mark format (handoff 030 section 1) has no per-mark x offset, only a mark's semitone and its column, and the engine maps a bar's ends through the pitch-axis hook, so the preview's middle stem drawn as a length cannot be carried; the compiled hook takes integer semitones (modulo), so the exporter cannot send a fractional end either. LY spec 1.3.15 section 5.6a states both as known divergences rather than claiming equivalence, and the round trip claims only what is carried. Carrying them needs a new field in the engine's format, a design for a future session, not a test that is known to fail.&quot;}]</div>
+<div class="line"><span class="at">[14:09:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:09:56]</span> <span class="muted">job-started</span> name=verification pid=63200 log=.dabbler/runs/s49/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:10:08]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s49/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:10:08]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[14:10:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[14:10:08]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[14:10:08]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=57748 log=.dabbler/runs/s49/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[14:10:48]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s49/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[14:10:48]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[14:10:48]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=6592 log=.dabbler/runs/s49/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[14:11:39]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s49/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[14:11:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[14:11:42]</span> <span class="muted">landed</span> commit=ac57b275f981ec7349797ae22590f19f186004a9</div>
+<div class="line"><span class="at">[14:11:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[14:11:42]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[14:11:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[14:11:42]</span> <span class="muted">job-started</span> name=close pid=59976 log=.dabbler/runs/s49/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:11:46]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s49/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:11:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The change modifies all key-signature preview rendering despite the declared non-goal prohibiting any preview change other than measured signature spacing.</td><td>disputed — The operator overrode that non-goal mid-session: asked whether the preview should follow the engine's spacing, they answered &quot;Let's make the preview as true as possible&quot; (2026-11-11). The step's files were amended on the record to carry it (cnb-key-signature.js, its tests, and both canvas baselines, whose descriptions each permit re-capture for an approved change), with the operator's request as the stated reason. Every change is an engine-measured fact, not a design choice: the gold stems' round caps and the ledgers' 4/3-plus-caps length are read from the engraved stencils by the new round trip, and the mark-table spacing from renders. Before re-capturing, the session showed that with only the caps and the ledger length undone, all 88 signature probes and all 22 preview probes still matched their old hashes, so nothing else in the preview moved. The session plan's record of session 49 states the operator's request.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The table has no round-trip coverage for pitch-axis key signatures, although export is documented as applying “linear and axis configs alike” and the spec admits that mark `xOffsetStaffSpaces` and middle-bar extent are not carried. Add a case with `pitchAxis.enabled`, a non-linear mapping, a mark look/rule with a nonzero x-offset, and a non-default bar extent; engrave a mark-table key and assert its mark x positions and bar ends match the preview within `0.001` staff spaces. Today `markTableLines()` serializes only `(semi column head ...)` and the documented divergence indicates that case will not meet the claimed equivalence.</td><td>disputed — The test asked for cannot pass, and making it pass is engine work outside this session. Engine 1.4.0's mark format (handoff 030 section 1) has no per-mark x offset, only a mark's semitone and its column, and the engine maps a bar's ends through the pitch-axis hook, so the preview's middle stem drawn as a length cannot be carried; the compiled hook takes integer semitones (modulo), so the exporter cannot send a fractional end either. LY spec 1.3.15 section 5.6a states both as known divergences rather than claiming equivalence, and the round trip claims only what is carried. Carrying them needs a new field in the engine's format, a design for a future session, not a test that is known to fail.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>40s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>50s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
