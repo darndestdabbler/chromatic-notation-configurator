@@ -515,6 +515,20 @@ export const CNBKeySignatureEditor = {
   },
 
   /**
+   * The column gap a drag of the second stack by dx px writes, from the gap
+   * it started at (session 66, step-by-step design §3.4): the second stack
+   * moves by exactly the gap, so the gap follows the pointer, in semitones
+   * (axis units under a pitch axis), snapped to tenths; negative tightens.
+   * @param {number} start
+   * @param {number} dx   px, right
+   * @param {number} pxPerSemi
+   * @returns {number}
+   */
+  dragGap(start, dx, pxPerSemi) {
+    return snap(start + dx / pxPerSemi);
+  },
+
+  /**
    * Build a ready `config.keys` slice from editor state. Pure function;
    * throws on structurally invalid state (see module header) rather than
    * guessing. Mid-edit-reachable situations (empty definition name, no
@@ -880,8 +894,12 @@ export const CNBKeySignatureEditor = {
    *        kept in view.spelled, and the look card on every selected note's
    *        looks.spelled entry, a field they disagree on shown as mixed),
    *        "designer" (step 8: the key picker,
-   *        the canvas, Notes, Stacks and Place), "preview" (step 9: the
-   *        mode's 15 keys and the touch list) and "definitions" (Advanced:
+   *        the canvas, Notes, Stacks with the space between stacks, also set
+   *        by dragging the canvas's grip over the second stack (session 66),
+   *        every second stack's look card, its symbol picked in
+   *        view.alternateCard, and Place), "preview" (step 9, session 66:
+   *        the touch line and its list, then the 7 modes as rows, each its
+   *        15 keys, a click picking one through onKey) and "definitions" (Advanced:
    *        Use keys, the keys-off note, Keys for notehead rules and the
    *        validation). Without it the whole panel draws, as before.
    * @returns {{root: HTMLElement, getState: () => object,
@@ -942,7 +960,17 @@ export const CNBKeySignatureEditor = {
     // the layer picked in Edit.
     const spelledMode = !!parts && parts.has("custom-symbols");
     if (!Array.isArray(view.spelled)) view.spelled = [];
-    const targets = () => (spelledMode ? view.spelled.map(n => SPELLED_PREFIX + n) : [view.layer]);
+    // Step 8 (session 66, design §3.4): its look card edits every second
+    // stack, with a symbol picked of its own, so the canvas's drags keep the
+    // layer and symbol a click on a mark picks.
+    const designerMode = !!parts && parts.has("designer");
+    if (!isPlainObject(view.alternateCard)) view.alternateCard = { symbol: "base" };
+    const cardView = designerMode ? view.alternateCard : view;
+    if (cardView.symbol !== "base" && !Number.isInteger(cardView.symbol)) cardView.symbol = "base";
+    // What the look card writes: the selected spelled notes, every second
+    // stack, or the layer picked in Edit.
+    const targets = () => (spelledMode ? view.spelled.map(n => SPELLED_PREFIX + n)
+      : [designerMode ? "alternate" : view.layer]);
     const confirm = opts.confirm ||
       ((question) => (typeof globalThis.confirm === "function" ? globalThis.confirm(question) : true));
 
@@ -1195,7 +1223,7 @@ export const CNBKeySignatureEditor = {
           state.keySignature = CNBKeySignatureEditor.startFrom(state.keySignature, which);
           // Nothing picked: the steps have no Edit row to unpin a layer, so a
           // click on step 8's canvas picks the mark's spelling.
-          Object.assign(view, { layer: "all", symbol: "base", pinned: false, spelled: [] });
+          Object.assign(view, { layer: "all", symbol: "base", pinned: false, spelled: [], alternateCard: { symbol: "base" } });
           let extra;
           if (which === "custom" && !Object.hasOwn(baseConfig.shapes || {}, "parallelogram")) {
             baseConfig.shapes = CNBBuiltinShapes.withShape(baseConfig, "parallelogram").shapes;
@@ -1362,7 +1390,8 @@ export const CNBKeySignatureEditor = {
       const grid = CNBGrid.create(picked, { minSemi: Math.floor(low) - 1, maxSemi: Math.ceil(high) + 1 });
       const left = CNBKeySignature.padding(picked, PX, name).left + (m.extraLeftPx || 0);
       const lineX = (mk, i) => left + m.lead + mk.column * m.step + (m.offsets ? m.offsets[i] : 0);
-      return { config: picked, name, m, grid, symbols, lineX, width: 2 * left + m.contentWidth,
+      const stackX = (column) => left + m.lead + column * m.step;
+      return { config: picked, name, m, grid, symbols, lineX, stackX, width: 2 * left + m.contentWidth,
         members: layerMembers(picked, active.def) };
     }
 
@@ -1411,8 +1440,8 @@ export const CNBKeySignatureEditor = {
           d: `M ${px - 5} ${py} H ${px + 5} M ${px} ${py - 5} V ${py + 5}` }));
         const hx = x + sym.box.x1, hy = y + sym.box.y1;
         overlay.appendChild(SVG("rect", { class: "cnb-kse-handle", "data-handle": "1", x: hx - 4, y: hy - 4, width: 8, height: 8 }));
-        if (drag && drag.moved) {
-          const look = selectedLook();
+        if (drag && drag.moved && drag.kind !== "gap") {
+          const look = view.symbol === "base" ? null : (peekLook(state.keySignature, view.layer).added || [])[view.symbol];
           const h = sym.s.kind === "sign" ? CNBKeySignature.signHeight(config).semis
             : sym.s.heightSemis ?? config.shapes[sym.s.shape].semitoneHeight;
           const off = (sel === 0 ? m.marks[i].mark.offset : look && look.offset) || { x: 0, y: 0 };
@@ -1421,14 +1450,35 @@ export const CNBKeySignatureEditor = {
           overlay.appendChild(readout);
         }
       }
+      if (designerMode && m.columns >= 2) overlay.appendChild(drawGapGrip(model));
       svg.appendChild(overlay);
       box.appendChild(svg);
+    }
+
+    /** Step 8's grip over the second stack (session 66, design §3.4): a
+     *  horizontal drag of it sets the space between stacks, shown beside it
+     *  while the pointer moves. */
+    function drawGapGrip(md) {
+      const x = md.stackX(1);
+      const g = SVG("g", { class: "cnb-kse-gap-grip", "data-gap-handle": "1" });
+      const title = SVG("title", {});
+      title.textContent = "Drag to change the space between stacks";
+      g.appendChild(title);
+      g.appendChild(SVG("rect", { class: "cnb-kse-gap-handle", "data-gap-handle": "1", x: x - 7, y: 1, width: 14, height: 10, rx: 2 }));
+      g.appendChild(SVG("path", { class: "cnb-kse-gap-arrows", "data-gap-handle": "1", d: `M ${x - 4} 6 H ${x + 4} M ${x - 4} 6 l 2 -2 M ${x - 4} 6 l 2 2 M ${x + 4} 6 l -2 -2 M ${x + 4} 6 l -2 2` }));
+      if (drag && drag.kind === "gap" && drag.moved) {
+        const readout = SVG("text", { class: "cnb-kse-readout cnb-kse-gap-readout", x: x + 11, y: 10 });
+        readout.textContent = `space between stacks ${(state.keySignature.columnGap ?? 0).toFixed(1)} semitones`;
+        g.appendChild(readout);
+      }
+      return g;
     }
 
     /** The symbol or handle a pointer went down on, or null. */
     function hitOf(target, box) {
       for (let t = target; t && t !== box; t = t.parentNode) {
         if (!t.getAttribute) return null;
+        if (t.getAttribute("data-gap-handle")) return { gap: true };
         if (t.getAttribute("data-handle")) return { handle: true };
         const mark = t.getAttribute("data-mark");
         if (mark !== null && mark !== undefined) return { mark: Number(mark), symbol: Number(t.getAttribute("data-symbol")) };
@@ -1518,40 +1568,45 @@ export const CNBKeySignatureEditor = {
       return svg;
     }
 
-    /** Beneath the canvas: the picked mode's 15 keys, each a small
-     *  signature, a key whose marks touch outlined with its count; and the
-     *  line saying how many of the 105 keys have marks that touch, which
-     *  opens their list. The touch check runs here, when the panel draws
-     *  after a change, never while a drag moves. */
-    function drawOtherKeys() {
-      const wrap = el("div", "cnb-kse-keys");
-      if (!state.enabled || !state.keySignature.enabled) return wrap;
-      let config;
-      try { config = CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { return wrap; }
-      const touching = CNBKeySignature.touchingKeys(config);
-      const counts = new Map(touching.map(k => [keyName(k), k.count]));
-      const picked = pickedKey();
+    /** The config as edited, for the keys' small signatures, or null when no
+     *  signature is shown (or the state is not a config). */
+    function shownConfig() {
+      if (!state.enabled || !state.keySignature.enabled) return null;
+      try { return CNBKeySignatureEditor.applyToConfig(baseConfig, state); } catch (_) { return null; }
+    }
 
-      wrap.appendChild(el("div", "cnb-kse-field-label cnb-kse-keys-title", `Other keys in ${picked.mode}`));
+    /** A key as a small signature, a button picking it: highlighted when it
+     *  is the picked key, outlined with its count when its marks touch. */
+    function keyButton(config, key, counts, picked) {
+      const count = counts.get(keyName(key)) || 0;
+      const on = key.spelling === picked.spelling && key.mode === picked.mode;
+      const b = el("button", "cnb-kse-mini" + (on ? " on" : "") + (count ? " touch" : ""));
+      b.type = "button";
+      b.setAttribute("data-key", key.spelling);
+      b.setAttribute("data-mode", key.mode);
+      b.title = keyName(key) + (count ? `: marks touch in ${count} ${count === 1 ? "place" : "places"}` : "");
+      const svg = miniSignature(config, key);
+      if (svg) b.appendChild(svg);
+      b.appendChild(el("span", "cnb-kse-mini-name", key.spelling + (count ? ` · ${count} touch` : "")));
+      b.onclick = () => pickKey(key);
+      return control(b);
+    }
+
+    /** A mode's 15 keys, sharp keys then flat keys, as small signatures. */
+    function keyStrip(config, mode, counts, picked) {
       const strip = el("div", "cnb-kse-key-strip");
-      for (const spelling of CNBKeySignatureEditor.keyOrder(picked.mode)) {
-        const key = { tonic: CNBKeySignature.parseTonicPc(spelling), mode: picked.mode, spelling };
-        const count = counts.get(keyName(key)) || 0;
-        const b = el("button", "cnb-kse-mini" + (spelling === picked.spelling ? " on" : "") + (count ? " touch" : ""));
-        b.type = "button";
-        b.setAttribute("data-key", spelling);
-        b.title = keyName(key) + (count ? `: marks touch in ${count} ${count === 1 ? "place" : "places"}` : "");
-        const svg = miniSignature(config, key);
-        if (svg) b.appendChild(svg);
-        b.appendChild(el("span", "cnb-kse-mini-name", spelling + (count ? ` · ${count} touch` : "")));
-        b.onclick = () => pickKey(key);
-        strip.appendChild(control(b));
+      for (const spelling of CNBKeySignatureEditor.keyOrder(mode)) {
+        strip.appendChild(keyButton(config,
+          { tonic: CNBKeySignature.parseTonicPc(spelling), mode, spelling }, counts, picked));
       }
-      wrap.appendChild(strip);
+      return strip;
+    }
 
+    /** The line saying how many of the 105 keys have marks that touch,
+     *  opening their list, each a button picking its key. */
+    function touchLine(touching) {
       if (touching.length === 0) {
-        wrap.appendChild(el("div", "cnb-kse-touch-summary", "No marks touch in any of the 105 keys."));
-        return wrap;
+        return el("div", "cnb-kse-touch-summary", "No marks touch in any of the 105 keys.");
       }
       const list = el("details", "cnb-kse-touch-list");
       list.open = touchListOpen;
@@ -1567,7 +1622,45 @@ export const CNBKeySignatureEditor = {
         keys.appendChild(control(b));
       }
       list.appendChild(keys);
-      wrap.appendChild(list);
+      return list;
+    }
+
+    /** Beneath the canvas (the whole panel): the picked mode's 15 keys, a
+     *  key whose marks touch outlined with its count, and the touch line.
+     *  The touch check runs here, when the panel draws after a change,
+     *  never while a drag moves. */
+    function drawOtherKeys() {
+      const wrap = el("div", "cnb-kse-keys");
+      const config = shownConfig();
+      if (!config) return wrap;
+      const touching = CNBKeySignature.touchingKeys(config);
+      const counts = new Map(touching.map(k => [keyName(k), k.count]));
+      const picked = pickedKey();
+      wrap.appendChild(el("div", "cnb-kse-field-label cnb-kse-keys-title", `Other keys in ${picked.mode}`));
+      wrap.appendChild(keyStrip(config, picked.mode, counts, picked));
+      wrap.appendChild(touchLine(touching));
+      return wrap;
+    }
+
+    /** Step 9 (session 66, step-by-step design §3.4): every key and mode,
+     *  the touch line above, then a row for each of the 7 modes, each its 15
+     *  keys; a click picks a key, which the host opens in step 8. The touch
+     *  check runs once a draw. */
+    function drawAllKeys() {
+      const wrap = el("div", "cnb-kse-keys cnb-kse-all-keys");
+      const config = shownConfig();
+      if (!config) return wrap;
+      const touching = CNBKeySignature.touchingKeys(config);
+      const counts = new Map(touching.map(k => [keyName(k), k.count]));
+      const picked = pickedKey();
+      wrap.appendChild(touchLine(touching));
+      for (const mode of Object.keys(CNBMusic.MODES)) {
+        const row = el("div", "cnb-kse-mode-row");
+        row.setAttribute("data-mode", mode);
+        row.appendChild(el("div", "cnb-kse-mode-name", mode));
+        row.appendChild(keyStrip(config, mode, counts, picked));
+        wrap.appendChild(row);
+      }
       return wrap;
     }
 
@@ -1577,6 +1670,13 @@ export const CNBKeySignatureEditor = {
       box.onpointerdown = (e) => {
         const hit = model && hitOf(e.target, box);
         if (!hit) return;
+        if (hit.gap) {
+          // The second stack's grip (session 66): its drag sets the gap.
+          drag = { kind: "gap", x0: e.clientX, y0: e.clientY, start: state.keySignature.columnGap ?? 0, moved: false };
+          if (box.setPointerCapture && e.pointerId !== undefined) box.setPointerCapture(e.pointerId);
+          drawCanvas(box);
+          return;
+        }
         if (!hit.handle) selectHit(hit);
         const focus = focusOf(model);
         if (focus === null) return;
@@ -1604,7 +1704,9 @@ export const CNBKeySignatureEditor = {
         if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
         drag.moved = true;
         const E = CNBKeySignatureEditor;
-        if (drag.kind === "move") {
+        if (drag.kind === "gap") {
+          state.keySignature = { ...state.keySignature, columnGap: E.dragGap(drag.start, dx, PX) };
+        } else if (drag.kind === "move") {
           state.keySignature = E.lookWith(state.keySignature, view.layer, view.symbol, "offset",
             E.dragOffset(drag.start, dx, dy, PX));
         } else if (drag.kind === "signs") {
@@ -1628,7 +1730,8 @@ export const CNBKeySignatureEditor = {
       drawCanvas(box);
       stage.appendChild(box);
       stage.appendChild(el("div", "cnb-kse-hint",
-        "Drag a mark to move its category, the corner handle to resize it; values snap to tenths of a semitone. A click picks another mark."));
+        "Drag a mark to move its category, the corner handle to resize it; values snap to tenths of a semitone. A click picks another mark." +
+        (designerMode ? " Drag the grip over the second stack across to change the space between stacks." : "")));
       if (withKeys) stage.appendChild(drawOtherKeys());
       return stage;
     }
@@ -1667,7 +1770,29 @@ export const CNBKeySignatureEditor = {
             (v) => { ks.upperTonic = v; }));
     }
 
-    function drawStacks(ks, sig) {
+    /** Step 8's space between stacks (session 66, design §3.4):
+     *  keySignature.columnGap in semitones, negative tightening; also set by
+     *  dragging the canvas's grip over the second stack. */
+    function drawGap(ks) {
+      const fields = el("div", "cnb-kse-fields cnb-kse-gap");
+      fields.appendChild(el("span", "cnb-kse-field-label", "Space between stacks"));
+      const input = el("input", "cnb-kse-gap-input");
+      input.type = "number";
+      input.step = "0.1";
+      input.value = String(ks.columnGap ?? 0);
+      input.title = "Semitones added between neighbouring stacks; negative tightens them. " +
+        "Or drag the grip over the second stack on the canvas.";
+      input.onchange = (e) => {
+        const v = numberFrom(e, input);
+        if (v !== null) { ks.columnGap = v; changed(); }
+      };
+      fields.appendChild(control(input));
+      fields.appendChild(el("span", "cnb-kse-field-unit", "semitones (negative tightens)"));
+      return fields;
+    }
+
+    /** gap: step 8's space between stacks, or null (the whole panel). */
+    function drawStacks(ks, sig, gap = null) {
       const stacking = radios("cnb-kse-stacking", ks.stacking, [
         ["degrees", "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right"],
         ["parity", "Odd semitones left, even right"],
@@ -1677,7 +1802,7 @@ export const CNBKeySignatureEditor = {
       ], (v) => { ks.stacking = v; });
 
       // The cycle of fifths has its heights, and no direction or gold stem.
-      if (ks.stacking === "fifths") return row("cnb-kse-stacks", "Stacks", stacking, drawHeights(ks));
+      if (ks.stacking === "fifths") return row("cnb-kse-stacks", "Stacks", stacking, drawHeights(ks), gap);
 
       // Odd-left-even-right fixes each side, so the direction does not apply.
       let direction = null;
@@ -1689,7 +1814,7 @@ export const CNBKeySignatureEditor = {
           ["left-in-sharp-keys", "to the left in sharp keys"],
         ], (v) => { ks.columns = v; }));
       }
-      return row("cnb-kse-stacks", "Stacks", stacking, direction, drawGoldStem(ks, sig));
+      return row("cnb-kse-stacks", "Stacks", stacking, direction, gap, drawGoldStem(ks, sig));
     }
 
     // The cycle of fifths' heights (design §13.5): in a window around the
@@ -1781,19 +1906,19 @@ export const CNBKeySignatureEditor = {
     function cardLook() {
       return spelledMode
         ? CNBKeySignatureEditor.mergeLooks(targets().map(t => peekLook(state.keySignature, t)))
-        : lookOf(state.keySignature, view.layer);
+        : lookOf(state.keySignature, targets()[0]);
     }
 
     /** The selected symbol's look: the base's, or one of its added symbols. */
     function selectedLook() {
       const look = cardLook();
-      return view.symbol === "base" ? look : look.added[view.symbol];
+      return cardView.symbol === "base" ? look : look.added[cardView.symbol];
     }
 
     /** A target's selected symbol, its look created when missing. */
     function symbolIn(target) {
       const look = lookOf(state.keySignature, target);
-      return view.symbol === "base" ? look : look.added[view.symbol];
+      return cardView.symbol === "base" ? look : look.added[cardView.symbol];
     }
 
     /** Set a field of the selected symbol of each target, or clear it
@@ -1802,7 +1927,7 @@ export const CNBKeySignatureEditor = {
     function writeLook(field, value, extra) {
       for (const target of targets()) {
         const v = typeof value === "function" ? value(symbolIn(target)) : value;
-        state.keySignature = CNBKeySignatureEditor.lookWith(state.keySignature, target, view.symbol, field, v);
+        state.keySignature = CNBKeySignatureEditor.lookWith(state.keySignature, target, cardView.symbol, field, v);
         // A new shape keeps the symbol's height, and with the aspect ratio kept
         // its width follows the shape's proportions, as in the notehead panel.
         const sym = symbolIn(target);
@@ -1819,7 +1944,7 @@ export const CNBKeySignatureEditor = {
       for (const target of targets()) {
         state.keySignature = CNBKeySignatureEditor.addedWith(state.keySignature, target, added);
       }
-      view.symbol = symbol;
+      cardView.symbol = symbol;
       changed();
     }
 
@@ -1880,7 +2005,7 @@ export const CNBKeySignatureEditor = {
       }
       const adopted = { ...shape, reference: { x: 0, y: 0 } };
       const altered = spelledMode ? view.spelled.length > 0 && view.spelled.every(n => /[♯♭]$/.test(n))
-        : view.layer === "flat" || view.layer === "sharp";
+        : targets()[0] === "flat" || targets()[0] === "sharp";
       if (altered) adopted.ledgers = false;
       baseConfig.shapes = { ...(baseConfig.shapes || {}), [name]: adopted };
       importing = name;
@@ -1929,10 +2054,10 @@ export const CNBKeySignatureEditor = {
           "Select spelled notes to give them a symbol: click one, Shift+click or Ctrl+click to add more, or use Select."));
         return empty;
       }
-      const layer = spelledMode ? "spelled" : view.layer;
+      const layer = spelledMode ? "spelled" : targets()[0];
       const look = cardLook();
-      if (view.symbol !== "base" && !(Array.isArray(look.added) && look.added[view.symbol])) view.symbol = "base";
-      const base = view.symbol === "base";
+      if (cardView.symbol !== "base" && !(Array.isArray(look.added) && look.added[cardView.symbol])) cardView.symbol = "base";
+      const base = cardView.symbol === "base";
       const sym = selectedLook();
 
       const card = el("div", "cnb-kse-look-card");
@@ -1988,7 +2113,7 @@ export const CNBKeySignatureEditor = {
       const group = lookGroup("Symbols", look.added === MIXED);
       const added = Array.isArray(look.added) ? look.added : null;
       const select = (symbol, text) => {
-        const b = lookButton("cnb-kse-look-select", text, view.symbol === symbol, () => { view.symbol = symbol; redraw(); });
+        const b = lookButton("cnb-kse-look-select", text, cardView.symbol === symbol, () => { cardView.symbol = symbol; redraw(); });
         b.setAttribute("data-symbol", String(symbol));
         return b;
       };
@@ -2022,7 +2147,7 @@ export const CNBKeySignatureEditor = {
     // The symbol (design §13.3): a notehead shape, imported or built in, or,
     // for a base, Emmentaler's sharp or flat; one slot.
     function drawLookShape(layer, sym) {
-      const base = view.symbol === "base";
+      const base = cardView.symbol === "base";
       const group = lookGroup("Symbol", sym.shape === MIXED || sym.sign === MIXED);
       if (base) {
         const asBeneath = lookButton("cnb-kse-look-shape cnb-kse-look-as", AS_BENEATH[layer],
@@ -2119,13 +2244,13 @@ export const CNBKeySignatureEditor = {
 
     function drawLookSize(ks, layer, sym) {
       const group = lookGroup("Size", sym.heightSemis === MIXED || sym.widthSemis === MIXED);
-      const base = view.symbol === "base";
+      const base = cardView.symbol === "base";
       const E = CNBKeySignatureEditor;
       group.appendChild(lookButton("cnb-kse-look-size-as", base ? AS_BENEATH[layer] : "its shape's own",
         sym.heightSemis === undefined && sym.widthSemis === undefined, () => {
           for (const target of targets()) {
-            const cleared = E.lookWith(state.keySignature, target, view.symbol, "heightSemis", undefined);
-            state.keySignature = E.lookWith(cleared, target, view.symbol, "widthSemis", undefined);
+            const cleared = E.lookWith(state.keySignature, target, cardView.symbol, "heightSemis", undefined);
+            state.keySignature = E.lookWith(cleared, target, cardView.symbol, "widthSemis", undefined);
           }
           changed();
         }));
@@ -2138,8 +2263,8 @@ export const CNBKeySignatureEditor = {
       const setSize = (size) => {
         for (const target of targets()) {
           const [h, w] = size(symbolIn(target), ratioOf(target));
-          const sized = E.lookWith(state.keySignature, target, view.symbol, "heightSemis", round4(h));
-          state.keySignature = E.lookWith(sized, target, view.symbol, "widthSemis", round4(w));
+          const sized = E.lookWith(state.keySignature, target, cardView.symbol, "heightSemis", round4(h));
+          state.keySignature = E.lookWith(sized, target, cardView.symbol, "widthSemis", round4(w));
         }
         changed();
       };
@@ -2184,7 +2309,7 @@ export const CNBKeySignatureEditor = {
     // pitch on its stack, an added symbol's from the base's point.
     function drawLookOffset(layer, sym) {
       const group = lookGroup("Offset", sym.offset === MIXED);
-      const base = view.symbol === "base";
+      const base = cardView.symbol === "base";
       group.appendChild(lookButton("cnb-kse-look-offset-as", base ? AS_BENEATH[layer] : "none",
         sym.offset === undefined, () => writeLook("offset", undefined)));
       const offset = sym.offset === MIXED ? null : sym.offset || { x: 0, y: 0 };
@@ -2261,10 +2386,13 @@ export const CNBKeySignatureEditor = {
         wrap.appendChild(el("div", "cnb-kse-bar")).appendChild(drawKeyPicker());
         wrap.appendChild(drawStage(false));
         wrap.appendChild(drawNotes(ks));
-        wrap.appendChild(drawStacks(ks, pickedSignature()));
+        wrap.appendChild(drawStacks(ks, pickedSignature(), drawGap(ks)));
+        // Every second stack's look (session 66, design §3.4), the one layer
+        // that is about stacks.
+        wrap.appendChild(row("cnb-kse-alternate", "Every second stack", drawLookCard(ks)));
         wrap.appendChild(drawPlace(ks));
       } else if (part === "preview") {
-        root.appendChild(section("cnb-kse-part-preview")).appendChild(drawOtherKeys());
+        root.appendChild(section("cnb-kse-part-preview")).appendChild(drawAllKeys());
       } else if (part === "definitions") {
         root.appendChild(drawKeysEnable());
         const note = drawDisabledNote();

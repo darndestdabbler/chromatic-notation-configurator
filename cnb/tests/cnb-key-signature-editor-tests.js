@@ -1601,7 +1601,8 @@ export const tests = [
       const TOKENS = {
         "symbol-type": ["cnb-kse-head", "cnb-kse-sig-enable-check", "cnb-kse-start-card"],
         "custom-symbols": ["cnb-kse-select-button", "cnb-kse-look-card"],
-        "designer": ["cnb-kse-canvas", "cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-place"],
+        "designer": ["cnb-kse-canvas", "cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-place",
+          "cnb-kse-gap-input", "cnb-kse-alternate", "cnb-kse-look-card"],
         "preview": ["cnb-kse-keys", "cnb-kse-mini"],
         "definitions": ["cnb-kse-keys-enable", "cnb-kse-definitions", "cnb-kse-validation"],
       };
@@ -1676,6 +1677,185 @@ export const tests = [
       });
   } },
 
+  // ─── Step 8: Key signature designer (session 66, step-by-step design §3.4) ─
+
+  { name: "dragGap: the gap follows a horizontal drag of the second stack, snapped to tenths", fn: () => {
+      eq(E.dragGap(0, 36, 24), 1.5, "36 px right at 24 px a semitone: 1.5 semitones");
+      eq(E.dragGap(0.5, -36, 24), -1, "left tightens, below zero");
+      eq(E.dragGap(0, 7, 24), 0.3, "7 px: 0.2917, snapped to 0.3");
+      eq(E.dragGap(0.2, -5, 24), 0, "back to zero is 0, not −0");
+      assert(!Object.is(E.dragGap(0.2, -5, 24), -0), "not −0");
+  } },
+
+  { name: "step 8: Space between stacks writes columnGap, shows a saved gap, and is there under every stacking", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const config = keysConfig();
+        config.keys.keySignature.columnGap = -0.5;
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" }, parts: ["designer"],
+          onChange: (slices) => { last = slices; } });
+        const input = () => findAll(api.root, "cnb-kse-gap-input")[0];
+        eq(input().value, "-0.5", "the saved gap shown");
+        input().onchange({ target: { value: "1.2" } });
+        eq(last.keys.keySignature.columnGap, 1.2, "the gap written");
+        input().onchange({ target: { value: "" } });
+        eq(last.keys.keySignature.columnGap, 1.2, "an empty field writes nothing");
+        const fifths = findAll(api.root, "cnb-kse-radio").find(r => r.getAttribute("data-value") === "fifths");
+        findAll(fifths, "cnb-kse-radio-input")[0].onchange();
+        eq(findAll(api.root, "cnb-kse-gap-input").length, 1, "under the cycle of fifths too");
+      });
+      // The whole panel keeps its layout (non-goal): no gap field there.
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" } });
+        eq(findAll(api.root, "cnb-kse-gap-input").length + findAttr(api.root, "class", "cnb-kse-gap-grip").length, 0,
+          "the whole panel has no gap field or grip");
+      });
+  } },
+
+  { name: "step 8: the grip is over the second stack, and only when there is one", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: ["designer"] });
+        const canvas = findAll(api.root, "cnb-kse-canvas")[0];
+        const grips = findAttr(canvas, "class", "cnb-kse-gap-grip");
+        eq(grips.length, 1, "C major's two stacks: one grip");
+        // Over the second stack's line: the marks of column 1 are centred on it.
+        const live = E.applyToConfig(keysConfig(), E.stateFromConfig(keysConfig()));
+        const m = CNBKeySignature.measure(live, 24, "C");
+        const handle = findAttr(grips[0], "class", "cnb-kse-gap-handle")[0];
+        const x = Number(handle.getAttribute("x")) + Number(handle.getAttribute("width")) / 2;
+        const left = CNBKeySignature.padding(live, 24, "C").left + (m.extraLeftPx || 0);
+        assert(Math.abs(x - (left + m.lead + m.step)) < 1e-6, `the grip at the second stack's line: ${x}`);
+      });
+      withDomStub((container) => {
+        // G major, the traditional signature: one sharp, one column.
+        const config = keysConfig();
+        config.keys.keySignature = E.startFrom(config.keys.keySignature, "traditional");
+        const api = E.render(container, { config, key: { tonic: 7, mode: "major" }, parts: ["designer"] });
+        const canvas = findAll(api.root, "cnb-kse-canvas")[0];
+        assert(symbolsIn(canvas).length > 0, "the sharp is drawn");
+        eq(findAttr(canvas, "class", "cnb-kse-gap-grip").length, 0, "one column: no grip");
+      });
+  } },
+
+  { name: "step 8: dragging the grip sets the gap, snapped, shown while dragging, reported once on release", fn: () => {
+      withDomStub((container) => {
+        const changes = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: ["designer"],
+          onChange: (slices) => { changes.push(slices); } });
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        const handle = findAttr(canvas(), "class", "cnb-kse-gap-handle")[0];
+        canvas().onpointerdown({ target: handle, clientX: 200, clientY: 5, pointerId: 1 });
+        canvas().onpointermove({ clientX: 210, clientY: 5 });
+        canvas().onpointermove({ clientX: 236, clientY: 9 });
+        eq(changes.length, 0, "nothing reported while it moves");
+        assert(subtreeText(canvas()).includes("space between stacks 1.5 semitones"), "the gap beside the grip");
+        canvas().onpointerup({});
+        eq(changes.length, 1, "one change: one step of undo");
+        eq(changes[0].keys.keySignature.columnGap, 1.5, "36 px: 1.5 semitones");
+        deepEq(changes[0].keys.keySignature.looks, CNBConfig.createDefault().keys.keySignature.looks, "no look moved");
+        eq(findAll(api.root, "cnb-kse-gap-input")[0].value, "1.5", "the field shows it");
+        // A second drag starts from the gap set.
+        const again = findAttr(canvas(), "class", "cnb-kse-gap-handle")[0];
+        canvas().onpointerdown({ target: again, clientX: 0, clientY: 0, pointerId: 1 });
+        canvas().onpointermove({ clientX: -60, clientY: 0 });
+        canvas().onpointerup({});
+        eq(changes[1].keys.keySignature.columnGap, -1, "60 px left of 1.5: −1");
+        // A press without a move changes nothing.
+        canvas().onpointerdown({ target: findAttr(canvas(), "class", "cnb-kse-gap-handle")[0], clientX: 0, clientY: 0, pointerId: 1 });
+        canvas().onpointerup({});
+        eq(changes.length, 2, "a press alone reports nothing");
+      });
+  } },
+
+  { name: "step 8: every second stack's look card writes keySignature.alternate, and the canvas keeps its own layer", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const view = { layer: "sharp", symbol: "base", pinned: false };
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 2, mode: "major" }, parts: ["designer"], view,
+          onChange: (slices) => { last = slices; } });
+        const card = findAll(api.root, "cnb-kse-look-card")[0];
+        eq(card.getAttribute("data-look"), "alternate", "the card edits every second stack");
+        assert(subtreeText(card).includes("Every second stack"), "named so");
+        eq(findAll(card, "cnb-kse-look-height").length, 0, "no size for the alternate base");
+        findAll(card, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "hollow").onclick();
+        eq(last.keys.keySignature.alternate.hollow, true, "alternate hollow");
+        deepEq(last.keys.keySignature.looks.sharp, {}, "the canvas's layer untouched");
+        findAll(api.root, "cnb-kse-look-colour-input")[0].onchange({ target: { value: "#AA0000" } });
+        eq(last.keys.keySignature.alternate.color, "#aa0000", "alternate colour");
+        // An added symbol on the alternate stacks: the card's own symbol is
+        // picked, the canvas's stays the base.
+        findAll(api.root, "cnb-kse-look-add")[0].onclick();
+        eq(last.keys.keySignature.alternate.added.length, 1, "an added symbol");
+        eq(view.alternateCard.symbol, 0, "the card picks it");
+        eq(view.symbol, "base", "the canvas keeps the base");
+        // A drag on the canvas still moves the layer a click picks.
+        const canvas = () => findAll(api.root, "cnb-kse-canvas")[0];
+        const target = symbolsIn(canvas()).find(e => e.getAttribute("data-mark") === "2");
+        canvas().onpointerdown({ target, clientX: 100, clientY: 100, pointerId: 1 });
+        canvas().onpointermove({ clientX: 124, clientY: 100 });
+        canvas().onpointerup({});
+        deepEq(last.keys.keySignature.looks.sharp.offset, { x: 1, y: 0 }, "F♯'s drag moves the sharps");
+        eq(last.keys.keySignature.alternate.offset, undefined, "not the alternate stacks");
+      });
+  } },
+
+  // ─── Step 9: Key signature preview (session 66, step-by-step design §3.4) ─
+
+  { name: "step 9: the 7 modes as rows, each named, its 15 keys in keyOrder, the picked key highlighted", fn: () => {
+      withDomStub((container) => {
+        const picks = [];
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 9, mode: "minor" }, parts: ["preview"],
+          onKey: (key) => { picks.push(key); } });
+        const rows = findAll(api.root, "cnb-kse-mode-row");
+        deepEq(rows.map(r => r.getAttribute("data-mode")), Object.keys(CNBMusic.MODES), "a row for each mode, in order");
+        deepEq(rows.map(r => subtreeText(findAll(r, "cnb-kse-mode-name")[0])), Object.keys(CNBMusic.MODES), "named");
+        for (const row of rows) {
+          const mode = row.getAttribute("data-mode");
+          const minis = findAll(row, "cnb-kse-mini");
+          deepEq(minis.map(b => b.getAttribute("data-key")), E.keyOrder(mode), `${mode}: its 15 keys in keyOrder`);
+          assert(minis.every(b => b.getAttribute("data-mode") === mode && b.children[0].tag === "svg"), `${mode}: drawn`);
+        }
+        eq(findAll(api.root, "cnb-kse-mini").length, 105, "105 keys");
+        deepEq(findAll(api.root, "cnb-kse-mini").filter(b => b.className.includes(" on"))
+          .map(b => `${b.getAttribute("data-key")} ${b.getAttribute("data-mode")}`), ["A minor"],
+          "only the picked key highlighted, not A in the other modes");
+        eq(subtreeText(findAll(api.root, "cnb-kse-touch-summary")[0]), "No marks touch in any of the 105 keys.", "the line");
+        eq(api.root.children[0].children[0].children[0].className, "cnb-kse-touch-summary", "the touch line above the rows");
+        const dorian = rows.find(r => r.getAttribute("data-mode") === "dorian");
+        findAll(dorian, "cnb-kse-mini").find(b => b.getAttribute("data-key") === "E").onclick();
+        deepEq(picks, [{ tonic: 4, mode: "dorian", spelling: "E" }], "a click picks E dorian");
+        eq(findAll(api.root, "cnb-kse-canvas").length, 0, "a view: no canvas");
+      });
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature.enabled = false;
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" }, parts: ["preview"] });
+        eq(findAll(api.root, "cnb-kse-mini").length + findAll(api.root, "cnb-kse-mode-row").length, 0,
+          "nothing while the signature is off");
+      });
+  } },
+
+  { name: "step 9: keys whose marks touch are outlined with their count, the touch line counts them, a listed key picks it", fn: () => {
+      withDomStub((container) => {
+        const picks = [];
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity";   // the default noteheads a whole step apart
+        const api = E.render(container, { config, key: { tonic: 0, mode: "major" }, parts: ["preview"],
+          onKey: (key) => { picks.push(key); } });
+        const touching = CNBKeySignature.touchingKeys(config);
+        const minis = findAll(api.root, "cnb-kse-mini");
+        eq(minis.filter(b => b.className.includes("touch")).length, touching.length, "each touching key outlined");
+        const lydian = findAll(api.root, "cnb-kse-mode-row").find(r => r.getAttribute("data-mode") === "lydian");
+        const fLydian = findAll(lydian, "cnb-kse-mini").find(b => b.getAttribute("data-key") === "F");
+        const count = touching.find(k => k.spelling === "F" && k.mode === "lydian").count;
+        eq(subtreeText(findAll(fLydian, "cnb-kse-mini-name")[0]), `F · ${count} touch`, "with its count");
+        const list = findAll(api.root, "cnb-kse-touch-list")[0];
+        eq(subtreeText(findAll(list, "cnb-kse-touch-summary")[0]), `Marks touch in ${touching.length} of the 105 keys`, "the line");
+        findAll(list, "cnb-kse-touch-key").find(b => b.getAttribute("data-key") === "B♭ mixolydian").onclick();
+        deepEq(picks, [{ tonic: 10, mode: "mixolydian", spelling: "B♭" }], "a listed key picks it");
+      });
+  } },
+
   // ─── Step 6: Key signature symbol type (session 65, step-by-step design §3.1, §3.2) ─
 
   { name: "step 6: three cards, the one the signature exactly is highlighted, else 'Your own symbols'", fn: () => {
@@ -1740,7 +1920,7 @@ export const tests = [
         const view = { layer: "space", symbol: 0, pinned: true, spelled: ["C", "D"] };
         const api = E.render(container, { config: keysConfig(), parts: ["symbol-type"], view, confirm: () => true });
         findAll(api.root, "cnb-kse-start-card").find(c => c.getAttribute("data-start") === "custom").onclick();
-        deepEq(view, { layer: "all", symbol: "base", pinned: false, spelled: [] }, "the view reset");
+        deepEq(view, { layer: "all", symbol: "base", pinned: false, spelled: [], alternateCard: { symbol: "base" } }, "the view reset");
         const members = { all: new Set([0, 1]), sharp: new Set([1]), natural: new Set([0]) };
         eq(E.layerFor(members, 1, view), "sharp", "a click on a sharp picks the sharps");
       });

@@ -596,6 +596,11 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 .cnb-kse-reference { stroke: var(--accent); stroke-width: 1.5; fill: none; }
 .cnb-kse-handle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; pointer-events: all; cursor: nwse-resize; }
 .cnb-kse-readout { font-size: 12px; fill: var(--accent); font-family: var(--font); }
+/* Step 8: the second stack's grip, dragged across to set the space between stacks (session 66). */
+.cnb-kse-gap-grip { pointer-events: all; cursor: ew-resize; }
+.cnb-kse-gap-handle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+.cnb-kse-gap-arrows { fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-linecap: round; }
+.cnb-kse-gap-readout { pointer-events: none; }
 /* The other keys: the mode's 15 keys as small signatures, a key whose marks touch outlined. */
 .cnb-kse-keys { display: flex; flex-direction: column; gap: var(--space-2); }
 .cnb-kse-keys-title { width: auto; }
@@ -604,6 +609,10 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;
   min-width: 44px; padding: var(--space-1); background: var(--surface); border-radius: var(--radius-s);
 }
+/* Step 9: every key and mode, a row for each mode, headed by its name (session 66). */
+.cnb-kse-all-keys { gap: var(--space-3); }
+.cnb-kse-mode-row { display: flex; flex-direction: column; gap: var(--space-1); }
+.cnb-kse-mode-name { font-size: 13px; font-weight: 600; color: var(--ink); text-transform: capitalize; }
 .cnb-kse-mini.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .cnb-kse-mini.touch { border-color: var(--error); }
 .cnb-kse-mini-name { font-size: 11px; color: var(--ink-2); white-space: nowrap; }

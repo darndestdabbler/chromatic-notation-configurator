@@ -33,7 +33,10 @@
  * screenshots at 1440 and 1280 px; since session 65 step 6's three starting
  * points, Noteheads, Accidentals and Custom marks, each one step of undo,
  * over the 21 spelled notes, step 7's Select row, selection and look card on
- * the spelled notes, and step 8's canvas for the drags) → clef
+ * the spelled notes, and step 8's canvas for the drags; since session 66
+ * step 8's space between stacks by its field and by dragging the grip over
+ * the second stack, one step of undo, and every second stack's look card,
+ * and step 9's every key and mode, a key there opening in step 8) → clef
  * composition → save the config (real
  * download) and load it back → export a .ly file (real download, the mark
  * table) → the Clairnote SN gallery file's signature → screenshots at 1440
@@ -287,7 +290,7 @@ function expectedMarks(cfg, keyName) {
   // its stack's line plus its own placement; a centred mark's is its line.
   return m.marks.flatMap(({ semi, column }, i) => (m.layouts[i] || [])
     .filter(sym => sym.kind !== "sign")
-    .map(sym => ({ x: left + m.lead + column * m.markWidth + sym.x, y: grid.semiToY(semi) + sym.y })));
+    .map(sym => ({ x: left + m.lead + column * m.step + sym.x, y: grid.semiToY(semi) + sym.y })));
 }
 
 /** The same for a key picked on the staff ({ tonic, mode, spelling }), as the
@@ -566,12 +569,18 @@ async function canvasDraws(key, label) {
 const canvasStems = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature-separator",
   els => els.map(e => ({ stroke: e.getAttribute("stroke"), width: parseFloat(e.getAttribute("stroke-width")) })));
 
-check("PANEL: the signature is set in a designer's words, a part in each step (sessions 63, 65) — step 6 Show the key signature, its three starting points, Noteheads highlighted, and the 21 spelled notes; step 7 Select, the 21 spelled notes as buttons and the look card; step 8 the key, the canvas, Notes, Stacks and Place; step 9 the mode's keys; Advanced the keys for notehead rules",
+check("PANEL: the signature is set in a designer's words, a part in each step (sessions 63, 65, 66) — step 6 Show the key signature, its three starting points, Noteheads highlighted, and the 21 spelled notes; step 7 Select, the 21 spelled notes as buttons and the look card; step 8 the key, the canvas, Notes, Stacks with the space between stacks, every second stack's look card and Place; step 9 every key, the 7 modes' 15 each; Advanced the keys for notehead rules",
   await page.evaluate(() => {
     // Each selector scoped to the panel, a comma list included.
     const q = (panel, sel) => document.querySelectorAll(sel.split(", ").map(x => `[data-panel="${panel}"] ${x}`).join(", "));
     const labels = [...q("ks-designer", ".cnb-kse-row-label")].map(e => e.textContent);
-    return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Place"]) &&
+    const modes = [...q("ks-preview", ".cnb-kse-mode-row")];
+    return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Every second stack", "Place"]) &&
+      q("ks-designer", ".cnb-kse-stacks .cnb-kse-gap-input").length === 1 &&
+      q("ks-designer", ".cnb-kse-alternate .cnb-kse-look-card[data-look=\"alternate\"]").length === 1 &&
+      JSON.stringify(modes.map(r => r.dataset.mode)) ===
+        JSON.stringify(["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]) &&
+      modes.every(r => r.querySelectorAll(".cnb-kse-mini").length === 15) &&
       JSON.stringify([...q("ks-symbol-type", ".cnb-kse-start-card-title")].map(e => e.textContent)) ===
         JSON.stringify(["Noteheads", "Accidentals", "Custom marks"]) &&
       [...q("ks-symbol-type", ".cnb-kse-start-card.on")].map(e => e.dataset.start).join() === "noteheads" &&
@@ -582,8 +591,8 @@ check("PANEL: the signature is set in a designer's words, a part in each step (s
       q("ks-custom-symbols", "button.cnb-kse-spelled-note").length === 21 && q("ks-custom-symbols", ".cnb-kse-look-card").length === 1 &&
       q("ks-custom-symbols", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-key-tonic, .cnb-kse-row-label").length === 0 &&
       q("ks-designer", ".cnb-kse-canvas").length === 1 && q("ks-designer", ".cnb-kse-key-tonic").length === 1 &&
-      q("ks-designer", ".cnb-kse-look-card, .cnb-kse-layer").length === 0 &&
-      q("ks-preview", ".cnb-kse-mini").length === 15 && q("ks-preview", ".cnb-kse-canvas").length === 0 &&
+      q("ks-designer", ".cnb-kse-look-card").length === 1 && q("ks-designer", ".cnb-kse-layer").length === 0 &&
+      q("ks-preview", ".cnb-kse-mini").length === 105 && q("ks-preview", ".cnb-kse-canvas").length === 0 &&
       document.querySelector("#keys-for-rules .cnb-kse-definitions .cnb-kse-title").textContent === "Keys for notehead rules" &&
       document.querySelectorAll(".cnb-kse-definitions").length === 1;
   }));
@@ -674,6 +683,55 @@ await pickKey("C", "major");
   check("GOLD STEM: turned off, no stem is drawn and the sharing choice is hidden",
     (await canvasStems()).length === 0 && (await page.$$(".cnb-kse-sep-share")).length === 0);
   await page.check(".cnb-kse-sep-enable-check");
+}
+
+// Step 8's space between stacks (session 66, step-by-step design §3.4): by
+// its field, then by dragging the grip over the second stack on step 8's
+// canvas, one step of undo. C major's three stacks.
+{
+  await openSection(page, "ks-designer");
+  await setField(page, `${PANEL.designer} .cnb-kse-gap-input`, "1.5");
+  const r = await canvasDraws(C_MAJOR_KEY, "gap 1.5");
+  const shown = drawn(CNBPreviewDisplay.withKey(r.cfg, C_MAJOR_KEY).config);
+  const m = CNBKeySignature.measure(shown, shown.display.pxPerSemi, "C");
+  const columns = [...new Set(r.got.map(p => Math.round(p.x * 1000) / 1000))].sort((a, b) => a - b);
+  check("GAP: Space between stacks 1.5 writes columnGap, and each stack moves 1.5 semitones further from the last, as CNBKeySignature.marks places them",
+    r.cfg.keys.keySignature.columnGap === 1.5 && r.ok && columns.length === 3 &&
+    close(m.step - m.markWidth, 1.5 * shown.display.pxPerSemi), `${r.detail} columns=${JSON.stringify(columns)}`);
+  await setField(page, `${PANEL.designer} .cnb-kse-gap-input`, "0");
+}
+{
+  const grip = page.locator(`${PANEL.designer} .cnb-kse-canvas .cnb-kse-gap-handle`);
+  await grip.scrollIntoViewIfNeeded();
+  const g = await grip.boundingBox();
+  // The canvas draws 24 px a semitone: 36 px right is 1.5 semitones.
+  const readout = await dragBy({ x: g.x + g.width / 2, y: g.y + g.height / 2 }, 36, 0);
+  const r = await canvasDraws(C_MAJOR_KEY, "gap dragged");
+  check("GAP: dragging the grip over the second stack 36 px right sets the space between stacks to 1.5 semitones, snapped, shown beside the grip while dragging, the field following, the staff drawing it",
+    r.cfg.keys.keySignature.columnGap === 1.5 && r.ok && readout === "space between stacks 1.5 semitones" &&
+    (await page.inputValue(`${PANEL.designer} .cnb-kse-gap-input`)) === "1.5", `${r.detail} readout=${readout}`);
+  await undo();
+  const undone = (await fullConfig()).keys.keySignature.columnGap;
+  await redo();
+  const redone = (await fullConfig()).keys.keySignature.columnGap;
+  check("GAP: one drag is one step of undo — Undo puts the gap back to 0, Redo sets it to 1.5 again",
+    undone === 0 && redone === 1.5, JSON.stringify({ undone, redone }));
+  await undo();
+}
+// Every second stack's look (session 66): its card in step 8.
+{
+  await setField(page, `${PANEL.designer} .cnb-kse-alternate .cnb-kse-look-colour-input`, "#cc0000");
+  const live = await fullConfig();
+  const picked = CNBPreviewDisplay.withKey(live, C_MAJOR_KEY);
+  const sig = CNBKeySignature.marks(picked.config, CNBKeySignature.activeKey(picked.config, picked.name).def);
+  const odd = sig.marks.filter(mk => mk.column % 2 === 1).length;
+  const red = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path",
+    ps => ps.filter(p => p.getAttribute("fill") === "#cc0000").length);
+  check("EVERY SECOND STACK: step 8's card colours every second stack's marks red, and the staff draws exactly those red",
+    live.keys.keySignature.alternate.color === "#cc0000" && odd > 0 && red === odd, JSON.stringify({ odd, red }));
+  await page.click(`${PANEL.designer} .cnb-kse-alternate .cnb-kse-look-colour[data-color=""]`);
+  check("EVERY SECOND STACK: 'as the others' clears the colour",
+    JSON.stringify((await fullConfig()).keys.keySignature.alternate) === "{}");
 }
 
 // Custom marks (session 65): the 21 spelled notes given parallelograms, one
@@ -812,10 +870,10 @@ cfg = await fullConfig();
     JSON.stringify(ks.looks) === JSON.stringify({ all: {}, natural: {}, flat: { sign: "flat", color: null },
       sharp: { sign: "sharp", color: null }, line: {}, space: {}, spelled: {} }), JSON.stringify(ks));
 }
-check("START FROM: the rows stay — Notes shows the sharps or flats only, Stacks the cycle of fifths with its heights in a window, and Place",
+check("START FROM: the rows stay — Notes shows the sharps or flats only, Stacks the cycle of fifths with its heights in a window, every second stack and Place",
   cfg.keys.keySignature.notes === "altered" &&
   await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
-    .map(e => e.textContent)) === JSON.stringify(["Notes", "Stacks", "Place"]) &&
+    .map(e => e.textContent)) === JSON.stringify(["Notes", "Stacks", "Every second stack", "Place"]) &&
     document.querySelector('.cnb-kse-notes-choice .cnb-kse-radio[data-value="altered"] input').checked &&
     document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="fifths"] input').checked &&
     document.querySelector('.cnb-kse-heights-choice .cnb-kse-radio[data-value="window"] input').checked));
@@ -982,7 +1040,7 @@ await pickKey("C", "major");
     JSON.stringify(after) === JSON.stringify({ ...CNBConfig.createDefault().keys.keySignature, enabled: true }) &&
     r.ok && (await canvasSigns()).length === 0 &&
     await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
-      .map(e => e.textContent)) === JSON.stringify(["Notes", "Stacks", "Place"])),
+      .map(e => e.textContent)) === JSON.stringify(["Notes", "Stacks", "Every second stack", "Place"])),
     `${r.detail} after=${JSON.stringify(after)}`);
 }
 /** Load a config as a file, and wait for the shell to adopt it. */
@@ -1205,13 +1263,23 @@ const FLATS = CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♭"));
 {
   await setField(page, `${PANEL.designer} .cnb-kse-key-tonic`, "B♭");
   const staff = await page.inputValue(".cnb-pvd-key-tonic");
-  const minis = await page.$$eval(".cnb-kse-mini", els => els.map(e => e.getAttribute("data-key")));
   await openSection(page, "ks-preview");
-  await page.click('.cnb-kse-mini[data-key="A"]');
-  check("KEYS: step 8's key picker picks the staff's key (B♭), the mode's 15 keys show in step 9, sharp keys then flat keys, and a click on A picks it on the staff and in step 8",
-    staff === "B♭" && minis.length === 15 && minis[0] === "C" && minis[8] === "F" &&
-    (await page.inputValue(".cnb-pvd-key-tonic")) === "A" &&
-    (await page.inputValue(`${PANEL.designer} .cnb-kse-key-tonic`)) === "A", JSON.stringify(minis));
+  const rows = await page.$$eval(`${PANEL.preview} .cnb-kse-mode-row`, rs => rs.map(r => ({
+    mode: r.dataset.mode, name: r.querySelector(".cnb-kse-mode-name").textContent,
+    keys: [...r.querySelectorAll(".cnb-kse-mini")].map(e => e.dataset.key),
+    on: [...r.querySelectorAll(".cnb-kse-mini.on")].map(e => e.dataset.key) })));
+  const minor = rows.find(r => r.mode === "minor");
+  check("KEYS: step 8's key picker picks the staff's key (B♭); step 9 draws every key, a row for each of the 7 modes named by it, each its 15 keys sharp keys then flat keys, B♭ major alone highlighted",
+    staff === "B♭" && rows.length === 7 && rows.every(r => r.name === r.mode && r.keys.length === 15) &&
+    rows[0].keys[0] === "C" && rows[0].keys[8] === "F" && minor.keys[0] === "A" &&
+    JSON.stringify(rows.map(r => r.on.join())) === JSON.stringify(["B♭", "", "", "", "", "", ""]), JSON.stringify(rows));
+  await page.click(`${PANEL.preview} .cnb-kse-mode-row[data-mode="dorian"] .cnb-kse-mini[data-key="E"]`);
+  check("KEYS: a click on E in the dorian row opens step 8 with E dorian picked on its key picker and on the staff",
+    (await page.isVisible(PANEL.designer)) && !(await page.isVisible(PANEL.preview)) &&
+    (await page.inputValue(".cnb-pvd-key-tonic")) === "E" && (await page.inputValue(".cnb-pvd-key-mode")) === "dorian" &&
+    (await page.inputValue(`${PANEL.designer} .cnb-kse-key-tonic`)) === "E" &&
+    (await page.inputValue(`${PANEL.designer} .cnb-kse-key-mode`)) === "dorian");
+  await pickKey("A", "major");
 }
 // The touch line, its list and the checks' warning.
 {
@@ -1222,10 +1290,12 @@ const FLATS = CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♭"));
   await openSection(page, "ks-preview");
   await page.click(".cnb-kse-touch-list summary");
   const listed = await page.$$eval(".cnb-kse-touch-key", els => els.length);
+  const outlined = await page.$$eval(`${PANEL.preview} .cnb-kse-mini.touch`, els => els.length);
   await page.click('.cnb-kse-touch-key[data-key="E major"]');
-  check("TOUCH: under odd semitones left, even right the marks touch in every key; the line opens their list, and a click on E major picks it",
-    n === 105 && listed === 105 && (await page.inputValue(".cnb-pvd-key-tonic")) === "E" &&
-    (await page.inputValue(".cnb-pvd-key-mode")) === "major", `touching ${n}, listed ${listed}`);
+  check("TOUCH: under odd semitones left, even right the marks touch in every key, all 105 outlined in step 9; the line opens their list, and a click on E major opens it in step 8",
+    n === 105 && listed === 105 && outlined === 105 && (await page.inputValue(".cnb-pvd-key-tonic")) === "E" &&
+    (await page.inputValue(".cnb-pvd-key-mode")) === "major" && (await page.isVisible(PANEL.designer)) &&
+    (await page.inputValue(`${PANEL.designer} .cnb-kse-key-tonic`)) === "E", `touching ${n}, listed ${listed}, outlined ${outlined}`);
   await page.click("#checks-indicator");
   const warning = await page.$$eval("#checks-list .checks-item.warn", els => els.map(e => e.textContent));
   await page.keyboard.press("Escape");

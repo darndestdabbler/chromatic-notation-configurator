@@ -1941,8 +1941,19 @@ card writing every selected note's `looks.spelled` entry, a field they
 disagree on shown as mixed, `mergeLooks`; an imported symbol added to the
 shapes by name, reused when the name holds the same drawing and refused,
 named, when it holds another, `sameShape`), "designer"
-(step 8: the key picker, the canvas, Notes, Stacks and Place), "preview"
-(step 9: the mode's 15 keys and the touch list) and "definitions"
+(step 8: the key picker, the canvas, Notes, Stacks and Place; since
+session 66 Stacks has the Space between stacks, `columnGap` in semitones,
+also set by dragging a grip the canvas draws over the second stack when
+there is one (`dragGap`, snapped to tenths, the gap shown beside the grip,
+reported once on release, so one drag is one step of undo), and an Every
+second stack row holds the look card for `alternate`, its symbol picked in
+`opts.view.alternateCard` so the canvas's drags keep the layer a click
+picks), "preview"
+(step 9, since session 66: every key and mode, the touch line and its
+list above, then the 7 modes as rows, each named, its 15 keys in
+`keyOrder`, the picked key highlighted and a touching key outlined with its
+count; a click on a key or a listed one calls `opts.onKey`, and the page
+then opens step 8) and "definitions"
 (Advanced › Keys for notehead rules: Use keys, the key definitions and the
 validation); without `parts` it draws the whole panel described below. Since session 56 the
 signature is the editor of the key-signature design §13.8

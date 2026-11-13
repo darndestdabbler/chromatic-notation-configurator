@@ -838,7 +838,11 @@
           key,
           parts: [part],
           view: keySignatureView,
-          onKey: (picked) => previewApi.setState({ key: picked }),
+          // A key picked in step 9 opens in step 8 (session 66, design §3.4).
+          onKey: (picked) => {
+            previewApi.setState({ key: picked });
+            if (part === "preview") showSection("ks-designer");
+          },
           // A look's Import from SVG (session 50): the shape is added to the
           // notation and given to that look.
           importControl: drawLookImporter,

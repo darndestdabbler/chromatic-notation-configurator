@@ -297,14 +297,20 @@ in the steps' own **Key** picker, which is the staff's too.
    tonic an octave up); the **Stacks** (stacked sevenths, odd semitones
    left and even right, a new stack at each change of odd and even, a
    zigzag, or the cycle of fifths with its heights in a window or
-   climbing), which way they go, and the gold stem between them, its
-   colour, its thickness in staff spaces and whether several stems share
-   it; and the **Place**, the middle of the staff or the bottom, top or
-   every line set.
-9. **Key signature preview** — the mode's 15 keys as small signatures; a
-   click picks one. A key whose marks touch is outlined, and a line says in
-   how many of the 105 keys they do and lists them (the checks warn too,
-   without blocking the export).
+   climbing), which way they go, the **Space between stacks** in semitones
+   (negative tightens them), also set by dragging the grip over the second
+   stack on the canvas across, snapped to tenths and one step of undo, and
+   the gold stem between them, its colour, its thickness in staff spaces
+   and whether several stems share it; **Every second stack**, a look card
+   for the marks of every second stack (symbol, fill, colour, offset and
+   added symbols); and the **Place**, the middle of the staff or the
+   bottom, top or every line set.
+9. **Key signature preview** — every key and mode: a row for each of the 7
+   modes, each its 15 keys as small signatures, sharp keys then flat keys.
+   A key whose marks touch is outlined with its count, and a line above
+   says in how many of the 105 keys they do and lists them (the checks warn
+   too, without blocking the export). A click on a key, or on one in the
+   list, opens it in step 8.
 
 **Clef**
 

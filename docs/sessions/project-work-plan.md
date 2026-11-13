@@ -77,7 +77,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 63 | The steps and the navigation | no | 2026-11-13 |
 | 64 | The key signature's spelled looks | no | 2026-11-13 |
 | 65 | Key-signature steps 6 and 7 | no | 2026-11-13 |
-| 66 | Key-signature steps 8 and 9 | — | not declared |
+| 66 | Key-signature steps 8 and 9 | no | 2026-11-13 |
 | 67 | The walk-through | — | not declared |
 | 68 | The tutorial | — | not declared |
 | 69 | The UI is stable | — | not declared |
@@ -679,3 +679,9 @@ Build key-signature steps 6 and 7 of the step-by-step design (§3.1–§3.3). CN
 **Amended after acceptance:**
 
 - 2026-11-13 — step 'drivers': its files: Rewriting the driver showed that a step 6 card pins the layer (pickLayer('all')), so a click on step 8's canvas then picks All marks and a drag moves every mark; the card must leave the layer unpinned, with a unit test (claude-code (anthropic, claude-opus-5-5))
+
+### Session 66 — Key-signature steps 8 and 9
+
+**Releasable: no.**
+
+Build key-signature steps 8 and 9 of the step-by-step design (§3.4). Step 8, the designer, keeps its key picker and magnified canvas (with its mark drags as they are) and its Notes and Place rows, and its Stacks row gains the spacing between stacks, columnGap, as a number field in semitones (axis units under a pitch axis), negative to tighten, and as a grip on the canvas over the second column whose horizontal drag sets it, snapped to tenths and shown while dragging, the change reported once on release so one drag is one step of undo (a pure CNBKeySignatureEditor.dragGap(start, dx, px) beside dragOffset and dragSize); and every second stack's look (the alternate layer) as a look card under Stacks, which session 65 left for step 8. The gold stem (drawn or not, colour, thickness, shared) stays in Stacks as today. Step 9, the preview, draws every key and mode: a line above saying in how many of the 105 keys the marks touch (opening their list), then the 7 modes as rows, each named, with its 15 spellings, sharp keys then flat keys (keyOrder), as small signatures, the picked key highlighted and a key whose marks touch outlined with its count; a click on a key, or on one in the touch list, picks it on the staff and opens step 8 (the host's onKey in cnb/index.html). Unit tests in cnb/tests/cnb-key-signature-editor-tests.js, uat-key-signature.mjs extended (the gap by field and by drag, one step of undo; the alternate card; step 9's 105 keys and a key picked there opening in step 8), and the README and architecture plan updated.
