@@ -2159,7 +2159,44 @@ sequence of steps.
    the key-signature steps. It considers grouping the navigation panel (as
    `darndestdabbler/uat-checklist-editor` does) and numbering the steps or
    enabling them in order.
-3. Mock-ups, and a cross-provider consult, before the operator approves it;
+3. **The tutorial notation** (operator, 2026-11-13). One notation of the
+   project's own, built from the default config to an exported `.ly`: a
+   3-5-7-9 staff with ledgers at B and C♯ in the gap; diamond noteheads
+   about 1.5 times as wide as tall, drawn by the reader in Inkscape with
+   the toolkit; C♯, D♯, F♯, G♯ and A♯ red; minims as repeated heads first,
+   then switched to hollows; a key signature of the same noteheads in
+   Clairnote's stacks, credited; the operator's own C clef
+   (`D:\sample-c-clef.svg`, to be checked in, its leftover font style
+   removed), its anchor at its left middle, on middle C. An optional
+   section draws a diamond twice as wide as tall and makes it the key
+   signature's symbol, which exercises the custom symbols step.
+4. **The walk-through.** A Playwright script that builds that notation, one
+   stage per step, saving a screenshot at each; it is the stepped UI's
+   golden-path UAT. It imports the finished SVGs, checked in as fixtures
+   and made by following the tutorial. The steps come from one registry
+   that the navigation, the walk-through and the tutorial read, so a
+   renamed or reordered step fails a test.
+5. **The tutorial.** In `docs/playbook/` and on the site, one section per
+   step in the registry's order and words, illustrated by the
+   walk-through's screenshots, with the fixtures as downloads. Its
+   notehead-drawing chapter recommends starting from flat ovals for the
+   head and the hollow (a rounded rectangle also serves for the hollow),
+   grouping, rotating and ungrouping them, and says where the reference
+   point (session 60) goes. The design says which session writes it.
+6. **Importing a hand-drawn SVG.** The importer applies a path's ancestor
+   transforms (a layer's or a group's), which it does not read today
+   (`cnb/ui/svg-importer.js`), so a file straight from Inkscape, the
+   operator's clef among them, imports where it was drawn. The design says
+   which build session carries it.
+7. **AI-assisted designing.** The step boundaries are drawn so each step
+   edits one component of the config, the unit a schema describes and a
+   partial import replaces. The design specifies the schemas, partial
+   import at a step, a prompt per step in the AI-assisted workflow guide
+   (`docs/playbook/ai-assisted-workflow.md`), and command-line validate,
+   export and render-to-image for an agent working in the repository. It
+   is built at 1.2.0 ("Published schemas and partial configs", below)
+   unless the operator moves it.
+8. Mock-ups, and a cross-provider consult, before the operator approves it;
    it plans the sessions that build it.
 
 ### Sessions 62 and on: The step-by-step Configurator
