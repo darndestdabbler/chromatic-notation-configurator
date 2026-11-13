@@ -8,7 +8,9 @@
  * (cnb/fixtures/45deg-369-config.json) and kite-up and kite-down
  * (cnb/fixtures/kite-4-369-config.json). Each carries its SVG and LilyPond
  * data, as an imported shape does; cnb/tests/cnb-builtin-shapes-tests.js
- * pins each one equal to its source.
+ * pins each one equal to its source. Since session 64 the key signature has
+ * one of its own, the parallelogram, reached by name but not offered among
+ * the noteheads (NAMES).
  *
  * A built-in shape enters a config only when it is first chosen
  * (withShape). The exporter emits only the shapes in use, so an unused
@@ -160,9 +162,35 @@ const SHAPES = {
   },
 };
 
+/**
+ * Built-in shapes for key-signature marks only (session 64, step-by-step
+ * design §3.5), by name, not among the noteheads' NAMES. The parallelogram,
+ * the Custom marks starting point's symbol: 2 semitones high and 4 wide,
+ * leaning right, solid, stemless and taking no ledger lines; the exporter
+ * converts its SVG path (no pre-baked LilyPond path).
+ */
+const SIGNATURE_SHAPES = {
+  "parallelogram": {
+    "displayName": "Parallelogram",
+    "svgPath": "M -200 100 L 100 100 L 200 -100 L -100 -100 Z",
+    "svgHollowPath": null,
+    "naturalHeight": 200,
+    "naturalWidth": 400,
+    "semitoneHeight": 2,
+    "anchors": null,
+    "lilypondPath": null,
+    "lilypondHollowPath": null,
+    "lilypondAnchors": null,
+    "ledgers": false,
+  },
+};
+
+const ALL = { ...SHAPES, ...SIGNATURE_SHAPES };
+
 export const CNBBuiltinShapes = {
 
-  /** The built-in shape names, in display order. */
+  /** The built-in notehead shape names, in display order (the notehead
+   *  panel's; the key signature's own shapes are reached by name). */
   NAMES: Object.keys(SHAPES),
 
   /**
@@ -171,7 +199,7 @@ export const CNBBuiltinShapes = {
    * @returns {object|null}
    */
   get(name) {
-    return Object.hasOwn(SHAPES, name) ? JSON.parse(JSON.stringify(SHAPES[name])) : null;
+    return Object.hasOwn(ALL, name) ? JSON.parse(JSON.stringify(ALL[name])) : null;
   },
 
   /**
@@ -185,7 +213,7 @@ export const CNBBuiltinShapes = {
    */
   withShape(config, name) {
     const shapes = config.shapes || {};
-    if (Object.hasOwn(shapes, name) || !Object.hasOwn(SHAPES, name)) return config;
+    if (Object.hasOwn(shapes, name) || !Object.hasOwn(ALL, name)) return config;
     return { ...config, shapes: { ...shapes, [name]: CNBBuiltinShapes.get(name) } };
   },
 };

@@ -1118,6 +1118,37 @@
       "what": "step 'drivers': its files",
       "reason": "Hiding the canvas in steps 6-9 (step app-steps) makes its ResizeObserver report width 0, which redraws the hidden canvas as two rows; the drivers found it. The canvas must keep its layout while hidden: one guard in preview-display.js resized(), with its test.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:10:52.707000-05:00",
+      "task": "Give the key signature its spelled looks and column gap (step-by-step design \u00a73.5). keys.keySignature gains looks.spelled, a map from the 21 spelled notes (C\u266d to B\u266f, written as CNBMusic.spellings writes a tonic) to a look of today's form, laid over the line and space looks and under alternate, and columnGap, semitones (axis units under a pitch axis) added between neighbouring columns, 0 by default, negative to tighten them. CNBConfig gives both defaults, validates them (a spelled key must be one of the 21 notes and its look a look; the gap a finite number) and clears looks.spelled when it converts a saved accidentals style. CNBKeySignature.marks resolves each mark's spelled note from the key's spelling and lays the layer in its place, spaces the columns by the gap (the gold stems midway between the columns' boxes), measure/render/the editor's canvas place columns by that step, and isScaleStack is false when either is set; the mark table writes what marks gives, with no LY spec change. The checks list warns when columns would cross in some of the 105 keys. A built-in parallelogram shape (2 semitones high, 4 wide, leaning right, solid, no ledgers) is added to cnb/ui/builtin-shapes.js, available by name for key-signature looks but not added to the notehead panel's list. The Clairnote SN and DN gallery files are redrawn with spelled looks, each spelled note one of the six symbols (a solid or hollow dot, plain, with a tail up on a flat or a tail down on a sharp), their mark tables pinned byte for byte before the redraw and unchanged after it; the five export baselines stay unchanged; an engine round trip holds a spelled look and a negative gap to the canvas within 0.001 staff spaces. The architecture plan's \u00a74.9 gains the two fields and the parallelogram.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:15:25.006000-05:00",
+      "what": "step 'config-fields': its files",
+      "reason": "The key-signature editor's state builders carry the designer's fields by a list; columnGap must join it or the editor drops the new default (buildKeys/stateFromConfig round trip).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:38:37.177000-05:00",
+      "what": "step 'clairnote-redraw': its files",
+      "reason": "A touch test lengthens Clairnote SN's flat tail through looks.flat, which the redraw moves into the spelled looks; the test must lengthen the flats' spelled tails instead.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:39:01.517000-05:00",
+      "what": "step 'clairnote-redraw': its files",
+      "reason": "uat-key-signature.mjs step 9b reads Clairnote SN's sharp tail from the sharps' look card; the redraw carries the tail in the spelled looks, which the panel shows from session 65, so the check reads them from the loaded config.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

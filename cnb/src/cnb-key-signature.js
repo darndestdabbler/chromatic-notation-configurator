@@ -204,7 +204,7 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   // (session 50).
   const ink = inkExtent(config, pxPerSemi, m, space);
   const before = clef ? 0 : -ink.left;
-  const after = ink.right - m.columns * m.markWidth;
+  const after = ink.right - span(m);
   return { left: Math.max(0, left + before), right: Math.max(0, after + firstNote * space - inset) };
 }
 
@@ -280,6 +280,10 @@ function reachOf(layouts) {
   return { left, right };
 }
 
+/** The stacks' boxes from the first's left edge to the last's right edge, in
+ *  px: one box a stack, step apart (the box's width plus the gap). */
+const span = m => m.columns * m.step - m.gap;
+
 /** A head's ledgers at pitch semi: whether the notation draws any there. */
 function ledgered(config, semi, axis) {
   return CNBLedgerSet.ledgersFor(config, [semi], { minSemi: semi - 12, maxSemi: semi + 12 }, axis).length > 0;
@@ -303,7 +307,7 @@ function inkExtent(config, pxPerSemi, m, space) {
     const base = baseOf(m, i);
     const half = base.kind === "head" && ledgered(config, semi, axis)
       ? ledgerLength(base.width, space) / 2 : base.width / 2;
-    const line = (column + 0.5) * m.markWidth + (m.lead - m.markWidth / 2);
+    const line = (column + 0.5) * m.step + (m.lead - m.step / 2);
     left = Math.min(left, line + base.cx - half);
     right = Math.max(right, line + base.cx + half);
     for (const s of (m.layouts[i] || []).slice(1)) {
@@ -311,7 +315,7 @@ function inkExtent(config, pxPerSemi, m, space) {
       right = Math.max(right, line + s.cx + s.width / 2);
     }
   });
-  return Number.isFinite(left) ? { left, right } : { left: 0, right: m.columns * m.markWidth };
+  return Number.isFinite(left) ? { left, right } : { left: 0, right: span(m) };
 }
 
 // ── The touch check (session 56, design §13.7) ──────────────────────────────
@@ -446,8 +450,24 @@ function inkTouches(a, b) {
 /** A look that sets nothing: every field unset (design §6). */
 const lookUnset = look => Object.values(look || {}).every(v => v === undefined);
 
-/** The looks a mark can take (session 54, design §13.4). */
+/** The looks a mark can take (session 54, design §13.4); looks.spelled, a
+ *  look for each spelled note, beside them (session 64). */
 const LOOK_NAMES = ["all", "natural", "flat", "sharp", "line", "space"];
+
+/** keySignature.columnGap: semitones (axis units) added between neighbouring
+ *  stacks, 0 when unset or not a finite number (session 64, design §3.5). */
+function columnGap(config) {
+  const gap = (((config.keys || {}).keySignature || {}).columnGap);
+  return typeof gap === "number" && Number.isFinite(gap) ? gap : 0;
+}
+
+/** The spelled note a mark of a spelled key is (C♭ … B♯, CNBConfig.SPELLED_NOTES):
+ *  each pitch class of the key by its letter from the tonic's and its alteration. */
+function spelledNames(spelling, spelled) {
+  const letter = "CDEFGAB".indexOf(spelling[0].toUpperCase());
+  return new Map(spelled.map((note, i) =>
+    [note.pc, "CDEFGAB"[(letter + i) % 7] + (note.alteration === 1 ? "♯" : note.alteration === -1 ? "♭" : "")]));
+}
 
 /** Signature duration: the engine resolves keysig noteheads at quarter
  *  note (duration 3) — stencils.ly cnb:get-keysig-note-stencil. */
@@ -614,7 +634,7 @@ export const CNBKeySignature = {
    * draws (LY spec 1.3.15 §5.6a, design §9): the settings that apply to it
    * at their defaults, notes "all", the upper tonic, stacking "degrees",
    * columns "right", the middle of the staff, and no look or alternate field
-   * set. A setting that does not apply does not count: under "degrees" every
+   * set, no spelled look and no column gap (session 64). A setting that does not apply does not count: under "degrees" every
    * key has two stacks, so separator.shareThickness never applies. Any other
    * signature is drawn from the mark table, and spaced by its ink; so is
    * the sharps or flats only and the cycle of fifths (session 54), and any
@@ -632,6 +652,7 @@ export const CNBKeySignature = {
       (ks.stacking ?? "degrees") === "degrees" && (ks.columns ?? "right") === "right" &&
       ((ks.placement || {}).position ?? "middle") === "middle" &&
       LOOK_NAMES.every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate) &&
+      Object.values((ks.looks || {}).spelled || {}).every(lookUnset) && columnGap(config) === 0 &&
       !Object.values(config.shapes || {}).some(s => s && s.reference && s.reference.x);
   },
 
@@ -761,7 +782,8 @@ export const CNBKeySignature = {
    * in this key, then looks.all, then looks.natural, .flat or .sharp by the
    * key's spelling (the definition's spelling, else its name's, else
    * CNBMusic.defaultSpelling), then looks.line or .space by the mark's pitch
-   * (onLine), then alternate on every second stack from the tonic's. A look's
+   * (onLine), then looks.spelled by the note the mark is, spelled in the key
+   * (C♭ … B♯, session 64), then alternate on every second stack from the tonic's. A look's
    * sign makes the mark Emmentaler's sharp or flat, black unless a look
    * colours it, at signScale. The place (placement.position) is the middle of
    * the staff (tonicSemi, an explicit tonicOctave included) or one copy on
@@ -777,7 +799,8 @@ export const CNBKeySignature = {
    *
    * columns: each stack's line, in staff spaces, the farthest any mark
    * reaches right of its line plus the farthest any reaches left apart
-   * (§13.6; the widest mark's width for marks centred on their lines). bars:
+   * (§13.6; the widest mark's width for marks centred on their lines), plus
+   * keySignature.columnGap in staff spaces (session 64). bars:
    * the gold stems, one between each pair of neighbouring stacks (column:
    * the stack before it), over the staff's middle ± separator.extentSemis
    * (middle: true, a length under a pitch axis) or a line-set copy's marks,
@@ -848,6 +871,11 @@ export const CNBKeySignature = {
 
     const looks = ks.looks || {};
     const byLine = !lookUnset(looks.line) || !lookUnset(looks.space);
+    // The spelled notes' looks (session 64, design §3.5), over line or space
+    // and under alternate; a key with no spelling has none.
+    const bySpelling = looks.spelled || {};
+    const names = spelled ? spelledNames(spelling, spelled) : new Map();
+    const spelledLook = pc => (names.has(pc) && Object.hasOwn(bySpelling, names.get(pc)) ? bySpelling[names.get(pc)] : undefined);
     const axis = CNBPitchAxis.create(config);
     let scale;
     const signScale = () => (scale ??= CNBKeySignature.signScale(config));
@@ -859,6 +887,7 @@ export const CNBKeySignature = {
         looks.all,
         alt === 1 ? looks.sharp : alt === -1 ? looks.flat : looks.natural,
         byLine ? (onLine(config, semi, axis) ? looks.line : looks.space) : undefined,
+        spelledLook(pc),
         alternates(i) ? ks.alternate : undefined,
       ], signScale);
       return { semi, column: columnOf(i), mark };
@@ -873,7 +902,8 @@ export const CNBKeySignature = {
     const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis });
     const layouts = marks.map(({ mark }) => symbolsOf(config, mark, 1));
     const reach = reachOf(layouts);
-    const width = (reach.left + reach.right) / space;
+    const gap = columnGap(config) / space;
+    const width = (reach.left + reach.right) / space + gap;
     const lead = reach.left / space - width / 2;
     const columns = Array.from({ length: n }, (_, c) => (c + 0.5) * width + lead);
     marks.forEach((m, i) => {
@@ -892,7 +922,7 @@ export const CNBKeySignature = {
         : copies.map(c => ({ top: Math.max(...c.map(m => m.semi)), bottom: Math.min(...c.map(m => m.semi)), middle: false }));
       for (const span of spans) {
         for (let c = 0; c < n - 1; c++) {
-          bars.push({ x: (c + 1) * width, column: c, ...span,
+          bars.push({ x: (c + 1) * width - gap / 2, column: c, ...span,
             color: sep.color ?? "#ffd42a", thickness: pct / 100 / space });
         }
       }
@@ -1007,11 +1037,15 @@ export const CNBKeySignature = {
    *            resolved size, session 22) when every mark is centred.
    * lead:      the first stack's line from the stacks' start, in px: the
    *            farthest reach left (half markWidth when every mark is centred).
+   * gap, step: keySignature.columnGap in px (session 64, design §3.5), and
+   *            the step from one stack's line to the next, markWidth + gap;
+   *            the gold stems stand in the gap's middle.
    * columns:   the number of stacks (2 under the default stacked sevenths).
    * separatorPx: one gold stem's thickness in px (0 when disabled), the
    *            thickness shared among a copy's stems when shareThickness.
-   * contentWidth: columns × markWidth — the stems run between the columns,
-   *            so they add no width of their own.
+   * contentWidth: columns × step − gap, the first box's left edge to the
+   *            last's right — the stems run between the columns, so they add
+   *            no width of their own.
    * marks, bars: marks()'s; layouts: each mark's symbols in px (symbolsOf),
    *            null for a mark whose shape is not defined.
    *
@@ -1037,6 +1071,8 @@ export const CNBKeySignature = {
     const reach = reachOf(layouts);
     const markWidth = reach.left + reach.right;
     if (!(markWidth > 0)) return null;
+    const gap = columnGap(config) * pxPerSemi;
+    const step = markWidth + gap;
 
     const sep = ks.separator || {};
     const separatorPx = sep.enabled === false
@@ -1046,10 +1082,12 @@ export const CNBKeySignature = {
 
     const result = {
       markWidth,
+      step,
+      gap,
       lead: reach.left,
       columns,
       separatorPx,
-      contentWidth: columns * markWidth,
+      contentWidth: columns * step - gap,
       semis: sig.marks.map(m => m.semi),
       marks: sig.marks,
       layouts,
@@ -1145,7 +1183,8 @@ export const CNBKeySignature = {
     // neighbouring stacks.
     if (m.separatorPx > 0) {
       for (const bar of m.bars) {
-        const x = paddingH + (bar.column + 1) * m.markWidth;
+        // Midway between neighbouring stacks' boxes, the gap's middle.
+        const x = paddingH + (bar.column + 1) * m.step - m.gap / 2;
         const line = document.createElementNS(NS, "line");
         line.setAttribute("class", "cnb-key-signature-separator");
         line.setAttribute("x1", String(x));
@@ -1171,7 +1210,7 @@ export const CNBKeySignature = {
 
     // Each stack's line: the stems stand at the boundaries between stacks.
     const leftX = paddingH + m.lead;
-    const columnX = c => leftX + c * m.markWidth;
+    const columnX = c => leftX + c * m.step;
 
     // Ledger layer first, the marks on top (keysig.ly's two-pass layering):
     // every ledger is drawn before any mark. Ledger length = 4/3 × the

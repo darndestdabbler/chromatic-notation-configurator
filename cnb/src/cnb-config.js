@@ -185,11 +185,18 @@ function buildDefault() {
       // units under a pitch axis); the flat is scaled with it. null is
       // automatic: the least of the noteheads' mean height, one staff space
       // and 3 (CNBKeySignature.signHeight).
+      //
+      // Session 64 (step-by-step design §3.5): looks.spelled, a look for each
+      // of the 21 spelled notes (CNBConfig.SPELLED_NOTES) a mark can be,
+      // laid over line or space and under alternate; columnGap, semitones
+      // (axis units under a pitch axis) added between neighbouring columns,
+      // negative to tighten them.
       keySignature: {
         enabled: false,
         notes: "all",
         upperTonic: true,
-        looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} },
+        looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {}, spelled: {} },
+        columnGap: 0,
         stacking: "degrees",
         heights: "window",
         window: { sharp: 0, flat: 0 },
@@ -333,6 +340,13 @@ function isValidHex(str) {
 export const CNBConfig = {
 
   VERSION: "1.0",
+
+  /**
+   * The 21 spelled notes keys.keySignature.looks.spelled is keyed by
+   * (session 64, step-by-step design §3.5): each letter flat, natural and
+   * sharp, C♭ to B♯, written as CNBMusic.spellings writes a tonic.
+   */
+  SPELLED_NOTES: [..."CDEFGAB"].flatMap(letter => [`${letter}♭`, letter, `${letter}♯`]),
 
   /**
    * Create a complete config with all defaults (the 4-8 system).
@@ -699,16 +713,32 @@ export const CNBConfig = {
       };
       const MODEL = ["sign", "offset", "added"];
       const LOOK = ["shape", "hollow", "color", "heightSemis", "widthSemis", ...MODEL];
-      const LOOKS = ["all", "natural", "flat", "sharp", "line", "space"];
+      const LOOKS = ["all", "natural", "flat", "sharp", "line", "space", "spelled"];
       if (keySig.looks !== undefined && !isPlainObject(keySig.looks)) {
         errors.push("keys.keySignature.looks must be an object");
       } else if (isPlainObject(keySig.looks)) {
         for (const key of Object.keys(keySig.looks)) {
           if (!LOOKS.includes(key)) errors.push(`keys.keySignature.looks.${key} is not a look (${LOOKS.join(", ")})`);
-          else checkLook(keySig.looks[key], `looks.${key}`, LOOK);
+          else if (key !== "spelled") checkLook(keySig.looks[key], `looks.${key}`, LOOK);
+        }
+        // A look for each spelled note (session 64, design §3.5).
+        const spelled = keySig.looks.spelled;
+        if (spelled !== undefined && !isPlainObject(spelled)) {
+          errors.push("keys.keySignature.looks.spelled must be an object of looks by spelled note");
+        } else if (isPlainObject(spelled)) {
+          for (const note of Object.keys(spelled)) {
+            if (!CNBConfig.SPELLED_NOTES.includes(note)) {
+              errors.push(`keys.keySignature.looks.spelled.${note} is not a spelled note (C♭ … B♯)`);
+            } else {
+              checkLook(spelled[note], `looks.spelled.${note}`, LOOK);
+            }
+          }
         }
       }
       checkLook(keySig.alternate, "alternate", ["shape", "hollow", "color", ...MODEL]);
+      if (keySig.columnGap !== undefined && !finite(keySig.columnGap)) {
+        errors.push(`keys.keySignature.columnGap must be a finite number of semitones (got ${JSON.stringify(keySig.columnGap)})`);
+      }
       // Key definitions are what the signature renders from.
       if (keysSection.definitions !== undefined && keysSection.definitions !== null &&
           !Array.isArray(keysSection.definitions)) {
@@ -1206,8 +1236,8 @@ export const CNBConfig = {
    *   - "notehead-chords" (or any other value) needs nothing, since the
    *     model's defaults are that style: the field is dropped.
    *   - "accidentals" becomes the traditional signature as session 51 drew
-   *     it: looks.all, .flat, .sharp and alternate are cleared (the style
-   *     ignored them), then notes "altered", looks.flat { sign: "flat",
+   *     it: looks.all, .flat, .sharp, .spelled (session 64) and alternate are
+   *     cleared (the style ignored them), then notes "altered", looks.flat { sign: "flat",
    *     color: null }, looks.sharp { sign: "sharp", color: null }, stacking
    *     "fifths" and heights "scale". signs and placement are kept.
    *
@@ -1229,6 +1259,7 @@ export const CNBConfig = {
     looks.all = {};
     looks.flat = { sign: "flat", color: null };
     looks.sharp = { sign: "sharp", color: null };
+    looks.spelled = {};
     sig.looks = looks;
     sig.alternate = {};
     sig.notes = "altered";

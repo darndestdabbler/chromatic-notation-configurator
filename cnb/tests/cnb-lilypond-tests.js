@@ -13,6 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "fs";
 import { execFile } from "child_process";
+import { createHash } from "crypto";
 import { findEngine, measureNoteheads, engraveNoteheads, measureClef, measureKeySignature, measureKeySignatureMarks, measureStaffPositions, measureLedgers, measureSpacing, NO_PAGES } from "./engine-probe.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
@@ -1566,6 +1567,56 @@ export const tests = [
       if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
+  // Session 64: the Clairnote SN and DN gallery files' mark tables, pinned
+  // byte for byte as their looks by layer exported them, so that redrawn
+  // with spelled looks (step-by-step design §3.3, §3.5) they export as before.
+  { name: "mark table: the Clairnote SN and DN gallery files export the mark tables they did before their spelled looks", fn: () => {
+      const table = ly => {
+        const start = ly.indexOf("#(set! cnb:keysig-style 'marks)");
+        assert(start >= 0, "a mark table");
+        const end = ly.indexOf("\n     ))", start) + "\n     ))".length;
+        return ly.slice(start, end);
+      };
+      for (const [file, hash] of [
+        ["clairnote-sn", "00f04fb53d676dd9e1369bd98b2a12fd2daa60eccd0e2ce20639dbde74e2bda5"],
+        ["clairnote-dn", "00f04fb53d676dd9e1369bd98b2a12fd2daa60eccd0e2ce20639dbde74e2bda5"],
+      ]) {
+        const config = CNBConfigIO.loadFromText(
+          readFileSync(path.join(CNB_DIR, "assets", "examples", "gallery", `${file}.json`), "utf8")).config;
+        eq(createHash("sha256").update(table(CNBLilypond.generate(config))).digest("hex"), hash, `${file}: its mark table`);
+      }
+    }},
+
+  // Session 64 (step-by-step design §3.5): the mark table writes what
+  // CNBKeySignature.marks gives for spelled looks and a column gap, in the
+  // table's format (LY spec §5.6a, unchanged).
+  { name: "mark table: a spelled look and a column gap are written as CNBKeySignature.marks gives them", fn: () => {
+      const config = keySignatureConfig();
+      config.shapes.ring = CNBConfig.clone(config.shapes["crotchet-minim"]);
+      config.keys.keySignature.looks.spelled = { "C♯": { shape: "ring" }, "D♭": { color: "#0000ff" } };
+      config.keys.keySignature.columnGap = -0.5;
+      const ly = CNBLilypond.generate(config);
+      contains(ly, "#(set! cnb:keysig-style 'marks)", "the mark table, not the scale stack");
+      contains(ly, "cnb:register-path! 'ring", "the spelled look's shape registered");
+      contains(ly, "#(cnb:register-color! 'blue-0000ff", "and its colour");
+      const keyOf = (spelling, mode) => CNBKeySignature.keys(config).find(e => e.spelling === spelling && e.mode === mode).def;
+      const entry = (spelling, mode) => {
+        const start = ly.indexOf(`     ;; ${spelling} ${mode}\n`);
+        assert(start >= 0, `${spelling} ${mode}'s entry`);
+        return { sig: CNBKeySignature.marks(config, keyOf(spelling, mode)), text: ly.slice(start, ly.indexOf("\n     ;;", start + 1)) };
+      };
+      const d = entry("D", "major");
+      contains(d.text, `(columns ${d.sig.columns.map(x => _internals.fmtNum(x)).join(" ")})`, "D major's columns, the gap's");
+      assert(/\(\d+ \d+ head ring \S+ black-000000\)/.test(d.text), "D major's C♯ the ring");
+      lacks(d.text, "blue-0000ff", "no D♭ in D major");
+      const db = entry("D♭", "major");
+      assert(/\(\d+ \d+ head crotchet-minim \S+ blue-0000ff\)/.test(db.text), "D♭ major's D♭ blue");
+      lacks(db.text, "ring", "no C♯ in D♭ major");
+      const plain = CNBKeySignature.marks(keySignatureConfig(), keyOf("D", "major"));
+      const closer = (plain.columns[1] - plain.columns[0]) - (d.sig.columns[1] - d.sig.columns[0]);
+      assert(Math.abs(closer - 0.5 / 4) < 1e-9, `the columns closer by the gap, 0.125 staff spaces: ${closer}`);
+    }},
+
   // Engine-backed (session 55, LY spec 1.3.19 §5.6a, engine 1.6.0; it
   // replaces session 50's Clairnote round trip, which held box-centred marks):
   // the model's mark table engraves what the canvas draws. In C, D, B♭, A and
@@ -1577,8 +1628,9 @@ export const tests = [
   // point on the bottom line set and on every line set, where two line sets'
   // copies meet; an asymmetric head with a reference point; offsets in x and
   // in y; added symbols at sizes other than their shape's own; a hollow base
-  // whose shape takes no ledgers; coloured and moved signs; and the Twinline
-  // pitch axis.
+  // whose shape takes no ledgers; coloured and moved signs; the Twinline
+  // pitch axis; and (session 64) spelled looks over the line and space looks,
+  // and a negative column gap, on the default staff and Clairnote SN's.
   { name: "mark table (engine): the model's symbols — placed, sized, coloured and layered — engrave where the canvas draws them", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
@@ -1639,6 +1691,26 @@ export const tests = [
       run("the Twinline pitch axis", keysOn(load("assets", "examples", "gallery", "twinline-compact.json")), ks => {
         ks.looks.sharp = { added: [{ shape: "crotchet-minim", heightSemis: 0.8, offset: { x: 1.2, y: -0.4 } }] };
         ks.looks.flat = { offset: { x: 0.3, y: 0.4 } };
+      });
+      // Session 64 (step-by-step design §3.5): spelled looks over the line and
+      // space looks, and a negative column gap.
+      run("spelled looks", base(), (ks, config) => {
+        config.shapes.ring = { ...CNBConfig.clone(config.shapes["crotchet-minim"]), ledgers: false };
+        ks.looks.line = { hollow: false };
+        ks.looks.space = { hollow: true };
+        ks.looks.spelled = {
+          "F♯": { shape: "ring", color: "#cc0000" },
+          "C♯": { added: [{ shape: "crotchet-minim", heightSemis: 0.8, offset: { x: 1.2, y: 0.4 } }] },
+          "B♭": { hollow: false, color: "#0072b2", offset: { x: 0.3, y: 0 } },
+          "A♯": { color: "#00aa00" },
+        };
+      });
+      run("a negative column gap", base(), ks => {
+        ks.columnGap = -0.75;
+        ks.placement.position = "bottom-set";
+      });
+      run("Clairnote SN with a negative column gap", load("assets", "examples", "gallery", "clairnote-sn.json"), ks => {
+        ks.columnGap = -0.5;
       });
 
       const { failures, symbols } = await holdMarkTable(engine, runs, keys);

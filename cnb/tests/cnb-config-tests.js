@@ -678,7 +678,8 @@ export const tests = [
     const ks = CNBConfig.createDefault().keys.keySignature;
     eq(ks.notes, "all", "the whole scale");
     eq(ks.upperTonic, true, "the tonic an octave up");
-    deepEq(ks.looks, { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} }, "every mark looks like its notehead");
+    deepEq(ks.looks, { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {}, spelled: {} }, "every mark looks like its notehead");
+    eq(ks.columnGap, 0, "no gap between the columns (session 64)");
     eq(ks.stacking, "degrees", "stacked sevenths");
     eq(ks.heights, "window", "under the cycle of fifths, heights in a window (session 54)");
     deepEq(ks.window, { sharp: 0, flat: 0 }, "the window not raised");
@@ -687,7 +688,7 @@ export const tests = [
     eq(ks.placement.position, "middle", "in the middle of the staff");
     eq(ks.separator.shareThickness, true, "several stems share the thickness");
     const old = CNBConfig.createDefault();
-    for (const f of ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"]) delete old.keys.keySignature[f];
+    for (const f of ["notes", "upperTonic", "looks", "columnGap", "stacking", "heights", "window", "alternate", "columns"]) delete old.keys.keySignature[f];
     delete old.keys.keySignature.placement.position;
     delete old.keys.keySignature.separator.shareThickness;
     deepEq(CNBConfig.merge(CNBConfig.createDefault(), old).keys.keySignature, ks, "merged");
@@ -739,6 +740,37 @@ export const tests = [
     const tiny = keysigConfig();
     tiny.keys.keySignature.looks.all = { heightSemis: 0.1 };
     assert(CNBConfig.validate(tiny).warnings.some(w => /looks\.all\.heightSemis is 0\.1 semitones/.test(w)), "size warning");
+  }},
+
+  { name: "SPELLED_NOTES: the 21 spelled notes, each letter flat, natural and sharp, written as CNBMusic.spellings writes a tonic (session 64)", fn: () => {
+    eq(CNBConfig.SPELLED_NOTES.length, 21, "21 notes");
+    deepEq(CNBConfig.SPELLED_NOTES.slice(0, 6), ["C♭", "C", "C♯", "D♭", "D", "D♯"], "C♭ to D♯");
+    deepEq(CNBConfig.SPELLED_NOTES.slice(-3), ["B♭", "B", "B♯"], "… to B♯");
+    eq(new Set(CNBConfig.SPELLED_NOTES).size, 21, "no note twice");
+  }},
+
+  { name: "keysig: validate — looks.spelled is keyed by the 21 spelled notes, each a look; columnGap a finite number (session 64)", fn: () => {
+    const good = keysigConfig();
+    good.keys.keySignature.looks.spelled = { "C♯": { shape: "crotchet-minim", hollow: true, added: [{ shape: "crotchet-minim" }] },
+      "D♭": { color: "#0000ff" }, "B♯": {}, "F♭": { offset: { x: 0.5, y: 0 } } };
+    good.keys.keySignature.columnGap = -0.75;
+    assert(CNBConfig.validate(good).valid, `valid spelled looks and gap: ${CNBConfig.validate(good).errors}`);
+    const errorsFor = change => {
+      const cfg = keysigConfig();
+      change(cfg.keys.keySignature);
+      return CNBConfig.validate(cfg).errors.join("\n");
+    };
+    assert(/looks\.spelled\.C# is not a spelled note/.test(errorsFor(ks => { ks.looks.spelled = { "C#": {} }; })), "a sharp written #");
+    assert(/looks\.spelled\.C𝄪 is not a spelled note/.test(errorsFor(ks => { ks.looks.spelled = { "C𝄪": {} }; })), "a double sharp");
+    assert(/looks\.spelled\.D♭ references unknown shape "dot"/.test(errorsFor(ks => { ks.looks.spelled = { "D♭": { shape: "dot" } }; })),
+      "each checked as a look");
+    assert(/looks\.spelled\.E\.size is not a look setting/.test(errorsFor(ks => { ks.looks.spelled = { E: { size: 2 } }; })),
+      "an unknown look setting");
+    assert(/looks\.spelled must be an object/.test(errorsFor(ks => { ks.looks.spelled = []; })), "not an object");
+    for (const bad of ["1", NaN, Infinity, null]) {
+      assert(/columnGap must be a finite number/.test(errorsFor(ks => { ks.columnGap = bad; })), `columnGap ${bad}`);
+    }
+    assert(CNBConfig.validate(keysigConfig()).valid, "absent spelled looks and gap are their defaults");
   }},
 
   { name: "keysig: merge — config predating the keySignature section gains the default-off subsection", fn: () => {
@@ -852,7 +884,11 @@ export const tests = [
     eq(a.notes, "altered", "the sharps or flats only");
     eq(a.stacking, "fifths", "the cycle of fifths");
     eq(a.heights, "scale", "climbing, as session 51 drew them");
-    deepEq(a.looks, { all: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null } }, "black signs, the other looks cleared");
+    deepEq(a.looks, { all: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, spelled: {} },
+      "black signs, the other looks cleared");
+    const spelledAcc = CNBConfig.signatureStyleToModel({ keys: { keySignature: { style: "accidentals",
+      looks: { spelled: { "C♯": { shape: "dot" } } } } } }).keys.keySignature;
+    deepEq(spelledAcc.looks.spelled, {}, "the spelled looks cleared too (session 64)");
     deepEq(a.alternate, {}, "every second stack cleared");
     deepEq(a.signs, { heightSemis: 4 }, "the signs' size kept");
     deepEq(a.placement, { position: "every-set" }, "the place kept");

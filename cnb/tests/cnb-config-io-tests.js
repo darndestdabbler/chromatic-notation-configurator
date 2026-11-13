@@ -341,7 +341,7 @@ export const tests = [
       assert(!("style" in ks), "no style after load");
       assertEqual([ks.notes, ks.stacking, ks.heights], ["altered", "fifths", "scale"], "the traditional signature, climbing");
       assertEqual(ks.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null },
-        line: {}, space: {} }, "black signs, the defaults merged over the model");
+        line: {}, space: {}, spelled: {} }, "black signs, the defaults merged over the model");
       assertEqual(ks.signs.heightSemis, 4, "the signs' size kept");
       assertEqual(ks.placement.position, "bottom-set", "the place kept");
       assertEqual(acc.validation.errors, [], "valid");

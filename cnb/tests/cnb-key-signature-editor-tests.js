@@ -152,7 +152,9 @@ function fancyKeys() {
       notes: "tonic-and-half-steps",
       upperTonic: false,
       looks: { all: { heightSemis: 1.2, widthSemis: 1.2, offset: { x: 0.5, y: 0 } }, natural: { added: [{ shape: "crotchet-minim", offset: { x: 1, y: 1 } }] },
-        flat: { color: "#0000ff" }, sharp: { hollow: true, sign: "sharp" }, line: { hollow: false }, space: { hollow: true } },
+        flat: { color: "#0000ff" }, sharp: { hollow: true, sign: "sharp" }, line: { hollow: false }, space: { hollow: true },
+        spelled: { "C♯": { shape: "crotchet-minim", hollow: true }, "D♭": { color: "#00ff00" } } },
+      columnGap: -0.5,
       stacking: "parity-stacks",
       heights: "scale",
       window: { sharp: 2, flat: -1 },
@@ -237,7 +239,7 @@ export const tests = [
         separator: { enabled: true, color: "#ffd42a", thicknessPct: 160, extentSemis: 12 },
       } } });
       const ks = CNBConfig.createDefault().keys.keySignature;
-      for (const f of ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"]) {
+      for (const f of ["notes", "upperTonic", "looks", "columnGap", "stacking", "heights", "window", "alternate", "columns"]) {
         deepEq(state.keySignature[f], ks[f], f);
       }
       eq(state.keySignature.placement.position, "middle", "placement.position");
@@ -677,7 +679,7 @@ export const tests = [
       const traditional = E.startFrom(ks, "traditional");
       deepEq([traditional.enabled, traditional.notes, traditional.stacking, traditional.heights, traditional.placement.position],
         [true, "altered", "fifths", "window", "middle"], "the traditional starting point");
-      deepEq(traditional.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, line: {}, space: {} },
+      deepEq(traditional.looks, { all: {}, natural: {}, flat: { sign: "flat", color: null }, sharp: { sign: "sharp", color: null }, line: {}, space: {}, spelled: {} },
         "Emmentaler's signs with no colour, the other looks cleared");
       deepEq(traditional.alternate, {}, "every second stack cleared");
       eq(E.startFrom({ ...ks, enabled: false }, "traditional").enabled, false, "off stays off");
@@ -1201,6 +1203,28 @@ export const tests = [
         const api = E.render(container, { config, key: { tonic: 2, mode: "major" } });
         assert(subtreeText(findAll(api.root, "cnb-kse-canvas")[0]).includes("Show the key signature"), "off: a note");
       });
+  } },
+
+  { name: "render: with a column gap the canvas outlines each mark on its stack, the step widened or tightened by the gap (session 64)", fn: () => {
+      // The outlines' centres across, one per stack: the step between them.
+      const step = (gap) => {
+        let xs;
+        withDomStub((container) => {
+          const config = keysConfig();
+          config.keys.keySignature.columnGap = gap;
+          const api = E.render(container, { config, key: { tonic: 2, mode: "major" } });
+          const rects = findAttr(findAll(api.root, "cnb-kse-canvas")[0], "class", "cnb-kse-instance");
+          eq(rects.length, 8, `gap ${gap}: D major's eight marks outlined`);
+          xs = [...new Set(rects.map(r => Math.round((Number(r.getAttribute("x")) + Number(r.getAttribute("width")) / 2) * 1e3) / 1e3))]
+            .sort((a, b) => a - b);
+        });
+        eq(xs.length, 2, `gap ${gap}: two stacks`);
+        return xs[1] - xs[0];
+      };
+      const none = step(0);
+      // The canvas draws 24 px a semitone.
+      assert(Math.abs(step(-1) - (none - 24)) < 1e-3, `a gap of −1 semitone tightens the step by 24 px: ${step(-1)} against ${none}`);
+      assert(Math.abs(step(0.5) - (none + 12)) < 1e-3, "a gap of 0.5 widens it by 12 px");
   } },
 
   { name: "render: a click on a mark selects its spelling's layer, unless another is picked; a click alone writes nothing", fn: () => {

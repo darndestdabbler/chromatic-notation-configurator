@@ -684,8 +684,9 @@ keys: {
       natural: {},              //   crotchet, in the key), all marks,
       flat: {},                 //   naturals, flats or sharps by the key's
       sharp: {},                //   spelling, a line or ledger or a space by
-      line: {},                 //   the mark's pitch (session 54), then
-      space: {}                 //   alternate. { shape | sign ("sharp" |
+      line: {},                 //   the mark's pitch (session 54), the
+      space: {},                //   spelled note (session 64), then
+      spelled: {}               //   alternate. { shape | sign ("sharp" |
     },                          //   "flat"), hollow, color, heightSemis,
                                 //   widthSemis, offset: { x, y } in semitones,
                                 //   added: [≤ 2 × { shape, heightSemis,
@@ -694,6 +695,19 @@ keys: {
                                 //   replaced whole. A sign is black unless a
                                 //   look colours it; an added symbol is
                                 //   solid, in the mark's colour, no ledgers.
+                                //   spelled: a look for each of the 21
+                                //   spelled notes, "C♭" … "B♯" as
+                                //   CNBMusic.spellings writes a tonic
+                                //   (CNBConfig.SPELLED_NOTES), the note the
+                                //   mark is in the key's spelling; C♯ and D♭
+                                //   are two notes. Missing or empty, nothing
+                                //   changes.
+    columnGap: 0,               // semitones (axis units under a pitch axis)
+                                //   added between neighbouring stacks,
+                                //   negative to tighten them (session 64);
+                                //   the gold stems stand in the gap's middle.
+                                //   Validation: a finite number; the checks
+                                //   warn when columns cross in some key.
     stacking: "degrees",        // which stack a note joins: "degrees" (1 3 5 7
                                 //   left, 2 4 6 8 right), "parity" (odd
                                 //   semitones left, even right),
@@ -812,6 +826,21 @@ keys: {
   (`CNBNotehead.box`), as the engine's stencil is measured. The Clairnote SN
   and DN gallery files draw Clairnote's own signatures, dots with imported
   tails.
+- **Spelled looks and the column gap (session 64, step-by-step design
+  §3.5).** `looks.spelled` gives each of the 21 spelled notes its own look,
+  laid over the line and space looks and under `alternate`, which replaces
+  only the fields it sets: an alternate colour keeps a spelled symbol, an
+  alternate symbol replaces it in its stacks. `columnGap` widens or
+  tightens the step between stacks. Either makes the signature the mark
+  table's (`isScaleStack` false), whose format is unchanged (LY spec
+  §5.6a): it writes what `CNBKeySignature.marks` gives. The built-in
+  **parallelogram** (`cnb/ui/builtin-shapes.js`, 2 semitones high and 4
+  wide, leaning right, solid, no ledgers) is the Custom marks starting
+  point's symbol, reached by name and not offered among the noteheads. The
+  Clairnote SN and DN gallery files give their 21 spelled notes one of six
+  symbols each, a dot solid on a line and hollow in a space, plain on a
+  natural, a tail up on a flat and down on a sharp, and export byte for
+  byte as before.
 - **No new open-keyed maps**: `keySignature` is fixed-shape and
   `definitions` is an array (replaced wholesale by Module A's merge), so
   config-IO needs no `REPLACE_PATHS` entry.
@@ -1827,10 +1856,13 @@ base then its added symbols, each `{ kind: "head" | "sign" | "symbol",
 shape | sign, hollow, color, heightSemis, widthSemis, scale, reference,
 x, y }`, x and y where its origin goes from its stack's line and the
 mark's pitch in staff spaces, y up; the columns the farthest reach right
-of a line plus the farthest reach left apart; under `"fifths"` one mark to
+of a line plus the farthest reach left apart, plus `columnGap` (session
+64), each mark's look laid with its spelled note's from `looks.spelled`
+over the line or space look; under `"fifths"` one mark to
 a column in the cycle of fifths, its height in the scale or in its line
 set's window; null for an unknown rule), `isScaleStack(config)` (the
-signature the engine's `'chord` draws), `signHeight(config)` (session 52:
+signature the engine's `'chord` draws; not with a spelled look or a column
+gap, session 64), `signHeight(config)` (session 52:
 the signs' size in semitones, `{ semis, automatic }`, §4.9),
 `signScale(config)` (the factor the signs are drawn and exported at: the
 size ÷ the sharp's bar spacing in the optical size drawn ÷ the semitones
@@ -2388,7 +2420,8 @@ Complete default config for development and testing.
       enabled: false,
       notes: "all",
       upperTonic: true,
-      looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {} },
+      looks: { all: {}, natural: {}, flat: {}, sharp: {}, line: {}, space: {}, spelled: {} },
+      columnGap: 0,
       stacking: "degrees",
       heights: "window",
       window: { sharp: 0, flat: 0 },

@@ -35,7 +35,8 @@
  *     "blocked on errors, proceeds with warnings"). Since session 56 one
  *     more warning, never an error, says in how many of the 105 keys the
  *     key signature's marks touch (CNBKeySignature.touchingKeys, design
- *     §13.7).
+ *     §13.7), and since session 64 one in how many its columns cross, a
+ *     negative column gap bringing a stack to its neighbour or past it.
  *   - buildExport() returns a blocked result ({ok:false, validation, ...})
  *     instead of throwing for validation failures — an unexportable config
  *     is user state to surface, not a caller bug. It still THROWS on a
@@ -144,6 +145,26 @@ function usedShapeNames(config) {
   return [...used].sort();
 }
 
+/**
+ * How many of the 105 keys (CNBKeySignature.keys) draw a stack's line at its
+ * neighbour's or left of it, which only a negative keySignature.columnGap
+ * can do (session 64). 0 while the signature is off or the gap is not
+ * negative; a key whose marks cannot be drawn does not count.
+ */
+function crossingKeys(config) {
+  const keys = config.keys || {};
+  const ks = keys.keySignature || {};
+  if (!keys.enabled || !ks.enabled || !(ks.columnGap < 0)) return 0;
+  let count = 0;
+  try {
+    for (const { def } of CNBKeySignature.keys(config)) {
+      const sig = CNBKeySignature.marks(config, def);
+      if (sig && sig.columns.some((x, c) => c > 0 && x <= sig.columns[c - 1])) count++;
+    }
+  } catch (_) { /* a config too broken to draw is reported by validate() */ }
+  return count;
+}
+
 export const CNBConfigExport = {
 
   LY_EXTENSION,
@@ -214,6 +235,12 @@ export const CNBConfigExport = {
     try { touching = CNBKeySignature.touchingKeys(config); } catch (_) { /* reported above */ }
     if (touching.length > 0) {
       warnings.push(`Key signature marks touch in ${touching.length} of the 105 keys`);
+    }
+    // A negative column gap (session 64, step-by-step design §3.5) that
+    // brings a stack's line to its neighbour's or past it: advice, too.
+    const crossing = crossingKeys(config);
+    if (crossing > 0) {
+      warnings.push(`Key signature columns cross in ${crossing} of the 105 keys: the column gap is too negative`);
     }
 
     // Filename derivability: an export that cannot name its file is blocked.

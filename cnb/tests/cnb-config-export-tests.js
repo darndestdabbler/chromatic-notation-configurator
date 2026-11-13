@@ -183,6 +183,26 @@ export const tests = [
     },
   },
   {
+    name: "validateForExport: columns that a negative gap makes cross are a warning, never an error (session 64)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.keys.enabled = true;
+      cfg.keys.keySignature.enabled = true;
+      const crossWarning = v => v.warnings.find(w => w.includes("columns cross"));
+      // The default notehead is about 3.45 semitones wide: a gap of −1 tightens, −4 crosses.
+      cfg.keys.keySignature.columnGap = -1;
+      assert(!crossWarning(EX.validateForExport(cfg)), "a tightening gap: no warning");
+      cfg.keys.keySignature.columnGap = -4;
+      const v = EX.validateForExport(cfg);
+      assert(v.valid === true, "still exportable");
+      assertEqual(crossWarning(v), "Key signature columns cross in 105 of the 105 keys: the column gap is too negative",
+        "the warning, with the count");
+      assert(!v.errors.some(e => e.includes("cross")), "not an error");
+      cfg.keys.keySignature.enabled = false;
+      assert(!crossWarning(EX.validateForExport(cfg)), "the signature off: no warning");
+    },
+  },
+  {
     name: "validateForExport: throws on a non-object config (caller bug)",
     fn: () => {
       assertThrows(() => EX.validateForExport(null), "must be an object", "null");

@@ -1592,10 +1592,13 @@ export const tests = [
       const sn = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "clairnote-sn.json"), "utf8")).config;
       const BB_KEY = { name: "B♭ major", pitchClasses: [10, 0, 2, 3, 5, 7, 9], tonicPc: 10 };
       deepEq(CNBKeySignature.touches(sn, BB_KEY), [], "the gallery's tail clears");
-      const flat = sn.keys.keySignature.looks.flat;
-      const tail = sn.shapes[flat.added[0].shape];
-      flat.added = [{ ...flat.added[0], heightSemis: tail.semitoneHeight * 3,
-        widthSemis: tail.naturalWidth / tail.naturalHeight * tail.semitoneHeight }];
+      // Each flat's tail, one of its spelled looks since session 64.
+      for (const [note, look] of Object.entries(sn.keys.keySignature.looks.spelled)) {
+        if (!note.endsWith("♭")) continue;
+        const tail = sn.shapes[look.added[0].shape];
+        look.added = [{ ...look.added[0], heightSemis: tail.semitoneHeight * 3,
+          widthSemis: tail.naturalWidth / tail.naturalHeight * tail.semitoneHeight }];
+      }
       const sig = CNBKeySignature.marks(sn, BB_KEY);
       const pairs = CNBKeySignature.touches(sn, BB_KEY);
       assert(pairs.length > 0, "three times as tall, it touches");
@@ -1611,6 +1614,116 @@ export const tests = [
       const sig = CNBKeySignature.marks(config, BB_KEY);
       const seams = CNBKeySignature.touches(config, BB_KEY).map(([i, j]) => [sig.marks[i].semi, sig.marks[j].semi]);
       assert(seams.some(([a, b]) => Math.abs(a - b) === 12), `a copy's B♭ meets the next copy's: ${JSON.stringify(seams)}`);
+    }},
+
+  // ─── Spelled looks and the column gap (session 64, step-by-step design §3.5) ─
+
+  { name: "marks: looks.spelled is laid over line or space and under alternate", fn: () => {
+      const config = keysigConfig([], {
+        looks: { ...CNBConfig.createDefault().keys.keySignature.looks,
+          all: { color: "#111111" }, line: { hollow: false }, space: { hollow: true },
+          spelled: { E: { hollow: false, color: "#ff0000", shape: "ring" } } },
+      });
+      config.shapes.ring = CNBConfig.clone(config.shapes["crotchet-minim"]);
+      const at = (cfg, pc) => CNBKeySignature.marks(cfg, D_KEY).marks.find(m => CNBMusic.pitchClass(m.semi) === pc && (pc !== 2 || m.column === 0));
+      // D major in the middle: E at 4, a line on the default staff; F♯ at 6, a space.
+      const e = at(config, 4).mark;
+      deepEq([e.shape, e.hollow, e.color], ["ring", false, "#ff0000"], "E: its spelled look over all and line");
+      const fs = at(config, 6).mark;
+      deepEq([fs.shape, fs.hollow, fs.color], ["crotchet-minim", true, "#111111"], "F♯: no spelled look, the space's");
+      config.keys.keySignature.looks.spelled.E.hollow = true;
+      eq(at(config, 4).mark.hollow, true, "E: the spelled note's fill over the line's");
+      // E is the second degree, on the stack beside the tonic's: every second stack.
+      eq(at(config, 4).column, 1, "E on the second stack");
+      config.keys.keySignature.alternate = { color: "#00ff00" };
+      const alt = at(config, 4).mark;
+      deepEq([alt.shape, alt.color], ["ring", "#00ff00"], "an alternate colour keeps the spelled symbol");
+      eq(at(config, 2).mark.color, "#111111", "D, on the first stack: no alternate");
+      config.keys.keySignature.alternate = { shape: "crotchet-minim" };
+      eq(at(config, 4).mark.shape, "crotchet-minim", "an alternate symbol replaces it in its stacks");
+    }},
+
+  { name: "marks: a partial spelled map changes only its own notes; an empty or absent map changes nothing", fn: () => {
+      const plain = keysigConfig();
+      const before = CNBKeySignature.marks(plain, D_KEY);
+      const partial = keysigConfig([], { looks: { ...plain.keys.keySignature.looks, spelled: { "F♯": { color: "#0000ff" } } } });
+      const after = CNBKeySignature.marks(partial, D_KEY);
+      eq(after.marks.length, before.marks.length, "the same marks");
+      after.marks.forEach((m, i) => {
+        const was = before.marks[i];
+        if (CNBMusic.pitchClass(m.semi) === 6) eq(m.mark.color, "#0000ff", "F♯ coloured");
+        else deepEq(m, was, `the mark at ${m.semi} as before`);
+      });
+      deepEq(after.columns, before.columns, "the columns as before");
+      const empty = keysigConfig([], { looks: { ...plain.keys.keySignature.looks, spelled: { "F♯": {} } } });
+      deepEq(CNBKeySignature.marks(empty, D_KEY), before, "an empty look");
+      const absent = keysigConfig();
+      delete absent.keys.keySignature.looks.spelled;
+      delete absent.keys.keySignature.columnGap;
+      deepEq(CNBKeySignature.marks(absent, D_KEY), before, "no spelled looks or gap");
+    }},
+
+  { name: "marks: enharmonic notes are kept apart — C♯ in D major, D♭ in D♭ major, B♯ never C", fn: () => {
+      const config = keysigConfig([], { looks: { ...CNBConfig.createDefault().keys.keySignature.looks,
+        spelled: { "C♯": { color: "#ff0000" }, "D♭": { color: "#0000ff" }, "B♯": { color: "#00ff00" } } } });
+      const colourOf = (key, pc) => CNBKeySignature.marks(config, key).marks
+        .filter(m => CNBMusic.pitchClass(m.semi) === pc).map(m => m.mark.color);
+      deepEq(colourOf(D_KEY, 1), ["#ff0000"], "D major's C♯");
+      deepEq([...new Set(colourOf(DB_KEY, 1))], ["#0000ff"], "D♭ major's D♭");
+      deepEq([...new Set(colourOf(C_KEY, 0))], ["#000000"], "C major's C is not B♯");
+      const cs = { name: "C♯ major", pitchClasses: [1, 3, 5, 6, 8, 10, 0], tonicPc: 1 };
+      deepEq(colourOf(cs, 0), ["#00ff00"], "C♯ major's B♯");
+      // F♯ and G♭ major: the same pitch classes, spelled apart.
+      const spelledF = keysigConfig([], { looks: { ...CNBConfig.createDefault().keys.keySignature.looks,
+        spelled: { "E♯": { color: "#ff0000" }, F: { color: "#0000ff" } } } });
+      const gb = { name: "G♭ major", pitchClasses: [6, 8, 10, 11, 1, 3, 5], tonicPc: 6, spelling: "G♭" };
+      const pc5 = key => [...new Set(CNBKeySignature.marks(spelledF, key).marks
+        .filter(m => CNBMusic.pitchClass(m.semi) === 5).map(m => m.mark.color))];
+      deepEq(pc5(FS_KEY), ["#ff0000"], "F♯ major's E♯");
+      deepEq(pc5(gb), ["#0000ff"], "G♭ major's F");
+    }},
+
+  { name: "marks: columnGap moves each stack by the gap, in staff spaces, the gold stems midway between the stacks' boxes", fn: () => {
+      const base = CNBKeySignature.marks(keysigConfig(), C_KEY);
+      for (const gap of [1, -0.5]) {
+        const sig = CNBKeySignature.marks(keysigConfig([C_MAJOR], { columnGap: gap }), C_KEY);
+        approx(sig.columns[0], base.columns[0], `gap ${gap}: the first stack where it was`);
+        approx(sig.columns[1] - sig.columns[0], base.columns[1] - base.columns[0] + gap / 4,
+          `gap ${gap}: the step widened by the gap, ${gap / 4} staff spaces at 4 semitones a space`);
+        approx(sig.bars[0].x, (sig.columns[0] + sig.columns[1]) / 2, `gap ${gap}: the stem midway between centred stacks`);
+        deepEq(sig.marks.map(m => [m.semi, m.column]), base.marks.map(m => [m.semi, m.column]), `gap ${gap}: the same marks`);
+      }
+    }},
+
+  { name: "measure and render: columnGap widens or tightens the step between stacks, not the marks", fn: () => {
+      const gap = -0.75;
+      const m0 = CNBKeySignature.measure(keysigConfig(), PX_PER_SEMI, "C");
+      const m = CNBKeySignature.measure(keysigConfig([C_MAJOR], { columnGap: gap }), PX_PER_SEMI, "C");
+      approx(m.markWidth, m0.markWidth, "the box's width unchanged");
+      approx(m.gap, gap * PX_PER_SEMI, "the gap in px");
+      approx(m.step, MARK_W + gap * PX_PER_SEMI, "the step");
+      approx(m.contentWidth, 2 * MARK_W + gap * PX_PER_SEMI, "the first box's left to the last's right");
+      withSvgStub(svg => {
+        const config = keysigConfig([C_MAJOR], { columnGap: gap });
+        const grid = CNBGrid.create(config, GRID_RANGE);
+        const g = CNBKeySignature.render(svg, grid, config, "C");
+        const noteheads = g.children.slice(3, 11);
+        const leftX = PAD_LEFT + MARK_W / 2;
+        noteheads.forEach((nh, i) => {
+          approx(parseTranslate(nh.getAttribute("transform")).x, i % 2 === 0 ? leftX : leftX + MARK_W + gap * PX_PER_SEMI,
+            `notehead ${i} column x`);
+        });
+        const stem = g.children.find(c => c.getAttribute("class") === "cnb-key-signature-separator");
+        approx(Number(stem.getAttribute("x1")), PAD_LEFT + MARK_W + gap * PX_PER_SEMI / 2, "the gold stem in the gap's middle");
+      });
+    }},
+
+  { name: "isScaleStack: a spelled look or a column gap draws the signature from the mark table", fn: () => {
+      assert(CNBKeySignature.isScaleStack(keysigConfig()), "the defaults");
+      const looks = CNBConfig.createDefault().keys.keySignature.looks;
+      assert(CNBKeySignature.isScaleStack(keysigConfig([], { looks: { ...looks, spelled: { E: {} } } })), "an empty spelled look");
+      assert(!CNBKeySignature.isScaleStack(keysigConfig([], { looks: { ...looks, spelled: { E: { hollow: true } } } })), "a spelled look");
+      assert(!CNBKeySignature.isScaleStack(keysigConfig([], { columnGap: -0.5 })), "a gap");
     }},
 
 ];

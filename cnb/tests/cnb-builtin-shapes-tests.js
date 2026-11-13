@@ -2,7 +2,7 @@
  * cnb-builtin-shapes-tests.js — Unit tests for the built-in notehead shapes
  * (session 27, design docs/planning/notehead-first-editor-design.md §2)
  *
- * Each built-in shape equals its source (createDefault, the 45deg-369 and
+ * Each built-in notehead shape equals its source (createDefault, the 45deg-369 and
  * Kite 4-369 fixtures); withShape adds a shape once and never overwrites
  * one; and an unused shape added to a config leaves its export unchanged.
  */
@@ -69,6 +69,37 @@ export const tests = [
       config.shapes["kite-up"] = { ...B.get("kite-up"), displayName: "Mine" };
       eq(B.withShape(config, "kite-up").shapes["kite-up"].displayName, "Mine", "kept");
       eq(B.withShape(config, "diamond"), config, "unknown name");
+    }},
+
+  { name: "get: the parallelogram, 2 semitones high and 4 wide, leaning right, solid, stemless, no ledgers (session 64, design §3.5)", fn: () => {
+      const p = B.get("parallelogram");
+      assert(p !== null, "a built-in shape by name");
+      assert(!B.NAMES.includes("parallelogram"), "not among the noteheads' NAMES");
+      const unit = p.naturalHeight / p.semitoneHeight;
+      eq(p.semitoneHeight, 2, "2 semitones high");
+      eq(p.naturalWidth / unit, 4, "4 semitones wide");
+      eq(p.svgHollowPath, null, "solid");
+      eq(p.anchors, null, "stemless");
+      eq(p.ledgers, false, "no ledger lines");
+      eq(p.lilypondPath, null, "the exporter converts its SVG path");
+      const pts = [...p.svgPath.matchAll(/-?\d+(?:\.\d+)?/g)].map(Number);
+      const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+      eq(Math.max(...xs) - Math.min(...xs), p.naturalWidth, "its path spans its width");
+      eq(Math.max(...ys) - Math.min(...ys), p.naturalHeight, "and its height, centred on its origin");
+      const at = y => xs.filter((_, i) => ys[i] === y);
+      assert(Math.min(...at(-p.naturalHeight / 2)) > Math.min(...at(p.naturalHeight / 2)), "leaning right: its top starts right of its bottom");
+    }},
+
+  { name: "withShape: the parallelogram enters a config by name, and a key signature drawn with it exports (session 64)", fn: () => {
+      const config = B.withShape(CNBConfig.createDefault(), "parallelogram");
+      deepEq(config.shapes.parallelogram, B.get("parallelogram"), "added");
+      config.keys.enabled = true;
+      config.keys.keySignature.enabled = true;
+      config.keys.keySignature.looks.all = { shape: "parallelogram" };
+      assert(CNBConfig.validate(config).valid, `valid: ${CNBConfig.validate(config).errors}`);
+      const ly = CNBLilypond.generate(config);
+      assert(ly.includes("cnb:register-path! 'parallelogram"), "its path registered");
+      assert(/\(\d+ \d+ symbol parallelogram #f black-000000\)/.test(ly), "its marks the symbol kind, with no ledgers");
     }},
 
   { name: "withShape: an unused shape leaves the export unchanged", fn: () => {

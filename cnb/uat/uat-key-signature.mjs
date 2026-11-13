@@ -763,7 +763,7 @@ cfg = await fullConfig();
     !("style" in ks) && ks.enabled === true && ks.notes === "altered" && ks.stacking === "fifths" && ks.heights === "window" &&
     ks.placement.position === "middle" && JSON.stringify(ks.alternate) === "{}" &&
     JSON.stringify(ks.looks) === JSON.stringify({ all: {}, natural: {}, flat: { sign: "flat", color: null },
-      sharp: { sign: "sharp", color: null }, line: {}, space: {} }), JSON.stringify(ks));
+      sharp: { sign: "sharp", color: null }, line: {}, space: {}, spelled: {} }), JSON.stringify(ks));
 }
 check("START FROM: the rows stay — Notes shows the sharps or flats only, Stacks the cycle of fifths with its heights in a window, and Place",
   cfg.keys.keySignature.notes === "altered" &&
@@ -1305,15 +1305,18 @@ await pickKey("D", "major");
     r.ok && drawn.dots === 7 && drawn.hollow === 4 && drawn.tails === 2 && (await canvasStems()).length === 0,
     `${r.detail} ${JSON.stringify(drawn)}`);
   await pickLayer("sharp");
-  check("CLAIRNOTE SN: the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set, and its looks in words",
+  // Since session 64 the file's six symbols are its spelled looks, which
+  // step 7 shows from session 65: read them from the loaded config.
+  const spelled = r.cfg.keys.keySignature.looks.spelled || {};
+  check("CLAIRNOTE SN: the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set — and its 21 spelled notes their dots, a tail down on C♯",
     await page.evaluate(() => {
       const on = (group, value) => document.querySelector(`.${group} .cnb-kse-radio[data-value="${value}"] input`).checked;
       return on("cnb-kse-stacking", "parity-stacks") && on("cnb-kse-columns", "left-in-sharp-keys") &&
         on("cnb-kse-position", "bottom-set") &&
         !document.querySelector(".cnb-kse-upper-tonic-check").checked &&
-        !document.querySelector(".cnb-kse-sep-enable-check").checked &&
-        document.querySelector('.cnb-kse-look-card[data-look="sharp"] .cnb-kse-look-words').textContent.includes("tail, down");
-    }));
+        !document.querySelector(".cnb-kse-sep-enable-check").checked;
+    }) && Object.keys(spelled).length === 21 && spelled["C♯"].added[0].shape === "clairnote-tail-down",
+    JSON.stringify(spelled["C♯"]));
 }
 
 // ── STEP 9c: the panel and canvas at the page's two widths ──────────────────

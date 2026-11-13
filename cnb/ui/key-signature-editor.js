@@ -78,8 +78,8 @@
  *     offKeyMark: object,                  // untouched passthrough
  *     keySignature: {
  *       enabled: boolean,
- *       notes, upperTonic, looks, stacking, heights, window, alternate,
- *       columns,         // the designer's settings (session 48), edited
+ *       notes, upperTonic, looks, columnGap, stacking, heights, window,
+ *       alternate, columns,  // the designer's settings (session 48), edited
  *                        // in the panel since session 50; heights and
  *                        // window and the looks' new fields (session 54)
  *                        // carried through as they are
@@ -134,7 +134,7 @@ function deepClone(v) {
 
 /** The schema's keySignature, and the designer's settings at their defaults. */
 const DEFAULT_KS = CNBConfig.createDefault().keys.keySignature;
-const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "stacking", "heights", "window", "alternate", "columns"];
+const DESIGNER_FIELDS = ["notes", "upperTonic", "looks", "columnGap", "stacking", "heights", "window", "alternate", "columns"];
 const DESIGNER_DEFAULTS = Object.fromEntries(DESIGNER_FIELDS.map(f => [f, DEFAULT_KS[f]]));
 
 /** The traditional signature as a starting point (session 54, design
@@ -1100,7 +1100,7 @@ export const CNBKeySignatureEditor = {
       }));
       const grid = CNBGrid.create(picked, { minSemi: Math.floor(low) - 1, maxSemi: Math.ceil(high) + 1 });
       const left = CNBKeySignature.padding(picked, PX, name).left + (m.extraLeftPx || 0);
-      const lineX = (mk, i) => left + m.lead + mk.column * m.markWidth + (m.offsets ? m.offsets[i] : 0);
+      const lineX = (mk, i) => left + m.lead + mk.column * m.step + (m.offsets ? m.offsets[i] : 0);
       return { config: picked, name, m, grid, symbols, lineX, width: 2 * left + m.contentWidth,
         members: layerMembers(picked, active.def) };
     }
