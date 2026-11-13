@@ -1320,9 +1320,9 @@
     {
       "number": 62,
       "title": "Importing a hand-drawn SVG",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-13T08:28:59.115000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-13T09:18:30.491000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
