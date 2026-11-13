@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 031 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 031 transcript</h1>
+<p class="stamp">Rendered 2026-11-07T15:37:11.146Z by dabbler-ai-router 3.29.0 at 6cdd3e0ae030ab20f3769b454d5ac45ceaccc82b.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-07T10:06:43.687-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 31: The checks speak to a designer</h3>
+<p><strong>Why.</strong> Design §8.5: each item in the checks list says the problem in a designer's terms and links to the control that fixes it. Session 25 built the indicator and the list with today's messages, and session 25's record gave the rewording to session 26, whose section did not include it. It comes after sessions 27 and 28 because its links open the notehead panel, the Pitch section and the other controls those sessions build.</p>
+<ol><li>Register.</li><li>A pure function in <code>cnb/ui/</code>, tested in its own test file, maps each validation and export message to designer wording and a target: the noteheads to select, or the section (and control) to open. The messages themselves stay as they are in <code>CNBConfig.validate</code> and <code>CNBConfigExport.validateForExport</code>, so their tests and the export-blocking rules do not change. A message the map does not know shows as today, with no link.</li><li>The checks list shows the designer wording and a link (<strong>Show the rule</strong>, <strong>Select the notehead</strong>, <strong>Open Staff</strong>) that does what it says; the Export button's tooltip uses the same wording. Mock-up 4 is the reference.</li><li>Tests, and the layout driver opens the list for a config with a warning and follows its link.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the checks list speak to a notation designer (design §8.5, mock-up 4). A new pure module, <code>cnb/ui/checks-wording.js</code> (<code>CNBChecksWording.describe(message, config)</code>), matches each validation and export message a designer can meet through the page against a short table of patterns and returns designer wording plus a link: a target that is a rule (by its index in <code>noteheadRules</code>, labelled <strong>Show the rule</strong>), the noteheads to select (pitch classes worked out from the config, labelled <strong>Select the notehead</strong> or <strong>Select the noteheads</strong>), or a section to open with an optional control in it (labelled <strong>Open Staff</strong>, <strong>Open Key signature</strong> and so on). The key-scoped rule warning reads as in §8.5: “In G, F♯ is hollow” is not engraved: LilyPond ignores rules for particular keys…. A message the table does not know comes back as itself with no link. The messages in <code>CNBConfig.validate</code> and <code>CNBConfigExport.validateForExport</code> do not change, so their tests and the export-blocking rules stay as they are. <code>cnb/index.html</code>'s <code>refreshChecks</code> shows each item's wording and link; following a link opens the section (or Advanced's rules disclosure, scrolled to the rule card with its name focused, or the notehead panel for the pitch classes) and closes the list. The Export button's tooltip uses the same wording. Tests in <code>cnb/tests/cnb-checks-wording-tests.js</code> pin the wording and targets for every mapped message and the pass-through. <code>uat-app-layout.mjs</code> opens, through Open, a Kite config with keys on and a rule scoped to G, checks that the list shows the designer wording and a Show the rule link, follows it and checks that Advanced shows that rule; it also saves the open list at 1440 (checks-list-1440.png), which is judged against mock-up 4 in docs/uat-status.md. CHANGELOG.md's 1.0.2 section names the change.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/d9762d420602356f9e6d6051e19ea475c2ce528a"><code>d9762d420602356f9e6d6051e19ea475c2ce528a</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Checks wording</td><td><p>Create cnb/ui/checks-wording.js exporting CNBChecksWording with describe(message, config) → { text, link } where link is null or { label, target } and target is { kind: &quot;rule&quot;, index } | { kind: &quot;noteheads&quot;, pcs } | { kind: &quot;section&quot;, section, control? } (section is one of the app's data-section names; control is an optional CSS selector inside that panel). One ordered table of { pattern, build } entries covers the designer-reachable messages: rule messages (unknown shape, hollow with no cutout, invalid colour, size errors and the 0.25–4 warning, key-scoped and not exported, off-key mark, xOffsetStaffSpaces not finite or set with no pitch axis) → Show the rule, the index found by the rule's name in config.noteheadRules; pitch class not covered, resolves to hollow with no cutout, no colour rule and no palette (the pitch classes that resolve with no colour), shape without lilypondPath / without path data / without a usable LilyPond name (the pitch classes whose crotchet resolves to that shape), and shared axis positions that cannot be told apart → Select the notehead(s), with no link when no pitch class matches; staff pattern with fewer than 2 lines → Open Staff; file suffix and empty notation label → Open Export; key-signature messages → Open Key signature; clef messages → Open Clef; pitch-axis map messages → Open Advanced at the pitch axis map; the CB-safe palette count → Open Advanced at the colour palette. Notes are named with CNBMusic's labels (C♯, not PC 1). An unknown message returns { text: message, link: null }. Add cnb/tests/cnb-checks-wording-tests.js pinning the wording and target of each mapped message, built from real CNBConfig.validate / validateForExport output where a config produces it, plus the unknown-message pass-through, and register it in cnb/tests/run-tests.js.</p></td><td><span class="mono">cnb/ui/checks-wording.js</span><br><span class="mono">cnb/tests/cnb-checks-wording-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Checks list links</td><td><p>In cnb/index.html, refreshChecks shows each error and warning through CNBChecksWording.describe: the designer wording, and under it the link as a button styled as a link (mock-up 4). Following it closes the list and does what it says: a rule target opens Advanced, opens the &quot;Rules for particular durations or keys&quot; disclosure, scrolls the rule card for that rule (the editor sorts by priority, so the card is found by the rule's name in its .cnb-nre-rule-name inputs) into view and focuses its name; a noteheads target selects those pitch classes and opens the notehead panel; a section target shows the section, opens the control when it is a &lt;details&gt;, scrolls it into view and focuses it when focusable. The Export button's tooltip lists the errors in the same wording. Style the link in cnb/ui/app.css's checks block. Name the change in CHANGELOG.md's 1.0.2 section.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span><br><span class="mono">CHANGELOG.md</span></td><td><code>node -e const fs=require('fs');const t=fs.readFileSync('cnb/index.html','utf8');for(const s of ['CNBChecksWording','checks-link']){if(!t.includes(s)){console.error('index.html missing '+s);process.exit(1)}}if(!fs.readFileSync('cnb/ui/app.css','utf8').includes('.checks-link')){console.error('app.css missing .checks-link');process.exit(1)}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Uat checks link</td><td><p>Extend cnb/uat/uat-app-layout.mjs: at 1440, open through the top bar's Open a copy of the Kite config with keys enabled, a G definition and a rule &quot;In G, F♯ is hollow&quot; scoped to G. Check the indicator reads &quot;1 warning&quot;, open the list, check its item reads the designer wording and has a Show the rule link, save the open list as checks-list-1440.png, follow the link and check that the list closed, Advanced is the shown section, its rules disclosure is open and the focused element is that rule's name. Run the driver with CNB_UAT_SHOTS pointed at a scratch folder, copy checks-list-1440.png into docs/uat-shots/session-031/, and judge it against mock-up 4 in a new session-31 section of docs/uat-status.md.</p></td><td><span class="mono">cnb/uat/uat-app-layout.mjs</span><br><span class="mono">docs/uat-status.md</span><br><span class="mono">docs/uat-shots/session-031/checks-list-1440.png</span></td><td><code>node --check cnb/uat/uat-app-layout.mjs</code><br><code>node -e const fs=require('fs');const ok=fs.existsSync('docs/uat-shots/session-031/checks-list-1440.png')&amp;&amp;fs.readFileSync('docs/uat-status.md','utf8').includes('uat-shots/session-031/');process.exit(ok?0:1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to any message text in <code>CNBConfig.validate</code> or <code>CNBConfigExport.validateForExport</code>, nor to which messages are errors or block export.</li><li>Messages a designer can only reach by hand-editing a file's structure (for example &quot;clef.gutter must be an object&quot;, the engine.* number checks, palette.schemeSymbols) are not mapped: they show as today, with no link.</li><li>The panels' own validation strips are not removed or reworded here; retiring the remaining rough edges is session 32's and later sessions' work, not this one.</li><li>No new staff presets (session 32), no stem work (session 33) and no release (session 35).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[15:06:43]</span> <span class="muted">run-started</span> session=031 mode=pull</div>
+<div class="line"><span class="at">[15:06:43]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[15:12:30]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[15:12:30]</span> <span class="muted">plan-accepted</span> steps=[&quot;checks-wording&quot;,&quot;checks-list-links&quot;,&quot;uat-checks-link&quot;] non_goals=4</div>
+<div class="line"><span class="at">[15:12:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[15:12:35]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=checks-wording</div>
+<div class="line"><span class="at">[15:22:00]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:23:16]</span> <span class="muted">check-passed</span> step=checks-wording argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[15:23:18]</span> <span class="muted">report-accepted</span> seq=2 step=checks-wording files=[&quot;cnb/ui/checks-wording.js&quot;,&quot;cnb/tests/cnb-checks-wording-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=CNBChecksWording.describe maps designer-reachable validation/export messages to wording and a rule/noteheads/section link; unknown messages pass through; 11 tests from real validate output</div>
+<div class="line"><span class="at">[15:23:18]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=checks-list-links</div>
+<div class="line"><span class="at">[15:27:03]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:28:25]</span> <span class="muted">check-passed</span> step=checks-list-links argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const t=fs.readFileSync('cnb/index.html','utf8');for(const s of ['CNBChecksWording','checks-link']){if(!t.includes(s)){console.error('index.html missing '+s);process.exit(1)}}if(!fs.readFileSync('cnb/ui/app.css','utf8').includes('.checks-link')){console.error('app.css missing .checks-link');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[15:28:25]</span> <span class="muted">check-passed</span> step=checks-list-links argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[15:28:29]</span> <span class="muted">report-accepted</span> seq=3 step=checks-list-links files=[&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;,&quot;CHANGELOG.md&quot;] notes=Checks list shows designer wording with Show the rule / Select the notehead(s) / Open &lt;Section&gt; links that open the target and close the list; Export tooltip uses the same wording; link styled per mock-up 4; CHANGELOG 1.0.2 entry</div>
+<div class="line"><span class="at">[15:28:29]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=uat-checks-link</div>
+<div class="line"><span class="at">[15:31:13]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:31:23]</span> <span class="muted">check-passed</span> step=uat-checks-link argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[15:31:23]</span> <span class="muted">check-passed</span> step=uat-checks-link argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const ok=fs.existsSync('docs/uat-shots/session-031/checks-list-1440.png')&amp;&amp;fs.readFileSync('docs/uat-status.md','utf8').includes('uat-shots/session-031/');process.exit(ok?0:1)&quot;]</div>
+<div class="line"><span class="at">[15:31:25]</span> <span class="muted">report-accepted</span> seq=4 step=uat-checks-link files=[&quot;cnb/uat/uat-app-layout.mjs&quot;,&quot;docs/uat-status.md&quot;,&quot;docs/uat-shots/session-031/checks-list-1440.png&quot;] notes=Layout driver opens Kite with a G-only rule, checks 1 warning + designer wording + Show the rule, shoots the list, follows the link to the focused rule in Advanced; 68/68; shot judged against mock-up 4</div>
+<div class="line"><span class="at">[15:31:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:31:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:31:29]</span> <span class="muted">job-started</span> name=verification pid=45812 log=.dabbler/runs/s31/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:32:30]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:32:30]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[15:32:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[15:32:33]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[15:32:34]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=60128 log=.dabbler/runs/s31/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[15:34:18]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[15:34:23]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[15:34:23]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=43624 log=.dabbler/runs/s31/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[15:36:34]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[15:36:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[15:36:45]</span> <span class="muted">landed</span> commit=d9762d420602356f9e6d6051e19ea475c2ce528a</div>
+<div class="line"><span class="at">[15:36:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[15:36:46]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[15:36:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[15:36:48]</span> <span class="muted">job-started</span> name=close pid=54124 log=.dabbler/runs/s31/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:37:11]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:37:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>6 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `pcsUsingShape` resolves only `(pc, &quot;crotchet&quot;, null)`, so shape-export messages cannot correctly select pitch classes that use the affected shape only for another duration or key.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `cnb/ui/checks-wording.js` (`pcsWhere`, `pcsUsingShape`)</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Case to add:** With a valid shape lacking `lilypondPath` used by a rule for pitch class `0` only at `minim` (or only under key `G`), drive `CNBChecksWording.describe` with that shape’s export message. It should return **Select the notehead** targeting `[0]`; today it will resolve only crotchet/no-key state and can return no link or omit that pitch class.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** The promised “every mapped message” test coverage omits the mapped invalid sideways-offset message.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Location:** `cnb/tests/cnb-checks-wording-tests.js`, `cnb/ui/checks-wording.js`</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Case to add:** With a rule named `Bad offset` having `apply: { xOffsetStaffSpaces: &quot;x&quot; }`, obtain the real validation message through `CNBConfigExport.validateForExport`, then assert wording `“Bad offset” moves noteheads sideways by an amount that is not a number.` and a **Show the rule** target for that rule.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>93s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>125s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
