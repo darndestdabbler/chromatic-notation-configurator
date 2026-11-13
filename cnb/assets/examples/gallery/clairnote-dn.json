@@ -1,0 +1,227 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 137.014,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -137.0147,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 137.014,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -137.0147,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "clairnote-dot": {
+      "displayName": "Clairnote key-signature dot",
+      "svgPath": "M 80 0 C 80 44.184 44.184 80 0 80 C -44.184 80 -80 44.184 -80 0 C -80 -44.184 -44.184 -80 0 -80 C 44.184 -80 80 -44.184 80 0 Z",
+      "svgHollowPath": "M 44 0 C 44 24.301 24.301 44 0 44 C -24.301 44 -44 24.301 -44 0 C -44 -24.301 -24.301 -44 0 -44 C 24.301 -44 44 -24.301 44 0 Z",
+      "naturalHeight": 160,
+      "naturalWidth": 160,
+      "semitoneHeight": 1.6,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "clairnote-tail-up": {
+      "displayName": "Clairnote key-signature tail, up (flat)",
+      "svgPath": "M -44.694 -46.588 L -129.564 -95.588 C -138.174 -100.559 -149.182 -97.61 -154.153 -89 C -159.123 -80.39 -156.174 -69.382 -147.564 -64.412 L -62.694 -15.412 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 82.591,
+      "naturalWidth": 111.873,
+      "semitoneHeight": 0.82591,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null,
+      "reference": {
+        "x": 0,
+        "y": 0
+      },
+      "ledgers": false
+    },
+    "clairnote-tail-down": {
+      "displayName": "Clairnote key-signature tail, down (sharp)",
+      "svgPath": "M -62.694 15.412 L -147.564 64.412 C -156.174 69.382 -159.123 80.39 -154.153 89 C -149.182 97.61 -138.174 100.559 -129.564 95.588 L -44.694 46.588 Z",
+      "svgHollowPath": null,
+      "naturalHeight": 82.591,
+      "naturalWidth": 111.873,
+      "semitoneHeight": 0.82591,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null,
+      "reference": {
+        "x": 0,
+        "y": 0
+      },
+      "ledgers": false
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      4,
+      8
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 4,
+    "lineOverrides": {}
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 0,
+        "triggerPCs": [
+          0,
+          1
+        ],
+        "triggerMode": "override"
+      }
+    ]
+  },
+  "noteheadRules": [
+    {
+      "name": "Line-side whole-tone set — solid",
+      "priority": 0,
+      "match": {
+        "pitchClasses": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "crotchet-minim",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    },
+    {
+      "name": "Off-line whole-tone set — hollow",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": true
+      }
+    }
+  ],
+  "keys": {
+    "enabled": true,
+    "definitions": [
+      {
+        "name": "G",
+        "pitchClasses": [
+          7,
+          9,
+          11,
+          0,
+          2,
+          4,
+          6
+        ]
+      },
+      {
+        "name": "D",
+        "pitchClasses": [
+          2,
+          4,
+          6,
+          7,
+          9,
+          11,
+          1
+        ]
+      }
+    ],
+    "offKeyMark": {},
+    "keySignature": {
+      "enabled": true,
+      "notes": "all",
+      "upperTonic": false,
+      "looks": {
+        "all": {
+          "shape": "clairnote-dot"
+        },
+        "flat": {
+          "added": [
+            {
+              "shape": "clairnote-tail-up"
+            }
+          ]
+        },
+        "sharp": {
+          "added": [
+            {
+              "shape": "clairnote-tail-down"
+            }
+          ]
+        }
+      },
+      "stacking": "parity-stacks",
+      "alternate": {},
+      "columns": "left-in-sharp-keys",
+      "placement": {
+        "rule": "scale-from-tonic",
+        "tonicOctave": null,
+        "position": "bottom-set"
+      },
+      "separator": {
+        "enabled": false,
+        "color": "#ffd42a",
+        "thicknessPct": 160,
+        "extentSemis": 12
+      }
+    }
+  },
+  "meta": {
+    "configName": "Clairnote DN (reproduction study)",
+    "fileSuffix": "-ClairnoteDN",
+    "notationLabel": "Clairnote DN — reproduction study",
+    "notationFootnote": "",
+    "author": "Paul Morris",
+    "description": "Reproduction study — inspired by Clairnote DN (Paul Morris, 2006). Major-third 2-line staff at E/G# with a C ledger; binary-6-6 fill — the line-side whole-tone set {C,D,E,F#,G#,A#} solid, the other set hollow (per the operator reference). Clairnote's own key signatures (session 55): a dot for each note of the key, taking the noteheads' fill, in stacks that change at each change of odd and even, a tail up on each flat and down on each sharp, the tails imported as filled shapes. The vertical compression, the custom clef (E1, form not shown → omitted), the double-stem half notes (E3) and alternative accidental signs (E4) are unimplemented/omitted — documented deviations. Design CC BY-SA 4.0; no code ported from clairnote.ly. Built from the public gallery description/image; not endorsed by or derived from the original.",
+    "systemName": "Clairnote DN",
+    "systemCreator": "Paul Morris",
+    "systemYear": 2006,
+    "sourceUrl": "https://musicnotation.org/system/clairnote-dn-by-paul-morris/",
+    "reproductionStudy": true,
+    "created": null,
+    "modified": null
+  }
+}
