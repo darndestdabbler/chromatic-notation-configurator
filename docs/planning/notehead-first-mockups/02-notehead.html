@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock-up 2: Notehead</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="mockup.css">
+  <style>
+    .np { display: grid; grid-template-columns: 240px 1fr 1fr; }
+    .np > div { padding: var(--space-4); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-4); }
+    .np > div:last-child { border-right: 0; }
+    .np .closeup-box { border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+    .np .sum { font-size: 13px; color: var(--ink-2); }
+    .pc-big { font: 500 28px/1 Oswald, var(--font); }
+    .check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; }
+    .check .box { width: 16px; height: 16px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 12px; line-height: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <span class="app">Chromatic Notation Configurator</span>
+    <span class="doc">Kite 4-369</span>
+    <span class="spacer"></span>
+    <span class="checks ok"><span class="dot"></span>No problems</span>
+    <button class="btn ghost">Open…</button>
+    <button class="btn">Save</button>
+    <button class="btn primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar nav">
+      <a href="#">Staff</a>
+      <a class="on" href="#">Noteheads</a>
+      <a href="#">Pitch</a>
+      <a href="#">Ledger lines</a>
+      <a href="#">Clef</a>
+      <a href="#">Key signature</a>
+      <hr>
+      <a href="#">Advanced</a>
+      <a href="#">Export</a>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <section class="card">
+          <div class="canvas-toolbar">
+            <span>Showing crotchets</span>
+            <span class="spacer"></span>
+            <span>Shift-click to select more than one</span><span class="tool" id="size"></span>
+          </div>
+          <div class="canvas" id="canvas"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="pc-big">C♯</span>
+            <span class="sub" id="summary"></span>
+            <span class="spacer"></span>
+            <button class="btn ghost small">Close ✕</button>
+          </div>
+          <div class="np">
+            <div>
+              <div class="closeup-box" id="closeup"></div>
+              <div class="field">
+                <span class="label">This notehead is</span>
+                <select class="select"><option>C♯</option></select>
+                <span class="hint">Renaming it renames every notehead by its height. Nothing on the staff moves.</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="field">
+                <span class="label">Colour</span>
+                <div class="row" id="swatches"></div>
+                <div class="row small muted">Colour-blind-safe alternative: <span class="swatch" style="width:16px;height:16px;background:#cc79a7"></span> the same</div>
+              </div>
+              <div class="field">
+                <span class="label">Fill</span>
+                <div class="segmented"><button>Solid</button><button class="on">Hollow</button></div>
+              </div>
+              <div class="field">
+                <span class="label">Shape</span>
+                <div class="shapes" id="shapes"></div>
+              </div>
+              <div class="field">
+                <span class="label">Size</span>
+                <div class="row">
+                  <input class="input num" value="4"><span class="unit">high</span>
+                  <input class="input num" value="4"><span class="unit">wide, in semitones</span>
+                </div>
+                <span class="check"><span class="box">✓</span>Keep proportions</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="field">
+                <span class="label">Nudge <span class="muted" style="font-weight:400">0 semitones</span></span>
+                <div class="slider"><div class="track"></div><div class="range" style="left:0;right:0"></div><div class="zero"></div><div class="knob" style="left:50%"></div></div>
+                <div class="slider-scale"><span>−1</span><span>0</span><span>+1</span></div>
+                <span class="hint">Moves this notehead up to a semitone up or down. It can meet a neighbour, but never pass it.</span>
+              </div>
+              <div class="field">
+                <span class="label">Give this look to</span>
+                <div class="row">
+                  <span class="pill">All</span><span class="pill">Every other</span><span class="pill">Every 3rd</span>
+                  <span class="pill">Every 4th</span><span class="pill">Every 6th</span>
+                  <span class="pill">The accidentals</span><span class="pill">The naturals</span>
+                </div>
+                <span class="hint">Counted from C♯. Choose the parts of the look to copy: colour, fill, shape, size.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Rules</h2>
+            <span class="sub">Written from your noteheads. Change a notehead to change them.</span>
+          </div>
+          <div class="card-body"><ul class="rules" id="rules"></ul></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { loadConfig, defaultConfig, renderStaff, sizeControl, SIZES, renderRules, shapeThumb, lookTable, colourName, ready } from "./mockup.js";
+    ready(async () => {
+      const config = await loadConfig("cnb/fixtures/kite-4-369-config.json");
+      const ellipse = (await loadConfig("cnb/fixtures/45deg-369-config.json")).shapes["ellipse-45deg"];
+      // The shape picker: the config's shapes, then two built-in shapes (design §2).
+      const lib = { ...config, shapes: { ...config.shapes, "crotchet-minim": defaultConfig().shapes["crotchet-minim"], "ellipse-45deg": ellipse } };
+      lib.shapes["crotchet-minim"].displayName = "Oval";
+      lib.shapes["ellipse-45deg"].displayName = "45° ellipse";
+
+      const inf = renderRules(document.getElementById("rules"), config, { hover: "shape" });
+      renderStaff(document.getElementById("canvas"), config, { strip: true, selected: 1, covered: inf.shape.groups[0].pcs });
+      document.getElementById("size").innerHTML = sizeControl("medium");
+      renderStaff(document.getElementById("closeup"), config, { pcs: [1], rows: 1, closeup: true, px: SIZES.large, labelSize: 13 });
+
+      const look = lookTable(config)[1];
+      document.getElementById("summary").textContent =
+        `${config.shapes[look.shape].displayName.toLowerCase()} · ${look.hollow ? "hollow" : "solid"} · ${colourName(config, look.color)}`;
+
+      const used = [...new Set(lookTable(config).map(t => t.color))];
+      document.getElementById("swatches").innerHTML =
+        used.map(h => `<span class="swatch${h === look.color ? " on" : ""}" style="background:${h}" title="${colourName(config, h)}"></span>`).join("") +
+        `<button class="btn small">New colour…</button><button class="btn ghost small">Start from a palette ▾</button>`;
+
+      const shapes = document.getElementById("shapes");
+      for (const name of ["kite-down", "kite-up", "crotchet-minim", "ellipse-45deg"]) {
+        const d = document.createElement("div");
+        d.className = "shape" + (name === look.shape ? " on" : "");
+        d.title = lib.shapes[name].displayName;
+        d.appendChild(shapeThumb(lib, name, { height: 28, hollow: true, color: "#1c1c1e" }));
+        shapes.appendChild(d);
+      }
+      const add = document.createElement("div");
+      add.className = "shape add";
+      add.textContent = "Import from SVG…";
+      shapes.appendChild(add);
+    });
+  </script>
+</body>
+</html>

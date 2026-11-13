@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 020 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 020 transcript</h1>
+<p class="stamp">Rendered 2026-11-06T11:42:37.822Z by dabbler-ai-router 3.29.0 at 1ca565a883613f914f1dd8605145638f551d178c.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-06T06:27:08.008-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 20: Design revision: the canvas reflows instead of scaling</h3>
+<p><strong>Why.</strong> Reviewing the session 19 design on 2026-11-06, the operator asked that the staff canvas never scroll sideways to show the octave, and that the noteheads not change size as the window is resized. Session 19's §6 did the opposite: it scaled <code>display.pxPerSemi</code> to fit the width. The operator proposed a table of 13 (or 14) columns, with the staff cut into vertical slices centred in each column, so the spacing between notes adjusts on its own, and asked that it look better. The preview already draws each column's noteheads, stems and ledgers in its own SVG. Only the staff lines share one background SVG, sized to the columns' fixed total, so the change is to the column widths and the staff background, not a new renderer. This session revises the design and its mock-ups. It changes no application code.</p>
+<ol><li>Register.</li><li>Revise <code>docs/planning/notehead-first-editor-design.md</code> (§6, §7, and wherever else it touches):</li></ol>
+<ul><li><strong>Fixed size.</strong> Noteheads are drawn at a fixed px per semitone, whatever the window width. Choose the editor's default and say why.</li><li><strong>A table of columns.</strong> 13 equal pitch columns, each at least as wide as the widest column the config needs, sharing any spare width equally, with each column's drawing centred. The label strip and the clef and key-signature gutters form a fixed 14th column on the left.</li><li><strong>The staff lines.</strong> Weigh one staff SVG per row, stretched to the row's width (lines drawn to 100%), against per-column staff slices, including the seam where two slices meet at a fractional pixel. Pick one and say why.</li><li><strong>One row or two.</strong> When one row does not fit, the canvas shows two: C to F♯ and G to C′, each starting with its own label strip and gutters. Page code picks the row count from the space available. The rendering modules stay pure: the collection takes a <code>rows</code> option and reports its minimum width. Say what happens below the two-row minimum.</li><li><strong>Looks better.</strong> Equal columns, plain pitch labels instead of boxed chips, full-height selection and hover marks, a quiet gutter for the label strip, and space between the two rows, each judged in screenshots.</li><li>Renumber the proposed program for this session's insertion (sessions 23–30, release last). Update its session 24 equivalent (the new page) to build this canvas, and say which <code>cnb/src</code> modules change (at least <code>cnb-collection.js</code>) and how the preview baseline is kept.</li></ul>
+<ol><li>Revise the mock-ups under <code>docs/planning/notehead-first-mockups/</code> to draw the canvas this way with the real preview modules. Screenshot each at 1440 and 1280 px, showing one row and two rows, for the default config and for Kite 4-369. Judge them against the design, revise until they hold up, and replace the screenshots in the design's §10. Remove the mock-up stylesheet's unused side-panel styles.</li></ol>
+<h2>Work Plan</h2>
+<p>Revise the session 19 notehead-first design and its mock-ups so the staff canvas reflows instead of scaling. In docs/planning/notehead-first-editor-design.md: noteheads are drawn at a fixed px per semitone (the editor's default chosen and justified, with the saved display.pxPerSemi as the size control rather than the window width); the canvas is a table of 13 equal pitch columns, each at least as wide as the widest column the config needs, sharing spare width equally with each drawing centred, after a fixed 14th column holding the label strip and the clef and key-signature gutters; the staff lines are drawn one SVG per row stretched to the row width, chosen over per-column slices after weighing the fractional-pixel seam; one row or two (C to F-sharp, G to C-prime, each with its own strip and gutters), picked by page code from the space available while the rendering modules stay pure (a rows option on the collection and a reported minimum width), with what happens below the two-row minimum; and the look improvements (equal columns, plain pitch labels, full-height selection and hover marks, a quiet gutter, space between rows). The proposed program is renumbered to sessions 23-30 with the release last, its new-page session builds this canvas, and the design names the cnb/src modules that change (at least cnb-collection.js) and how the preview baseline is kept. The mock-ups are revised to draw the canvas this way with the real preview modules, screenshotted at 1440 and 1280 px showing one row and two rows for the default config and for Kite 4-369, judged and revised until they hold up, the screenshots in the design's section 10 replaced, and the mock-up stylesheet's unused side-panel styles removed.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/1082dfea753993a9aeb99dd98f0f299ba3e4b906"><code>1082dfea753993a9aeb99dd98f0f299ba3e4b906</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Design revision</td><td><p>Revise docs/planning/notehead-first-editor-design.md for the reflowing canvas: replace §6's fit-to-width scaling with a fixed px per semitone (choose the editor's default and say why), describe the table of 13 equal pitch columns plus the fixed 14th column, weigh one stretched staff SVG per row against per-column slices and pick one, specify one row or two with page code choosing and the collection taking a rows option and reporting its minimum width, say what happens below the two-row minimum, list the look improvements, update §7 and every other passage the change touches (§0 principle, §11 risks), and renumber §12's program to sessions 23-30 with the new-page session building this canvas, naming the cnb/src modules that change and how the preview baseline is kept. Section 10's screenshots are revised in a later step.</p></td><td><span class="mono">docs/planning/notehead-first-editor-design.md</span></td><td><code>node -e const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const bad=[];for(const w of ['cnb-collection.js','rows','14th column','preview baseline','| **30.'])if(!t.includes(w))bad.push('missing: '+w);if(t.includes('fits the width it has'))bad.push('old fit-to-width text remains');if(bad.length){console.error(bad.join('\n'));process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Mockups</td><td><p>Revise the mock-ups under docs/planning/notehead-first-mockups/ to draw the canvas as the revised design says, with the real preview modules: fixed px per semitone, equal columns sharing spare width with centred drawings, one stretched staff SVG per row, one row or two chosen from the space available, each row with its own label strip, plain pitch labels, full-height selection and hover marks, a quiet strip gutter and space between rows. Remove the stylesheet's unused side-panel styles. Retake the screenshots at 1440 and 1280 px so that one row and two rows both appear for the default config and for Kite 4-369, judge them against the design, and revise until they hold up.</p></td><td><span class="mono">docs/planning/notehead-first-mockups/mockup.css</span><br><span class="mono">docs/planning/notehead-first-mockups/mockup.js</span><br><span class="mono">docs/planning/notehead-first-mockups/01-editor.html</span><br><span class="mono">docs/planning/notehead-first-mockups/02-notehead.html</span><br><span class="mono">docs/planning/notehead-first-mockups/03-pitch.html</span><br><span class="mono">docs/planning/notehead-first-mockups/04-rules.html</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/01-editor-1440.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/01-editor-1280.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/02-notehead-1440.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/02-notehead-1280.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/03-pitch-1440.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/03-pitch-1280.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/04-rules-1440.png</span><br><span class="mono">docs/planning/notehead-first-mockups/shots/04-rules-1280.png</span></td><td><code>node -e const fs=require('fs');const d='docs/planning/notehead-first-mockups/';const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280]){const b=fs.readFileSync(d+'shots/'+p+'-'+w+'.png');if(b.readUInt32BE(0)!==0x89504e47||b.readUInt32BE(16)!==w)bad.push(p+'-'+w+'.png width '+b.readUInt32BE(16))}const css=fs.readFileSync(d+'mockup.css','utf8');if(/\.sheet|--sheet-w/.test(css))bad.push('side-panel styles remain in mockup.css');const js=fs.readFileSync(d+'mockup.js','utf8');if(!js.includes('cnb/src/')||!/rows/.test(js))bad.push('mockup.js must draw rows with cnb/src');if(bad.length){console.error(bad.join('\n'));process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Screenshots in design</td><td><p>Update docs/planning/notehead-first-editor-design.md §10 for the revised mock-ups: say how they draw the reflowing canvas, which screenshots show one row and which two rows for the default config and Kite 4-369, what the judging rounds changed, and keep every screenshot shown at 1440 and 1280 px. Revise any other passage the mock-ups changed.</p></td><td><span class="mono">docs/planning/notehead-first-editor-design.md</span></td><td><code>node -e const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const s=t.slice(t.indexOf('## 10.'),t.indexOf('## 11.'));const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280])if(!s.includes('notehead-first-mockups/shots/'+p+'-'+w+'.png'))bad.push('not shown in §10: '+p+'-'+w);if(!/one row/i.test(s)||!/two rows/i.test(s))bad.push('§10 does not say which shots show one row and two rows');if(bad.length){console.error(bad.join('\n'));process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the application: nothing under cnb/ (source, UI, index.html, tests, UAT drivers, fixtures) is edited; the collection's rows option and minimum-width report are designed here and built in the program's new-page session.</li><li>No change to the config schema or the LilyPond export, and no amendment to the export spec or the architecture plan.</li><li>The renumbered program is written in the design document only; session-plan.md is not amended with the implementation sessions, and sessions 21 and 22 are not changed.</li><li>No release, no version bump, no CHANGELOG or version.json change, and no site deploy.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[11:27:08]</span> <span class="muted">run-started</span> session=020 mode=pull</div>
+<div class="line"><span class="at">[11:27:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="muted">plan-accepted</span> steps=[&quot;design-revision&quot;,&quot;mockups&quot;,&quot;screenshots-in-design&quot;] non_goals=4</div>
+<div class="line"><span class="at">[11:28:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[11:28:08]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=design-revision</div>
+<div class="line"><span class="at">[11:30:34]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:30:35]</span> <span class="muted">check-passed</span> step=design-revision argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const bad=[];for(const w of ['cnb-collection.js','rows','14th column','preview baseline','| **30.'])if(!t.includes(w))bad.push('missing: '+w);if(t.includes('fits the width it has'))bad.push('old fit-to-width text remains');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[11:30:35]</span> <span class="muted">report-accepted</span> seq=2 step=design-revision files=[&quot;docs/planning/notehead-first-editor-design.md&quot;] notes=New §6.1/6.2: fixed size (toolbar Size, Medium 11 px/semitone, kept per viewer), 13 equal grid columns plus a fixed 14th, one stretched staff SVG per row (chosen over slices: seams, broken dashes), one or two rows chosen by preview-display.js with pure rows/fluid options and minRowWidth; principle 5, §7, §8.8, §11 updated; program renumbered 23-30.</div>
+<div class="line"><span class="at">[11:30:35]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=mockups</div>
+<div class="line"><span class="at">[11:34:53]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:34:54]</span> <span class="muted">check-passed</span> step=mockups argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const d='docs/planning/notehead-first-mockups/';const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280]){const b=fs.readFileSync(d+'shots/'+p+'-'+w+'.png');if(b.readUInt32BE(0)!==0x89504e47||b.readUInt32BE(16)!==w)bad.push(p+'-'+w+'.png width '+b.readUInt32BE(16))}const css=fs.readFileSync(d+'mockup.css','utf8');if(/\\.sheet|--sheet-w/.test(css))bad.push('side-panel styles remain in mockup.css');const js=fs.readFileSync(d+'mockup.js','utf8');if(!js.includes('cnb/src/')||!/rows/.test(js))bad.push('mockup.js must draw rows with cnb/src');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[11:34:55]</span> <span class="muted">report-accepted</span> seq=3 step=mockups files=[&quot;docs/planning/notehead-first-mockups/mockup.css&quot;,&quot;docs/planning/notehead-first-mockups/mockup.js&quot;,&quot;docs/planning/notehead-first-mockups/01-editor.html&quot;,&quot;docs/planning/notehead-first-mockups/02-notehead.html&quot;,&quot;docs/planning/notehead-first-mockups/03-pitch.html&quot;,&quot;docs/planning/notehead-first-mockups/04-rules.html&quot;,&quot;docs/planning/notehead-first-mockups/shots/01-editor-1440.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/01-editor-1280.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/02-notehead-1440.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/02-notehead-1280.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/03-pitch-1440.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/03-pitch-1280.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/04-rules-1440.png&quot;,&quot;docs/planning/notehead-first-mockups/shots/04-rules-1280.png&quot;] notes=Mock-ups reflow at a fixed size: equal grid columns, one stretched staff SVG per row, one or two rows from the host width, a gutter per row, plain labels, a Size control. Default: one row at 1440, two at 1280; Kite: two rows at Medium, one row at Small at 1440 (page 4). Close-up shows the selected notehead alone. Side-panel CSS removed.</div>
+<div class="line"><span class="at">[11:34:55]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=screenshots-in-design</div>
+<div class="line"><span class="at">[11:36:02]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:36:04]</span> <span class="muted">check-passed</span> step=screenshots-in-design argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const s=t.slice(t.indexOf('## 10.'),t.indexOf('## 11.'));const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280])if(!s.includes('notehead-first-mockups/shots/'+p+'-'+w+'.png'))bad.push('not shown in §10: '+p+'-'+w);if(!/one row/i.test(s)||!/two rows/i.test(s))bad.push('§10 does not say which shots show one row and two rows');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[11:36:05]</span> <span class="muted">report-accepted</span> seq=4 step=screenshots-in-design files=[&quot;docs/planning/notehead-first-editor-design.md&quot;] notes=§10 explains how the mock-ups draw the reflowing canvas, tabulates rows per screenshot (default and Kite each on one row and two), records the measured widths and the close-up change; §2 and §6 now describe the close-up as the selected notehead alone at Large.</div>
+<div class="line"><span class="at">[11:36:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:36:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:36:06]</span> <span class="muted">job-started</span> name=verification pid=45692 log=.dabbler/runs/s20/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:37:25]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s20/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:37:25]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[11:37:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[11:37:25]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[11:38:09]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[11:38:09]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[11:38:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[11:38:09]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[11:40:09]</span> <span class="muted">run-resumed</span> session=020 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[11:40:13]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const bad=[];for(const w of ['cnb-collection.js','rows','14th column','preview baseline','| **30.'])if(!t.includes(w))bad.push('missing: '+w);if(t.includes('fits the width it has'))bad.push('old fit-to-width text remains');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;] owner=design-revision</div>
+<div class="line"><span class="at">[11:40:13]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const d='docs/planning/notehead-first-mockups/';const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280]){const b=fs.readFileSync(d+'shots/'+p+'-'+w+'.png');if(b.readUInt32BE(0)!==0x89504e47||b.readUInt32BE(16)!==w)bad.push(p+'-'+w+'.png width '+b.readUInt32BE(16))}const css=fs.readFileSync(d+'mockup.css','utf8');if(/\\.sheet|--sheet-w/.test(css))bad.push('side-panel styles remain in mockup.css');const js=fs.readFileSync(d+'mockup.js','utf8');if(!js.includes('cnb/src/')||!/rows/.test(js))bad.push('mockup.js must draw rows with cnb/src');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;] owner=mockups</div>
+<div class="line"><span class="at">[11:40:13]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/planning/notehead-first-editor-design.md','utf8');const s=t.slice(t.indexOf('## 10.'),t.indexOf('## 11.'));const bad=[];for(const p of ['01-editor','02-notehead','03-pitch','04-rules'])for(const w of [1440,1280])if(!s.includes('notehead-first-mockups/shots/'+p+'-'+w+'.png'))bad.push('not shown in §10: '+p+'-'+w);if(!/one row/i.test(s)||!/two rows/i.test(s))bad.push('§10 does not say which shots show one row and two rows');if(bad.length){console.error(bad.join('\\n'));process.exit(1)}&quot;] owner=screenshots-in-design</div>
+<div class="line"><span class="at">[11:40:14]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[] notes=[0] Size now sets the saved display.pxPerSemi (Small 9, Medium 11, Large 16 = every repo file's saved value; other values show as Custom; editor's new-notation action starts at Medium; createDefault and baselines untouched); §6.1, §10, §11 rewritten. [1] each row keeps the grid's minimum width so the stretched staff scrolls with the grid; checked at 880 px: row 1 staff 560 = grid 560, row 2 staff 480 (6/7 by design), no page overflow.</div>
+<div class="line"><span class="at">[11:40:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:40:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:40:14]</span> <span class="muted">job-started</span> name=verification pid=48380 log=.dabbler/runs/s20/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:41:21]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s20/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:41:21]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[11:41:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[11:41:21]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[11:41:21]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=20512 log=.dabbler/runs/s20/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:41:38]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s20/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:41:39]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[11:41:39]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=44728 log=.dabbler/runs/s20/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:42:23]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s20/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:42:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[11:42:28]</span> <span class="muted">landed</span> commit=1082dfea753993a9aeb99dd98f0f299ba3e4b906</div>
+<div class="line"><span class="at">[11:42:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[11:42:28]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[11:42:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[11:42:29]</span> <span class="muted">job-started</span> name=close pid=48228 log=.dabbler/runs/s20/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:42:37]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s20/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:42:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The design replaces the required saved `display.pxPerSemi` size control with a browser-only, unsaved three-step setting.</td><td>fixed — [0] Size now sets the saved display.pxPerSemi (Small 9, Medium 11, Large 16 = every repo file's saved value; other values show as Custom; editor's new-notation action starts at Medium; createDefault and baselines untouched); §6.1, §10, §11 rewritten. [1] each row keeps the grid's minimum width so the stretched staff scrolls with the grid; checked at 880 px: row 1 staff 560 = grid 560, row 2 staff 480 (6/7 by design), no page overflow.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The below-two-row-minimum branch is not visually pinned by the revised screenshots or by any visible test. A useful mock-up test case would be: precondition a host narrower than `GUTTER + 7 * colMin`; input `renderStaff(host, config)` for a configuration whose `colMin` is known; expectation the horizontally scrollable row has staff lines extending through the seventh minimum-width column and no notes beyond the line end. Today `.row-body` is allowed to shrink (`min-width: 0`) while `.preview-container` and the background SVG are forced to `width: 100%`, so the grid can overflow wider than the background rather than creating a consistently full-width scrolling staff.</td><td>fixed — [0] Size now sets the saved display.pxPerSemi (Small 9, Medium 11, Large 16 = every repo file's saved value; other values show as Custom; editor's new-notation action starts at Medium; createDefault and baselines untouched); §6.1, §10, §11 rewritten. [1] each row keeps the grid's minimum width so the stretched staff scrolls with the grid; checked at 880 px: row 1 staff 560 = grid 560, row 2 staff 480 (6/7 by design), no page overflow.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The documented 880 px measurement is inconsistent with the mock-up implementation. `renderStaff()` sets `slots` from the first split row (7), then the new narrow-width branch gives *both* row bodies `minWidth = 7 * colMin`; it also calls `fluidRow()` for the six-pitch second row with `slots === 7`, which creates seven grid tracks. With the document’s stated first-row width of 560 px, the second row cannot have a 480 px row-wide staff as claimed.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `docs/planning/notehead-first-editor-design.md` §10, `docs/planning/notehead-first-mockups/mockup.js`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>The description should either report the actual seven-track second-row width or change the intended implementation so the second row uses six tracks and a six-column minimum.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>16s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>43s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
