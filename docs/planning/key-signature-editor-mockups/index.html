@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key signature editor mock-ups</title>
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #f9f8f5; --ink: #1c1c1e; --ink-2: #5b5d63;
+    --line: #e2e0da; --accent: #2f5bd3; --accent-soft: #e8eefc; --warn: #9a5b00; --warn-soft: #fdf3e1;
+    --error: #b3261e; --ok: #2e7d32; --radius-s: 6px; --radius-m: 10px;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; }
+  .intro { padding: 24px 32px 8px; max-width: 1100px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; }
+  .intro p, .section-note { margin: 0 0 10px; color: var(--ink-2); max-width: 980px; }
+  h2 { font-size: 17px; margin: 28px 32px 4px; }
+  .section-note { margin: 0 32px 12px; }
+  code { font-size: 12.5px; }
+
+  /* The app, as the notehead-first editor lays it out (design §7). */
+  .app { margin: 0 32px; border: 1px solid var(--line); border-radius: var(--radius-m);
+    overflow: hidden; background: var(--bg); box-shadow: var(--shadow-1); }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: var(--surface); border-bottom: 1px solid var(--line); }
+  .topbar .name { font-weight: 600; }
+  .topbar .config { color: var(--ink-2); }
+  .topbar .grow { flex: 1; }
+  .topbar .checks { color: var(--ok); font-size: 13px; }
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-s);
+    padding: 5px 11px; font: inherit; font-size: 13px; color: var(--ink); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.small { padding: 3px 8px; font-size: 12.5px; }
+  .body { display: flex; }
+  nav.sections { width: 180px; flex: none; padding: 12px 8px; border-right: 1px solid var(--line);
+    background: var(--surface-2); }
+  nav.sections div { padding: 6px 10px; border-radius: var(--radius-s); color: var(--ink-2); }
+  nav.sections div.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  nav.sections hr { border: 0; border-top: 1px solid var(--line); margin: 8px 4px; }
+  main { flex: 1; min-width: 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); }
+  .canvas-card { padding: 10px 14px; display: flex; align-items: center; gap: 16px; overflow: hidden; }
+  .canvas-card .what { color: var(--ink-2); font-size: 12.5px; max-width: 260px; }
+  .panel { padding: 14px 16px 16px; }
+  .panel-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .panel-head .title { font-weight: 600; font-size: 15px; }
+  .panel-head .grow { flex: 1; }
+  label.check { display: inline-flex; align-items: center; gap: 6px; }
+  .editor { display: flex; gap: 14px; align-items: flex-start; }
+  .editor-main { flex: 1; min-width: 0; }
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .bar .label { color: var(--ink-2); font-size: 12.5px; }
+  .select { border: 1px solid var(--line); border-radius: var(--radius-s); padding: 3px 8px;
+    background: var(--surface); font-size: 13px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12.5px;
+    background: var(--surface); color: var(--ink-2); }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .magnified { border: 1px solid var(--line); border-radius: var(--radius-s); background: #fff;
+    padding: 8px; display: flex; justify-content: center; overflow: hidden; }
+  .hint { color: var(--ink-2); font-size: 12px; margin: 4px 0 10px; }
+  .others { display: flex; flex-wrap: wrap; gap: 6px; }
+  figure.mini { margin: 0; padding: 4px 5px 2px; border: 1px solid var(--line); border-radius: var(--radius-s);
+    background: #fff; display: flex; flex-direction: column; align-items: center; min-width: 46px; }
+  figure.mini.picked { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  figure.mini.touch { border-color: var(--error); }
+  figure.mini figcaption { font-size: 11px; color: var(--ink-2); }
+  figure.mini.touch figcaption { color: var(--error); }
+  .summary { font-size: 12.5px; margin: 6px 0 0; color: var(--ink-2); }
+  .summary.warn { color: var(--error); }
+  aside.look { width: 290px; flex: none; border: 1px solid var(--line); border-radius: var(--radius-m);
+    padding: 12px; background: var(--surface-2); }
+  aside.look h3 { margin: 0 0 2px; font-size: 14px; }
+  aside.look .sub { color: var(--ink-2); font-size: 12px; margin-bottom: 10px; }
+  .group { margin-bottom: 10px; }
+  .group > .gl { font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 5px; }
+  button.thumb { width: 50px; border: 1px solid var(--line); border-radius: var(--radius-s); background: #fff;
+    padding: 2px 0 3px; display: flex; flex-direction: column; align-items: center; font: inherit; }
+  button.thumb.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  button.thumb span { font-size: 10px; color: var(--ink-2); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+  .seg span { padding: 2px 9px; font-size: 12.5px; background: #fff; border-right: 1px solid var(--line); }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12.5px; }
+  .num { width: 54px; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 2px 6px; background: #fff; }
+  .swatch { width: 18px; height: 18px; border-radius: 4px; background: #1c1c1e; display: inline-block;
+    vertical-align: middle; border: 1px solid var(--line); }
+  .rows { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .row { display: grid; grid-template-columns: 90px 1fr; gap: 10px; padding: 5px 0; align-items: baseline; }
+  .row .rl { color: var(--ink-2); font-size: 13px; }
+  .row .rc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
+  .radio::before { content: "○ "; color: var(--ink-2); }
+  .radio.on::before { content: "◉ "; color: var(--accent); }
+  .new { color: var(--accent); font-size: 11px; font-weight: 600; margin-left: 4px; }
+  .steep { margin: 12px 32px 0; }
+  .steep .card { padding: 12px 14px; }
+
+  /* At concert size. */
+  #concert { margin: 0 32px 40px; display: flex; flex-direction: column; gap: 12px; }
+  .concert-row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+  .concert-head { width: 230px; flex: none; display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+  .concert-head span { color: var(--ink-2); font-size: 12.5px; }
+  figure.case { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-m);
+    padding: 8px 12px 6px; display: flex; flex-direction: column; align-items: center; }
+  .sizes { display: flex; align-items: center; gap: 18px; }
+  figure.case figcaption { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Key signature editor mock-ups</h1>
+  <p>Session 53, for review before the amendment to <code>key-signature-designer-design.md</code> (§13)
+  is approved. Every staff, notehead, ledger and Emmentaler sign is drawn with the Configurator's own
+  code; the marks come from a prototype of the amendment's one model. Tails are drawn as strokes here;
+  the build imports them as shapes.</p>
+</div>
+
+<h2>1. The editor (Clairnote SN in B♭ major, the flats selected)</h2>
+<p class="section-note">The Key signature section, its panel below the staff's canvas. The magnified
+signature is the picked key's. A click on a mark selects its category, here every flat: the solid outline
+is the mark clicked, with its reference point (the cross, on its pitch) and the resize handle; the dashed
+outlines are the other flats the edit moves with it. Dragging the mark sets the flats' offset, and the
+handle their size, in semitones. Beneath, the mode's 15 keys, so an edit can be seen in every key.</p>
+
+<div class="app">
+  <div class="topbar">
+    <span class="name">Chromatic Notation Configurator</span><span class="config">· Clairnote SN</span>
+    <span class="grow"></span><span class="checks">● No problems</span>
+    <span class="btn">Open…</span><span class="btn">Save</span><span class="btn primary">Export for LilyPond</span>
+  </div>
+  <div class="body">
+    <nav class="sections">
+      <div>Staff</div><div>Noteheads</div><div>Pitch</div><div>Ledger lines</div><div>Clef</div>
+      <div class="on">Key signature</div><hr><div>Advanced</div><div>Export</div>
+    </nav>
+    <main>
+      <div class="card canvas-card">
+        <div id="staff-strip"></div>
+        <div class="what">The staff's canvas, as today, draws the signature at the staff's size for the key its
+        picker shows (B♭ major).</div>
+      </div>
+
+      <div class="card panel">
+        <div class="panel-head">
+          <span class="title">Key signature</span>
+          <label class="check">☑ Show the key signature</label>
+          <span class="grow"></span>
+          <span class="label" style="color:var(--ink-2);font-size:12.5px">Start from</span>
+          <span class="btn small">The noteheads</span><span class="btn small">Traditional sharps and flats</span>
+        </div>
+
+        <div class="editor">
+          <div class="editor-main">
+            <div class="bar">
+              <span class="label">Key</span><span class="select">B♭ ▾</span><span class="select">major ▾</span>
+              <span class="label" style="margin-left:12px">Edit</span>
+              <span class="chip">All marks</span><span class="chip">Naturals</span><span class="chip on">Flats</span>
+              <span class="chip">Sharps</span><span class="chip">On a line or ledger</span><span class="chip">In a space</span>
+              <span class="chip">Every second stack</span>
+            </div>
+            <div class="magnified" id="magnified"></div>
+            <div class="hint">Drag a mark to move its category, the corner handle to resize it; values snap to tenths
+            of a semitone. A click picks another mark.</div>
+            <div class="bar"><span class="label">Other keys in major</span></div>
+            <div class="others" id="others"></div>
+            <div class="summary" id="touch-summary"></div>
+          </div>
+
+          <aside class="look">
+            <h3>Flats</h3>
+            <div class="sub">Laid over all marks; beneath the line and space looks. In B♭ major: B♭, E♭.</div>
+            <div class="group"><div class="gl">Symbol</div><div class="thumbs" id="symbols"></div>
+              <div style="margin-top:6px"><span class="btn small">Import from SVG…</span></div></div>
+            <div class="group"><div class="gl">Fill</div>
+              <span class="seg"><span class="on">As beneath</span><span>Solid</span><span>Hollow</span></span></div>
+            <div class="group"><div class="gl">Colour</div>
+              <div class="fields"><span class="seg"><span class="on">As beneath</span><span>None</span></span>
+              <span class="swatch"></span></div></div>
+            <div class="group"><div class="gl">Size</div>
+              <div class="fields">Height <span class="num">as beneath</span> Width <span class="num">as beneath</span></div></div>
+            <div class="group"><div class="gl">Offset <span class="new">new</span></div>
+              <div class="fields">x <span class="num">0.0</span> y <span class="num">0.0</span> semitones</div></div>
+            <div class="group"><div class="gl">Added symbols <span class="new">new</span> (up to two)</div>
+              <div class="thumbs" id="added"></div>
+              <div class="fields" style="margin-top:6px">Tail up: offset x <span class="num">0.0</span>
+                y <span class="num">0.0</span></div>
+              <div style="margin-top:6px"><span class="btn small">+ Add a symbol</span></div></div>
+          </aside>
+        </div>
+
+        <div class="rows">
+          <div class="row"><div class="rl">Notes</div><div class="rc">
+            <span class="radio on">The whole scale</span><span class="radio">The tonic and the half steps</span>
+            <span class="radio">The sharps or flats only<span class="new">new</span></span>
+            <span>☐ The tonic an octave up</span></div></div>
+          <div class="row"><div class="rl">Stacks</div><div class="rc">
+            <span class="radio">Stacked sevenths</span><span class="radio">Odd semitones left, even right</span>
+            <span class="radio on">A new stack at each change of odd and even</span>
+            <span class="radio">Zigzag at each change of odd and even</span>
+            <span class="radio">Cycle of fifths, one to a column<span class="new">new</span></span>
+            <span>Stacks go <b>to the left in sharp keys</b></span>
+            <span>☐ Gold stem between the stacks</span></div></div>
+          <div class="row"><div class="rl">Place</div><div class="rc">
+            <span class="radio">In the middle of the staff</span><span class="radio on">On the bottom line set</span>
+            <span class="radio">On the top line set</span><span class="radio">On every line set</span></div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="steep">
+  <div class="card">
+    <b>The touch check, with a steeper tail.</b>
+    <span style="color:var(--ink-2)">The same signature with both tails at 75° and 1.4 semitones long instead of
+    30° and 1.15: each key whose marks touch is outlined, its touching marks circled, and the line beneath
+    names them across all 105 keys (design §13.7).</span>
+    <div class="others" id="others-steep" style="margin-top:8px"></div>
+    <div class="summary warn" id="touch-summary-steep"></div>
+  </div>
+</div>
+
+<h2>2. At concert size</h2>
+<p class="section-note">Each signature in a sharp key and a flat key, first at concert size (LilyPond's 20-point
+staff at the engine's 7/4, one staff space 11.7 px, as the screen shows it at 100%), then three times as
+large. The whole engraved staff is drawn: on the default 4-8 staff, two line sets either side of middle C.</p>
+<div id="concert"></div>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>
