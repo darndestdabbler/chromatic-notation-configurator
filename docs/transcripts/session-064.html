@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 064 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 064 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T19:49:49.493Z by dabbler-ai-router 3.32.4 at fb0a5abb92c6588068da764977c8bd4763e768d1.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T14:07:15.099-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 64: The key signature's spelled looks</h3>
+<p><strong>Why.</strong> Custom marks are chosen per spelled note, and their columns can be tightened (design §3.5).</p>
+<ol><li>Register.</li><li><code>keys.keySignature.looks.spelled</code> (the 21 spelled notes, laid over the line and space looks and under <code>alternate</code>), <code>columnGap</code>, and the built-in parallelogram, through <code>CNBConfig</code>, <code>CNBKeySignature.marks</code> and the mark table.</li><li>The Clairnote SN and DN gallery files redrawn with the six symbols, their mark tables byte for byte as before; the five export baselines unchanged; an engine round trip of a spelled look and a negative gap. *Engine work:* none.</li></ol>
+<h2>Work Plan</h2>
+<p>Give the key signature its spelled looks and column gap (step-by-step design §3.5). keys.keySignature gains looks.spelled, a map from the 21 spelled notes (C♭ to B♯, written as CNBMusic.spellings writes a tonic) to a look of today's form, laid over the line and space looks and under alternate, and columnGap, semitones (axis units under a pitch axis) added between neighbouring columns, 0 by default, negative to tighten them. CNBConfig gives both defaults, validates them (a spelled key must be one of the 21 notes and its look a look; the gap a finite number) and clears looks.spelled when it converts a saved accidentals style. CNBKeySignature.marks resolves each mark's spelled note from the key's spelling and lays the layer in its place, spaces the columns by the gap (the gold stems midway between the columns' boxes), measure/render/the editor's canvas place columns by that step, and isScaleStack is false when either is set; the mark table writes what marks gives, with no LY spec change. The checks list warns when columns would cross in some of the 105 keys. A built-in parallelogram shape (2 semitones high, 4 wide, leaning right, solid, no ledgers) is added to cnb/ui/builtin-shapes.js, available by name for key-signature looks but not added to the notehead panel's list. The Clairnote SN and DN gallery files are redrawn with spelled looks, each spelled note one of the six symbols (a solid or hollow dot, plain, with a tail up on a flat or a tail down on a sharp), their mark tables pinned byte for byte before the redraw and unchanged after it; the five export baselines stay unchanged; an engine round trip holds a spelled look and a negative gap to the canvas within 0.001 staff spaces. The architecture plan's §4.9 gains the two fields and the parallelogram.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/3f014823c6b7c7e4e6daff013c17f895b711418e"><code>3f014823c6b7c7e4e6daff013c17f895b711418e</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Pin clairnote tables</td><td><p>In cnb/tests/cnb-lilypond-tests.js add a test that pins the Clairnote SN and DN gallery files' exported key-signature mark tables (the cnb:keysig-style 'marks line through the end of the cnb:keysig-marks definition) by sha256, captured from the files as they are now, so the later redraw is held to them byte for byte.</p></td><td><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Config fields</td><td><p>In cnb/src/cnb-config.js give keys.keySignature the defaults looks.spelled {} and columnGap 0 (with the defaults' comment); validate looks.spelled as an object whose keys are the 21 spelled notes (each letter natural, ♯ and ♭) and whose values are checked as the other looks are, and columnGap as a finite number (an error otherwise); and have signatureStyleToModel clear looks.spelled with the other looks when it converts an accidentals style. Update the tests that pin the default looks (cnb-config-tests, cnb-config-io-tests, cnb-key-signature-editor-tests) and the same pin in cnb/uat/uat-key-signature.mjs, and add tests for the new validation and the conversion.</p></td><td><span class="mono">cnb/src/cnb-config.js</span><br><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-config-tests.js</span><br><span class="mono">cnb/tests/cnb-config-io-tests.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/uat/uat-key-signature.mjs</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node --check cnb/uat/uat-key-signature.mjs</code></td><td>yes</td></tr>
+<tr><td>Parallelogram</td><td><p>Add the built-in parallelogram to cnb/ui/builtin-shapes.js: 2 semitones high, 4 wide, leaning right, solid (no hollow), stemless, ledgers false, its LilyPond path left to the exporter's fallback. CNBBuiltinShapes.get and withShape return it by name; NAMES stays the notehead panel's four shapes. Test its geometry, that it exports, and that NAMES is unchanged in cnb/tests/cnb-builtin-shapes-tests.js.</p></td><td><span class="mono">cnb/ui/builtin-shapes.js</span><br><span class="mono">cnb/tests/cnb-builtin-shapes-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Spelled and gap</td><td><p>In cnb/src/cnb-key-signature.js resolve looks.spelled in CNBKeySignature.marks: each mark's spelled note from the key's spelling (letter and alteration; no layer for a key with no spelling), laid after line/space and before alternate; space the columns by the step width + columnGap (converted to staff spaces), the gold stems midway between neighbouring columns' boxes; give measure() the step separately from the box width, and use it in render, the ink, the content width and the editor canvas's column positions (cnb/ui/key-signature-editor.js); make isScaleStack false when looks.spelled sets anything or columnGap is not 0. Tests in cnb-key-signature-tests.js: the layer's place in the order, a partial spelled map, enharmonic notes kept apart (C♯ and D♭), alternate over a spelled symbol (a colour keeps it, a shape replaces it), the gap positive and negative in marks, measure and render, isScaleStack; in cnb-key-signature-editor-tests.js the canvas's columns with a gap; in cnb-lilypond-tests.js the mark table writing a spelled look and the gap's columns and bars, and the five baselines unchanged.</p></td><td><span class="mono">cnb/src/cnb-key-signature.js</span><br><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Columns cross warning</td><td><p>In cnb/ui/config-export.js warn, beside the touching-marks warning and never blocking the export, when the column gap makes columns cross (the step between neighbouring columns not positive) in any of the 105 keys, naming how many; test it in cnb/tests/cnb-config-export-tests.js.</p></td><td><span class="mono">cnb/ui/config-export.js</span><br><span class="mono">cnb/tests/cnb-config-export-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Roundtrip</td><td><p>Add to the engine-backed 'model's symbols' mark-table round trip in cnb/tests/cnb-lilypond-tests.js a spelled look (some spelled notes given another shape, hollow and an added symbol, enharmonic pairs drawn differently) and a negative column gap, each held to the canvas within 0.001 staff spaces with the existing holdMarkTable and ink comparison.</p></td><td><span class="mono">cnb/tests/cnb-lilypond-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Clairnote redraw</td><td><p>Redraw the Clairnote SN and DN gallery files' signatures with looks.spelled: each of the 21 spelled notes given one of the six symbols (clairnote-dot solid or hollow as its pitch is on a line or in a space, plain on a natural, with the clairnote-tail-up added on a flat and the clairnote-tail-down on a sharp), the all, flat, sharp, line and space looks removed. Their mark tables stay byte for byte as pinned in the first step.</p></td><td><span class="mono">cnb/assets/examples/gallery/clairnote-sn.json</span><br><span class="mono">cnb/assets/examples/gallery/clairnote-dn.json</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/uat/uat-key-signature.mjs</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node -e for (const f of ['sn','dn']) { const ks = require('./cnb/assets/examples/gallery/clairnote-' + f + '.json').keys.keySignature; if (Object.keys(ks.looks.spelled || {}).length !== 21) { console.error(f + ': not 21 spelled looks'); process.exit(1); } }</code></td><td>yes</td></tr>
+<tr><td>Architecture plan</td><td><p>Add looks.spelled, columnGap and the built-in parallelogram to the architecture plan's §4.9 (the keySignature block, the laying order of the looks, the Module 22 notes where they describe marks' columns and isScaleStack).</p></td><td><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const t = require('fs').readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); for (const w of ['spelled', 'columnGap', 'parallelogram']) if (!t.includes(w)) { console.error('missing ' + w); process.exit(1); }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No key-signature step UI: step 6's starting points, step 7's 21-note canvas, selection and look card on a selection are session 65; the column gap's field and drag on the canvas are session 66.</li><li>No engine work and no LY export spec change: the mark table's format stays §5.6a's.</li><li>The parallelogram is not offered as a notehead in the notehead panel, and no Custom marks starting point writes it yet (session 65).</li><li>uat-key-signature.mjs is not rewritten to the steps (session 65); only its pinned default looks follow the new default.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:07:15]</span> <span class="muted">run-started</span> session=064 mode=pull</div>
+<div class="line"><span class="at">[19:07:15]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:10:52]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:10:52]</span> <span class="muted">plan-accepted</span> steps=[&quot;pin-clairnote-tables&quot;,&quot;config-fields&quot;,&quot;parallelogram&quot;,&quot;spelled-and-gap&quot;,&quot;columns-cross-warning&quot;,&quot;roundtrip&quot;,&quot;clairnote-redraw&quot;,&quot;architecture-plan&quot;] non_goals=4</div>
+<div class="line"><span class="at">[19:10:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:10:54]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=pin-clairnote-tables</div>
+<div class="line"><span class="at">[19:11:54]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:14:09]</span> <span class="muted">check-passed</span> step=pin-clairnote-tables argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:14:10]</span> <span class="muted">report-accepted</span> seq=2 step=pin-clairnote-tables files=[&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=Pinned the Clairnote SN and DN mark tables by sha256 (both files' tables are identical text).</div>
+<div class="line"><span class="at">[19:14:10]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=config-fields</div>
+<div class="line"><span class="at">[19:16:54]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:19:13]</span> <span class="muted">check-passed</span> step=config-fields argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:19:13]</span> <span class="muted">check-passed</span> step=config-fields argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[19:19:14]</span> <span class="muted">report-accepted</span> seq=3 step=config-fields files=[&quot;cnb/src/cnb-config.js&quot;,&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-config-tests.js&quot;,&quot;cnb/tests/cnb-config-io-tests.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;] notes=Defaults looks.spelled {} and columnGap 0, CNBConfig.SPELLED_NOTES, validation of both, the accidentals conversion clears spelled; the editor carries columnGap as a designer field.</div>
+<div class="line"><span class="at">[19:19:14]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=parallelogram</div>
+<div class="line"><span class="at">[19:20:15]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:22:31]</span> <span class="muted">check-passed</span> step=parallelogram argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:22:32]</span> <span class="muted">report-accepted</span> seq=4 step=parallelogram files=[&quot;cnb/ui/builtin-shapes.js&quot;,&quot;cnb/tests/cnb-builtin-shapes-tests.js&quot;] notes=The parallelogram as a key-signature built-in shape, reached by get/withShape and not in the noteheads' NAMES; its geometry and export tested.</div>
+<div class="line"><span class="at">[19:22:32]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=spelled-and-gap</div>
+<div class="line"><span class="at">[19:28:16]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:30:32]</span> <span class="muted">check-passed</span> step=spelled-and-gap argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:30:33]</span> <span class="muted">report-accepted</span> seq=5 step=spelled-and-gap files=[&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=marks() lays looks.spelled (by the note spelled in the key) between line/space and alternate and spaces stacks by width + columnGap, stems in the gap's middle; measure gains step and gap, used by render, the ink, the content width and the editor canvas; isScaleStack false with either; gap 0 keeps every expression byte-identical.</div>
+<div class="line"><span class="at">[19:30:33]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=columns-cross-warning</div>
+<div class="line"><span class="at">[19:31:28]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:33:42]</span> <span class="muted">check-passed</span> step=columns-cross-warning argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:33:43]</span> <span class="muted">report-accepted</span> seq=6 step=columns-cross-warning files=[&quot;cnb/ui/config-export.js&quot;,&quot;cnb/tests/cnb-config-export-tests.js&quot;] notes=validateForExport warns, never blocks, when a negative columnGap brings a stack to or past its neighbour, with the count of the 105 keys.</div>
+<div class="line"><span class="at">[19:33:43]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=roundtrip</div>
+<div class="line"><span class="at">[19:34:39]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:36:59]</span> <span class="muted">check-passed</span> step=roundtrip argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:37:00]</span> <span class="muted">report-accepted</span> seq=7 step=roundtrip files=[&quot;cnb/tests/cnb-lilypond-tests.js&quot;] notes=The model's mark-table round trip gains spelled looks (a ledgerless symbol, an added symbol, a colour, an offset, over line/space), a negative gap on the bottom line set, and Clairnote SN with a negative gap; all within 0.001 staff spaces against the engine.</div>
+<div class="line"><span class="at">[19:37:00]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=clairnote-redraw</div>
+<div class="line"><span class="at">[19:40:11]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:42:33]</span> <span class="muted">check-passed</span> step=clairnote-redraw argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:42:33]</span> <span class="muted">check-passed</span> step=clairnote-redraw argv=[&quot;node&quot;,&quot;-e&quot;,&quot;for (const f of ['sn','dn']) { const ks = require('./cnb/assets/examples/gallery/clairnote-' + f + '.json').keys.keySignature; if (Object.keys(ks.looks.spelled || {}).length !== 21) { console.error(f + ': not 21 spelled looks'); process.exit(1); } }&quot;]</div>
+<div class="line"><span class="at">[19:42:34]</span> <span class="muted">report-accepted</span> seq=8 step=clairnote-redraw files=[&quot;cnb/assets/examples/gallery/clairnote-sn.json&quot;,&quot;cnb/assets/examples/gallery/clairnote-dn.json&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;] notes=Both Clairnote files' signatures are 21 spelled looks of six symbols (dot solid/hollow, plain, tail up on flats, down on sharps); mark tables match the pinned hashes, whole exports identical, marks identical in all 105 keys; a touch test and the UAT's Clairnote check follow the spelled looks (uat-key-signature 109/109).</div>
+<div class="line"><span class="at">[19:42:34]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=architecture-plan</div>
+<div class="line"><span class="at">[19:43:24]</span> <span class="muted">run-resumed</span> session=064 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:43:26]</span> <span class="muted">check-passed</span> step=architecture-plan argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t = require('fs').readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); for (const w of ['spelled', 'columnGap', 'parallelogram']) if (!t.includes(w)) { console.error('missing ' + w); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[19:43:27]</span> <span class="muted">report-accepted</span> seq=9 step=architecture-plan files=[&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=§4.9 gains looks.spelled (laying order, the 21 notes) and columnGap in the block, a design note with the parallelogram and the Clairnote redraw, Module 22's marks/isScaleStack, and Appendix A's defaults.</div>
+<div class="line"><span class="at">[19:43:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:43:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:43:28]</span> <span class="muted">job-started</span> name=verification pid=296 log=.dabbler/runs/s64/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:45:17]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s64/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:45:17]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:45:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:45:18]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[19:45:19]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=12816 log=.dabbler/runs/s64/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:47:43]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s64/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:47:44]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[19:47:45]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=4324 log=.dabbler/runs/s64/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:49:26]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s64/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:49:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:49:34]</span> <span class="muted">landed</span> commit=3f014823c6b7c7e4e6daff013c17f895b711418e</div>
+<div class="line"><span class="at">[19:49:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:49:34]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:49:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:49:36]</span> <span class="muted">job-started</span> name=close pid=48020 log=.dabbler/runs/s64/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:49:49]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s64/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:49:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `CNBConfigExport.usedShapeNames()` still discovers only shapes reached through `CNBConfig.resolveNotehead()`, not shapes reached solely through `keys.keySignature.looks.spelled`. Add a preflight case: with a valid pathless custom shape selected only by `looks.spelled[&quot;C♯&quot;]` and a D-major key signature enabled, `validateForExport()` should return a “no path data” error; today `cnb/ui/config-export.js` omits that shape from its scan.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Add a pitch-axis gap case. With an enabled pitch axis whose `unitsPerStaffSpace` is 2 and `columnGap: 1`, assert that adjacent `marks().columns` move apart by 0.5 staff spaces and `measure(...).step` grows by exactly one `pxPerSemi`. The visible gap tests cover the default 4-semitones-per-space staff only.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>142s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>98s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
