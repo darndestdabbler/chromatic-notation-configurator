@@ -173,6 +173,9 @@ function isValidHex(v) {
 /** Known vocabulary (Module A validate() accepts exactly these). */
 const PLACEMENT_RULES = ["scale-from-tonic"];
 
+/** The parts render() draws for the steps (session 63), in their order. */
+const PARTS = ["symbol-type", "custom-symbols", "designer", "preview", "definitions"];
+
 /** The layers Edit picks (design §13.4, §13.8), in its words. */
 const LAYERS = [
   ["all", "All marks"], ["natural", "Naturals"], ["flat", "Flats"], ["sharp", "Sharps"],
@@ -755,6 +758,16 @@ export const CNBKeySignatureEditor = {
    *        browser's confirm by default).
    *        `config` seeds the editor state and is the base for the
    *        validation pass-through (defaults to CNBConfig.createDefault()).
+   *        `parts` (session 63, step-by-step design §1.3) draws only the
+   *        parts one step shows, in this order: "symbol-type" (step 6:
+   *        the head, Show the key signature, never disabled and turning
+   *        keys on too, and Start from, with the keys-off note),
+   *        "custom-symbols" (step 7: the key picker, Edit's layers, the
+   *        canvas and the look card), "designer" (step 8: the key picker,
+   *        the canvas, Notes, Stacks and Place), "preview" (step 9: the
+   *        mode's 15 keys and the touch list) and "definitions" (Advanced:
+   *        Use keys, the keys-off note, Keys for notehead rules and the
+   *        validation). Without it the whole panel draws, as before.
    * @returns {{root: HTMLElement, getState: () => object,
    *            getKeys: () => object, applyTo: (config: object) => object,
    *            setState: (partial: object) => void, redraw: () => void}}
@@ -806,6 +819,8 @@ export const CNBKeySignatureEditor = {
     if (!LAYER_WORDS[view.layer]) Object.assign(view, { layer: "all", symbol: "base", pinned: false });
     if (view.symbol !== "base" && !Number.isInteger(view.symbol)) view.symbol = "base";
     let lockLooks = true;
+    // The parts one step shows (session 63), or null for the whole panel.
+    const parts = Array.isArray(opts.parts) ? new Set(opts.parts) : null;
     const confirm = opts.confirm ||
       ((question) => (typeof globalThis.confirm === "function" ? globalThis.confirm(question) : true));
 
@@ -1003,8 +1018,15 @@ export const CNBKeySignatureEditor = {
       const cb = el("input", "cnb-kse-sig-enable-check");
       cb.type = "checkbox";
       cb.checked = !!ks.enabled;
-      cb.onchange = (e) => { ks.enabled = checkedFrom(e, cb); changed(); };
-      enable.appendChild(control(cb));
+      // Step 6 (session 63, design §3.1): Show is never disabled, and turns
+      // keys on with the signature, since the keys' own toggle is in Advanced.
+      const stepped = parts && parts.has("symbol-type");
+      cb.onchange = (e) => {
+        ks.enabled = checkedFrom(e, cb);
+        if (stepped && ks.enabled) state.enabled = true;
+        changed();
+      };
+      enable.appendChild(stepped ? cb : control(cb));
       enable.appendChild(el("span", "cnb-kse-sig-enable-text", "Show the key signature"));
       head.appendChild(enable);
 
@@ -1288,7 +1310,7 @@ export const CNBKeySignatureEditor = {
       return wrap;
     }
 
-    function drawStage() {
+    function drawStage(withKeys = true) {
       const stage = el("div", "cnb-kse-stage");
       const box = el("div", "cnb-kse-canvas");
       box.onpointerdown = (e) => {
@@ -1346,7 +1368,7 @@ export const CNBKeySignatureEditor = {
       stage.appendChild(box);
       stage.appendChild(el("div", "cnb-kse-hint",
         "Drag a mark to move its category, the corner handle to resize it; values snap to tenths of a semitone. A click picks another mark."));
-      stage.appendChild(drawOtherKeys());
+      if (withKeys) stage.appendChild(drawOtherKeys());
       return stage;
     }
 
@@ -1870,8 +1892,46 @@ export const CNBKeySignatureEditor = {
       return wrap;
     }
 
+    /** One step's part of the panel (session 63), into root. */
+    function drawPart(part) {
+      const ks = state.keySignature;
+      const section = (className) => el("div", "cnb-kse-section cnb-kse-signature " + className);
+      if (part === "symbol-type") {
+        const note = drawDisabledNote();
+        if (note) root.appendChild(note);
+        root.appendChild(section("cnb-kse-part-symbol-type")).appendChild(drawHead(ks));
+      } else if (part === "custom-symbols") {
+        const wrap = root.appendChild(section("cnb-kse-part-custom-symbols"));
+        const bar = wrap.appendChild(el("div", "cnb-kse-bar"));
+        bar.appendChild(drawKeyPicker());
+        bar.appendChild(drawLayers());
+        const workspace = wrap.appendChild(el("div", "cnb-kse-workspace"));
+        workspace.appendChild(drawStage(false));
+        workspace.appendChild(drawLookCard(ks));
+      } else if (part === "designer") {
+        const wrap = root.appendChild(section("cnb-kse-part-designer"));
+        wrap.appendChild(el("div", "cnb-kse-bar")).appendChild(drawKeyPicker());
+        wrap.appendChild(drawStage(false));
+        wrap.appendChild(drawNotes(ks));
+        wrap.appendChild(drawStacks(ks, pickedSignature()));
+        wrap.appendChild(drawPlace(ks));
+      } else if (part === "preview") {
+        root.appendChild(section("cnb-kse-part-preview")).appendChild(drawOtherKeys());
+      } else if (part === "definitions") {
+        root.appendChild(drawKeysEnable());
+        const note = drawDisabledNote();
+        if (note) root.appendChild(note);
+        root.appendChild(drawDefinitions());
+        root.appendChild(drawValidation());
+      }
+    }
+
     function redraw() {
       root.textContent = "";   // clears children on real DOM and on the test stub
+      if (parts) {
+        for (const part of PARTS) if (parts.has(part)) drawPart(part);
+        return;
+      }
       root.appendChild(drawKeysEnable());
       const note = drawDisabledNote();
       if (note) root.appendChild(note);

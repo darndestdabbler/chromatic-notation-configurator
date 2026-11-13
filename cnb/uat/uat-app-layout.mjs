@@ -49,6 +49,15 @@
  * the height to 4 semitones puts it on the Default rule and draws every
  * canvas notehead's box 4 semitones tall; The shape's own height clears it.
  *
+ * Session 63 (step-by-step design §2): the sidebar lists the twelve steps
+ * of the registry (cnb/ui/steps.js) under their group headings, numbered,
+ * then Advanced; steps 7–9 and 11 are greyed with their reasons and do not
+ * open until a key signature or a clef is shown; Next and Back walk every
+ * available step in order, skipping the greyed ones; a step and Next open
+ * by keyboard; the step bar stays in the window while the page scrolls; the
+ * staff canvas is hidden in steps 6–9. The kept panel shots are named by
+ * step (panel-clef-symbol, panel-ks-symbol-type).
+ *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
  * exit 2 = missing dependency, 1 = check failure, 0 = all passed).
@@ -66,6 +75,7 @@ import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { openSection, selectNotehead, setField, canvasConfig } from "./app-page.mjs";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBSteps } from "../ui/steps.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -203,9 +213,14 @@ async function layout(page) {
   }));
 }
 
-/** The section list, in the order a notation is designed (session 39). */
-const SECTIONS = ["notehead-height", "staff", "pitch", "ledger-lines", "noteheads",
-  "key-signature", "clef", "advanced", "export"];
+/** The steps, in the registry's order (session 63), then Advanced. */
+const SECTIONS = [...CNBSteps.map(s => s.id), "advanced"];
+/** The steps greyed with the default config: no key signature, no clef. */
+const GREYED = ["ks-custom-symbols", "ks-designer", "ks-preview", "clef-placement"];
+const OPEN_BY_DEFAULT = SECTIONS.filter(id => !GREYED.includes(id));
+/** The steps whose canvas is their own: the whole staff is hidden there. */
+const OWN_CANVAS = ["ks-symbol-type", "ks-custom-symbols", "ks-designer", "ks-preview"];
+const canvasShown = (page) => page.$eval("#canvas-card", e => !e.hidden && e.getBoundingClientRect().height > 0);
 
 const visiblePanels = (page) => page.$$eval(".panel", els =>
   els.filter(e => !e.hidden).map(e => e.dataset.panel));
@@ -227,8 +242,40 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   check(`${width}: the page opens on Notehead height, its panel the only one shown`,
     JSON.stringify(await visiblePanels(page)) === '["notehead-height"]', JSON.stringify(await visiblePanels(page)));
   const links = await page.$$eval(".section-link", els => els.map(e => e.dataset.section));
-  check(`${width}: the sections are listed in the order a notation is designed (session 39)`,
+  check(`${width}: the steps are listed in the registry's order, then Advanced (session 63)`,
     JSON.stringify(links) === JSON.stringify(SECTIONS), JSON.stringify(links));
+  const sidebar = await page.$$eval("#step-nav .step-nav > *", els => els.map(e =>
+    e.classList.contains("step-group") ? "# " + e.textContent
+      : e.tagName === "HR" ? "—"
+      : [e.querySelector(".step-number")?.textContent ?? "", e.querySelector(".step-label").textContent].join(" ").trim()));
+  const wantSidebar = [];
+  let group = null;
+  for (const s of CNBSteps) {
+    if (s.group !== group) { group = s.group; wantSidebar.push("# " + group); }
+    wantSidebar.push(`${s.number} ${s.label}`);
+  }
+  wantSidebar.push("—", "Advanced");
+  check(`${width}: the sidebar shows the static group headings, then each step's number and short label`,
+    JSON.stringify(sidebar) === JSON.stringify(wantSidebar), JSON.stringify(sidebar));
+  check(`${width}: each panel is headed by its step's full title`,
+    JSON.stringify(await page.$$eval(".panel", els => els.filter(e => e.dataset.panel !== "advanced")
+      .map(e => [e.dataset.panel, e.querySelector("h2").textContent]))) ===
+    JSON.stringify(CNBSteps.map(s => [s.id, s.title])));
+  const greyed = await page.$$eval('.section-link[aria-disabled="true"]', els =>
+    els.map(e => [e.dataset.section, e.title, getComputedStyle(e).opacity < 1]));
+  check(`${width}: with no key signature and no clef, steps 7, 8, 9 and 11 are greyed with their reasons`,
+    JSON.stringify(greyed) === JSON.stringify([
+      ["ks-custom-symbols", "Show a key signature in step 6 first.", true],
+      ["ks-designer", "Show a key signature in step 6 first.", true],
+      ["ks-preview", "Show a key signature in step 6 first.", true],
+      ["clef-placement", "Choose or import a clef in step 10 first.", true]]), JSON.stringify(greyed));
+  let refused = true;
+  for (const id of GREYED) {
+    // Forced: Playwright waits for an aria-disabled link to be enabled.
+    await page.click(`.section-link[data-section="${id}"]`, { force: true });
+    if (JSON.stringify(await visiblePanels(page)) !== '["notehead-height"]') refused = false;
+  }
+  check(`${width}: a greyed step does not open`, refused, JSON.stringify(await visiblePanels(page)));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-default-${width}.png`), fullPage: true });
 
   // ── The general notehead height (session 39) ──
@@ -253,17 +300,74 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 
   // ── One panel at a time ──
   let onePanel = true;
-  for (const name of [...SECTIONS.slice(1), SECTIONS[0]]) {
+  let sideways = [];
+  for (const name of [...OPEN_BY_DEFAULT.slice(1), OPEN_BY_DEFAULT[0]]) {
     await openSection(page, name);
     const shown = await visiblePanels(page);
     const current = await page.$$eval(".section-link.on", els => els.map(e => e.dataset.section));
     if (JSON.stringify(shown) !== JSON.stringify([name]) || JSON.stringify(current) !== JSON.stringify([name])) {
       onePanel = false;
     }
+    const s = await layout(page);
+    if (s.pageScrollWidth > s.pageWidth) sideways.push(name);
   }
-  check(`${width}: each section shows its own panel and no other, and marks itself current`, onePanel);
-  l = await layout(page);
-  check(`${width}: no section makes the page scroll sideways`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
+  check(`${width}: each step shows its own panel and no other, and marks itself current`, onePanel);
+  check(`${width}: no step makes the page scroll sideways`, sideways.length === 0, JSON.stringify(sideways));
+
+  // ── Next and Back (session 63, design §2.2) ──
+  const walk = async (button) => {
+    const seen = [(await visiblePanels(page))[0]];
+    while (await page.$(`#step-bar .${button}`)) {
+      await page.click(`#step-bar .${button}`);
+      seen.push((await visiblePanels(page))[0]);
+    }
+    return seen;
+  };
+  await openSection(page, "notehead-height");
+  const forward = await walk("step-next");
+  const steps = OPEN_BY_DEFAULT.filter(id => id !== "advanced");
+  check(`${width}: Next walks every available step in order, skipping the greyed ones, and stops at Export`,
+    JSON.stringify(forward) === JSON.stringify(steps), JSON.stringify(forward));
+  const backward = await walk("step-back");
+  check(`${width}: Back walks them in reverse to Notehead height`,
+    JSON.stringify(backward) === JSON.stringify([...steps].reverse()), JSON.stringify(backward));
+  await openSection(page, "ks-symbol-type");
+  const bar = await page.$$eval("#step-bar button", els => els.map(e => e.textContent));
+  check(`${width}: the bar names the steps it opens by number and title: from step 6, Back to 5 and Next to 10`,
+    JSON.stringify(bar) === JSON.stringify(["← 5. Noteheads", "10. Clef symbol import and sizing →"]), JSON.stringify(bar));
+  await openSection(page, "advanced");
+  check(`${width}: Advanced has no step bar`, await page.$eval("#step-bar", e => e.hidden));
+
+  // ── By keyboard ──
+  await page.focus('.section-link[data-section="staff"]');
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  const byKey = await visiblePanels(page);
+  await page.focus("#step-bar .step-next");
+  await page.keyboard.press("Enter");
+  const nextByKey = await visiblePanels(page);
+  check(`${width}: a step opens by keyboard (Tab to its link, Enter), and so does Next`,
+    JSON.stringify(byKey) === '["pitch"]' && JSON.stringify(nextByKey) === '["ledger-lines"]',
+    JSON.stringify({ byKey, nextByKey }));
+
+  // ── The step bar stays in the window while the page scrolls ──
+  await openSection(page, "noteheads");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const sticky = await page.evaluate(() => {
+    const r = document.querySelector("#step-bar .step-bar-inner").getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, view: innerHeight, page: document.documentElement.scrollHeight };
+  });
+  check(`${width}: with the page taller than the window, the step bar is at the bottom of the window`,
+    sticky.page > sticky.view && sticky.bottom <= sticky.view + 0.5 && sticky.top > sticky.view / 2, JSON.stringify(sticky));
+
+  // ── The canvas in each step ──
+  let canvasRight = true;
+  for (const id of OPEN_BY_DEFAULT) {
+    await openSection(page, id);
+    if ((await canvasShown(page)) === OWN_CANVAS.includes(id)) canvasRight = false;
+  }
+  check(`${width}: the staff canvas is hidden in step 6 and shown in every other open step and Advanced`, canvasRight);
+  await openSection(page, "notehead-height");
 
   // ── Each section's preview (session 26, design §6) ──
   const marks = () => page.evaluate(() => ({
@@ -276,7 +380,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   let m = await marks();
   check(`${width}: Ledger lines marks the canvas, draws the candidate spots and says which columns draw ledger lines`,
     m.focus && m.spots > 0 && m.ledgered.includes("0") && !m.ledgered.includes("5"), JSON.stringify(m));
-  await openSection(page, "clef");
+  await openSection(page, "clef-symbol");
   m = await marks();
   check(`${width}: leaving Ledger lines removes the marks and spots`, !m.focus && m.spots === 0, JSON.stringify(m));
   const partial = (id) => page.evaluate((hostId) => {
@@ -393,7 +497,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 
   // ── The kept panels, for the screenshot check (session 26) ──
   if (width === 1440) {
-    for (const name of ["staff", "ledger-lines", "clef", "key-signature", "export"]) {
+    for (const name of ["staff", "ledger-lines", "clef-symbol", "ks-symbol-type", "export"]) {
       await openSection(page, name);
       await page.waitForTimeout(100);
       await page.screenshot({ path: path.join(SHOT_DIR, `panel-${name}.png`), fullPage: true });
@@ -410,7 +514,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       const el = document.querySelector(`#${h} .cnb-pvd-partial .${c}`);
       return el ? el.getBoundingClientRect().width : 0;
     }, [host, col]);
-    await openSection(page, "clef");
+    await openSection(page, "clef-symbol");
     await page.setInputFiles(".cnb-cle-file", {
       name: "clef.svg", mimeType: "image/svg+xml", buffer: Buffer.from(SAMPLE_CLEF_SVG, "utf8"),
     });
@@ -422,10 +526,11 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       clefGutter > 0 && (await page.$$eval("#clef-preview-host .cnb-clef", els => els.length)) === 1, String(clefGutter));
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-clef-glyph.png"), fullPage: true });
 
-    await openSection(page, "key-signature");
     // One button on the canvas turns on the default signature (session 36),
-    // drawn for the key picked there (C major), with no key defined.
+    // drawn for the key picked there (C major), with no key defined; step 6
+    // then shows it (session 63).
     await page.click(".canvas-card .cnb-pvd-signature-on");
+    await openSection(page, "ks-symbol-type");
     await page.waitForTimeout(100);
     const keysigGutter = await gutterWidth("key-signature-preview-host", "keysig-col");
     const keysOn = JSON.parse(await page.textContent("#state-json")).keys;
@@ -440,6 +545,25 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       (await page.$$eval(".canvas-card .cnb-pvd-preview .keysig-col", els => els.length)) >= 1,
       String(keysigGutter));
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-key-signature-key.png"), fullPage: true });
+
+    // ── Steps 7–9 open with a signature shown, without the whole staff (session 63) ──
+    const opened = [];
+    for (const id of ["ks-custom-symbols", "ks-designer", "ks-preview"]) {
+      await openSection(page, id);
+      opened.push([(await visiblePanels(page))[0], await canvasShown(page)]);
+      await page.screenshot({ path: path.join(SHOT_DIR, "panel-" + id + ".png"), fullPage: true });
+    }
+    check("1440: with the signature shown, steps 7, 8 and 9 are no longer greyed and open, each without the staff canvas",
+      JSON.stringify(opened) === JSON.stringify([["ks-custom-symbols", false], ["ks-designer", false], ["ks-preview", false]]) &&
+      (await page.$$('.section-link[aria-disabled="true"]')).length === 0, JSON.stringify(opened));
+    await openSection(page, "ks-symbol-type");
+    await page.uncheck('[data-panel="ks-symbol-type"] .cnb-kse-sig-enable-check');
+    await page.click('.section-link[data-section="ks-designer"]', { force: true });
+    check("1440: turning the signature off in step 6 greys steps 7–9 again",
+      JSON.stringify(await visiblePanels(page)) === '["ks-symbol-type"]' &&
+      JSON.stringify(await page.$$eval('.section-link[aria-disabled="true"]', els => els.map(e => e.dataset.section))) ===
+        '["ks-custom-symbols","ks-designer","ks-preview"]');
+    await page.check('[data-panel="ks-symbol-type"] .cnb-kse-sig-enable-check');
     await openSection(page, "staff");
 
     // ── The checks list speaks to a designer (session 31, mock-up 4) ──
@@ -465,18 +589,19 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       const el = document.querySelector("#checks-list .checks-item.warn");
       return el && { text: el.querySelector("p").textContent, link: el.querySelector(".checks-link")?.textContent };
     });
-    check("1440: the checks list says the warning in a designer's words, with an Open Key signature link",
+    check("1440: the checks list says the warning in a designer's words, with an Open Advanced link (the keys for notehead rules)",
       item && item.text === "The keys “C”, “A minor” have the same notes, so LilyPond cannot tell them apart: " +
-        "it engraves them all as “A minor” does." && item.link === "Open Key signature", JSON.stringify(item));
+        "it engraves them all as “A minor” does." && item.link === "Open Advanced", JSON.stringify(item));
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: path.join(SHOT_DIR, "checks-list-1440.png") });
     await page.click("#checks-list .checks-link");
     const followed = await page.evaluate(() => ({
       listHidden: document.getElementById("checks-list").hidden,
       shown: [...document.querySelectorAll(".panel")].filter(e => !e.hidden).map(e => e.dataset.panel),
+      keysOpen: document.getElementById("keys-for-rules").open,
     }));
-    check("1440: Open Key signature closes the list and opens the Key signature section",
-      followed.listHidden && JSON.stringify(followed.shown) === '["key-signature"]', JSON.stringify(followed));
+    check("1440: Open Advanced closes the list and opens Advanced at the keys for notehead rules",
+      followed.listHidden && JSON.stringify(followed.shown) === '["advanced"]' && followed.keysOpen, JSON.stringify(followed));
 
     // ── Two more staves to start from (session 32) ──
     // The default config with Automatic ledgers, so each preset's canvas

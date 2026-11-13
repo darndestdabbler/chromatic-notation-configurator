@@ -247,6 +247,24 @@ check("SAVE: one undo is back at the start, so Save added no step",
   withoutStamp(await state()) === withoutStamp(fresh));
 check("SAVE: and nothing is left to undo", !(await buttons()).undo);
 
+// ── 7. Hollow minims, beside the longer-durations choice (session 63) ──────
+const beforeHollow = await state();
+const hollowRules = (text) => JSON.parse(text).noteheadRules.filter(r => r.name === "Hollow minims");
+await page.check(".cnb-pvd-hollow-minims-check");
+const ticked = await state();
+check("HOLLOW MINIMS: ticking it adds one rule, every pitch class, minims, hollow",
+  hollowRules(ticked).length === 1 &&
+  JSON.stringify(hollowRules(ticked)[0].match) === JSON.stringify({ pitchClasses: "all", durations: ["minim"], keys: "all" }) &&
+  JSON.stringify(hollowRules(ticked)[0].apply) === JSON.stringify({ hollow: true }),
+  JSON.stringify(hollowRules(ticked)));
+await page.click("body", { position: { x: 5, y: 300 } });
+await press("Control+z");
+check("HOLLOW MINIMS: Ctrl+Z removes the rule and unticks the box",
+  (await state()) === beforeHollow && !(await page.isChecked(".cnb-pvd-hollow-minims-check")));
+await press("Control+Shift+z");
+check("HOLLOW MINIMS: Ctrl+Shift+Z puts it back, ticked", (await state()) === ticked &&
+  await page.isChecked(".cnb-pvd-hollow-minims-check"));
+
 check("NO console or page errors", consoleErrors.length === 0, consoleErrors.join(" | "));
 
 await browser.close();

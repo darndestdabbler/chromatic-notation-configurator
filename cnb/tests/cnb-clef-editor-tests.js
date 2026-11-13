@@ -639,4 +639,68 @@ export const tests = [
       });
     }},
 
+  // ── parts (session 63): one editor, two steps ─────────────────────────
+  { name: "render parts: symbol draws the clefs, import, height, picker, gutter and validation, and no placement", fn: () => {
+      withDomStub(container => {
+        const config = clefConfig();
+        config.clef.glyphs["test-clef"].reference = { x: 50, y: 150 };
+        const api = E.render(container, { config, parts: ["symbol"] });
+        for (const token of ["cnb-cle-enable", "cnb-cle-choices", "cnb-cle-import", "cnb-cle-glyphs",
+                             "cnb-cle-height", "cnb-cle-pick-anchor", "cnb-cle-gutter", "cnb-cle-validation"]) {
+          assert(findAll(api.root, token).length > 0, token + " drawn in symbol");
+        }
+        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no Sits on semitone in symbol");
+        assert(!subtreeText(api.root).includes("Where the clef is shown"), "no placement title");
+      });
+    }},
+
+  { name: "render parts: placement draws only where the clef sits", fn: () => {
+      withDomStub(container => {
+        const config = clefConfig();
+        config.clef.glyphs["test-clef"].reference = { x: 50, y: 150 };
+        const api = E.render(container, { config, parts: ["placement"] });
+        eq(findAll(api.root, "cnb-cle-sits").length, 1, "Sits on semitone");
+        assert(subtreeText(api.root).includes("Sits on semitone"), "its label");
+        assert(subtreeText(api.root).includes("drag the clef"), "the canvas drag's hint");
+        for (const token of ["cnb-cle-enable", "cnb-cle-choices", "cnb-cle-import", "cnb-cle-glyphs",
+                             "cnb-cle-height", "cnb-cle-pick-anchor", "cnb-cle-gutter", "cnb-cle-validation"]) {
+          eq(findAll(api.root, token).length, 0, token + " not drawn in placement");
+        }
+      });
+    }},
+
+  { name: "render parts: a text clef's top is placement's; the dozenal clef's height is symbol's", fn: () => {
+      withDomStub(container => {
+        const config = clefConfig();
+        config.clef.active = "register-5";
+        let api = E.render(container, { config, parts: ["placement"] });
+        eq(findAll(api.root, "cnb-cle-anchor-input").length, 1, "text clef's top in placement");
+        container.textContent = "";
+        api = E.render(container, { config, parts: ["symbol"] });
+        eq(findAll(api.root, "cnb-cle-anchor").length, 0, "no anchor section for a text clef in symbol");
+        container.textContent = "";
+        api = E.render(container, { config: clefConfig(), parts: ["symbol"] });
+        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "dozenal").onclick();
+        eq(findAll(api.root, "cnb-cle-height").length, 1, "the dozenal clef's height in symbol");
+        eq(findAll(api.root, "cnb-cle-dozenal-note").length, 0, "its placement note is placement's");
+      });
+    }},
+
+  { name: "render parts: both parts draw what the whole panel draws, and an edit in one part emits the whole clef", fn: () => {
+      withDomStub(container => {
+        const config = clefConfig();
+        let last = null;
+        const whole = E.render(container, { config });
+        const wholeTokens = findAll(whole.root, "cnb-cle-section").map(s => s.className);
+        container.textContent = "";
+        const api = E.render(container, { config, parts: ["placement"], onChange: (s) => { last = s; } });
+        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "19" } });
+        eq(last.clef.glyphs["test-clef"].anchorSemi, 19, "the edit");
+        deepEq(Object.keys(last.clef.glyphs).sort(), ["register-5", "test-clef"], "every glyph carried");
+        eq(last.clef.gutter.paddingH, 10, "the gutter carried");
+        assert(wholeTokens.length > 0 && wholeTokens.some(t => t.includes("cnb-cle-anchor")),
+          "the whole panel still draws its anchor section");
+      });
+    }},
+
 ];

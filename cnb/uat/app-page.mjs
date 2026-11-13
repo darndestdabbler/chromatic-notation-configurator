@@ -48,10 +48,13 @@ export function canvasConfig(config, size) {
 }
 
 /**
- * Show a section's panel, in the section list's order since session 39
- * ("notehead-height", where the page opens, "staff", "pitch",
- * "ledger-lines", "noteheads", "key-signature", "clef", "advanced",
- * "export"). Since session 26 the staff
+ * Show a step's panel by its id (session 63, cnb/ui/steps.js), in order
+ * "notehead-height", where the page opens, "staff", "pitch",
+ * "ledger-lines", "noteheads", "ks-symbol-type", "ks-custom-symbols",
+ * "ks-designer", "ks-preview", "clef-symbol", "clef-placement", "export",
+ * or "advanced". A greyed step does not open: steps 7–9 need a key
+ * signature shown, step 11 a clef. The staff canvas is hidden in steps
+ * 6–9 ("ks-…"). Since session 26 the staff
  * editor is mounted once per section: its pattern and line look in Staff,
  * the ledger rules (Automatic or My own rules) in Ledger lines, and the
  * line overrides in Advanced.

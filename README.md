@@ -205,97 +205,127 @@ is such a file: a layer moved by a transform, relative commands and arcs.
 
 ### 3. Design the notation system
 
-The page is the staff canvas, with one section at a time beside it. Above
+The page is the staff canvas, with one step at a time beside it. Above
 the staff, the canvas toolbar chooses what it shows: the durations, and
 beside them whether longer durations get **Its own shape for each
 duration** or **Repeat the notehead** (as the engine engraves them: minim
-×2, semibreve ×4, and a breve as two tied semibreves); and the
+×2, semibreve ×4, and a breve as two tied semibreves), with
+**Hollow minims** beside the first, which adds one ordinary rule making
+every minim hollow (unticked, it removes it; Advanced shows it with the
+other rules);
+and the
 **Key**, a tonic and a mode (major,
 minor and the church modes LilyPond's `\key` names), whose signature the
 staff draws. While the signature is off, **Show the key signature** turns
 it on, as the scale stack: the key's scale as stacked noteheads, as the
 engine engraves it.
 
-The sections are listed in the order a notation is designed, each step
-resting on the last, and the page opens on the first. It starts from a
-conventional notehead on the 4-8 staff.
+A notation is designed in twelve numbered steps, listed in the sidebar
+under their groups (The staff, Noteheads, Key signature, Clef, Finish),
+and the page opens on the first. **Next** and **Back**, at the bottom of
+the window, take you through them in order, and any step can be opened
+from the list at any time. A step with nothing to edit yet is greyed, and
+says why: steps 7, 8 and 9 until a key signature is shown, step 11 until a
+clef is. It starts from a conventional notehead on the 4-8 staff.
 
-- **Notehead height** — how tall every notehead is, in semitones; each
-  keeps its shape's proportions. Set it first: the staff, the ledger lines
-  and each notehead's own size are judged against it.
-- **Staff** — pick a staff pattern (which semitones within the octave
-  carry lines, e.g. 4-8 or 3-6-9).
-- **Pitch** — the middle of the staff, the staff spacing, and nudges that
-  move a note up to a semitone from its place: drag its notehead up or
-  down on the staff, or type the nudge in its field. A nudge moves the
-  pitch, not only its notehead, so a staff line on that pitch moves with it.
-- **Ledger lines** — Automatic, or your own rules for which notes get
-  which ledgers.
-- **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
-  selects several, and Esc clears the selection) to
-  open the notehead panel: colour (with **Suggested colours** to start
-  from), fill, shape, size and nudge, for every selected notehead at once.
-  A new shape keeps the notehead's height, at the new shape's proportions.
-  The section lists the rules the looks are kept as.
-- **Key signature** — the signature, drawn for the key picked on the
-  staff, and its editor. One model draws every signature. **Start from**
-  sets the noteheads (the defaults) or **traditional sharps and flats**:
-  the key's sharps or flats only, LilyPond's own signs in the cycle of
-  fifths, F C G D A E B (or B E A D G C F), one to a column at the pitch
-  each makes, in an octave's window around the middle of the staff (or of
-  its line set), so they zigzag as a treble signature's do. It asks first,
-  since it replaces the signature's settings. A config saved with the
-  older sharps-or-flats style loads as this model and draws as it did, its
-  signs climbing from the tonic. The editor shows the picked key's
-  signature magnified, with the panel's own **Key** picker, which is the
-  staff's too. **Edit** picks what an edit reaches: all marks, the
-  naturals, flats or sharps, the marks on a line or ledger or in a space,
-  or every second stack, in every key at once. A click on a mark picks its
-  naturals, flats or sharps (or keeps the layer picked in Edit); dragging
-  it moves the whole category, and its corner handle resizes it (for
-  sharps and flats, their one size), snapped to tenths of a semitone, each
-  drag one step of undo. The look card beside it sets the symbol (the
-  notehead's own, a shape, LilyPond's sharp or flat, or one imported from
-  SVG, whose reference point you click and which takes ledger lines or
-  not), fill, colour, size and offset, and up to two added symbols drawn
-  over it. Beneath, the mode's 15 keys as small signatures; a key whose
-  marks touch is outlined, and a line says in how many of the 105 keys
-  they do and lists them (the checks warn too, without blocking the
-  export). Then which **Notes** (the whole scale, the tonic and the half
-  steps, or the sharps or flats only, with or without the tonic an octave
-  up); the **Stacks** (stacked sevenths, odd semitones left and even
-  right, a new stack at each change of odd and even, a zigzag, or the
-  cycle of fifths with its heights in a window or climbing), which way
-  they go, and the gold stem between them, its colour, its thickness in
-  staff spaces and whether several stems share it; and the **Place**, the
-  middle of the staff or the bottom, top or every line set. Below it, the
-  keys a notehead rule can be for. The Clairnote SN and DN gallery files
-  show Clairnote's own signatures: dots, with a tail up on each flat and
-  down on each sharp (an added symbol, which the look card names in
-  words).
-- **Clef** — **Dozenal**, **Treble**, **Bass**
-  and **Alto** buttons choose the engine's dozenal clef (drawn as the
-  engine engraves it, the numeral 50 of the default treble register) or
-  LilyPond's own treble, bass and alto clef, placed on the pitch it marks
-  (G, F or C, nearest the middle of the staff); or import a clef glyph. A
-  glyph clef sits on a semitone by its anchor point (the treble clef's
-  curl, the point between the bass clef's dots, the alto clef's middle;
-  an imported glyph's centre until you pick its anchor point on the
-  enlarged glyph). Its height is automatic, following the staff and its
-  noteheads, or a number of semitones you set, and it grows and shrinks
-  about its anchor. The dozenal clef's size is set the same way, about the
-  middle line. Type them, or, with the section open, drag the clef up or
-  down on the staff and drag its bottom edge to make it taller or shorter.
-- **Advanced** — rules for particular durations or keys, the duration list
-  and engine settings, the pitch axis map, the pitch range shown, and the
-  file as JSON.
+**The staff**
+
+1. **Notehead height** — how tall every notehead is, in semitones; each
+   keeps its shape's proportions. Set it first: the staff, the ledger lines
+   and each notehead's own size are judged against it.
+2. **Staff** — pick a staff pattern (which semitones within the octave
+   carry lines, e.g. 4-8 or 3-6-9).
+3. **Pitch** — the middle of the staff, the staff spacing, and nudges that
+   move a note up to a semitone from its place: drag its notehead up or
+   down on the staff, or type the nudge in its field. A nudge moves the
+   pitch, not only its notehead, so a staff line on that pitch moves with it.
+4. **Ledger lines** — Automatic, or your own rules for which notes get
+   which ledgers.
+
+**Noteheads**
+
+5. **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
+   selects several, and Esc clears the selection) to
+   open the notehead panel: colour (with **Suggested colours** to start
+   from), fill, shape, size and nudge, for every selected notehead at once.
+   A new shape keeps the notehead's height, at the new shape's proportions.
+   The step lists the rules the looks are kept as.
+
+**Key signature** — steps 6 to 9 draw their own canvases in place of the
+staff. One model draws every signature, for the key picked on the staff or
+in the steps' own **Key** picker, which is the staff's too.
+
+6. **Key signature symbol type** — **Show the key signature**, and **Start
+   from** the noteheads (the defaults) or **traditional sharps and flats**:
+   the key's sharps or flats only, LilyPond's own signs in the cycle of
+   fifths, F C G D A E B (or B E A D G C F), one to a column at the pitch
+   each makes, in an octave's window around the middle of the staff (or of
+   its line set), so they zigzag as a treble signature's do. It asks first,
+   since it replaces the signature's settings. A config saved with the
+   older sharps-or-flats style loads as this model and draws as it did, its
+   signs climbing from the tonic.
+7. **Custom key signature symbols** — the picked key's signature
+   magnified. **Edit** picks what an edit reaches: all marks, the
+   naturals, flats or sharps, the marks on a line or ledger or in a space,
+   or every second stack, in every key at once. A click on a mark picks its
+   naturals, flats or sharps (or keeps the layer picked in Edit); dragging
+   it moves the whole category, and its corner handle resizes it (for
+   sharps and flats, their one size), snapped to tenths of a semitone, each
+   drag one step of undo. The look card beside it sets the symbol (the
+   notehead's own, a shape, LilyPond's sharp or flat, or one imported from
+   SVG, whose reference point you click and which takes ledger lines or
+   not), fill, colour, size and offset, and up to two added symbols drawn
+   over it. The Clairnote SN and DN gallery files show Clairnote's own
+   signatures: dots, with a tail up on each flat and down on each sharp (an
+   added symbol, which the look card names in words).
+8. **Key signature designer** — which **Notes** (the whole scale, the tonic
+   and the half steps, or the sharps or flats only, with or without the
+   tonic an octave up); the **Stacks** (stacked sevenths, odd semitones
+   left and even right, a new stack at each change of odd and even, a
+   zigzag, or the cycle of fifths with its heights in a window or
+   climbing), which way they go, and the gold stem between them, its
+   colour, its thickness in staff spaces and whether several stems share
+   it; and the **Place**, the middle of the staff or the bottom, top or
+   every line set.
+9. **Key signature preview** — the mode's 15 keys as small signatures; a
+   click picks one. A key whose marks touch is outlined, and a line says in
+   how many of the 105 keys they do and lists them (the checks warn too,
+   without blocking the export).
+
+**Clef**
+
+10. **Clef symbol import and sizing** — **Dozenal**, **Treble**, **Bass**
+    and **Alto** buttons choose the engine's dozenal clef (drawn as the
+    engine engraves it, the numeral 50 of the default treble register) or
+    LilyPond's own treble, bass and alto clef, placed on the pitch it marks
+    (G, F or C, nearest the middle of the staff); or import a clef glyph. A
+    glyph clef sits on a semitone by its anchor point (the treble clef's
+    curl, the point between the bass clef's dots, the alto clef's middle;
+    an imported glyph's centre until you pick its anchor point on the
+    enlarged glyph). Its height is automatic, following the staff and its
+    noteheads, or a number of semitones you set, and it grows and shrinks
+    about its anchor. The dozenal clef's size is set the same way, about the
+    middle line.
+11. **Clef semitone/staff assignment** — the semitone the clef's anchor
+    sits on. Type it, or drag the clef up or down on the staff, and drag
+    its bottom edge to make it taller or shorter.
+
+**Finish**
+
+12. **Export** — the notation's name, file suffix, label and footnote
+    (see *Save and export* below).
+
+**Advanced**, below the steps, holds rules for particular durations or
+keys, **Keys for notehead rules** (the keys a notehead rule can be for, and
+the switch that turns keys on), the duration list and engine settings, the
+pitch axis map, the pitch range shown, and the file as JSON.
 
 The canvas redraws live from the same JSON config the export reads.
 **Undo** and **Redo** in the top bar (Ctrl+Z and Ctrl+Shift+Z, or Ctrl+Y;
 Cmd on a Mac) step back and forward through the last 100 changes: an edit
-in any section, on the canvas or in the notehead panel, an imported shape,
+in any step, on the canvas or in the notehead panel, an imported shape,
 or an opened config. A value typed a key at a time, or a colour dragged, is
-one step. The section shown, the selection, and the canvas's Size,
+one step. The step shown, the selection, and the canvas's Size,
 duration and key are not undone, and the history does not survive a reload.
 
 ### 4. Save and export
@@ -309,7 +339,7 @@ duration and key are not undone, and the history does not survive a reload.
   a browser without one (Firefox) downloads the file under that name. The
   top bar names the file as saved.
 - The
-  **Export** section holds the notation's name, label and footnote. The
+  **Export** step (12) holds the notation's name, label and footnote. The
   export follows [CNB-LY-EXPORT-SPEC v1.3](docs/CNB-LY-EXPORT-SPEC-v1_3.md).
 
 ### 5. Render it with the engine

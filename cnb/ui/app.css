@@ -169,6 +169,35 @@ summary:focus-visible, [tabindex]:focus-visible {
 .section-link.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .sidebar hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-3) 0; }
 
+/* The steps (session 63, step-by-step design §2.1): static group headings,
+ * numbered steps, a step with nothing to edit greyed with its reason. */
+.step-nav { display: flex; flex-direction: column; gap: 2px; }
+.step-group {
+  margin: var(--space-3) 0 var(--space-1); padding: 0 var(--space-3);
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
+}
+.step-group:first-child { margin-top: 0; }
+.section-link { gap: var(--space-2); }
+.step-number { flex: none; width: 1.6em; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.section-link.on .step-number { color: var(--accent); }
+.section-link.unavailable { color: var(--ink-2); opacity: .55; cursor: not-allowed; }
+.section-link.unavailable:hover { background: transparent; }
+
+/* Back and Next (design §2.2): at the bottom of the window while the panel
+ * scrolls. */
+.step-bar { position: sticky; bottom: 0; z-index: 5; }
+.step-bar[hidden] { display: none; }
+.step-bar-inner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-1);
+}
+.step-bar-spacer { flex: 1; }
+.step-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* The canvas hidden in the key-signature steps (session 63). */
+.canvas-card[hidden] { display: none; }
+
 .main { flex: 1; min-width: 0; padding: var(--space-5); }
 .main-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
 .intro { color: var(--ink-2); }
@@ -217,6 +246,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-pvd-overlap { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 12px; color: var(--ink-2); }
 .cnb-pvd-overlap-label { font-weight: 600; color: var(--ink); }
 .cnb-pvd-overlap input[type="number"] { width: 56px; min-height: 26px; }
+.cnb-pvd-hollow-minims { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; cursor: pointer; }
 .cnb-pvd-size-hint:empty { display: none; }
 .cnb-pvd-size-hint { font-size: 12px; color: var(--warn); }
 .cnb-pvd-key-note { font-size: 12px; color: var(--ink-2); max-width: 360px; }

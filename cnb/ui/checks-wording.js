@@ -12,9 +12,9 @@
  *       { kind: "rule", index }          a rule in config.noteheadRules
  *       { kind: "noteheads", pcs }       the noteheads to select
  *       { kind: "section", section, control? }
- *                                        a section to open (an app
- *                                        data-section name), and a control
- *                                        in it (a CSS selector)
+ *                                        a step to open (its id, from
+ *                                        ui/steps.js, or "advanced"), and a
+ *                                        control in it (a CSS selector)
  *
  * A message the table does not know comes back as itself, with no link.
  * Messages only a hand-edited file can produce (the structure of a
@@ -24,11 +24,13 @@
  */
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBStepNav } from "./steps.js";
 
-const SECTION_NAMES = {
-  staff: "Staff", noteheads: "Noteheads", pitch: "Pitch", "ledger-lines": "Ledger lines",
-  clef: "Clef", "key-signature": "Key signature", advanced: "Advanced", export: "Export",
-};
+/** A section's name in a link: its step's title (session 63), or Advanced. */
+function sectionName(section) {
+  const step = CNBStepNav.byId(section);
+  return step ? step.title : "Advanced";
+}
 
 /** "C♯" for pitch class 1. */
 function noteName(pc) {
@@ -72,7 +74,7 @@ function noteheadLink(pcs) {
 function sectionLink(section, control) {
   const target = { kind: "section", section };
   if (control) target.control = control;
-  return { label: "Open " + SECTION_NAMES[section], target };
+  return { label: "Open " + sectionName(section), target };
 }
 
 const dimension = (field) => (field === "heightSemis" ? "tall" : "wide");
@@ -95,7 +97,7 @@ const TABLE = [
     text: `“${n}” makes noteheads ${v} semitones ${dimension(f)}, outside the usual 0.25 to 4, so they may not look right.`, link: ruleLink(c, n) })],
   [/^Key definitions (.*) have the same pitch classes \(.*\) but notehead rules draw them differently: .* draws them all as "(.*)"$/, ([, list, k]) => ({
     text: `The keys ${list.replace(/"([^"]*)"/g, "“$1”")} have the same notes, so LilyPond cannot tell them apart: it engraves them all as “${k}” does.`,
-    link: sectionLink("key-signature") })],
+    link: sectionLink("advanced", "#keys-for-rules") })],
   [/^Rule "(.*)" sets an off-key mark \(.*\), which is not drawn in the preview or exported yet$/, ([, n], c) => ({
     text: `“${n}” sets an off-key mark, which is not drawn here or exported yet.`, link: ruleLink(c, n) })],
   [/^Rule "(.*)" apply\.xOffsetStaffSpaces must be a finite number \(got .*\)$/, ([, n], c) => ({
@@ -132,27 +134,27 @@ const TABLE = [
     link: sectionLink("export", '[data-meta="notationLabel"] input') })],
   [/^keys\.keySignature\.enabled is true but keys\.enabled is false/, () => ({
     text: "The key signature is on but keys are off, so no signature is drawn.",
-    link: sectionLink("key-signature", ".cnb-kse-keys-enable-check") })],
+    link: sectionLink("advanced", "#keys-for-rules") })],
   [/^Key definition "(.*)" has no tonicPc and its name does not begin with a note letter/, ([, k]) => ({
     text: `The key “${k}” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.`,
-    link: sectionLink("key-signature") })],
+    link: sectionLink("advanced", "#keys-for-rules") })],
   [/^Key signature marks touch in (\d+) of the 105 keys$/, ([, n]) => ({
     text: `Marks touch in ${n} ${+n === 1 ? "key" : "keys"}.`,
-    link: sectionLink("key-signature") })],
+    link: sectionLink("ks-preview") })],
   [/^Key definition "(.*)" needs a non-empty pitchClasses array/, ([, k]) => ({
-    text: `The key “${k}” has no notes.`, link: sectionLink("key-signature") })],
+    text: `The key “${k}” has no notes.`, link: sectionLink("advanced", "#keys-for-rules") })],
   [/^clef\.enabled is true but clef\.active names no glyph$/, () => ({
-    text: "The clef is on but none is chosen, so none is drawn.", link: sectionLink("clef") })],
+    text: "The clef is on but none is chosen, so none is drawn.", link: sectionLink("clef-symbol") })],
   [/^clef\.active references unknown clef glyph "(.*)"$/, ([, g]) => ({
-    text: `The chosen clef, “${g}”, is not in this notation.`, link: sectionLink("clef") })],
+    text: `The chosen clef, “${g}”, is not in this notation.`, link: sectionLink("clef-symbol") })],
   [/^Clef glyph "(.*)" anchorSemi .* is far outside the typical range/, ([, g]) => ({
-    text: `The clef “${g}” is placed far above or below the staff.`, link: sectionLink("clef") })],
+    text: `The clef “${g}” is placed far above or below the staff.`, link: sectionLink("clef-symbol") })],
   [/^Clef glyph "(.*)" (has no svgPath|is missing positive natural dimensions|has no numeric anchorSemi)/, ([, g]) => ({
-    text: `The clef “${g}” cannot be drawn: its imported drawing is incomplete.`, link: sectionLink("clef") })],
+    text: `The clef “${g}” cannot be drawn: its imported drawing is incomplete.`, link: sectionLink("clef-symbol") })],
   [/^Clef text entry "(.*)" has no text$/, ([, g]) => ({
-    text: `The text clef “${g}” has no text.`, link: sectionLink("clef") })],
+    text: `The text clef “${g}” has no text.`, link: sectionLink("clef-symbol") })],
   [/^Clef text entry "(.*)" needs a positive textHeightSemis$/, ([, g]) => ({
-    text: `The text clef “${g}” needs a height above 0.`, link: sectionLink("clef") })],
+    text: `The text clef “${g}” needs a height above 0.`, link: sectionLink("clef-symbol") })],
   [/^pitchAxis map (is not globally non-decreasing|breaks monotonicity across the octave boundary)/, () => ({
     text: "The pitch axis map puts a higher note below a lower one: the notes must go up the staff in order.",
     link: sectionLink("advanced", "#pitch-axis-map") })],

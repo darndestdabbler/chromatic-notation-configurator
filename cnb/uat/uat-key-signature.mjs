@@ -203,7 +203,25 @@ await useCanvasSize(page, "small");
 await useDownloads(page);
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-key-signature-editor", { state: "attached" });
-await openSection(page, "key-signature");
+
+// The key signature's steps (session 63): Show and Start from in step 6, the
+// looks in step 7, Notes, Stacks and Place in step 8, the keys in step 9,
+// and the keys for notehead rules in Advanced. The staff canvas is hidden in
+// steps 6–9 (it keeps its layout), so a canvas measured as the browser lays
+// it out is measured from a step that shows it.
+const PANEL = {
+  type: '[data-panel="ks-symbol-type"]', symbols: '[data-panel="ks-custom-symbols"]',
+  designer: '[data-panel="ks-designer"]', preview: '[data-panel="ks-preview"]',
+};
+/** Advanced, its Keys for notehead rules open. */
+async function openKeys() {
+  await openSection(page, "advanced");
+  await page.evaluate(() => { document.getElementById("keys-for-rules").open = true; });
+}
+/** A step the canvas shows in. */
+const showCanvas = () => openSection(page, "noteheads");
+const greyedSteps = () => page.$$eval('.section-link[aria-disabled="true"]', els => els.map(e => e.dataset.section));
+await openKeys();
 
 const fullConfig = async () => JSON.parse(await page.textContent("#state-json"));
 /** The config as the canvas draws it (the Small display copy). */
@@ -286,12 +304,15 @@ check("ASSEMBLY: the key-signature editor is mounted alongside the set-006/009 m
     !!document.querySelector(".cnb-preview-display") &&
     !!document.querySelector(".cnb-config-io") &&
     !!document.querySelector(".cnb-config-export")));
-check("DEFAULT-OFF: master toggle unchecked, the explicit disabled note is shown, controls below are disabled (shown, not hidden)",
+check("DEFAULT-OFF: in Advanced › Keys for notehead rules the master toggle is unchecked, the explicit disabled note is shown, its controls are disabled (shown, not hidden); step 6's Show the key signature stays live (session 63)",
   await page.evaluate(() =>
-    !document.querySelector(".cnb-kse-keys-enable-check").checked &&
-    !!document.querySelector(".cnb-kse-disabled-note") &&
-    document.querySelector(".cnb-kse-def-add").disabled &&
-    document.querySelector(".cnb-kse-sig-enable-check").disabled));
+    !document.querySelector("#keys-for-rules .cnb-kse-keys-enable-check").checked &&
+    !!document.querySelector("#keys-for-rules .cnb-kse-disabled-note") &&
+    document.querySelector("#keys-for-rules .cnb-kse-def-add").disabled &&
+    !document.querySelector('[data-panel="ks-symbol-type"] .cnb-kse-sig-enable-check').disabled));
+check("DEFAULT-OFF: steps 7, 8 and 9 are greyed until a signature is shown (session 63)",
+  JSON.stringify(await greyedSteps()) === JSON.stringify(["ks-custom-symbols", "ks-designer", "ks-preview", "clef-placement"]),
+  JSON.stringify(await greyedSteps()));
 let cfg = await fullConfig();
 check("DEFAULT-OFF: state panel shows the schema default keys section",
   JSON.stringify(cfg.keys) === JSON.stringify(CNBConfig.createDefault().keys),
@@ -356,7 +377,8 @@ check("DEFINE: with keys defined, the toolbar's note is gone",
   await page.evaluate(() => !document.querySelector(".cnb-pvd-key-note")));
 
 // ── STEP 3: enable the key signature ────────────────────────────────────────
-await page.check(".cnb-kse-sig-enable-check");
+await openSection(page, "ks-symbol-type");
+await page.check(`${PANEL.type} .cnb-kse-sig-enable-check`);
 cfg = await fullConfig();
 check("ENABLE SIGNATURE: keys.keySignature.enabled true in the shared config, validation still valid",
   cfg.keys.keySignature.enabled === true &&
@@ -364,6 +386,9 @@ check("ENABLE SIGNATURE: keys.keySignature.enabled true in the shared config, va
 check("ENABLE SIGNATURE: the picked key's signature draws at once (C major, picked by default; session 36), and the button that turns it on is gone",
   (await keysigColCount()) >= 1 &&
   await page.evaluate(() => !document.querySelector(".cnb-pvd-signature-on")));
+check("ENABLE SIGNATURE: steps 7, 8 and 9 are no longer greyed, and step 6 hides the staff canvas (session 63)",
+  JSON.stringify(await greyedSteps()) === JSON.stringify(["clef-placement"]) &&
+  await page.$eval("#canvas-card", e => e.hidden), JSON.stringify(await greyedSteps()));
 
 // ── STEP 4: the key picked on the staff ─────────────────────────────────────
 /** Pick a key and mode in the canvas toolbar (session 36): the tonic by its
@@ -374,6 +399,7 @@ async function pickKey(tonic, mode) {
 }
 await pickKey("C", "major");
 cfg = await fullConfig();
+await showCanvas();
 // The fluid canvas stretches its columns, so the gutter is a CSS track that
 // keeps the engine's spacing at any width (session 34): measured as drawn,
 // at two canvas Sizes, ±1 px.
@@ -490,14 +516,21 @@ await pickKey("C", "major");
 // config and the key picked on the staff.
 const C_MAJOR_KEY = { tonic: 0, mode: "major", spelling: "C" };
 const D_MAJOR_KEY = { tonic: 2, mode: "major", spelling: "D" };
-/** Choose a radio of one of the panel's rows by its value. */
-const radio = (group, value) => page.check(`.${group} .cnb-kse-radio[data-value="${value}"] input`);
-/** Pick a layer in Edit: the look card then edits it (session 56). */
-const pickLayer = (layer) => page.click(`.cnb-kse-layer[data-layer="${layer}"]`);
-/** Start from (session 56): the button, its question accepted or not. */
+/** Choose a radio of one of step 8's rows by its value. */
+async function radio(group, value) {
+  await openSection(page, "ks-designer");
+  await page.check(`${PANEL.designer} .${group} .cnb-kse-radio[data-value="${value}"] input`);
+}
+/** Pick a layer in step 7's Edit: the look card then edits it (session 56). */
+async function pickLayer(layer) {
+  await openSection(page, "ks-custom-symbols");
+  await page.click(`${PANEL.symbols} .cnb-kse-layer[data-layer="${layer}"]`);
+}
+/** Start from in step 6 (session 56): the button, its question accepted or not. */
 async function startFrom(which, accept = true) {
+  await openSection(page, "ks-symbol-type");
   page.once("dialog", d => (accept ? d.accept() : d.dismiss()));
-  await page.click(`.cnb-kse-start-button[data-start="${which}"]`);
+  await page.click(`${PANEL.type} .cnb-kse-start-button[data-start="${which}"]`);
 }
 /** The canvas against the Node-side marks for the live config and a key. */
 async function canvasDraws(key, label) {
@@ -511,17 +544,23 @@ async function canvasDraws(key, label) {
 const canvasStems = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature-separator",
   els => els.map(e => ({ stroke: e.getAttribute("stroke"), width: parseFloat(e.getAttribute("stroke-width")) })));
 
-check("PANEL: the signature is set in a designer's words (Show the key signature and Start from; the key, Edit, the canvas and the look card; Notes, Stacks and Place), the key definitions below it under Keys for notehead rules",
+check("PANEL: the signature is set in a designer's words, a part in each step (session 63) — step 6 Show the key signature and Start from; step 7 the key, Edit, the canvas and the look card; step 8 the key, the canvas, Notes, Stacks and Place; step 9 the mode's keys; Advanced the keys for notehead rules",
   await page.evaluate(() => {
-    const labels = [...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")].map(e => e.textContent);
-    const sections = [...document.querySelectorAll(".cnb-key-signature-editor > .cnb-kse-section")];
+    // Each selector scoped to the panel, a comma list included.
+    const q = (panel, sel) => document.querySelectorAll(sel.split(", ").map(x => `[data-panel="${panel}"] ${x}`).join(", "));
+    const labels = [...q("ks-designer", ".cnb-kse-row-label")].map(e => e.textContent);
     return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Place"]) &&
-      document.querySelectorAll(".cnb-kse-start-button").length === 2 &&
-      document.querySelectorAll(".cnb-kse-layer").length === 7 &&
-      !!document.querySelector(".cnb-kse-canvas") && !!document.querySelector(".cnb-kse-look-card") &&
-      document.querySelector(".cnb-kse-sig-enable").textContent === "Show the key signature" &&
-      sections[0].classList.contains("cnb-kse-signature") &&
-      sections[1].querySelector(".cnb-kse-title").textContent === "Keys for notehead rules";
+      q("ks-symbol-type", ".cnb-kse-start-button").length === 2 &&
+      q("ks-symbol-type", ".cnb-kse-sig-enable")[0].textContent === "Show the key signature" &&
+      q("ks-symbol-type", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-row-label").length === 0 &&
+      q("ks-custom-symbols", ".cnb-kse-layer").length === 7 &&
+      q("ks-custom-symbols", ".cnb-kse-canvas").length === 1 && q("ks-custom-symbols", ".cnb-kse-look-card").length === 1 &&
+      q("ks-custom-symbols", ".cnb-kse-key-tonic").length === 1 && q("ks-custom-symbols", ".cnb-kse-row-label").length === 0 &&
+      q("ks-designer", ".cnb-kse-canvas").length === 1 && q("ks-designer", ".cnb-kse-key-tonic").length === 1 &&
+      q("ks-designer", ".cnb-kse-look-card, .cnb-kse-layer").length === 0 &&
+      q("ks-preview", ".cnb-kse-mini").length === 15 && q("ks-preview", ".cnb-kse-canvas").length === 0 &&
+      document.querySelector("#keys-for-rules .cnb-kse-definitions .cnb-kse-title").textContent === "Keys for notehead rules" &&
+      document.querySelectorAll(".cnb-kse-definitions").length === 1;
   }));
 check("PANEL: no Marks style, placement-rule, tonic-octave or bar-extent control, and no spacing control or Preview only badge; the stored values are kept",
   await page.evaluate(() =>
@@ -789,6 +828,7 @@ for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D
     `actual=${JSON.stringify(got.map(s => s.transform))} expected=${JSON.stringify(want.map(s => s.transform))}`);
   const ly = CNBLilypond.generate(live);
   check("SIZE: the export writes the hand-set size as each sign's scale, (6 0 sharp 1.1882)", /\(marks \(6 0 sharp 1\.1882\)/.test(ly));
+  await openSection(page, "ks-custom-symbols");
   await page.click(".cnb-kse-sign-size-auto");
   const back = await fullConfig();
   check("SIZE: Automatic again writes null and the canvas draws the automatic size",
@@ -802,6 +842,7 @@ const setSize = (v) => page.evaluate((value) => {
 // The panel and the canvas with sharps, at the page's two widths: at the
 // automatic size, and at 5 semitones set by hand (session 52).
 await pickKey("D", "major");
+await openSection(page, "ks-custom-symbols");
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
@@ -901,6 +942,7 @@ cfg = await fullConfig();
 const before56 = await fullConfig();
 await startFrom("noteheads");
 await pickKey("D", "major");
+await openSection(page, "ks-custom-symbols");
 /** D major's marks as the panel's canvas draws them, by pitch class. */
 async function dMajorMarks() {
   const live = await fullConfig();
@@ -910,7 +952,7 @@ async function dMajorMarks() {
 const fsharp = (await dMajorMarks()).findIndex(m => ((m.semi % 12) + 12) % 12 === 6);
 /** A mark's base on the panel's canvas, scrolled into view: its centre. */
 async function markCentre(index) {
-  const loc = page.locator(`.cnb-kse-canvas [data-mark="${index}"][data-symbol="0"] path`).first();
+  const loc = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${index}"][data-symbol="0"] path`).first();
   await loc.scrollIntoViewIfNeeded();
   const b = await loc.boundingBox();
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
@@ -930,7 +972,7 @@ const undo = () => page.click("#undo-config");
 const redo = () => page.click("#redo-config");
 {
   const info = await page.evaluate(() => {
-    const box = document.querySelector(".cnb-kse-canvas");
+    const box = document.querySelector('[data-panel="ks-custom-symbols"] .cnb-kse-canvas');
     return { marks: new Set([...box.querySelectorAll("[data-mark]")].map(e => e.getAttribute("data-mark"))).size,
       maxHeight: getComputedStyle(box).maxHeight, height: box.getBoundingClientRect().height };
   });
@@ -980,7 +1022,7 @@ await pickLayer("sharp");
 // The corner handle sizes the sharps; a sign's sizes both signs.
 {
   await page.mouse.click(...Object.values(await markCentre(fsharp)));
-  const handle = page.locator(".cnb-kse-canvas .cnb-kse-handle");
+  const handle = page.locator(`${PANEL.symbols} .cnb-kse-canvas .cnb-kse-handle`);
   await handle.scrollIntoViewIfNeeded();
   const hb = await handle.boundingBox();
   await dragBy({ x: hb.x + hb.width / 2, y: hb.y + hb.height / 2 }, 0, 24);
@@ -993,7 +1035,7 @@ await pickLayer("sharp");
   const live = await fullConfig();
   const auto = CNBKeySignature.signHeight(live).semis;
   await page.mouse.click(...Object.values(await (async () => {
-    const loc = page.locator(`.cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="0"]`);
+    const loc = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="0"]`);
     await loc.scrollIntoViewIfNeeded();
     const b = await loc.boundingBox();
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
@@ -1028,11 +1070,11 @@ await pickLayer("sharp");
   await page.click('.cnb-kse-look-card .cnb-kse-look-shape[data-shape="kite-up"]');
   const added = (await fullConfig()).keys.keySignature.looks.sharp.added;
   const selected = await page.$eval('.cnb-kse-look-card .cnb-kse-look-select.on', e => e.textContent);
-  const drawnAdded = await page.$$eval(`.cnb-kse-canvas [data-symbol="1"]`, els => els.length);
+  const drawnAdded = await page.$$eval(`${PANEL.symbols} .cnb-kse-canvas [data-symbol="1"]`, els => els.length);
   check("EDITOR: + Add a symbol adds one to the sharps, selected as Added 1, its shape chosen in the card, drawn over each sharp",
     added.length === 1 && added[0].shape === "kite-up" && selected === "Added 1" && drawnAdded === 2, JSON.stringify(added));
   // Dragging the added symbol moves it alone, by its own offset, one step of undo.
-  const extra = page.locator(`.cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="1"] path`).first();
+  const extra = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="1"] path`).first();
   await extra.scrollIntoViewIfNeeded();
   const eb = await extra.boundingBox();
   await dragBy({ x: eb.x + eb.width / 2, y: eb.y + eb.height / 2 }, 12, 0);
@@ -1077,10 +1119,12 @@ await pickLayer("sharp");
   await setField(page, ".cnb-kse-key-tonic", "B♭");
   const staff = await page.inputValue(".cnb-pvd-key-tonic");
   const minis = await page.$$eval(".cnb-kse-mini", els => els.map(e => e.getAttribute("data-key")));
+  await openSection(page, "ks-preview");
   await page.click('.cnb-kse-mini[data-key="A"]');
-  check("KEYS: the panel's key picker picks the staff's key (B♭), the mode's 15 keys show beneath the canvas, sharp keys then flat keys, and a click on A picks it on the staff",
+  check("KEYS: step 7's key picker picks the staff's key (B♭), the mode's 15 keys show in step 9, sharp keys then flat keys, and a click on A picks it on the staff and in steps 7 and 8",
     staff === "B♭" && minis.length === 15 && minis[0] === "C" && minis[8] === "F" &&
-    (await page.inputValue(".cnb-pvd-key-tonic")) === "A" && (await page.inputValue(".cnb-kse-key-tonic")) === "A", JSON.stringify(minis));
+    (await page.inputValue(".cnb-pvd-key-tonic")) === "A" && (await page.inputValue(`${PANEL.symbols} .cnb-kse-key-tonic`)) === "A" &&
+    (await page.inputValue(`${PANEL.designer} .cnb-kse-key-tonic`)) === "A", JSON.stringify(minis));
 }
 // The touch line, its list and the checks' warning.
 {
@@ -1088,6 +1132,7 @@ await pickLayer("sharp");
   await radio("cnb-kse-stacking", "parity");
   const live = await fullConfig();
   const n = CNBKeySignature.touchingKeys(live).length;
+  await openSection(page, "ks-preview");
   await page.click(".cnb-kse-touch-list summary");
   const listed = await page.$$eval(".cnb-kse-touch-key", els => els.length);
   await page.click('.cnb-kse-touch-key[data-key="E major"]');
@@ -1130,7 +1175,7 @@ await pickKey("C", "major");
 cfg = await fullConfig();
 
 // ── STEP 6: clef composition (set-009 gutter, left to right) ────────────────
-await openSection(page, "clef");
+await openSection(page, "clef-symbol");
 await page.setInputFiles(".cnb-cle-file", {
   name: "uat-clef.svg", mimeType: "image/svg+xml",
   buffer: Buffer.from(SAMPLE_CLEF_SVG, "utf8"),
@@ -1193,7 +1238,6 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-await openSection(page, "key-signature");
 await pickLayer("all");
 check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, its stacking, stems and look)",
   await page.evaluate(() =>
@@ -1246,7 +1290,6 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-010-s2-exported.png"), fu
 await page.setInputFiles("#open-file", path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-sn.json"));
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cio-status").textContent.includes("Loaded"));
-await openSection(page, "key-signature");
 await pickKey("D", "major");
 {
   const r = await canvasDraws(D_MAJOR_KEY, "Clairnote SN, D major");
@@ -1280,7 +1323,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
   await page.screenshot({ path: path.join(SHOT_DIR, `uat-056-clairnote-${width}.png`), fullPage: true });
-  check(`SCREENSHOT ${width}: the Key signature section does not make the page scroll sideways`,
+  check(`SCREENSHOT ${width}: step 7 does not make the page scroll sideways`,
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }
 

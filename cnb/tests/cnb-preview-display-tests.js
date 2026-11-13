@@ -566,6 +566,84 @@ export const tests = [
     },
   },
 
+  // ── Hollow minims (session 63, step-by-step design §5.1) ──
+  {
+    name: "withHollowMinims: on adds one ordinary rule above every other, and hasHollowMinims sees it; the input is unchanged",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const before = JSON.stringify(cfg);
+      assertEqual(PVD.hasHollowMinims(cfg), false, "the default has none");
+      const on = PVD.withHollowMinims(cfg, true);
+      assertEqual(JSON.stringify(cfg), before, "the input unchanged");
+      assertEqual(on.noteheadRules.length, cfg.noteheadRules.length + 1, "one rule added");
+      const rule = on.noteheadRules[on.noteheadRules.length - 1];
+      const top = Math.max(...cfg.noteheadRules.map(r => r.priority));
+      assertEqual(rule, { name: "Hollow minims", priority: top + 1,
+        match: { pitchClasses: "all", durations: ["minim"], keys: "all" }, apply: { hollow: true } }, "the rule");
+      assertEqual(PVD.hasHollowMinims(on), true, "present");
+      assertEqual(CNBConfig.resolveNotehead(on, 0, "minim", null).hollow, true, "a minim resolves hollow");
+      assertEqual(CNBConfig.resolveNotehead(on, 0, "crotchet", null).hollow, false, "a crotchet stays solid");
+    },
+  },
+  {
+    name: "withHollowMinims: never doubled; off removes it and gives back the rules as they were (undo)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const on = PVD.withHollowMinims(cfg, true);
+      const twice = PVD.withHollowMinims(on, true);
+      assertEqual(twice.noteheadRules, on.noteheadRules, "a second tick adds none");
+      const off = PVD.withHollowMinims(twice, false);
+      assertEqual(off.noteheadRules, cfg.noteheadRules, "unticked: the original rules");
+      assertEqual(PVD.hasHollowMinims(off), false, "absent");
+    },
+  },
+  {
+    name: "hasHollowMinims: a rule with another name counts; one that sets more, or other durations, does not",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const rule = (match, apply) => ({ name: "Mine", priority: 5,
+        match: { pitchClasses: "all", durations: ["minim"], keys: "all", ...match }, apply });
+      cfg.noteheadRules = [...cfg.noteheadRules, rule({}, { hollow: true })];
+      assertEqual(PVD.hasHollowMinims(cfg), true, "another name");
+      for (const [match, apply] of [[{}, { hollow: true, color: "#cc0000" }], [{ durations: ["minim", "semibreve"] }, { hollow: true }],
+                                    [{ pitchClasses: [0] }, { hollow: true }], [{ keys: ["C"] }, { hollow: true }], [{}, { hollow: false }]]) {
+        const other = CNBConfig.createDefault();
+        other.noteheadRules = [...other.noteheadRules, rule(match, apply)];
+        assertEqual(PVD.hasHollowMinims(other), false, JSON.stringify([match, apply]));
+      }
+    },
+  },
+  {
+    name: "render: onHollowMinims draws a Hollow minims checkbox beside the choice in shape mode, ticked with the rule; repeat mode and no callback draw none",
+    fn: () => {
+      let cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const reported = [];
+        let api = null;
+        api = PVD.render(container, {
+          getConfig: () => cfg,
+          onRepresentationMode: () => {},
+          onHollowMinims: (on) => { reported.push(on); cfg = PVD.withHollowMinims(cfg, on); api.redraw(); },
+        });
+        const box = () => findOne(findOne(api.root, "cnb-pvd-repeat"), "cnb-pvd-hollow-minims-check");
+        assertEqual(findOne(api.root, "cnb-pvd-hollow-minims-text").textContent, "Hollow minims");
+        assertEqual(box().checked, false, "unticked without the rule");
+        box().onchange({ target: { checked: true } });
+        assertEqual(box().checked, true, "ticked with the rule");
+        box().onchange({ target: { checked: false } });
+        assertEqual(reported, [true, false], "each state reported");
+        assertEqual(PVD.hasHollowMinims(cfg), false, "removed");
+        cfg.durations.representationMode = "repeat";
+        api.redraw();
+        assertEqual(findAll(api.root, "cnb-pvd-hollow-minims").length, 0, "repeat mode: none");
+      });
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => CNBConfig.createDefault(), onRepresentationMode: () => {} });
+        assertEqual(findAll(api.root, "cnb-pvd-hollow-minims").length, 0, "no callback: none");
+      });
+    },
+  },
+
   // ── render: pitch range ──
   {
     name: "render: narrowing the range re-renders with fewer cards",
@@ -886,6 +964,30 @@ export const tests = [
     },
   },
   {
+    name: "render: a width of 0, the canvas hidden (session 63), keeps the rows and the overflow mark it had",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        const observer = fakeObserver();
+        const calls = [];
+        const api = PVD.render(container, {
+          getConfig: () => cfg, storage: null, ResizeObserver: observer.Ctor,
+          onRender: (options) => calls.push(options),
+        });
+        const one = CNBCollection.minRowWidth(PVD.displayConfig(cfg, "medium"), { rows: 1, labelStrip: true });
+        observer.resize(one + 50);
+        observer.resize(0);
+        assertEqual(calls.length, 1, "hidden: no redraw");
+        assertEqual(api.getRows(), 1, "still one row");
+        assertEqual(findOne(api.root, "cnb-pvd-preview").className, "cnb-pvd-preview", "not marked overflowing");
+        api.redraw();
+        assertEqual(calls[calls.length - 1].rows, 1, "a redraw while hidden keeps the last width's rows");
+        observer.resize(one - 1);
+        assertEqual(api.getRows(), 2, "shown again narrower: two rows");
+      });
+    },
+  },
+  {
     name: "render: the observed width picks the rows, and a resize redraws only when the count changes",
     fn: () => {
       const cfg = CNBConfig.createDefault();
@@ -964,7 +1066,7 @@ export const tests = [
         assert(cols.some(c => c.getAttribute("data-ledgers") !== "0") &&
           cols.some(c => c.getAttribute("data-ledgers") === "0"), "columns say which draw ledger lines");
 
-        api.setFocus("clef");
+        api.setFocus("clef-placement");
         assert(!String(preview().className).includes("cnb-pvd-focus-ledgers"), "mark removed");
         assertEqual(findAllByClassAttr(api.root, "ledger-spot").length, 0, "spots removed");
         assertEqual(lastOptions.ledgerSpots, undefined, "not asked for");
@@ -1250,7 +1352,7 @@ export const tests = [
         const on = () => api.root.className.split(" ").includes("cnb-pvd-clef-mode");
         const hint = () => findOne(api.root, "cnb-pvd-pitch-hint").textContent;
         assert(!on(), "off with no section open");
-        api.setFocus("clef");
+        api.setFocus("clef-placement");
         assert(on(), "on with the Clef section open");
         assertEqual(hint(), "Drag the clef up or down to move it, or its bottom edge down or up to make it taller or shorter about its anchor", "hint");
         api.setPitchMode(true);
@@ -1266,7 +1368,7 @@ export const tests = [
       ]) {
         withDomStub(container => {
           const api = PVD.render(container, { getConfig: () => config, storage: null, ...opts });
-          api.setFocus("clef");
+          api.setFocus("clef-placement");
           assert(!api.root.className.split(" ").includes("cnb-pvd-clef-mode"), `off for ${label}`);
         });
       }
@@ -1286,7 +1388,7 @@ export const tests = [
         const handle = () => findAllByClassAttr(col(), "cnb-clef-resize")[0];
         assertEqual(col().onpointerdown, undefined, "outside clef mode the clef takes no drag");
 
-        api.setFocus("clef");
+        api.setFocus("clef-placement");
         col().onpointerdown({ clientY: 100 });
         col().onpointermove({ clientY: 100 - 1.5 * step });
         assertEqual(slice().style.transform, `translateY(${-1.5 * step}px)`, "the clef follows the pointer");

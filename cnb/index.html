@@ -45,33 +45,25 @@
   </header>
 
   <div class="shell">
-    <!-- Section list: one panel at a time (design §7), in the order a
-         notation is designed, each step resting on the last (session 39). -->
-    <nav class="sidebar" aria-label="Sections">
-      <div class="sidebar-inner">
-        <button type="button" class="section-link" data-section="notehead-height">Notehead height</button>
-        <button type="button" class="section-link" data-section="staff">Staff</button>
-        <button type="button" class="section-link" data-section="pitch">Pitch</button>
-        <button type="button" class="section-link" data-section="ledger-lines">Ledger lines</button>
-        <button type="button" class="section-link" data-section="noteheads">Noteheads</button>
-        <button type="button" class="section-link" data-section="key-signature">Key signature</button>
-        <button type="button" class="section-link" data-section="clef">Clef</button>
-        <hr>
-        <button type="button" class="section-link" data-section="advanced">Advanced</button>
-        <button type="button" class="section-link" data-section="export">Export</button>
-      </div>
+    <!-- The steps (session 63, step-by-step design §2): numbered, under their
+         groups, built from the step registry (ui/steps.js); one panel at a
+         time. -->
+    <nav class="sidebar" aria-label="Steps">
+      <div class="sidebar-inner" id="step-nav"></div>
     </nav>
 
     <main class="main">
       <div class="main-inner">
         <p class="intro">
-          Design a chromatic staff notation in the order of the sections: set the
-          notehead height, draw the staff and its ledger lines, give each notehead
-          its look, add a key signature and a clef, then export it for LilyPond.
+          Design a chromatic staff notation in twelve steps: set the notehead
+          height, draw the staff and its ledger lines, give each notehead its look,
+          design a key signature and a clef, then export it for LilyPond. Next and
+          Back take you through them in order; open any step from the list.
         </p>
 
-        <!-- The staff canvas, always visible. -->
-        <section class="card canvas-card" aria-label="Staff canvas">
+        <!-- The staff canvas, hidden in the key-signature steps (6–9), which
+             draw their own. -->
+        <section class="card canvas-card" id="canvas-card" aria-label="Staff canvas">
           <div id="preview-host"></div>
         </section>
 
@@ -111,20 +103,40 @@
           </div>
         </section>
 
-        <section class="card panel" data-panel="key-signature" hidden>
-          <div class="card-head"><h2>Key signature</h2><span class="sub">The keys, and the signature drawn for the key chosen on the staff</span></div>
+        <section class="card panel" data-panel="ks-symbol-type" hidden>
+          <div class="card-head"><h2>Key signature symbol type</h2><span class="sub">Whether a key signature is shown, and what it starts from</span></div>
           <div class="card-body">
             <div id="key-signature-preview-host"></div>
-            <div id="key-signature-editor-host"></div>
+            <div id="ks-symbol-type-host"></div>
           </div>
         </section>
 
-        <section class="card panel" data-panel="clef" hidden>
-          <div class="card-head"><h2>Clef</h2><span class="sub">A clef at the start of the staff</span></div>
+        <section class="card panel" data-panel="ks-custom-symbols" hidden>
+          <div class="card-head"><h2>Custom key signature symbols</h2><span class="sub">The look of the signature's marks, in every key</span></div>
+          <div class="card-body"><div id="ks-custom-symbols-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="ks-designer" hidden>
+          <div class="card-head"><h2>Key signature designer</h2><span class="sub">Which notes, how they stack, the gold stem and the place</span></div>
+          <div class="card-body"><div id="ks-designer-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="ks-preview" hidden>
+          <div class="card-head"><h2>Key signature preview</h2><span class="sub">The signature in every key of the mode</span></div>
+          <div class="card-body"><div id="ks-preview-host"></div></div>
+        </section>
+
+        <section class="card panel" data-panel="clef-symbol" hidden>
+          <div class="card-head"><h2>Clef symbol import and sizing</h2><span class="sub">A clef at the start of the staff, and its size</span></div>
           <div class="card-body">
             <div id="clef-preview-host"></div>
-            <div id="clef-editor-host"></div>
+            <div id="clef-symbol-host"></div>
           </div>
+        </section>
+
+        <section class="card panel" data-panel="clef-placement" hidden>
+          <div class="card-head"><h2>Clef semitone/staff assignment</h2><span class="sub">The semitone the clef sits on</span></div>
+          <div class="card-body"><div id="clef-placement-host"></div></div>
         </section>
 
         <section class="card panel" data-panel="advanced" hidden>
@@ -138,6 +150,10 @@
               <details class="disclosure">
                 <summary>Durations and engine</summary>
                 <div class="disclosure-body"><div id="props-editor-host"></div></div>
+              </details>
+              <details class="disclosure" id="keys-for-rules">
+                <summary>Keys for notehead rules<span class="sub">the keys a notehead rule can be for</span></summary>
+                <div class="disclosure-body"><div id="keys-definitions-host"></div></div>
               </details>
               <details class="disclosure" id="pitch-axis-map">
                 <summary>Pitch axis map</summary>
@@ -165,6 +181,10 @@
           <div class="card-head"><h2>Export</h2><span class="sub">The notation's name and the LilyPond file</span></div>
           <div class="card-body"><div id="config-export-host"></div></div>
         </section>
+
+        <!-- Back and Next (design §2.2), at the bottom of the window while
+             the panel scrolls. -->
+        <nav class="step-bar" id="step-bar" aria-label="Back and next"></nav>
       </div>
     </main>
   </div>
@@ -191,6 +211,7 @@
     import { CNBChecksWording } from "./ui/checks-wording.js";
     import { CNBSaveFile } from "./ui/save-file.js";
     import { CNBHistory } from "./ui/history.js";
+    import { CNBSteps, CNBStepNav } from "./ui/steps.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
@@ -216,31 +237,47 @@
       byId("config-name").textContent = (appConfig.meta && appConfig.meta.configName) || "Untitled notation";
     }
 
-    // ── Sections: one panel at a time ────────────────────────────────────
-    // The canvas shows what the open section needs (design §6): the Ledger
-    // lines section marks the ledger spots and the columns that draw them.
+    // ── Steps: one panel at a time (session 63, step-by-step design §2) ──
+    // The sidebar and the step bar are built from the step registry, and
+    // redrawn when the step or the config changes, since a step is greyed
+    // while it has nothing to edit. The canvas shows what the open step
+    // needs (design §6): the Ledger lines step marks the ledger spots and
+    // the columns that draw them; the key-signature steps hide it.
     let previewApi = null;
     let currentSection = "notehead-height";
+    const stepBar = byId("step-bar");
+    for (const step of CNBSteps) {
+      document.querySelector(`.panel[data-panel="${step.id}"] h2`).textContent = step.title;
+    }
+    function renderSteps() {
+      const opts = { current: currentSection, config: appConfig, onOpen: showSection };
+      CNBStepNav.renderNav(byId("step-nav"), opts);
+      CNBStepNav.renderBar(stepBar, opts);
+      stepBar.hidden = !CNBStepNav.byId(currentSection);
+    }
     function showSection(name) {
+      if (CNBStepNav.byId(name) && !CNBStepNav.isAvailable(name, appConfig)) return;
       currentSection = name;
       closeNoteheadPanel();
       for (const panel of document.querySelectorAll(".panel")) {
         panel.hidden = panel.dataset.panel !== name;
       }
-      for (const link of document.querySelectorAll(".section-link")) {
-        const on = link.dataset.section === name;
-        link.classList.toggle("on", on);
-        if (on) link.setAttribute("aria-current", "true");
-        else link.removeAttribute("aria-current");
-      }
+      const step = CNBStepNav.byId(name);
+      byId("canvas-card").hidden = !!step && ["spelled", "designer", "keys"].includes(step.canvas);
+      renderSteps();
       if (previewApi) {
         previewApi.setFocus(name);
-        // The Pitch section makes the label strip draggable (design §4.2).
+        // The Pitch step makes the label strip draggable (design §4.2).
         previewApi.setPitchMode(name === "pitch");
       }
     }
-    for (const link of document.querySelectorAll(".section-link")) {
-      link.onclick = () => showSection(link.dataset.section);
+    /** A change that leaves the open step with nothing to edit (the
+     *  signature or the clef turned off, by an undo for example) opens the
+     *  nearest available step before it. */
+    function keepStepAvailable() {
+      if (!CNBStepNav.byId(currentSection) || CNBStepNav.isAvailable(currentSection, appConfig)) return;
+      const back = CNBStepNav.back(currentSection, appConfig);
+      showSection(back ? back.id : CNBSteps[0].id);
     }
 
     // ── The notehead panel (design §2) ───────────────────────────────────
@@ -434,6 +471,20 @@
     let keySignatureEditorKey = null;
     // The layer and symbol picked in its editor, kept across re-mounts (session 56).
     const keySignatureView = {};
+    // The steps the key-signature and clef editors serve (session 63): each
+    // mount's parts and host. Declared before the canvas first draws, which
+    // mounts the key-signature editor.
+    const KEY_SIGNATURE_MOUNTS = [
+      ["symbol-type", "ks-symbol-type-host"],
+      ["custom-symbols", "ks-custom-symbols-host"],
+      ["designer", "ks-designer-host"],
+      ["preview", "ks-preview-host"],
+      ["definitions", "keys-definitions-host"],
+    ];
+    const CLEF_MOUNTS = [
+      ["symbol", "clef-symbol-host"],
+      ["placement", "clef-placement-host"],
+    ];
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
       const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
@@ -501,6 +552,13 @@
       onRepeatOverlap: (fraction) => {
         appConfig.durations = { ...appConfig.durations, repeatOverlap: fraction };
         mountPropsEditor();
+        refreshShared();
+      },
+      // Hollow minims beside the longer-durations choice: one ordinary rule,
+      // added or removed (session 63, step-by-step design §5.1).
+      onHollowMinims: (on) => {
+        appConfig = CNBPreviewDisplay.withHollowMinims(appConfig, on);
+        mountNoteheadEditor();
         refreshShared();
       },
       // One button turns on the default signature, the scale stack (session 36).
@@ -685,6 +743,9 @@
       heightApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
+      // The steps greyed or not by the new config (session 63).
+      keepStepAvailable();
+      renderSteps();
       // Last, so a config that could not be drawn is not recorded.
       if (undoHistory && record) undoHistory.record(appConfig, inputTarget);
       refreshUndoButtons();
@@ -761,27 +822,36 @@
      *  is told the key picked on the staff, which it draws on its canvas
      *  and for which it counts the stems; its own key picker picks the
      *  staff's key, which re-mounts it, and the layer and symbol picked in
-     *  it are kept across re-mounts (session 56, keySignatureView). */
-    function mountKeySignatureEditor() {
+     *  it are kept across re-mounts (session 56, keySignatureView).
+     *  Since session 63 it is mounted once per step it serves (steps 6–9)
+     *  and in Advanced › Keys for notehead rules, each with its parts; an
+     *  edit in one re-seeds the others (not the one edited, which would
+     *  lose its focus). */
+    function mountKeySignatureEditor(except = null) {
       const key = previewApi ? previewApi.getState().key : null;
       keySignatureEditorKey = JSON.stringify(key);
-      byId("key-signature-editor-host").textContent = "";
-      CNBKeySignatureEditor.render(byId("key-signature-editor-host"), {
-        config: appConfig,
-        key,
-        view: keySignatureView,
-        onKey: (picked) => previewApi.setState({ key: picked }),
-        // A look's Import from SVG (session 50): the shape is added to the
-        // notation and given to that look.
-        importControl: drawLookImporter,
-        onChange: (slices) => {
-          appConfig.keys = slices.keys;
-          // A look took a built-in shape the notation lacked (session 50).
-          if (slices.shapes) appConfig.shapes = slices.shapes;
-          mountNoteheadEditor();
-          refreshShared();
-        },
-      });
+      for (const [part, id] of KEY_SIGNATURE_MOUNTS) {
+        if (part === except) continue;
+        byId(id).textContent = "";
+        CNBKeySignatureEditor.render(byId(id), {
+          config: appConfig,
+          key,
+          parts: [part],
+          view: keySignatureView,
+          onKey: (picked) => previewApi.setState({ key: picked }),
+          // A look's Import from SVG (session 50): the shape is added to the
+          // notation and given to that look.
+          importControl: drawLookImporter,
+          onChange: (slices) => {
+            appConfig.keys = slices.keys;
+            // A look took a built-in shape the notation lacked (session 50).
+            if (slices.shapes) appConfig.shapes = slices.shapes;
+            mountKeySignatureEditor(part);
+            mountNoteheadEditor();
+            refreshShared();
+          },
+        });
+      }
     }
 
     /** The Key signature panel's Import from SVG for one look: an imported
@@ -816,17 +886,24 @@
      *  wiring (session-1 importer, clef kind), so the whole
      *  import → enable → position flow lives in this one panel. A chosen
      *  clef is placed for the current staff (session 45), and a drag on
-     *  the canvas re-mounts it. */
-    function mountClefEditor() {
-      byId("clef-editor-host").textContent = "";
-      CNBClefEditor.render(byId("clef-editor-host"), {
-        config: appConfig,
-        getConfig: () => appConfig,
-        onChange: (slices) => {
-          appConfig.clef = slices.clef;
-          refreshShared();
-        },
-      });
+     *  the canvas re-mounts it. Since session 63 it is mounted once per
+     *  step, its symbol and size in step 10 and its place in step 11; an
+     *  edit in one re-seeds the other. */
+    function mountClefEditor(except = null) {
+      for (const [part, id] of CLEF_MOUNTS) {
+        if (part === except) continue;
+        byId(id).textContent = "";
+        CNBClefEditor.render(byId(id), {
+          config: appConfig,
+          getConfig: () => appConfig,
+          parts: [part],
+          onChange: (slices) => {
+            appConfig.clef = slices.clef;
+            mountClefEditor(part);
+            refreshShared();
+          },
+        });
+      }
     }
 
     function mountPropsEditor() {

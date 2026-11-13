@@ -193,7 +193,10 @@ await useCanvasSize(page, "small");
 await useDownloads(page);
 await page.goto(URL_PATH);
 await page.waitForSelector(".cnb-clef-editor", { state: "attached" });
-await openSection(page, "clef");
+// Step 10 (session 63): the clef's symbol and size; step 11 is where it sits.
+await openSection(page, "clef-symbol");
+const placementLink = () => page.$eval('.section-link[data-section="clef-placement"]',
+  l => ({ greyed: l.getAttribute("aria-disabled") === "true", reason: l.title }));
 
 const fullConfig = async () => JSON.parse(await page.textContent("#state-json"));
 /** The config as the canvas draws it (the Small display copy). */
@@ -225,6 +228,17 @@ check("DEFAULT-OFF: state panel shows the schema default clef section",
 check("DEFAULT-OFF: the preview reserves NO clef gutter (no .clef-col) and shows 13 cards",
   (await clefColCount()) === 0 &&
   await page.$$eval(".cnb-pvd-preview .pc-col", els => els.length === 13));
+check("STEPS: step 10 shows the clef's symbol and size and no placement; step 11 is greyed with its reason and does not open (session 63)",
+  JSON.stringify(await placementLink()) === JSON.stringify({ greyed: true, reason: "Choose or import a clef in step 10 first." }) &&
+  await page.evaluate(() =>
+    !document.querySelector('[data-panel="clef-symbol"]').hidden &&
+    !document.querySelector('[data-panel="clef-symbol"] .cnb-cle-sits')) &&
+  await (async () => {
+    // Forced: Playwright waits for an aria-disabled link to be enabled.
+    await page.click('.section-link[data-section="clef-placement"]', { force: true });
+    return page.evaluate(() => document.querySelector('[data-panel="clef-placement"]').hidden &&
+      !document.querySelector('[data-panel="clef-symbol"]').hidden);
+  })(), JSON.stringify(await placementLink()));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-initial.png"), fullPage: true });
 
 // ── STEP 1: import a clef SVG through the clef editor ───────────────────────
@@ -304,7 +318,16 @@ const clefAt = (c, pad) => {
   const grid = CNBGrid.create(drawn(c), CNBCollection.gridRange(FULL_ROW, drawn(c)));
   return `translate(${pad},${grid.semiToY(CNBClef.shown(drawn(c)).top)})`;
 };
+check("STEPS: with a clef shown, step 11 is no longer greyed",
+  !(await placementLink()).greyed, JSON.stringify(await placementLink()));
 await page.fill(".cnb-cle-height", "9");
+await openSection(page, "clef-placement");
+check("STEPS: step 11 shows where the clef sits, and the whole staff with it",
+  await page.evaluate(() =>
+    !document.querySelector('[data-panel="clef-placement"]').hidden &&
+    !!document.querySelector('[data-panel="clef-placement"] .cnb-cle-sits') &&
+    !document.querySelector('[data-panel="clef-placement"] .cnb-cle-height') &&
+    !document.getElementById("canvas-card").hidden));
 await page.fill(".cnb-cle-sits", "20");
 cfg = await fullConfig();
 check("POSITION: 9 semitones tall about its anchor on 20 — the top stays on the anchor's semitone",
@@ -312,6 +335,7 @@ check("POSITION: 9 semitones tall about its anchor on 20 — the top stays on th
   Math.abs(CNBClef.shown(cfg).top - 20) < 0.1 &&
   await page.$eval(".cnb-pvd-preview .cnb-clef", (el, t) => el.getAttribute("transform") === t, clefAt(cfg, 12)),
   JSON.stringify(cfg.clef.glyphs["uat-clef"]));
+await openSection(page, "clef-symbol");
 await page.fill(".cnb-cle-height", "6");
 cfg = await fullConfig();
 check(`POSITION: anchor 20 (top staff line), 6 semitones — clef group at ${clefAt(cfg, 12)}, glyph top ON the line (Node-side parity)`,
@@ -334,6 +358,7 @@ check("POSITION: the glyph's rendered top edge coincides with a staff line's y i
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-009-s2-anchor20.png"), fullPage: true });
 
 // Then a FLOAT anchor (the s1 anchoring decision): 22.784.
+await openSection(page, "clef-placement");
 await page.fill(".cnb-cle-sits", "22.784");
 cfg = await fullConfig();
 check("POSITION: the float anchor 22.784 reaches the active definition in the shared config",
@@ -348,6 +373,7 @@ check(`POSITION: the rendered clef group sits at ${expected1} (Node-side CNBGrid
     (el, t) => el.getAttribute("transform") === t, expected1),
   await page.$eval(".cnb-pvd-preview .cnb-clef", el => el.getAttribute("transform")).catch(() => "n/a"));
 
+await openSection(page, "clef-symbol");
 await page.fill(".cnb-cle-gutter-input", "20");
 cfg = await fullConfig();
 check("POSITION: gutter padding 20 reaches the shared config",
@@ -501,7 +527,10 @@ for (const name of ["treble", "bass", "alto"]) {
 
 // ── STEP 8: move and resize the clef on the canvas (session 45) ─────────────
 await page.click('.cnb-cle-choice[data-clef="treble"]');
-check("DRAG: with the Clef section open and a glyph clef, the canvas is in clef mode and says what to do",
+check("DRAG: in step 10 the canvas is not in clef mode",
+  !(await page.$eval(".cnb-preview-display", el => el.classList.contains("cnb-pvd-clef-mode"))));
+await openSection(page, "clef-placement");
+check("DRAG: with step 11 open and a glyph clef, the canvas is in clef mode and says what to do",
   await page.evaluate(() =>
     document.querySelector(".cnb-preview-display").classList.contains("cnb-pvd-clef-mode") &&
     document.querySelector(".cnb-pvd-pitch-hint").textContent.startsWith("Drag the clef up or down")));
@@ -547,6 +576,7 @@ await page.screenshot({ path: path.join(SHOT_DIR, "uat-045-dragged.png"), fullPa
 // commands and arcs. It imports where it was drawn, the canvas draws it, and
 // the engine engraves it where the canvas draws it.
 const C_CLEF_TEXT = await readFile(path.join(ROOT, "docs", "playbook", "tutorial", "downloads", "c-clef.svg"), "utf8");
+await openSection(page, "clef-symbol");
 await page.setInputFiles(".cnb-cle-file", {
   name: "c-clef.svg", mimeType: "image/svg+xml", buffer: Buffer.from(C_CLEF_TEXT, "utf8"),
 });
@@ -574,6 +604,7 @@ check(`HAND-DRAWN: its box matches the extent Chromium draws the file's paths at
   JSON.stringify(importedBox));
 if (await page.$(".cnb-cle-anchor-done")) await page.click(".cnb-cle-anchor-done");
 await page.fill(".cnb-cle-height", "8");
+await openSection(page, "clef-placement");
 await page.fill(".cnb-cle-sits", "14");
 cfg = await fullConfig();
 check("HAND-DRAWN: 8 semitones tall, its anchor (its box's centre) on semitone 14",

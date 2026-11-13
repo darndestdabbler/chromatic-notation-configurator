@@ -112,7 +112,8 @@
  * NUDGE_THRESHOLD pixels puts the slice back and reports nothing. A drag
  * that moved swallows the click that follows, so it does not also select.
  *
- * Session 45 (clefs): with the Clef section open (setFocus("clef")) and
+ * Session 45 (clefs): with the Clef section open (since session 63, step
+ * 11, setFocus("clef-placement")) and
  * opts.onClefDrag, a glyph clef can be dragged on the canvas. The root gets
  * the class cnb-pvd-clef-mode, which shows the clef's resize handle
  * (rect.cnb-clef-resize, on its bottom edge), and the toolbar says what to
@@ -158,6 +159,16 @@ function isPlainObject(v) {
 
 function deepClone(v) {
   return v === undefined ? v : JSON.parse(JSON.stringify(v));
+}
+
+/** The Hollow minims rule (session 63): every pitch class, minims, every
+ *  key, hollow and nothing else. */
+function isHollowMinimsRule(rule) {
+  const m = (rule && rule.match) || {};
+  const a = (rule && rule.apply) || {};
+  return m.pitchClasses === "all" && m.keys === "all" &&
+    Array.isArray(m.durations) && m.durations.length === 1 && m.durations[0] === "minim" &&
+    Object.keys(a).length === 1 && a.hollow === true;
 }
 
 /** The canvas sizes in px per semitone (design §6.1). */
@@ -438,6 +449,42 @@ export const CNBPreviewDisplay = {
   },
 
   /**
+   * Whether the notation has the Hollow minims rule (session 63, step-by-step
+   * design §5.1): a rule matching every pitch class, the minim alone and
+   * every key, whose apply is exactly { hollow: true }.
+   * @param {object} config
+   * @returns {boolean}
+   */
+  hasHollowMinims(config) {
+    return (config.noteheadRules || []).some(isHollowMinimsRule);
+  },
+
+  /**
+   * The config with the Hollow minims rule added (on) or removed (off): on
+   * adds one, named "Hollow minims", above every other rule, unless one is
+   * there; off removes every such rule. The input is not changed.
+   * @param {object} config
+   * @param {boolean} on
+   * @returns {object} a new config
+   */
+  withHollowMinims(config, on) {
+    const out = deepClone(config);
+    const rules = out.noteheadRules || [];
+    if (!on) {
+      out.noteheadRules = rules.filter(r => !isHollowMinimsRule(r));
+    } else if (!rules.some(isHollowMinimsRule)) {
+      const top = rules.reduce((m, r) => Math.max(m, Number.isFinite(r.priority) ? r.priority : 0), -1);
+      out.noteheadRules = [...rules, {
+        name: "Hollow minims",
+        priority: top + 1,
+        match: { pitchClasses: "all", durations: ["minim"], keys: "all" },
+        apply: { hollow: true },
+      }];
+    }
+    return out;
+  },
+
+  /**
    * Build the CNBCollection.render() options for a config + display state,
    * applying the prune-at-build rules from the module header:
    *   - pitchClasses from the from/to range (throws via buildPitchClasses
@@ -494,6 +541,10 @@ export const CNBPreviewDisplay = {
    *     a percentage of a head's width (1/3 when unset), and a change to a
    *     percentage from 0 up to 100 reports it as a fraction; the host
    *     writes durations.repeatOverlap and calls redraw().
+   *   - onHollowMinims(on) (session 63): when given, while each duration
+   *     has its own shape, a Hollow minims checkbox beside that choice,
+   *     ticked when the notation has the rule (hasHollowMinims), reports
+   *     its new state; the host writes withHollowMinims and calls redraw().
    *   - onSignatureOn() (session 36): when given, while the key signature
    *     is off, a button beside the key picker asks the host to turn on the
    *     default signature (the scale stack); the host writes the config and
@@ -504,6 +555,7 @@ export const CNBPreviewDisplay = {
    *          collection?: {render: Function},
    *          onRepresentationMode?: (mode: "shape"|"repeat") => void,
    *          onRepeatOverlap?: (fraction: number) => void,
+   *          onHollowMinims?: (on: boolean) => void,
    *          onSignatureOn?: () => void}} opts
    * @returns {{root: HTMLElement, getState: () => object,
    *            setState: (partial: object) => void,
@@ -537,6 +589,7 @@ export const CNBPreviewDisplay = {
     const onClefDrag = opts.onClefDrag || null;
     const onRepresentationMode = opts.onRepresentationMode || null;
     const onRepeatOverlap = opts.onRepeatOverlap || null;
+    const onHollowMinims = opts.onHollowMinims || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
     let pitchHint = null;     // the toolbar hint shown in pitch mode
@@ -627,8 +680,21 @@ export const CNBPreviewDisplay = {
       }
       wrap.appendChild(group);
       if (current === "repeat" && onRepeatOverlap) wrap.appendChild(drawOverlap());
+      if (current === "shape" && onHollowMinims) wrap.appendChild(drawHollowMinims());
       wrap.appendChild(el("span", "cnb-pvd-repeat-hint", REPEAT_HINT));
       return wrap;
+    }
+
+    // ── Hollow minims (session 63, design §5.1), in shape mode ────────────
+    function drawHollowMinims() {
+      const label = el("label", "cnb-pvd-hollow-minims");
+      const input = el("input", "cnb-pvd-hollow-minims-check");
+      input.type = "checkbox";
+      input.checked = CNBPreviewDisplay.hasHollowMinims(getConfig() || {});
+      input.onchange = (e) => onHollowMinims(!!(e && e.target ? e.target.checked : input.checked));
+      label.appendChild(input);
+      label.appendChild(el("span", "cnb-pvd-hollow-minims-text", "Hollow minims"));
+      return label;
     }
 
     // ── The repeated heads' overlap (session 58), in repeat mode ──────────
@@ -905,10 +971,10 @@ export const CNBPreviewDisplay = {
       }
     }
 
-    /** Clef mode (session 45): the Clef section is open, the host takes
+    /** Clef mode (session 45): step 11 is open (session 63), the host takes
      *  drags, and the shown clef is a glyph clef. */
     function clefMode() {
-      const active = onClefDrag && focus === "clef" ? CNBClef.activeGlyph(getConfig()) : null;
+      const active = onClefDrag && focus === "clef-placement" ? CNBClef.activeGlyph(getConfig()) : null;
       return !!active && (active.def.kind || "glyph") === "glyph";
     }
 
@@ -1036,8 +1102,11 @@ export const CNBPreviewDisplay = {
 
     const changed = () => redraw();
 
-    /** A new width: redraw when the row count changes, else re-mark overflow. */
+    /** A new width: redraw when the row count changes, else re-mark overflow.
+     *  A width of 0 is a hidden canvas (the key-signature steps hide it,
+     *  session 63), which keeps the layout it had. */
     function resized(newWidth) {
+      if (newWidth === 0) return;
       width = newWidth;
       const { config, options } = drawn();
       if (options.durations.length === 0) return;

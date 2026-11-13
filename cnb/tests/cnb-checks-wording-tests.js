@@ -70,7 +70,7 @@ export const tests = [
       assert(!warnings.some(w => w.startsWith("Rule \"In A minor")), "the key-scoped rule itself is not a check");
       const d = describeFirst(c, "Key definitions");
       eq(d.text, "The keys “C”, “A minor” have the same notes, so LilyPond cannot tell them apart: it engraves them all as “A minor” does.", "wording");
-      eq(d.link, { label: "Open Key signature", target: { kind: "section", section: "key-signature" } }, "link");
+      eq(d.link, { label: "Open Advanced", target: { kind: "section", section: "advanced", control: "#keys-for-rules" } }, "link");
     },
   },
   {
@@ -174,10 +174,11 @@ export const tests = [
     },
   },
   {
-    name: "describe: staff, export, key, clef and axis messages open their section",
+    name: "describe: staff, export, key, clef and axis messages open their step, or Advanced (session 63)",
     fn: () => {
       const open = (section, control) => {
-        const names = { staff: "Staff", export: "Export", "key-signature": "Key signature", clef: "Clef", advanced: "Advanced", "ledger-lines": "Ledger lines" };
+        const names = { staff: "Staff", export: "Export", "ks-preview": "Key signature preview",
+          "clef-symbol": "Clef symbol import and sizing", advanced: "Advanced", "ledger-lines": "Ledger lines" };
         const target = { kind: "section", section };
         if (control) target.control = control;
         return { label: "Open " + names[section], target };
@@ -199,26 +200,26 @@ export const tests = [
       check(c => { c.meta.notationLabel = ""; }, "meta.notationLabel",
         "The notation has no label, so a score that prints it prints nothing.", open("export", '[data-meta="notationLabel"] input'));
       check(c => { c.keys.keySignature.enabled = true; }, "keys.keySignature.enabled is true",
-        "The key signature is on but keys are off, so no signature is drawn.", open("key-signature", ".cnb-kse-keys-enable-check"));
+        "The key signature is on but keys are off, so no signature is drawn.", open("advanced", "#keys-for-rules"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.definitions = [{ name: "Mode 1", pitchClasses: [0, 2] }]; }, "Key definition \"Mode 1\" has no tonicPc",
-        "The key “Mode 1” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.", open("key-signature"));
+        "The key “Mode 1” has no tonic, and its name does not start with a note letter, so its first note is taken as the tonic.", open("advanced", "#keys-for-rules"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.definitions = [{ name: "D", pitchClasses: [] }]; }, "Key definition \"D\" needs",
-        "The key “D” has no notes.", open("key-signature"));
+        "The key “D” has no notes.", open("advanced", "#keys-for-rules"));
       check(c => { c.keys.enabled = true; c.keys.keySignature.enabled = true; c.keys.keySignature.stacking = "parity"; },
-        "Key signature marks touch", "Marks touch in 105 keys.", open("key-signature"));
+        "Key signature marks touch", "Marks touch in 105 keys.", open("ks-preview"));
       check(c => { c.clef.enabled = true; }, "clef.enabled",
-        "The clef is on but none is chosen, so none is drawn.", open("clef"));
+        "The clef is on but none is chosen, so none is drawn.", open("clef-symbol"));
       check(c => { c.clef.enabled = true; c.clef.active = "gone"; }, "clef.active",
-        "The chosen clef, “gone”, is not in this notation.", open("clef"));
+        "The chosen clef, “gone”, is not in this notation.", open("clef-symbol"));
       check(c => { c.clef.enabled = true; c.clef.active = "g";
         c.clef.glyphs.g = { kind: "glyph", svgPath: "M 0 0 L 1 1 Z", naturalHeight: 3, naturalWidth: 1, semitoneHeight: 6, anchorSemi: 200 }; },
-        "Clef glyph \"g\" anchorSemi", "The clef “g” is placed far above or below the staff.", open("clef"));
+        "Clef glyph \"g\" anchorSemi", "The clef “g” is placed far above or below the staff.", open("clef-symbol"));
       check(c => { c.clef.enabled = true; c.clef.active = "g"; c.clef.glyphs.g = { kind: "glyph", anchorSemi: 10 }; },
-        "Clef glyph \"g\" has no svgPath", "The clef “g” cannot be drawn: its imported drawing is incomplete.", open("clef"));
+        "Clef glyph \"g\" has no svgPath", "The clef “g” cannot be drawn: its imported drawing is incomplete.", open("clef-symbol"));
       check(c => { c.clef.enabled = true; c.clef.active = "t"; c.clef.glyphs.t = { kind: "text", text: "", textHeightSemis: 4, anchorSemi: 10 }; },
-        "Clef text entry \"t\" has no text", "The text clef “t” has no text.", open("clef"));
+        "Clef text entry \"t\" has no text", "The text clef “t” has no text.", open("clef-symbol"));
       check(c => { c.clef.enabled = true; c.clef.active = "t"; c.clef.glyphs.t = { kind: "text", text: "4", textHeightSemis: 0, anchorSemi: 10 }; },
-        "Clef text entry \"t\" needs", "The text clef “t” needs a height above 0.", open("clef"));
+        "Clef text entry \"t\" needs", "The text clef “t” needs a height above 0.", open("clef-symbol"));
     },
   },
   {

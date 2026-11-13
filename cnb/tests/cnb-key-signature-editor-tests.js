@@ -1539,4 +1539,77 @@ export const tests = [
       });
   } },
 
+  // ─── render({ parts }) (session 63): one editor, five steps' parts ────
+
+  { name: "render parts: each part draws its controls and no other part's", fn: () => {
+      const TOKENS = {
+        "symbol-type": ["cnb-kse-head", "cnb-kse-sig-enable-check", "cnb-kse-start-button"],
+        "custom-symbols": ["cnb-kse-layer", "cnb-kse-canvas", "cnb-kse-look-card"],
+        "designer": ["cnb-kse-canvas", "cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-place"],
+        "preview": ["cnb-kse-keys", "cnb-kse-mini"],
+        "definitions": ["cnb-kse-keys-enable", "cnb-kse-definitions", "cnb-kse-validation"],
+      };
+      const ALL = [...new Set(Object.values(TOKENS).flat())];
+      for (const [part, own] of Object.entries(TOKENS)) {
+        withDomStub((container) => {
+          const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: [part] });
+          for (const token of own) assert(findAll(api.root, token).length > 0, `${part} draws ${token}`);
+          for (const token of ALL.filter(t => !own.includes(t))) {
+            eq(findAll(api.root, token).length, 0, `${part} does not draw ${token}`);
+          }
+        });
+      }
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: ["custom-symbols"] });
+        eq(findAll(api.root, "cnb-kse-key").length, 1, "custom-symbols has the key picker");
+      });
+  } },
+
+  { name: "render parts: with no parts the whole panel draws as before", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" } });
+        deepEq(api.root.children.map(c => c.className),
+          ["cnb-kse-keys-enable", "cnb-kse-section cnb-kse-signature", "cnb-kse-section cnb-kse-definitions", "cnb-kse-validation"],
+          "the panel's sections in order");
+        eq(findAll(api.root, "cnb-kse-keys").length, 1, "the other keys inside the stage");
+      });
+  } },
+
+  { name: "render parts: Show in symbol-type is live while keys are off and turns keys and the signature on together", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const api = E.render(container, {
+          config: CNBConfig.createDefault(), parts: ["symbol-type"], onChange: (slices) => { last = slices; },
+        });
+        const show = findAll(api.root, "cnb-kse-sig-enable-check")[0];
+        assert(!show.disabled, "Show is not disabled while keys are off");
+        show.checked = true;
+        show.onchange();
+        eq(last.keys.enabled, true, "keys turned on");
+        eq(last.keys.keySignature.enabled, true, "the signature turned on");
+        const again = findAll(api.root, "cnb-kse-sig-enable-check")[0];
+        again.checked = false;
+        again.onchange();
+        eq(last.keys.keySignature.enabled, false, "unticked: the signature off");
+        eq(last.keys.enabled, true, "keys stay on");
+      });
+  } },
+
+  { name: "render parts: an edit in one part emits the whole keys slice", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const config = keysConfig();
+        config.keys.keySignature.separator.color = "#123abc";
+        const api = E.render(container, {
+          config, key: { tonic: 0, mode: "major" }, parts: ["designer"], onChange: (slices) => { last = slices; },
+        });
+        const parity = findAll(api.root, "cnb-kse-radio").find(r => r.getAttribute("data-value") === "parity");
+        findAll(parity, "cnb-kse-radio-input")[0].onchange();
+        eq(last.keys.keySignature.stacking, "parity", "the edit");
+        deepEq(last.keys.definitions, [C_MAJOR], "the definitions carried");
+        eq(last.keys.keySignature.separator.color, "#123abc", "the gold stem carried");
+        eq(last.keys.enabled, true, "keys carried");
+      });
+  } },
+
 ];

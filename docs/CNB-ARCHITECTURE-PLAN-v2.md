@@ -1752,7 +1752,7 @@ Detailed specifications deferred. Summary:
 | 16 — SVG Shape Importer | Parse SVG for paths, anchors, LY data attributes | SVG importer |
 | 17 — Config Save/Load | JSON export/import | New |
 | 18 — Config Export (LY) | LilyPond file download (wraps Module 11) | LY export button |
-| 19 — Preview Display | Full preview with range/duration/key controls | New (replaces monolith preview) |
+| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`) | New (replaces monolith preview) |
 
 ---
 
@@ -1796,7 +1796,10 @@ canvas drag also uses (session 59; they replace `withRange`), the anchor
 picker ("Pick the anchor point", opened after an import: a click on the
 enlarged glyph moves `reference`, through the key-signature editor's
 `referenceGeometry` / `referenceAt`), the dozenal clef's height, and gutter
-sizing. Same editor contract as Modules
+sizing. Since session 63 it serves two steps through a `parts` option, the
+page mounting it once for each: "symbol" (step 10, everything but where the
+clef sits) and "placement" (step 11, the semitone it sits on, with the
+canvas drag); without `parts` it draws the whole panel. Same editor contract as Modules
 12–17: property-based event wiring (Node-testable `render()`), pure
 `buildClef` / `applyToConfig` / `stateFromConfig` builders, Module A
 validation pass-through, `onChange({ clef }, state)`. Dependencies:
@@ -1881,7 +1884,15 @@ edits the whole `keys` section — the `keys.enabled` master gate, the key
 definitions (name, pitch-class pills, optional explicit tonic; the
 definition controls live here because sets 005–006 shipped only key
 CONSUMERS — the rule editor's `match.keys` pills and the preview's key
-selector), and the `keySignature` subsection. Since session 56 the
+selector), and the `keySignature` subsection. Since session 63 it serves
+the key signature's four steps and Advanced through a `parts` option, the
+page mounting it once for each: "symbol-type" (step 6: Show the key
+signature, which also turns keys on, and Start from), "custom-symbols"
+(step 7: the key picker, Edit, the canvas and the look card), "designer"
+(step 8: the key picker, the canvas, Notes, Stacks and Place), "preview"
+(step 9: the mode's 15 keys and the touch list) and "definitions"
+(Advanced › Keys for notehead rules: Use keys, the key definitions and the
+validation); without `parts` it draws the whole panel described below. Since session 56 the
 signature is the editor of the key-signature design §13.8
 (`docs/planning/key-signature-designer-design.md`), in a designer's words:
 Show the key signature, and **Start from**, the noteheads (the defaults) or
@@ -2118,6 +2129,7 @@ cnb/
 │   ├── svg-importer.js
 │   ├── config-io.js
 │   ├── preview-display.js
+│   ├── steps.js                 (session 63; the step registry: the twelve steps, their order, availability, Next and Back)
 │   └── app.js
 │
 ├── assets/
