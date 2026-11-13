@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.19 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols)
-**Date:** November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.20 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups)
+**Date:** November 13, 2026 (1.3.20); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -80,7 +80,12 @@ baselines are byte-identical. 1.3.19, for both: the key signature's
 placed, coloured and layered symbols, §5.6a. Only a mark-table signature
 using the model's placements, added symbols, symbols without ledgers or
 coloured signs exports anything new; it needs engine 1.6.0. Every table
-that uses none of them, and the five export baselines, are byte-identical.)*
+that uses none of them, and the five export baselines, are byte-identical.
+1.3.20, for both: the repeated heads' overlap and the breve's tie, §4.1d.
+Every config in repeat mode writes `cnb:multinote-overlap`, which needs
+engine 1.7.0; the Kite 4-369 and 45deg-369 baselines, in repeat mode, gain
+that line, and the default, sized and Twinline baselines are
+byte-identical.)*
 
 Summary of additions:
 
@@ -100,6 +105,7 @@ Summary of additions:
 | Sharps and flats (1.3.17, linear and axis alike) | a signature of noteheads only | the traditional signature, each sign `(semi column sharp)` or `(semi column flat)` in the mark table (§5.6a) |
 | Sharps and flats sized in semitones (1.3.18, linear and axis alike) | LilyPond's size, a sharp 3 staff spaces tall | each sign's scale as its fourth element, `(semi column sharp 0.6473)`, left out at 1, as engine 1.5.0 reads it (§5.6a) |
 | The key signature's model (1.3.19, linear and axis alike) | one mark a head or a sign, its box centred on its column, signs black | each mark its symbols in order, layered at one semitone and column; `(at dx . dy)` placing a symbol's origin; the `symbol` kind, with no ledgers; a sign's colour, as engine 1.6.0 reads them (§5.6a) |
+| The repeated heads' overlap (1.3.20, linear and axis alike) | `cnb:multinote-padding` from `engine.multinotePadding`, staff spaces, written when changed | `cnb:multinote-overlap`, a share of the head's width, written in repeat mode; the breve's tie between its groups' centres, as engine 1.7.0 engraves it (§4.1d) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -202,21 +208,24 @@ height and width, within 5% (`cnb/tests/cnb-lilypond-tests.js`).
 
 In repeat mode (a resolved `(repeat . #t)`, `durations.representationMode
 "repeat"`) the engine engraves a minim as 2 heads and a semibreve as 4,
-each overlapping the last by `cnb:multinote-padding` staff spaces. Before
+each overlapping the last by `cnb:multinote-overlap` of the head's width
+(since 1.3.20; see *The overlap* below). Before
 engine 1.3.0 a breve was the semibreve's 4 heads. Since engine 1.3.0
 (engine session 25, its `configurator-handoff.md` in
 `docs/session-sets/025-breve-tied-semibreves/`) a breve is **two semibreve
 groups, tied**, and the preview draws the same (session 44):
 
 - **Groups.** Each is the semibreve's stencil, unchanged: 4 heads, each
-  `cnb:multinote-padding` (−0.5 staff space by default) over the last.
+  overlapping the last as the overlap below says.
 - **Gap.** The second group starts 1 staff space after the first group's
   right edge (stencil extents). The breve is therefore
   `2 × semibreve width + 1` staff spaces wide.
-- **Tie (1.3.14).** One for the whole breve, below the heads: LilyPond's
-  `(make-tie-stencil (cons xa y0) (cons xb y0) 0.12 DOWN)`, xa the centre
-  of the first head of the first group, xb the centre of the last head of
-  the last group, and y0 the heads' bottom (the group's lower Y edge), so
+- **Tie (1.3.14, 1.3.20).** One for the whole breve, below the heads:
+  LilyPond's `(make-tie-stencil (cons xa y0) (cons xb y0) 0.12 DOWN)`, xa
+  the centre of the first group, xb the centre of the second (since engine
+  1.7.0, 1.3.20: it joins the groups as a tie joins two notes; engine 1.3.1
+  to 1.6.0 ran it from the first head's centre to the last's), and y0 the
+  heads' bottom (the group's lower Y edge), so
   it curves down below them as LilyPond's ties under a note do, with
   LilyPond's default height limit 1.0 and ratio 0.33. Its bow is
   (2/π)·atan(π·0.33·span/2) staff spaces below y0, a bézier sandwich 0.12
@@ -239,12 +248,35 @@ groups, tied**, and the preview draws the same (session 44):
   engraves a longa as 4 tied groups and a maxima as 8; the Configurator
   has no such duration.
 
-**The export text is unchanged.** Nothing new is written and no setting is
-added: what changed is how engine 1.3.0 engraves what was always exported.
-The five export baselines are byte-identical to 1.3.11. **An export
-engraved with an engine before 1.3.0 draws a repeat-mode breve as 4
-heads**, which the preview no longer draws, **and one engraved with engine
-1.3.0 ties the gap** rather than below the heads (1.3.14).
+**The overlap (1.3.20).** Since session 58 (engine session 39, engine
+1.7.0, its handoff in `docs/session-sets/039-repeat-overlap/`) the copies
+overlap by a share of each head's own width, one fraction for every shape,
+`durations.repeatOverlap`, 1/3 by default (validated as a number from 0 up
+to, not including, 1). Each copy starts (1 − overlap) × the head's width
+after the last, so at 1/3 a minim is 1 + 2/3 head widths and a semibreve 3.
+In repeat mode Section B writes it among the engine settings:
+
+```lilypond
+%% Engine settings (non-default)
+#(set! cnb:multinote-overlap 0.3333)
+```
+
+The engine's default, `#f`, keeps its `cnb:multinote-padding` (−0.5 staff
+spaces, which was 58% of the default notehead's width and 37–38% of the
+Kite and 45deg-369 heads), so the Configurator writes the overlap whenever
+it is in repeat mode, and never in shape mode. `engine.multinotePadding` is
+retired (§5.2a): `cnb:multinote-padding` is never written. The preview
+(`CNBCard.repeatLayout`) and the engraving space the copies alike. The
+canvas sets the overlap beside the repeat choice, as a percentage.
+
+**The export text.** 1.3.12 and 1.3.14 added nothing to the export: they
+changed how engine 1.3.0 and 1.3.1 engrave what was always exported. 1.3.20
+writes `cnb:multinote-overlap` in repeat mode, **which needs engine 1.7.0**:
+on an earlier engine the variable is unbound and LilyPond stops. **An
+export engraved with an engine before 1.3.0 draws a repeat-mode breve as 4
+heads, one engraved with engine 1.3.0 ties the gap, and one engraved with
+engines 1.3.1 to 1.6.0 ties the first head to the last**, none of which the
+preview draws now.
 
 **Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`,
 measured through `cnb/tests/engine-probe.js`): for the Kite 4-369 and
@@ -262,7 +294,17 @@ bottom (Kite −0.6667, 45deg-369 −0.6668, against the preview's −0.6667),
 its lowest ink (−1.5530 against −1.5529 for both) and the breve's height
 from the heads' top to it (Kite 2.2198, 45deg-369 2.2197, against
 2.2196). The engraved span, 7.3345 and 7.3346, is the preview's 7.3333
-and 7.3340 widened by the engraved heads.
+and 7.3340 widened by the engraved heads. *(Those figures are engine
+1.3.1's, at the old padding.)* Since 1.3.20 the round trip runs against
+engine 1.7.0 at overlaps of 1/3 and 0.25 and holds every pitch class's
+minim, semibreve and breve width (the minim and semibreve to 0.001 now,
+not 5%), the tie's ends at the two groups' centres, each half a group in
+from its edge of the stencil, and at the heads' bottom, its lowest ink and
+the breve's height, all to 0.001 staff spaces, each head-proportional
+length scaled by the engraved head's width over the preview's (the 1 staff
+space between the groups does not scale). Kite at 1/3, for example: the
+minim 2.2225 engraved against 2.2222, the semibreve 4.0006 against
+4.0000.
 
 ### 4.4a Stem Attachment Registrations under a pitch axis
 
@@ -513,6 +555,10 @@ setting:
   defaults, validated or edited. A config that carries them still loads,
   and none is read or emitted. Validation check 10 (§8) went with the line
   overrides.
+- **Replaced (1.3.20):** `engine.multinotePadding`, in staff spaces, by
+  `durations.repeatOverlap`, a share of the head's width (§4.1d). It is no
+  longer a default, validated or edited; a config that carries it still
+  loads, it is not read, and `cnb:multinote-padding` is never emitted.
 
 Since 1.3.10 the header has no color-palette line (1.3.3–1.3.9 named the
 palette there when Section A registered its colours, and otherwise wrote
@@ -1423,6 +1469,7 @@ engine round-trip test as evidence.
 | `cnb:keysig-bar-color` | `"#RRGGBB"` | `"#ffd42a"` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
+| `cnb:multinote-overlap` | `#f` or number (a share of the head's width) | `#f` | In repeat mode (§4.1d) — **new 1.3.20**, engine 1.7.0 |
 | `cnb:semitones-per-staff-space` | Integer | `2` | Always; `pitchAxis.axisUnitsPerStaffSpace` under an axis (§5.4a) — **clarified 1.3.1** |
 
 ### Procedure Return Alist
@@ -1437,7 +1484,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.19** | **Nov 12, 2026** | **The key signature's placed, coloured and layered symbols (session 55, engine sessions 37 and 38): §5.6a. A mark is written as its symbols, base then added ones, at one semitone and column, the table's order the layer order; a base whose shape takes no ledgers and every added symbol are the new `symbol` kind, with no ledgers or ledger entry; `(at dx . dy)`, the optional last element, places a symbol's origin in staff spaces where the canvas does not centre it (a reference point, an offset); a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an `at` writes its scale at 1 too. The canvas measures a placed symbol by its path's box. The Clairnote SN and DN gallery files take dots with imported tails. An engine round trip holds every symbol, every stack's ledgers and the ink to the canvas within 0.001 staff spaces. Output changes only for a table using the model; the five export baselines are byte-identical. Needs engine 1.6.0.** |
+| **1.3.20** | **Nov 13, 2026** | **The repeated heads' overlap and the breve's tie between its groups (session 58, engine sessions 39 and 40): §4.1d, §5.2a. The copies of a repeated head overlap by `durations.repeatOverlap`, a share of each head's own width (1/3 by default, one fraction for every shape), which a repeat-mode export writes as `cnb:multinote-overlap`; `engine.multinotePadding` is retired and `cnb:multinote-padding` never written. The breve's tie runs from the middle of its first semibreve group to the middle of the second. The canvas sets the overlap beside the repeat choice. An engine round trip holds every minim, semibreve and breve width and the tie to the preview within 0.001 staff spaces, at overlaps 1/3 and 0.25. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines gain the line; the default, sized and Twinline baselines are byte-identical. Needs engine 1.7.0.** |
+| 1.3.19 | Nov 12, 2026 | The key signature's placed, coloured and layered symbols (session 55, engine sessions 37 and 38): §5.6a. A mark is written as its symbols, base then added ones, at one semitone and column, the table's order the layer order; a base whose shape takes no ledgers and every added symbol are the new `symbol` kind, with no ledgers or ledger entry; `(at dx . dy)`, the optional last element, places a symbol's origin in staff spaces where the canvas does not centre it (a reference point, an offset); a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an `at` writes its scale at 1 too. The canvas measures a placed symbol by its path's box. The Clairnote SN and DN gallery files take dots with imported tails. An engine round trip holds every symbol, every stack's ledgers and the ink to the canvas within 0.001 staff spaces. Output changes only for a table using the model; the five export baselines are byte-identical. Needs engine 1.6.0. |
 | 1.3.18 | Nov 11, 2026 | Sharps and flats sized in semitones (session 52, engine session 35): §5.6a. `keys.keySignature.signs.heightSemis` sets the sharp's height between its bars in semitones, automatic (`null`) the least of the noteheads' mean height, one staff space and 3; each sign mark writes its scale, the height ÷ the sharp's bar spacing ÷ the semitones per staff space, as a fourth element, `(semi column sharp 0.6473)`, left out at 1, and the columns are laid out for the scaled signs. Engine round trips hold every sign, its scaled box and the ink to the preview's, at the automatic size and one set by hand. Output changes only for a signature of sharps or flats; the five export baselines are byte-identical. Needs engine 1.5.0. Since engine 1.5.0 a plain score engraves at the config's magnification, so the round trips drop their `\magnifyStaff #cnb:default-magnify`, and the preview's spacing after a clef and to the first note follows the magnification (§5.6a). |
 | 1.3.17 | Nov 11, 2026 | Sharps and flats (session 51): §5.6a. A signature whose `style` is `"accidentals"` exports the mark table with each key's sharps (F C G D A E B) or flats (B E A D G C F) as `(semi column sharp)` / `(semi column flat)`, each at the note it makes, in its own column, the columns a sign's width apart by the box LilyPond measures in the optical size it draws the staff with; no Section A registration, ledger entries or bars. Engine round trips hold every sign, its box and the ink to the preview's. Output changes only for such a signature; the five export baselines are byte-identical. |
 | 1.3.16 | Nov 11, 2026 | The signature's ledgers (session 50, engine session 33): §5.6a and §5.7. Since engine 1.4.1 a signature head takes its semitone's `cnb:ledgers-by-semitone` entry, for `'chord` and `'marks` alike, so the signature's ledgers are the notation's; the table gains an entry for each mark of the mark table beyond the cards' pitches, and the preview spaces the scale stack by its ink, as it does the mark table. The known divergence of 1.3.15 is gone: engine round trips hold every stack's ledgers and every signature's ink to the preview's. Output changes only for a mark-table signature with marks beyond semitones 0–24; the five export baselines are byte-identical. |

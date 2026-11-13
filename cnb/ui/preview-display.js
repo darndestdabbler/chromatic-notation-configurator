@@ -128,6 +128,9 @@
  * duration's own shape and repeated heads (durations.representationMode,
  * REPRESENTATION_CHOICES); a click on the other one calls
  * opts.onRepresentationMode("shape" | "repeat") and the host writes it.
+ * Session 58: in repeat mode, when the host passes opts.onRepeatOverlap,
+ * an Overlap field beside the choice sets durations.repeatOverlap, the
+ * share of a head's width each copy overlaps the last, as a percentage.
  *
  * Session 36 also turns the key select into the key and mode picker (see
  * the scope decisions above). While the signature is off and the host
@@ -168,6 +171,8 @@ const REPRESENTATION_CHOICES = {
 };
 /** The engine's repeat counts (CNBCard.repeatCount), shown with the choice. */
 const REPEAT_HINT = "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves";
+/** The repeated heads' overlap when the config sets none (session 58; CNBCard's default). */
+const DEFAULT_REPEAT_OVERLAP = 1 / 3;
 
 /** The key shown first (session 36). */
 const DEFAULT_KEY = { tonic: 0, mode: "major" };
@@ -482,6 +487,11 @@ export const CNBPreviewDisplay = {
    *     repeated heads ("repeat") beside the duration buttons, and a click
    *     on the one not in the config reports it; the host writes
    *     durations.representationMode and calls redraw().
+   *   - onRepeatOverlap(fraction) (session 58): when given, in repeat mode
+   *     an Overlap field beside that choice shows durations.repeatOverlap as
+   *     a percentage of a head's width (1/3 when unset), and a change to a
+   *     percentage from 0 up to 100 reports it as a fraction; the host
+   *     writes durations.repeatOverlap and calls redraw().
    *   - onSignatureOn() (session 36): when given, while the key signature
    *     is off, a button beside the key picker asks the host to turn on the
    *     default signature (the scale stack); the host writes the config and
@@ -491,6 +501,7 @@ export const CNBPreviewDisplay = {
    * @param {{getConfig: () => object, onRender?: Function,
    *          collection?: {render: Function},
    *          onRepresentationMode?: (mode: "shape"|"repeat") => void,
+   *          onRepeatOverlap?: (fraction: number) => void,
    *          onSignatureOn?: () => void}} opts
    * @returns {{root: HTMLElement, getState: () => object,
    *            setState: (partial: object) => void,
@@ -523,6 +534,7 @@ export const CNBPreviewDisplay = {
     let swallowClick = false; // a notehead drag moved: the click that follows does not select
     const onClefDrag = opts.onClefDrag || null;
     const onRepresentationMode = opts.onRepresentationMode || null;
+    const onRepeatOverlap = opts.onRepeatOverlap || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
     let pitchHint = null;     // the toolbar hint shown in pitch mode
@@ -612,8 +624,32 @@ export const CNBPreviewDisplay = {
         group.appendChild(button);
       }
       wrap.appendChild(group);
+      if (current === "repeat" && onRepeatOverlap) wrap.appendChild(drawOverlap());
       wrap.appendChild(el("span", "cnb-pvd-repeat-hint", REPEAT_HINT));
       return wrap;
+    }
+
+    // ── The repeated heads' overlap (session 58), in repeat mode ──────────
+    function drawOverlap() {
+      const overlap = ((getConfig() || {}).durations || {}).repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
+      const label = el("label", "cnb-pvd-overlap");
+      label.appendChild(el("span", "cnb-pvd-overlap-label", "Overlap"));
+      const input = el("input", "cnb-pvd-overlap-input");
+      input.type = "number";
+      input.min = "0";
+      input.max = "99";
+      input.step = "1";
+      input.value = String(Math.round(overlap * 1000) / 10);
+      input.setAttribute("aria-label", "Overlap, as a percentage of a head's width");
+      // Only a percentage from 0 up to (not including) 100 is reported.
+      input.onchange = (e) => {
+        const raw = String(e.target.value).trim();
+        const pct = raw === "" ? NaN : Number(raw);
+        if (Number.isFinite(pct) && pct >= 0 && pct < 100) onRepeatOverlap(pct / 100);
+      };
+      label.appendChild(input);
+      label.appendChild(el("span", "cnb-pvd-overlap-unit", "% of a head's width"));
+      return label;
     }
 
     // ── The key and mode picker (session 36) ──────────────────────────────

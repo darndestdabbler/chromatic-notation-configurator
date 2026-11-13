@@ -1,5 +1,5 @@
 {
-  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes. The Clairnote SN and DN probes saved with notehead-chords were re-captured in session 55, when the two gallery files took Clairnote's own signatures (dots with tails, the tails imported shapes placed by their reference points), so those probes draw and export the files' new looks; every other probe matched its hash.",
+  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes. The Clairnote SN and DN probes saved with notehead-chords were re-captured in session 55, when the two gallery files took Clairnote's own signatures (dots with tails, the tails imported shapes placed by their reference points), so those probes draw and export the files' new looks; every other probe matched its hash. The export probes of the Kite 4-369 and 45deg-369 fixtures, which are in repeat mode, were re-captured in session 58, when a repeat-mode export began writing cnb:multinote-overlap (the repeated heads' overlap as a share of the head's width); their signatures are unchanged, and every other probe matched its hash.",
   "probes": [
     {
       "id": "default · notehead-chords · middle · C major",
@@ -98,8 +98,8 @@
     },
     {
       "id": "kite-4-369-config.json · notehead-chords · middle · export",
-      "sha256": "aace714aca04458263fcf8cae4b278f391cbf4984792792bd36841bc0ec410a4",
-      "length": 8019
+      "sha256": "8fc0031f1cdcca4c240d86a3ab5b16a1ec944ad6a40dac6b271f1ac5b998051d",
+      "length": 8056
     },
     {
       "id": "kite-4-369-config.json · accidentals · middle · C major",
@@ -123,8 +123,8 @@
     },
     {
       "id": "kite-4-369-config.json · accidentals · middle · export",
-      "sha256": "7dae3d2726e5d2fe26ade610c5cab0dc4f14d8cd75347176d561be537ccf3277",
-      "length": 34713
+      "sha256": "3c54e58753ebeac478d8c57c941063030e7ab1a634a16dfd5c805f378d22eab7",
+      "length": 34750
     },
     {
       "id": "kite-4-369-config.json · accidentals · every-set · C major",
@@ -148,8 +148,8 @@
     },
     {
       "id": "kite-4-369-config.json · accidentals · every-set · export",
-      "sha256": "b99c3445ff8045416b377313510370aeaf13b4bfb6b36989ab1cb2bb426c96c4",
-      "length": 48502
+      "sha256": "ceb60caebbd4e855ceccbcd27fb98f252835b4c29748741e941eac5a95d2171b",
+      "length": 48539
     },
     {
       "id": "45deg-369-config.json · notehead-chords · middle · C major",
@@ -173,8 +173,8 @@
     },
     {
       "id": "45deg-369-config.json · notehead-chords · middle · export",
-      "sha256": "2929b65ccd8806a281b73c3d7ea42b31994c4a2af61e04b98983a7cad3b0906e",
-      "length": 6173
+      "sha256": "8a348fa2a216918dcc510d8cbcb097ae56787ed1993f797551afb5e95acaad34",
+      "length": 6244
     },
     {
       "id": "45deg-369-config.json · accidentals · middle · C major",
@@ -198,8 +198,8 @@
     },
     {
       "id": "45deg-369-config.json · accidentals · middle · export",
-      "sha256": "4932cb824f91b78efb2c69ead5fb3514b5faacc3f8b7e07117aff6917f46806f",
-      "length": 32867
+      "sha256": "e2747985a917b0d631c3e2d1b787d2211f699054e8cfe557c54aa802d1937ad6",
+      "length": 32938
     },
     {
       "id": "45deg-369-config.json · accidentals · every-set · C major",
@@ -223,8 +223,8 @@
     },
     {
       "id": "45deg-369-config.json · accidentals · every-set · export",
-      "sha256": "5119c5fe988ae8e8049eaf7df6d786279826c53f7e4f10a3145ad37966672121",
-      "length": 46656
+      "sha256": "7df59ca216c574fb3c0ccca3019ec8bd0595dcc0ac2d4b969fe7fe7d3244d038",
+      "length": 46727
     },
     {
       "id": "sized-config.json · notehead-chords · middle · C major",

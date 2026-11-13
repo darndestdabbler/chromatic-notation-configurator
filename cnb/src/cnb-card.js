@@ -42,6 +42,14 @@
  * heads, from the centre of the first head to the centre of the last, its
  * ends at the heads' bottom, curving down (CNBCard.tieBottom says how low).
  *
+ * Session 58 (engine session 39): the copies overlap by
+ * durations.repeatOverlap, a share of the head's own width (1/3 by
+ * default), each copy (1 − repeatOverlap) head widths after the last;
+ * engine.multinotePadding (staff spaces) is retired and not read. The
+ * breve's tie runs from the middle of the first semibreve group to the
+ * middle of the second, as a tie joins two notes, still at the heads'
+ * bottom.
+ *
  * Session 22 (notehead size): the resolved heightSemis / widthSemis set the
  * notehead measurement, and the ledger width, column width, repeated group,
  * stem anchor (scaleX) and octave pair follow it. Unsized, nothing changes.
@@ -118,8 +126,8 @@ function axisOffsetPx(gridContext, resolved) {
   return (resolved.xOffsetStaffSpaces || 0) * axis.unitsPerStaffSpace * gridContext.pxPerSemi;
 }
 
-/** Engine default for cnb:multinote-padding (engine cnb/config.ly). */
-const DEFAULT_MULTINOTE_PADDING = -0.5;
+/** The repeated heads' overlap when a config sets none: 1/3 of a head's width (session 58). */
+const DEFAULT_REPEAT_OVERLAP = 1 / 3;
 
 /** The gap between tied semibreve groups, in staff spaces (engine session 25). */
 const TIE_GAP = 1;
@@ -172,12 +180,13 @@ export const CNBCard = {
   },
 
   /**
-   * Horizontal layout of a duration's repeated heads (pure). Copies sit
-   * edge to edge with engine.multinotePadding staff spaces between them.
-   * A breve's two groups sit 1 staff space apart, with one tie below the
-   * heads from the first head's centre to the last head's (session 46).
-   * Offsets and tie ends are relative to the centre of the whole; a tie's
-   * dy is its ends' height below the head's centre, the heads' bottom.
+   * Horizontal layout of a duration's repeated heads (pure). Each copy
+   * starts (1 − durations.repeatOverlap) head widths after the last
+   * (session 58). A breve's two groups sit 1 staff space apart, with one
+   * tie below the heads from the middle of the first group to the middle
+   * of the second (sessions 46 and 58). Offsets and tie ends are relative
+   * to the centre of the whole; a tie's dy is its ends' height below the
+   * head's centre, the heads' bottom.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -199,18 +208,20 @@ export const CNBCard = {
       : (config.staff?.semitonesPerStaffSpace ?? 4);
     const staffSpacePx = unitsPerStaffSpace * gridContext.pxPerSemi;
     if (perGroup === 1) return { count: 1, offsets: [0], groupWidth: pixelWidth, ties: [], staffSpacePx };
-    const padding = config.engine?.multinotePadding ?? DEFAULT_MULTINOTE_PADDING;
-    const step = pixelWidth + padding * staffSpacePx;
+    const overlap = config.durations?.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
+    const step = pixelWidth * (1 - overlap);
     const width = pixelWidth + (perGroup - 1) * step;
     const gap = TIE_GAP * staffSpacePx;
     const pitch = width + gap;
     const offsets = [];
+    const centres = [];
     for (let g = 0; g < groups; g++) {
       const centre = (g - (groups - 1) / 2) * pitch;
+      centres.push(centre);
       for (let i = 0; i < perGroup; i++) offsets.push(centre + (i - (perGroup - 1) / 2) * step);
     }
     const ties = groups > 1
-      ? [{ x1: offsets[0], x2: offsets[offsets.length - 1], dy: pixelHeight / 2 }]
+      ? [{ x1: centres[0], x2: centres[centres.length - 1], dy: pixelHeight / 2 }]
       : [];
     return {
       count: perGroup * groups,

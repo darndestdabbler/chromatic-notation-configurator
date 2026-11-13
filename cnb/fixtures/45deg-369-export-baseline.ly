@@ -95,6 +95,9 @@
 %% Key signature
 #(set! cnb:keysig-bar-thickness 5.3333)
 
+%% Engine settings (non-default)
+#(set! cnb:multinote-overlap 0.3333)
+
 %% Metadata
 #(set! cnb:file-suffix "-45deg-369")
 #(set! cnb:notation-label "45deg-369")

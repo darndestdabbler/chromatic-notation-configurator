@@ -117,6 +117,7 @@
 
 %% Engine settings (non-default)
 #(set! cnb:false-hollow #t)
+#(set! cnb:multinote-overlap 0.3333)
 
 %% Metadata
 #(set! cnb:file-suffix "-Kite-4-369-Procedure")

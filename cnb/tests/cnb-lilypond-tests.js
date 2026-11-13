@@ -760,6 +760,7 @@ export const tests = [
       const out = CNBLilypond.sectionB(CNBConfig.createDefault());
       lacks(out, "cnb:false-hollow");
       lacks(out, "cnb:multinote-padding");
+      lacks(out, "cnb:multinote-overlap");
       lacks(out, "cnb:default-magnify");
       lacks(out, "cnb:indent");
       lacks(out, "cnb:collision-threshold");
@@ -771,16 +772,31 @@ export const tests = [
   { name: "sectionB emits changed engine settings", fn: () => {
       const cfg = CNBConfig.createDefault();
       cfg.engine.falseHollow = true;
-      cfg.engine.multinotePadding = -1;
       cfg.engine.defaultMagnify = "3/2";
       cfg.engine.indent = 5;
       cfg.engine.collisionThreshold = 3;
       const out = CNBLilypond.sectionB(cfg);
       contains(out, "#(set! cnb:false-hollow #t)");
-      contains(out, "#(set! cnb:multinote-padding -1)");
       contains(out, "#(set! cnb:default-magnify 3/2)");
       contains(out, "#(set! cnb:indent 5)");
       contains(out, "#(set! cnb:collision-threshold 3)");
+    }},
+
+  { name: "sectionB writes cnb:multinote-overlap in repeat mode only; the retired engine.multinotePadding is never written (session 58)", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.engine.multinotePadding = -1;
+      lacks(CNBLilypond.sectionB(cfg), "cnb:multinote-overlap", "shape mode");
+      lacks(CNBLilypond.sectionB(cfg), "cnb:multinote-padding", "shape mode");
+      cfg.durations.representationMode = "repeat";
+      let out = CNBLilypond.sectionB(cfg);
+      contains(out, "#(set! cnb:multinote-overlap 0.3333)");
+      lacks(out, "cnb:multinote-padding");
+      cfg.durations.repeatOverlap = 0.25;
+      contains(CNBLilypond.sectionB(cfg), "#(set! cnb:multinote-overlap 0.25)");
+      cfg.durations.repeatOverlap = 0;
+      contains(CNBLilypond.sectionB(cfg), "#(set! cnb:multinote-overlap 0)");
+      delete cfg.durations.repeatOverlap;
+      contains(CNBLilypond.sectionB(cfg), "#(set! cnb:multinote-overlap 0.3333)", "unset: 1/3");
     }},
 
   { name: "M1: a set engine.stemThickness is never exported (the engine has no cnb:stem-thickness)", fn: () => {

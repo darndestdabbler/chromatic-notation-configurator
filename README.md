@@ -426,11 +426,14 @@ it (session 34, LY export spec 1.3.9):
   ink, ledgers included.
 - **Repeated heads are the engine's.** When longer durations repeat the
   notehead, the preview draws what the engine engraves: minim ×2 and
-  semibreve ×4, each head edge to edge with the multinote padding
-  (`engine.multinotePadding`, in staff spaces) between them. A breve is two
-  tied semibreves, 1 staff space apart, the tie black and below the heads,
-  from the first head's centre to the last's (engine 1.3.1 and later). How
-  many heads there are, the gap and the tie are not settings.
+  semibreve ×4, each head overlapping the last by a share of its own width,
+  1/3 by default (`durations.repeatOverlap`, set as a percentage in the
+  Overlap field beside "Repeat the notehead"; it replaced the multinote
+  padding, `engine.multinotePadding`, in session 58). A breve is two tied
+  semibreves, 1 staff space apart, the tie black and below the heads, from
+  the middle of the first group to the middle of the second. The export
+  writes the overlap as `cnb:multinote-overlap`, which needs engine 1.7.0.
+  How many heads there are, the gap and the tie are not settings.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem

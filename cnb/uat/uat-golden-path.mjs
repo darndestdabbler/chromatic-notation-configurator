@@ -331,6 +331,18 @@ check("REPEAT MODE: chosen on the canvas, it reaches the shared config and shows
   await page.evaluate(() =>
     document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
     !document.querySelector("#props-editor-host .cnb-cpe-mode-option")));
+// The repeated heads' overlap, beside the repeat choice (session 58).
+check("OVERLAP: in repeat mode the canvas shows the Overlap field at 1/3 of a head's width; Advanced has no Multinote padding",
+  await page.evaluate(() =>
+    document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "33.3" &&
+    !document.querySelector("#props-editor-host .cnb-cpe-multinote-padding")));
+await page.fill(".canvas-card .cnb-pvd-overlap-input", "25");
+await page.dispatchEvent(".canvas-card .cnb-pvd-overlap-input", "change");
+cfg = await fullConfig();
+check("OVERLAP: setting 25% reaches the shared config as durations.repeatOverlap 0.25, and the field shows it",
+  cfg.durations.repeatOverlap === 0.25 &&
+  await page.evaluate(() => document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "25"),
+  `repeatOverlap ${cfg.durations.repeatOverlap}`);
 
 // ── STEP 6: exercise the Module 19 preview controls ─────────────────────────
 // The pitch range sits in Advanced since session 25 (design §9).
@@ -375,11 +387,12 @@ check("SAVE: timestamps stamped per plan §4.11 — meta.created and meta.modifi
 check("SAVE: the shell ADOPTED the stamped config — the live state panel is deep-equal to the downloaded file",
   JSON.stringify(cfg) === JSON.stringify(savedJson),
   `panel ${JSON.stringify(cfg.meta)} vs file ${JSON.stringify(savedJson.meta)}`);
-check("SAVE: everything configured this session is in the file (uat-ellipse shape, the rule colours, [3,6,9], repeat mode, the added rule)",
+check("SAVE: everything configured this session is in the file (uat-ellipse shape, the rule colours, [3,6,9], repeat mode at 25% overlap, the added rule)",
   !!savedJson.shapes["uat-ellipse"] &&
   !("palette" in savedJson) && colourOf(savedJson, 0) === "#1b9e77" &&
   JSON.stringify(savedJson.staff.semitonePattern) === "[3,6,9]" &&
   savedJson.durations.representationMode === "repeat" &&
+  savedJson.durations.repeatOverlap === 0.25 &&
   savedJson.noteheadRules.length === colourRules + 1);
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ───────────────
@@ -391,10 +404,11 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check(`LOAD: every editor re-seeded from the loaded config (3-6-9 selected, repeat selected, ${colourRules + 1} rule cards) and the preview still shows 13 cards in the rule colours`,
+check(`LOAD: every editor re-seeded from the loaded config (3-6-9 selected, repeat selected at 25% overlap, ${colourRules + 1} rule cards) and the preview still shows 13 cards in the rule colours`,
   await page.evaluate((n) =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
     document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
+    document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "25" &&
     document.querySelectorAll(".cnb-nre-rule-card").length === n &&
     document.querySelectorAll('.cnb-pvd-preview path[fill="#1b9e77"]').length > 0, colourRules + 1) &&
   (await cardCount()) === 13);

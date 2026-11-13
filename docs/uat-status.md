@@ -53,7 +53,10 @@ from their size (45).
    heads, which looks a little odd. The operator and the orchestrator agree
    it should run from the middle of the first semibreve group to the middle
    of the second, as a tie joins two notes; the operator wants to see it
-   that way first.
+   that way first. *Picked in session 58 (2026-11-12):* from the mock-ups
+   ([`repeat-overlap-mockups`](planning/repeat-overlap-mockups/index.html),
+   `shots/tie.png`) the operator chose the tie from the middle of the
+   first semibreve group to the middle of the second, at the heads' bottom.
 3. **The repeated heads' overlap** (*planned*, session 58): it should be configurable,
    possibly for each notehead shape, since it matters for particular
    shapes. With the sample noteheads the overlap is slightly too much (the
@@ -61,7 +64,12 @@ from their size (45).
    operator wants to see it at 1/3 overlap. The one control there is,
    Multinote padding, is out of sight in Advanced → Durations and engine,
    and the operator did not find it. A fraction of each head's width, or a
-   value per shape, needs engine work.
+   value per shape, needs engine work. *Picked in session 58 (2026-11-12):*
+   the mock-ups (`shots/overlap.png`) show today's −0.5 staff spaces as 58%
+   of the default head's width but 37–38% of the Kite 4-369 and 45deg-369
+   heads; the operator chose an overlap of 1/3 of each head's own width as
+   the default, set beside the repeat choice, and one fraction for every
+   shape, with no value per shape.
 4. **Clefs too big, and sized about an anchor** (*planned*, session 59, with
    engine work for the dozenal clef): as the sharps and flats were, the clefs are
    too big, and their height should be adjustable. A designer picks an

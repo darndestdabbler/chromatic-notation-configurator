@@ -2085,6 +2085,17 @@ under all eight heads, looks a little odd.
    picked. Preview and engraving alike, with an engine round trip.
    *Engine work:* both (the engine builds the repeated stencil and its tie).
 
+*(Amended during session 58, 2026-11-12: from the mock-ups in
+`docs/planning/repeat-overlap-mockups/` (`shots/overlap.png`,
+`shots/tie.png`) the operator picked the breve's tie from the middle of the
+first semibreve group to the middle of the second, a default overlap of 1/3
+of each head's own width, and one fraction for every shape, with no value
+per shape. The engine work is engine session 39, "The repeated noteheads'
+overlap and the breve's tie" (`cnb:multinote-overlap`, default `#f`, and
+the tie between the groups' centres), in the engine repository's plan,
+followed by its session 40, the 1.7.0 release. This session's round trip
+waits for engine session 39 to land.)*
+
 ### Session 59: Clefs sized about an anchor
 
 **Why.** The operator's try-out in session 57 (item 4): the clefs are too

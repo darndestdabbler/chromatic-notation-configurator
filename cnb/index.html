@@ -496,6 +496,12 @@
         mountPropsEditor();
         refreshShared();
       },
+      // The repeated heads' overlap, a share of a head's width (session 58).
+      onRepeatOverlap: (fraction) => {
+        appConfig.durations = { ...appConfig.durations, repeatOverlap: fraction };
+        mountPropsEditor();
+        refreshShared();
+      },
       // One button turns on the default signature, the scale stack (session 36).
       onSignatureOn: () => {
         const keys = appConfig.keys || {};

@@ -34,7 +34,11 @@
  *     denominator ("7/4"). There is no stem thickness: the preview draws
  *     the engine's stem (session 34), so `engine.stemThickness` is not
  *     edited, and a config that carries it loses it when the editor builds
- *     the engine slice.
+ *     the engine slice. The same holds for `engine.multinotePadding`,
+ *     retired in session 58: the repeated heads' overlap is
+ *     `durations.repeatOverlap`, a share of the head's width, set on the
+ *     staff canvas beside the repeat choice, and it rides through the editor
+ *     state and the durations slice unchanged, as `representationMode` does.
  *
  * Exporter effect of `representationMode` (LY spec §6.1, wired in Module 11
  * `CNBLilypond.sectionC`): "repeat" → every Section C clause carries
@@ -56,13 +60,14 @@
  *     {"shape","repeat"} and on a non-array definitions list.
  *   - buildEngine(): throws on an empty/non-string lilypondVersion, a
  *     malformed defaultMagnify (see accepted forms above), non-finite
- *     multinotePadding / indent / collisionThreshold.
+ *     indent / collisionThreshold.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
  *     definitions:        [...],                    // read-only passthrough
  *     representationMode: "shape" | "repeat",       // passthrough (session 36)
- *     engine:             { lilypondVersion, falseHollow, multinotePadding,
+ *     repeatOverlap:      number | undefined,        // passthrough (session 58)
+ *     engine:             { lilypondVersion, falseHollow,
  *                           defaultMagnify, indent, collisionThreshold }
  *   }
  *
@@ -95,7 +100,6 @@ import { CNBCard } from "../src/cnb-card.js";
 const ENGINE_DEFAULTS = {
   lilypondVersion: "2.24.2",
   falseHollow: false,
-  multinotePadding: -0.5,
   defaultMagnify: "7/4",
   indent: 0,
   collisionThreshold: 2,
@@ -133,10 +137,12 @@ export const CNBCommonPropsEditor = {
     if (mode !== "shape" && mode !== "repeat") {
       throw new Error(`Invalid representationMode ${JSON.stringify(mode)} — must be "shape" or "repeat"`);
     }
-    return {
+    const out = {
       definitions: deepClone(state.definitions),
       representationMode: mode,
     };
+    if (state.repeatOverlap !== undefined) out.repeatOverlap = state.repeatOverlap;
+    return out;
   },
 
   /**
@@ -153,7 +159,7 @@ export const CNBCommonPropsEditor = {
     if (!isValidMagnify(e.defaultMagnify)) {
       throw new Error(`Invalid defaultMagnify ${JSON.stringify(e.defaultMagnify)} — must be an integer, decimal, or N/M fraction string with a nonzero denominator`);
     }
-    for (const field of ["multinotePadding", "indent", "collisionThreshold"]) {
+    for (const field of ["indent", "collisionThreshold"]) {
       if (typeof e[field] !== "number" || !Number.isFinite(e[field])) {
         throw new Error(`Invalid ${field} ${JSON.stringify(e[field])} — must be a finite number`);
       }
@@ -161,7 +167,6 @@ export const CNBCommonPropsEditor = {
     return {
       lilypondVersion: e.lilypondVersion,
       falseHollow: !!e.falseHollow,
-      multinotePadding: e.multinotePadding,
       defaultMagnify: e.defaultMagnify,
       indent: e.indent,
       collisionThreshold: e.collisionThreshold,
@@ -196,6 +201,7 @@ export const CNBCommonPropsEditor = {
     return {
       definitions: deepClone(durations.definitions || []),
       representationMode: durations.representationMode === "repeat" ? "repeat" : "shape",
+      repeatOverlap: durations.repeatOverlap,
       engine: { ...deepClone(ENGINE_DEFAULTS), ...deepClone(engine) },
     };
   },
@@ -341,12 +347,6 @@ export const CNBCommonPropsEditor = {
           state.engine.falseHollow = v; changed();
         }),
         emitBadge("falseHollow")));
-
-      wrap.appendChild(engineRow("Multinote padding", "cnb-cpe-row-multinote",
-        numInput("cnb-cpe-multinote-padding", state.engine.multinotePadding, "0.1", (v) => {
-          state.engine.multinotePadding = v; changed();
-        }),
-        emitBadge("multinotePadding")));
 
       wrap.appendChild(engineRow("Default magnify", "cnb-cpe-row-magnify",
         textInput("cnb-cpe-default-magnify", state.engine.defaultMagnify, (v) => {

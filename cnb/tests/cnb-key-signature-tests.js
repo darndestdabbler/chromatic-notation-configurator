@@ -63,6 +63,9 @@ const STYLES_BASELINE = path.join(FIXTURES, "key-signature-styles-baseline.json"
 // the files took Clairnote's own signatures (dots with tails, the tails
 // imported shapes placed by their reference points). The Clairnote probes of
 // key-signature-styles-baseline.json were re-captured in session 55 too.
+// In session 58 the export probes of the Kite 4-369 and 45deg-369 fixtures,
+// which are in repeat mode, were re-captured when a repeat-mode export began
+// writing cnb:multinote-overlap; their signatures are unchanged.
 
 /** The keys each probe draws: name, pitch classes and tonic. */
 const SIGNATURE_KEYS = [
@@ -1046,7 +1049,8 @@ export const tests = [
       }
       for (const [source, variant, hash] of [
         ["default", "acc-every", "f713446a7c930a909adf98b9d2e3019ce4a502aa15391a6c5f1f2d489196aa55"],
-        ["kite", "acc-sized", "5eba64329b029c370adab40046bdf3727216c76f9aa6343e0f12df6071d0a64a"],
+        // Re-captured in session 58: a repeat-mode export (Kite is one) writes cnb:multinote-overlap.
+        ["kite", "acc-sized", "6f27970131c2f316d5c1d1a468705b287ad55b416b33ce7f0fab975f65457952"],
         ["twinline", "acc-middle", "fa94ec1d0bcf3f208225d7c7fa0fc31cc5fc6e11e3653fa6dbca8c027e10f8e0"],
       ]) {
         const ly = CNBLilypond.generate(saved(source, variant)).replace(/^%% Date: .*$/m, "");

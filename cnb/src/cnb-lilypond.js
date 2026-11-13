@@ -35,11 +35,13 @@ import { CNBNotehead } from "./cnb-notehead.js";
 
 const ENGINE_DEFAULTS = {
   falseHollow: false,
-  multinotePadding: -0.5,
   defaultMagnify: "7/4",
   indent: 0,
   collisionThreshold: 2,
 };
+
+/** The repeated heads' overlap when a config sets none (session 58; CNBCard's default). */
+const DEFAULT_REPEAT_OVERLAP = 1 / 3;
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
@@ -1037,8 +1039,13 @@ export const CNBLilypond = {
     if ((engine.falseHollow || false) !== d.falseHollow) {
       changed.push(`#(set! cnb:false-hollow ${engine.falseHollow ? "#t" : "#f"})`);
     }
-    if (engine.multinotePadding !== undefined && engine.multinotePadding !== d.multinotePadding) {
-      changed.push(`#(set! cnb:multinote-padding ${fmtNum(engine.multinotePadding, "engine.multinotePadding")})`);
+    // The repeated heads' overlap (session 58, LY spec 1.3.20 §4.1d): a
+    // share of the head's width, written in repeat mode, since the engine's
+    // default (#f) keeps the retired cnb:multinote-padding, which is never
+    // written; engine.multinotePadding is not read.
+    if ((config.durations || {}).representationMode === "repeat") {
+      const overlap = config.durations.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
+      changed.push(`#(set! cnb:multinote-overlap ${fmtNum(overlap, "durations.repeatOverlap")})`);
     }
     if (engine.defaultMagnify !== undefined && String(engine.defaultMagnify) !== d.defaultMagnify) {
       changed.push(`#(set! cnb:default-magnify ${CNBScheme.ratio(engine.defaultMagnify, "engine.defaultMagnify")})`);

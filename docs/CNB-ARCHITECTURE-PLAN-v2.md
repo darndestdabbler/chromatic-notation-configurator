@@ -563,9 +563,15 @@ durations: {
   // "shape" = different notehead shapes per duration
   // "repeat" = repeat the same notehead: the engine's fixed counts,
   //   minim ×2, semibreve ×4 (session 18), and a breve as two semibreves
-  //   1 staff space apart, joined by a tie (session 44). repeatCounts, which
+  //   1 staff space apart, joined by a tie from the middle of the first to
+  //   the middle of the second (sessions 44 and 58). repeatCounts, which
   //   neither the preview nor the export read, is retired (session 34).
-  representationMode: "shape"
+  representationMode: "shape",
+
+  // In repeat mode, the share of a head's own width each copy overlaps the
+  // last (session 58): 0 or more and below 1, one fraction for every shape.
+  // It replaces engine.multinotePadding (staff spaces), which is retired.
+  repeatOverlap: 1 / 3
 }
 ```
 
@@ -575,6 +581,15 @@ durations: {
 | `representationMode == "shape"` with distinct shapes per duration | `(repeat . #f)` on duration-specific clauses |
 | `representationMode == "repeat"` | `(repeat . #t)` (or omit, since default) |
 | `durations[].lilypondDuration` | Used in compound `cond` conditions: `(= duration 3)` |
+| `repeatOverlap`, in repeat mode | Section B `#(set! cnb:multinote-overlap 0.3333)`, engine 1.7.0 (LY spec 1.3.20 §4.1d) |
+
+**Design note on the overlap (session 58).** The operator picked it from
+mock-ups (`docs/planning/repeat-overlap-mockups/`): the old −0.5 staff
+spaces overlapped 58% of the default notehead but 37–38% of the Kite and
+45deg-369 heads, since those staffs have 3 semitones per staff space. A
+share of the head's own width reads the same on every staff. The canvas
+sets it beside the repeat choice, as a percentage, and the preview
+(`CNBCard.repeatLayout`) and the engraving space the copies alike.
 
 ### 4.9 Key Settings (activated set 010)
 
@@ -791,7 +806,6 @@ Settings that map to LilyPond engine variables but aren't part of the visual pre
 engine: {
   lilypondVersion: "2.24.2",
   falseHollow: false,                // cnb:false-hollow
-  multinotePadding: -0.5,            // cnb:multinote-padding
   defaultMagnify: "7/4",             // cnb:default-magnify (string to preserve fraction)
   indent: 0,                         // cnb:indent
   collisionThreshold: 2              // cnb:collision-threshold
@@ -801,6 +815,9 @@ engine: {
 `useAccessibleColors` is retired (session 37): the export has no
 colour-blind branch (§4.6), so `cnb:use-accessible-colors` is never set. A
 config that carries the field still loads, and it is not read.
+`multinotePadding` is retired too (session 58): the repeated heads' overlap
+is `durations.repeatOverlap` (§4.8), so `cnb:multinote-padding` is never
+set, and a config that carries the field still loads without it being read.
 
 **↔ LY Spec mapping:**
 Each field maps directly to its `cnb:` variable. Fields at default values are omitted from the export (emit-if-changed pattern per LY spec §5.2).
@@ -2037,7 +2054,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:semitones-per-staff-space` | 2 | `staff.semitonesPerStaffSpace` | Always |
 | `cnb:staff-line-positions` | `'(-4 -2 0 2 4)` | Computed from `staff.semitonePattern` + `staff.midpoint` | Always |
 | `cnb:false-hollow` | `#f` | `engine.falseHollow` | If changed |
-| `cnb:multinote-padding` | `-0.5` | `engine.multinotePadding` | If changed |
+| `cnb:multinote-overlap` | `#f` (the engine's `cnb:multinote-padding`, never written) | `durations.repeatOverlap` (session 58) | In repeat mode (LY spec 1.3.20 §4.1d), engine 1.7.0 |
 | `cnb:default-magnify` | `7/4` | `engine.defaultMagnify` | If changed |
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |
@@ -2117,7 +2134,8 @@ Build Module X: [one-line description]
 3. **Quad noteheads:** *Resolved in session 18.* In repeat mode the card
    follows the engine's `cnb:build-duration-stencil`: minim ×2 and
    semibreve ×4 (fixed; `durations.repeatCounts` is not read), each copy
-   edge to edge with `engine.multinotePadding` staff spaces between them,
+   starting (1 − `durations.repeatOverlap`) head widths after the last
+   (session 58; before it, `engine.multinotePadding` staff spaces apart),
    the group centred on the head position. The stem attaches at the
    anchor's relative position across the group, as LilyPond's
    stem-attachment does, and the ledgers widen with the group
@@ -2126,10 +2144,12 @@ Build Module X: [one-line description]
    apart, tied on each notehead with LilyPond's `make-tie-stencil`, drawn
    black whatever the notehead's colour (`CNBCard.tiedGroups` /
    `CNBCard.tiePath`; LY spec §4.1d). Since session 46 (engine session 28,
-   engine 1.3.1) the tie runs below the heads, from the first head's centre
-   to the last's, curving down, and a breve row's grid reaches low enough
-   to hold it (`CNBCard.tieBottom`, `CNBCollection.gridRange`). The ledgers
-   and the column follow the whole width.
+   engine 1.3.1) the tie runs below the heads, curving down, and a breve
+   row's grid reaches low enough to hold it (`CNBCard.tieBottom`,
+   `CNBCollection.gridRange`); since session 58 (engine session 39, engine
+   1.7.0) it runs from the middle of the first group to the middle of the
+   second, where it ran from the first head's centre to the last's. The
+   ledgers and the column follow the whole width.
 4. **Off-key marking:** Visual treatment. Deferred.
 5. **Accidentals and clefs:** *Clefs settled in set 009:* custom clefs
    render in a left gutter placed on the semitone grid (Modules 20 and 21,
@@ -2241,7 +2261,8 @@ Complete default config for development and testing.
       { name: "semibreve", displayName: "Semibreve (Whole)",        lilypondDuration: 1, defaultShape: "semibreve",      defaultHollow: false, hasStem: false },
       { name: "breve",     displayName: "Breve (Double Whole)",     lilypondDuration: 0, defaultShape: "breve",          defaultHollow: false, hasStem: false }
     ],
-    representationMode: "shape"
+    representationMode: "shape",
+    repeatOverlap: 1 / 3
   },
 
   keys: {
@@ -2270,7 +2291,6 @@ Complete default config for development and testing.
   engine: {
     lilypondVersion: "2.24.2",
     falseHollow: false,
-    multinotePadding: -0.5,
     defaultMagnify: "7/4",
     indent: 0,
     collisionThreshold: 2

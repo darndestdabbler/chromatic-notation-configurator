@@ -426,10 +426,10 @@ export const tests = [
       eq(CNBCard.tiedGroups(rep, "breve"), 2, "breve");
     }},
 
-  { name: "repeatLayout (breve): two semibreve groups 1 staff space apart, one tie below the heads from the first head's centre to the last's", fn: () => {
+  { name: "repeatLayout (breve): two semibreve groups 1 staff space apart, one tie below the heads from the middle of the first group to the middle of the second", fn: () => {
       const { config, grid, shape } = repeatFixture();
       const { pixelWidth: w, pixelHeight: hh } = CNBNotehead.measure(shape, grid.pxPerSemi);
-      const step = w - 0.5 * 4 * 16;
+      const step = w * (2 / 3);
       const semibreve = CNBCard.repeatLayout(config, grid, shape, "semibreve");
       const ws = semibreve.groupWidth;
       const gap = 4 * 16;
@@ -443,8 +443,9 @@ export const tests = [
         approx(breve.offsets[i + 4], pitch / 2 + k * step, `right group head ${i}`);
       });
       eq(breve.ties.length, 1, "one tie");
-      approx(breve.ties[0].x1, breve.offsets[0], "tie from the first head's centre");
-      approx(breve.ties[0].x2, breve.offsets[7], "to the last head's centre");
+      approx(breve.ties[0].x1, -pitch / 2, "tie from the middle of the first group");
+      approx(breve.ties[0].x2, pitch / 2, "to the middle of the second");
+      approx(breve.ties[0].x1, (breve.offsets[0] + breve.offsets[3]) / 2, "the first group's middle, between its heads");
       approx(breve.ties[0].dy, hh / 2, "its ends at the heads' bottom");
       eq(semibreve.ties.length, 0, "semibreve: no tie");
       eq(CNBCard.repeatLayout(fixture().config, grid, shape, "breve").count, 1, "shape mode: one head");
@@ -482,7 +483,7 @@ export const tests = [
         eq(ties.length, 2, "a tie on each notehead of the pair");
         ties.forEach((t, i) => {
           const y = grid.semiToY(i === 0 ? 0 : 12) + CNBNotehead.measure(shape, grid.pxPerSemi).pixelHeight / 2;
-          eq(t.getAttribute("d"), CNBCard.tiePath(centerX + layout.offsets[0], centerX + layout.offsets[7], y, 64).d, `tie ${i}: below the heads, first head's centre to the last's`);
+          eq(t.getAttribute("d"), CNBCard.tiePath(centerX + layout.ties[0].x1, centerX + layout.ties[0].x2, y, 64).d, `tie ${i}: below the heads, the middle of one group to the middle of the other`);
           eq(t.getAttribute("fill"), "#000000", "black, whatever the notehead's colour, as the engine engraves it");
           eq(t.getAttribute("stroke"), "#000000", "outlined black");
         });
@@ -498,17 +499,17 @@ export const tests = [
   { name: "tieBottom: the lowest ink of the tie under the lower notehead; null without a tie", fn: () => {
       const { config, grid, shape } = repeatFixture();
       const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
-      const tie = CNBCard.tiePath(layout.offsets[0], layout.offsets[7], 0, 64);
+      const tie = CNBCard.tiePath(layout.ties[0].x1, layout.ties[0].x2, 0, 64);
       approx(CNBCard.tieBottom(config, grid, { pc: 2, duration: "breve" }),
         grid.semiToY(2) + layout.ties[0].dy + tie.height + tie.strokeWidth / 2, "bow's middle plus half the stroke");
       eq(CNBCard.tieBottom(config, grid, { pc: 2, duration: "semibreve" }), null, "semibreve: no tie");
       eq(CNBCard.tieBottom(fixture().config, grid, { pc: 2, duration: "breve" }), null, "shape mode: no tie");
     }},
 
-  { name: "repeatLayout: copies edge to edge, default padding -0.5 staff space (linear, sps 4)", fn: () => {
+  { name: "repeatLayout: each copy 2/3 of a head's width after the last, the default overlap 1/3", fn: () => {
       const { config, grid, shape } = repeatFixture();
       const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
-      const step = w - 0.5 * 4 * 16;
+      const step = w * (2 / 3);
       const crotchet = CNBCard.repeatLayout(config, grid, shape, "crotchet");
       eq(crotchet.count, 1, "crotchet count");
       eq(crotchet.offsets.length, 1, "crotchet one offset");
@@ -517,27 +518,35 @@ export const tests = [
       eq(minim.count, 2, "minim count");
       approx(minim.offsets[0], -step / 2, "minim left");
       approx(minim.offsets[1], step / 2, "minim right");
-      approx(minim.groupWidth, 2 * w - 32, "minim group width");
+      approx(minim.groupWidth, w + step, "minim group width");
       const semibreve = CNBCard.repeatLayout(config, grid, shape, "semibreve");
       [-1.5, -0.5, 0.5, 1.5].forEach((k, i) => approx(semibreve.offsets[i], k * step, `semibreve ${i}`));
-      approx(semibreve.groupWidth, 4 * w - 3 * 32, "semibreve group width");
+      approx(semibreve.groupWidth, w + 3 * step, "semibreve group width");
     }},
 
-  { name: "repeatLayout: engine.multinotePadding changes the step", fn: () => {
+  { name: "repeatLayout: durations.repeatOverlap changes the step; engine.multinotePadding is not read", fn: () => {
       const { config, grid, shape } = repeatFixture();
-      config.engine.multinotePadding = 0.25;
       const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
-      const minim = CNBCard.repeatLayout(config, grid, shape, "minim");
-      approx(minim.offsets[1] - minim.offsets[0], w + 0.25 * 4 * 16, "step");
-      approx(minim.groupWidth, 2 * w + 16, "group width");
+      config.durations.repeatOverlap = 0.5;
+      const half = CNBCard.repeatLayout(config, grid, shape, "minim");
+      approx(half.offsets[1] - half.offsets[0], w / 2, "half a head's width at 0.5");
+      approx(half.groupWidth, 1.5 * w, "group width");
+      config.durations.repeatOverlap = 0;
+      approx(CNBCard.repeatLayout(config, grid, shape, "semibreve").groupWidth, 4 * w, "edge to edge at 0");
+      config.durations.repeatOverlap = 0.25;
+      config.engine.multinotePadding = 3;
+      approx(CNBCard.repeatLayout(config, grid, shape, "minim").groupWidth, 1.75 * w, "a saved multinotePadding changes nothing");
+      delete config.durations.repeatOverlap;
+      approx(CNBCard.repeatLayout(config, grid, shape, "minim").groupWidth, w + w * (2 / 3), "no repeatOverlap: 1/3");
     }},
 
-  { name: "repeatLayout (axis): a staff space is axis.unitsPerStaffSpace axis units", fn: () => {
+  { name: "repeatLayout (axis): the step is a share of the head's width, whatever the staff space", fn: () => {
       const { config, grid, shape } = axisFixture();
       config.durations.representationMode = "repeat";
       const { pixelWidth: w } = CNBNotehead.measure(shape, grid.pxPerSemi);
       const minim = CNBCard.repeatLayout(config, grid, shape, "minim");
-      approx(minim.offsets[1] - minim.offsets[0], w - 0.5 * 2 * 16, "step at 2 units per staff space");
+      approx(minim.offsets[1] - minim.offsets[0], w * (2 / 3), "step at 2 units per staff space");
+      approx(minim.staffSpacePx, 2 * 16, "a staff space is 2 axis units");
     }},
 
   { name: "render (repeat): minim draws 2 octave pairs, semibreve 4; heads, stem and ledgers follow the group", fn: () => {
@@ -583,85 +592,73 @@ export const tests = [
   // Engine-backed (session 18): the Kite and 45deg-369 fixtures are in repeat
   // mode; each engraved minim, semibreve and breve stencil (the engine's
   // repeated heads, cnb:build-duration-stencil) is as wide, in staff spaces,
-  // as the preview's repeated group. Measured at session 18: Kite 2.1670 /
-  // 3.8340 engraved vs 2.1667 / 3.8333 previewed, 45deg-369 the same to
-  // 0.0003. Skips with the reason logged without LilyPond or the engine.
+  // as the preview's repeated group. Skips with the reason logged without
+  // LilyPond or the engine.
   //
-  // The breve (session 44, engine session 25: two semibreve groups 1 staff
-  // space apart, tied) is held to 0.001 staff spaces, width and height. The
-  // engraved head is a little wider than the preview's (Kite 1.3335 vs
-  // 1.3333: the export writes path coordinates to 4 places), and the breve
-  // has 8 of them, so its width is compared with the preview's layout of the
-  // engraved head: the preview's group width plus 8 × the head's difference.
-  // Measured at session 44: Kite 8.6680 engraved vs 8.6667 previewed
-  // (8.6683 from the engraved head), 45deg-369 8.6681 vs 8.6674 (8.6682).
+  // Since session 58 (engine session 39, engine 1.7.0) the copies overlap by
+  // a share of the head's width, cnb:multinote-overlap, and the breve's tie
+  // runs from the middle of its first semibreve group to the middle of the
+  // second. Every width and the tie are held to 0.001 staff spaces, at the
+  // default overlap (1/3) and at 0.25. The engraved head is a little wider
+  // than the preview's (Kite 1.3335 vs 1.3333: the export writes path
+  // coordinates to 4 places), and every head-proportional length scales with
+  // it, so each is compared with the preview's layout of the engraved head:
+  // its head-proportional part times the engraved head ÷ the preview's (the
+  // 1 staff space between a breve's groups does not scale).
   //
-  // The tie (session 46, engine session 28, engine 1.3.1) runs below the
-  // heads, from the first head's centre to the last's, and is held to 0.001
-  // staff spaces too, read from the engraved stencil (measureTies): its ends
-  // half a head in from each edge and at the heads' bottom, its lowest ink,
-  // and the breve's height from the heads' top to it. Measured at session
-  // 46, every pitch class: Kite ends at y −0.6667 (preview −0.6667), span
-  // 7.3345 (7.3333 from the preview's narrower heads), lowest ink −1.5530
-  // (−1.5529), height 2.2198 (2.2196); 45deg-369 ends at −0.6668 (−0.6667),
-  // span 7.3346 (7.3340), lowest −1.5530 (−1.5529), height 2.2197 (2.2196).
-  { name: "repeatLayout (engine): Kite and 45deg-369 repeated heads engrave at the preview's group width (±5%; the breve and its tie to 0.001 staff spaces)", fn: async () => {
+  // The tie (sessions 46 and 58) is read from the engraved stencil
+  // (measureTies): its ends at the two groups' centres, each measured from
+  // its own edge of the stencil (half a group in), and at the heads' bottom;
+  // its lowest ink; and the breve's height from the heads' top to it.
+  { name: "repeatLayout (engine): Kite and 45deg-369 repeated heads, at overlaps 1/3 and 0.25, engrave at the preview's widths, and the breve's tie at its groups' centres (0.001 staff spaces)", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
       const failures = [];
+      const check = (what, engraved, preview) => {
+        if (!(Math.abs(engraved - preview) <= 0.001)) failures.push(`${what}: engraved ${engraved} staff spaces, preview ${preview}`);
+      };
       for (const file of ["kite-4-369-config.json", "45deg-369-config.json"]) {
-        const config = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, file), "utf8")).config;
-        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
-        const unitsPerStaffSpace = grid.axis?.enabled ? grid.axis.unitsPerStaffSpace : config.staff.semitonesPerStaffSpace;
-        const ss = grid.pxPerSemi * unitsPerStaffSpace;
-        const ly = CNBLilypond.generate(config);
-        const heads = {};
-        for (const [duration, token] of [["crotchet", "4"], ["minim", "2"], ["semibreve", "1"], ["breve", "\\breve"]]) {
-          const { noteheads, error } = await measureNoteheads(engine, ly, token);
-          if (error) { failures.push(`${file} ${duration}: ${error}`); continue; }
-          for (const { pc, width, height } of noteheads) {
-            const shape = config.shapes[CNBCard.resolveNotehead(config, pc, duration, null).shape];
-            const layout = CNBCard.repeatLayout(config, grid, shape, duration);
-            const preview = layout.groupWidth / ss;
-            if (duration === "crotchet") { heads[pc] = width; continue; }
-            if (duration !== "breve") {
-              if (!(Math.abs(width - preview) <= 0.05 * preview)) {
-                failures.push(`${file} ${duration} pc ${pc}: engraved ${width} staff spaces, preview ${preview}`);
-              }
-              continue;
-            }
-            const head = CNBNotehead.measure(shape, grid.pxPerSemi);
-            const expected = preview + layout.count * (heads[pc] - head.pixelWidth / ss);
-            if (!(Math.abs(width - expected) <= 0.001)) {
-              failures.push(`${file} breve pc ${pc}: engraved ${width} staff spaces wide, preview ${expected} (${preview} at the preview's head)`);
-            }
-            // From the heads' top to the tie's lowest ink (session 46).
-            const previewHeight = (head.pixelHeight / 2 + CNBCard.tieBottom(config, grid, { pc, duration }) - grid.semiToY(pc)) / ss;
-            if (!(Math.abs(height - previewHeight) <= 0.001)) {
-              failures.push(`${file} breve pc ${pc}: engraved ${height} staff spaces tall, preview ${previewHeight}`);
+        for (const overlap of [undefined, 0.25]) {
+          const config = CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, file), "utf8")).config;
+          if (overlap !== undefined) config.durations.repeatOverlap = overlap;
+          const label = `${file} at overlap ${config.durations.repeatOverlap}`;
+          const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+          const unitsPerStaffSpace = grid.axis?.enabled ? grid.axis.unitsPerStaffSpace : config.staff.semitonesPerStaffSpace;
+          const ss = grid.pxPerSemi * unitsPerStaffSpace;
+          const ly = CNBLilypond.generate(config);
+          const scale = {};   // per pc: the engraved head's width ÷ the preview's
+          for (const [duration, token] of [["crotchet", "4"], ["minim", "2"], ["semibreve", "1"], ["breve", "\\breve"]]) {
+            const { noteheads, error } = await measureNoteheads(engine, ly, token);
+            if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
+            for (const { pc, width, height } of noteheads) {
+              const shape = config.shapes[CNBCard.resolveNotehead(config, pc, duration, null).shape];
+              const head = CNBNotehead.measure(shape, grid.pxPerSemi);
+              if (duration === "crotchet") { scale[pc] = width / (head.pixelWidth / ss); continue; }
+              const layout = CNBCard.repeatLayout(config, grid, shape, duration);
+              const gaps = CNBCard.tiedGroups(config, duration) - 1;   // 1 staff space each
+              check(`${label} ${duration} pc ${pc} width`, width, (layout.groupWidth / ss - gaps) * scale[pc] + gaps);
+              if (duration !== "breve") continue;
+              // From the heads' top to the tie's lowest ink (session 46).
+              check(`${label} breve pc ${pc} height`, height,
+                (head.pixelHeight / 2 + CNBCard.tieBottom(config, grid, { pc, duration }) - grid.semiToY(pc)) / ss);
             }
           }
-        }
-        // The breve's tie (session 46, engine session 28): its ends at the
-        // centres of the first and last heads, each measured from its own
-        // edge of the stencil (half the engraved head's width in), and at the
-        // heads' bottom; its lowest ink the stencil's bottom.
-        const { ties, error } = await measureTies(engine, ly);
-        if (error) { failures.push(`${file} tie: ${error}`); continue; }
-        for (const { pc, start, end, x, y } of ties) {
-          const shape = config.shapes[CNBCard.resolveNotehead(config, pc, "breve", null).shape];
-          const { ties: [tie] } = CNBCard.repeatLayout(config, grid, shape, "breve");
-          const half = CNBNotehead.measure(shape, grid.pxPerSemi).pixelWidth / 2 / ss;
-          const ends = -tie.dy / ss;
-          const lowest = (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss;
-          const measured = [
-            ["start x", start[0] - x[0], half], ["end x", x[1] - end[0], half],
-            ["start y", start[1], ends], ["end y", end[1], ends], ["lowest point", y[0], lowest],
-          ];
-          for (const [what, engraved, preview] of measured) {
-            if (!(Math.abs(engraved - preview) <= 0.001)) {
-              failures.push(`${file} breve pc ${pc}: tie ${what} engraved ${engraved} staff spaces, preview ${preview}`);
-            }
+          const { ties, error } = await measureTies(engine, ly);
+          if (error) { failures.push(`${label} tie: ${error}`); continue; }
+          for (const { pc, start, end, x, y } of ties) {
+            const shape = config.shapes[CNBCard.resolveNotehead(config, pc, "breve", null).shape];
+            const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
+            const [tie] = layout.ties;
+            const headPx = CNBNotehead.measure(shape, grid.pxPerSemi).pixelWidth;
+            // Half a group: from the stencil's left edge to the first group's centre.
+            const halfGroup = (tie.x1 - (layout.offsets[0] - headPx / 2)) / ss * scale[pc];
+            const ends = -tie.dy / ss;
+            check(`${label} breve pc ${pc} tie start x`, start[0] - x[0], halfGroup);
+            check(`${label} breve pc ${pc} tie end x`, x[1] - end[0], halfGroup);
+            check(`${label} breve pc ${pc} tie start y`, start[1], ends);
+            check(`${label} breve pc ${pc} tie end y`, end[1], ends);
+            check(`${label} breve pc ${pc} tie lowest point`, y[0],
+              (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss);
           }
         }
       }
@@ -865,7 +862,7 @@ export const tests = [
       const size = { heightSemis: 2, widthSemis: 2 };
       const sized = CNBCard.repeatLayout(config, grid, shape, "minim", size);
       const w = 2 * 16;
-      const step = w + (config.engine.multinotePadding) * config.staff.semitonesPerStaffSpace * 16;
+      const step = w * (1 - config.durations.repeatOverlap);
       approx(sized.groupWidth, w + step, "group width from the sized notehead");
       deepEqOffsets(sized.offsets, [-step / 2, step / 2]);
     }},

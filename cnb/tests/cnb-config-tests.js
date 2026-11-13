@@ -450,6 +450,27 @@ export const tests = [
   { name: "createDefault: the engine has no useAccessibleColors (retired, session 37)", fn: () => {
     assert(!("useAccessibleColors" in CNBConfig.createDefault().engine), "retired");
   }},
+  { name: "createDefault: durations.repeatOverlap is 1/3; engine.multinotePadding is retired (session 58)", fn: () => {
+    const def = CNBConfig.createDefault();
+    approx(def.durations.repeatOverlap, 1 / 3, "1/3 of a head's width");
+    assert(!("multinotePadding" in def.engine), "multinotePadding retired");
+  }},
+  { name: "validate: durations.repeatOverlap is a number from 0 up to 1; a saved multinotePadding is not read", fn: () => {
+    for (const v of [0, 0.25, 1 / 3, 0.99]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.repeatOverlap = v;
+      deepEq(CNBConfig.validate(cfg).errors, [], `${v} is valid`);
+    }
+    for (const v of [1, -0.1, 1.5, "0.3", NaN, Infinity, null]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.repeatOverlap = v;
+      const { valid, errors } = CNBConfig.validate(cfg);
+      assert(!valid && errors.some(e => e.includes("durations.repeatOverlap")), `${String(v)} is an error naming the field`);
+    }
+    const old = CNBConfig.createDefault();
+    old.engine.multinotePadding = "(display 1)";
+    deepEq(CNBConfig.validate(old).errors, [], "a carried multinotePadding is not read");
+  }},
 
   // ── pctToPx ───────────────────────────────────────────────────────────────
   { name: "pctToPx(20, 16) = 3.2",  fn: () => approx(CNBConfig.pctToPx(20,  16), 3.2,  "pctToPx(20,16)") },
@@ -1160,7 +1181,6 @@ export const tests = [
       // 400 digits parse to Infinity, which export would refuse (session 10 review).
       ["engine.defaultMagnify", (c) => { c.engine.defaultMagnify = "9".repeat(400); }],
       ['Shape "crotchet-minim" lilypondPath', (c) => { shape(c).lilypondPath = `'((moveto 0 ${"9".repeat(400)}))`; }],
-      ["engine.multinotePadding", (c) => { c.engine.multinotePadding = "(display 1)"; }],
       ["engine.indent", (c) => { c.engine.indent = NaN; }],
       ["engine.collisionThreshold", (c) => { c.engine.collisionThreshold = Infinity; }],
       ["staff.semitonePattern[1]", (c) => { c.staff.semitonePattern = [4, "8"]; }],

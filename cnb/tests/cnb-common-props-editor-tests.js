@@ -97,7 +97,6 @@ export const tests = [
       assertEqual(E.ENGINE_DEFAULTS, {
         lilypondVersion: "2.24.2",
         falseHollow: false,
-        multinotePadding: -0.5,
         defaultMagnify: "7/4",
         indent: 0,
         collisionThreshold: 2,
@@ -188,7 +187,7 @@ export const tests = [
       const cfg = CNBConfig.createDefault();
       cfg.durations.repeatCounts = { minim: 3 };
       const out = E.buildDurations(E.stateFromConfig(cfg));
-      assertEqual(Object.keys(out), ["definitions", "representationMode"], "definitions and the mode only");
+      assertEqual(Object.keys(out), ["definitions", "representationMode", "repeatOverlap"], "definitions, the mode and the overlap only");
     },
   },
 
@@ -230,9 +229,9 @@ export const tests = [
     },
   },
   {
-    name: "buildEngine: throws on non-finite multinotePadding / indent / collisionThreshold",
+    name: "buildEngine: throws on non-finite indent / collisionThreshold",
     fn: () => {
-      for (const field of ["multinotePadding", "indent", "collisionThreshold"]) {
+      for (const field of ["indent", "collisionThreshold"]) {
         for (const bad of ["3", null, NaN, Infinity]) {
           const s = defaultState();
           s.engine[field] = bad;
@@ -247,6 +246,26 @@ export const tests = [
       const s = defaultState();
       s.engine.stemThickness = 1.5;
       assert(!("stemThickness" in E.buildEngine(s)), "not built");
+    },
+  },
+  {
+    name: "buildEngine: a retired engine.multinotePadding is dropped (session 58: the overlap is durations.repeatOverlap)",
+    fn: () => {
+      const s = defaultState();
+      s.engine.multinotePadding = -0.25;
+      assert(!("multinotePadding" in E.buildEngine(s)), "not built");
+    },
+  },
+  {
+    name: "buildDurations / stateFromConfig: durations.repeatOverlap rides through unchanged (session 58)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.repeatOverlap = 0.25;
+      const s = E.stateFromConfig(cfg);
+      assert(s.repeatOverlap === 0.25, "state carries it");
+      assert(E.buildDurations(s).repeatOverlap === 0.25, "the slice carries it");
+      delete cfg.durations.repeatOverlap;
+      assert(!("repeatOverlap" in E.buildDurations(E.stateFromConfig(cfg))), "absent stays absent");
     },
   },
   {
@@ -309,7 +328,6 @@ export const tests = [
       s.engine = {
         lilypondVersion: "2.25.0",
         falseHollow: true,
-        multinotePadding: -0.25,
         defaultMagnify: "3/2",
         indent: 5,
         collisionThreshold: 1,
@@ -371,7 +389,8 @@ export const tests = [
       for (const cls of ["cnb-cpe-repeats", "cnb-cpe-repeat-row", "cnb-cpe-repeat-count"]) {
         assert(findAll(root, cls).length === 0, `no ${cls}: the engine's counts are fixed`);
       }
-      assert(findAll(root, "cnb-cpe-engine-row").length === 6, "6 engine rows (§4.10 fields but the stem thickness, session 34, and accessible colours, session 37)");
+      assert(findAll(root, "cnb-cpe-engine-row").length === 5, "5 engine rows (§4.10 fields but the stem thickness, session 34, accessible colours, session 37, and multinote padding, session 58)");
+      assert(findAll(root, "cnb-cpe-row-multinote").length === 0, "no Multinote padding: the overlap is set on the canvas (session 58)");
       assert(findAll(root, "cnb-cpe-valid").length === 1, "validation valid");
     }),
   },

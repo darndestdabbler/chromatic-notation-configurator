@@ -508,6 +508,63 @@ export const tests = [
       });
     },
   },
+  {
+    name: "render: in repeat mode, onRepeatOverlap draws an Overlap field (a percentage of a head's width) beside the choice; shape mode and no callback draw none (session 58)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      withDomStub(container => {
+        let api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {}, onRepeatOverlap: () => {} });
+        assertEqual(findAll(api.root, "cnb-pvd-overlap").length, 0, "shape mode: no field");
+        cfg.durations.representationMode = "repeat";
+        api.redraw();
+        const choice = findOne(api.root, "cnb-pvd-repeat");
+        const field = findOne(choice, "cnb-pvd-overlap", "beside the repeat choice");
+        assertEqual(findOne(field, "cnb-pvd-overlap-label").textContent, "Overlap");
+        const input = findOne(field, "cnb-pvd-overlap-input");
+        assertEqual([input.type, input.min, input.max, input.value], ["number", "0", "99", "33.3"], "1/3 as a percentage");
+        assertEqual(findOne(field, "cnb-pvd-overlap-unit").textContent, "% of a head's width");
+        assertEqual(findOne(choice, "cnb-pvd-repeat-hint").textContent,
+          "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves", "the hint stays");
+        cfg.durations.repeatOverlap = 0.25;
+        api.redraw();
+        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "25", "the config's overlap");
+        delete cfg.durations.repeatOverlap;
+        api.redraw();
+        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "33.3", "unset: 1/3");
+      });
+      withDomStub(container => {
+        const api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {} });
+        assertEqual(findAll(api.root, "cnb-pvd-overlap").length, 0, "no onRepeatOverlap: no field");
+      });
+    },
+  },
+  {
+    name: "render: a change to the Overlap field reports a fraction from 0 up to 1; out-of-range or empty input reports nothing (session 58)",
+    fn: () => {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.representationMode = "repeat";
+      withDomStub(container => {
+        const reported = [];
+        let api = null;
+        api = PVD.render(container, {
+          getConfig: () => cfg,
+          onRepresentationMode: () => {},
+          onRepeatOverlap: (fraction) => {
+            reported.push(fraction);
+            cfg.durations.repeatOverlap = fraction;
+            api.redraw();
+          },
+        });
+        const change = (value) => findOne(api.root, "cnb-pvd-overlap-input").onchange({ target: { value } });
+        for (const bad of ["100", "-5", "", "abc"]) change(bad);
+        assertEqual(reported, [], "nothing reported");
+        change("40");
+        change("0");
+        assertEqual(reported, [0.4, 0], "fractions reported");
+        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "0", "the redraw shows it");
+      });
+    },
+  },
 
   // ── render: pitch range ──
   {

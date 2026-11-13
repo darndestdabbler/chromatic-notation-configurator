@@ -194,10 +194,11 @@ check("NO MODE CONTROL in the editor: the app chooses the mode on the canvas (se
     document.querySelector('#mode-toggle button[data-mode="shape"]').classList.contains("selected")));
 check("NO REPEAT COUNTS section: the preview and the engine draw fixed counts (session 34)",
   await page.evaluate(() => !document.querySelector(".cnb-cpe-repeats, .cnb-cpe-repeat-count")));
-check("ENGINE block has 6 rows; false-hollow badge reads default-omitted; no stem thickness row (the preview draws the engine's stem) and no accessible-colours row (retired, session 37)",
+check("ENGINE block has 5 rows; false-hollow badge reads default-omitted; no stem thickness row (the preview draws the engine's stem), no accessible-colours row (retired, session 37) and no multinote padding row (retired, session 58: the overlap is set on the canvas)",
   await page.evaluate(() =>
-    document.querySelectorAll(".cnb-cpe-engine-row").length === 6 &&
+    document.querySelectorAll(".cnb-cpe-engine-row").length === 5 &&
     document.querySelector(".cnb-cpe-row-accessible") === null &&
+    document.querySelector(".cnb-cpe-row-multinote") === null &&
     document.querySelector(".cnb-cpe-row-false-hollow .cnb-cpe-badge").textContent ===
       "engine default — omitted at export" &&
     document.querySelector(".cnb-cpe-row-stem") === null));

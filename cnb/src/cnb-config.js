@@ -107,6 +107,12 @@ function buildDefault() {
         { name: "breve",     displayName: "Breve (Double Whole)", lilypondDuration: 0, defaultShape: "breve",          defaultHollow: false, hasStem: false },
       ],
       representationMode: "shape",
+      // In repeat mode, how much of a head's width each copy overlaps the
+      // last (session 58): 0 or more and below 1, each copy starting
+      // (1 − repeatOverlap) head widths after the last. It replaces
+      // engine.multinotePadding (staff spaces), which is retired: a config
+      // that carries it still loads, and it is not read.
+      repeatOverlap: 1 / 3,
     },
 
     keys: {
@@ -221,7 +227,6 @@ function buildDefault() {
     engine: {
       lilypondVersion: "2.24.2",
       falseHollow: false,
-      multinotePadding: -0.5,
       defaultMagnify: "7/4",
       indent: 0,
       collisionThreshold: 2,
@@ -886,8 +891,13 @@ export const CNBConfig = {
     if (engine.defaultMagnify !== undefined && !CNBScheme.parseRatio(engine.defaultMagnify)) {
       errors.push(`engine.defaultMagnify must be a positive number or fraction like "7/4" (got ${JSON.stringify(engine.defaultMagnify)})`);
     }
-    for (const key of ["multinotePadding", "indent", "collisionThreshold"]) {
+    for (const key of ["indent", "collisionThreshold"]) {
       if (engine[key] !== undefined && !CNBScheme.isNumber(engine[key])) numberError(`engine.${key}`, engine[key]);
+    }
+    // The repeated heads' overlap (session 58), a share of a head's width.
+    const overlap = (config.durations || {}).repeatOverlap;
+    if (overlap !== undefined && !(CNBScheme.isNumber(overlap) && overlap >= 0 && overlap < 1)) {
+      errors.push(`durations.repeatOverlap must be a number from 0 up to (not including) 1 (got ${JSON.stringify(overlap)})`);
     }
 
     const staffSec = isPlainObject(config.staff) ? config.staff : {};
