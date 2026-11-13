@@ -300,6 +300,55 @@ export function measureStems(engine, ly, music) {
 
 /**
  * Compile an exported config (.ly text) under a score of the given music
+ * (e.g. "<c' c''>4.") and report each engraved notehead's Y extent and each
+ * dot's height (session 60): { heads: [{ semitone, durationLog, bottom, top }],
+ * dots: [{ y }] }, in staff spaces above the staff's middle line, semitone the
+ * engine's (middle C = 0), in engraving order. Or { error } with LilyPond's
+ * output when it fails or prints no notehead.
+ *
+ * @param {{lilypond:string, dir:string}} engine  from findEngine()
+ * @param {string} ly  the exported config
+ * @param {string} music  LilyPond music for the score's one staff
+ * @returns {Promise<{heads?:{semitone:number,durationLog:number,bottom:number,top:number}[], dots?:{y:number}[], error?:string}>}
+ */
+export function measureHeads(engine, ly, music) {
+  const score = `\\version "2.24.2"
+\\include "config.ly"
+#(define (cnb-probe:above-middle grob)
+   (let* ((staff (ly:grob-object grob 'staff-symbol))
+          (common (ly:grob-common-refpoint grob staff Y))
+          (y (ly:grob-extent grob common Y))
+          (middle (ly:grob-relative-coordinate staff common Y))
+          (space (ly:staff-symbol-staff-space grob)))
+     (cons (exact->inexact (/ (- (car y) middle) space))
+           (exact->inexact (/ (- (cdr y) middle) space)))))
+{
+  \\override NoteHead.after-line-breaking = #(lambda (grob)
+    (let ((cause (event-cause grob))
+          (y (cnb-probe:above-middle grob)))
+      (format #t "CNB-HEAD-Y ~a ~a ~a ~a\\n"
+        (ly:pitch-semitones (ly:event-property cause 'pitch))
+        (ly:duration-log (ly:event-property cause 'duration))
+        (car y) (cdr y))))
+  \\override Dots.after-line-breaking = #(lambda (grob)
+    (let ((y (cnb-probe:above-middle grob)))
+      (format #t "CNB-DOT-Y ~a\\n" (/ (+ (car y) (cdr y)) 2))))
+  ${music}
+}
+`;
+  return compile(engine, ly, score).then(({ error, output }) => {
+    const heads = [...output.matchAll(/^CNB-HEAD-Y (-?\d+) (-?\d+) (\S+) (\S+)$/gm)]
+      .map(([, s, log, bottom, top]) => ({ semitone: Number(s), durationLog: Number(log), bottom: Number(bottom), top: Number(top) }));
+    const dots = [...output.matchAll(/^CNB-DOT-Y (\S+)$/gm)].map(([, y]) => ({ y: Number(y) }));
+    if (error || heads.length === 0) {
+      return { error: `${error ? error.message : "no notehead was measured"}\n${output}` };
+    }
+    return { heads, dots };
+  });
+}
+
+/**
+ * Compile an exported config (.ly text) under a score of the given music
  * (e.g. "<c' c''>4") and report the engraved staff and ledger lines:
  * { staffLine, ledgers: [{ y, width, thickness }] }, where staffLine is the
  * staff lines' thickness, y each ledger's height above the middle line, and

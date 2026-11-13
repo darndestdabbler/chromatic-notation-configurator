@@ -186,7 +186,8 @@ export const CNBCard = {
    * tie below the heads from the middle of the first group to the middle
    * of the second (sessions 46 and 58). Offsets and tie ends are relative
    * to the centre of the whole; a tie's dy is its ends' height below the
-   * head's centre, the heads' bottom.
+   * pitch, the heads' bottom, the heads drawn with their shape's reference
+   * point on the pitch (session 60, CNBNotehead.referenceShift).
    *
    * @param {object} config
    * @param {object} gridContext
@@ -201,7 +202,7 @@ export const CNBCard = {
   repeatLayout(config, gridContext, shape, duration, size) {
     const perGroup = CNBCard.repeatCount(config, duration);
     const groups = CNBCard.tiedGroups(config, duration);
-    const { pixelWidth, pixelHeight } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
+    const { pixelWidth, pixelHeight, scaleY } = CNBNotehead.measure(shape, gridContext.pxPerSemi, size);
     const axis = gridContext.axis;
     const unitsPerStaffSpace = axis && axis.enabled
       ? axis.unitsPerStaffSpace
@@ -221,7 +222,8 @@ export const CNBCard = {
       for (let i = 0; i < perGroup; i++) offsets.push(centre + (i - (perGroup - 1) / 2) * step);
     }
     const ties = groups > 1
-      ? [{ x1: centres[0], x2: centres[centres.length - 1], dy: pixelHeight / 2 }]
+      ? [{ x1: centres[0], x2: centres[centres.length - 1],
+          dy: pixelHeight / 2 + CNBNotehead.referenceShift(shape, scaleY) }]
       : [];
     return {
       count: perGroup * groups,

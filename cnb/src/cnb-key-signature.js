@@ -618,7 +618,10 @@ export const CNBKeySignature = {
    * key has two stacks, so separator.shareThickness never applies. Any other
    * signature is drawn from the mark table, and spaced by its ink; so is
    * the sharps or flats only and the cycle of fifths (session 54), and any
-   * look for naturals, a line or a space.
+   * look for naturals, a line or a space. So is a signature in a notation
+   * with a shape whose reference point is off its origin across (session
+   * 60): the canvas places a mark by its reference's x and y, and 'chord's
+   * heads, drawn through Section C, take only its height (LY spec §4.1e).
    *
    * @param {object} config
    * @returns {boolean}
@@ -628,7 +631,8 @@ export const CNBKeySignature = {
     return (ks.notes ?? "all") === "all" && ks.upperTonic !== false &&
       (ks.stacking ?? "degrees") === "degrees" && (ks.columns ?? "right") === "right" &&
       ((ks.placement || {}).position ?? "middle") === "middle" &&
-      LOOK_NAMES.every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate);
+      LOOK_NAMES.every(k => lookUnset((ks.looks || {})[k])) && lookUnset(ks.alternate) &&
+      !Object.values(config.shapes || {}).some(s => s && s.reference && s.reference.x);
   },
 
   /**

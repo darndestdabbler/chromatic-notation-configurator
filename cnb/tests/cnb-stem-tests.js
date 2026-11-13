@@ -53,6 +53,20 @@ export const tests = [
       eq(downGeom.x < 5, true, "stem for down should be left of center");
     }},
 
+  { name: "geometry: a shape's reference point moves the stem's attached end with the head, not its far end", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { anchors: { crotchetUp:{x:10,y:-20}, crotchetDown:{x:-10,y:20}, minimUp:{x:10,y:-20}, minimDown:{x:-10,y:20} }, semitoneHeight:2 };
+      const placed = { ...s, reference: { x: 7, y: 30 } };
+      for (const direction of ["up", "down"]) {
+        const opts = { gridContext: grid(cfg), scaleFactor:0.5, centerX:0, noteYPositions:[200, 300], direction, duration:"crotchet" };
+        const plain = CNBStem.geometry(cfg, { ...opts, shape: s });
+        const moved = CNBStem.geometry(cfg, { ...opts, shape: placed });
+        approx(moved.y1, plain.y1 - 15, `${direction}: the attached end 30 × 0.5 px higher, with the head`);
+        approx(moved.y2, plain.y2, `${direction}: the far end where it was`);
+        approx(moved.x, plain.x, `${direction}: x unchanged`);
+      }
+    }},
+
   { name: "crotchet vs minim anchor selection (up)", fn: () => {
       const cfg = CNBConfig.createDefault();
       const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:20,y:0}, minimDown:{x:-20,y:0} }, semitoneHeight:2 };

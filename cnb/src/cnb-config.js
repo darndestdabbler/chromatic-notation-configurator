@@ -176,8 +176,9 @@ function buildDefault() {
       // cycle of fifths, one mark to a column), whose heights are "window"
       // (an octave around the line set's middle, raised by window.sharp or
       // window.flat semitones) or "scale" (each at its note in the scale from
-      // the tonic). A shape may carry reference { x, y } and ledgers (false =
-      // none), read by the key signature only.
+      // the tonic). A shape may carry reference { x, y }, the point a mark
+      // places on its pitch (and, its y alone, a notehead too, session 60),
+      // and ledgers (false = none), read by the key signature only.
       //
       // signs.heightSemis (session 52): the sharp's height from the top left
       // of its upper bar to the top left of its lower bar, in semitones (axis
@@ -367,8 +368,10 @@ export const CNBConfig = {
     }
 
     // 1a. A shape's reference point and ledgers (session 54, key-signature
-    //     design §13.3), read by the key signature only: reference two
-    //     finite numbers in native SVG units, ledgers a boolean.
+    //     design §13.3): reference two finite numbers in native SVG units,
+    //     the point a key-signature mark places on its pitch, and since
+    //     session 60 a notehead too (its y); ledgers a boolean, read by the
+    //     key signature only.
     for (const [name, shape] of Object.entries(shapes)) {
       if (!shape || typeof shape !== "object") continue;
       const ref = shape.reference;

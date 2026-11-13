@@ -10,6 +10,7 @@
  */
 
 import { CNBStaff } from "./cnb-staff.js";
+import { CNBNotehead } from "./cnb-notehead.js";
 
 // LilyPond's stem, which the engine leaves at its defaults (session 34,
 // measured against the engine): 0.13 staff spaces thick (1.3 staff-line
@@ -78,7 +79,10 @@ export const CNBStem = {
     const anchor = shape.anchors[key];
     if (!anchor) return null;
 
-    const anchorYpx = anchor.y * scaleFactor;
+    // The head is drawn with its shape's reference point on its pitch
+    // (session 60), so the stem's attached end moves with it; its far end
+    // stays LilyPond's length from the far notehead's pitch.
+    const anchorYpx = anchor.y * scaleFactor + CNBNotehead.referenceShift(shape, scaleFactor);
 
     // The engine's stem (session 34), in staff spaces.
     const pxPerHalfSpace = CNBStaff.staffSpacePx(config, gridContext) / 2;
@@ -99,7 +103,7 @@ export const CNBStem = {
     const high = Math.min(...noteYPositions);
     const dir = direction === "up" ? 1 : -1;
     // The stem starts at the near notehead's anchor and runs past the far
-    // one's centre.
+    // one's pitch.
     const y1 = (direction === "up" ? low : high) + anchorYpx;
     const farY = direction === "up" ? high : low;
     const far = dir * (gridContext.semiToY(config.staff.midpoint) - farY) / pxPerHalfSpace;

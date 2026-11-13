@@ -15,8 +15,9 @@
  *   - its look: colour (swatches of the colours in use, None, a colour input,
  *     and the Suggested colours help, session 37),
  *     fill (Solid or Hollow), shape (the config's shapes, then the built-in
- *     ones, then Import from SVG) and size (height and width in semitones,
- *     with an aspect-ratio lock);
+ *     ones, the point of the shape that sits on the pitch, then Import from
+ *     SVG) and size (height and width in semitones, with an aspect-ratio
+ *     lock);
  *   - with one notehead selected, its nudge (the Pitch section's control,
  *     session 28) when the pitch axis can show nudges; and the side step,
  *     shown only when the pitch axis puts the notehead on a neighbour's spot.
@@ -31,6 +32,13 @@
  *
  * A new shape keeps the notehead's height, and its width follows the new
  * shape's proportions (session 42), so a Kite 4 semitones tall is 4 wide.
+ *
+ * The point that sits on the pitch (session 60) is the height of the shape's
+ * reference point (shapes[name].reference.y), picked by a click on the shape
+ * enlarged, as the key signature's is (CNBKeySignatureEditor.referenceGeometry
+ * / referenceAt); its x, which only the key signature reads, is kept.
+ * Centre puts it back. pickReference(name) opens the picker, as the host does
+ * after an import.
  *
  * Colour inputs apply once (session 36): while the designer drags, `input`
  * only tints the close-up notehead (the field shows its own colour) and
@@ -62,6 +70,7 @@ import { CNBColourSets } from "./colour-sets.js";
 import { CNBPreviewDisplay } from "./preview-display.js";
 import { CNBPitchModel } from "./pitch-model.js";
 import { CNBPitchPanel } from "./pitch-panel.js";
+import { CNBKeySignatureEditor } from "./key-signature-editor.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const round4 = (x) => Math.round(x * 1e4) / 1e4;
@@ -84,6 +93,13 @@ function ownSize(shape) {
 /** A shape by name, from the config or else the built-in set. */
 function shapeOf(config, name) {
   return (config.shapes && config.shapes[name]) || CNBBuiltinShapes.get(name);
+}
+
+/** An SVG element with its attributes. */
+function svgEl(tag, attrs) {
+  const e = globalThis.document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+  return e;
 }
 
 /** A small solid drawing of a shape, at 7 px per semitone, as an <svg>. */
@@ -354,6 +370,7 @@ export const CNBNoteheadPanel = {
     const pc = selection[0];
 
     let lock = true;                 // Keep aspect ratio (editor state only)
+    let picking = null;              // the shape whose reference point is being picked
 
     const el = (tag, className, text) => {
       const e = doc.createElement(tag);
@@ -520,12 +537,66 @@ export const CNBNoteheadPanel = {
         list.appendChild(b);
       }
       group.appendChild(list);
+      // The selected notehead's shape, or the one being picked (an import).
+      group.appendChild(drawReference(config, picking && shapeOf(config, picking) ? picking : table[pc].shape));
       if (importControl) {
         const slot = el("div", "cnb-nhp-import");
         importControl(slot);
         group.appendChild(slot);
       }
       return group;
+    }
+
+    // ── Reference point (session 60) ──────────────────────────────────────
+    /** Write a shape's reference point (undefined removes it), adding a
+     *  built-in shape to the notation with it. */
+    function writeReference(name, reference) {
+      const config = CNBBuiltinShapes.withShape(getConfig(), name);
+      const shape = { ...config.shapes[name] };
+      if (reference === undefined) delete shape.reference;
+      else shape.reference = reference;
+      onChange({ ...config, shapes: { ...config.shapes, [name]: shape } });
+      draw();
+    }
+
+    /** The height of the shape that sits on the pitch: a button opening the
+     *  shape enlarged, where a click sets it (the reference point's y; its x,
+     *  which only the key signature reads, is kept), Centre and Done. */
+    function drawReference(config, name) {
+      const shape = shapeOf(config, name);
+      const wrap = el("div", "cnb-nhp-reference");
+      const ref = shape && shape.reference;
+      if (picking !== name || !shape) {
+        wrap.appendChild(button("cnb-nhp-reference-pick", "Pick the point that sits on the pitch",
+          () => { picking = name; draw(); }));
+        if (ref && ref.y) wrap.appendChild(el("p", "cnb-nhp-hint", "Placed by a point you picked, not its centre."));
+        return wrap;
+      }
+      wrap.className += " cnb-nhp-reference-picker";
+      wrap.appendChild(el("p", "cnb-nhp-label", `The point on the pitch: ${shape.displayName || name}`));
+      wrap.appendChild(el("p", "cnb-nhp-hint",
+        "Click the shape at the height that sits on the pitch, such as its centre of mass. " +
+        "The staff lines and ledger lines stay where they are."));
+      const g = CNBKeySignatureEditor.referenceGeometry(shape);
+      const svg = svgEl("svg", { width: Math.ceil(g.width), height: Math.ceil(g.height), class: "cnb-nhp-reference-svg" });
+      svg.appendChild(svgEl("path", { d: shape.svgPath, fill: "#1c1c1e",
+        transform: `translate(${g.ox} ${g.oy}) scale(${g.k})` }));
+      const y = g.oy + (ref ? ref.y : 0) * g.k;
+      svg.appendChild(svgEl("path", { class: "cnb-nhp-reference-line", d: `M 0 ${y} H ${Math.ceil(g.width)}` }));
+      svg.onclick = (e) => {
+        const rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : { left: 0, top: 0 };
+        const at = CNBKeySignatureEditor.referenceAt(g, e.clientX - rect.left, e.clientY - rect.top);
+        writeReference(name, { x: ref ? ref.x : 0, y: at.y });
+      };
+      wrap.appendChild(svg);
+      const row = el("div", "cnb-nhp-reference-buttons");
+      // Centre: back to no reference, or, for one the key signature placed
+      // across, its height alone cleared.
+      row.appendChild(button("cnb-nhp-reference-centre", "Centre",
+        () => writeReference(name, !ref || !ref.x ? undefined : { x: ref.x, y: 0 })));
+      row.appendChild(button("cnb-nhp-reference-done", "Done", () => { picking = null; draw(); }));
+      wrap.appendChild(row);
+      return wrap;
     }
 
     // ── Size ──────────────────────────────────────────────────────────────
@@ -691,8 +762,14 @@ export const CNBNoteheadPanel = {
       root.appendChild(body);
     }
 
+    /** Open the reference picker on a shape (after its import). */
+    function pickReference(name) {
+      picking = name;
+      draw();
+    }
+
     container.appendChild(root);
     draw();
-    return { root, redraw: draw, chooseShape };
+    return { root, redraw: draw, chooseShape, pickReference };
   },
 };

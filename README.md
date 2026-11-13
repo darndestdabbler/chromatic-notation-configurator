@@ -175,7 +175,13 @@ paths, and the stem anchors, including the minim pair when present
 (stored in semitone units; the exporter converts them to staff-space
 units at export time). Warnings are shown for shapes missing
 `data-lilypond-*` attributes — those fall back to automatic path
-conversion at export. A file that is not toolkit output, or not an SVG at
+conversion at export. After the import the panel shows the shape enlarged:
+click it at the height that should sit on the pitch (its reference point,
+such as its centre of mass), or press **Done** to keep its middle. The
+noteheads move to it and the staff lines and ledger lines stay where they
+are, in the preview and the export alike; **Pick the point that sits on the
+pitch** in the Shape row changes it later, and **Centre** puts it back. A
+file that is not toolkit output, or not an SVG at
 all, is refused with a message saying so, and the configuration is left
 unchanged; so is a JSON file that is not a configuration this version can
 open.

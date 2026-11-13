@@ -30,6 +30,10 @@ export const CNBDoubleNotehead = {
    * { heightSemis, widthSemis } (absent = the shape's own size); the
    * offset reference width is the resolved width.
    *
+   * lowerY / upperY are where each head's origin is drawn: its pitch, moved
+   * so that its shape's reference point is on the pitch (session 60,
+   * CNBNotehead.referenceShift); the pitch itself without a reference.
+   *
    * @param {object} gridContext  From CNBGrid.create()
    * @param {{lowerSemi:number, upperSemi:number,
    *          lowerNote:{shape:object, size?:object}, upperNote:{shape:object, size?:object},
@@ -50,8 +54,8 @@ export const CNBDoubleNotehead = {
     return {
       lowerX: centerX - offset / 2 + lowerOffsetPx,
       upperX: centerX + offset / 2 + upperOffsetPx,
-      lowerY: gridContext.semiToY(lowerSemi),
-      upperY: gridContext.semiToY(upperSemi),
+      lowerY: gridContext.semiToY(lowerSemi) + CNBNotehead.referenceShift(lowerNote.shape, lowerM.scaleY),
+      upperY: gridContext.semiToY(upperSemi) + CNBNotehead.referenceShift(upperNote.shape, upperM.scaleY),
       lowerScale: lowerM.scaleFactor,
       upperScale: upperM.scaleFactor,
       lowerScaleX: lowerM.scaleX,

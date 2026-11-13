@@ -1457,6 +1457,14 @@ export const tests = [
       ]) {
         assert(!CNBKeySignature.isScaleStack(keysigConfig([C_MAJOR], ks)), label);
       }
+      // Session 60: a shape whose reference point is off its origin across is
+      // placed by it on the canvas, which 'chord's heads are not; its height
+      // alone the noteheads' -ref variants carry, so it stays the scale stack.
+      const across = keysigConfig([C_MAJOR]);
+      across.shapes["crotchet-minim"].reference = { x: 100, y: 50 };
+      assert(!CNBKeySignature.isScaleStack(across), "a reference off the origin across");
+      across.shapes["crotchet-minim"].reference = { x: 0, y: 50 };
+      assert(CNBKeySignature.isScaleStack(across), "a reference off it only in height");
     }},
 
   { name: "render: a signature's ledgers are 4/3 of a head and their round caps long, as engraved", fn: () => {

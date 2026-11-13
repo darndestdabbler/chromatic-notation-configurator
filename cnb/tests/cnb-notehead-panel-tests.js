@@ -20,6 +20,7 @@ import { CNBBuiltinShapes } from "../ui/builtin-shapes.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBPitchModel as PM } from "../ui/pitch-model.js";
+import { CNBKeySignatureEditor as KSE } from "../ui/key-signature-editor.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -103,6 +104,14 @@ function findOne(el, token) {
 }
 
 const byData = (el, token, attr, value) => findAll(el, token).find(e => e.getAttribute(attr) === value);
+
+/** The reference picker's enlarged shape, an <svg> whose class is an attribute. */
+function referenceSvg(el) {
+  const walk = (e) => [e, ...(e.children || []).flatMap(walk)];
+  const found = walk(el).filter(e => e.getAttribute && e.getAttribute("class") === "cnb-nhp-reference-svg");
+  if (found.length !== 1) throw new Error(`expected exactly 1 reference svg, found ${found.length}`);
+  return found[0];
+}
 
 /** Render a panel for a host owning one config (the panel's onChange
  *  replaces it) and run fn(h) with the stub document installed throughout. */
@@ -365,6 +374,44 @@ export const tests = [
         h.api.chooseShape("mine");
         eq(resolved(h.config, 3).shape, "mine", "D♯ uses the imported shape");
       }, { importControl: (slot) => { slots++; slot.appendChild(document.createElement("input")); } });
+    }},
+
+  { name: "reference point (session 60): Pick opens the shape enlarged; a click sets the height on the pitch, keeping x; Centre puts it back; Done closes", fn: () => {
+      withPanel(CNBConfig.createDefault(), [0], (h) => {
+        eq(findAll(h.api.root, "cnb-nhp-reference-picker").length, 0, "closed at first");
+        findOne(h.api.root, "cnb-nhp-reference-pick").onclick();
+        const svg = () => referenceSvg(h.api.root);
+        const g = KSE.referenceGeometry(h.config.shapes["crotchet-minim"]);
+        svg().onclick({ clientX: g.ox + 10 * g.k, clientY: g.oy + 40 * g.k });
+        deepEq(h.config.shapes["crotchet-minim"].reference, { x: 0, y: 40 }, "the height clicked, across at the origin");
+        assert(findAll(h.api.root, "cnb-nhp-reference-picker").length === 1, "the picker stays open");
+        findOne(h.api.root, "cnb-nhp-reference-centre").onclick();
+        assert(!("reference" in h.config.shapes["crotchet-minim"]), "Centre: no reference again");
+        // A reference the key signature places across keeps its x.
+        h.config.shapes["crotchet-minim"] = { ...h.config.shapes["crotchet-minim"], reference: { x: 25, y: 0 } };
+        h.api.redraw();
+        svg().onclick({ clientX: g.ox, clientY: g.oy - 30 * g.k });
+        deepEq(h.config.shapes["crotchet-minim"].reference, { x: 25, y: -30 }, "x kept");
+        findOne(h.api.root, "cnb-nhp-reference-centre").onclick();
+        deepEq(h.config.shapes["crotchet-minim"].reference, { x: 25, y: 0 }, "Centre clears the height alone");
+        findOne(h.api.root, "cnb-nhp-reference-done").onclick();
+        eq(findAll(h.api.root, "cnb-nhp-reference-picker").length, 0, "Done closes it");
+        assert(findAll(h.api.root, "cnb-nhp-reference-pick").length === 1, "the button again");
+        eq(CNBConfig.validate(h.config).errors.length, 0, "valid");
+      });
+    }},
+
+  { name: "reference point: pickReference opens the picker on a shape the notehead does not use (an import), a built-in one entering the config with it", fn: () => {
+      withPanel(CNBConfig.createDefault(), [3], (h) => {
+        h.api.pickReference("kite-up");
+        const label = findAll(h.api.root, "cnb-nhp-reference-picker")[0].children.find(c => /point on the pitch/.test(c.textContent));
+        assert(label && label.textContent.includes("Kite"), `names the shape: ${label && label.textContent}`);
+        const g = KSE.referenceGeometry(CNBBuiltinShapes.get("kite-up"));
+        referenceSvg(h.api.root).onclick({ clientX: g.ox, clientY: g.oy + 50 * g.k });
+        deepEq(h.config.shapes["kite-up"].reference, { x: 0, y: 50 }, "the built-in shape added with its point");
+        eq(resolved(h.config, 3).shape, "crotchet-minim", "the notehead keeps its shape");
+        assert(!("reference" in h.config.shapes["crotchet-minim"]), "its own shape untouched");
+      });
     }},
 
   { name: "size: the height with the lock on sets the width at the shape's ratio; reset clears both", fn: () => {

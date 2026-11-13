@@ -45,6 +45,27 @@ export const tests = [
       assert(l.upperY < l.lowerY, "higher pitch renders at smaller y");
     }},
 
+  { name: "layout: a shape's reference point is drawn on the pitch, vertically; x unchanged", fn: () => {
+      const { grid, shape } = fixture();
+      const placed = { ...shape, reference: { x: 40, y: 50 } };
+      const l = CNBDoubleNotehead.layout(grid, {
+        lowerSemi: 0, upperSemi: 12,
+        lowerNote: { shape: placed }, upperNote: { shape: placed },
+        centerX: 100,
+      });
+      const { scaleY } = CNBNotehead.measure(placed, grid.pxPerSemi);
+      approx(l.lowerY + 50 * scaleY, grid.semiToY(0), "the lower head's reference point on its pitch");
+      approx(l.upperY + 50 * scaleY, grid.semiToY(12), "the upper head's");
+      eq(l.lowerX, 100, "still centred on its column");
+      withSvgStub(svg => {
+        const { lowerG } = CNBDoubleNotehead.render(svg, grid, {
+          lowerSemi: 0, upperSemi: 12,
+          lowerNote: { shape: placed }, upperNote: { shape: placed }, centerX: 100,
+        });
+        eq(lowerG.getAttribute("transform"), `translate(100,${l.lowerY})`, "drawn there");
+      });
+    }},
+
   { name: "layout: offsetPercent 0 (and default) puts both noteheads at centerX", fn: () => {
       const { grid, shape } = fixture();
       const explicit = CNBDoubleNotehead.layout(grid, {

@@ -16,6 +16,13 @@ function approx(a, b, msg, epsilon = 1e-9) {
 }
 
 export const tests = [
+  { name: "referenceShift: −reference.y × scaleY, putting the reference point on the pitch; 0 without one", fn: () => {
+      const shape = CNBConfig.createDefault().shapes["crotchet-minim"];
+      assert(CNBNotehead.referenceShift(shape, 0.16) === 0, "no reference: no shift");
+      assert(CNBNotehead.referenceShift({ ...shape, reference: { x: 30, y: 0 } }, 0.16) === 0, "reference.y 0: no shift");
+      approx(CNBNotehead.referenceShift({ ...shape, reference: { x: 30, y: 50 } }, 0.16), -8, "a point 50 units below the origin: the head drawn 8 px higher");
+      approx(CNBNotehead.referenceShift({ ...shape, reference: { x: 0, y: -25 } }, 0.2), 5, "a point above the origin: the head drawn lower");
+    }},
   { name: "box: a shape's exact path extent around its origin, a curve's true extremes and not its control points", fn: () => {
       const cfg = CNBConfig.createDefault();
       const b = CNBNotehead.box(cfg.shapes["crotchet-minim"]);

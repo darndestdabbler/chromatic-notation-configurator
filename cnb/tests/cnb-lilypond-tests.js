@@ -2220,6 +2220,110 @@ export const tests = [
       eq(_internals.usedRegistrations(cfg).length, 1, "one variant");
     }},
 
+  // ── session 60: noteheads placed by their shape's reference point (§4.1e) ──
+
+  { name: "registrationFor: a notehead whose shape's reference point is off its origin vertically names a -ref variant, moved by the reference's height", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const shape = cfg.shapes["crotchet-minim"];
+      shape.reference = { x: 30, y: 50 };
+      const ups = shape.naturalHeight / shape.semitoneHeight;
+      const reg = _internals.registrationFor(cfg, { shape: "crotchet-minim", notehead: true });
+      eq(reg.sym, "crotchet-minim-ref", "a notehead's symbol");
+      eq(reg.scale, null, "at its own size");
+      assert(Math.abs(reg.shiftSemis - 50 / ups) < 1e-12, `moved up the reference's height in semitones: ${reg.shiftSemis}`);
+      eq(_internals.registrationFor(cfg, { shape: "crotchet-minim" }).sym, "crotchet-minim", "a mark's symbol is the unmoved shape");
+      const sized = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: 1.5, widthSemis: 3, notehead: true });
+      eq(sized.sym, "crotchet-minim-h1p5-w3-ref", "a sized notehead's symbol");
+      assert(Math.abs(sized.shiftSemis - 50 / ups * sized.scale.y) < 1e-12, "moved at the variant's scale");
+      shape.reference = { x: 30, y: 0 };
+      eq(_internals.registrationFor(cfg, { shape: "crotchet-minim", notehead: true }).sym, "crotchet-minim", "reference.y 0: the shape");
+      delete shape.reference;
+      eq(_internals.registrationFor(cfg, { shape: "crotchet-minim", notehead: true }).sym, "crotchet-minim", "no reference: the shape");
+    }},
+
+  { name: "reference point: pathToStaffSpace adds shiftY staff spaces to every y, after the conversion", fn: () => {
+      const cmds = [{ cmd: "moveto", args: [2, 4] }, { cmd: "curveto", args: [0, 0, 2, 2, 4, 4] }, { cmd: "closepath", args: [] }];
+      eq(CNBLilypond.pathToStaffSpace(cmds, 2, false, "t", null, 0.5), "'(\n    (moveto 1 2.5)\n    (curveto 0 0.5 1 1.5 2 2.5)\n    (closepath))", "pre-baked");
+      eq(CNBLilypond.svgPathToLilypond("M 100 200 Z", 100, 1, { x: 2, y: 3 }, 1), "'(\n    (moveto 2 -5)\n    (closepath))", "fallback, scaled and moved");
+    }},
+
+  { name: "reference point: Section A registers the moved path and cutout with the shape's attachments, and Section C names them", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const shape = cfg.shapes["crotchet-minim"];
+      shape.reference = { x: 0, y: 50 };
+      const sps = cfg.staff.semitonesPerStaffSpace;
+      const ups = shape.naturalHeight / shape.semitoneHeight;
+      const a = CNBLilypond.sectionA(cfg);
+      contains(a, `#(define cnb:crotchet-minim-ref-path ${CNBLilypond.svgPathToLilypond(shape.svgPath, ups, sps, null, 0.5 / sps)})`, "the path moved up 0.5 semitones");
+      contains(a, `#(define cnb:crotchet-minim-ref-cutout-path ${CNBLilypond.svgPathToLilypond(shape.svgHollowPath, ups, sps, null, 0.5 / sps)})`, "the cutout too");
+      contains(a, "#(cnb:register-path! 'crotchet-minim-ref cnb:crotchet-minim-ref-path)", "registered");
+      contains(a, "#(cnb:register-hollow! 'crotchet-minim-ref-cutout cnb:crotchet-minim-ref-cutout-path)", "its cutout registered");
+      // Relative to the extent, which moves with the path: the shape's points.
+      const pts = _internals.attachmentPoints(shape, null, sps);
+      contains(a, `#(cnb:register-attachment! 'crotchet-minim-ref-attach\n   (list\n     (cons 'crotchet-up   '(${_internals.fmtPair(pts.crotchetUp)}))\n     (cons 'crotchet-down '(${_internals.fmtPair(pts.crotchetDown)}))`, "the shape's attachment points");
+      lacks(a, "#(cnb:register-path! 'crotchet-minim cnb:", "no notehead uses the unmoved shape");
+      const clauses = parseSectionCClauses(CNBLilypond.sectionC(cfg));
+      for (let pc = 0; pc < 12; pc++) {
+        eq(clauses[pc].shape, "crotchet-minim-ref", `pc ${pc} shape`);
+        eq(clauses[pc].attachment, "crotchet-minim-ref-attach", `pc ${pc} attachment`);
+      }
+      eq(clauses[1].hollow, "crotchet-minim-ref-cutout", "a sharp's cutout");
+      // A sized notehead: its variant, moved at its scale.
+      cfg.noteheadRules.push({ name: "small C", priority: 5, match: { pitchClasses: [0], durations: "all", keys: "all" }, apply: { heightSemis: 1.5, widthSemis: 3 } });
+      const reg = _internals.registrationFor(cfg, { shape: "crotchet-minim", heightSemis: 1.5, widthSemis: 3, notehead: true });
+      contains(CNBLilypond.sectionA(cfg), `#(define cnb:crotchet-minim-h1p5-w3-ref-path ${CNBLilypond.svgPathToLilypond(shape.svgPath, ups, sps, reg.scale, reg.shiftSemis / sps)})`, "the sized variant moved");
+      eq(parseSectionCClauses(CNBLilypond.sectionC(cfg))[0].shape, "crotchet-minim-h1p5-w3-ref", "C names it");
+    }},
+
+  { name: "reference point: a key signature's marks keep the unmoved shape and their (at dx . dy), so the reference is applied once", fn: () => {
+      const config = keySignatureConfig();
+      config.keys.keySignature.notes = "tonic-and-half-steps";
+      config.shapes["crotchet-minim"].reference = { x: 0, y: 50 };
+      const out = CNBLilypond.generate(config);
+      const heads = out.match(/ head crotchet-minim\S* [^\n]*/g) || [];
+      assert(heads.length > 0, "the marks are heads");
+      assert(heads.every(h => h.startsWith(" head crotchet-minim ") && h.includes(" (at 0 . 0.125))")),
+        `each mark the unmoved shape, its origin 0.5 semitones up: ${heads[0]}`);
+      contains(out, "#(cnb:register-path! 'crotchet-minim cnb:crotchet-minim-path)", "the marks' shape registered");
+      contains(out, "#(cnb:register-path! 'crotchet-minim-ref cnb:crotchet-minim-ref-path)", "the noteheads' beside it");
+    }},
+
+  { name: "reference point: a default signature sharing a shape whose reference is off its origin across and in height: the marks placed by both from the mark table, the noteheads by the height alone", fn: () => {
+      const config = keySignatureConfig();
+      const shape = config.shapes["crotchet-minim"];
+      shape.reference = { x: 100, y: 50 };
+      const sps = config.staff.semitonesPerStaffSpace;
+      const ups = shape.naturalHeight / shape.semitoneHeight;
+      // The canvas: each mark's origin 1 semitone (¼ staff space) left of its
+      // stack's line and ½ semitone (⅛) above its pitch, so the point is there.
+      const table = _internals.markTable(config);
+      eq(table.length, 105, "the mark table, not 'chord's scale stack");
+      const heads = table.flatMap(e => e.sig.marks.flatMap(m => m.symbols)).filter(s => s.kind === "head");
+      assert(heads.length > 0 && heads.every(s => s.reference && Math.abs(s.x + 0.25) < 1e-9 && Math.abs(s.y - 0.125) < 1e-9),
+        `every mark placed by x and y: ${JSON.stringify(heads[0])}`);
+      // The export: the marks name the unmoved shape and their at …
+      const out = CNBLilypond.generate(config);
+      contains(out, "#(set! cnb:keysig-style 'marks)", "the mark table");
+      const written = out.match(/ head crotchet-minim\S* [^\n]*/g) || [];
+      assert(written.length > 0 && written.every(h => h.startsWith(" head crotchet-minim ") && h.includes(" (at -0.25 . 0.125))")),
+        `each mark the unmoved shape at both coordinates: ${written[0]}`);
+      // … and the noteheads the -ref variant, moved up the reference's height, not across.
+      contains(out, `#(define cnb:crotchet-minim-ref-path ${CNBLilypond.svgPathToLilypond(shape.svgPath, ups, sps, null, 50 / ups / sps)})`, "moved in y only");
+      const clauses = parseSectionCClauses(CNBLilypond.sectionC(config));
+      for (let pc = 0; pc < 12; pc++) eq(clauses[pc].shape, "crotchet-minim-ref", `pc ${pc}`);
+      // With the reference off its origin in height alone, 'chord's heads, drawn
+      // through Section C as -ref, are placed as the canvas places them.
+      shape.reference = { x: 0, y: 50 };
+      lacks(CNBLilypond.generate(config), "cnb:keysig-style 'marks", "the scale stack");
+    }},
+
+  { name: "reference point: a config without one exports as before (a reference with y 0 included)", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const before = CNBLilypond.generate(cfg).replace(/^%% Date: .*$/m, "");
+      cfg.shapes["crotchet-minim"].reference = { x: 40, y: 0 };
+      eq(CNBLilypond.generate(cfg).replace(/^%% Date: .*$/m, ""), before, "byte for byte");
+    }},
+
   { name: "baselines: the sized fixture exports byte-identically to sized-export-baseline.ly", fn: () => {
       // Exported by cnb/fixtures/export-config.mjs in session 22.
       const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");

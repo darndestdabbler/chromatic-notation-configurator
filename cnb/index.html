@@ -961,6 +961,8 @@
         // rule editor's shape selects read it at mount time).
         mountEditors();
         refreshShared();
+        // Then the point of it that sits on the pitch (session 60).
+        if (panelApi) panelApi.pickReference(result.name);
       } catch (err) {
         // The shape could not be displayed: put the previous entry back.
         if (replaced) appConfig.shapes[result.name] = previousShape;

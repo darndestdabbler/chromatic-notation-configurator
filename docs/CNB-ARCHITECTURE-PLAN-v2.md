@@ -203,12 +203,14 @@ shapes: {
       minimDown:    { x: -0.6889, y: 0 }
     },
 
-    // ── Key signature only (session 54, key-signature design §13.3) ──
+    // ── The reference point (session 54, key-signature design §13.3) ──
     // OPTIONAL. reference: the point, in native SVG units, that a key
     // signature mark places on its pitch (a dot's centre, a flat's bowl);
-    // without it the shape's box is centred there, as before. ledgers: false
-    // = the symbol takes no ledger lines in a signature. A notehead rule
-    // using the shape ignores both.
+    // without it the shape's box is centred there, as before. Since session
+    // 60 a notehead puts the point's HEIGHT on its pitch too (its x is not
+    // applied to noteheads; §4.5 "Notehead placement"). ledgers: false = the
+    // symbol takes no ledger lines in a signature; a notehead rule using the
+    // shape ignores it.
     // reference: { x: -40, y: 0 },
     // ledgers: false
   },
@@ -416,6 +418,21 @@ exactly as before.
   editor state only. While it is on, the width follows the height at the
   shape's natural ratio.
 
+**Notehead placement (added session 60).** A notehead is drawn with its
+shape's reference point (§4.2, `shapes[name].reference`) on its pitch,
+vertically: `CNBNotehead.referenceShift(shape, scaleY)`, −reference.y ×
+scaleY px, moves the drawn head, and 0 without a reference keeps every
+config as it was. The head stays centred on its column across, so its x is
+not applied. The stem's attached end and a breve's tie move with the head;
+the staff lines, the ledgers, the stem's far end and the dots stay at the
+pitch. The setting is the shape's, so it fixes the shape everywhere, with no
+rule-level offset (the consult, `docs/planning/nudge-staff-lines-consult.md`).
+The notehead panel's Shape row picks the height on the enlarged shape (Pick
+the point that sits on the pitch, Centre, Done), keeping the reference's x,
+which only the key signature reads; the picker opens after an import.
+Exported as a `-ref` variant of the shape, its path moved up the reference's
+height, which the key signature's marks do not use (LY spec 1.3.22 §4.1e).
+
 **↔ LY Spec mapping:**
 The exporter resolves all 12 pitch classes (× durations if duration-aware), groups PCs with identical resolved configs, and emits `cond` clauses:
 
@@ -427,6 +444,7 @@ The exporter resolves all 12 pitch classes (× durations if duration-aware), gro
 | `shape` → shape's attachment name | `(attachment . {name}-attach)` |
 | `offKeyMark` | `(off-key-mark . #f)` or `(off-key-mark . {symbol})` |
 | `heightSemis` / `widthSemis` other than the shape's own | `{name}` above becomes the sized variant `{shape}-h{H}-w{W}` (LY spec §4.1c) |
+| the shape's `reference.y` ≠ 0 | `{name}` above gains `-ref`, the registration moved so the point is on the pitch (LY spec §4.1e) |
 
 **The `repeat` field** in LilyPond output is derived from `config.durations`:
 - If `representationMode == "repeat"` → emit `(repeat . #t)` (or omit, since #t is default)
@@ -1450,6 +1468,12 @@ CNBNotehead.render(svgParent, {
 // its origin with it; the exporter's attachments use the same extent.
 CNBNotehead.box(shape) → { x: [min, max], y: [min, max] }
 
+// How far a notehead is drawn below its pitch, in px, so that its shape's
+// reference point is on the pitch vertically (session 60, §4.5 "Notehead
+// placement"): −reference.y × scaleY, 0 without a reference. The double
+// notehead, the stem's start and the breve's tie use it.
+CNBNotehead.referenceShift(shape, scaleY) → number
+
 // The SVG path parser, its LilyPond commands and their exact extent
 // (moved here from Module 11 in session 55, which shares them)
 CNBNotehead.parseSvgPath(d), CNBNotehead.svgCommands(d), CNBNotehead.pathExtent(commands)
@@ -1531,6 +1555,12 @@ length    = 3.5 staff spaces past the far notehead's centre, crotchet and minim,
             1 staff space (LilyPond's stem-shorten; CNBStem.length)
 ```
 The engine sets `no-stem-extend`, so no stem is carried to the middle line. `display.stemThicknessPct`, `display.stemExtension` and `engine.stemThickness` are retired. An engine round trip in `cnb/tests/cnb-card-tests.js` pins the direction, thickness and both ends of every card's stem, crotchet and minim, for the default and Kite fixtures, within 0.001 staff spaces.
+
+**The stem starts at the drawn head (session 60).** A head drawn with its
+shape's reference point on its pitch (§4.5) carries its anchors with it:
+the stem starts at the anchor's height less the reference's
+(`CNBNotehead.referenceShift`), and its far end stays LilyPond's length from
+the far notehead's pitch, as LilyPond engraves it (LY spec §4.1e).
 
 **The stem's centre sits on the anchor (session 40).** The anchor is where
 the SVG's stem rect puts the stem, so the preview draws a one-head stem

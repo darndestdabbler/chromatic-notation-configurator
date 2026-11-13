@@ -71,7 +71,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 57 | The UI is stable | no | 2026-11-12 |
 | 58 | The repeated noteheads' overlap and the breve's tie | no | 2026-11-12 |
 | 59 | Clefs sized about an anchor | no | 2026-11-13 |
-| 60 | Noteheads centred by their shape's reference point | — | not declared |
+| 60 | Noteheads centred by their shape's reference point | no | 2026-11-13 |
 | 61 | Designing the step-by-step Configurator | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -616,3 +616,9 @@ Size the clefs about an anchor point (the session-57 try-out, docs/uat-status.md
 **Amended after acceptance:**
 
 - 2026-11-13 — step 'builtin-clefs': its files: The built-in clefs now carry an automatic (null) semitoneHeight and an anchor on their line, so the exporter must register a glyph clef's resolved top and height (CNBClef.shown) in this step or every export of a built-in clef fails; the importer and clef-editor placement tests that assert the old top-edge anchor live in cnb-clef-tests.js and cnb-clef-editor-tests.js. The export step keeps the dozenal clef's size and its tests. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 60 — Noteheads centred by their shape's reference point
+
+**Releasable: no.**
+
+Place each notehead by its shape's reference point (the session-57 try-out, docs/uat-status.md item 1; nudge-staff-lines-consult.md decisions 3-5). A shape's optional reference point (shapes[name].reference, native SVG units), which the key signature already reads, becomes the point a notehead puts on its pitch as well, vertically: the preview draws the notehead reference.y (scaled with the notehead's height) above or below where it draws it today, the stem's attached end and a breve's tie follow the drawn head, and the staff lines, the ledgers, the stem's far end and the head's horizontal place stay at the pitch. A shape without a reference, or with reference.y 0 (every shape in today's fixtures and gallery files), draws and exports exactly as before. In the notehead panel's Shape group the selected shape's reference point can be picked on the enlarged shape, as the key signature's and the clef's are (CNBKeySignatureEditor.referenceGeometry / referenceAt), and put back on the centre; the picker opens after a notehead SVG is imported. The export registers a vertically translated variant of the shape (or of its sized variant) for the noteheads, named after it with a -ref suffix, its path and cutout moved by the reference's height and its attachment points (relative to its extent) unchanged, which Section C names; the key signature's marks keep the untranslated registration and their (at dx . dy), so the reference is not applied twice. No engine change. An engine round trip holds an off-centre reference's heads, stems, dots (which stay at the pitch) and repeat-mode minim, semibreve and breve heads and tie to the preview within 0.001 staff spaces. The LY spec (1.3.22), the architecture plan and the README follow.

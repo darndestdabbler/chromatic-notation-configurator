@@ -29,6 +29,10 @@
  * the rule editor's shape change redraws it again with the new rules. The
  * driver pins that behaviour, so a regression on any of these routes fails here.
  *
+ * Session 60: after an import the notehead panel opens the reference picker
+ * on the new shape; a click on it puts that point of the shape on the pitch,
+ * so the heads move and the ledger stays.
+ *
  * Dependency resolution, env vars and exit codes are the same as
  * uat-kite-pipeline.mjs (playwright-core plus ms-playwright cache Chromium;
  * exit 2 = missing dependency, 1 = check failure, 0 = all passed).
@@ -272,6 +276,47 @@ for (const route of ROUTES) {
     JSON.stringify(after) === JSON.stringify(heights),
     `before ${JSON.stringify([...new Set(heights)])} after ${JSON.stringify([...new Set(after)])}`);
 
+  await page.close();
+}
+
+// ── Session 60: the imported shape's point on the pitch ─────────────────────
+// After the import the notehead panel opens the reference picker on the new
+// shape. With 45deg given to C, a click low on the enlarged shape puts that
+// point on the pitch: C's heads are drawn higher, its ledger stays put.
+{
+  const page = await openApp();
+  await selectNotehead(page, 0);
+  await importByInput(page);
+  const picker = ".cnb-nhp-reference-picker";
+  check("reference: the picker opens on the imported shape",
+    await page.isVisible(picker) && (await page.textContent(picker)).includes("45deg"),
+    String(await page.isVisible(picker)));
+  await page.click('.cnb-nhp-shape-option[data-shape="45deg"]');
+  const column = ".cnb-pvd-preview svg.note-slice >> nth=0";
+  const measure = () => page.$eval(".cnb-pvd-preview svg.note-slice", svg => ({
+    heads: [...svg.querySelectorAll("g[transform^='translate']")].map(g => {
+      const r = g.getBoundingClientRect(); return r.top + r.height / 2;
+    }),
+    ledgers: [...svg.querySelectorAll(".cnb-ledger-set rect")].map(r => r.getBoundingClientRect().top),
+  }));
+  await page.waitForSelector(column);
+  const before = await measure();
+  const box = await page.$eval(".cnb-nhp-reference-svg", s => { const r = s.getBoundingClientRect(); return { w: r.width, h: r.height }; });
+  await page.click(".cnb-nhp-reference-svg", { position: { x: box.w / 2, y: box.h * 0.75 } });
+  const cfg = await fullConfig(page);
+  const ref = cfg.shapes["45deg"].reference;
+  check("reference: a click low on the shape sets a point below its centre, across at its origin",
+    ref && ref.y > 0 && ref.x === 0, JSON.stringify(ref));
+  const after = await measure();
+  check("reference: C's heads are drawn higher, by the same amount",
+    before.heads.length > 0 && after.heads.length === before.heads.length &&
+    after.heads.every((y, i) => y < before.heads[i] - 1 && Math.abs((before.heads[i] - y) - (before.heads[0] - after.heads[0])) < 0.5),
+    `before ${JSON.stringify(before.heads)} after ${JSON.stringify(after.heads)}`);
+  check("reference: C's ledger stays at the pitch",
+    before.ledgers.length > 0 && JSON.stringify(after.ledgers) === JSON.stringify(before.ledgers),
+    `before ${JSON.stringify(before.ledgers)} after ${JSON.stringify(after.ledgers)}`);
+  await page.click(".cnb-nhp-reference-done");
+  check("reference: Done closes the picker", !(await page.isVisible(picker)));
   await page.close();
 }
 

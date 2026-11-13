@@ -93,9 +93,11 @@ function durationNames(config) {
 /**
  * Resolve every (pc × duration) combination through the notehead rules.
  * Returns a flat array of { pc, duration, shape, hollow, color, heightSemis,
- * widthSemis } where color is the rules' hex or null (black: a notehead's
- * colour lives only on its rules, session 37) and the sizes are null unless
- * a rule sets them.
+ * widthSemis, notehead: true } where color is the rules' hex or null (black:
+ * a notehead's colour lives only on its rules, session 37) and the sizes are
+ * null unless a rule sets them. notehead marks a notehead, which is placed by
+ * its shape's reference point (registrationFor), as a key-signature mark's
+ * symbol is not.
  */
 function resolveAll(config) {
   const results = [];
@@ -105,7 +107,7 @@ function resolveAll(config) {
         const r = CNBConfig.resolveNotehead(config, pc, duration, key);
         results.push({
           pc, duration, shape: r.shape, hollow: r.hollow, color: r.color,
-          heightSemis: r.heightSemis, widthSemis: r.widthSemis,
+          heightSemis: r.heightSemis, widthSemis: r.widthSemis, notehead: true,
         });
       }
     }
@@ -171,12 +173,35 @@ function keyBranches(config) {
  * attachments are the shape's scaled by scale.x = width / natural width and
  * scale.y = height / semitoneHeight. A size left unset takes the shape's own.
  *
+ * A notehead (r.notehead, session 60) whose shape has a reference point off
+ * its origin vertically (reference.y ≠ 0) is placed by it: its registration
+ * is the one above with "-ref" appended, whose path and cutout are moved by
+ * shiftSemis (semitones, Y up: the reference's height at the registration's
+ * scale), so the reference point lands on the stencil's origin, the pitch.
+ * Its attachment points are the unmoved registration's: they are relative to
+ * the path's extent, which moves with it. A key-signature mark's symbol
+ * (no notehead flag) keeps the unmoved registration and its own placement.
+ *
  * @param {object} config
- * @param {{shape:string, heightSemis?:number|null, widthSemis?:number|null}} r
+ * @param {{shape:string, heightSemis?:number|null, widthSemis?:number|null, notehead?:boolean}} r
  * @returns {{name:string, sym:string, scale:{x:number,y:number}|null,
- *            heightSemis?:number, widthSemis?:number}}
+ *            heightSemis?:number, widthSemis?:number, shiftSemis?:number}}
  */
 function registrationFor(config, r) {
+  const reg = sizedRegistration(config, r);
+  const shape = (config.shapes || {})[reg.name];
+  const refY = r.notehead && shape && shape.reference ? shape.reference.y : 0;
+  if (!refY) return reg;
+  const unitsPerSemitone = (shape.naturalHeight || 1) / (shape.semitoneHeight || shape.naturalHeight || 1);
+  return {
+    ...reg,
+    sym: CNBScheme.symbol(`${reg.sym}-ref`, `Shape ${JSON.stringify(reg.name)} placed by its reference point`),
+    shiftSemis: refY / unitsPerSemitone * (reg.scale ? reg.scale.y : 1),
+  };
+}
+
+/** registrationFor without the reference point: the shape, or its sized variant. */
+function sizedRegistration(config, r) {
   const name = r.shape || "";
   const sym = shapeSymbol(name);
   const shape = (config.shapes || {})[name];
@@ -199,7 +224,9 @@ function registrationFor(config, r) {
 /**
  * Every registration Section A must emit: per used shape (sorted), the shape
  * itself when some notehead uses it at its own size, then its sized variants
- * sorted by symbol. Variants that format to the same symbol are one.
+ * sorted by symbol, a notehead placed by its reference point naming each one
+ * with "-ref" (registrationFor). Variants that format to the same symbol are
+ * one.
  */
 function usedRegistrations(config) {
   const shapes = config.shapes || {};
@@ -761,23 +788,26 @@ export const CNBLilypond = {
    * under a pitch axis.
    *
    * A sized variant (session 22, LY spec §4.1c) passes scale: x coordinates
-   * are multiplied by scale.x and y by scale.y as well.
+   * are multiplied by scale.x and y by scale.y as well. A notehead placed by
+   * its reference point (session 60, LY spec §4.1e) passes shiftY, staff
+   * spaces added to every y after the conversion.
    *
    * @param {{cmd:string, args:number[]}[]} commands  moveto/lineto/curveto/closepath
    * @param {number} unitsPerStaffSpace
    * @param {boolean} [flipY=false]
    * @param {string} [field]  named in the error when the data is invalid
    * @param {{x:number,y:number}|null} [scale]  sized-variant scale
+   * @param {number} [shiftY=0]  staff spaces, Y up
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
-  pathToStaffSpace(commands, unitsPerStaffSpace, flipY = false, field = "path data", scale = null) {
+  pathToStaffSpace(commands, unitsPerStaffSpace, flipY = false, field = "path data", scale = null, shiftY = 0) {
     const div = unitsPerStaffSpace || 1;
     const ySign = flipY ? -1 : 1;
     const sx = scale ? scale.x : 1;
     const sy = scale ? scale.y : 1;
     const scaled = commands.map(({ cmd, args }) => ({
       cmd,
-      args: args.map((v, i) => (i % 2 === 0 ? v * sx : ySign * v * sy) / div),
+      args: args.map((v, i) => (i % 2 === 0 ? v * sx : ySign * v * sy) / div + (i % 2 === 0 ? 0 : shiftY)),
     }));
     return CNBScheme.path(scaled, field);
   },
@@ -795,10 +825,11 @@ export const CNBLilypond = {
    * @param {number} unitsPerSemitone  SVG units per semitone of the shape
    * @param {number} sps  staff semitones (or axis units) per staff space
    * @param {{x:number,y:number}|null} [scale]  sized-variant scale (§4.1c)
+   * @param {number} [shiftY=0]  staff spaces added to every y (§4.1e)
    * @returns {string} e.g. "'(\n    (moveto 0 0.6667)\n    (closepath))"
    */
-  svgPathToLilypond(svgPath, unitsPerSemitone, sps, scale = null) {
-    return CNBLilypond.pathToStaffSpace(svgCommands(svgPath), (unitsPerSemitone || 1) * (sps || 1), true, "svgPath", scale);
+  svgPathToLilypond(svgPath, unitsPerSemitone, sps, scale = null, shiftY = 0) {
+    return CNBLilypond.pathToStaffSpace(svgCommands(svgPath), (unitsPerSemitone || 1) * (sps || 1), true, "svgPath", scale, shiftY);
   },
 
   /**
@@ -893,12 +924,17 @@ export const CNBLilypond = {
 
     // A1. Path variable definitions
     lines.push("%% --- Path variables ---");
-    for (const { name, sym, scale, heightSemis, widthSemis } of registrations) {
+    for (const { name, sym, scale, heightSemis, widthSemis, shiftSemis = 0 } of registrations) {
       const shape = shapes[name];
       const field = (key) => `shapes[${JSON.stringify(name)}].${key}`;
-      if (scale) {
-        lines.push(`%% ${sym}: ${CNBScheme.comment(name)} sized to ${fmtNum(heightSemis, "apply.heightSemis")} × ${fmtNum(widthSemis, "apply.widthSemis")} semitones (height × width)`);
+      const sized = scale ? ` sized to ${fmtNum(heightSemis, "apply.heightSemis")} × ${fmtNum(widthSemis, "apply.widthSemis")} semitones (height × width)` : "";
+      if (shiftSemis) {
+        lines.push(`%% ${sym}: ${CNBScheme.comment(name)}${sized}, its reference point on the pitch (moved ${fmtNum(shiftSemis, "reference")} semitones up)`);
+      } else if (scale) {
+        lines.push(`%% ${sym}: ${CNBScheme.comment(name)}${sized}`);
       }
+      // A notehead placed by its reference point (session 60, §4.1e).
+      const shiftY = shiftSemis / pathSps;
       const natH = shape.naturalHeight || 1;
       const unitsPerSemitone = natH / (shape.semitoneHeight || natH);
 
@@ -908,18 +944,18 @@ export const CNBLilypond = {
       const toStaffSpace = (text, key) => {
         const commands = CNBScheme.parsePath(text);
         if (!commands) throw new Error(`${field(key)}: not valid LilyPond path data`);
-        return CNBLilypond.pathToStaffSpace(commands, pathSps, false, field(key), scale);
+        return CNBLilypond.pathToStaffSpace(commands, pathSps, false, field(key), scale, shiftY);
       };
       const pathDef = shape.lilypondPath
         ? toStaffSpace(shape.lilypondPath, "lilypondPath")
-        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, pathSps, scale);
+        : CNBLilypond.svgPathToLilypond(shape.svgPath, unitsPerSemitone, pathSps, scale, shiftY);
       lines.push(`#(define cnb:${sym}-path ${pathDef})`);
       lines.push("");
 
       if (shape.lilypondHollowPath || shape.svgHollowPath) {
         const hollowDef = shape.lilypondHollowPath
           ? toStaffSpace(shape.lilypondHollowPath, "lilypondHollowPath")
-          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, pathSps, scale);
+          : CNBLilypond.svgPathToLilypond(shape.svgHollowPath, unitsPerSemitone, pathSps, scale, shiftY);
         lines.push(`#(define cnb:${sym}-cutout-path ${hollowDef})`);
         lines.push("");
       }
@@ -1140,7 +1176,7 @@ export const CNBLilypond = {
         byDuration[duration] = [];
         for (let pc = 0; pc < 12; pc++) {
           const r = CNBConfig.resolveNotehead(config, pc, duration, key);
-          const f = sectionCFields(config, { pc, ...r });
+          const f = sectionCFields(config, { pc, ...r, notehead: true });
           f.xOffset = axisOn && r.xOffsetStaffSpaces ? r.xOffsetStaffSpaces : 0;
           byDuration[duration].push(f);
         }

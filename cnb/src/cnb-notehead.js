@@ -172,6 +172,22 @@ export const CNBNotehead = {
   },
 
   /**
+   * How far a notehead is drawn below its pitch, in px, so that its shape's
+   * reference point (shape.reference, native SVG units, Y down) sits on the
+   * pitch vertically (session 60): −reference.y × scaleY. 0 for a shape
+   * without a reference, or with reference.y 0. The reference's x is not
+   * applied: a notehead stays centred on its column.
+   *
+   * @param {object} shape   Shape config object
+   * @param {number} scaleY  the notehead's vertical scale (measure's scaleY)
+   * @returns {number} px, SVG y down
+   */
+  referenceShift(shape, scaleY) {
+    const y = shape && shape.reference ? shape.reference.y : 0;
+    return y ? -y * scaleY : 0;
+  },
+
+  /**
    * Render the notehead at position (x,y). The caller is responsible for
    * computing the appropriate scaleFactor (use `measure`). Optional scaleX /
    * scaleY (session 22) stretch a sized notehead; when they are equal or

@@ -16,7 +16,7 @@ import { CNBCard } from "../src/cnb-card.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { withDomStub } from "./svg-stub.js";
-import { findEngine, measureNoteheads, measureStems, measureTies } from "./engine-probe.js";
+import { findEngine, measureNoteheads, measureStems, measureTies, measureHeads } from "./engine-probe.js";
 import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -496,6 +496,31 @@ export const tests = [
       });
     }},
 
+  { name: "reference point (session 60): the heads, the stem's start and the breve's tie move with it; the ledgers stay", fn: () => {
+      const { config, grid } = repeatFixture();
+      const plain = CNBConfig.clone(config);
+      config.shapes["crotchet-minim"].reference = { x: 25, y: 60 };
+      const shape = config.shapes["crotchet-minim"];
+      const shift = -60 * CNBNotehead.measure(shape, grid.pxPerSemi).scaleY;
+      const breve = CNBCard.repeatLayout(config, grid, shape, "breve");
+      approx(breve.ties[0].dy, CNBCard.repeatLayout(plain, grid, plain.shapes["crotchet-minim"], "breve").ties[0].dy + shift,
+        "the tie at the moved heads' bottom");
+      approx(CNBCard.tieBottom(config, grid, { pc: 2, duration: "breve" }),
+        CNBCard.tieBottom(plain, grid, { pc: 2, duration: "breve" }) + shift, "tieBottom follows");
+      for (const duration of ["crotchet", "minim"]) {
+        withDomStub(container => {
+          const a = dissect(CNBCard.render(container, grid, plain, { pc: 0, duration }));
+          const b = dissect(CNBCard.render(container, grid, config, { pc: 0, duration }));
+          const ys = n => n.map(g => Number(g.getAttribute("transform").match(/,(-?[\d.e-]+)\)/)[1]));
+          ys(b.noteheads).forEach((y, i) => approx(y, ys(a.noteheads)[i] + shift, `${duration} head ${i}`, 1e-6));
+          approx(Number(b.stem.getAttribute("y1")), Number(a.stem.getAttribute("y1")) + shift, `${duration}: the stem's start`, 1e-6);
+          approx(Number(b.stem.getAttribute("y2")), Number(a.stem.getAttribute("y2")), `${duration}: its far end`, 1e-6);
+          eq(JSON.stringify(b.ledgerG.children.map(l => l.getAttribute("y"))),
+            JSON.stringify(a.ledgerG.children.map(l => l.getAttribute("y"))), `${duration}: the ledgers at the pitch`);
+        });
+      }
+    }},
+
   { name: "tieBottom: the lowest ink of the tie under the lower notehead; null without a tie", fn: () => {
       const { config, grid, shape } = repeatFixture();
       const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
@@ -754,6 +779,102 @@ export const tests = [
         }
       }
       if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // Engine-backed (session 60, LY spec §4.1e): every shape's reference point
+  // 0.3 of its height below its centre, so each head is drawn and engraved
+  // higher than its pitch, through the exported -ref variants. For every
+  // card's octave chord the engraved heads' Y extents (crotchet, minim,
+  // semibreve, and breve, in repeat mode down to its tie under the heads)
+  // and stems (crotchet, minim) match the card's within 0.001 staff
+  // spaces; the dots of dotted crotchets stay where the config without the
+  // reference engraves them; in repeat mode the breve's tie ends, lowest ink
+  // and top follow the moved heads.
+  { name: "reference point (engine): heads, stems, dots and repeated heads with an off-centre reference engrave where the card draws them", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const names = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
+      const load = (f) => CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, f), "utf8")).config;
+      const offCentre = (config) => {
+        const c = CNBConfig.clone(config);
+        for (const s of Object.values(c.shapes)) s.reference = { x: 0, y: 0.3 * s.naturalHeight };
+        return c;
+      };
+      const repeat = CNBConfig.createDefault();
+      repeat.durations.representationMode = "repeat";
+      const failures = [];
+      const check = (what, engraved, preview) => {
+        if (!(Math.abs(engraved - preview) <= 1e-3)) failures.push(`${what}: engraved ${engraved} staff spaces, preview ${preview} (±0.001)`);
+      };
+      for (const [label, plain] of [["default", CNBConfig.createDefault()], ["default, repeat", repeat],
+        ["Kite 4-369", load("kite-4-369-config.json")]]) {
+        const config = offCentre(plain);
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const ss = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
+        const middleY = grid.semiToY(config.staff.midpoint);
+        const up = (y) => (middleY - y) / ss;
+        const ly = CNBLilypond.generate(config);
+        assert(ly.includes("-ref-path"), `${label}: the export registers moved variants`);
+        /** The drawn head's extent at semi, staff spaces above the middle line. */
+        const drawn = (pc, semi, duration) => {
+          const r = CNBCard.resolveNotehead(config, pc, duration, null);
+          const shape = config.shapes[r.shape];
+          const { scaleY } = CNBNotehead.measure(shape, grid.pxPerSemi, r);
+          const y = grid.semiToY(semi) + CNBNotehead.referenceShift(shape, scaleY);
+          const box = CNBNotehead.box(shape).y;
+          return { bottom: up(y + box[1] * scaleY), top: up(y + box[0] * scaleY) };
+        };
+        for (const [duration, token, log] of [["crotchet", "4", 2], ["minim", "2", 1], ["semibreve", "1", 0], ["breve", "\\breve", -1]]) {
+          const music = names.map(n => `<${n}' ${n}''>${token}`).join(" ");
+          const { heads, error } = await measureHeads(engine, ly, music);
+          if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
+          if (heads.length !== 24) { failures.push(`${label} ${duration}: ${heads.length} heads engraved`); continue; }
+          for (const h of heads) {
+            const pc = ((h.semitone % 12) + 12) % 12;
+            const want = drawn(pc, h.semitone, duration);
+            // A repeat-mode breve's stencil holds its tie, below the moved
+            // heads (§4.1d): its bottom is the tie's lowest ink.
+            const tie = CNBCard.tieBottom(config, grid, { pc, duration });
+            if (tie !== null) want.bottom = Math.min(want.bottom, up(tie + grid.semiToY(h.semitone) - grid.semiToY(pc)));
+            eq(h.durationLog, log, `${label} ${duration}: duration`);
+            check(`${label} ${duration} semitone ${h.semitone} bottom`, h.bottom, want.bottom);
+            check(`${label} ${duration} semitone ${h.semitone} top`, h.top, want.top);
+          }
+          if (duration === "semibreve" || duration === "breve") continue;
+          const { stems, error: stemError } = await measureStems(engine, ly, music);
+          if (stemError) { failures.push(`${label} ${duration} stems: ${stemError}`); continue; }
+          names.forEach((_, pc) => withDomStub(container => {
+            const { svg, stem } = dissect(CNBCard.render(container, grid, config, { pc, duration }));
+            const [y1, y2] = ["y1", "y2"].map(k => up(Number(stem.getAttribute(k))));
+            const got = stems[pc];
+            check(`${label} ${duration} pc ${pc} stem x`, got.x, (stemCentre(stem) - Number(svg.getAttribute("width")) / 2) / ss);
+            check(`${label} ${duration} pc ${pc} stem bottom`, got.bottom, Math.min(y1, y2));
+            check(`${label} ${duration} pc ${pc} stem top`, got.top, Math.max(y1, y2));
+          }));
+        }
+        // Dots stay at the pitch: as the config without the reference engraves them.
+        const dotted = names.map(n => `<${n}' ${n}''>4.`).join(" ");
+        const moved = await measureHeads(engine, ly, dotted);
+        const still = await measureHeads(engine, CNBLilypond.generate(plain), dotted);
+        if (moved.error || still.error) failures.push(`${label} dots: ${moved.error || still.error}`);
+        else if (moved.dots.length === 0 || moved.dots.length !== still.dots.length) {
+          failures.push(`${label} dots: ${moved.dots.length} engraved, ${still.dots.length} without the reference`);
+        } else moved.dots.forEach((d, i) => check(`${label} dot ${i}`, d.y, still.dots[i].y));
+        if (config.durations.representationMode !== "repeat") continue;
+        // The breve's tie, below the moved heads; y from the pitch, Y up.
+        const { ties, error } = await measureTies(engine, ly);
+        if (error) { failures.push(`${label} tie: ${error}`); continue; }
+        for (const { pc, start, end, y } of ties) {
+          const shape = config.shapes[CNBCard.resolveNotehead(config, pc, "breve", null).shape];
+          const [tie] = CNBCard.repeatLayout(config, grid, shape, "breve").ties;
+          check(`${label} breve pc ${pc} tie start y`, start[1], -tie.dy / ss);
+          check(`${label} breve pc ${pc} tie end y`, end[1], -tie.dy / ss);
+          check(`${label} breve pc ${pc} tie lowest point`, y[0], (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss);
+          const head = drawn(pc, pc, "breve");
+          check(`${label} breve pc ${pc} top`, y[1], head.top - up(grid.semiToY(pc)));
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.slice(0, 30).join("\n    ") + (failures.length > 30 ? `\n    … ${failures.length} in all` : ""));
     }},
 
   // Session 40: the Kite and 45deg-369 SVGs draw their crotchet stem rects

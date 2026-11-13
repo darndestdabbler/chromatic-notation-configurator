@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.21 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor)
-**Date:** November 13, 2026 (1.3.20, 1.3.21); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.22 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point)
+**Date:** November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -90,7 +90,12 @@ byte-identical. 1.3.21, for both: clefs sized about an anchor, §5.5 and
 it, at an automatic or a set height, and the dozenal clef writes
 `cnb:clef-size-semitones`, which needs engine 1.8.0 to keep the numeral on
 the middle line. Only a config showing such a clef exports anything new;
-the five export baselines are byte-identical.)*
+the five export baselines are byte-identical. 1.3.22, for both: noteheads
+placed by their shape's reference point, §4.1e. A notehead whose shape's
+reference point is above or below its origin registers a `-ref` variant,
+moved so the point is on the pitch. Only a config with such a shape exports
+anything new; the five export baselines are byte-identical, and no engine
+change is needed.)*
 
 Summary of additions:
 
@@ -112,6 +117,7 @@ Summary of additions:
 | The key signature's model (1.3.19, linear and axis alike) | one mark a head or a sign, its box centred on its column, signs black | each mark its symbols in order, layered at one semitone and column; `(at dx . dy)` placing a symbol's origin; the `symbol` kind, with no ledgers; a sign's colour, as engine 1.6.0 reads them (§5.6a) |
 | The repeated heads' overlap (1.3.20, linear and axis alike) | `cnb:multinote-padding` from `engine.multinotePadding`, staff spaces, written when changed | `cnb:multinote-overlap`, a share of the head's width, written in repeat mode; the breve's tie between its groups' centres, as engine 1.7.0 engraves it (§4.1d) |
 | Clefs sized about an anchor (1.3.21, linear and axis alike) | a glyph clef's top (`anchorSemi`) and height (`semitoneHeight`) as stored; the dozenal clef at the engine's 3 staff spaces | a glyph clef's top as drawn from its anchor point, at an automatic or a set height; the dozenal clef's `cnb:clef-size-semitones`, scaled about the middle line as engine 1.8.0 engraves it (§5.5, §5.5a) |
+| Noteheads placed by their shape's reference point (1.3.22, linear and axis alike) | a notehead's shape centred on its pitch by its origin | a shape whose reference point is off its origin vertically registered for the noteheads as `<registration>-ref`, its path and cutout moved so the point is on the pitch, its attachments unchanged; the key signature's marks keep the unmoved shape (§4.1e) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -311,6 +317,69 @@ length scaled by the engraved head's width over the preview's (the 1 staff
 space between the groups does not scale). Kite at 1/3, for example: the
 minim 2.2225 engraved against 2.2222, the semibreve 4.0006 against
 4.0000.
+
+### 4.1e Noteheads placed by their shape's reference point (new in 1.3.22 — linear and axis configs alike)
+
+A shape may carry `reference: { x, y }`, a point in its native SVG units
+(Y down), which the key signature has placed on a mark's pitch since session
+54 (§5.6a). Since session 60 a notehead puts the same point's **height** on
+its pitch, so a shape better placed by its centre of mass than by its middle
+sits where it reads best. Its x is not applied to noteheads: the head stays
+centred on its column. The notehead panel sets the height by a click on the
+shape enlarged, after an import or later.
+
+**The variant.** For each resolved notehead (every pitch class × duration,
+and each key branch of §6.4) whose shape has a nonzero `reference.y`, the
+registration it would draw with, the shape or its sized variant (§4.1c), is
+registered again as `<registration>-ref`: `crotchet-minim-ref`,
+`crotchet-minim-h1p5-w3-ref`. Its path and cutout are the registration's,
+converted as §4.1b says, with every y moved up by
+
+```
+shift = reference.y ÷ (naturalHeight ÷ semitoneHeight) × scale.y   semitones
+      ÷ sps                                                       staff spaces
+```
+
+(`scale.y` 1 at the shape's own size, `sps` as in §4.1b), so the reference
+point lands on the stencil's origin, which the engine puts on the pitch. Its
+attachment points are the registration's: they are relative to the path's
+extent (§4.4b), which moves with it. A comment line in A1 names the shift.
+Section C names the variant in `shape`, `hollow` and `attachment`, so the
+reference joins the grouping key through those symbols.
+
+- **The stem** starts at the moved head's attachment point and ends where
+  it did, LilyPond's length from the far notehead's pitch; the preview draws
+  it so.
+- **Ledgers and dots** stay at the pitch: the ledgers are §5.7's by pitch,
+  and LilyPond places dots by staff position.
+- **Repeated heads** move as a group, and a breve's tie runs below the moved
+  heads (§4.1d).
+- **The key signature applies it once.** A mark's symbol keeps the unmoved
+  registration and its `(at dx . dy)`, which already places the reference
+  point (§5.6a), so a shape the noteheads and the marks share is registered
+  both ways. A `'chord` signature's heads are drawn by Section C, as
+  `-ref`, which carries the height alone, so a notation with a shape whose
+  reference is off its origin across (x ≠ 0) exports its signature as the
+  mark table instead (`CNBKeySignature.isScaleStack`), each mark placed by
+  x and y as the canvas places it. A reference with x 0, as the notehead
+  panel picks it, keeps `'chord`, whose heads then sit as the canvas draws
+  them.
+
+**Compatibility.** A shape without a reference, or with `reference.y` 0
+(every shape in the fixtures and gallery files), exports byte for byte as
+in 1.3.21; the five export baselines are unchanged. No engine change is
+needed: the variant is ordinary path data.
+
+**Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`, through
+`cnb/tests/engine-probe.js`'s `measureHeads`): with every shape's reference
+point 0.3 of its height below its centre, on the default config (in shape
+and repeat mode) and Kite 4-369, every card's engraved heads (crotchet,
+minim, semibreve and breve, a repeat-mode breve down to its tie), their
+tops and bottoms, and their stems' x and both ends,
+are within 0.001 staff spaces of the preview's; the dots of dotted
+crotchets are where the config without the reference engraves them; and in
+repeat mode each breve's tie ends, lowest ink and top follow the moved heads
+within 0.001.
 
 ### 4.4a Stem Attachment Registrations under a pitch axis
 
@@ -1011,7 +1080,8 @@ for every other signature (session 49).
 when the settings that apply to it are at their defaults: `notes "all"`,
 `upperTonic` on, `stacking "degrees"`, `columns "right"`,
 `placement.position "middle"`, and no field set in `looks.all`,
-`looks.flat`, `looks.sharp` or `alternate`. It then exports as §5.6 says,
+`looks.flat`, `looks.sharp` or `alternate`, and (1.3.22, §4.1e) no shape
+with a reference point off its origin across. It then exports as §5.6 says,
 byte for byte as before. A setting that does not apply does not count:
 under `"degrees"` every key has two stacks, so `separator.shareThickness`
 never applies. Any other signature exports the table, in Section B in
@@ -1561,7 +1631,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.21** | **Nov 13, 2026** | **Clefs sized about an anchor (session 59, engine sessions 41 and 42): §5.5, §5.5a. A glyph clef may carry an anchor point, `reference { x, y }`, with `anchorSemi` the semitone it sits on, and is registered with its top as drawn, `depth` above it; a clef without one keeps `anchorSemi` as its top. Its `semitoneHeight` may be `null`, automatic, from `staffSpaceUnits` and the staff's symbol space (`CNBStaff.symbolSpace`, the least of the noteheads' mean height, one staff space and 3 semitones), and `height-semitones` is the height drawn. The treble, bass and alto clefs take their anchors on their lines and the automatic size. The dozenal clef writes `cnb:clef-size-semitones`, automatic 3 symbol spaces (8.172 on the default staff), which engine 1.8.0 scales about the middle line. The panel sets the anchor, picked on the glyph, and the size, automatic or a number; the canvas drag moves the anchor and resizes about it. Engine round trips hold every clef's top and bottom, and each anchor on its pitch, to the preview within 0.001 staff spaces. Output changes only for a config showing the dozenal clef or an anchored glyph clef; the five export baselines are byte-identical. Needs engine 1.8.0.** |
+| **1.3.22** | **Nov 13, 2026** | **Noteheads placed by their shape's reference point (session 60): new §4.1e. A notehead whose shape's `reference.y` is nonzero draws with `<registration>-ref`, the shape or its sized variant with its path and cutout moved up the reference's height, so the point is on the pitch; its attachment points are unchanged, Section C names it, and the key signature's marks keep the unmoved shape and their `at`; a signature sharing a shape whose reference is off its origin across exports the mark table rather than `'chord`. The reference's x is not applied to noteheads. The notehead panel picks the height on the enlarged shape, after an import or later. An engine round trip holds heads, stems, dots and repeated heads with an off-centre reference to the preview within 0.001 staff spaces. Output changes only for a config with such a shape; the five export baselines are byte-identical. No engine change.** |
+| 1.3.21 | Nov 13, 2026 | Clefs sized about an anchor (session 59, engine sessions 41 and 42): §5.5, §5.5a. A glyph clef may carry an anchor point, `reference { x, y }`, with `anchorSemi` the semitone it sits on, and is registered with its top as drawn, `depth` above it; a clef without one keeps `anchorSemi` as its top. Its `semitoneHeight` may be `null`, automatic, from `staffSpaceUnits` and the staff's symbol space (`CNBStaff.symbolSpace`, the least of the noteheads' mean height, one staff space and 3 semitones), and `height-semitones` is the height drawn. The treble, bass and alto clefs take their anchors on their lines and the automatic size. The dozenal clef writes `cnb:clef-size-semitones`, automatic 3 symbol spaces (8.172 on the default staff), which engine 1.8.0 scales about the middle line. The panel sets the anchor, picked on the glyph, and the size, automatic or a number; the canvas drag moves the anchor and resizes about it. Engine round trips hold every clef's top and bottom, and each anchor on its pitch, to the preview within 0.001 staff spaces. Output changes only for a config showing the dozenal clef or an anchored glyph clef; the five export baselines are byte-identical. Needs engine 1.8.0. |
 | 1.3.20 | Nov 13, 2026 | The repeated heads' overlap and the breve's tie between its groups (session 58, engine sessions 39 and 40): §4.1d, §5.2a. The copies of a repeated head overlap by `durations.repeatOverlap`, a share of each head's own width (1/3 by default, one fraction for every shape), which a repeat-mode export writes as `cnb:multinote-overlap`; `engine.multinotePadding` is retired and `cnb:multinote-padding` never written. The breve's tie runs from the middle of its first semibreve group to the middle of the second. The canvas sets the overlap beside the repeat choice. An engine round trip holds every minim, semibreve and breve width and the tie to the preview within 0.001 staff spaces, at overlaps 1/3 and 0.25. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines gain the line; the default, sized and Twinline baselines are byte-identical. Needs engine 1.7.0. |
 | 1.3.19 | Nov 12, 2026 | The key signature's placed, coloured and layered symbols (session 55, engine sessions 37 and 38): §5.6a. A mark is written as its symbols, base then added ones, at one semitone and column, the table's order the layer order; a base whose shape takes no ledgers and every added symbol are the new `symbol` kind, with no ledgers or ledger entry; `(at dx . dy)`, the optional last element, places a symbol's origin in staff spaces where the canvas does not centre it (a reference point, an offset); a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an `at` writes its scale at 1 too. The canvas measures a placed symbol by its path's box. The Clairnote SN and DN gallery files take dots with imported tails. An engine round trip holds every symbol, every stack's ledgers and the ink to the canvas within 0.001 staff spaces. Output changes only for a table using the model; the five export baselines are byte-identical. Needs engine 1.6.0. |
 | 1.3.18 | Nov 11, 2026 | Sharps and flats sized in semitones (session 52, engine session 35): §5.6a. `keys.keySignature.signs.heightSemis` sets the sharp's height between its bars in semitones, automatic (`null`) the least of the noteheads' mean height, one staff space and 3; each sign mark writes its scale, the height ÷ the sharp's bar spacing ÷ the semitones per staff space, as a fourth element, `(semi column sharp 0.6473)`, left out at 1, and the columns are laid out for the scaled signs. Engine round trips hold every sign, its scaled box and the ink to the preview's, at the automatic size and one set by hand. Output changes only for a signature of sharps or flats; the five export baselines are byte-identical. Needs engine 1.5.0. Since engine 1.5.0 a plain score engraves at the config's magnification, so the round trips drop their `\magnifyStaff #cnb:default-magnify`, and the preview's spacing after a clef and to the first note follows the magnification (§5.6a). |
