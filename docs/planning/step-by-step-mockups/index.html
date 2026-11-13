@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step-by-step Configurator mock-ups</title>
+<link rel="stylesheet" href="../../../cnb/assets/fonts/oswald.css">
+<style>
+  :root { --ink: #1f2933; --muted: #6b7680; --line: #d9dee3; --accent: #1a5276; --accent-bg: #d4e6f1;
+          --bg: #f4f6f8; --card: #fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  h1 { font-size: 20px; margin: 24px 24px 4px; }
+  .lede { margin: 0 24px 16px; color: var(--muted); max-width: 900px; }
+  .mock { margin: 0 24px 32px; border: 1px solid var(--line); background: var(--bg); }
+  .mock-title { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+                margin: 28px 24px 8px; }
+
+  /* The app shell */
+  .topbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff;
+            border-bottom: 1px solid var(--line); }
+  .topbar .name { font-weight: 600; margin-right: auto; }
+  .topbar .doc { color: var(--muted); margin-right: auto; }
+  .btn { border: 1px solid var(--line); background: #fff; border-radius: 5px; padding: 4px 10px; font: inherit; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .ok { color: #1e7b34; border-color: #b7dfc2; background: #eef8f1; }
+  .shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 640px; }
+  nav { background: #fff; border-right: 1px solid var(--line); padding: 10px 0; }
+  .group { margin-bottom: 4px; }
+  .group-head span + span { display: none; }  /* static headings: no fold (consult) */
+  .group-head { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 11px; font-weight: 700;
+                letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .step-link { display: flex; gap: 10px; padding: 5px 14px 5px 18px; color: var(--ink); }
+  .step-link .n { width: 18px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .step-link.on { background: var(--accent-bg); color: var(--accent); font-weight: 600; border-left: 3px solid var(--accent);
+                  padding-left: 15px; }
+  .step-link.on .n { color: var(--accent); }
+  .step-link.off { color: #aab2b9; }
+  .step-link.off .n { color: #c6ccd1; }
+  .step-link .why { font-size: 11px; color: #aab2b9; display: block; }
+  nav hr { border: 0; border-top: 1px solid var(--line); margin: 8px 14px; }
+  main { padding: 16px 20px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 14px; }
+  .card-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; }
+  .card-head h2 { margin: 0; font-size: 16px; }
+  .card-head .sub { color: var(--muted); }
+  .card-body { padding: 12px 14px; }
+  .canvas { padding: 10px 14px; overflow: hidden; }
+  .toolbar { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px; background: #fff; color: var(--ink); }
+  .pill.on { background: var(--accent-bg); border-color: #a9cce3; color: var(--accent); }
+  .stepbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
+             border-top: 1px solid var(--line); background: #fafbfc; border-radius: 0 0 6px 6px; }
+  .stepbar .grow { flex: 1; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .panel-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  .panel-row > span:first-child { width: 70px; color: var(--muted); }
+  .swatch { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #0003; display: inline-block; vertical-align: middle; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .new { background: #fff6d6; border-radius: 3px; padding: 0 4px; }
+
+  /* The key-signature steps */
+  .ks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; }
+  .choices { display: flex; gap: 10px; margin-bottom: 10px; }
+  .choice { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 8px; text-align: center; background: #fff; }
+  .choice.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .choice b { display: block; margin-bottom: 4px; }
+  .spelled { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 2px; align-items: center; }
+  .spelled .rowlab { color: var(--muted); font-size: 12px; text-align: right; padding-right: 4px; }
+  .spelled .collab { text-align: center; color: var(--muted); font-size: 12px; }
+  .cell { text-align: center; border: 1px solid transparent; border-radius: 4px; padding: 2px 0 0; }
+  .cell.sel { border-color: var(--accent); background: #eef5fb; }
+  .cell .lab { font-size: 11px; color: var(--muted); display: block; line-height: 1.1; }
+  .keys-all { display: grid; grid-template-columns: 70px repeat(15, minmax(0, 1fr)); gap: 3px 2px; align-items: center; }
+  .keys-all .mode { color: var(--muted); font-size: 12px; }
+  .mini { text-align: center; border: 1px solid transparent; border-radius: 3px; }
+  .mini svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .mini .lab { font-size: 10px; color: var(--muted); }
+  .mini.picked { border-color: var(--accent); }
+
+  /* The tutorial notation */
+  .notation { background: #fff; padding: 14px; }
+  .notation h3 { margin: 10px 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .credit { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>The step-by-step Configurator — mock-ups (session 61)</h1>
+<p class="lede">For <a href="../step-by-step-configurator-design.md">step-by-step-configurator-design.md</a>.
+  The staffs, noteheads, ledgers, signatures and signs are drawn by the Configurator's own <code>cnb/src</code>
+  modules, with the tutorial notation's config (design §5) and a diamond drawn here as a stand-in for the
+  reader's own. The controls are pictures, not the build.</p>
+
+<div class="mock-title">1. The stepped Configurator, step 5 open (design §1, §2)</div>
+<div class="mock" id="steps">
+  <div class="topbar">
+    <span class="name">Chromatic Notation Configurator</span>
+    <span class="doc">Tutorial 3-5-7-9</span>
+    <span class="btn ok">No problems</span>
+    <span class="btn">Undo</span><span class="btn">Redo</span><span class="btn">Open…</span><span class="btn">Save</span>
+    <span class="btn primary">Export for LilyPond</span>
+  </div>
+  <div class="shell">
+    <nav id="nav" aria-label="Steps"></nav>
+    <main>
+      <section class="card">
+        <div class="card-head"><h2>5. Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several)</span></div>
+        <div class="two">
+          <div class="canvas">
+            <div class="toolbar">Durations <span class="pill on">Crotchet</span><span class="pill on">Minim</span>
+              <span class="pill">Semibreve</span><span class="pill">Breve</span>
+              · Longer durations <span class="pill on">Each duration's own look</span><span class="pill">Repeat the notehead</span>
+              <label><input type="checkbox" checked> <span class="new">Hollow minims</span></label></div>
+            <div id="step5-canvas"></div>
+          </div>
+          <div class="card-body" style="border-left:1px solid var(--line)">
+            <b>C♯, D♯, F♯, G♯, A♯</b> <span class="hint">5 noteheads selected</span>
+            <div class="panel-row"><span>Shape</span><span class="pill on">Diamond</span><span class="pill">Import…</span></div>
+            <div class="panel-row"><span>Reference</span><span class="hint">the middle · Pick the point that sits on the pitch</span></div>
+            <div class="panel-row"><span>Fill</span><span class="pill on">Solid</span><span class="pill">Hollow</span></div>
+            <div class="panel-row"><span>Colour</span><span class="swatch" style="background:#cc0000"></span> #cc0000 · fire-engine red</div>
+            <div class="panel-row"><span>Size</span>2 × 3 semitones</div>
+            <p class="hint">"Hollow minims" on the canvas (design §5.1) adds or removes one ordinary rule, the one Advanced shows, for every notehead.</p>
+          </div>
+        </div>
+        <div class="stepbar"><span class="btn">← 4. Ledger lines</span><span class="grow"></span>
+          <span class="btn">Import this part…</span>&nbsp;<span class="btn primary">6. Key signature symbol type →</span></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="mock-title">2. The key-signature steps, the whole-staff canvas hidden (design §3)</div>
+<div class="mock" id="ks">
+  <div class="ks-grid">
+    <section class="card">
+      <div class="card-head"><h2>6. Key signature symbol type</h2></div>
+      <div class="card-body">
+        <label><input type="checkbox" checked> Show a key signature</label>
+        <div class="choices" style="margin-top:8px">
+          <div class="choice on"><b>Noteheads</b><span class="hint">the scale as the notation's noteheads</span></div>
+          <div class="choice"><b>Accidentals</b><span class="hint">LilyPond's sharps and flats</span></div>
+          <div class="choice"><b>Custom marks</b><span class="hint">your own symbols, from parallelograms</span></div>
+        </div>
+        <div class="hint" style="margin-bottom:4px">The 21 spelled notes as Noteheads:</div>
+        <div class="spelled" id="spelled-noteheads"></div>
+        <div class="hint" style="margin:10px 0 4px">… as Accidentals (naturals dimmed):</div>
+        <div class="spelled" id="spelled-accidentals"></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>7. Custom key signature symbols</h2><span class="sub">enabled by Custom marks</span></div>
+      <div class="card-body">
+        <div class="toolbar">Select <span class="pill">All</span><span class="pill">Naturals</span><span class="pill">Flats</span>
+          <span class="pill on">Sharps</span><span class="pill">On a line or ledger</span><span class="pill">In a space</span></div>
+        <div class="spelled" id="spelled-custom"></div>
+        <div class="card" style="margin:10px 0 0">
+          <div class="card-body">
+            <b>7 sharps selected</b> <span class="hint">edits these spelled notes in every key</span>
+            <div class="panel-row"><span>Symbol</span><span class="pill">Parallelogram</span><span class="pill on">diamond-wide</span><span class="pill">♯</span><span class="pill">♭</span><span class="pill">Import from SVG…</span></div>
+            <div class="panel-row"><span>Fill</span><span class="pill on">Solid</span><span class="pill">Hollow</span> <span class="hint">Takes ledger lines ✓</span></div>
+            <div class="panel-row"><span>Added</span><span class="pill">+ Add a symbol (a tail)</span></div>
+            <p class="hint">Clairnote: six imported symbols (a solid and a hollow dot, each plain, with a tail up and with a tail
+              down), one given to each spelled note (design §3.3).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>8. Key signature designer</h2></div>
+      <div class="card-body">
+        <div class="toolbar">Key <span class="pill on">G</span><span class="pill on">major</span></div>
+        <div id="designer" style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap"></div>
+        <div class="panel-row"><span>Stacks</span><span class="pill">Scale degrees</span><span class="pill">Parity</span><span class="pill on">Parity, a new stack at each change (Clairnote)</span></div>
+        <div class="panel-row"><span>Columns</span><span class="new">Spacing −0.5 semitones</span> <span class="hint">drag the second column to tighten or widen</span></div>
+        <div class="panel-row"><span>Gold stem</span><label><input type="checkbox" checked> Drawn</label> <span class="swatch" style="background:#ffd42a"></span> 0.4 staff spaces, shared</div>
+        <div class="panel-row"><span>Place</span><span class="pill on">Middle</span><span class="pill">Bottom set</span><span class="pill">Top set</span><span class="pill">Every set</span></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>9. Key signature preview</h2><span class="sub">every key and mode · no marks touch</span></div>
+      <div class="card-body"><div class="keys-all" id="keys-all"></div></div>
+    </section>
+  </div>
+</div>
+
+<div class="mock-title">3. The tutorial notation (design §5)</div>
+<div class="mock" id="tutorial">
+  <div class="notation">
+    <h3>Crotchets, with G major's signature in Clairnote's stacks</h3>
+    <div id="tut-crotchet"></div>
+    <h3>Minims as repeated heads (first)</h3>
+    <div id="tut-minim-repeat"></div>
+    <h3>Minims as hollows (then)</h3>
+    <div id="tut-minim-hollow"></div>
+    <h3>Optional: a diamond twice as wide as tall as the key signature's symbol, E♭ major</h3>
+    <div id="tut-custom"></div>
+    <p class="credit">Stacked signatures after Clairnote, by Paul Morris (clairnote.org), CC BY-SA 4.0; the idea only, no code.</p>
+  </div>
+</div>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>
