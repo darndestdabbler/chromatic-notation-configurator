@@ -112,7 +112,7 @@ The system is being rebuilt from a 3,057-line monolithic HTML file into a modula
 | **13** | Staff/Ledger Rule Editor | UI | Rule editor for staff and ledger line properties |
 | **14** | Notehead Rule Editor | UI | Rule editor for notehead shape, hollowness, color by pitch/duration/key |
 | **15** | Common Properties Editor | UI | Global config settings (duration representation, etc.) |
-| **16** | SVG Shape Importer | UI | Reads SVG files to extract notehead paths and anchor points |
+| **16** | SVG Shape Importer | UI | Reads SVG files to extract notehead paths and anchor points; a file drawn by hand imports where it was drawn (session 62) |
 | **17** | Config Save/Load (JSON) | UI | Save and load config as JSON files |
 | **18** | Config Export (LilyPond) | UI | Save config as LilyPond file (wraps Module 11) |
 | **19** | Preview Display | UI | Full preview with controls for pitch range, duration range, key selection |
@@ -951,6 +951,20 @@ clef: {
   required for clefs. Since session 59 an imported glyph takes its box's
   centre as its anchor point, on `staff.midpoint`, and the panel opens a
   picker on the enlarged glyph where a click moves it.
+- **A file drawn by hand (session 62).** Module 16 reads a clef, notehead or
+  key-signature symbol where it was drawn: each imported path is
+  normalised once, at import, to absolute M, L, C and Z in the root
+  `<svg>`'s units, with the transforms of the element and every ancestor
+  applied (`normalizePath`; arcs as cubics within 0.01 units), basic
+  shapes read as paths (`shapeToPath`), and the stem rects through the
+  same transforms. A clef with no marked glyph takes every drawn path and
+  shape outside `<defs>`. Toolkit output, absolute and untransformed, is
+  stored as it is. Text, a path with no fill, `<use>`, `<image>`, a
+  nested `<svg>`, and clip-path, mask or filter are refused, naming the
+  element and the Inkscape command to use (Object to Path, Stroke to Path,
+  Unlink Clone, Trace Bitmap, Ungroup, Release, Remove Filters). Nothing
+  downstream changed: the preview and the export read the stored paths as
+  before.
 - **Clefs to choose from (session 45).** The Clef panel's buttons add a
   clef without an import (`ui/builtin-clefs.js`): the dozenal clef, drawn
   as the engine engraves it under the score's default treble clef (the

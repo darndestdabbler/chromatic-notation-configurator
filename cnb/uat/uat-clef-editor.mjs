@@ -58,6 +58,8 @@ import { CNBClef } from "../src/cnb-clef.js";
 import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
+import { CNBNotehead } from "../src/cnb-notehead.js";
+import { findEngine, measureClef } from "../tests/engine-probe.js";
 import { useCanvasSize, useDownloads, canvasConfig, openSection } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -539,6 +541,67 @@ check("DRAG: the export carries the dragged clef (its top as drawn and its heigh
   ly.includes(`(cons 'anchor-semitones ${Math.round((dragged.top - cfg.staff.midpoint + 12) * 1e4) / 1e4})`) &&
   ly.includes(`(cons 'height-semitones ${resized.semitoneHeight})`) && ly === CNBLilypond.generate(cfg));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-045-dragged.png"), fullPage: true });
+
+// ── STEP 8b: a clef drawn by hand in Inkscape (session 62) ──────────────────
+// The tutorial's c-clef.svg: two paths in a translated layer, relative
+// commands and arcs. It imports where it was drawn, the canvas draws it, and
+// the engine engraves it where the canvas draws it.
+const C_CLEF_TEXT = await readFile(path.join(ROOT, "docs", "playbook", "tutorial", "downloads", "c-clef.svg"), "utf8");
+await page.setInputFiles(".cnb-cle-file", {
+  name: "c-clef.svg", mimeType: "image/svg+xml", buffer: Buffer.from(C_CLEF_TEXT, "utf8"),
+});
+await page.waitForFunction(() =>
+  /c-clef|Import failed/.test(document.querySelector(".cnb-cle-import-status").textContent +
+    (document.querySelector(".cnb-cle-import-error")?.textContent || "")));
+cfg = await fullConfig();
+const cClef = cfg.clef.glyphs["c-clef"];
+check("HAND-DRAWN: c-clef.svg imports without error and is the active clef, its path absolute M, L, C and Z",
+  !!cClef && cfg.clef.active === "c-clef" && /^M [-\d.]+ [-\d.]+( [MLCZ]( [-\d.]+)*)*$/.test(cClef.svgPath),
+  await page.textContent(".cnb-clef-editor"));
+// Chromium's own measure of the file's drawn paths, in the root's units.
+const drawnBox = await page.evaluate((text) => {
+  const host = document.createElement("div");
+  host.style.cssText = "position:absolute;left:-9999px;top:0";
+  host.innerHTML = text.replace(/^<\?xml[^>]*>/, "");
+  document.body.appendChild(host);
+  const b = host.querySelector("svg").getBBox();
+  host.remove();
+  return { x: [b.x, b.x + b.width], y: [b.y, b.y + b.height] };
+}, C_CLEF_TEXT);
+const importedBox = CNBNotehead.box(cClef);
+check(`HAND-DRAWN: its box matches the extent Chromium draws the file's paths at (${JSON.stringify(drawnBox)}), within 0.01`,
+  [0, 1].every(i => Math.abs(importedBox.x[i] - drawnBox.x[i]) <= 0.01 && Math.abs(importedBox.y[i] - drawnBox.y[i]) <= 0.01),
+  JSON.stringify(importedBox));
+if (await page.$(".cnb-cle-anchor-done")) await page.click(".cnb-cle-anchor-done");
+await page.fill(".cnb-cle-height", "8");
+await page.fill(".cnb-cle-sits", "14");
+cfg = await fullConfig();
+check("HAND-DRAWN: 8 semitones tall, its anchor (its box's centre) on semitone 14",
+  cfg.clef.glyphs["c-clef"].semitoneHeight === 8 && cfg.clef.glyphs["c-clef"].anchorSemi === 14,
+  JSON.stringify({ h: cfg.clef.glyphs["c-clef"].semitoneHeight, a: cfg.clef.glyphs["c-clef"].anchorSemi }));
+check("HAND-DRAWN: the canvas draws it with its top at semiToY(CNBClef.shown(...).top) (Node-side parity)",
+  await page.$eval(".cnb-pvd-preview .cnb-clef", (el, t) => el.getAttribute("transform") === t,
+    clefAt(cfg, cfg.clef.gutter.paddingH)) &&
+  (await page.$eval(".cnb-pvd-preview .cnb-clef path", el => el.getAttribute("d"))) === cfg.clef.glyphs["c-clef"].svgPath,
+  await page.$eval(".cnb-pvd-preview .cnb-clef", el => el.getAttribute("transform")));
+await page.screenshot({ path: path.join(SHOT_DIR, "uat-062-c-clef.png"), fullPage: true });
+ly = await downloadLy();
+check("HAND-DRAWN: the export registers it and equals CNBLilypond.generate on the same config",
+  ly.includes("#(cnb:register-clef! 'c-clef") && ly.includes("#(set! cnb:clef-name 'c-clef)") &&
+  ly === CNBLilypond.generate(cfg));
+const engine = findEngine();
+if (engine.skip) {
+  results.push(`SKIP  HAND-DRAWN: engraving not measured (${engine.skip})`);
+} else {
+  const { clef: engraved, error: engraveError } = await measureClef(engine, ly);
+  const { top, bottom } = CNBClef.extent(cfg);
+  const mid = cfg.staff.midpoint, sps = cfg.staff.semitonesPerStaffSpace;
+  check(`HAND-DRAWN: the engine engraves it where the canvas draws it, top ${(top - mid) / sps} and bottom ${(bottom - mid) / sps} staff spaces, within 0.001`,
+    !engraveError && engraved &&
+    Math.abs(engraved.top / 2 - (top - mid) / sps) < 0.001 &&
+    Math.abs(engraved.bottom / 2 - (bottom - mid) / sps) < 0.001,
+    engraveError || JSON.stringify(engraved && { top: engraved.top / 2, bottom: engraved.bottom / 2 }));
+}
 
 // ── STEP 9: no errors ────────────────────────────────────────────────────────
 check("NO console or page errors across the whole clef flow", consoleErrors.length === 0,

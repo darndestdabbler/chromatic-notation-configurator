@@ -73,6 +73,15 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 59 | Clefs sized about an anchor | no | 2026-11-13 |
 | 60 | Noteheads centred by their shape's reference point | no | 2026-11-13 |
 | 61 | Designing the step-by-step Configurator | no | 2026-11-13 |
+| 62 | Importing a hand-drawn SVG | no | 2026-11-13 |
+| 63 | The steps and the navigation | — | not declared |
+| 64 | The key signature's spelled looks | — | not declared |
+| 65 | Key-signature steps 6 and 7 | — | not declared |
+| 66 | Key-signature steps 8 and 9 | — | not declared |
+| 67 | The walk-through | — | not declared |
+| 68 | The tutorial | — | not declared |
+| 69 | The UI is stable | — | not declared |
+| 70 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -632,3 +641,9 @@ Design the step-by-step Configurator, as a design only, for the operator's appro
 **Amended after acceptance:**
 
 - 2026-11-13 — step 'consult': its files: Both consult replies move 'Hollow for minims' out of the notehead panel (selection scope); the step-5 mock-up must show the revised placement, and re-shooting rewrites every shot (claude-code (anthropic, claude-opus-5-5))
+
+### Session 62 — Importing a hand-drawn SVG
+
+**Releasable: no.**
+
+Make a file saved straight from Inkscape import where it was drawn (step-by-step design §8), in cnb/ui/svg-importer.js and nowhere else downstream. Each imported path's d (a notehead's #notehead and #hollow, which the key signature's symbol import also uses, and a clef's glyph paths) is normalised once, at import, to absolute M, L, C and Z in the root <svg>'s user space (the viewBox's units): relative commands made absolute, H and V as lines, S, Q and T as cubics, each arc as cubics within 0.01 stored units (the tolerance taken after the transforms), z returning the current point to its subpath's start, with the composed transform of the element and every ancestor <g> up to the root applied (matrix, translate, scale, rotate with or without a centre, skewX and skewY). rect (rounded corners included), circle, ellipse, polygon and polyline are converted to paths; the toolkit's stem rects stay rects, read as today with their ancestors' transforms composed onto their own. Because everything is stored in the root's units, the hollow, the stem anchors and the reference points the panels set (a clef's box centre, a key-signature symbol's origin) sit on the ink as they are drawn. A path with no transform on it or its ancestors whose commands are all absolute ones every reader already reads (M, L, H, V, C, Z), as toolkit output always is, is stored exactly as it is, so every import that works today imports byte for byte as before. Refused by name, with what to do in Inkscape: <text> (Object to Path), a path drawn only by its stroke (Stroke to Path), <use>, <image>, a nested <svg>, and clip-path, mask or filter on an imported element or its ancestors. The operator's C clef (D:\sample-c-clef.svg, a translated layer, relative commands and arcs) is checked in as docs/playbook/tutorial/downloads/c-clef.svg with its leftover style properties removed; it imports with its box matching its drawn extent, and uat-clef-editor.mjs imports it through the clef panel and engraves it where the canvas draws it. The five export baselines are unchanged. The README's import section says what a hand-drawn file may contain.

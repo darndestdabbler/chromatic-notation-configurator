@@ -22,15 +22,33 @@
  *     `<rect id="stem-minim-down">`, user-drawn, read with the same rule into
  *     anchors.minimUp/minimDown. Absent (or only half present, with a
  *     warning) → the minim anchors copy the crotchet anchors.
- *   - A stem rect's own `transform` attribute (matrix/translate/scale/rotate)
- *     is applied before its anchor is read (toolkit audit M8: Inkscape stores
- *     a flipped rect as raw geometry plus scale(-1)); the anchor comes from
- *     the rect's own ends mapped through it, so a rotated rect anchors at its
- *     end (session 11 review). One the importer cannot read is an import
- *     error. Ancestor (group/layer) transforms are not read.
+ *   - A stem rect's own `transform` attribute, composed with its ancestors'
+ *     (session 62), is applied before its anchor is read (toolkit audit M8:
+ *     Inkscape stores a flipped rect as raw geometry plus scale(-1)); the
+ *     anchor comes from the rect's own ends mapped through it, so a rotated
+ *     rect anchors at its end (session 11 review). One the importer cannot
+ *     read is an import error.
  *   - The toolkit normalizes shapes to 100 SVG units per semitone, centered
  *     on the origin, and sets the root viewBox to the exact notehead bounds.
  *     Pre-baked LilyPond paths are SVG coordinates ÷ 100 with Y negated.
+ *
+ * A file drawn by hand imports where it was drawn (session 62, step-by-step
+ * design §8). Each imported path (the notehead, its hollow, a clef's glyph
+ * paths) is stored in the root <svg>'s units, the viewBox's: its d is
+ * normalised once, at import, to absolute M, L, C and Z (normalizePath:
+ * every SVG 1.1 command, each arc as cubics within 0.01 units), with the
+ * composed transform of the element and every ancestor up to the root
+ * applied (matrix, translate, scale, rotate, skewX, skewY). A rect, circle,
+ * ellipse, polygon or polyline is read as the path it draws (shapeToPath).
+ * The stem rects go through the same transforms, and the reference points
+ * the panels set (a clef's box centre, a symbol's origin) are in the same
+ * units, so all of them sit on the ink as drawn. A path with no transform
+ * on it or its ancestors whose commands are all absolute M, L, H, V, C or Z,
+ * as toolkit output always is, is stored exactly as it is. Refused, naming
+ * the element and what to do in Inkscape: <text> (Object to Path), a path
+ * with no fill, drawn by its stroke (Stroke to Path), <use>, <image>, a
+ * nested <svg>, and clip-path, mask or filter on an imported element or an
+ * ancestor. Nothing a file refers to is fetched.
  *
  * Parsing/extraction is pure: `extract()` takes any Document-like object
  * (real DOMParser output or a test stub exposing getElementById /
@@ -69,22 +87,28 @@ function prebakedPath(text, attr) {
   return { path: CNBScheme.path(commands, attr), error: null };
 }
 
-/**
- * Parse an SVG `transform` list of matrix(a b c d e f), translate(tx [ty]),
- * scale(sx [sy]) and rotate(deg [cx cy]), composed in order (the rightmost
- * function applies first, per SVG), into one matrix [a, b, c, d, e, f]
- * with x' = a·x + c·y + e and y' = b·x + d·y + f. A blank transform is the
- * identity; one that does not parse is null.
- */
-function parseTransform(transform) {
-  const text = transform === null || transform === undefined ? "" : String(transform);
-  const mul = (m, n) => [
+/** The product m·n of two parseTransform matrices (n applies first). */
+function mul(m, n) {
+  return [
     m[0] * n[0] + m[2] * n[1],        m[1] * n[0] + m[3] * n[1],
     m[0] * n[2] + m[2] * n[3],        m[1] * n[2] + m[3] * n[3],
     m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5],
   ];
-  let m = [1, 0, 0, 1, 0, 0];
-  const re = /\s*(matrix|translate|scale|rotate)\s*\(([^()]*)\)\s*,?/gy;
+}
+
+const IDENTITY = [1, 0, 0, 1, 0, 0];
+
+/**
+ * Parse an SVG `transform` list of matrix(a b c d e f), translate(tx [ty]),
+ * scale(sx [sy]), rotate(deg [cx cy]), skewX(deg) and skewY(deg), composed
+ * in order (the rightmost function applies first, per SVG), into one matrix
+ * [a, b, c, d, e, f] with x' = a·x + c·y + e and y' = b·x + d·y + f. A
+ * blank transform is the identity; one that does not parse is null.
+ */
+function parseTransform(transform) {
+  const text = transform === null || transform === undefined ? "" : String(transform);
+  let m = IDENTITY;
+  const re = /\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^()]*)\)\s*,?/gy;
   let pos = 0;
   let match;
   while (pos < text.length && (match = re.exec(text)) !== null) {
@@ -117,6 +141,13 @@ function parseTransform(transform) {
         }
         break;
       }
+      case "skewX":
+      case "skewY": {
+        if (n !== 1) return null;
+        const tan = Math.tan(args[0] * Math.PI / 180);
+        t = match[1] === "skewX" ? [1, 0, tan, 1, 0, 0] : [1, tan, 0, 1, 0, 0];
+        break;
+      }
     }
     m = mul(m, t);
   }
@@ -136,6 +167,266 @@ function applyTransform(m, x, y) {
 function roundTo(value, decimals) {
   const f = Math.pow(10, decimals);
   return Math.round(value * f) / f;
+}
+
+// ─── Path normalisation (session 62, step-by-step design §8) ────────────────
+
+// Each command's number of arguments, by its upper-case letter.
+const PATH_ARITY = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0 };
+
+/**
+ * Tokenise SVG path data into [{ cmd, args }], each command repeated as
+ * often as its arguments run (an M's extra pairs as L, an m's as l), or
+ * null when it does not parse. Arc flags may be written without separators
+ * ("a1 1 0 01 2 2").
+ */
+function tokenizePath(d) {
+  const text = String(d);
+  const number = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
+  const out = [];
+  let i = 0;
+  const skip = () => { while (i < text.length && /[\s,]/.test(text[i])) i++; };
+  skip();
+  if (i >= text.length || !/[Mm]/.test(text[i])) return null;
+  while (i < text.length) {
+    const cmd = text[i];
+    const upper = cmd.toUpperCase();
+    if (!(upper in PATH_ARITY)) return null;
+    i++;
+    const arity = PATH_ARITY[upper];
+    let first = true;
+    for (;;) {
+      skip();
+      if (arity === 0 || i >= text.length || /[A-Za-z]/.test(text[i])) {
+        if (first && arity !== 0) return null;   // a command with no arguments
+        if (arity === 0) out.push({ cmd, args: [] });
+        break;
+      }
+      const args = [];
+      for (let k = 0; k < arity; k++) {
+        skip();
+        if (upper === "A" && (k === 3 || k === 4)) {
+          if (text[i] !== "0" && text[i] !== "1") return null;
+          args.push(Number(text[i++]));
+          continue;
+        }
+        number.lastIndex = i;
+        const m = number.exec(text);
+        if (!m) return null;
+        args.push(Number(m[0]));
+        i = number.lastIndex;
+      }
+      if (args.some(n => !Number.isFinite(n))) return null;
+      const repeat = first ? cmd : (upper === "M" ? (cmd === "M" ? "L" : "l") : cmd);
+      out.push({ cmd: repeat, args });
+      first = false;
+    }
+  }
+  return out;
+}
+
+/** The largest singular value of a matrix's linear part (its greatest stretch). */
+function maxStretch(m) {
+  const s = m[0] * m[0] + m[1] * m[1] + m[2] * m[2] + m[3] * m[3];
+  const det = m[0] * m[3] - m[1] * m[2];
+  return Math.sqrt((s + Math.sqrt(Math.max(0, s * s - 4 * det * det))) / 2);
+}
+
+/**
+ * An SVG arc from (x1, y1), its radii nonzero, as cubic Béziers [[c1x, c1y, c2x, c2y, x, y], …]
+ * in the arc's own (untransformed) coordinates, with enough of them that,
+ * once a matrix stretching by at most `stretch` is applied, each lies within
+ * 0.01 units of the true arc (SVG 1.1 implementation notes F.6.5, F.6.6).
+ */
+function arcToCubics(x1, y1, rx, ry, phiDeg, largeArc, sweep, x2, y2, stretch) {
+  if (x1 === x2 && y1 === y2) return [];
+  rx = Math.abs(rx); ry = Math.abs(ry);
+  const phi = phiDeg * Math.PI / 180;
+  const cos = Math.cos(phi), sin = Math.sin(phi);
+  const dx = (x1 - x2) / 2, dy = (y1 - y2) / 2;
+  const xp = cos * dx + sin * dy, yp = -sin * dx + cos * dy;
+  const lambda = (xp * xp) / (rx * rx) + (yp * yp) / (ry * ry);
+  if (lambda > 1) { const r = Math.sqrt(lambda); rx *= r; ry *= r; }
+  const num = rx * rx * ry * ry - rx * rx * yp * yp - ry * ry * xp * xp;
+  const den = rx * rx * yp * yp + ry * ry * xp * xp;
+  let coef = Math.sqrt(Math.max(0, num / den));
+  if (largeArc === sweep) coef = -coef;
+  const cxp = coef * rx * yp / ry, cyp = -coef * ry * xp / rx;
+  const cx = cos * cxp - sin * cyp + (x1 + x2) / 2;
+  const cy = sin * cxp + cos * cyp + (y1 + y2) / 2;
+  const angle = (ux, uy, vx, vy) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+  const theta1 = angle(1, 0, (xp - cxp) / rx, (yp - cyp) / ry);
+  let delta = angle((xp - cxp) / rx, (yp - cyp) / ry, (-xp - cxp) / rx, (-yp - cyp) / ry);
+  if (!sweep && delta > 0) delta -= 2 * Math.PI;
+  if (sweep && delta < 0) delta += 2 * Math.PI;
+
+  // A cubic on a unit-circle arc of a quarter turn is within 2.73e-4 of it,
+  // the error scaling as the angle's sixth power; half the tolerance is left
+  // for the 4-decimal rounding and the arc's own float error.
+  const radius = Math.max(rx, ry) * stretch;
+  const maxAngle = Math.min(Math.PI / 2, (Math.PI / 2) * Math.pow(0.005 / (2.73e-4 * radius), 1 / 6));
+  const n = Math.max(1, Math.ceil(Math.abs(delta) / maxAngle));
+  const step = delta / n;
+  const k = 4 / 3 * Math.tan(step / 4);
+  const point = (t) => {
+    const ex = rx * Math.cos(t), ey = ry * Math.sin(t);
+    return [cos * ex - sin * ey + cx, sin * ex + cos * ey + cy];
+  };
+  const tangent = (t) => {
+    const ex = -rx * Math.sin(t), ey = ry * Math.cos(t);
+    return [cos * ex - sin * ey, sin * ex + cos * ey];
+  };
+  const cubics = [];
+  for (let s = 0; s < n; s++) {
+    const a = theta1 + s * step, b = a + step;
+    const [ax, ay] = point(a), [bx, by] = s === n - 1 ? [x2, y2] : point(b);
+    const [tax, tay] = tangent(a), [tbx, tby] = tangent(b);
+    cubics.push([ax + k * tax, ay + k * tay, bx - k * tbx, by - k * tby, bx, by]);
+  }
+  return cubics;
+}
+
+/** A coordinate as the normalised path writes it: 4 decimals, no -0. */
+function pathNumber(v) {
+  return String(roundTo(v, 4) + 0);
+}
+
+// ─── Reading a drawn element where it is drawn (session 62) ─────────────────
+
+// The elements a clef import reads as its glyph (paths and basic shapes).
+const DRAWN_TAGS = ["path", "rect", "circle", "ellipse", "polygon", "polyline"];
+
+/** The element's ancestors below the root <svg>, nearest first. */
+function ancestorsOf(el, root) {
+  const out = [];
+  for (let n = el.parentNode; n && n !== root && typeof n.getAttribute === "function"; n = n.parentNode) {
+    out.push(n);
+  }
+  return out;
+}
+
+/** An element as a message names it: <path id="x">. */
+function describe(el) {
+  const id = el.getAttribute("id");
+  return `<${localTag(el)}${id ? ` id="${id}"` : ""}>`;
+}
+
+/** A presentation property, from the style attribute first, else the attribute. */
+function styleProp(el, name) {
+  const style = el.getAttribute("style");
+  if (style) {
+    for (const decl of String(style).split(";")) {
+      const at = decl.indexOf(":");
+      if (at > 0 && decl.slice(0, at).trim().toLowerCase() === name) return decl.slice(at + 1).trim();
+    }
+  }
+  const attr = el.getAttribute(name);
+  return attr === null ? null : String(attr).trim();
+}
+
+/**
+ * The composed transform of an element and every ancestor up to the root
+ * <svg>, as one parseTransform matrix: { matrix, any } (any: some transform
+ * is set), or { matrix: null, el } naming the element whose transform does
+ * not parse.
+ */
+function composedTransform(el, root) {
+  let m = IDENTITY;
+  let any = false;
+  for (const n of [el, ...ancestorsOf(el, root)]) {
+    const t = n.getAttribute("transform");
+    const parsed = parseTransform(t);
+    if (!parsed) return { matrix: null, el: n, transform: t };
+    if (t !== null && String(t).trim() !== "") any = true;
+    m = mul(parsed, m);
+  }
+  return { matrix: m, any };
+}
+
+/**
+ * An imported element's path, in the root's units: { d, transformed } or
+ * { error }, transformed when a transform was applied to it. A
+ * path with no transform on it or its ancestors whose commands are all
+ * absolute ones every reader reads (M, L, H, V, C, Z), as toolkit output
+ * always is, is returned as it is; anything else is normalised through the
+ * composed transform. Refused, naming the element: clip-path, mask or
+ * filter on it or an ancestor, and no fill (drawn by its stroke).
+ */
+function importedPath(el, root) {
+  const name = describe(el);
+  const chain = [el, ...ancestorsOf(el, root)];
+  const releases = [["clip-path", "Object > Clip > Release"], ["mask", "Object > Mask > Release"],
+    ["filter", "Filters > Remove Filters"]];
+  for (const n of chain) {
+    for (const [prop, command] of releases) {
+      const v = styleProp(n, prop);
+      if (v && v !== "none") {
+        return { error: `${name} has a ${prop}${n === el ? "" : ` (on ${describe(n)})`}, which the importer ` +
+          `cannot read: in Inkscape use ${command}, then import again` };
+      }
+    }
+  }
+  let fill = null;
+  for (const n of [...chain, root]) {
+    fill = styleProp(n, "fill");
+    if (fill !== null) break;
+  }
+  if (fill === "none") {
+    return { error: `${name} has no fill, so it is drawn only by its stroke: in Inkscape use ` +
+      "Path > Stroke to Path, then import again" };
+  }
+  const d = CNBSvgImporter.shapeToPath(el);
+  if (!d) {
+    return { error: `${name} has no path data` + (localTag(el) === "path" ? " (d attribute)" : " (it draws nothing)") };
+  }
+  const { matrix, any, el: bad, transform } = composedTransform(el, root);
+  if (!matrix) {
+    return { error: `${name} has a transform the importer cannot read (${JSON.stringify(transform)}` +
+      `${bad === el ? "" : ` on ${describe(bad)}`})` };
+  }
+  const tokens = tokenizePath(d);
+  if (!tokens) return { error: `${name} has path data the importer cannot read` };
+  if (!any && localTag(el) === "path" && tokens.every(t => "MLHVCZ".includes(t.cmd))) return { d };
+  return { d: CNBSvgImporter.normalizePath(d, matrix), transformed: any };
+}
+
+/**
+ * The first element the importer refuses wherever it is drawn (outside
+ * <defs>): text, a clone, a bitmap or a nested <svg>, as a message naming
+ * it and what to do in Inkscape; null when there is none.
+ */
+function refusedElement(doc, root) {
+  if (typeof doc.querySelectorAll !== "function") return null;
+  const advice = {
+    text: "select it and use Path > Object to Path",
+    use: "select it and use Edit > Clone > Unlink Clone",
+    image: "trace it with Path > Trace Bitmap, or redraw it as paths",
+    svg: "move its contents into the drawing (Object > Ungroup)",
+  };
+  for (const el of Array.from(doc.querySelectorAll("text, use, image, svg"))) {
+    if (!(localTag(el) in advice) || el === root || ancestorsOf(el, root).some(a => localTag(a) === "defs")) continue;
+    return `The file has ${describe(el)}, which the importer cannot read: in Inkscape, ` +
+      `${advice[localTag(el)]}, then import again`;
+  }
+  return null;
+}
+
+/** A rect's corners mapped through a matrix, as their axis-aligned box. */
+function rectBox(rect, m) {
+  const corners = [
+    [rect.x, rect.y], [rect.x + rect.width, rect.y],
+    [rect.x, rect.y + rect.height], [rect.x + rect.width, rect.y + rect.height],
+  ].map(([x, y]) => applyTransform(m, x, y));
+  const xs = corners.map(c => c.x);
+  const ys = corners.map(c => c.y);
+  const minX = Math.min(...xs), minY = Math.min(...ys);
+  return { x: minX, y: minY, width: clean(Math.max(...xs) - minX), height: clean(Math.max(...ys) - minY) };
+}
+
+/** A rect's own top- and bottom-centre mapped through a matrix. */
+function rectEnds(rect, m) {
+  const cx = rect.x + rect.width / 2;
+  return { top: applyTransform(m, cx, rect.y), bottom: applyTransform(m, cx, rect.y + rect.height) };
 }
 
 /** Find an element by id, tolerating documents without getElementById. */
@@ -208,6 +499,155 @@ export const CNBSvgImporter = {
   },
 
   /**
+   * Normalise SVG path data (session 62, step-by-step design §8): every
+   * SVG 1.1 command is written as absolute M, L, C or Z with `matrix`
+   * (parseTransform's form) applied to every point. Relative commands are
+   * made absolute, H and V become lines, S, Q and T cubics, and each arc the
+   * cubics that lie within 0.01 units of it after the matrix; z returns the
+   * current point to its subpath's start. Numbers are rounded to 4 decimals.
+   *
+   * @param {string} d
+   * @param {number[]} [matrix]  [a, b, c, d, e, f]; the identity by default
+   * @returns {string|null} the normalised path, or null when d does not parse
+   */
+  normalizePath(d, matrix = IDENTITY) {
+    if (d === null || d === undefined) return null;
+    const tokens = tokenizePath(d);
+    if (!tokens) return null;
+    const stretch = maxStretch(matrix);
+    const out = [];
+    const put = (cmd, ...xy) => {
+      const nums = [];
+      for (let i = 0; i < xy.length; i += 2) {
+        const p = applyTransform(matrix, xy[i], xy[i + 1]);
+        nums.push(pathNumber(p.x), pathNumber(p.y));
+      }
+      out.push([cmd, ...nums].join(" "));
+    };
+    let x = 0, y = 0, startX = 0, startY = 0;
+    let cubicCtrl = null, quadCtrl = null;   // the last C/S second control, Q/T control
+    for (const { cmd, args } of tokens) {
+      const upper = cmd.toUpperCase();
+      const ox = cmd === upper ? 0 : x, oy = cmd === upper ? 0 : y;
+      let nextCubic = null, nextQuad = null;
+      switch (upper) {
+        case "M":
+          x = args[0] + ox; y = args[1] + oy; startX = x; startY = y;
+          put("M", x, y);
+          break;
+        case "L":
+          x = args[0] + ox; y = args[1] + oy;
+          put("L", x, y);
+          break;
+        case "H":
+          x = args[0] + ox;
+          put("L", x, y);
+          break;
+        case "V":
+          y = args[0] + oy;
+          put("L", x, y);
+          break;
+        case "C":
+        case "S": {
+          const [c1x, c1y] = upper === "C" ? [args[0] + ox, args[1] + oy]
+            : cubicCtrl ? [2 * x - cubicCtrl[0], 2 * y - cubicCtrl[1]] : [x, y];
+          const a = upper === "C" ? args.slice(2) : args;
+          const c2x = a[0] + ox, c2y = a[1] + oy;
+          x = a[2] + ox; y = a[3] + oy;
+          put("C", c1x, c1y, c2x, c2y, x, y);
+          nextCubic = [c2x, c2y];
+          break;
+        }
+        case "Q":
+        case "T": {
+          const [qx, qy] = upper === "Q" ? [args[0] + ox, args[1] + oy]
+            : quadCtrl ? [2 * x - quadCtrl[0], 2 * y - quadCtrl[1]] : [x, y];
+          const a = upper === "Q" ? args.slice(2) : args;
+          const ex = a[0] + ox, ey = a[1] + oy;
+          put("C", x + 2 / 3 * (qx - x), y + 2 / 3 * (qy - y),
+            ex + 2 / 3 * (qx - ex), ey + 2 / 3 * (qy - ey), ex, ey);
+          x = ex; y = ey;
+          nextQuad = [qx, qy];
+          break;
+        }
+        case "A": {
+          const ex = args[5] + ox, ey = args[6] + oy;
+          if (args[0] === 0 || args[1] === 0) {
+            if (ex !== x || ey !== y) put("L", ex, ey);
+          } else {
+            for (const c of arcToCubics(x, y, args[0], args[1], args[2], args[3], args[4], ex, ey, stretch)) {
+              put("C", ...c);
+            }
+          }
+          x = ex; y = ey;
+          break;
+        }
+        case "Z":
+          out.push("Z");
+          x = startX; y = startY;
+          break;
+      }
+      cubicCtrl = nextCubic;
+      quadCtrl = nextQuad;
+    }
+    return out.join(" ");
+  },
+
+  /**
+   * The path data of a drawable element: a path's d, or a basic shape's
+   * outline as SVG draws it (rect with rounded corners, circle, ellipse,
+   * polygon, polyline), still to be normalised. null for an element that
+   * draws nothing (a zero-sized rect, a circle of radius 0, fewer than two
+   * points) or is not one of these.
+   *
+   * @param {Element|object} el  exposes getAttribute and tagName
+   * @returns {string|null}
+   */
+  shapeToPath(el) {
+    const num = (name) => {
+      const v = parseFloat(el.getAttribute(name));
+      return Number.isFinite(v) ? v : null;
+    };
+    const ellipse = (cx, cy, rx, ry) => (rx > 0 && ry > 0)
+      ? `M ${cx + rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx - rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx + rx} ${cy} Z`
+      : null;
+    switch (localTag(el)) {
+      case "path":
+        return el.getAttribute("d") || null;
+      case "rect": {
+        const x = num("x") ?? 0, y = num("y") ?? 0, w = num("width") ?? 0, h = num("height") ?? 0;
+        if (!(w > 0 && h > 0)) return null;
+        // An omitted radius takes the other as given, then each is clamped.
+        let rx = num("rx"), ry = num("ry");
+        if (rx !== null && rx < 0) rx = null;
+        if (ry !== null && ry < 0) ry = null;
+        [rx, ry] = [Math.min(rx ?? ry ?? 0, w / 2), Math.min(ry ?? rx ?? 0, h / 2)];
+        if (rx === 0 || ry === 0) return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+        const arc = (ex, ey) => `A ${rx} ${ry} 0 0 1 ${ex} ${ey}`;
+        return `M ${x + rx} ${y} L ${x + w - rx} ${y} ${arc(x + w, y + ry)} L ${x + w} ${y + h - ry} ` +
+          `${arc(x + w - rx, y + h)} L ${x + rx} ${y + h} ${arc(x, y + h - ry)} L ${x} ${y + ry} ${arc(x + rx, y)} Z`;
+      }
+      case "circle": {
+        const r = num("r") ?? 0;
+        return ellipse(num("cx") ?? 0, num("cy") ?? 0, r, r);
+      }
+      case "ellipse":
+        return ellipse(num("cx") ?? 0, num("cy") ?? 0, num("rx") ?? 0, num("ry") ?? 0);
+      case "polygon":
+      case "polyline": {
+        const nums = String(el.getAttribute("points") || "").trim().split(/[\s,]+/).filter(Boolean).map(Number);
+        if (nums.some(v => !Number.isFinite(v))) return null;
+        const pairs = Math.floor(nums.length / 2);
+        if (pairs < 2) return null;
+        const pts = [];
+        for (let i = 0; i < pairs; i++) pts.push(`${i === 0 ? "M" : "L"} ${nums[2 * i]} ${nums[2 * i + 1]}`);
+        return pts.join(" ") + (localTag(el) === "polygon" ? " Z" : "");
+      }
+    }
+    return null;
+  },
+
+  /**
    * Convert rect attribute strings to numbers (missing/invalid → 0).
    * @param {{x:any,y:any,width:any,height:any}} attrs
    * @returns {{x:number,y:number,width:number,height:number}}
@@ -228,8 +668,8 @@ export const CNBSvgImporter = {
    * so the raw geometry sits on the opposite side of the notehead).
    *
    * Accepts a transform list of matrix(a b c d e f), translate(tx [ty]),
-   * scale(sx [sy]) and rotate(deg [cx cy]), composed in order (the rightmost
-   * function applies first, per SVG). Only the rect's own attribute is read.
+   * scale(sx [sy]), rotate(deg [cx cy]), skewX(deg) and skewY(deg), composed
+   * in order (the rightmost function applies first, per SVG).
    *
    * @param {{x:number,y:number,width:number,height:number}} rect
    * @param {string|null} transform
@@ -240,20 +680,7 @@ export const CNBSvgImporter = {
   transformRect(rect, transform) {
     if (transform === null || transform === undefined || String(transform).trim() === "") return rect;
     const m = parseTransform(transform);
-    if (!m) return null;
-    const corners = [
-      [rect.x, rect.y], [rect.x + rect.width, rect.y],
-      [rect.x, rect.y + rect.height], [rect.x + rect.width, rect.y + rect.height],
-    ].map(([x, y]) => applyTransform(m, x, y));
-    const xs = corners.map(c => c.x);
-    const ys = corners.map(c => c.y);
-    const minX = Math.min(...xs), minY = Math.min(...ys);
-    return {
-      x: minX,
-      y: minY,
-      width: clean(Math.max(...xs) - minX),
-      height: clean(Math.max(...ys) - minY),
-    };
+    return m ? rectBox(rect, m) : null;
   },
 
   /**
@@ -271,12 +698,7 @@ export const CNBSvgImporter = {
    */
   stemRectEnds(rect, transform) {
     const m = parseTransform(transform);
-    if (!m) return null;
-    const cx = rect.x + rect.width / 2;
-    return {
-      top: applyTransform(m, cx, rect.y),
-      bottom: applyTransform(m, cx, rect.y + rect.height),
-    };
+    return m ? rectEnds(rect, m) : null;
   },
 
   /**
@@ -405,37 +827,47 @@ export const CNBSvgImporter = {
       };
     }
 
-    const svgPath = noteheadEl.getAttribute("d") || "";
-    if (!svgPath) return { error: 'The "notehead" element has no path data (d attribute)' };
+    const refused = refusedElement(doc, root);
+    if (refused) return { error: refused };
+
+    // The notehead and hollow in the root's units, through every transform
+    // (session 62); toolkit output is stored as it is.
+    const notehead = importedPath(noteheadEl, root);
+    if (notehead.error) return { error: notehead.error };
+    const svgPath = notehead.d;
 
     // Hollow cutout — the toolkit emits id="hollow"; legacy files may carry
     // id="false-hollow" (per-shape false-hollow marker).
     const hollowEl = byId(doc, "hollow") || byId(doc, "false-hollow");
     const isFalseHollow = !!hollowEl && hollowEl.getAttribute("id") === "false-hollow";
+    // A hollow element that draws nothing is no hollow, as before.
+    const hollow = hollowEl && CNBSvgImporter.shapeToPath(hollowEl) ? importedPath(hollowEl, root) : { d: null };
+    if (hollow.error) return { error: hollow.error };
 
     // Stem placemarker rects (current toolkit contract — see module header),
-    // read through the rect's own transform attribute (toolkit audit M8).
+    // read through the rect's own transform attribute (toolkit audit M8)
+    // composed with its ancestors' (session 62).
     const readStemRect = (id) => {
       const el = byId(doc, id);
       if (!el) return { rect: null, nonRect: false };
       if (localTag(el) !== "rect") return { rect: null, nonRect: true };
-      const transform = el.getAttribute("transform");
       const raw = CNBSvgImporter.parseRectAttrs({
         x: el.getAttribute("x"),
         y: el.getAttribute("y"),
         width: el.getAttribute("width"),
         height: el.getAttribute("height"),
       });
-      const box = CNBSvgImporter.transformRect(raw, transform);
-      if (!box) {
+      const { matrix, any, el: bad, transform } = composedTransform(el, root);
+      if (!matrix) {
         return {
           error: `The "${id}" rect has a transform the importer cannot read ` +
-            `(${JSON.stringify(transform)}) — only matrix, translate, scale and rotate are accepted`,
+            `(${JSON.stringify(transform)}${bad === el ? "" : ` on ${describe(bad)}`}) — ` +
+            "only matrix, translate, scale, rotate, skewX and skewY are accepted",
         };
       }
+      if (!any) return { rect: raw, nonRect: false };
       // The anchor is read from the rect's own ends, not the box (session 11 review).
-      const ends = box === raw ? null : CNBSvgImporter.stemRectEnds(raw, transform);
-      return { rect: ends ? { ...box, ends } : box, nonRect: false };
+      return { rect: { ...rectBox(raw, matrix), ends: rectEnds(raw, matrix) }, nonRect: false };
     };
     const up = readStemRect("stem-up");
     const down = readStemRect("stem-down");
@@ -475,14 +907,26 @@ export const CNBSvgImporter = {
           "notehead-mode data (the file was processed in the toolkit's glyph mode)");
       }
     }
+    // A pre-baked path does not carry the transform the SVG path was drawn
+    // through (session 62), so it is dropped and the export converts the
+    // SVG path, which does.
+    const prebaked = (el, attr, imported) => {
+      const text = el ? el.getAttribute(attr) || null : null;
+      if (text && imported.transformed) {
+        warnings.push(`${attr} on ${describe(el)} ignored: the path is drawn through a transform ` +
+          "the pre-baked path does not carry, so the LilyPond export converts the SVG path instead");
+        return null;
+      }
+      return text;
+    };
 
     return {
       svgPath,
       warnings,
-      svgHollowPath: hollowEl ? (hollowEl.getAttribute("d") || null) : null,
+      svgHollowPath: hollow.d,
       isFalseHollow,
-      lilypondNotehead: noteheadEl.getAttribute("data-lilypond-notehead") || null,
-      lilypondHollow: hollowEl ? (hollowEl.getAttribute("data-lilypond-hollow") || null) : null,
+      lilypondNotehead: prebaked(noteheadEl, "data-lilypond-notehead", notehead),
+      lilypondHollow: prebaked(hollowEl, "data-lilypond-hollow", hollow),
       semitoneHeight: Number.isFinite(semitoneHeight) ? semitoneHeight : null,
       stemUpRect: up.rect,
       stemDownRect: down.rect,
@@ -636,8 +1080,10 @@ export const CNBSvgImporter = {
    * The glyph paths are id="clef" when present; otherwise every <path>
    * carrying the toolkit's glyph-mode data-lilypond-glyph attribute (toolkit
    * audit M5: glyph mode writes one per path); otherwise id="notehead"
-   * (toolkit notehead-mode files); otherwise every <path> in the document.
-   * All of them are imported: their d attributes are joined into svgPath,
+   * (toolkit notehead-mode files); otherwise every drawn path and basic
+   * shape outside <defs>, other than stem placemarkers (session 62). All of
+   * them are imported, each in the root's units (see the module header):
+   * their paths are joined into svgPath,
    * and each one's pre-baked path is returned in lilypondPieces for
    * buildClefGlyph to parse and merge.
    *
@@ -656,29 +1102,35 @@ export const CNBSvgImporter = {
       : (typeof doc.querySelector === "function" ? doc.querySelector("svg") : null);
     if (!root) return { error: "No <svg> root element found" };
 
-    const allPaths = typeof doc.querySelectorAll === "function"
-      ? Array.from(doc.querySelectorAll("path"))
+    const refused = refusedElement(doc, root);
+    if (refused) return { error: refused };
+
+    // Every drawn shape outside <defs>, in document order, other than the
+    // toolkit's stem placemarkers (session 62: basic shapes as well as paths).
+    const drawn = typeof doc.querySelectorAll === "function"
+      ? Array.from(doc.querySelectorAll(DRAWN_TAGS.join(", "))).filter(el =>
+        DRAWN_TAGS.includes(localTag(el)) && !/^stem-/.test(el.getAttribute("id") || "") &&
+        !ancestorsOf(el, root).some(a => localTag(a) === "defs"))
       : (typeof doc.querySelector === "function" && doc.querySelector("path") ? [doc.querySelector("path")] : []);
     const clefEl = byId(doc, "clef");
-    const glyphModePaths = allPaths.filter(el => el.getAttribute("data-lilypond-glyph") !== null);
+    const glyphModePaths = drawn.filter(el => localTag(el) === "path" && el.getAttribute("data-lilypond-glyph") !== null);
     const noteheadEl = byId(doc, "notehead");
     const glyphEls = clefEl ? [clefEl]
       : glyphModePaths.length > 0 ? glyphModePaths
       : noteheadEl ? [noteheadEl]
-      : allPaths;
+      : drawn;
     if (glyphEls.length === 0) {
-      return { error: 'No clef glyph element found (id="clef", data-lilypond-glyph paths, id="notehead", or any <path>)' };
+      return { error: 'No clef glyph element found (id="clef", data-lilypond-glyph paths, id="notehead", or any drawn path or shape)' };
     }
 
-    const svgPaths = glyphEls.map(el => el.getAttribute("d") || "");
-    if (svgPaths.some(d => !d)) {
-      return {
-        error: glyphEls.length === 1
-          ? "The clef glyph element has no path data (d attribute)"
-          : "A clef glyph path has no path data (d attribute)",
-      };
+    // Each in the root's units, through every transform (session 62).
+    const imports = [];
+    for (const el of glyphEls) {
+      const imported = importedPath(el, root);
+      if (imported.error) return { error: imported.error };
+      imports.push(imported);
     }
-    const svgPath = svgPaths.join(" ");
+    const svgPath = imports.map(i => i.d).join(" ");
 
     const warnings = [];
     const lilypondPieces = glyphEls.map((el, i) => {
@@ -692,6 +1144,13 @@ export const CNBSvgImporter = {
               "which matches a clef import (the file was processed in both toolkit modes)");
           }
         }
+      }
+      // A pre-baked path does not carry the transform the SVG path was drawn
+      // through (session 62): it is dropped, and the export converts the SVG path.
+      if (attr && imports[i].transformed) {
+        warnings.push(`${attr}${where} ignored: the path is drawn through a transform the pre-baked ` +
+          "path does not carry, so the LilyPond export converts the SVG path instead");
+        return null;
       }
       return attr ? { attr: attr + where, text: el.getAttribute(attr) } : null;
     });

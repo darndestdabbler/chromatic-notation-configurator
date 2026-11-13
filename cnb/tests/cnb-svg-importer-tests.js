@@ -32,6 +32,57 @@ function assertSame(a, b, msg) {
     throw new Error(`${msg}: expected (${b.x}, ${b.y}), got (${a.x}, ${a.y})`);
 }
 
+// ─── Normalised-path helpers (session 62) ────────────────────────────────────
+
+/** The commands of a normalised path: [{ cmd, nums }]. */
+function pathCommands(d) {
+  return d.split(/ (?=[MLCZ])/).map(part => {
+    const [cmd, ...nums] = part.split(" ");
+    return { cmd, nums: nums.map(Number) };
+  });
+}
+
+/** Points along every segment of a normalised (absolute M, L, C, Z) path. */
+function samplePath(d, steps = 50) {
+  const points = [];
+  let x = 0, y = 0, sx = 0, sy = 0;
+  for (const { cmd, nums } of pathCommands(d)) {
+    if (cmd === "M") { x = sx = nums[0]; y = sy = nums[1]; points.push([x, y]); continue; }
+    if (cmd === "Z") { x = sx; y = sy; continue; }
+    const [x0, y0] = [x, y];
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps, u = 1 - t;
+      if (cmd === "L") points.push([x0 + t * (nums[0] - x0), y0 + t * (nums[1] - y0)]);
+      else points.push([
+        u * u * u * x0 + 3 * u * u * t * nums[0] + 3 * u * t * t * nums[2] + t * t * t * nums[4],
+        u * u * u * y0 + 3 * u * u * t * nums[1] + 3 * u * t * t * nums[3] + t * t * t * nums[5],
+      ]);
+    }
+    x = nums[nums.length - 2]; y = nums[nums.length - 1];
+  }
+  return points;
+}
+
+/**
+ * The distance from (px, py) to the ellipse θ → f(rx cos θ, ry sin θ), for
+ * f a similarity (rotation and uniform scale by `scale`): the point is
+ * mapped back by `inverse`, its distance to the ellipse found by a fine scan
+ * and a ternary refinement, and scaled up again.
+ */
+function ellipseDistance(px, py, inverse, rx, ry, scale) {
+  const [u, v] = inverse(px, py);
+  const dist = (t) => Math.hypot(u - rx * Math.cos(t), v - ry * Math.sin(t));
+  const n = 3600;
+  let best = 0;
+  for (let i = 1; i < n; i++) if (dist(2 * Math.PI * i / n) < dist(2 * Math.PI * best / n)) best = i;
+  let lo = 2 * Math.PI * (best - 1) / n, hi = 2 * Math.PI * (best + 1) / n;
+  for (let i = 0; i < 60; i++) {
+    const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3;
+    if (dist(a) < dist(b)) hi = b; else lo = a;
+  }
+  return dist((lo + hi) / 2) * scale;
+}
+
 // ─── Stub document helpers (mirror DOM getAttribute/tagName contract) ────────
 
 function stubEl(tagName, attrs = {}) {
@@ -193,9 +244,18 @@ export const tests = [
       const c = CNBSvgImporter.transformRect(rect, "rotate(180 5 10)");
       assert(c.x === 0 && c.y === 0 && c.width === 10 && c.height === 20, "rotate about centre: " + JSON.stringify(c));
     }},
+  { name: "transformRect: skewX(deg) and skewY(deg) shear the rect (session 62)", fn: () => {
+      const rect = { x: 0, y: 0, width: 10, height: 10 };
+      const x = CNBSvgImporter.transformRect(rect, "skewX(45)");
+      assert(x.x === 0 && x.width === 20 && x.y === 0 && x.height === 10, "skewX(45): " + JSON.stringify(x));
+      const y = CNBSvgImporter.transformRect(rect, "skewY(45)");
+      assert(y.y === 0 && y.height === 20 && y.x === 0 && y.width === 10, "skewY(45): " + JSON.stringify(y));
+      const list = CNBSvgImporter.transformRect(rect, "translate(5 0) skewX(45)");
+      assert(list.x === 5 && list.width === 20, "in a list: " + JSON.stringify(list));
+    }},
   { name: "transformRect: an unreadable transform returns null", fn: () => {
       const rect = { x: 0, y: 0, width: 1, height: 1 };
-      for (const bad of ["skewX(10)", "scale()", "translate(1 2 3)", "rotate(1 2)", "matrix(1 0 0 1)", "scale(a)", "scale(2) junk"]) {
+      for (const bad of ["skewX(10 2)", "scale()", "translate(1 2 3)", "rotate(1 2)", "matrix(1 0 0 1)", "scale(a)", "scale(2) junk"]) {
         assert(CNBSvgImporter.transformRect(rect, bad) === null, `${bad} must not parse`);
       }
     }},
@@ -213,7 +273,7 @@ export const tests = [
       const ends = CNBSvgImporter.stemRectEnds({ x: 0, y: 0, width: 10, height: 20 }, "rotate(90)");
       assertSame(ends.bottom, { x: -20, y: 5 }, "bottom-centre (5, 20) → (-20, 5)");
       assertSame(ends.top, { x: 0, y: 5 }, "top-centre (5, 0) → (0, 5)");
-      assert(CNBSvgImporter.stemRectEnds({ x: 0, y: 0, width: 1, height: 1 }, "skewX(10)") === null, "unreadable → null");
+      assert(CNBSvgImporter.stemRectEnds({ x: 0, y: 0, width: 1, height: 1 }, "skewX(10 2)") === null, "unreadable → null");
     }},
   { name: "extract anchors a rotated stem-up rect at its own end, not its bounding box (session 11 review)", fn: () => {
       // rotate(90) on {0, 0, 10, 20}: the ends are level, so the up rect
@@ -246,7 +306,7 @@ export const tests = [
     }},
   { name: "extract refuses a stem rect whose transform it cannot read, naming the rect", fn: () => {
       const doc = toolkitDoc({
-        "stem-up": stubEl("rect", { id: "stem-up", x: "0", y: "0", width: "20", height: "350", transform: "skewX(30)" }),
+        "stem-up": stubEl("rect", { id: "stem-up", x: "0", y: "0", width: "20", height: "350", transform: "perspective(30)" }),
       });
       const extracted = CNBSvgImporter.extract(doc);
       assert(/"stem-up" rect has a transform/.test(extracted.error || ""), "error names the rect: " + extracted.error);
@@ -742,7 +802,7 @@ export const tests = [
         stubEl("path", { d: "M 0 0 L 10 10 Z", "data-lilypond-glyph": "'((moveto 0 0) (lineto 0.1 -0.1) (closepath))" }),
         stubEl("path", { d: "M 0 100 L 10 90 Z", "data-lilypond-glyph": "'((moveto 0 -1) (lineto 0.1 -0.9) (closepath))" }),
       ];
-      const doc = { ...stubDoc({ viewBox: "-50 -150 100 300" }), querySelectorAll: (sel) => sel === "path" ? paths : [] };
+      const doc = { ...stubDoc({ viewBox: "-50 -150 100 300" }), querySelectorAll: (sel) => sel.split(", ").includes("path") ? paths : [] };
       const ex = CNBSvgImporter.extractClef(doc);
       assert(ex.error === null, "no error: " + ex.error);
       assert(ex.svgPath === "M 0 -100 L 10 -90 Z M 0 0 L 10 10 Z M 0 100 L 10 90 Z", "all three d joined: " + ex.svgPath);
@@ -884,7 +944,308 @@ export const tests = [
         approx(got, want / half, `exported ${label} = anchor ÷ ${half}`, 2e-4);
       }
     }},
+
+  // — path normalisation (session 62, step-by-step design §8) —
+  { name: "normalizePath: absolute M, L, C and Z come back as they are, untransformed", fn: () => {
+      assert(CNBSvgImporter.normalizePath(ELLIPSE_D) === ELLIPSE_D, CNBSvgImporter.normalizePath(ELLIPSE_D));
+    }},
+  { name: "normalizePath: each command kind, relative and absolute, as absolute M, L, C and Z", fn: () => {
+      const cases = [
+        ["M 1 2 L 3 4 Z", "M 1 2 L 3 4 Z"],
+        ["m 1 2 l 3 4 z", "M 1 2 L 4 6 Z"],
+        ["M 1 2 H 5 V 7 h -2 v -1", "M 1 2 L 5 2 L 5 7 L 3 7 L 3 6"],
+        ["M 0 0 C 1 1 2 2 3 3 c 1 0 2 0 3 0", "M 0 0 C 1 1 2 2 3 3 C 4 3 5 3 6 3"],
+        // S reflects the last cubic's second control; after a non-cubic it is the current point.
+        ["M 0 0 C 0 1 2 1 2 0 S 4 -1 4 0", "M 0 0 C 0 1 2 1 2 0 C 2 -1 4 -1 4 0"],
+        ["M 0 0 L 1 0 s 1 1 2 0", "M 0 0 L 1 0 C 1 0 2 1 3 0"],
+        // Q as the cubic with controls two thirds of the way to its control point.
+        ["M 0 0 Q 3 3 6 0", "M 0 0 C 2 2 4 2 6 0"],
+        ["M 0 0 q 3 3 6 0 t 6 0", "M 0 0 C 2 2 4 2 6 0 C 8 -2 10 -2 12 0"],
+        ["M 0 0 T 3 0", "M 0 0 C 0 0 1 0 3 0"],
+        // An M's extra pairs are lines; a relative m after z starts at the subpath's start.
+        ["m 0 0 1 1 2 2", "M 0 0 L 1 1 L 3 3"],
+        ["M 10 10 L 20 10 L 20 20 z m 5 5 l 1 0", "M 10 10 L 20 10 L 20 20 Z M 15 15 L 16 15"],
+        ["M10 10l20 0Z l 0 5", "M 10 10 L 30 10 Z L 10 15"],
+        // Compact numbers and flags, and an arc of radius 0 as a line.
+        ["M1.5.5-2-3", "M 1.5 0.5 L -2 -3"],
+        ["M 0 0 a 0 5 0 0 1 10 0", "M 0 0 L 10 0"],
+        ["M 0 0 A 5 5 0 0 1 0 0", "M 0 0"],
+      ];
+      for (const [d, want] of cases) {
+        const got = CNBSvgImporter.normalizePath(d);
+        assert(got === want, `${d}: expected "${want}", got "${got}"`);
+      }
+    }},
+  { name: "normalizePath: the matrix applies to every point, numbers rounded to 4 decimals", fn: () => {
+      assert(CNBSvgImporter.normalizePath("M 1 2 L 3 4", [1, 0, 0, 1, -10, 20]) === "M -9 22 L -7 24", "translate");
+      assert(CNBSvgImporter.normalizePath("M 1 1 L 2 0", [0, 1, -1, 0, 0, 0]) === "M -1 1 L 0 2", "rotate(90)");
+      assert(CNBSvgImporter.normalizePath("M 1 0 L 0 1", [1 / 3, 0, 0, 1, 0, 0]) === "M 0.3333 0 L 0 1", "rounded");
+    }},
+  { name: "normalizePath: an arc is cubics within 0.01 of the true ellipse after a scaling matrix", fn: () => {
+      // A half ellipse centred on the origin (its end points opposite), and the
+      // same ellipse turned 90° by its x-axis rotation, under scale(40) rotate(30).
+      const scale = 40, rad = 30 * Math.PI / 180;
+      const matrix = [scale * Math.cos(rad), scale * Math.sin(rad), -scale * Math.sin(rad), scale * Math.cos(rad), 7, -3];
+      const inverse = (turn) => (px, py) => {
+        const x = (px - 7) / scale, y = (py + 3) / scale;
+        const a = -rad - turn;
+        return [Math.cos(a) * x - Math.sin(a) * y, Math.sin(a) * x + Math.cos(a) * y];
+      };
+      for (const [d, turn] of [["M 30 0 A 30 10 0 1 1 -30 0", 0], ["M 0 30 A 30 10 90 0 0 0 -30", Math.PI / 2]]) {
+        const got = CNBSvgImporter.normalizePath(d, matrix);
+        assert(got && /^M [^A-Za-z]+( C [^A-Za-z]+)+$/.test(got), `${d} → cubics only: ${got}`);
+        let worst = 0;
+        for (const [px, py] of samplePath(got, 100)) {
+          worst = Math.max(worst, ellipseDistance(px, py, inverse(turn), 30, 10, scale));
+        }
+        assert(worst <= 0.01, `${d}: worst distance from the ellipse ${worst}`);
+        const cmds = pathCommands(got);
+        const end = cmds[cmds.length - 1].nums.slice(-2);
+        const [ex, ey] = d.split(" ").slice(-2).map(Number);
+        approx(end[0], matrix[0] * ex + matrix[2] * ey + 7, "ends at the arc's end x", 1e-4);
+        approx(end[1], matrix[1] * ex + matrix[3] * ey - 3, "ends at the arc's end y", 1e-4);
+      }
+    }},
+  { name: "normalizePath: path data it cannot read is null", fn: () => {
+      for (const bad of ["", "L 0 0", "M 0", "M 0 0 X 1 1", "M 0 0 L", "M 0 0 A 1 1 0 2 0 3 3", "M a b", null]) {
+        assert(CNBSvgImporter.normalizePath(bad) === null, `${JSON.stringify(bad)} must not parse`);
+      }
+    }},
+
+  // — basic shapes (session 62) —
+  { name: "shapeToPath: a path's d, a rect, a polygon and a polyline", fn: () => {
+      assert(CNBSvgImporter.shapeToPath(stubEl("path", { d: "m 0 0 l 1 1" })) === "m 0 0 l 1 1", "path");
+      assert(CNBSvgImporter.shapeToPath(stubEl("rect", { x: "1", y: "2", width: "10", height: "5" })) ===
+        "M 1 2 L 11 2 L 11 7 L 1 7 Z", "rect");
+      assert(CNBSvgImporter.shapeToPath(stubEl("polygon", { points: "0,0 10,0 10,10" })) === "M 0 0 L 10 0 L 10 10 Z", "polygon");
+      assert(CNBSvgImporter.shapeToPath(stubEl("svg:polyline", { points: "0 0, 10 0 10 10 7" })) === "M 0 0 L 10 0 L 10 10", "polyline, odd number dropped");
+    }},
+  { name: "shapeToPath: a rounded rect, a circle and an ellipse draw their outlines", fn: () => {
+      const outline = (el) => CNBSvgImporter.normalizePath(CNBSvgImporter.shapeToPath(el));
+      const rounded = outline(stubEl("rect", { x: "0", y: "0", width: "40", height: "20", rx: "5" }));
+      const box = CNBNotehead.box({ svgPath: rounded });
+      assert(box.x[0] === 0 && box.x[1] === 40 && box.y[0] === 0 && box.y[1] === 20, "rounded rect box " + JSON.stringify(box));
+      for (const [px, py] of samplePath(rounded)) {
+        // Inside a corner square the point is on its quarter circle, radius 5 (rx = ry).
+        const cx = px < 5 ? 5 : px > 35 ? 35 : null, cy = py < 5 ? 5 : py > 15 ? 15 : null;
+        if (cx !== null && cy !== null) approx(Math.hypot(px - cx, py - cy), 5, `corner point (${px}, ${py})`, 0.01);
+      }
+      const clamped = CNBSvgImporter.shapeToPath(stubEl("rect", { width: "10", height: "4", rx: "8" }));
+      assert(clamped.startsWith("M 5 0 L 5 0 A 5 2 "), "rx clamped to half the width, ry taking rx and clamped to half the height: " + clamped);
+      for (const [el, rx, ry] of [[stubEl("circle", { cx: "3", cy: "4", r: "10" }), 10, 10],
+                                  [stubEl("ellipse", { cx: "3", cy: "4", rx: "12", ry: "6" }), 12, 6]]) {
+        const d = outline(el);
+        for (const [px, py] of samplePath(d)) {
+          const dist = ellipseDistance(px, py, (x, y) => [x - 3, y - 4], rx, ry, 1);
+          assert(dist <= 0.01, `${localName(el)}: (${px}, ${py}) is ${dist} from its outline`);
+        }
+        const b = CNBNotehead.box({ svgPath: d });
+        approx(b.x[0], 3 - rx, "left", 1e-4); approx(b.x[1], 3 + rx, "right", 1e-4);
+        approx(b.y[0], 4 - ry, "top", 1e-4); approx(b.y[1], 4 + ry, "bottom", 1e-4);
+      }
+    }},
+  // — a file drawn by hand imports where it was drawn (session 62) —
+  { name: "extract: a notehead in a translated layer, with relative commands, lands where it is drawn", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="-100 -100 200 200">
+        <g id="layer1" transform="translate(-50,-30)">
+          <path id="notehead" d="m 50 30 l 40 0 l 0 40 z" data-semitone-height="2"/>
+        </g></svg>`);
+      const ex = CNBSvgImporter.extract(doc);
+      assert(ex.error === null, "no error: " + ex.error);
+      assert(ex.svgPath === "M 0 0 L 40 0 L 40 40 Z", ex.svgPath);
+    }},
+  { name: "extract: nested groups with every transform kind compose, innermost first", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="-100 -100 200 200">
+        <g transform="translate(10 20)"><g transform="scale(2 3)"><g transform="rotate(90 1 1)">
+        <g transform="skewX(45)"><g transform="skewY(45)">
+          <path id="notehead" transform="matrix(1 0 0 1 5 0)" d="M 1 0 L 0 1 L 0 0 Z" data-semitone-height="2"/>
+        </g></g></g></g></g></svg>`);
+      // Each transform by hand, the path's own first, outward to the layer.
+      const steps = [
+        ([x, y]) => [x + 5, y],               // matrix(1 0 0 1 5 0)
+        ([x, y]) => [x, y + x],               // skewY(45)
+        ([x, y]) => [x + y, y],               // skewX(45)
+        ([x, y]) => [1 - (y - 1), 1 + (x - 1)], // rotate(90 1 1)
+        ([x, y]) => [2 * x, 3 * y],           // scale(2 3)
+        ([x, y]) => [x + 10, y + 20],         // translate(10 20)
+      ];
+      const map = (p) => steps.reduce((q, f) => f(q), p);
+      const ex = CNBSvgImporter.extract(doc);
+      assert(ex.error === null, "no error: " + ex.error);
+      const got = pathCommands(ex.svgPath);
+      assert(got.map(c => c.cmd).join("") === "MLLZ", ex.svgPath);
+      [[1, 0], [0, 1], [0, 0]].forEach((p, i) => {
+        const [x, y] = map(p);
+        approx(got[i].nums[0], x, `point ${i} x`, 1e-4);
+        approx(got[i].nums[1], y, `point ${i} y`, 1e-4);
+      });
+    }},
+  { name: "extract + buildShape: the hollow and the stem rects go through the head's group transform", fn: () => {
+      const inner = `<path id="notehead" d="M -10 -5 L 10 -5 L 10 5 L -10 5 Z" data-semitone-height="2"/>
+          <path id="hollow" d="M -5 -2 L 5 -2 L 5 2 L -5 2 Z"/>
+          <rect id="stem-up" x="8" y="-40" width="2" height="35"/>
+          <rect id="stem-down" x="-10" y="5" width="2" height="35" transform="scale(1 1)"/>`;
+      const doc = parseSvgDocument(`<svg viewBox="0 0 300 300"><g transform="translate(100 50) scale(2)">${inner}</g></svg>`);
+      const { shape, error } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "grouped");
+      assert(error === null, "no error: " + error);
+      assert(shape.svgPath === "M 80 40 L 120 40 L 120 60 L 80 60 Z", "head: " + shape.svgPath);
+      assert(shape.svgHollowPath === "M 90 46 L 110 46 L 110 54 L 90 54 Z", "hollow: " + shape.svgHollowPath);
+      // Up: the rect's bottom-centre (9, -5) → (118, 40); down: its top-centre (-9, 5) → (82, 60).
+      assertSame(shape.anchors.crotchetUp, { x: 118, y: 40 }, "up anchor on the head's right edge, as drawn");
+      assertSame(shape.anchors.crotchetDown, { x: 82, y: 60 }, "down anchor on the head's left edge, as drawn");
+    }},
+  { name: "extract + buildShape + export: a pre-baked path under a transform is dropped, and the export converts the moved SVG path", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="-200 -200 400 400"><g transform="translate(100 0)">
+        <path id="notehead" d="${ELLIPSE_D}" data-semitone-height="2" data-lilypond-notehead="${LY_NOTEHEAD}"/>
+        <path id="hollow" d="${HOLLOW_D}" data-lilypond-hollow="${LY_HOLLOW}"/></g></svg>`);
+      const ex = CNBSvgImporter.extract(doc);
+      assert(ex.lilypondNotehead === null && ex.lilypondHollow === null, "both pre-baked paths dropped");
+      assert(ex.warnings.some(w => /data-lilypond-notehead on <path id="notehead"> ignored: .*transform/.test(w)) &&
+        ex.warnings.some(w => /data-lilypond-hollow on <path id="hollow"> ignored/.test(w)), ex.warnings.join("; "));
+      const { shape, error } = CNBSvgImporter.buildShape(ex, "moved");
+      assert(error === null && shape.lilypondPath === null && shape.lilypondHollowPath === null, "no pre-baked path stored");
+      const config = CNBConfig.createDefault();
+      config.shapes = { moved: shape };
+      config.noteheadRules[0].apply.shape = "moved";
+      const out = CNBLilypond.generate(config);
+      // The ellipse's right edge, x 120, moved to 220 SVG units: at 200 units a
+      // semitone (the 400-unit viewBox, 2 semitones) 1.1 semitones, ÷ 4
+      // semitones per staff space = 0.275, where the pre-baked path has 0.3.
+      assert(/cnb:moved-path[\s\S]*?\(moveto 0\.275 0\)/.test(out), "the export draws the moved path");
+      // Without the transform the pre-baked path is kept, as before.
+      const plain = CNBSvgImporter.extract(parseSvgDocument(`<svg viewBox="-200 -200 400 400"><g>
+        <path id="notehead" d="${ELLIPSE_D}" data-semitone-height="2" data-lilypond-notehead="${LY_NOTEHEAD}"/></g></svg>`));
+      assert(plain.lilypondNotehead === LY_NOTEHEAD, "kept without a transform");
+    }},
+  { name: "extractClef: a pre-baked glyph path under a transform is dropped", fn: () => {
+      const glyph = "'((moveto 0 0) (lineto 1 1) (closepath))";
+      const ex = CNBSvgImporter.extractClef(parseSvgDocument(`<svg viewBox="0 0 10 10"><g transform="scale(2)">
+        <path id="clef" d="M 0 0 L 1 1 Z" data-lilypond-clef="${glyph}"/></g></svg>`));
+      assert(ex.error === null && ex.svgPath === "M 0 0 L 2 2 Z", ex.error || ex.svgPath);
+      assert(ex.lilypondPieces[0] === null && ex.warnings.some(w => /data-lilypond-clef ignored: .*transform/.test(w)),
+        JSON.stringify(ex.lilypondPieces) + " " + ex.warnings.join("; "));
+      const { glyph: built } = CNBSvgImporter.buildClefGlyph(ex, "Scaled");
+      assert(built.lilypondPath === null, "the export converts the SVG path");
+    }},
+  { name: "extract: a basic shape is read as the notehead", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="-10 -10 20 20"><g transform="translate(1 0)">
+        <ellipse id="notehead" cx="0" cy="0" rx="6" ry="4" data-semitone-height="1"/></g></svg>`);
+      const ex = CNBSvgImporter.extract(doc);
+      assert(ex.error === null, "no error: " + ex.error);
+      const box = CNBNotehead.box({ svgPath: ex.svgPath });
+      approx(box.x[0], -5, "left", 1e-4); approx(box.x[1], 7, "right", 1e-4);
+      approx(box.y[0], -4, "top", 1e-4); approx(box.y[1], 4, "bottom", 1e-4);
+    }},
+  { name: "extractClef + buildClefGlyph: under a layer transform the reference point is the transformed ink's centre", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="0 0 40 60"><g transform="translate(-100 -200)">
+        <path d="m 100 200 l 40 0 l 0 60 l -40 0 z"/><rect x="110" y="210" width="20" height="5"/></g></svg>`);
+      const ex = CNBSvgImporter.extractClef(doc);
+      assert(ex.error === null, "no error: " + ex.error);
+      assert(ex.svgPath === "M 0 0 L 40 0 L 40 60 L 0 60 Z M 10 10 L 30 10 L 30 15 L 10 15 Z",
+        "the path and the rect, in document order, in the root's units: " + ex.svgPath);
+      const { glyph } = CNBSvgImporter.buildClefGlyph(ex, "Grouped");
+      const box = CNBNotehead.box({ svgPath: glyph.svgPath });
+      assert(glyph.reference.x === (box.x[0] + box.x[1]) / 2 && glyph.reference.y === (box.y[0] + box.y[1]) / 2,
+        `reference ${JSON.stringify(glyph.reference)} on the ink's centre ${JSON.stringify(box)}`);
+    }},
+  { name: "extractClef: stem placemarkers and anything in <defs> are not glyph paths", fn: () => {
+      const doc = parseSvgDocument(`<svg viewBox="0 0 10 10"><defs><path d="M 9 9 L 8 8"/><text>x</text></defs>
+        <rect id="stem-up" x="0" y="0" width="1" height="5"/><path d="M 0 0 L 5 5 Z"/></svg>`);
+      const ex = CNBSvgImporter.extractClef(doc);
+      assert(ex.error === null && ex.svgPath === "M 0 0 L 5 5 Z", ex.error || ex.svgPath);
+    }},
+  { name: "extract and extractClef refuse what they cannot read, naming the element and what to do in Inkscape", fn: () => {
+      const head = `<path id="notehead" d="M 0 0 L 1 0 L 1 1 Z" data-semitone-height="1"/>`;
+      const cases = [
+        [`${head}<text id="label">C</text>`, /<text id="label">.*Object to Path/],
+        [`${head}<use id="copy" href="#notehead"/>`, /<use id="copy">.*Unlink Clone/],
+        [`${head}<image id="scan" href="x.png"/>`, /<image id="scan">.*Trace Bitmap/],
+        [`${head}<svg id="inner"><path d="M 0 0 L 1 1"/></svg>`, /<svg id="inner">.*Ungroup/],
+        [`<path id="notehead" d="M 0 0 L 1 0" style="fill:none;stroke:#000" data-semitone-height="1"/>`,
+          /<path id="notehead"> has no fill.*Stroke to Path/],
+        [`<g fill="none" stroke="black">${head}</g>`, /<path id="notehead"> has no fill.*Stroke to Path/],
+        [`<path id="notehead" d="M 0 0 L 1 0 L 1 1 Z" clip-path="url(#c)" data-semitone-height="1"/>`,
+          /<path id="notehead"> has a clip-path,.*Object > Clip > Release/],
+        [`<g id="layer" style="mask:url(#m)">${head}</g>`, /<path id="notehead"> has a mask \(on <g id="layer">\).*Object > Mask > Release/],
+        [`<path id="notehead" d="M 0 0 L 1 0 L 1 1 Z" filter="url(#blur)" data-semitone-height="1"/>`,
+          /has a filter.*Remove Filters/],
+      ];
+      for (const [body, want] of cases) {
+        const doc = parseSvgDocument(`<svg viewBox="0 0 10 10">${body}</svg>`);
+        const shapeError = CNBSvgImporter.extract(doc).error;
+        assert(want.test(shapeError || ""), `shape import of ${body}: ${shapeError}`);
+        const clefError = CNBSvgImporter.extractClef(doc).error;
+        assert(want.test(clefError || ""), `clef import of ${body}: ${clefError}`);
+      }
+      // A filled path with a stroke, and fill="none" overridden on the path, import.
+      for (const body of [`<g fill="none"><path id="notehead" d="M 0 0 L 1 0 L 1 1 Z" style="fill:#000;stroke:#f00" data-semitone-height="1"/></g>`,
+                          `<path id="notehead" d="M 0 0 L 1 0 L 1 1 Z" stroke="#f00" clip-path="none" data-semitone-height="1"/>`]) {
+        const ex = CNBSvgImporter.extract(parseSvgDocument(`<svg viewBox="0 0 10 10">${body}</svg>`));
+        assert(ex.error === null, `${body}: ${ex.error}`);
+      }
+    }},
+  { name: "extract: toolkit output and any untransformed absolute path are stored byte for byte", fn: () => {
+      for (const name of ["kite-up", "kite-down", "45deg"]) {
+        const text = readFileSync(path.join(FIXTURES, `${name}.svg`), "utf8");
+        const ex = CNBSvgImporter.extract(parseSvgDocument(text));
+        assert(ex.error === null, `${name}: ${ex.error}`);
+        assert(ex.svgPath === svgAttr(text, "notehead", "d"), `${name}: the notehead's d as it is`);
+        assert(ex.svgHollowPath === svgAttr(text, "hollow", "d"), `${name}: the hollow's d as it is`);
+      }
+      const d = "M0,0 L10,0 10,10 H 5 V 2 C 1 1 2 2 3 3Z";
+      const ex = CNBSvgImporter.extract(parseSvgDocument(
+        `<svg viewBox="0 0 10 10"><g id="layer1"><path id="notehead" d="${d}" data-semitone-height="1"/></g></svg>`));
+      assert(ex.svgPath === d, "as it is: " + ex.svgPath);
+      const relative = CNBSvgImporter.extract(parseSvgDocument(
+        `<svg viewBox="0 0 10 10"><path id="notehead" d="M 0 0 l 1 0 Z" data-semitone-height="1"/></svg>`));
+      assert(relative.svgPath === "M 0 0 L 1 0 Z", "a relative command is normalised: " + relative.svgPath);
+    }},
+  { name: "the tutorial's c-clef.svg, drawn in Inkscape, imports with its box on its drawn extent", fn: () => {
+      // The operator's C clef: one path of two subpaths in a translated
+      // layer, relative commands and arcs. Its page is fitted to its drawing,
+      // whose extent Chromium's getBBox measures as 0…74.6794 by 0…100
+      // (session 62).
+      const text = readFileSync(path.join(FIXTURES, "..", "..", "docs", "playbook", "tutorial", "downloads", "c-clef.svg"), "utf8");
+      assert(/transform="translate\(/.test(text) && / a /.test(text) && / c /.test(text), "kept as Inkscape drew it");
+      const result = CNBSvgImporter.parseClefSvgText(text, "c-clef.svg", { parser: { parseFromString: parseSvgDocument } });
+      assert(result.error === null, "imports: " + result.error);
+      const { glyph } = result;
+      const commands = pathCommands(glyph.svgPath);
+      assert(commands.every(c => "MLCZ".includes(c.cmd) && c.nums.every(Number.isFinite)),
+        "absolute M, L, C and Z: " + glyph.svgPath.slice(0, 80));
+      assert(commands.filter(c => c.cmd === "M").length === 2, "both subpaths imported: " + glyph.svgPath.slice(0, 80));
+      assert(!/style=/.test(text), "no leftover style properties");
+      const box = CNBNotehead.box(glyph);
+      for (const [got, want, label] of [[box.x[0], 0, "left"], [box.x[1], 74.6794, "right"],
+                                         [box.y[0], 0, "top"], [box.y[1], 100, "bottom"]]) {
+        approx(got, want, `${label}, the drawn extent`, 0.01);
+      }
+      approx(box.x[1] - box.x[0], glyph.naturalWidth, "the page's width, fitted to the drawing", 0.01);
+      approx(box.y[1] - box.y[0], glyph.naturalHeight, "the page's height, fitted to the drawing", 0.01);
+    }},
+  { name: "extract: a path whose data cannot be read is refused, naming it", fn: () => {
+      const ex = CNBSvgImporter.extract(parseSvgDocument(
+        `<svg viewBox="0 0 10 10"><path id="notehead" d="M 0 0 Q 1" data-semitone-height="1"/></svg>`));
+      assert(/<path id="notehead"> has path data the importer cannot read/.test(ex.error || ""), ex.error);
+    }},
+  { name: "shapeToPath: an omitted ry takes rx as given, before each is clamped", fn: () => {
+      const d = CNBSvgImporter.shapeToPath(stubEl("rect", { width: "10", height: "100", rx: "80" }));
+      assert(d.startsWith("M 5 0 L 5 0 A 5 50 "), "rx 5, ry 50: " + d);
+      const ryOnly = CNBSvgImporter.shapeToPath(stubEl("rect", { width: "100", height: "10", ry: "80" }));
+      assert(ryOnly.startsWith("M 50 0 L 50 0 A 50 5 "), "rx 50, ry 5: " + ryOnly);
+    }},
+  { name: "shapeToPath: an element that draws nothing, or is not a shape, is null", fn: () => {
+      for (const el of [stubEl("rect", { width: "0", height: "5" }), stubEl("circle", { r: "0" }),
+                        stubEl("ellipse", { rx: "3" }), stubEl("polygon", { points: "1 2" }),
+                        stubEl("polyline", { points: "1 2 3 x" }), stubEl("path", {}), stubEl("text", {})]) {
+        assert(CNBSvgImporter.shapeToPath(el) === null, `${el.tagName} ${JSON.stringify(el.getAttribute("points"))}`);
+      }
+    }},
 ];
+
+function localName(el) {
+  return el.tagName.replace(/^.*:/, "");
+}
 
 // ─── Fixture helpers ─────────────────────────────────────────────────────────
 

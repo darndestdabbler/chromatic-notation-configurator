@@ -186,6 +186,23 @@ all, is refused with a message saying so, and the configuration is left
 unchanged; so is a JSON file that is not a configuration this version can
 open.
 
+A file drawn by hand in Inkscape imports where it was drawn: the importer
+reads the transforms of every group and layer, every path command
+(relative ones, arcs and curves included) and rects, circles, ellipses,
+polygons and polylines, and stores the result in the file's own units
+(those of its page). The notehead still needs `id="notehead"` (and its
+hollow `id="hollow"`); a clef needs nothing, every drawn path is its
+glyph. Fit the page to the drawing (Edit > Resize Page to Selection) so
+that the clef the canvas draws is the clef the engine engraves. What the
+importer cannot read is refused, naming the element and what to do in
+Inkscape: text (Path > Object to Path), a path with no fill, drawn by its
+stroke (Path > Stroke to Path), a clone (Edit > Clone > Unlink Clone), a
+bitmap (Path > Trace Bitmap), a nested SVG (Object > Ungroup), and a clip,
+mask or filter (Object > Clip > Release, Object > Mask > Release, Filters >
+Remove Filters). The tutorial's C clef,
+[`docs/playbook/tutorial/downloads/c-clef.svg`](docs/playbook/tutorial/downloads/c-clef.svg),
+is such a file: a layer moved by a transform, relative commands and arcs.
+
 ### 3. Design the notation system
 
 The page is the staff canvas, with one section at a time beside it. Above

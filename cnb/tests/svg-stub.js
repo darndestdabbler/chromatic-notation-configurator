@@ -58,9 +58,11 @@ export function withDomStub(fn) {
 /**
  * Parse SVG text into a minimal read-only Document stub for the SVG
  * importer in Node (no DOMParser there): documentElement, getElementById,
- * querySelector / querySelectorAll by tag name. Reads start tags and their
- * attributes only (entity references in values decoded), which is all
- * CNBSvgImporter.extract / extractClef consult. Comments are skipped.
+ * querySelector / querySelectorAll by tag name or a comma list of tag
+ * names (in document order), and each element's parentNode (null for the
+ * root). Reads tags and their attributes only (entity references in values
+ * decoded), which is all CNBSvgImporter.extract / extractClef consult.
+ * Comments are skipped.
  */
 export function parseSvgDocument(text) {
   const decode = (v) => v
@@ -69,15 +71,31 @@ export function parseSvgDocument(text) {
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
   const elements = [];
+  const open = [];
   const source = String(text).replace(/<!--[\s\S]*?-->/g, "");
-  for (const [, tagName, attrText] of source.matchAll(/<([A-Za-z][\w:.-]*)((?:\s+[^\s=>/]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>/g)) {
+  for (const [, close, tagName, attrText, selfClosing] of
+    source.matchAll(/<(\/?)([A-Za-z][\w:.-]*)((?:\s+[^\s=>/]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g)) {
+    if (close) {
+      const at = open.map(el => el.tagName).lastIndexOf(tagName);
+      if (at >= 0) open.length = at;
+      continue;
+    }
     const attrs = {};
     for (const [, name, dq, sq] of attrText.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
       attrs[name] = decode(dq ?? sq);
     }
-    elements.push({ tagName, getAttribute: (k) => (k in attrs ? attrs[k] : null) });
+    const el = {
+      tagName,
+      parentNode: open[open.length - 1] || null,
+      getAttribute: (k) => (k in attrs ? attrs[k] : null),
+    };
+    elements.push(el);
+    if (!selfClosing) open.push(el);
   }
-  const byTag = (sel) => elements.filter(el => el.tagName.replace(/^.*:/, "").toLowerCase() === sel);
+  const byTag = (sel) => {
+    const tags = sel.split(",").map(s => s.trim().toLowerCase());
+    return elements.filter(el => tags.includes(el.tagName.replace(/^.*:/, "").toLowerCase()));
+  };
   return {
     documentElement: elements[0] || null,
     getElementById: (id) => elements.find(el => el.getAttribute("id") === id) || null,
