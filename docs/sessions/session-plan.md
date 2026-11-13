@@ -2199,12 +2199,144 @@ sequence of steps.
 8. Mock-ups, and a cross-provider consult, before the operator approves it;
    it plans the sessions that build it.
 
-### Sessions 62 and on: The step-by-step Configurator
+*(Done in session 61: the design is
+[`docs/planning/step-by-step-configurator-design.md`](../planning/step-by-step-configurator-design.md),
+with mock-ups in
+[`docs/planning/step-by-step-mockups/`](../planning/step-by-step-mockups/index.html)
+and a consult with Sol and Argon in
+[`docs/planning/step-by-step-configurator-consult.md`](../planning/step-by-step-configurator-consult.md).
+The operator approved it on 2026-11-13 (design §14): short labels under
+static group headings, numbered steps with Next and Back and no enforced
+order; the importer's transforms and path commands in session 62; the
+diamonds drawn by the operator in session 67; the tutorial in session 68;
+AI-assisted designing at 1.2.0; sessions 62–69 below before the 1.1.0
+release, now session 70.)*
 
-As session 61 plans them. Then a session in which the operator declares the
-UI stable, and the release:
+### Session 62: Importing a hand-drawn SVG
 
-### Release 1.1.0 (release: 1.1.0), numbered once session 61 has planned
+**Why.** A file straight from Inkscape does not import where it was drawn:
+the importer reads no group's or layer's transform, and the export skips
+relative and arc path commands. The operator's C clef has both (design
+§8).
+
+1. Register.
+2. `cnb/ui/svg-importer.js` normalises each imported path to absolute M,
+   L, C and Z with the transforms of the path and every ancestor applied
+   (every transform kind, skew included), arcs within 0.01 stored units,
+   basic shapes converted, the hollow, stem rects and reference point
+   transformed with the head, and text, stroke-only paths, `use`, images,
+   nested `svg`, clipping, masks and filters refused by name. A path
+   already absolute and untransformed, as toolkit output is, is stored as
+   it is.
+3. The operator's clef (`D:\sample-c-clef.svg`) checked in as
+   `docs/playbook/tutorial/downloads/c-clef.svg`, its leftover style
+   properties removed, and imported in `uat-clef-editor.mjs`, engraved
+   where the canvas draws it. The five export baselines unchanged.
+
+### Session 63: The steps and the navigation
+
+**Why.** The Configurator reads as a sequence of steps (design §1, §2, §4).
+
+1. Register.
+2. The step registry, `cnb/ui/steps.js`: twelve steps, their groups,
+   labels, titles, components and availability, `next` and `back`, with
+   `cnb/tests/cnb-steps-tests.js`.
+3. The sidebar built from it (static group headings, numbers, short
+   labels), a sticky Next/Back bar, steps greyed by availability with
+   their reasons, the key-signature and clef panels shown as their steps,
+   the whole-staff canvas hidden in steps 6–9, and the key definitions
+   moved to Advanced.
+4. "Hollow minims" beside the canvas's longer-durations choice, adding or
+   removing one ordinary rule (design §5.1).
+5. The drivers whose sections moved updated to the steps, opened by
+   keyboard and at 1280 px.
+
+### Session 64: The key signature's spelled looks
+
+**Why.** Custom marks are chosen per spelled note, and their columns can
+be tightened (design §3.5).
+
+1. Register.
+2. `keys.keySignature.looks.spelled` (the 21 spelled notes, laid over the
+   line and space looks and under `alternate`), `columnGap`, and the
+   built-in parallelogram, through `CNBConfig`, `CNBKeySignature.marks`
+   and the mark table.
+3. The Clairnote SN and DN gallery files redrawn with the six symbols,
+   their mark tables byte for byte as before; the five export baselines
+   unchanged; an engine round trip of a spelled look and a negative gap.
+   *Engine work:* none.
+
+### Session 65: Key-signature steps 6 and 7
+
+**Why.** The key signature's kind of mark, and custom symbols on the 21
+spelled notes (design §3.1–§3.3).
+
+1. Register.
+2. Step 6: Show a key signature, and the starting points Noteheads,
+   Accidentals and Custom marks over the 21 spelled notes; a card
+   highlighted only when the signature is exactly that starting point.
+3. Step 7, available for any other signature: the 21 spelled notes
+   selected by click, Shift or Ctrl and keyboard, the Select row, and the
+   look card on the selection with mixed fields; an imported symbol added
+   to the shapes by name.
+4. `uat-key-signature.mjs` rewritten to the steps, building Clairnote SN's
+   signature from its six symbols; undo after each starting point and
+   import.
+
+### Session 66: Key-signature steps 8 and 9
+
+**Why.** The designer and the preview of every key (design §3.4).
+
+1. Register.
+2. Step 8: notes, stacks (the column gap by field and by dragging the
+   second column, one step of undo), the gold stem and the place.
+3. Step 9: the 7 modes' 15 keys each, with the touch check, a key opening
+   in step 8.
+
+### Session 67: The walk-through
+
+**Why.** The tutorial notation built step by step is the stepped UI's
+golden-path UAT (design §5, §6).
+
+1. Register.
+2. A draft of the tutorial's drawing chapter; the operator draws the
+   diamonds (2 × 3 semitones, and the optional 2 × 4) in Inkscape with the
+   toolkit, checked in as the tutorial's downloads.
+3. `cnb/uat/uat-tutorial.mjs`: one stage per step, its stages written by
+   hand and held to the registry; `tutorial.json`, `tutorial.ly` and
+   `tutorial-custom.ly` checked in and compared; screenshots into
+   `docs/playbook/tutorial/shots/` on request. An engine render of
+   `tutorial.ly`.
+
+### Session 68: The tutorial
+
+**Why.** One notation built from start to finish, for a designer to follow
+(design §7).
+
+1. Register.
+2. `docs/playbook/tutorial/index.html`: before you start, drawing the
+   notehead, one section per step in the registry's order and words with
+   the walk-through's screenshots, the optional custom symbol, and
+   engraving it; held to the registry by `cnb-steps-tests.js`.
+3. `cnb/site/assemble-site.mjs` copies it to `/tutorial/`; the app's
+   header, the README and the playbook link to it; `uat-site.mjs` checks
+   it on the site and opened from the repository.
+
+### Session 69: The UI is stable
+
+**Why.** The release waits for a stable UI (operator, 2026-11-06; moved
+here in session 61).
+
+1. Register.
+2. The operator tries sessions 58–68 in the app and the tutorial. Rough
+   edges found are fixed here, or planned as sessions before 70 if they
+   are large.
+3. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+4. The operator declares the UI stable, which is the condition for
+   session 70.
+
+### Session 70: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
@@ -2237,9 +2369,15 @@ have an AI write that part and import it (operator, 2026-11-08).
    holds the schemas and `CNBConfig.validate` to the same answer for every
    fixture, every gallery config and a set of bad samples.
 3. Open imports a partial config into its own section, says what it will
-   change first, and validates it as any config is.
+   change first, and validates it as any config is. *(Session 61, design
+   §9.2: "Import this part…" at each editing step, shapes added by name;
+   Open stays for whole configs.)*
 4. The AI-assisted workflow guide gains a prompt for each component, with
-   the schema's address.
+   the schema's address. *(Session 61, design §9.3: one prompt per step, in
+   the registry's order and words.)*
+5. *(Added in session 61, design §9.4.)* `node cnb/cli/cnb.mjs` with
+   `validate`, `export` and `render` (to an image, through the UAT's server
+   and Chromium), for an agent working in the repository.
 
 ---
 
