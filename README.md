@@ -225,8 +225,8 @@ under their groups (The staff, Noteheads, Key signature, Clef, Finish),
 and the page opens on the first. **Next** and **Back**, at the bottom of
 the window, take you through them in order, and any step can be opened
 from the list at any time. A step with nothing to edit yet is greyed, and
-says why: steps 7, 8 and 9 until a key signature is shown, step 11 until a
-clef is. It starts from a conventional notehead on the 4-8 staff.
+says why: steps 8 and 9 until a key signature is shown, step 7 until it
+uses symbols of its own (Custom marks in step 6), step 11 until a clef is. It starts from a conventional notehead on the 4-8 staff.
 
 **The staff**
 
@@ -255,30 +255,44 @@ clef is. It starts from a conventional notehead on the 4-8 staff.
 staff. One model draws every signature, for the key picked on the staff or
 in the steps' own **Key** picker, which is the staff's too.
 
-6. **Key signature symbol type** — **Show the key signature**, and **Start
-   from** the noteheads (the defaults) or **traditional sharps and flats**:
-   the key's sharps or flats only, LilyPond's own signs in the cycle of
-   fifths, F C G D A E B (or B E A D G C F), one to a column at the pitch
-   each makes, in an octave's window around the middle of the staff (or of
-   its line set), so they zigzag as a treble signature's do. It asks first,
-   since it replaces the signature's settings. A config saved with the
-   older sharps-or-flats style loads as this model and draws as it did, its
-   signs climbing from the tonic.
-7. **Custom key signature symbols** — the picked key's signature
-   magnified. **Edit** picks what an edit reaches: all marks, the
-   naturals, flats or sharps, the marks on a line or ledger or in a space,
-   or every second stack, in every key at once. A click on a mark picks its
-   naturals, flats or sharps (or keeps the layer picked in Edit); dragging
-   it moves the whole category, and its corner handle resizes it (for
-   sharps and flats, their one size), snapped to tenths of a semitone, each
-   drag one step of undo. The look card beside it sets the symbol (the
-   notehead's own, a shape, LilyPond's sharp or flat, or one imported from
-   SVG, whose reference point you click and which takes ledger lines or
-   not), fill, colour, size and offset, and up to two added symbols drawn
-   over it. The Clairnote SN and DN gallery files show Clairnote's own
-   signatures: dots, with a tail up on each flat and down on each sharp (an
-   added symbol, which the look card names in words).
-8. **Key signature designer** — which **Notes** (the whole scale, the tonic
+6. **Key signature symbol type** — **Show the key signature**, then three
+   starting points, each a card: **Noteheads**, the key's scale as the
+   notation's noteheads (the defaults); **Accidentals**, the key's sharps or
+   flats only, LilyPond's own signs in the cycle of fifths, F C G D A E B
+   (or B E A D G C F), one to a column at the pitch each makes, in an
+   octave's window around the middle of the staff (or of its line set), so
+   they zigzag as a treble signature's do; and **Custom marks**, which gives
+   each of the 21 spelled notes (C♭ to B♯) a parallelogram, 2 semitones
+   high and 4 wide, to replace with your own symbols in step 7, keeping the
+   stacking and the rest. Each asks first and is one step of undo. The card
+   the signature exactly is is highlighted; a signature of its own symbols
+   (a gallery file's, or one made in step 7) highlights none, and the step
+   says "Your own symbols". Beneath them the 21 spelled notes, sharps,
+   naturals and flats under the 7 letters, each drawn with its look on its
+   line or space; under Accidentals the naturals are dimmed. A config saved
+   with the older sharps-or-flats style loads as this model and draws as it
+   did, its signs climbing from the tonic.
+7. **Custom key signature symbols** — open once the signature has symbols
+   of its own. The 21 spelled notes again: a click selects one, Shift+click
+   or Ctrl+click adds or removes one, and from the keyboard Tab moves
+   between them and Enter or Space selects (with Shift or Ctrl, adds).
+   **Select** picks All, the Naturals, Flats or Sharps, or the notes On a
+   line or ledger or In a space in one click. The look card edits every
+   selected note in every key: the symbol (the notehead's own, a shape,
+   LilyPond's sharp or flat, or one imported from SVG, whose reference
+   point you click and which takes ledger lines or not), fill, colour, size
+   and offset, and up to two added symbols drawn over it. A field the
+   selected notes disagree on says **mixed**. An imported symbol is added
+   to the notation under its file's name; a name the notation already has
+   is reused when it is the same drawing and refused, named, when it is
+   not. The Clairnote SN and DN gallery files show Clairnote's own
+   signatures this way: six symbols, a dot solid on a line and hollow in a
+   space, plain on a natural, with a tail up on a flat and down on a sharp.
+8. **Key signature designer** — the picked key's signature magnified: a
+   click on a mark picks its naturals, flats or sharps, dragging it moves
+   them, and its corner handle resizes them (for sharps and flats, their
+   one size), snapped to tenths of a semitone, each drag one step of undo.
+   Which **Notes** (the whole scale, the tonic
    and the half steps, or the sharps or flats only, with or without the
    tonic an octave up); the **Stacks** (stacked sevenths, odd semitones
    left and even right, a new stack at each change of odd and even, a

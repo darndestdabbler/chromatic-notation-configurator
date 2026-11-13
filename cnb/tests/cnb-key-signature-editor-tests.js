@@ -21,11 +21,13 @@ import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
+import { CNBStepNav } from "../ui/steps.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const GALLERY = path.join(__dirname, "..", "assets", "examples", "gallery");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -684,6 +686,36 @@ export const tests = [
       deepEq(traditional.alternate, {}, "every second stack cleared");
       eq(E.startFrom({ ...ks, enabled: false }, "traditional").enabled, false, "off stays off");
       eq(ks.notes, "tonic-and-half-steps", "the input unchanged");
+  } },
+
+  { name: "startFrom: Custom marks — the parallelogram on each of the 21 spelled notes, the signs removed, everything else kept (session 65)", fn: () => {
+      const ks = E.startFrom({ enabled: true }, "traditional");
+      Object.assign(ks, { columnGap: -0.5, signs: { heightSemis: 4 }, columns: "left-in-sharp-keys" });
+      ks.placement.position = "every-set";
+      ks.separator.color = "#123abc";
+      ks.looks.natural = { color: "#00ff00" };
+      const before = JSON.stringify(ks);
+      const custom = E.startFrom(ks, "custom");
+      deepEq(Object.keys(custom.looks.spelled), CNBConfig.SPELLED_NOTES, "the 21 spelled notes");
+      assert(Object.values(custom.looks.spelled).every(l => JSON.stringify(l) === '{"shape":"parallelogram","hollow":false}'),
+        "each a solid parallelogram");
+      deepEq([custom.looks.flat, custom.looks.sharp], [{ color: null }, { color: null }], "no sign in the flats' and sharps' looks");
+      deepEq(custom.looks.natural, { color: "#00ff00" }, "the other looks kept");
+      for (const field of ["enabled", "notes", "stacking", "heights", "window", "columns", "columnGap", "signs", "placement", "separator", "alternate", "upperTonic"]) {
+        deepEq(custom[field], ks[field], `${field} kept`);
+      }
+      eq(JSON.stringify(ks), before, "the input unchanged");
+      assert(CNBBuiltinShapes.get("parallelogram"), "the parallelogram is built in");
+  } },
+
+  { name: "startFrom / CNBStepNav.startingPoint: each starting point is the one it starts from; Custom marks neither", fn: () => {
+      const config = keysConfig();
+      for (const [which, point] of [["noteheads", "noteheads"], ["traditional", "traditional"], ["custom", null]]) {
+        const c = CNBConfig.clone(config);
+        c.keys.keySignature = E.startFrom(c.keys.keySignature, which);
+        eq(CNBStepNav.startingPoint(c), point, which);
+        eq(CNBStepNav.isAvailable("ks-custom-symbols", c), point === null, `${which}: step 7`);
+      }
   } },
 
   { name: "render: Start from — asks first, then replaces the signature's settings, keeping Show the key signature (design §13.8)", fn: () => {
@@ -1567,8 +1599,8 @@ export const tests = [
 
   { name: "render parts: each part draws its controls and no other part's", fn: () => {
       const TOKENS = {
-        "symbol-type": ["cnb-kse-head", "cnb-kse-sig-enable-check", "cnb-kse-start-button"],
-        "custom-symbols": ["cnb-kse-layer", "cnb-kse-canvas", "cnb-kse-look-card"],
+        "symbol-type": ["cnb-kse-head", "cnb-kse-sig-enable-check", "cnb-kse-start-card"],
+        "custom-symbols": ["cnb-kse-select-button", "cnb-kse-look-card"],
         "designer": ["cnb-kse-canvas", "cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-place"],
         "preview": ["cnb-kse-keys", "cnb-kse-mini"],
         "definitions": ["cnb-kse-keys-enable", "cnb-kse-definitions", "cnb-kse-validation"],
@@ -1583,10 +1615,18 @@ export const tests = [
           }
         });
       }
-      withDomStub((container) => {
-        const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: ["custom-symbols"] });
-        eq(findAll(api.root, "cnb-kse-key").length, 1, "custom-symbols has the key picker");
-      });
+      // The 21 spelled notes are steps 6 and 7's alone (session 65).
+      for (const part of Object.keys(TOKENS)) {
+        withDomStub((container) => {
+          const api = E.render(container, { config: keysConfig(), key: { tonic: 0, mode: "major" }, parts: [part] });
+          eq(findAll(api.root, "cnb-kse-spelled").length, ["symbol-type", "custom-symbols"].includes(part) ? 1 : 0,
+            `${part}: the spelled notes`);
+          if (part === "custom-symbols") {
+            eq(findAll(api.root, "cnb-kse-key").length + findAll(api.root, "cnb-kse-layer").length, 0,
+              "step 7 has no key picker and no layers");
+          }
+        });
+      }
   } },
 
   { name: "render parts: with no parts the whole panel draws as before", fn: () => {
@@ -1636,4 +1676,315 @@ export const tests = [
       });
   } },
 
+  // ─── Step 6: Key signature symbol type (session 65, step-by-step design §3.1, §3.2) ─
+
+  { name: "step 6: three cards, the one the signature exactly is highlighted, else 'Your own symbols'", fn: () => {
+      const cards = (config) => withDomStub((container) => {
+        const api = E.render(container, { config, parts: ["symbol-type"] });
+        return {
+          words: findAll(api.root, "cnb-kse-start-card").map(c => findAll(c, "cnb-kse-start-card-title")[0].textContent),
+          on: findAll(api.root, "cnb-kse-start-card").filter(c => c.className.split(" ").includes("on")).map(c => c.getAttribute("data-start")),
+          own: findAll(api.root, "cnb-kse-own").map(o => o.textContent),
+          disabled: findAll(api.root, "cnb-kse-start-card").map(c => c.disabled),
+        };
+      });
+      const config = keysConfig();
+      const as = (which) => {
+        const c = CNBConfig.clone(config);
+        c.keys.keySignature = E.startFrom(c.keys.keySignature, which);
+        return c;
+      };
+      deepEq(cards(config).words, ["Noteheads", "Accidentals", "Custom marks"], "the three cards");
+      deepEq([cards(config).on, cards(config).own], [["noteheads"], []], "the defaults: Noteheads");
+      deepEq([cards(as("traditional")).on, cards(as("traditional")).own], [["traditional"], []], "Accidentals");
+      deepEq([cards(as("custom")).on, cards(as("custom")).own], [[], ["Your own symbols"]], "Custom marks: neither");
+      const sn = CNBConfigIO.loadFromText(readFileSync(path.join(GALLERY, "clairnote-sn.json"), "utf8")).config;
+      deepEq([cards(sn).on, cards(sn).own], [[], ["Your own symbols"]], "Clairnote SN: its own symbols");
+      const off = cards(CNBConfig.createDefault());
+      deepEq([off.on, off.own, off.disabled], [[], [], [true, true, true]], "no signature shown: no card, each disabled");
+  } },
+
+  { name: "step 6: a card asks first; Custom marks gives the 21 spelled notes the parallelogram, added to the shapes once", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        let answer = false;
+        const asked = [];
+        const config = keysConfig();
+        config.keys.keySignature.stacking = "parity-stacks";
+        const api = E.render(container, { config, parts: ["symbol-type"], confirm: (q) => { asked.push(q); return answer; },
+          onChange: (slices) => { last = slices; } });
+        const card = (which) => findAll(api.root, "cnb-kse-start-card").find(c => c.getAttribute("data-start") === which);
+        card("custom").onclick();
+        deepEq([asked.length, last], [1, null], "asked, cancelled: nothing written");
+        answer = true;
+        card("custom").onclick();
+        const ks = last.keys.keySignature;
+        eq(Object.keys(ks.looks.spelled).length, 21, "the 21 spelled notes");
+        eq(ks.looks.spelled["C♯"].shape, "parallelogram", "each a parallelogram");
+        eq(ks.stacking, "parity-stacks", "the stacking kept");
+        deepEq(last.shapes.parallelogram, CNBBuiltinShapes.get("parallelogram"), "the parallelogram added to the shapes");
+        assert(last.shapes["crotchet-minim"], "the notation's shapes kept");
+        deepEq(findAll(api.root, "cnb-kse-own").map(o => o.textContent), ["Your own symbols"], "redrawn: its own symbols");
+        card("traditional").onclick();
+        eq(last.keys.keySignature.notes, "altered", "Accidentals");
+        eq(last.shapes, undefined, "no shapes reported");
+        card("custom").onclick();
+        eq(last.shapes, undefined, "the parallelogram already there: no shapes reported");
+        card("noteheads").onclick();
+        deepEq(last.keys.keySignature, { ...CNBConfig.createDefault().keys.keySignature, enabled: true }, "Noteheads: the defaults");
+      });
+  } },
+
+  { name: "step 6: a card leaves nothing picked — the selection cleared and no layer pinned, so step 8's clicks pick a mark's spelling", fn: () => {
+      withDomStub((container) => {
+        const view = { layer: "space", symbol: 0, pinned: true, spelled: ["C", "D"] };
+        const api = E.render(container, { config: keysConfig(), parts: ["symbol-type"], view, confirm: () => true });
+        findAll(api.root, "cnb-kse-start-card").find(c => c.getAttribute("data-start") === "custom").onclick();
+        deepEq(view, { layer: "all", symbol: "base", pinned: false, spelled: [] }, "the view reset");
+        const members = { all: new Set([0, 1]), sharp: new Set([1]), natural: new Set([0]) };
+        eq(E.layerFor(members, 1, view), "sharp", "a click on a sharp picks the sharps");
+      });
+  } },
+
+  { name: "step 6: the 21 spelled notes, in sharp, natural and flat rows, each drawn with its look and named", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        const api = E.render(container, { config, parts: ["symbol-type"] });
+        const cells = findAll(api.root, "cnb-kse-spelled-note");
+        deepEq(cells.map(c => c.getAttribute("data-spelled")),
+          ["C♯", "D♯", "E♯", "F♯", "G♯", "A♯", "B♯", "C", "D", "E", "F", "G", "A", "B", "C♭", "D♭", "E♭", "F♭", "G♭", "A♭", "B♭"],
+          "sharps, naturals, flats, C to B");
+        deepEq(findAll(api.root, "cnb-kse-spelled-letter").map(l => l.textContent), [..."CDEFGAB"], "the letters across");
+        deepEq(findAll(api.root, "cnb-kse-spelled-row").map(l => l.textContent), ["Sharp", "Natural", "Flat"], "the rows");
+        assert(cells.every(c => c.tag === "div"), "step 6's notes are not selectable");
+        eq(findAll(cells[7], "cnb-kse-spelled-name")[0].textContent, "C", "a note's name beneath it");
+        const c = findAttr(cells[7], "class", "cnb-kse-spelled-svg")[0];
+        eq(findAttr(c, "class", "cnb-key-signature-mark").length, 1, "its mark drawn");
+        eq(findAttr(c, "class", "cnb-ledger-set").length, 1, "C's ledger beneath it");
+        eq(c.getAttribute("width"), String(5 * E.CANVAS_PX_PER_SEMI), "at 24 px a semitone");
+        assert(cells.every(cell => findAttr(cell, "class", "cnb-kse-spelled-svg")[0].getAttribute("opacity") === null), "nothing dimmed");
+      });
+  } },
+
+  { name: "step 6: under Accidentals the sharps and flats are signs and the naturals dimmed to 30%", fn: () => {
+      withDomStub((container) => {
+        const config = keysConfig();
+        config.keys.keySignature = E.startFrom(config.keys.keySignature, "traditional");
+        const api = E.render(container, { config, parts: ["symbol-type"] });
+        for (const cell of findAll(api.root, "cnb-kse-spelled-note")) {
+          const name = cell.getAttribute("data-spelled");
+          const svg = findAttr(cell, "class", "cnb-kse-spelled-svg")[0];
+          const natural = name.length === 1;
+          eq(svg.getAttribute("opacity"), natural ? "0.3" : null, `${name} dimmed or not`);
+          eq(findAttr(svg, "class", "cnb-key-signature-sign").length, natural ? 0 : 1, `${name} a sign or a notehead`);
+        }
+      });
+  } },
+
+  { name: "step 6: with the signature off, the canvas says to show it", fn: () => {
+      withDomStub((container) => {
+        const api = E.render(container, { config: CNBConfig.createDefault(), parts: ["symbol-type"] });
+        eq(findAll(api.root, "cnb-kse-spelled-note").length, 0, "no notes");
+        assert(subtreeText(api.root).includes("Show the key signature to see its 21 spelled notes."), "the note");
+      });
+  } },
+
+  // ─── Step 7: Custom key signature symbols (session 65, step-by-step design §3.3) ─
+
+  { name: "mergeLooks / sameShape: agreed fields kept, others MIXED; a shape compared without its reference and ledgers", fn: () => {
+      const merged = E.mergeLooks([
+        { shape: "a", hollow: true, offset: { x: 1, y: 0 }, added: [{ shape: "t" }] },
+        { shape: "a", hollow: false, offset: { y: 0, x: 1 }, color: "#ff0000" },
+      ]);
+      eq(merged.shape, "a", "agreed");
+      eq(merged.hollow, E.MIXED, "disagreed");
+      deepEq(merged.offset, { x: 1, y: 0 }, "an offset compared whole, keys in any order");
+      eq(merged.added, E.MIXED, "added on one only");
+      eq(merged.color, E.MIXED, "a colour set on one only");
+      deepEq(E.mergeLooks([{}, {}]), {}, "nothing set");
+      const kite = CNBBuiltinShapes.get("kite-up");
+      assert(E.sameShape(kite, { ...kite, reference: { x: 3, y: 4 }, ledgers: false }), "the reference and ledgers aside");
+      assert(!E.sameShape(kite, CNBBuiltinShapes.get("kite-down")), "another drawing");
+  } },
+
+  { name: "step 7: each Select choice selects its spelled notes, and is on while the selection is exactly those", fn: () => {
+      withDomStub((container) => {
+        const view = {};
+        const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view });
+        const pick = (which) => findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === which);
+        deepEq(findAll(api.root, "cnb-kse-select-button").map(b => b.textContent),
+          ["All", "Naturals", "Flats", "Sharps", "On a line or ledger", "In a space"], "the choices");
+        const expected = {
+          all: CNBConfig.SPELLED_NOTES,
+          natural: [..."CDEFGAB"],
+          flat: [..."CDEFGAB"].map(l => l + "♭"),
+          sharp: [..."CDEFGAB"].map(l => l + "♯"),
+          line: ["C", "D", "E", "F♭", "G♯", "A♭", "A♯", "B♭", "B♯"],
+          space: ["C♭", "C♯", "D♭", "D♯", "E♭", "E♯", "F", "F♯", "G♭", "G", "A", "B"],
+        };
+        for (const [which, names] of Object.entries(expected)) {
+          pick(which).onclick();
+          deepEq(view.spelled, names, which);
+          deepEq(findAll(api.root, "cnb-kse-select-button").filter(b => b.className.split(" ").includes("on"))
+            .map(b => b.getAttribute("data-select")), [which], `${which} on`);
+          deepEq(findAll(api.root, "cnb-kse-spelled-note").filter(c => c.className.split(" ").includes("on"))
+            .map(c => c.getAttribute("data-spelled")).sort(), [...names].sort(), `${which}'s notes outlined`);
+        }
+      });
+  } },
+
+  { name: "step 7: a click selects a note alone, Shift or Ctrl adds or removes one, and Enter or Space does the same from the keyboard", fn: () => {
+      withDomStub((container) => {
+        const view = {};
+        const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view });
+        const cell = (name) => findAll(api.root, "cnb-kse-spelled-note").find(c => c.getAttribute("data-spelled") === name);
+        assert(findAll(api.root, "cnb-kse-spelled-note").every(c => c.tag === "button"), "each note a button");
+        deepEq(findAll(api.root, "cnb-kse-look-empty").length, 1, "nothing selected: the prompt");
+        cell("C♯").onclick({});
+        deepEq(view.spelled, ["C♯"], "a click");
+        eq(cell("C♯").getAttribute("aria-pressed"), "true", "pressed");
+        cell("D♭").onclick({ shiftKey: true });
+        cell("E").onclick({ ctrlKey: true });
+        deepEq(view.spelled, ["C♯", "D♭", "E"], "Shift and Ctrl add");
+        cell("D♭").onclick({ ctrlKey: true });
+        deepEq(view.spelled, ["C♯", "E"], "Ctrl on a selected note removes it");
+        cell("G").onclick({});
+        deepEq(view.spelled, ["G"], "a click alone selects it alone");
+        let prevented = 0;
+        const key = (k, mods = {}) => ({ key: k, preventDefault: () => { prevented++; }, ...mods });
+        cell("A").onkeydown(key("Enter"));
+        deepEq(view.spelled, ["A"], "Enter");
+        cell("B♭").onkeydown(key(" ", { shiftKey: true }));
+        cell("B").onkeydown(key("Enter", { ctrlKey: true }));
+        deepEq(view.spelled, ["A", "B♭", "B"], "Shift+Space and Ctrl+Enter add");
+        cell("C").onkeydown(key("a"));
+        deepEq([view.spelled, prevented], [["A", "B♭", "B"], 3], "another key does nothing");
+        eq(findAll(api.root, "cnb-kse-look-title")[0].textContent, "3 spelled notes selected", "the card names the count");
+      });
+      withDomStub((container) => {
+        const view = { spelled: ["E", "F"] };
+        const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view });
+        deepEq(findAll(api.root, "cnb-kse-spelled-note").filter(c => c.className.split(" ").includes("on"))
+          .map(c => c.getAttribute("data-spelled")), ["E", "F"], "the selection kept in the view across a re-mount");
+      });
+  } },
+
+  { name: "step 7: the look card writes each field to every selected note's spelled look", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const view = {};
+        const config = customConfig();
+        config.keys.keySignature.looks.spelled["D♯"].offset = { x: 0, y: 0.5 };
+        const api = E.render(container, { config, parts: ["custom-symbols"], view, onChange: (s) => { last = s; } });
+        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "sharp").onclick();
+        const spelled = () => last.keys.keySignature.looks.spelled;
+        findAll(api.root, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "hollow").onclick();
+        assert(view.spelled.every(n => spelled()[n].hollow === true), "every sharp hollow");
+        eq(spelled().C.hollow, false, "a natural untouched");
+        findAll(api.root, "cnb-kse-look-colour").find(b => b.getAttribute("data-color") === "none").onclick();
+        assert(view.spelled.every(n => spelled()[n].color === null), "every sharp no colour");
+        findAll(api.root, "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up").onclick();
+        assert(view.spelled.every(n => spelled()[n].shape === "kite-up"), "every sharp a kite");
+        findAll(api.root, "cnb-kse-look-height")[0].onchange({ target: { value: "2" } });
+        assert(view.spelled.every(n => spelled()[n].heightSemis === 2), "every sharp 2 semitones tall");
+        findAll(api.root, "cnb-kse-look-offset-x")[0].onchange({ target: { value: "1" } });
+        deepEq([spelled()["C♯"].offset, spelled()["D♯"].offset], [{ x: 1, y: 0 }, { x: 1, y: 0.5 }], "x set, each keeping its own y");
+        findAll(api.root, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "").onclick();
+        assert(view.spelled.every(n => !("hollow" in spelled()[n])), "as beneath clears each");
+        eq(findAll(api.root, "cnb-kse-look-scope")[0].textContent, `Edits ${view.spelled.join(", ")} in every key`, "the card names the notes");
+      });
+  } },
+
+  { name: "step 7: a field the selected notes disagree on shows as mixed, with no choice on", fn: () => {
+      withDomStub((container) => {
+        const config = customConfig();
+        const spelled = config.keys.keySignature.looks.spelled;
+        spelled["C♯"] = { shape: "kite-up", hollow: true, color: "#ff0000", heightSemis: 2, widthSemis: 3, offset: { x: 1, y: 0 } };
+        spelled["D♯"] = { shape: "parallelogram", hollow: false, color: "#00ff00", heightSemis: 4, widthSemis: 3, offset: { x: 2, y: 0 } };
+        config.shapes["kite-up"] = CNBBuiltinShapes.get("kite-up");
+        const api = E.render(container, { config, parts: ["custom-symbols"], view: { spelled: ["C♯", "D♯"] } });
+        const group = (label) => findAll(api.root, "cnb-kse-look-group")
+          .find(g => findAll(g, "cnb-kse-look-group-label")[0].textContent === label);
+        for (const label of ["Symbol", "Fill", "Colour", "Size", "Offset"]) {
+          eq(findAll(group(label), "cnb-kse-look-mixed").length, 1, `${label} mixed`);
+        }
+        eq(findAll(group("Symbols"), "cnb-kse-look-mixed").length, 0, "the added symbols agree (none)");
+        const on = (token) => findAll(api.root, token).filter(b => b.className.split(" ").includes("on"));
+        deepEq([on("cnb-kse-look-shape").length, on("cnb-kse-look-fill").length, on("cnb-kse-look-colour").length], [0, 0, 0],
+          "no symbol, fill or colour on");
+        const height = findAll(api.root, "cnb-kse-look-height")[0];
+        deepEq([height.value, height.placeholder], ["", "mixed"], "the height mixed");
+        const width = findAll(api.root, "cnb-kse-look-width")[0];
+        eq(width.value, "3", "the width agreed");
+        deepEq(findAll(api.root, "cnb-kse-look-offset-x").map(i => i.placeholder), ["mixed"], "the offset mixed");
+        eq(findAll(api.root, "cnb-kse-look-words").length, 0, "no summary for several notes");
+      });
+  } },
+
+  { name: "step 7: added symbols across a selection — added to each, given a shape, mixed ones cleared", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        const view = {};
+        const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view, onChange: (s) => { last = s; } });
+        const spelled = () => last.keys.keySignature.looks.spelled;
+        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "flat").onclick();
+        findAll(api.root, "cnb-kse-look-add")[0].onclick();
+        eq(view.symbol, 0, "Added 1 selected");
+        assert(view.spelled.every(n => spelled()[n].added.length === 1), "each flat has one added symbol");
+        findAll(api.root, "cnb-kse-look-shape").find(b => b.getAttribute("data-shape") === "kite-up").onclick();
+        assert(view.spelled.every(n => spelled()[n].added[0].shape === "kite-up" && spelled()[n].shape === "parallelogram"),
+          "the added symbol a kite on each, the base kept");
+        const cell = (name) => findAll(api.root, "cnb-kse-spelled-note").find(c => c.getAttribute("data-spelled") === name);
+        cell("C♭").onclick({});
+        cell("C").onclick({ shiftKey: true });
+        const symbols = findAll(api.root, "cnb-kse-look-group").find(g => findAll(g, "cnb-kse-look-group-label")[0].textContent === "Symbols");
+        eq(findAll(symbols, "cnb-kse-look-mixed").length, 1, "C♭ has one, C none: mixed");
+        eq(findAll(symbols, "cnb-kse-look-add").length, 0, "none added while mixed");
+        findAll(symbols, "cnb-kse-look-added-as")[0].onclick();
+        assert(!("added" in spelled()["C♭"]) && !("added" in spelled().C), "cleared on both");
+        eq(spelled()["D♭"].added[0].shape, "kite-up", "another flat kept");
+      });
+  } },
+
+  { name: "step 7: an imported symbol is added to the shapes by name, reused when the name holds it, refused and named when it holds another", fn: () => {
+      withDomStub((container) => {
+        let last = null;
+        let changes = 0;
+        let give = null;
+        const view = {};
+        const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view,
+          importControl: (_slot, g) => { give = g; },
+          onChange: (s) => { last = s; changes++; } });
+        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "sharp").onclick();
+        const tail = CNBBuiltinShapes.get("kite-up");
+        give("my-tail", tail);
+        deepEq(last.shapes["my-tail"], { ...tail, reference: { x: 0, y: 0 }, ledgers: false }, "added, its point at the origin, no ledgers for sharps");
+        assert(view.spelled.every(n => last.keys.keySignature.looks.spelled[n].shape === "my-tail"), "given to every sharp");
+        assert(last.shapes["crotchet-minim"] && last.shapes.parallelogram, "the other shapes kept");
+
+        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "natural").onclick();
+        give("my-tail", tail);
+        eq(last.shapes, undefined, "the same drawing: used as it is, no shapes reported");
+        assert([..."CDEFGAB"].every(n => last.keys.keySignature.looks.spelled[n].shape === "my-tail"), "given to the naturals");
+
+        const before = changes;
+        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "flat").onclick();
+        give("my-tail", CNBBuiltinShapes.get("kite-down"));
+        eq(changes, before, "another drawing under the name: nothing written");
+        const error = findAll(api.root, "cnb-kse-import-error");
+        eq(error.length, 1, "the refusal shown");
+        assert(error[0].textContent.includes('"my-tail"'), "naming the shape");
+        findAll(api.root, "cnb-kse-spelled-note")[0].onclick({});
+        eq(findAll(api.root, "cnb-kse-import-error").length, 0, "cleared by a new selection");
+      });
+  } },
+
 ];
+
+/** A config whose signature starts from Custom marks (session 65). */
+function customConfig() {
+  const config = keysConfig();
+  config.keys.keySignature = E.startFrom(config.keys.keySignature, "custom");
+  config.shapes.parallelogram = CNBBuiltinShapes.get("parallelogram");
+  return config;
+}

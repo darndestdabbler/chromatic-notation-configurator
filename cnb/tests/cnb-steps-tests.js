@@ -10,7 +10,14 @@
 
 import { CNBSteps, CNBStepNav } from "../ui/steps.js";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBConfigIO } from "../ui/config-io.js";
+import { CNBKeySignatureEditor } from "../ui/key-signature-editor.js";
 import { withDomStub } from "./svg-stub.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const GALLERY_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "examples", "gallery");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -21,11 +28,13 @@ function eq(actual, expected, message) {
   if (a !== e) throw new Error(`${message}: expected ${e}, got ${a}`);
 }
 
-/** A config with the key signature and the clef on or off. */
-function configWith({ signature = false, clef = false } = {}) {
+/** A config with the key signature and the clef on or off; custom, a
+ *  signature of its own symbols rather than a starting point (step 7). */
+function configWith({ signature = false, clef = false, custom = false } = {}) {
   const config = CNBConfig.createDefault();
   config.keys.enabled = signature;
   config.keys.keySignature.enabled = signature;
+  if (custom) config.keys.keySignature.looks.spelled = { E: { hollow: true } };
   if (clef) {
     config.clef.enabled = true;
     config.clef.active = "dozenal";
@@ -37,7 +46,10 @@ function configWith({ signature = false, clef = false } = {}) {
 const ALL = [
   { signature: false, clef: false }, { signature: true, clef: false },
   { signature: false, clef: true }, { signature: true, clef: true },
+  { signature: true, clef: false, custom: true }, { signature: true, clef: true, custom: true },
 ];
+
+const STEP_7_REASON = "Choose Custom marks in step 6 to design your own symbols.";
 
 const ids = () => CNBSteps.map(s => s.id);
 
@@ -93,17 +105,19 @@ export const tests = [
     },
   },
   {
-    name: "CNBStepNav.isAvailable / reason: steps 7–9 need a signature, step 11 a clef, the rest are always available",
+    name: "CNBStepNav.isAvailable / reason: step 7 needs a signature of its own symbols, 8 and 9 a signature, step 11 a clef, the rest are always available",
     fn: () => {
       for (const on of ALL) {
         const config = configWith(on);
         for (const step of CNBSteps) {
-          const needsSignature = ["ks-custom-symbols", "ks-designer", "ks-preview"].includes(step.id);
-          const expected = needsSignature ? on.signature : step.id === "clef-placement" ? on.clef : true;
+          const needsSignature = ["ks-designer", "ks-preview"].includes(step.id);
+          const expected = step.id === "ks-custom-symbols" ? on.signature && !!on.custom
+            : needsSignature ? on.signature : step.id === "clef-placement" ? on.clef : true;
           eq(CNBStepNav.isAvailable(step.id, config), expected, `${step.id} ${JSON.stringify(on)}`);
           const reason = CNBStepNav.reason(step.id, config);
           if (expected) assert(reason === null, `${step.id} has no reason when available`);
-          else eq(reason, needsSignature ? "Show a key signature in step 6 first."
+          else eq(reason, step.id === "ks-custom-symbols" ? STEP_7_REASON
+            : needsSignature ? "Show a key signature in step 6 first."
             : "Choose or import a clef in step 10 first.", `${step.id} reason`);
         }
       }
@@ -148,8 +162,12 @@ export const tests = [
       eq(CNBStepNav.next("ks-symbol-type", none).id, "clef-symbol", "next from 6 skips 7–9 without a signature");
       eq(CNBStepNav.back("clef-symbol", none).id, "ks-symbol-type", "back from 10 to 6");
       eq(CNBStepNav.back("export", none).id, "clef-symbol", "back from 12 to 10 without a clef");
-      const both = configWith({ signature: true, clef: true });
+      const start = configWith({ signature: true, clef: true });
+      eq(CNBStepNav.next("ks-symbol-type", start).id, "ks-designer", "next from 6 skips 7 for a starting point");
+      eq(CNBStepNav.back("ks-designer", start).id, "ks-symbol-type", "back from 8 to 6");
+      const both = configWith({ signature: true, clef: true, custom: true });
       eq(CNBStepNav.next("ks-symbol-type", both).id, "ks-custom-symbols", "next from 6 to 7");
+      eq(CNBStepNav.back("ks-designer", both).id, "ks-custom-symbols", "back from 8 to 7");
       eq(CNBStepNav.back("export", both).id, "clef-placement", "back from 12 to 11");
       assert(CNBStepNav.back("notehead-height", both) === null, "no back from step 1");
       assert(CNBStepNav.next("export", both) === null, "no next from step 12");
@@ -198,9 +216,9 @@ export const tests = [
     }),
   },
   {
-    name: "CNBStepNav.renderNav: with the signature and a clef on, no step is greyed",
+    name: "CNBStepNav.renderNav: with a signature of its own symbols and a clef on, no step is greyed",
     fn: () => withDomStub(container => {
-      CNBStepNav.renderNav(container, { current: "export", config: configWith({ signature: true, clef: true }), onOpen: () => {} });
+      CNBStepNav.renderNav(container, { current: "export", config: configWith({ signature: true, clef: true, custom: true }), onOpen: () => {} });
       const root = container.children[container.children.length - 1];
       eq(links(root).filter(l => l.getAttribute("aria-disabled") === "true").length, 0, "none greyed");
     }),
@@ -220,7 +238,7 @@ export const tests = [
   {
     name: "CNBStepNav.renderBar: no Back on step 1, no Next on step 12, nothing in Advanced",
     fn: () => withDomStub(container => {
-      const config = configWith({ signature: true, clef: true });
+      const config = configWith({ signature: true, clef: true, custom: true });
       const buttons = (current) => {
         CNBStepNav.renderBar(container, { current, config, onOpen: () => {} });
         const root = container.children[container.children.length - 1];
@@ -231,5 +249,63 @@ export const tests = [
       eq(buttons("export"), ["← 11. Clef semitone/staff assignment"], "step 12");
       eq(buttons("advanced"), [], "Advanced");
     }),
+  },
+  {
+    name: "CNBStepNav.startingPoint: each of step 6's starting points, and a signature of its own symbols",
+    fn: () => {
+      const config = configWith({ signature: true });
+      eq(CNBStepNav.startingPoint(config), "noteheads", "the defaults: Noteheads");
+      const as = (which) => {
+        const c = CNBConfig.clone(config);
+        c.keys.keySignature = CNBKeySignatureEditor.startFrom(c.keys.keySignature, which);
+        return c;
+      };
+      eq(CNBStepNav.startingPoint(as("noteheads")), "noteheads", "startFrom noteheads");
+      eq(CNBStepNav.startingPoint(as("traditional")), "traditional", "startFrom traditional: Accidentals");
+      eq(CNBStepNav.startingPoint(as("custom")), null, "startFrom custom: neither");
+      const moved = as("traditional");
+      Object.assign(moved.keys.keySignature, { heights: "scale", signs: { heightSemis: 4 }, columnGap: 1 });
+      moved.keys.keySignature.placement.position = "every-set";
+      eq(CNBStepNav.startingPoint(moved), "traditional", "the designer's heights, place, gap and the signs' size do not count");
+      const saved = CNBConfigIO.mergeLoaded({ keys: { enabled: true, keySignature: { enabled: true, style: "accidentals" } } }).config;
+      eq(CNBStepNav.startingPoint(saved), "traditional", "a saved accidentals style is Accidentals");
+      const stacked = configWith({ signature: true });
+      stacked.keys.keySignature.stacking = "parity-stacks";
+      stacked.keys.keySignature.columnGap = -0.5;
+      eq(CNBStepNav.startingPoint(stacked), "noteheads", "no look set: Noteheads, whatever the stacking");
+      for (const [label, edit] of [
+        ["a sharps' colour", k => { k.looks.sharp = { color: "#ff0000" }; }],
+        ["a line's fill", k => { k.looks.line = { hollow: true }; }],
+        ["every second stack's colour", k => { k.alternate = { color: "#00ff00" }; }],
+        ["a spelled note's look", k => { k.looks.spelled = { "C♯": { shape: "kite-up" } }; }],
+      ]) {
+        const own = configWith({ signature: true });
+        edit(own.keys.keySignature);
+        eq(CNBStepNav.startingPoint(own), null, label + ": its own symbols");
+        assert(CNBStepNav.isAvailable("ks-custom-symbols", own), label + ": step 7 open");
+      }
+      const red = as("traditional");
+      red.keys.keySignature.looks.sharp.color = "#cc0000";
+      eq(CNBStepNav.startingPoint(red), null, "red sharps are not Accidentals");
+      const emptySpelled = configWith({ signature: true });
+      emptySpelled.keys.keySignature.looks.spelled = { E: {} };
+      eq(CNBStepNav.startingPoint(emptySpelled), "noteheads", "an empty spelled look sets nothing");
+    },
+  },
+  {
+    name: "CNBStepNav.startingPoint / isAvailable: each gallery file, loaded as the app loads it",
+    fn: () => {
+      const custom = ["clairnote-dn.json", "clairnote-sn.json"];
+      const files = fs.readdirSync(GALLERY_DIR).filter(f => f.endsWith(".json"));
+      assert(files.length >= 18, "the gallery's files");
+      for (const file of files) {
+        const config = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, file), "utf8")).config;
+        const shown = !!(config.keys.enabled && config.keys.keySignature.enabled);
+        eq(shown, custom.includes(file), file + " shows a signature");
+        eq(CNBStepNav.startingPoint(config), custom.includes(file) ? null : "noteheads", file + " starting point");
+        eq(CNBStepNav.isAvailable("ks-custom-symbols", config), custom.includes(file), file + " step 7");
+        eq(CNBStepNav.reason("ks-custom-symbols", config), custom.includes(file) ? null : STEP_7_REASON, file + " reason");
+      }
+    },
   },
 ];

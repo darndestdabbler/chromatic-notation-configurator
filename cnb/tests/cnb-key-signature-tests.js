@@ -1726,6 +1726,91 @@ export const tests = [
       assert(!CNBKeySignature.isScaleStack(keysigConfig([], { columnGap: -0.5 })), "a gap");
     }},
 
+  // ─── The 21 spelled notes (session 65, step-by-step design §3.2) ─────────
+
+  { name: "spelledNotes: the 21 spelled notes in letter order, each flat, natural and sharp", fn: () => {
+      const notes = CNBKeySignature.spelledNotes(CNBConfig.createDefault());
+      deepEq(notes.map(n => n.name), CNBConfig.SPELLED_NOTES, "C♭ … B♯");
+      deepEq(notes.slice(0, 3).map(n => [n.letter, n.alteration]), [["C", -1], ["C", 0], ["C", 1]], "C♭, C, C♯");
+      eq(notes[20].name, "B♯", "B♯ last");
+    }},
+
+  { name: "spelledNotes: each at its pitch from the C below the middle, on a line or ledger or in a space (default staff)", fn: () => {
+      const notes = CNBKeySignature.spelledNotes(CNBConfig.createDefault());
+      const at = name => notes.find(n => n.name === name);
+      deepEq(["C♭", "C", "C♯", "D♭", "E♯", "F♭", "B♯"].map(n => [at(n).semi, at(n).pc]),
+        [[11, 11], [12, 0], [13, 1], [13, 1], [17, 5], [16, 4], [24, 0]], "the middle's C at 12, C♭ below it, B♯ on the next");
+      // The 4-8 staff's lines at 16 and 20, the in-gap ledgers at 12 and 14
+      // (C and D), and A♯'s ledger at 22.
+      deepEq(notes.filter(n => n.line).map(n => n.name),
+        ["C", "D", "E", "F♭", "G♯", "A♭", "A♯", "B♭", "B♯"], "the notes on a line or ledger");
+      const twinline = CNBConfig.createDefault();
+      twinline.staff.midpoint = 7;
+      eq(CNBKeySignature.spelledNotes(twinline)[1].semi, 0, "a middle at 7: the C at 0");
+    }},
+
+  { name: "spelledNotes: the default config's marks are its noteheads at crotchet, no key", fn: () => {
+      const config = CNBConfig.createDefault();
+      for (const n of CNBKeySignature.spelledNotes(config)) {
+        const r = CNBConfig.resolveNotehead(config, n.pc, "crotchet", null);
+        deepEq([n.mark.shape, n.mark.hollow, n.mark.color], [r.shape, r.hollow, r.color ?? "#000000"], n.name);
+      }
+    }},
+
+  { name: "spelledNotes: all, the alteration's look, line or space and the spelled look, in order; not every second stack", fn: () => {
+      const config = keysigConfig([], {
+        looks: { ...CNBConfig.createDefault().keys.keySignature.looks,
+          all: { color: "#111111", hollow: true }, sharp: { color: "#222222" }, natural: { heightSemis: 2 },
+          line: { hollow: false }, space: { widthSemis: 5 },
+          spelled: { "C♯": { color: "#333333" }, E: { hollow: true } } },
+        alternate: { color: "#00ff00" },
+      });
+      const at = name => CNBKeySignature.spelledNotes(config).find(n => n.name === name).mark;
+      deepEq([at("C♯").color, at("D♯").color, at("D♭").color], ["#333333", "#222222", "#111111"],
+        "C♯ its spelled colour, D♯ the sharps', D♭ all marks'");
+      deepEq([at("C").hollow, at("F").hollow, at("E").hollow], [false, true, true],
+        "C on a ledger solid, F in a space all marks' hollow, E's spelled fill over the line's");
+      deepEq([at("C").heightSemis, at("F").widthSemis, at("C").widthSemis], [2, 5, undefined], "naturals, then a space");
+      assert(!CNBKeySignature.spelledNotes(config).some(n => n.mark.color === "#00ff00"), "no alternate");
+    }},
+
+  { name: "spelledNotes: Clairnote SN's dots are solid on a line and hollow in a space, tails on the sharps and flats", fn: () => {
+      const sn = CNBConfigIO.loadFromText(fs.readFileSync(path.join(GALLERY_DIR, "clairnote-sn.json"), "utf8")).config;
+      for (const n of CNBKeySignature.spelledNotes(sn)) {
+        eq(n.mark.shape, "clairnote-dot", `${n.name} a dot`);
+        eq(n.mark.hollow, !n.line, `${n.name} ${n.line ? "on a line, solid" : "in a space, hollow"}`);
+        const tail = n.alteration === 1 ? "clairnote-tail-down" : n.alteration === -1 ? "clairnote-tail-up" : null;
+        deepEq((n.mark.added || []).map(a => a.shape), tail ? [tail] : [], `${n.name}'s tail`);
+      }
+    }},
+
+  { name: "renderMark: a head with its ledger, a sign, and a mark with an added symbol", fn: () => {
+      const config = keysigConfig([], {
+        looks: { ...CNBConfig.createDefault().keys.keySignature.looks,
+          sharp: { sign: "sharp" }, spelled: { D: { added: [{ shape: "crotchet-minim", heightSemis: 1 }] } } },
+      });
+      const notes = CNBKeySignature.spelledNotes(config);
+      const at = name => notes.find(n => n.name === name);
+      withSvgStub(svg => {
+        const grid = CNBGrid.create(config, { minSemi: 10, maxSemi: 15 });
+        const c = CNBKeySignature.renderMark(svg, grid, config, at("C"), 40);
+        eq(c.getAttribute("class"), "cnb-key-signature-mark", "a group");
+        const ledgers = c.children[0];
+        eq(ledgers.getAttribute("class"), "cnb-ledger-set", "the ledgers first");
+        eq(ledgers.children.length, 1, "C's in-gap ledger");
+        eq(c.children.length, 2, "then the head");
+        eq(c.children[1].getAttribute("transform"), `translate(40,${grid.semiToY(12)})`, "on C, at x");
+
+        const cs = CNBKeySignature.renderMark(svg, grid, config, at("C♯"), 40);
+        deepEq(cs.children.map(e => e.getAttribute("class")), ["cnb-key-signature-sign"], "a sign alone: no ledgers");
+
+        const d = CNBKeySignature.renderMark(svg, grid, config, at("D"), 40);
+        eq(d.children.length, 3, "ledgers, the head and the added symbol");
+        eq(d.children[0].children.length, 2, "D's ledgers at 12 and 14");
+        eq(svg.children.length, 3, "each mark appended");
+      });
+    }},
+
 ];
 
 // Keys for the marks tests (session 48): definitions as the picker passes them.

@@ -536,6 +536,41 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-kse-start { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
 .cnb-kse-start .cnb-kse-field-label { width: auto; }
 .cnb-kse-start-button { font-size: 13px; }
+/* Step 6's starting points (session 65, step-by-step design §3.1): three cards, the signature's highlighted. */
+.cnb-kse-start-cards { flex-basis: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.cnb-kse-start-card {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: var(--space-3); white-space: normal; text-align: center; border-radius: var(--radius-m);
+}
+.cnb-kse-start-card.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-start-card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.cnb-kse-start-card-words { font-size: 12px; color: var(--ink-2); }
+.cnb-kse-own { grid-column: 1 / -1; font-size: 13px; color: var(--accent); }
+/* The 21 spelled notes (session 65, design §3.2): the letters across, a row for sharp, natural and flat. */
+.cnb-kse-spelled {
+  display: grid; grid-template-columns: auto repeat(7, max-content); gap: var(--space-1);
+  align-items: center; justify-content: start; overflow-x: auto; margin-bottom: var(--space-3);
+}
+.cnb-kse-spelled > .cnb-kse-canvas-empty { grid-column: 1 / -1; }
+.cnb-kse-spelled-letter { text-align: center; font-size: 13px; color: var(--ink-2); }
+.cnb-kse-spelled-row { font-size: 12px; color: var(--ink-2); padding-right: var(--space-2); }
+.cnb-kse-spelled-note {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px;
+  border: 1px solid transparent; border-radius: var(--radius-s); background: var(--surface);
+}
+button.cnb-kse-spelled-note { cursor: pointer; }
+button.cnb-kse-spelled-note:hover { border-color: var(--line); }
+.cnb-kse-spelled-note.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-spelled-svg { display: block; overflow: visible; }
+/* Step 7 (session 65, design §3.3): the Select row, and the look card on the selection beneath the notes. */
+.cnb-kse-select { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-bottom: var(--space-2); }
+.cnb-kse-select .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
+.cnb-kse-select-button { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
+.cnb-kse-select-button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-kse-part-custom-symbols .cnb-kse-look-card { max-width: 720px; }
+.cnb-kse-look-mixed { font-size: 12px; font-style: italic; color: var(--ink-2); }
+.cnb-kse-import-error { flex-basis: 100%; font-size: 13px; color: var(--error); }
+.cnb-kse-spelled-name { font-size: 12px; color: var(--ink-2); }
 /* The key picker and Edit's layer chips, on one bar. */
 .cnb-kse-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5, 24px); margin-bottom: var(--space-2); }
 .cnb-kse-key { display: flex; align-items: center; gap: var(--space-2); }

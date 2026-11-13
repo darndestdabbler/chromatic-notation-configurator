@@ -52,8 +52,9 @@ export function canvasConfig(config, size) {
  * "notehead-height", where the page opens, "staff", "pitch",
  * "ledger-lines", "noteheads", "ks-symbol-type", "ks-custom-symbols",
  * "ks-designer", "ks-preview", "clef-symbol", "clef-placement", "export",
- * or "advanced". A greyed step does not open: steps 7–9 need a key
- * signature shown, step 11 a clef. The staff canvas is hidden in steps
+ * or "advanced". A greyed step does not open: steps 8 and 9 need a key
+ * signature shown, step 7 one of its own symbols (Custom marks, session
+ * 65), step 11 a clef. The staff canvas is hidden in steps
  * 6–9 ("ks-…"). Since session 26 the staff
  * editor is mounted once per section: its pattern and line look in Staff,
  * the ledger rules (Automatic or My own rules) in Ledger lines, and the

@@ -1781,7 +1781,7 @@ Detailed specifications deferred. Summary:
 | 16 — SVG Shape Importer | Parse SVG for paths, anchors, LY data attributes | SVG importer |
 | 17 — Config Save/Load | JSON export/import | New |
 | 18 — Config Export (LY) | LilyPond file download (wraps Module 11) | LY export button |
-| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`) | New (replaces monolith preview) |
+| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`) | New (replaces monolith preview) |
 
 ---
 
@@ -1877,6 +1877,16 @@ filled into a mask of 40 cells a staff space, a hollow head's cut-out left
 out), `touchingKeys(config)` (the keys of the 105 whose marks touch, with
 their counts, empty while the signature is off; the checks list warns
 "Marks touch in N keys", never blocking the export),
+`spelledNotes(config)` (session 65, step-by-step design §3.2: the 21
+spelled notes C♭ … B♯ as steps 6 and 7 draw them, each `{ name, letter,
+alteration, pc, semi, line, mark }`, at its pitch in the octave from the C
+nearest below the staff's middle, whether that pitch is on a line or
+ledger, and its mark resolved as `marks` resolves one: the notehead's own at
+crotchet with no key, then the all, alteration, line or space and spelled
+looks, not every second stack's), `renderMark(svgParent, gridContext,
+config, note, x)` (session 65: one such mark drawn on its own, a head's
+ledgers beneath it, its symbols as `render` draws them, which shares the
+code),
 `measure(config,
 pxPerSemi, keyName)`, `padding(config, pxPerSemi, keyName,
 firstHeadCenter)` (the engine's spacing either side of the marks, session
@@ -1919,8 +1929,18 @@ CONSUMERS — the rule editor's `match.keys` pills and the preview's key
 selector), and the `keySignature` subsection. Since session 63 it serves
 the key signature's four steps and Advanced through a `parts` option, the
 page mounting it once for each: "symbol-type" (step 6: Show the key
-signature, which also turns keys on, and Start from), "custom-symbols"
-(step 7: the key picker, Edit, the canvas and the look card), "designer"
+signature, which also turns keys on; since session 65 three starting-point
+cards, Noteheads, Accidentals and Custom marks, through `startFrom(ks,
+"noteheads" | "traditional" | "custom")`, the one the signature exactly is
+highlighted (`CNBStepNav.startingPoint`), else "Your own symbols", over the
+21 spelled notes drawn with their looks, the naturals dimmed when only the
+altered notes are drawn), "custom-symbols" (step 7, since session 65: the
+Select row, the 21 spelled notes selected by click, Shift+click,
+Ctrl+click, and Enter or Space, kept in `opts.view.spelled`, and the look
+card writing every selected note's `looks.spelled` entry, a field they
+disagree on shown as mixed, `mergeLooks`; an imported symbol added to the
+shapes by name, reused when the name holds the same drawing and refused,
+named, when it holds another, `sameShape`), "designer"
 (step 8: the key picker, the canvas, Notes, Stacks and Place), "preview"
 (step 9: the mode's 15 keys and the touch list) and "definitions"
 (Advanced › Keys for notehead rules: Use keys, the key definitions and the
@@ -1929,7 +1949,10 @@ signature is the editor of the key-signature design §13.8
 (`docs/planning/key-signature-designer-design.md`), in a designer's words:
 Show the key signature, and **Start from**, the noteheads (the defaults) or
 traditional sharps and flats (`startFrom`), which replaces the signature's
-settings once confirmed, keeping Show and the picked key. The **key
+settings once confirmed, keeping Show and the picked key. Custom marks
+(`startFrom(ks, "custom")`, session 65) changes only the looks: the
+built-in parallelogram for each of the 21 spelled notes, and no sign in the
+flats' and sharps' looks; the card adds the parallelogram to the shapes. The **key
 picker** is the staff's key and mode (`opts.key`), and a change picks the
 staff's key through `opts.onKey`. **Edit** picks the layer edited: all
 marks, naturals, flats, sharps, a line or ledger, a space, or every second

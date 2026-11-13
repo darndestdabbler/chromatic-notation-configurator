@@ -1149,6 +1149,21 @@
       "what": "step 'clairnote-redraw': its files",
       "reason": "uat-key-signature.mjs step 9b reads Clairnote SN's sharp tail from the sharps' look card; the redraw carries the tail in the spelled looks, which the panel shows from session 65, so the check reads them from the loaded config.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 65,
+      "dateTime": "2026-11-13T15:03:53.576000-05:00",
+      "task": "Build key-signature steps 6 and 7 of the step-by-step design (\u00a73.1\u2013\u00a73.3). CNBKeySignature gains spelledNotes(config), the 21 spelled notes C\u266d to B\u266f with each one's pitch near the staff's middle, whether it is on a line or ledger, and its mark resolved as the signature resolves a mark (the notehead's own at crotchet, then the all, natural/flat/sharp, line/space and spelled looks; not alternate), and renderMark, which draws one such mark with its ledgers and symbols and shares render()'s drawing, so every signature draws byte for byte as before. The step registry gains startingPoint(config) (\"noteheads\" when no look is set, \"traditional\" when the signature is exactly the Accidentals starting point, else null), and step 7 becomes available exactly when a signature is shown and it is neither, with the reason \"Choose Custom marks in step 6 to design your own symbols.\". startFrom gains \"custom\": the 21 spelled notes given the built-in parallelogram, the signs removed from the flats' and sharps' looks, and stacking, columns, the gold stem, the notes and the place kept. Step 6 shows Show a key signature and three cards (Noteheads, Accidentals, Custom marks), each asking first and undoable, the one the signature exactly is highlighted, else \"Your own symbols\", over a magnified canvas of the 21 spelled notes (7 letters across, sharp, natural and flat rows, each mark drawn with its look on its pitch's line or space with its label beneath, the naturals at 30% opacity when only the altered notes are drawn); Custom marks adds the parallelogram to the shapes. Step 7 draws the same canvas, selectable by click, Shift+click or Ctrl+click and by keyboard, with a Select row (All, Naturals, Flats, Sharps, On a line or ledger, In a space), and the look card applied to every selected note's looks.spelled entry, a field the selection disagrees on shown as mixed; an imported symbol is added to the shapes by name, left alone when that name already holds the same shape and refused, named, when it holds another. uat-key-signature.mjs is rewritten to the steps, building Clairnote SN's signature in step 7 from its six symbols (solid and hollow dots, plain, tail up, tail down) to the gallery file's spelled looks, selecting by pointer and keyboard, with undo after each starting point and each import; the other drivers and the README and architecture plan follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 65,
+      "dateTime": "2026-11-13T15:38:12.333000-05:00",
+      "what": "step 'drivers': its files",
+      "reason": "Rewriting the driver showed that a step 6 card pins the layer (pickLayer('all')), so a click on step 8's canvas then picks All marks and a drag moves every mark; the card must leave the layer unpinned, with a unit test",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

@@ -531,6 +531,44 @@ function onLine(config, semi, axis) {
     CNBLedgerSet.ledgersFor(config, [semi], range, axis).some(at);
 }
 
+/**
+ * Each symbol of a mark drawn into g (a layout of symbolsOf at the grid's
+ * px a semitone), its stack's line at lineX and its pitch at y: a sign at
+ * its size (session 52), scaled about its origin, its box centred on its
+ * point and its origin at its point's height (engine handoffs 030 §1, 035
+ * §1a), black unless a look colours it; a shape as a notehead. marked(e, k),
+ * when given, marks each symbol drawn.
+ */
+function drawSymbols(g, config, space, layouts, lineX, y, marked) {
+  (layouts || []).forEach((sym, k) => {
+    if (sym.kind === "sign") {
+      const sign = signGlyph(config, sym.sign);
+      const size = space * sym.scale;
+      const scale = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("class", "cnb-key-signature-sign");
+      path.setAttribute("d", sign.path);
+      path.setAttribute("fill", sym.color);
+      path.setAttribute("transform", `translate(${lineX + sym.cx - (sign.x[0] + sign.x[1]) / 2 * size} ` +
+        `${y + sym.y}) scale(${scale})`);
+      if (marked) marked(path, k);
+      g.appendChild(path);
+      return;
+    }
+    const e = CNBNotehead.render(g, {
+      shape: (config.shapes || {})[sym.shape],
+      x: lineX + sym.x,
+      y: y + sym.y,
+      scaleFactor: sym.scaleFactor,
+      scaleX: sym.scaleX,
+      scaleY: sym.scaleY,
+      hollow: sym.hollow,
+      color: sym.color,
+    });
+    if (marked) marked(e, k);
+  });
+}
+
 /** The key's tonic spelled (design §3): the definition's spelling, else its
  *  name's leading note, when either spells the tonic, else the default. */
 function tonicName(def, tonic, pcs) {
@@ -1250,45 +1288,83 @@ export const CNBKeySignature = {
     // Each mark's symbols, the base then the added ones, each marked with
     // its mark's index and its own (data-mark, data-symbol: 0 the base) when
     // the editor's canvas asks, so it can tell which was clicked (session 56).
-    const marked = (e, i, k) => {
-      if (!markSymbols) return;
-      e.setAttribute("data-mark", String(i));
-      e.setAttribute("data-symbol", String(k));
-    };
     m.marks.forEach(({ semi, column }, i) => {
       const lineX = m.offsets ? columnX(column) + m.offsets[i] : columnX(column);
-      const y = gridContext.semiToY(semi);
-      (m.layouts[i] || []).forEach((sym, k) => {
-        if (sym.kind === "sign") {
-          // A sign at its size (session 52), scaled about its origin, its
-          // box centred on its point and its origin at its point's height
-          // (engine handoffs 030 §1, 035 §1a), black unless a look colours it.
-          const sign = signGlyph(config, sym.sign);
-          const size = space * sym.scale;
-          const scale = size / CNBAccidentalGlyphs.UNITS_PER_STAFF_SPACE;
-          const path = document.createElementNS(NS, "path");
-          path.setAttribute("class", "cnb-key-signature-sign");
-          path.setAttribute("d", sign.path);
-          path.setAttribute("fill", sym.color);
-          path.setAttribute("transform", `translate(${lineX + sym.cx - (sign.x[0] + sign.x[1]) / 2 * size} ` +
-            `${y + sym.y}) scale(${scale})`);
-          marked(path, i, k);
-          g.appendChild(path);
-          return;
-        }
-        marked(CNBNotehead.render(g, {
-          shape: (config.shapes || {})[sym.shape],
-          x: lineX + sym.x,
-          y: y + sym.y,
-          scaleFactor: sym.scaleFactor,
-          scaleX: sym.scaleX,
-          scaleY: sym.scaleY,
-          hollow: sym.hollow,
-          color: sym.color,
-        }), i, k);
-      });
+      drawSymbols(g, config, space, m.layouts[i], lineX, gridContext.semiToY(semi), markSymbols ? (e, k) => {
+        e.setAttribute("data-mark", String(i));
+        e.setAttribute("data-symbol", String(k));
+      } : null);
     });
 
+    svgParent.appendChild(g);
+    return g;
+  },
+
+  /**
+   * The 21 spelled notes (session 65, step-by-step design §3.2): C♭ to B♯
+   * in letter order, each flat, natural and sharp (CNBConfig.SPELLED_NOTES),
+   * as steps 6 and 7 draw them. Each is at its pitch in the octave from the
+   * C nearest below the staff's middle (C♭ just below that C, B♯ on the next
+   * one), with whether that pitch is on a line or ledger, as the line and
+   * space looks decide it, and its mark resolved as marks() resolves one:
+   * the notehead's own at crotchet with no key, then the looks for all marks,
+   * its alteration, a line or a space and its spelling. Every second stack's
+   * look is not laid: a spelled note has no stack.
+   *
+   * @param {object} config
+   * @returns {{name:string, letter:string, alteration:number, pc:number,
+   *            semi:number, line:boolean, mark:object}[]}
+   */
+  spelledNotes(config) {
+    const ks = (config.keys || {}).keySignature || {};
+    const looks = ks.looks || {};
+    const byLine = !lookUnset(looks.line) || !lookUnset(looks.space);
+    const bySpelling = looks.spelled || {};
+    const c = 12 * Math.floor(((config.staff || {}).midpoint ?? 12) / 12);
+    const axis = CNBPitchAxis.create(config);
+    let scale;
+    const signScale = () => (scale ??= CNBKeySignature.signScale(config));
+    return CNBConfig.SPELLED_NOTES.map(name => {
+      const letter = name[0];
+      const alteration = name.endsWith("♯") ? 1 : name.endsWith("♭") ? -1 : 0;
+      const semi = c + CNBMusic.MODES.major["CDEFGAB".indexOf(letter)] + alteration;
+      const pc = CNBMusic.pitchClass(semi);
+      const line = onLine(config, semi, axis);
+      const mark = markLook(config, pc, null, [
+        looks.all,
+        alteration === 1 ? looks.sharp : alteration === -1 ? looks.flat : looks.natural,
+        byLine ? (line ? looks.line : looks.space) : undefined,
+        Object.hasOwn(bySpelling, name) ? bySpelling[name] : undefined,
+      ], signScale);
+      return { name, letter, alteration, pc, semi, line, mark };
+    });
+  },
+
+  /**
+   * One mark drawn on its own (session 65, the 21 spelled notes' canvas):
+   * its stack's line at x and its pitch on the grid, a head's ledgers
+   * beneath it as the signature draws them (4/3 of its base's width and
+   * their caps), then its symbols as render() draws them. Null when its
+   * base's shape is not defined.
+   *
+   * @param {SVGElement} svgParent
+   * @param {object} gridContext
+   * @param {object} config
+   * @param {{semi:number, mark:object}} note  a mark, as spelledNotes or marks gives it
+   * @param {number} x  px
+   * @returns {SVGGElement|null}
+   */
+  renderMark(svgParent, gridContext, config, { semi, mark }, x) {
+    const layouts = symbolsOf(config, mark, gridContext.pxPerSemi);
+    if (!layouts) return null;
+    const space = CNBStaff.staffSpacePx(config, gridContext);
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "cnb-key-signature-mark");
+    const base = layouts[0];
+    if (base.kind === "head") {
+      CNBLedgerSet.render(g, gridContext, config, [semi], { width: ledgerLength(base.width, space), centerX: x + base.cx });
+    }
+    drawSymbols(g, config, space, layouts, x, gridContext.semiToY(semi), null);
     svgParent.appendChild(g);
     return g;
   },

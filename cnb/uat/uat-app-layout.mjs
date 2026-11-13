@@ -265,7 +265,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     els.map(e => [e.dataset.section, e.title, getComputedStyle(e).opacity < 1]));
   check(`${width}: with no key signature and no clef, steps 7, 8, 9 and 11 are greyed with their reasons`,
     JSON.stringify(greyed) === JSON.stringify([
-      ["ks-custom-symbols", "Show a key signature in step 6 first.", true],
+      ["ks-custom-symbols", "Choose Custom marks in step 6 to design your own symbols.", true],
       ["ks-designer", "Show a key signature in step 6 first.", true],
       ["ks-preview", "Show a key signature in step 6 first.", true],
       ["clef-placement", "Choose or import a clef in step 10 first.", true]]), JSON.stringify(greyed));
@@ -546,16 +546,24 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       String(keysigGutter));
     await page.screenshot({ path: path.join(SHOT_DIR, "panel-key-signature-key.png"), fullPage: true });
 
-    // ── Steps 7–9 open with a signature shown, without the whole staff (session 63) ──
+    // ── Steps 8 and 9 open with a signature shown, step 7 with Custom marks,
+    // each without the whole staff (sessions 63, 65) ──
+    const greyedNow = () => page.$$eval('.section-link[aria-disabled="true"]', els => els.map(e => [e.dataset.section, e.title]));
+    const noteheadsGreyed = await greyedNow();
+    await openSection(page, "ks-symbol-type");
+    page.once("dialog", d => d.accept());
+    await page.click('[data-panel="ks-symbol-type"] .cnb-kse-start-card[data-start="custom"]');
     const opened = [];
     for (const id of ["ks-custom-symbols", "ks-designer", "ks-preview"]) {
       await openSection(page, id);
       opened.push([(await visiblePanels(page))[0], await canvasShown(page)]);
       await page.screenshot({ path: path.join(SHOT_DIR, "panel-" + id + ".png"), fullPage: true });
     }
-    check("1440: with the signature shown, steps 7, 8 and 9 are no longer greyed and open, each without the staff canvas",
+    check("1440: with the signature shown, steps 8 and 9 are no longer greyed; step 7 waits for Custom marks, its reason saying so, and opens once they are chosen; each opens without the staff canvas",
+      JSON.stringify(noteheadsGreyed) === JSON.stringify([["ks-custom-symbols", "Choose Custom marks in step 6 to design your own symbols."]]) &&
       JSON.stringify(opened) === JSON.stringify([["ks-custom-symbols", false], ["ks-designer", false], ["ks-preview", false]]) &&
-      (await page.$$('.section-link[aria-disabled="true"]')).length === 0, JSON.stringify(opened));
+      (await page.$$('.section-link[aria-disabled="true"]')).length === 0, JSON.stringify({ noteheadsGreyed, opened }));
+    await page.click("#undo-config");
     await openSection(page, "ks-symbol-type");
     await page.uncheck('[data-panel="ks-symbol-type"] .cnb-kse-sig-enable-check');
     await page.click('.section-link[data-section="ks-designer"]', { force: true });

@@ -30,11 +30,16 @@
  * offset and added symbols, Import from SVG with its reference point and
  * Takes ledger lines, the key picker and the other keys, the touch line,
  * its list and the checks' warning, Start from confirmed and cancelled,
- * screenshots at 1440 and 1280 px) → clef
+ * screenshots at 1440 and 1280 px; since session 65 step 6's three starting
+ * points, Noteheads, Accidentals and Custom marks, each one step of undo,
+ * over the 21 spelled notes, step 7's Select row, selection and look card on
+ * the spelled notes, and step 8's canvas for the drags) → clef
  * composition → save the config (real
  * download) and load it back → export a .ly file (real download, the mark
  * table) → the Clairnote SN gallery file's signature → screenshots at 1440
- * and 1280 px — with Node-side parity checks run in
+ * and 1280 px → the Clairnote SN signature built in step 7 from its six
+ * symbols, selected by pointer and keyboard, until its spelled looks and
+ * mark table are the gallery file's (session 65) — with Node-side parity checks run in
  * THIS process on the full config read from the page's live state panel:
  * CNBKeySignature.gutterWidth / measure / signatureSemis and
  * CNBGrid.semiToY for the preview geometry, CNBLilypond.generate for the
@@ -70,6 +75,7 @@ import { CNBGrid } from "../src/cnb-grid.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { CNBConfigExport } from "../ui/config-export.js";
+import { CNBConfigIO } from "../ui/config-io.js";
 import { useCanvasSize, useDownloads, canvasConfig, openSection, setField } from "./app-page.mjs";
 import { withSvgStub } from "../tests/svg-stub.js";
 
@@ -386,8 +392,10 @@ check("ENABLE SIGNATURE: keys.keySignature.enabled true in the shared config, va
 check("ENABLE SIGNATURE: the picked key's signature draws at once (C major, picked by default; session 36), and the button that turns it on is gone",
   (await keysigColCount()) >= 1 &&
   await page.evaluate(() => !document.querySelector(".cnb-pvd-signature-on")));
-check("ENABLE SIGNATURE: steps 7, 8 and 9 are no longer greyed, and step 6 hides the staff canvas (session 63)",
-  JSON.stringify(await greyedSteps()) === JSON.stringify(["clef-placement"]) &&
+check("ENABLE SIGNATURE: steps 8 and 9 are no longer greyed, step 7 waits for Custom marks with its reason (session 65), and step 6 hides the staff canvas (session 63)",
+  JSON.stringify(await greyedSteps()) === JSON.stringify(["ks-custom-symbols", "clef-placement"]) &&
+  (await page.getAttribute('.section-link[data-section="ks-custom-symbols"]', "title")) ===
+    "Choose Custom marks in step 6 to design your own symbols." &&
   await page.$eval("#canvas-card", e => e.hidden), JSON.stringify(await greyedSteps()));
 
 // ── STEP 4: the key picked on the staff ─────────────────────────────────────
@@ -521,17 +529,31 @@ async function radio(group, value) {
   await openSection(page, "ks-designer");
   await page.check(`${PANEL.designer} .${group} .cnb-kse-radio[data-value="${value}"] input`);
 }
-/** Pick a layer in step 7's Edit: the look card then edits it (session 56). */
-async function pickLayer(layer) {
+/** Select spelled notes in step 7 by its Select row (session 65). */
+async function selectRow(which) {
   await openSection(page, "ks-custom-symbols");
-  await page.click(`${PANEL.symbols} .cnb-kse-layer[data-layer="${layer}"]`);
+  await page.click(`${PANEL.symbols} .cnb-kse-select-button[data-select="${which}"]`);
 }
-/** Start from in step 6 (session 56): the button, its question accepted or not. */
+/** A spelled note's button on step 7's canvas (session 65). */
+const spelledCell = (name) => `${PANEL.symbols} .cnb-kse-spelled-note[data-spelled="${name}"]`;
+/** Step 7's look card, on the selected spelled notes (session 65). */
+const CARD = `${PANEL.symbols} .cnb-kse-look-card`;
+/** The spelled notes pressed in step 7. */
+const pressedNotes = () => page.$$eval(`${PANEL.symbols} .cnb-kse-spelled-note[aria-pressed="true"]`, els => els.map(e => e.dataset.spelled));
+/** A starting point in step 6 (session 65): its card, its question accepted or not. */
 async function startFrom(which, accept = true) {
   await openSection(page, "ks-symbol-type");
   page.once("dialog", d => (accept ? d.accept() : d.dismiss()));
-  await page.click(`${PANEL.type} .cnb-kse-start-button[data-start="${which}"]`);
+  await page.click(`${PANEL.type} .cnb-kse-start-card[data-start="${which}"]`);
 }
+/** The starting point step 6 highlights, if any. */
+const highlighted = () => page.$$eval(`${PANEL.type} .cnb-kse-start-card.on`, els => els.map(e => e.dataset.start));
+const undo = () => page.click("#undo-config");
+const redo = () => page.click("#redo-config");
+/** JSON with keys in order, for comparing looks written in another order. */
+const stable = (v) => Array.isArray(v) ? `[${v.map(stable).join(",")}]`
+  : v && typeof v === "object" ? `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stable(v[k])}`).join(",")}}`
+  : JSON.stringify(v);
 /** The canvas against the Node-side marks for the live config and a key. */
 async function canvasDraws(key, label) {
   const live = await fullConfig();
@@ -544,18 +566,21 @@ async function canvasDraws(key, label) {
 const canvasStems = () => page.$$eval(".cnb-pvd-preview .cnb-key-signature-separator",
   els => els.map(e => ({ stroke: e.getAttribute("stroke"), width: parseFloat(e.getAttribute("stroke-width")) })));
 
-check("PANEL: the signature is set in a designer's words, a part in each step (session 63) — step 6 Show the key signature and Start from; step 7 the key, Edit, the canvas and the look card; step 8 the key, the canvas, Notes, Stacks and Place; step 9 the mode's keys; Advanced the keys for notehead rules",
+check("PANEL: the signature is set in a designer's words, a part in each step (sessions 63, 65) — step 6 Show the key signature, its three starting points, Noteheads highlighted, and the 21 spelled notes; step 7 Select, the 21 spelled notes as buttons and the look card; step 8 the key, the canvas, Notes, Stacks and Place; step 9 the mode's keys; Advanced the keys for notehead rules",
   await page.evaluate(() => {
     // Each selector scoped to the panel, a comma list included.
     const q = (panel, sel) => document.querySelectorAll(sel.split(", ").map(x => `[data-panel="${panel}"] ${x}`).join(", "));
     const labels = [...q("ks-designer", ".cnb-kse-row-label")].map(e => e.textContent);
     return JSON.stringify(labels) === JSON.stringify(["Notes", "Stacks", "Place"]) &&
-      q("ks-symbol-type", ".cnb-kse-start-button").length === 2 &&
+      JSON.stringify([...q("ks-symbol-type", ".cnb-kse-start-card-title")].map(e => e.textContent)) ===
+        JSON.stringify(["Noteheads", "Accidentals", "Custom marks"]) &&
+      [...q("ks-symbol-type", ".cnb-kse-start-card.on")].map(e => e.dataset.start).join() === "noteheads" &&
       q("ks-symbol-type", ".cnb-kse-sig-enable")[0].textContent === "Show the key signature" &&
-      q("ks-symbol-type", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-row-label").length === 0 &&
-      q("ks-custom-symbols", ".cnb-kse-layer").length === 7 &&
-      q("ks-custom-symbols", ".cnb-kse-canvas").length === 1 && q("ks-custom-symbols", ".cnb-kse-look-card").length === 1 &&
-      q("ks-custom-symbols", ".cnb-kse-key-tonic").length === 1 && q("ks-custom-symbols", ".cnb-kse-row-label").length === 0 &&
+      q("ks-symbol-type", "div.cnb-kse-spelled-note").length === 21 &&
+      q("ks-symbol-type", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-row-label, .cnb-kse-look-card").length === 0 &&
+      q("ks-custom-symbols", ".cnb-kse-select-button").length === 6 &&
+      q("ks-custom-symbols", "button.cnb-kse-spelled-note").length === 21 && q("ks-custom-symbols", ".cnb-kse-look-card").length === 1 &&
+      q("ks-custom-symbols", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-key-tonic, .cnb-kse-row-label").length === 0 &&
       q("ks-designer", ".cnb-kse-canvas").length === 1 && q("ks-designer", ".cnb-kse-key-tonic").length === 1 &&
       q("ks-designer", ".cnb-kse-look-card, .cnb-kse-layer").length === 0 &&
       q("ks-preview", ".cnb-kse-mini").length === 15 && q("ks-preview", ".cnb-kse-canvas").length === 0 &&
@@ -651,55 +676,77 @@ await pickKey("C", "major");
   await page.check(".cnb-kse-sep-enable-check");
 }
 
-// Looks: size, shape, fill and colour, each set and cleared.
-await pickLayer("all");
-await setField(page, '.cnb-kse-look-card[data-look="all"] .cnb-kse-look-height', "1.5");
+// Custom marks (session 65): the 21 spelled notes given parallelograms, one
+// step of undo.
+await startFrom("custom");
+{
+  const live = await fullConfig();
+  const spelled = live.keys.keySignature.looks.spelled;
+  const own = await page.evaluate(() => document.querySelector('[data-panel="ks-symbol-type"] .cnb-kse-own')?.textContent ?? null);
+  check("CUSTOM MARKS: confirmed, each of the 21 spelled notes is a parallelogram, the shape added to the notation, the stacking kept; no card is highlighted, step 6 says 'Your own symbols', and step 7 opens",
+    Object.keys(spelled).length === 21 && Object.values(spelled).every(l => l.shape === "parallelogram") &&
+    !!live.shapes.parallelogram && live.keys.keySignature.stacking === "parity-stacks" &&
+    JSON.stringify(await highlighted()) === "[]" && own === "Your own symbols" &&
+    !(await greyedSteps()).includes("ks-custom-symbols"), JSON.stringify({ own, greyed: await greyedSteps() }));
+  await undo();
+  const undone = await fullConfig();
+  const undoneOn = await highlighted();
+  const undoneGreyed = await greyedSteps();
+  await redo();
+  check("CUSTOM MARKS: one step of undo — Undo takes the parallelograms and the shape back, Noteheads highlighted and step 7 greyed again; Redo returns them",
+    JSON.stringify(undone.keys.keySignature.looks.spelled) === "{}" && !undone.shapes.parallelogram &&
+    JSON.stringify(undoneOn) === '["noteheads"]' && undoneGreyed.includes("ks-custom-symbols") &&
+    JSON.stringify(await fullConfig()) === JSON.stringify(live), JSON.stringify({ undoneOn, undoneGreyed }));
+}
+
+// Looks of the spelled notes in step 7 (session 65): size, shape and fill,
+// each set and cleared. (Every second stack's look is step 8's, session 66.)
+// (Cleared of every field the signature would be the Noteheads starting
+// point again and step 7 would close, so the height is set before the fill
+// is cleared.)
+await selectRow("all");
+await page.click(`${CARD} .cnb-kse-look-shape[data-shape=""]`);
+await setField(page, `${CARD} .cnb-kse-look-height`, "1.5");
+await page.click(`${CARD} .cnb-kse-look-fill[data-fill=""]`);
 {
   const r = await canvasDraws(C_MAJOR_KEY, "small marks");
-  check("LOOKS: all marks 1.5 semitones tall (the width keeping the notehead's proportions) — drawn so, and no key's marks touch",
-    r.cfg.keys.keySignature.looks.all.heightSemis === 1.5 && r.cfg.keys.keySignature.looks.all.widthSemis > 1.5 && r.ok &&
-    !(await page.$(".cnb-kse-touch-list")) && CNBKeySignature.touchingKeys(r.cfg).length === 0 &&
-    (await page.textContent('.cnb-kse-look-card[data-look="all"] .cnb-kse-look-words')).includes("1.5"), r.detail);
+  const spelled = r.cfg.keys.keySignature.looks.spelled;
+  check("LOOKS: Select All in step 7 selects the 21 spelled notes; the symbol and fill as beneath and 1.5 semitones tall make each the notation's notehead 1.5 semitones tall, its width in proportion, drawn so, and no key's marks touch",
+    JSON.stringify(await pressedNotes()) === JSON.stringify(CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♯")).concat(
+      [..."CDEFGAB"], CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♭")))) &&
+    CNBConfig.SPELLED_NOTES.every(n => spelled[n].heightSemis === 1.5 && spelled[n].widthSemis > 1.5 &&
+      !("shape" in spelled[n]) && !("hollow" in spelled[n])) &&
+    r.ok && !(await page.$(".cnb-kse-touch-list")) && CNBKeySignature.touchingKeys(r.cfg).length === 0 &&
+    (await page.inputValue(`${CARD} .cnb-kse-look-height`)) === "1.5", r.detail);
 }
-await page.click('.cnb-kse-look-card[data-look="all"] .cnb-kse-look-shape[data-shape="kite-up"]');
+await page.click(`${CARD} .cnb-kse-look-shape[data-shape="kite-up"]`);
 {
   const r = await canvasDraws(C_MAJOR_KEY, "kite marks");
   const kite = r.cfg.shapes["kite-up"];
-  check("LOOKS: a built-in shape the notation lacked (Kite up) is added to it and given to all marks, which draw with it",
-    r.cfg.keys.keySignature.looks.all.shape === "kite-up" && !!kite && r.ok &&
+  check("LOOKS: a built-in shape the notation lacked (Kite up) is added to it and given to the 21 spelled notes, which draw with it",
+    Object.values(r.cfg.keys.keySignature.looks.spelled).every(l => l.shape === "kite-up") && !!kite && r.ok &&
     await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
       (ps, d) => ps.length > 0 && ps.every(p => p.getAttribute("d") === d), kite.svgPath), r.detail);
 }
-await page.click('.cnb-kse-look-card[data-look="all"] .cnb-kse-look-shape[data-shape=""]');
-check("LOOKS: 'as the noteheads' clears the shape",
-  !("shape" in (await fullConfig()).keys.keySignature.looks.all));
+await page.click(`${CARD} .cnb-kse-look-shape[data-shape=""]`);
+check("LOOKS: 'as beneath' clears the shape of each",
+  Object.values((await fullConfig()).keys.keySignature.looks.spelled).every(l => !("shape" in l)));
 await pickKey("D", "major");
-await pickLayer("sharp");
-await page.click('.cnb-kse-look-card[data-look="sharp"] .cnb-kse-look-fill[data-fill="hollow"]');
+await selectRow("sharp");
+await page.click(`${CARD} .cnb-kse-look-fill[data-fill="hollow"]`);
 {
   const r = await canvasDraws(D_MAJOR_KEY, "hollow sharps");
   const hollow = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g",
     gs => gs.filter(g => [...g.querySelectorAll(":scope > path")].some(p => p.getAttribute("fill") === "white")).length);
-  check("LOOKS: hollow sharps — D major's F♯ and C♯ draw hollow, the others solid",
-    r.cfg.keys.keySignature.looks.sharp.hollow === true && r.ok && hollow === 2, `${r.detail} hollow=${hollow}`);
+  const spelled = r.cfg.keys.keySignature.looks.spelled;
+  check("LOOKS: Sharps selects the 7 sharps, made hollow — D major's F♯ and C♯ draw hollow, the others solid",
+    (await pressedNotes()).length === 7 && CNBConfig.SPELLED_NOTES.every(n => (spelled[n].hollow === true) === n.endsWith("♯")) &&
+    r.ok && hollow === 2, `${r.detail} hollow=${hollow}`);
 }
-await page.click('.cnb-kse-look-card[data-look="sharp"] .cnb-kse-look-fill[data-fill=""]');
-await pickLayer("alternate");
-await setField(page, '.cnb-kse-look-card[data-look="alternate"] .cnb-kse-look-colour-input', "#cc79a7");
-{
-  const live = await fullConfig();
-  const picked = CNBPreviewDisplay.withKey(live, D_MAJOR_KEY);
-  const sig = CNBKeySignature.marks(picked.config, picked.config.keys.definitions.find(d => d.name === picked.name));
-  const want = sig.marks.filter(mk => mk.mark.color === "#cc79a7").length;
-  const got = await page.$$eval(".cnb-pvd-preview .cnb-key-signature > g > path:first-child",
-    ps => ps.filter(p => p.getAttribute("fill") === "#cc79a7").length);
-  check("LOOKS: every second stack in puce — those marks draw puce, the others not",
-    live.keys.keySignature.alternate.color === "#cc79a7" && want > 0 && got === want && got < sig.marks.length, `drawn ${got}, wanted ${want}`);
-}
-await page.click('.cnb-kse-look-card[data-look="alternate"] .cnb-kse-look-colour[data-color=""]');
+await page.click(`${CARD} .cnb-kse-look-fill[data-fill=""]`);
 cfg = await fullConfig();
-check("LOOKS: 'as all marks' and 'as the others' clear the sharps' fill and the second stacks' colour",
-  !("hollow" in cfg.keys.keySignature.looks.sharp) && !("color" in cfg.keys.keySignature.alternate));
+check("LOOKS: 'as beneath' clears the sharps' fill",
+  Object.values(cfg.keys.keySignature.looks.spelled).every(l => !("hollow" in l)));
 await pickKey("C", "major");
 
 // Place.
@@ -716,8 +763,8 @@ await pickKey("C", "major");
     counts["every-set"] > counts.middle, JSON.stringify(counts));
 }
 cfg = await fullConfig();
-// The panel and the canvas at the page's two widths, a look open.
-await pickLayer("all");
+// The panel and the canvas at the page's two widths, the spelled notes selected.
+await selectRow("all");
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
@@ -772,14 +819,28 @@ check("START FROM: the rows stay — Notes shows the sharps or flats only, Stack
     document.querySelector('.cnb-kse-notes-choice .cnb-kse-radio[data-value="altered"] input').checked &&
     document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="fifths"] input').checked &&
     document.querySelector('.cnb-kse-heights-choice .cnb-kse-radio[data-value="window"] input').checked));
-await pickLayer("sharp");
-check("SIZE: the sharps' look card shows the signs' one size, automatic by default at the rule's size for the default staff, 2.72 semitones, and Place's hint no longer names the half steps",
+{
+  const traditional = await fullConfig();
+  await undo();
+  const undone = await fullConfig();
+  await redo();
+  check("START FROM: one step of undo — Undo puts back the spelled looks the signature had, Redo the traditional signature",
+    JSON.stringify(undone.keys.keySignature) === JSON.stringify(before51) &&
+    JSON.stringify(await fullConfig()) === JSON.stringify(traditional));
+}
+await openSection(page, "ks-symbol-type");
+check("ACCIDENTALS: step 6 highlights Accidentals, and its 21 spelled notes draw a sharp at each sharp and a flat at each flat, the naturals' noteheads dimmed to 30%; step 7 is greyed; the signs are at their automatic size, and Place's hint no longer names the half steps",
   cfg.keys.keySignature.signs.heightSemis === null &&
+  JSON.stringify(await highlighted()) === '["traditional"]' && (await greyedSteps()).includes("ks-custom-symbols") &&
   await page.evaluate(() => {
-    const auto = document.querySelector(".cnb-kse-look-card .cnb-kse-sign-size-auto");
+    const cells = [...document.querySelectorAll('[data-panel="ks-symbol-type"] .cnb-kse-spelled-note')];
     const hint = document.querySelector(".cnb-kse-place .cnb-kse-hint").textContent;
-    return auto && auto.classList.contains("on") && auto.textContent === "Automatic (2.72)" &&
-      document.querySelector(".cnb-kse-sign-size").value === "2.72" && !hint.includes("half steps");
+    return cells.length === 21 && !hint.includes("half steps") && cells.every(c => {
+      const natural = c.dataset.spelled.length === 1;
+      const svg = c.querySelector("svg");
+      return svg.getAttribute("opacity") === (natural ? "0.3" : null) &&
+        svg.querySelectorAll(".cnb-key-signature-sign").length === (natural ? 0 : 1);
+    });
   }));
 for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D major", 2], [BF_MAJOR_KEY, "B♭ major", 2]]) {
   await pickKey(key.spelling, key.mode);
@@ -812,6 +873,25 @@ for (const [key, label, signs] of [[C_MAJOR_KEY, "C major", 0], [D_MAJOR_KEY, "D
   await pickKey("D", "major");
   await radio("cnb-kse-position", "middle");
   const auto = await canvasSigns();
+  // Custom marks over the traditional signature (session 65) keep its notes,
+  // stacking and place; Emmentaler's signs given to the sharps and flats in
+  // step 7 draw as before, and the look card has the signs' one size.
+  await startFrom("custom");
+  await selectRow("flat");
+  await page.click(`${CARD} .cnb-kse-look-sign[data-sign="flat"]`);
+  await selectRow("sharp");
+  await page.click(`${CARD} .cnb-kse-look-sign[data-sign="sharp"]`);
+  {
+    const live = await fullConfig();
+    check("CUSTOM MARKS: over the traditional signature they keep the sharps or flats only, the cycle of fifths and the middle; Emmentaler's sharp and flat given to the sharps and flats in step 7 draw D major's sharps as before, and the card shows the signs' one size, automatic, 2.72 semitones",
+      live.keys.keySignature.notes === "altered" && live.keys.keySignature.stacking === "fifths" &&
+      live.keys.keySignature.placement.position === "middle" && signsMatch(await canvasSigns(), auto) &&
+      await page.evaluate(() => {
+        const a = document.querySelector('[data-panel="ks-custom-symbols"] .cnb-kse-sign-size-auto');
+        return !!a && a.classList.contains("on") && a.textContent === "Automatic (2.72)" &&
+          document.querySelector(".cnb-kse-sign-size").value === "2.72";
+      }));
+  }
   await page.evaluate(() => {
     const input = document.querySelector(".cnb-kse-sign-size");
     input.value = "5";
@@ -878,7 +958,22 @@ const CS_MAJOR_KEY = { tonic: 1, mode: "major", spelling: "C♯" };
   await page.setViewportSize({ width: 1600, height: 1800 });
   await page.waitForTimeout(150);
 }
-await startFrom("noteheads");
+{
+  // Noteheads as a reset, then Undo and Redo (session 65): the whole config
+  // before and after it.
+  const beforeNoteheads = await fullConfig();
+  await startFrom("noteheads");
+  const noteheads = await fullConfig();
+  await undo();
+  const undone = await fullConfig();
+  const undoneOn = await highlighted();
+  await redo();
+  check("START FROM: Noteheads is one step of undo — Undo puts back the whole config it replaced (the custom marks and their signs), Redo the defaults, highlighted again",
+    JSON.stringify(undone) === JSON.stringify(beforeNoteheads) && JSON.stringify(undoneOn) === "[]" &&
+    JSON.stringify(noteheads) !== JSON.stringify(beforeNoteheads) &&
+    JSON.stringify(await fullConfig()) === JSON.stringify(noteheads) &&
+    JSON.stringify(await highlighted()) === '["noteheads"]', JSON.stringify({ undoneOn }));
+}
 await pickKey("C", "major");
 {
   const r = await canvasDraws(C_MAJOR_KEY, "the key's notes again");
@@ -935,24 +1030,26 @@ async function loadConfig(json, name, adopted) {
 }
 cfg = await fullConfig();
 
-// ── STEP 5c: the key-signature editor (session 56, design §13.8) ────────────
-// Each drag and choice of the editor, made with the pointer and the panel's
-// controls as a designer makes them; the config is loaded back afterwards,
-// since STEP 7 saves the settings of STEP 5.
+// ── STEP 5c: the editors of steps 8 and 7 (sessions 56, 65) ─────────────────
+// Step 8's canvas: a drag of a mark, of its corner handle and of a sign's,
+// each one step of undo. Step 7: added symbols and Import from SVG on a
+// selection. The config is loaded back afterwards, since STEP 7 saves the
+// settings of STEP 5.
 const before56 = await fullConfig();
 await startFrom("noteheads");
 await pickKey("D", "major");
-await openSection(page, "ks-custom-symbols");
+await openSection(page, "ks-designer");
 /** D major's marks as the panel's canvas draws them, by pitch class. */
 async function dMajorMarks() {
   const live = await fullConfig();
   const picked = CNBPreviewDisplay.withKey(live, D_MAJOR_KEY);
   return CNBKeySignature.marks(picked.config, CNBKeySignature.activeKey(picked.config, picked.name).def).marks;
 }
-const fsharp = (await dMajorMarks()).findIndex(m => ((m.semi % 12) + 12) % 12 === 6);
-/** A mark's base on the panel's canvas, scrolled into view: its centre. */
+const fsharpOf = async () => (await dMajorMarks()).findIndex(m => ((m.semi % 12) + 12) % 12 === 6);
+const fsharp = await fsharpOf();
+/** A mark's base on step 8's canvas, scrolled into view: its centre. */
 async function markCentre(index) {
-  const loc = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${index}"][data-symbol="0"] path`).first();
+  const loc = page.locator(`${PANEL.designer} .cnb-kse-canvas [data-mark="${index}"][data-symbol="0"]`).first();
   await loc.scrollIntoViewIfNeeded();
   const b = await loc.boundingBox();
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
@@ -967,46 +1064,24 @@ async function dragBy(from, dx, dy) {
   await page.mouse.up();
   return readout;
 }
-const cardLook = () => page.$eval(".cnb-kse-look-card", e => e.getAttribute("data-look"));
-const undo = () => page.click("#undo-config");
-const redo = () => page.click("#redo-config");
 {
   const info = await page.evaluate(() => {
-    const box = document.querySelector('[data-panel="ks-custom-symbols"] .cnb-kse-canvas');
+    const box = document.querySelector('[data-panel="ks-designer"] .cnb-kse-canvas');
     return { marks: new Set([...box.querySelectorAll("[data-mark]")].map(e => e.getAttribute("data-mark"))).size,
       maxHeight: getComputedStyle(box).maxHeight, height: box.getBoundingClientRect().height };
   });
-  check("EDITOR: the canvas draws the picked key's signature magnified, D major's eight marks, its height capped at 360 px",
+  check("EDITOR: step 8's canvas draws the picked key's signature magnified, D major's eight marks, its height capped at 360 px",
     info.marks === (await dMajorMarks()).length && info.marks === 8 && info.maxHeight === "360px" && info.height <= 361,
     JSON.stringify(info));
 }
-{
-  const seen = [];
-  for (const layer of ["all", "natural", "flat", "sharp", "line", "space", "alternate"]) {
-    await pickLayer(layer);
-    seen.push([await cardLook(), await page.textContent(".cnb-kse-look-scope")]);
-  }
-  check("EDITOR: each of Edit's seven layers opens its look card, which says it edits that category in every key",
-    seen.every(([look, scope], i) => look === ["all", "natural", "flat", "sharp", "line", "space", "alternate"][i] &&
-      scope.endsWith("in every key")) && seen[2][1] === "Edits all flats in every key", JSON.stringify(seen));
-}
-// A click selects the mark's spelling, unless a layer is picked.
-await pickLayer("natural");
-await page.mouse.click(...Object.values(await markCentre(fsharp)));
-const clickedSharp = await cardLook();
-await pickLayer("space");
-await page.mouse.click(...Object.values(await markCentre(fsharp)));
-check("EDITOR: a click on F♯ selects the sharps, and with In a space picked in Edit it stays on the spaces; a click writes nothing",
-  clickedSharp === "sharp" && (await cardLook()) === "space" &&
-  JSON.stringify((await fullConfig()).keys.keySignature) === JSON.stringify({ ...CNBConfig.createDefault().keys.keySignature, enabled: true }));
-// A drag moves every sharp, snapped, one step of undo.
-await pickLayer("sharp");
+// A drag moves every sharp, snapped, one step of undo: after a starting
+// point nothing is picked, so a click picks the mark's spelling.
 {
   const readout = await dragBy(await markCentre(fsharp), 37, -14);
-  const after = (await fullConfig()).keys.keySignature.looks.sharp;
-  check("EDITOR: dragging F♯ 37 px right and 14 px up moves every sharp by x 1.5, y 0.6 semitones, snapped to tenths, the values shown beside the handle while dragging, and the field shows them",
-    JSON.stringify(after.offset) === JSON.stringify({ x: 1.5, y: 0.6 }) && readout && readout.includes("offset x 1.5 y 0.6") &&
-    (await page.inputValue(".cnb-kse-look-card .cnb-kse-look-offset-x")) === "1.5", `${JSON.stringify(after)} readout=${readout}`);
+  const after = (await fullConfig()).keys.keySignature.looks;
+  check("EDITOR: on step 8's canvas, dragging F♯ 37 px right and 14 px up moves every sharp by x 1.5, y 0.6 semitones, snapped to tenths, the values shown beside the handle while dragging",
+    JSON.stringify(after.sharp.offset) === JSON.stringify({ x: 1.5, y: 0.6 }) && !("offset" in after.all) &&
+    readout && readout.includes("offset x 1.5 y 0.6"), `${JSON.stringify(after)} readout=${readout}`);
   await undo();
   const undone = (await fullConfig()).keys.keySignature.looks.sharp;
   await redo();
@@ -1014,15 +1089,12 @@ await pickLayer("sharp");
   check("EDITOR: one drag is one step of undo — Undo puts the sharps back, Redo moves them again",
     !("offset" in undone) && JSON.stringify(redone.offset) === JSON.stringify({ x: 1.5, y: 0.6 }),
     `${JSON.stringify(undone)} ${JSON.stringify(redone)}`);
-  await setField(page, ".cnb-kse-look-card .cnb-kse-look-offset-y", "-0.5");
-  check("EDITOR: the offset's y field writes the same number the drag does",
-    JSON.stringify((await fullConfig()).keys.keySignature.looks.sharp.offset) === JSON.stringify({ x: 1.5, y: -0.5 }));
-  await page.click(".cnb-kse-look-card .cnb-kse-look-offset-as");
+  await undo();
 }
-// The corner handle sizes the sharps; a sign's sizes both signs.
+// The corner handle sizes the sharps.
 {
   await page.mouse.click(...Object.values(await markCentre(fsharp)));
-  const handle = page.locator(`${PANEL.symbols} .cnb-kse-canvas .cnb-kse-handle`);
+  const handle = page.locator(`${PANEL.designer} .cnb-kse-canvas .cnb-kse-handle`);
   await handle.scrollIntoViewIfNeeded();
   const hb = await handle.boundingBox();
   await dragBy({ x: hb.x + hb.width / 2, y: hb.y + hb.height / 2 }, 0, 24);
@@ -1031,76 +1103,76 @@ await pickLayer("sharp");
   check("EDITOR: dragging the corner handle 24 px down makes the sharps a semitone taller, 2.724 to 3.7, snapped, the width in proportion",
     look.heightSemis === 3.7 && Math.abs(look.widthSemis - 3.7 * shape.naturalWidth / shape.naturalHeight) < 1e-3, JSON.stringify(look));
   await undo();
-  await page.click('.cnb-kse-look-card .cnb-kse-look-sign[data-sign="sharp"]');
-  const live = await fullConfig();
-  const auto = CNBKeySignature.signHeight(live).semis;
-  await page.mouse.click(...Object.values(await (async () => {
-    const loc = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="0"]`);
-    await loc.scrollIntoViewIfNeeded();
-    const b = await loc.boundingBox();
-    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-  })()));
+}
+// A sign's handle sizes both signs: Accidentals in D major.
+{
+  await startFrom("traditional");
+  await openSection(page, "ks-designer");
+  const auto = CNBKeySignature.signHeight(await fullConfig()).semis;
+  const sign = await fsharpOf();
+  await page.mouse.click(...Object.values(await markCentre(sign)));
+  const handle = page.locator(`${PANEL.designer} .cnb-kse-canvas .cnb-kse-handle`);
   await handle.scrollIntoViewIfNeeded();
   // The selection is where the sign is drawn (round 1 of verification): the
   // focused box encloses the drawn sharp's outline, the handle on its corner.
   const placed = await page.evaluate((i) => {
-    const svg = document.querySelector(".cnb-kse-canvas svg");
-    const sign = document.querySelector(`.cnb-kse-canvas [data-mark="${i}"][data-symbol="0"]`).getBoundingClientRect();
-    const box = document.querySelector(".cnb-kse-canvas .cnb-kse-instance.focus").getBoundingClientRect();
-    const h = document.querySelector(".cnb-kse-canvas .cnb-kse-handle").getBoundingClientRect();
+    const canvas = document.querySelector('[data-panel="ks-designer"] .cnb-kse-canvas');
+    const svg = canvas.querySelector("svg");
+    const drawnSign = canvas.querySelector(`[data-mark="${i}"][data-symbol="0"]`).getBoundingClientRect();
+    const box = canvas.querySelector(".cnb-kse-instance.focus").getBoundingClientRect();
+    const h = canvas.querySelector(".cnb-kse-handle").getBoundingClientRect();
     return { finite: [svg.width.baseVal.value, svg.height.baseVal.value].every(v => Number.isFinite(v) && v > 0),
-      sign: [sign.left, sign.top, sign.right, sign.bottom], box: [box.left, box.top, box.right, box.bottom],
+      sign: [drawnSign.left, drawnSign.top, drawnSign.right, drawnSign.bottom], box: [box.left, box.top, box.right, box.bottom],
       handle: [(h.left + h.right) / 2, (h.top + h.bottom) / 2] };
-  }, fsharp);
-  check("EDITOR: with a sign selected the canvas is finite, the focused box encloses the drawn sharp (within 1.5 px) and the handle is on its corner",
+  }, sign);
+  check("EDITOR: with a sign selected step 8's canvas is finite, the focused box encloses the drawn sharp (within 1.5 px) and the handle is on its corner",
     placed.finite && placed.sign.every((v, j) => Math.abs(v - placed.box[j]) <= 1.5) &&
     Math.abs(placed.handle[0] - placed.box[2]) <= 1.5 && Math.abs(placed.handle[1] - placed.box[3]) <= 1.5,
     JSON.stringify(placed));
   const sb = await handle.boundingBox();
   await dragBy({ x: sb.x + sb.width / 2, y: sb.y + sb.height / 2 }, 0, 24);
   const ks = (await fullConfig()).keys.keySignature;
-  check("EDITOR: with the sharps Emmentaler's sharp, the handle sets the signs' one size, a semitone more than the automatic size, and the card shows it set by hand",
-    ks.looks.sharp.sign === "sharp" && ks.signs.heightSemis === Math.round((auto + 1) * 10) / 10 &&
-    !(await page.$eval(".cnb-kse-look-card .cnb-kse-sign-size-auto", e => e.classList.contains("on"))),
-    `${JSON.stringify(ks.signs)} auto=${auto}`);
-}
-// Added symbols.
-{
-  await page.click(".cnb-kse-look-card .cnb-kse-look-add");
-  await page.click('.cnb-kse-look-card .cnb-kse-look-shape[data-shape="kite-up"]');
-  const added = (await fullConfig()).keys.keySignature.looks.sharp.added;
-  const selected = await page.$eval('.cnb-kse-look-card .cnb-kse-look-select.on', e => e.textContent);
-  const drawnAdded = await page.$$eval(`${PANEL.symbols} .cnb-kse-canvas [data-symbol="1"]`, els => els.length);
-  check("EDITOR: + Add a symbol adds one to the sharps, selected as Added 1, its shape chosen in the card, drawn over each sharp",
-    added.length === 1 && added[0].shape === "kite-up" && selected === "Added 1" && drawnAdded === 2, JSON.stringify(added));
-  // Dragging the added symbol moves it alone, by its own offset, one step of undo.
-  const extra = page.locator(`${PANEL.symbols} .cnb-kse-canvas [data-mark="${fsharp}"][data-symbol="1"] path`).first();
-  await extra.scrollIntoViewIfNeeded();
-  const eb = await extra.boundingBox();
-  await dragBy({ x: eb.x + eb.width / 2, y: eb.y + eb.height / 2 }, 12, 0);
-  const moved = (await fullConfig()).keys.keySignature.looks.sharp;
+  check("EDITOR: with Accidentals, a sharp's handle sets the signs' one size, a semitone more than the automatic size",
+    ks.signs.heightSemis === Math.round((auto + 1) * 10) / 10, `${JSON.stringify(ks.signs)} auto=${auto}`);
   await undo();
-  const back = (await fullConfig()).keys.keySignature.looks.sharp;
-  check("EDITOR: dragging F♯'s added symbol 12 px right moves it alone by x 0.5 semitones, the base's offset untouched, and one Undo puts it back",
-    JSON.stringify(moved.added[0].offset) === JSON.stringify({ x: 0.5, y: 0 }) && !("offset" in moved) &&
-    !("offset" in back.added[0]) && back.added[0].shape === "kite-up", `${JSON.stringify(moved)} ${JSON.stringify(back)}`);
-  await page.click('.cnb-kse-look-card .cnb-kse-look-remove[data-symbol="0"]');
-  const removed = (await fullConfig()).keys.keySignature.looks.sharp;
-  await page.click(".cnb-kse-look-card .cnb-kse-look-added-as");
-  check("EDITOR: × removes it, leaving no added symbols, and 'Added symbols as all marks' clears the field",
-    JSON.stringify(removed.added) === "[]" && !("added" in (await fullConfig()).keys.keySignature.looks.sharp));
+}
+// Step 7 (session 65): added symbols on the sharps.
+await startFrom("custom");
+await selectRow("all");
+await page.click(`${CARD} .cnb-kse-look-shape[data-shape=""]`);
+const SHARPS = CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♯"));
+const FLATS = CNBConfig.SPELLED_NOTES.filter(n => n.endsWith("♭"));
+{
+  await selectRow("sharp");
+  await page.click(`${CARD} .cnb-kse-look-add`);
+  await page.click(`${CARD} .cnb-kse-look-shape[data-shape="kite-up"]`);
+  const spelled = (await fullConfig()).keys.keySignature.looks.spelled;
+  const selected = await page.$eval(`${CARD} .cnb-kse-look-select.on`, e => e.textContent);
+  const twice = await page.$$eval(`${PANEL.symbols} .cnb-kse-spelled-note`, cells => cells
+    .filter(c => c.querySelectorAll(".cnb-key-signature-mark > g:not(.cnb-ledger-set)").length === 2).map(c => c.dataset.spelled));
+  check("STEP 7: + Add a symbol adds one to each selected sharp, selected as Added 1, its shape chosen in the card, drawn over each sharp on the canvas",
+    SHARPS.every(n => spelled[n].added.length === 1 && spelled[n].added[0].shape === "kite-up") && selected === "Added 1" &&
+    JSON.stringify([...twice].sort()) === JSON.stringify([...SHARPS].sort()), JSON.stringify({ twice, sharp: spelled["C♯"] }));
+  await page.click(`${CARD} .cnb-kse-look-remove[data-symbol="0"]`);
+  const removed = (await fullConfig()).keys.keySignature.looks.spelled;
+  await page.click(`${CARD} .cnb-kse-look-added-as`);
+  const cleared = (await fullConfig()).keys.keySignature.looks.spelled;
+  check("STEP 7: × removes it from each, leaving no added symbols, and 'Added symbols as beneath' clears the field",
+    SHARPS.every(n => JSON.stringify(removed[n].added) === "[]" && !("added" in cleared[n])));
 }
 // Import from SVG for the flats: its reference point and its ledgers.
 {
-  await pickLayer("flat");
-  await page.setInputFiles(".cnb-kse-look-card .cnb-kse-look-import input[type=file]",
+  await selectRow("flat");
+  const beforeImport = await fullConfig();
+  await page.setInputFiles(`${CARD} .cnb-kse-look-import input[type=file]`,
     path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-symbols", "clairnote-tail-up.svg"));
-  await page.waitForSelector(".cnb-kse-reference-picker");
+  await page.waitForSelector(`${CARD} .cnb-kse-reference-picker`);
   let live = await fullConfig();
-  const name = live.keys.keySignature.looks.flat.shape;
+  const name = live.keys.keySignature.looks.spelled["B♭"].shape;
   const shape = live.shapes[name];
   const opened = { name, reference: shape && shape.reference, ledgers: shape && shape.ledgers,
-    box: await page.isChecked(".cnb-kse-takes-ledgers-check") };
+    box: await page.isChecked(".cnb-kse-takes-ledgers-check"),
+    every: FLATS.every(n => live.keys.keySignature.looks.spelled[n].shape === name) };
   await page.locator(".cnb-kse-reference-svg").click({ position: { x: 30, y: 30 } });
   live = await fullConfig();
   const moved = live.shapes[name].reference;
@@ -1108,22 +1180,37 @@ await pickLayer("sharp");
   const takes = (await fullConfig()).shapes[name];
   await page.uncheck(".cnb-kse-takes-ledgers-check");
   await page.click(".cnb-kse-reference-done");
-  check("IMPORT: a symbol imported for flats is given to them with its reference point at the SVG's origin and no ledger lines; a click moves the point, Takes ledger lines sets them, Done closes the picker",
-    !!shape && JSON.stringify(opened.reference) === JSON.stringify({ x: 0, y: 0 }) && opened.ledgers === false && opened.box === false &&
+  check("IMPORT: a symbol imported for the flats is added to the shapes by its name and given to each of the 7, with its reference point at the SVG's origin and no ledger lines; a click moves the point, Takes ledger lines sets them, Done closes the picker",
+    !!shape && name === "clairnote-tail-up" && opened.every &&
+    JSON.stringify(opened.reference) === JSON.stringify({ x: 0, y: 0 }) && opened.ledgers === false && opened.box === false &&
     (moved.x !== 0 || moved.y !== 0) && !("ledgers" in takes) &&
     (await fullConfig()).shapes[name].ledgers === false && !(await page.$(".cnb-kse-reference-picker")),
     JSON.stringify({ opened, moved }));
+  // Undo and Redo through the import (session 65): the import, the point
+  // moved and Takes ledger lines ticked and unticked are four steps; Undo
+  // four times is the config before the import, without the shape, and
+  // Redo four times is where it ended.
+  const finished = await fullConfig();
+  for (let i = 0; i < 4; i++) await undo();
+  const undone = await fullConfig();
+  for (let i = 0; i < 3; i++) await redo();
+  const oneShort = await fullConfig();
+  await redo();
+  check("IMPORT: one step of undo each — Undo four times takes back the import, the shape and the flats' symbol with it, to the config before it; Redo four times returns the shape, its point and its ledgers",
+    JSON.stringify(undone) === JSON.stringify(beforeImport) && !(name in undone.shapes) &&
+    JSON.stringify(oneShort) !== JSON.stringify(finished) &&
+    JSON.stringify(await fullConfig()) === JSON.stringify(finished));
 }
 // The key picker and the other keys.
 {
-  await setField(page, ".cnb-kse-key-tonic", "B♭");
+  await setField(page, `${PANEL.designer} .cnb-kse-key-tonic`, "B♭");
   const staff = await page.inputValue(".cnb-pvd-key-tonic");
   const minis = await page.$$eval(".cnb-kse-mini", els => els.map(e => e.getAttribute("data-key")));
   await openSection(page, "ks-preview");
   await page.click('.cnb-kse-mini[data-key="A"]');
-  check("KEYS: step 7's key picker picks the staff's key (B♭), the mode's 15 keys show in step 9, sharp keys then flat keys, and a click on A picks it on the staff and in steps 7 and 8",
+  check("KEYS: step 8's key picker picks the staff's key (B♭), the mode's 15 keys show in step 9, sharp keys then flat keys, and a click on A picks it on the staff and in step 8",
     staff === "B♭" && minis.length === 15 && minis[0] === "C" && minis[8] === "F" &&
-    (await page.inputValue(".cnb-pvd-key-tonic")) === "A" && (await page.inputValue(`${PANEL.symbols} .cnb-kse-key-tonic`)) === "A" &&
+    (await page.inputValue(".cnb-pvd-key-tonic")) === "A" &&
     (await page.inputValue(`${PANEL.designer} .cnb-kse-key-tonic`)) === "A", JSON.stringify(minis));
 }
 // The touch line, its list and the checks' warning.
@@ -1153,15 +1240,16 @@ await pickLayer("sharp");
   check("START FROM: cancelled, the signature's settings stay as they were",
     JSON.stringify((await fullConfig()).keys.keySignature) === was);
 }
-// The editor at the page's two widths: D major's sharps picked.
+// Step 7 at the page's two widths: the sharps selected.
 await radio("cnb-kse-stacking", "degrees");
 await pickKey("D", "major");
-await pickLayer("sharp");
+await startFrom("custom");
+await selectRow("sharp");
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
   await page.screenshot({ path: path.join(SHOT_DIR, `uat-056-editor-${width}.png`), fullPage: true });
-  check(`EDITOR ${width}: the editor does not make the page scroll sideways`,
+  check(`EDITOR ${width}: step 7 does not make the page scroll sideways`,
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }
 await page.setViewportSize({ width: 1600, height: 1800 });
@@ -1225,7 +1313,7 @@ check("SAVE: the keys section is in the file — enabled, 2 definitions, the sig
   savedJson.keys.keySignature.separator.thicknessPct === 200 &&
   savedJson.keys.keySignature.separator.color === "#336699" &&
   savedJson.keys.keySignature.separator.extentSemis === 12 &&
-  savedJson.keys.keySignature.looks.all.heightSemis === 1.5 &&
+  CNBConfig.SPELLED_NOTES.every(n => savedJson.keys.keySignature.looks.spelled[n].heightSemis === 1.5) &&
   !("gutter" in savedJson.keys.keySignature),
   JSON.stringify(savedJson.keys));
 
@@ -1238,8 +1326,8 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-await pickLayer("all");
-check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, its stacking, stems and look)",
+await selectRow("all");
+check("LOAD: the key-signature editor re-seeded from the loaded config (master + signature checked, 2 definition rows, its stacking, stems and the spelled notes' look)",
   await page.evaluate(() =>
     document.querySelector(".cnb-kse-keys-enable-check").checked &&
     document.querySelector(".cnb-kse-sig-enable-check").checked &&
@@ -1247,7 +1335,7 @@ check("LOAD: the key-signature editor re-seeded from the loaded config (master +
     document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="parity-stacks"] input').checked &&
     !document.querySelector(".cnb-kse-sep-share-check").checked &&
     document.querySelector(".cnb-kse-sep-thickness").value === "0.5" &&
-    document.querySelector('.cnb-kse-look-card[data-look="all"] .cnb-kse-look-words').textContent.includes("1.5")));
+    document.querySelector('[data-panel="ks-custom-symbols"] .cnb-kse-look-height').value === "1.5"));
 expected = expectedMarks(cfg, "C");
 actual = await renderedMarks();
 check("LOAD: the preview still renders the key-C signature in its gutter (preview key selection survives the load)",
@@ -1304,11 +1392,13 @@ await pickKey("D", "major");
   check("CLAIRNOTE SN: D major draws as the Node-side renderer draws it — seven dots on the bottom line set, D, E and F♯ solid and G, A, B and C♯ hollow, F♯ and C♯ with a tail down, no gold stem",
     r.ok && drawn.dots === 7 && drawn.hollow === 4 && drawn.tails === 2 && (await canvasStems()).length === 0,
     `${r.detail} ${JSON.stringify(drawn)}`);
-  await pickLayer("sharp");
   // Since session 64 the file's six symbols are its spelled looks, which
-  // step 7 shows from session 65: read them from the loaded config.
+  // step 7 shows from session 65.
+  await openSection(page, "ks-custom-symbols");
   const spelled = r.cfg.keys.keySignature.looks.spelled || {};
-  check("CLAIRNOTE SN: the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set — and its 21 spelled notes their dots, a tail down on C♯",
+  const opened = (await page.$$eval(".panel:not([hidden])", els => els.map(e => e.dataset.panel))).join();
+  check("CLAIRNOTE SN: a file with looks of its own highlights no starting point and opens step 7; the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set — and its 21 spelled notes their dots, a tail down on C♯",
+    JSON.stringify(await highlighted()) === "[]" && opened === "ks-custom-symbols" &&
     await page.evaluate(() => {
       const on = (group, value) => document.querySelector(`.${group} .cnb-kse-radio[data-value="${value}"] input`).checked;
       return on("cnb-kse-stacking", "parity-stacks") && on("cnb-kse-columns", "left-in-sharp-keys") &&
@@ -1321,13 +1411,127 @@ await pickKey("D", "major");
 
 // ── STEP 9c: the panel and canvas at the page's two widths ──────────────────
 await pickKey("B♭", "major");
-await pickLayer("flat");
+await selectRow("flat");
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(150);
   await page.screenshot({ path: path.join(SHOT_DIR, `uat-056-clairnote-${width}.png`), fullPage: true });
   check(`SCREENSHOT ${width}: step 7 does not make the page scroll sideways`,
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+}
+
+// ── STEP 9d: Clairnote SN's signature built in step 7 (session 65) ───────────
+// From the gallery file with its spelled looks and its tails removed: Custom
+// marks, then the six symbols — the dot for all, solid on a line or ledger
+// and hollow in a space, a tail up on each flat and a tail down on each
+// sharp, imported from the gallery's SVGs — until the spelled looks and the
+// mark table are the file's. The notes are selected by keyboard and pointer.
+{
+  const SN = path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-sn.json");
+  const SYMBOLS = path.join(ROOT, "cnb", "assets", "examples", "gallery", "clairnote-symbols");
+  const gallery = CNBConfigIO.loadFromText(await readFile(SN, "utf8")).config;
+  const bare = JSON.parse(await readFile(SN, "utf8"));
+  bare.keys.keySignature.looks.spelled = {};
+  delete bare.shapes["clairnote-tail-up"];
+  delete bare.shapes["clairnote-tail-down"];
+  await loadConfig(bare, "clairnote-sn-bare.cnb.json",
+    () => !("clairnote-tail-up" in JSON.parse(document.querySelector("#state-json").textContent).shapes));
+  await openSection(page, "ks-symbol-type");
+  check("CLAIRNOTE BUILD: without its spelled looks the file's signature is the Noteheads starting point, highlighted in step 6, and step 7 is greyed",
+    JSON.stringify(await highlighted()) === '["noteheads"]' && (await greyedSteps()).includes("ks-custom-symbols"));
+  await startFrom("custom");
+  await openSection(page, "ks-custom-symbols");
+
+  // The keyboard: Enter selects C, Tab moves on, Shift+Space adds D, Ctrl+Enter adds E.
+  await page.focus(spelledCell("C"));
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Space");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Control+Enter");
+  const byKeys = await pressedNotes();
+  const focused = await page.evaluate(() => document.activeElement && document.activeElement.dataset.spelled);
+  check("CLAIRNOTE BUILD: from the keyboard, Enter selects C, Tab and Shift+Space add D, Tab and Ctrl+Enter add E, the focus staying on the note",
+    JSON.stringify(byKeys) === '["C","D","E"]' && focused === "E", JSON.stringify({ byKeys, focused }));
+  // The pointer: a click selects F alone, Shift+click adds G, Ctrl+click adds A and removes G.
+  await page.click(spelledCell("F"));
+  await page.click(spelledCell("G"), { modifiers: ["Shift"] });
+  await page.click(spelledCell("A"), { modifiers: ["Control"] });
+  const three = await pressedNotes();
+  await page.click(spelledCell("G"), { modifiers: ["Control"] });
+  const byPointer = await pressedNotes();
+  check("CLAIRNOTE BUILD: by pointer, a click selects F alone, Shift+click adds G, Ctrl+click adds A, and Ctrl+click on G removes it; the card names the two",
+    JSON.stringify(three) === '["F","G","A"]' && JSON.stringify(byPointer) === '["F","A"]' &&
+    (await page.textContent(`${CARD} .cnb-kse-look-title`)) === "2 spelled notes selected", JSON.stringify({ three, byPointer }));
+
+  // The six symbols.
+  await selectRow("all");
+  await page.click(`${CARD} .cnb-kse-look-shape[data-shape="clairnote-dot"]`);
+  await selectRow("line");
+  await page.click(`${CARD} .cnb-kse-look-fill[data-fill="solid"]`);
+  await selectRow("space");
+  await page.click(`${CARD} .cnb-kse-look-fill[data-fill="hollow"]`);
+  for (const [row, file, notes] of [["flat", "clairnote-tail-up", FLATS], ["sharp", "clairnote-tail-down", SHARPS]]) {
+    await selectRow(row);
+    await page.click(`${CARD} .cnb-kse-look-add`);
+    await page.setInputFiles(`${CARD} .cnb-kse-look-import input[type=file]`, path.join(SYMBOLS, `${file}.svg`));
+    await page.waitForSelector(`${CARD} .cnb-kse-reference-picker`);
+    const imported = await fullConfig();
+    await undo();
+    const undone = await fullConfig();
+    await redo();
+    const redone = await fullConfig();
+    const tail = (c) => notes.every(n => c.keys.keySignature.looks.spelled[n].added[0].shape === file);
+    check(`CLAIRNOTE BUILD: ${file} imported for the ${row}s is added to the shapes by its name, with no ledger lines, and given to each one's added symbol; Undo takes the import back, Redo returns it`,
+      !!imported.shapes[file] && imported.shapes[file].ledgers === false && tail(imported) &&
+      !(file in undone.shapes) && notes.every(n => undone.keys.keySignature.looks.spelled[n].added[0].shape !== file) &&
+      JSON.stringify(redone) === JSON.stringify(imported), JSON.stringify(imported.keys.keySignature.looks.spelled[notes[0]]));
+    if (await page.$(`${CARD} .cnb-kse-reference-done`)) await page.click(`${CARD} .cnb-kse-reference-done`);
+  }
+  const built = await fullConfig();
+  const builtLooks = built.keys.keySignature.looks.spelled;
+  const fileLooks = gallery.keys.keySignature.looks.spelled;
+  const differ = CNBConfig.SPELLED_NOTES.filter(n => stable(builtLooks[n]) !== stable(fileLooks[n]));
+  const table = (c) => {
+    const ly = CNBLilypond.generate(c);
+    const t = ly.slice(ly.indexOf("#(define cnb:keysig-marks"));
+    return t.slice(0, t.indexOf("\n\n"));
+  };
+  const tails = ["clairnote-tail-up", "clairnote-tail-down"].every(t =>
+    stable(built.shapes[t].reference) === stable(gallery.shapes[t].reference) && built.shapes[t].ledgers === gallery.shapes[t].ledgers);
+  check("CLAIRNOTE BUILD: the 21 spelled looks are the gallery file's, the tails' reference points and ledger lines are its own, and the export's mark table is the file's byte for byte",
+    differ.length === 0 && tails && table(built).length > 1000 && table(built) === table(gallery),
+    JSON.stringify({ differ, built: differ.map(n => builtLooks[n]), file: differ.map(n => fileLooks[n]) }));
+
+  // A mixed selection.
+  await page.click(spelledCell("C"));
+  await page.click(spelledCell("C♯"), { modifiers: ["Shift"] });
+  const mixed = await page.$$eval(`${CARD} .cnb-kse-look-group`, gs => gs
+    .filter(g => g.querySelector(".cnb-kse-look-mixed")).map(g => g.querySelector(".cnb-kse-look-group-label").textContent));
+  check("MIXED: with C (a solid dot) and C♯ (a hollow dot with a tail) selected, the card marks Symbols and Fill as mixed, chooses no fill, and keeps the dot both share",
+    JSON.stringify(mixed) === '["Symbols","Fill"]' && (await page.$$(`${CARD} .cnb-kse-look-fill.on`)).length === 0 &&
+    (await page.$$(`${CARD} .cnb-kse-look-shape.on[data-shape="clairnote-dot"]`)).length === 1, JSON.stringify(mixed));
+
+  // A different drawing under a name the notation already has.
+  await selectRow("natural");
+  const was = JSON.stringify(await fullConfig());
+  await page.setInputFiles(`${CARD} .cnb-kse-look-import input[type=file]`, {
+    name: "clairnote-tail-up.svg", mimeType: "image/svg+xml",
+    buffer: await readFile(path.join(SYMBOLS, "clairnote-tail-down.svg")) });
+  await page.waitForSelector(`${CARD} .cnb-kse-import-error`);
+  check("IMPORT: a different drawing under a name the notation has (clairnote-tail-up) is refused, naming it, and nothing changes",
+    (await page.textContent(`${CARD} .cnb-kse-import-error`)).includes('"clairnote-tail-up"') &&
+    JSON.stringify(await fullConfig()) === was);
+
+  await selectRow("sharp");
+  for (const [width, height] of [[1440, 900], [1280, 800]]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: path.join(SHOT_DIR, `uat-065-clairnote-built-${width}.png`), fullPage: true });
+    check(`CLAIRNOTE BUILD ${width}: step 7 does not make the page scroll sideways`,
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  await page.setViewportSize({ width: 1600, height: 1800 });
 }
 
 // ── STEP 10: no errors ───────────────────────────────────────────────────────

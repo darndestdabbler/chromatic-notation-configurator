@@ -35,11 +35,41 @@ function clefShown(config) {
   return !!CNBClef.activeGlyph(config || {});
 }
 
+/** A look that sets nothing: missing, or every field unset. */
+const unset = (look) => !look || Object.values(look).every(v => v === undefined);
+
+/** A look that is exactly Emmentaler's sign with no colour. */
+const signLook = (look, sign) => !!look && look.sign === sign && look.color === null &&
+  Object.keys(look).filter(k => look[k] !== undefined).length === 2;
+
+/**
+ * Which of step 6's starting points the signature is exactly (session 65,
+ * design §3.1): "noteheads" when it sets no look (every look, each spelled
+ * note's and every second stack's unset), "traditional" (Accidentals) when
+ * its notes are the altered ones, its stacking the cycle of fifths, its
+ * flats' and sharps' looks Emmentaler's signs with no colour and every other
+ * look unset; else null, the designer's own symbols. The designer's other
+ * settings (heights, columns, the gold stem, the place, the signs' size, the
+ * column gap) do not count.
+ */
+function startingPoint(config) {
+  const ks = ((config && config.keys) || {}).keySignature || {};
+  const looks = ks.looks || {};
+  const spelled = Object.values(looks.spelled || {});
+  const others = ["all", "natural", "line", "space"].every(l => unset(looks[l])) &&
+    spelled.every(unset) && unset(ks.alternate);
+  if (!others) return null;
+  if (unset(looks.flat) && unset(looks.sharp)) return "noteheads";
+  if (ks.notes === "altered" && ks.stacking === "fifths" &&
+    signLook(looks.flat, "flat") && signLook(looks.sharp, "sharp")) return "traditional";
+  return null;
+}
+
 const NEEDS_SIGNATURE = "Show a key signature in step 6 first.";
 
-/** The twelve steps, in order (design §1.1). Step 7 is available whenever a
- *  signature is shown until session 65 adds the Custom marks starting point
- *  (operator, 2026-11-13). */
+/** The twelve steps, in order (design §1.1). Step 7 is available when a
+ *  signature is shown that is neither of step 6's starting points: Custom
+ *  marks, or the designer's own symbols (design §3.1). */
 export const CNBSteps = [
   { id: "notehead-height", number: 1, group: "The staff", label: "Notehead height",
     title: "Notehead height", component: "noteheads", canvas: "staff" },
@@ -55,7 +85,8 @@ export const CNBSteps = [
     title: "Key signature symbol type", component: "keySignature", canvas: "spelled" },
   { id: "ks-custom-symbols", number: 7, group: "Key signature", label: "Custom symbols",
     title: "Custom key signature symbols", component: "keySignature", canvas: "spelled",
-    available: signatureShown, unavailable: NEEDS_SIGNATURE },
+    available: (config) => signatureShown(config) && startingPoint(config) === null,
+    unavailable: "Choose Custom marks in step 6 to design your own symbols." },
   { id: "ks-designer", number: 8, group: "Key signature", label: "Designer",
     title: "Key signature designer", component: "keySignature", canvas: "designer",
     available: signatureShown, unavailable: NEEDS_SIGNATURE },
@@ -82,6 +113,10 @@ function el(tag, className, text) {
 }
 
 export const CNBStepNav = {
+  /** Which of step 6's starting points the signature is exactly:
+   *  "noteheads", "traditional" or null (session 65, design §3.1). */
+  startingPoint,
+
   /** A step by its id, or null. */
   byId(id) {
     return CNBSteps.find(s => s.id === id) || null;

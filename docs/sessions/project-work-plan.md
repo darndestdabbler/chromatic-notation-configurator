@@ -76,7 +76,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 62 | Importing a hand-drawn SVG | no | 2026-11-13 |
 | 63 | The steps and the navigation | no | 2026-11-13 |
 | 64 | The key signature's spelled looks | no | 2026-11-13 |
-| 65 | Key-signature steps 6 and 7 | — | not declared |
+| 65 | Key-signature steps 6 and 7 | no | 2026-11-13 |
 | 66 | Key-signature steps 8 and 9 | — | not declared |
 | 67 | The walk-through | — | not declared |
 | 68 | The tutorial | — | not declared |
@@ -669,3 +669,13 @@ Give the key signature its spelled looks and column gap (step-by-step design §3
 - 2026-11-13 — step 'config-fields': its files: The key-signature editor's state builders carry the designer's fields by a list; columnGap must join it or the editor drops the new default (buildKeys/stateFromConfig round trip). (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-13 — step 'clairnote-redraw': its files: A touch test lengthens Clairnote SN's flat tail through looks.flat, which the redraw moves into the spelled looks; the test must lengthen the flats' spelled tails instead. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-13 — step 'clairnote-redraw': its files: uat-key-signature.mjs step 9b reads Clairnote SN's sharp tail from the sharps' look card; the redraw carries the tail in the spelled looks, which the panel shows from session 65, so the check reads them from the loaded config. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 65 — Key-signature steps 6 and 7
+
+**Releasable: no.**
+
+Build key-signature steps 6 and 7 of the step-by-step design (§3.1–§3.3). CNBKeySignature gains spelledNotes(config), the 21 spelled notes C♭ to B♯ with each one's pitch near the staff's middle, whether it is on a line or ledger, and its mark resolved as the signature resolves a mark (the notehead's own at crotchet, then the all, natural/flat/sharp, line/space and spelled looks; not alternate), and renderMark, which draws one such mark with its ledgers and symbols and shares render()'s drawing, so every signature draws byte for byte as before. The step registry gains startingPoint(config) ("noteheads" when no look is set, "traditional" when the signature is exactly the Accidentals starting point, else null), and step 7 becomes available exactly when a signature is shown and it is neither, with the reason "Choose Custom marks in step 6 to design your own symbols.". startFrom gains "custom": the 21 spelled notes given the built-in parallelogram, the signs removed from the flats' and sharps' looks, and stacking, columns, the gold stem, the notes and the place kept. Step 6 shows Show a key signature and three cards (Noteheads, Accidentals, Custom marks), each asking first and undoable, the one the signature exactly is highlighted, else "Your own symbols", over a magnified canvas of the 21 spelled notes (7 letters across, sharp, natural and flat rows, each mark drawn with its look on its pitch's line or space with its label beneath, the naturals at 30% opacity when only the altered notes are drawn); Custom marks adds the parallelogram to the shapes. Step 7 draws the same canvas, selectable by click, Shift+click or Ctrl+click and by keyboard, with a Select row (All, Naturals, Flats, Sharps, On a line or ledger, In a space), and the look card applied to every selected note's looks.spelled entry, a field the selection disagrees on shown as mixed; an imported symbol is added to the shapes by name, left alone when that name already holds the same shape and refused, named, when it holds another. uat-key-signature.mjs is rewritten to the steps, building Clairnote SN's signature in step 7 from its six symbols (solid and hollow dots, plain, tail up, tail down) to the gallery file's spelled looks, selecting by pointer and keyboard, with undo after each starting point and each import; the other drivers and the README and architecture plan follow.
+
+**Amended after acceptance:**
+
+- 2026-11-13 — step 'drivers': its files: Rewriting the driver showed that a step 6 card pins the layer (pickLayer('all')), so a click on step 8's canvas then picks All marks and a drag moves every mark; the card must leave the layer unpinned, with a unit test (claude-code (anthropic, claude-opus-5-5))
