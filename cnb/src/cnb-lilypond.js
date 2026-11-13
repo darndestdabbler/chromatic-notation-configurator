@@ -439,11 +439,13 @@ function shownClef(config) {
  * engine puts semitone 12 on the middle line under the treble clef, where
  * the preview puts staff.midpoint, so the anchor keeps its distance from
  * the midpoint. Under a pitch axis the hook reads Configurator semitones
- * directly (LY spec §5.4c), so the anchor is used as is.
+ * directly (LY spec §5.4c), so the anchor is used as is. top is the glyph's
+ * top edge as the preview draws it (CNBClef.shown: anchorSemi, or found from
+ * its anchor point since session 59).
  */
-function clefAnchor(config, def) {
-  if (CNBPitchAxis.create(config).enabled) return def.anchorSemi;
-  return def.anchorSemi - ((config.staff || {}).midpoint || 0) + 12;
+function clefAnchor(config, top) {
+  if (CNBPitchAxis.create(config).enabled) return top;
+  return top - ((config.staff || {}).midpoint || 0) + 12;
 }
 
 /**
@@ -451,22 +453,24 @@ function clefAnchor(config, def) {
  * (handoff 005 §2): its pre-baked lilypondPath, else svgPath converted like
  * a notehead fallback (the engine measures the path and scales it to
  * height-semitones, so only its shape matters), the converted anchor, the
- * design height, and the colour when one is set. [] for a text clef or none.
+ * height as drawn (set by hand or automatic, session 59), and the colour
+ * when one is set. [] for a text clef or none.
  */
 function clefRegistrationLines(config) {
   const clef = shownClef(config);
   if (!clef || (clef.def.kind || "glyph") !== "glyph") return [];
   const { def, sym, field } = clef;
+  const { top, height } = CNBClef.shown(config);
   const path = def.lilypondPath
     ? CNBScheme.path(def.lilypondPath, `${field}.lilypondPath`)
-    : CNBLilypond.svgPathToLilypond(def.svgPath, def.naturalHeight / def.semitoneHeight, 1);
+    : CNBLilypond.svgPathToLilypond(def.svgPath, def.naturalHeight / height, 1);
   const lines = [
     "%% --- Register clef ---",
     `#(cnb:register-clef! '${sym}`,
     "   (list",
     `     (cons 'path ${path.replace(/\n/g, "\n       ")})`,
-    `     (cons 'anchor-semitones ${fmtNum(clefAnchor(config, def), `${field}.anchorSemi`)})`,
-    `     (cons 'height-semitones ${fmtNum(def.semitoneHeight, `${field}.semitoneHeight`)})`,
+    `     (cons 'anchor-semitones ${fmtNum(clefAnchor(config, top), `${field}.anchorSemi`)})`,
+    `     (cons 'height-semitones ${fmtNum(height, `${field}.semitoneHeight`)})`,
   ];
   if (def.color) lines.push(`     (cons 'color ${hexString(def.color, `${field}.color`)})`);
   lines[lines.length - 1] += "))";
@@ -546,7 +550,8 @@ function ledgerLines(config, axis) {
  * Section B clef lines (handoff 005 §1, LY spec 1.3.7 §5.5). cnb:clef-style
  * is always written: 'none when no clef is shown, 'dozenal for the engine's
  * own dozenal clef (session 45, LY spec 1.3.13; drawn and placed by the
- * engine, so nothing else is written for it), 'custom naming the registered
+ * engine) with its height as drawn, set by hand or automatic, which engine
+ * 1.8.0 scales about the middle line (session 59), 'custom naming the registered
  * glyph (an imported clef, or a treble, bass or alto clef from the panel),
  * or 'text with the label as a markup carrying the preview's font, colour
  * and bold weight, at its preview height. A shown clef also gets its
@@ -563,6 +568,7 @@ function clefLines(config) {
   const { def, sym, field } = clef;
   if (def.kind === "dozenal") {
     lines.push("#(set! cnb:clef-style 'dozenal)");
+    lines.push(`#(set! cnb:clef-size-semitones ${fmtNum(CNBClef.shown(config).height, `${field}.semitoneHeight`)})`);
   } else if ((def.kind || "glyph") === "text") {
     const font = CNBScheme.string(`${def.fontFamily || "Georgia, serif"} Bold`);
     const color = hexString(def.color || "#000000", `${field}.color`);

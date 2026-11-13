@@ -5,18 +5,26 @@
  * and render all staff lines across the SVG width, as the engine draws them
  * (session 34): no config setting styles them.
  *
- * Dependencies: Module 24 (pitch axis) and Module 2 (staff line)
+ * Dependencies: Module A (notehead rules), Module 24 (pitch axis) and
+ * Module 2 (staff line)
  *
  * Set 014 (pitch axis): axis-enabled grid contexts draw one line per axis
  * position.
+ *
+ * Session 59: symbolSpace(config), the height a symbol of LilyPond's draws a
+ * staff space at, the key signature's sharps and flats and the clefs alike.
  */
 
+import { CNBConfig } from "./cnb-config.js";
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
 import { CNBStaffLine } from "./cnb-staff-line.js";
 
 // The engine leaves LilyPond's staff lines alone: 0.1 staff spaces thick,
 // black and solid (session 34, measured against the engine).
 const STAFF_LINE_THICKNESS = 0.1;
+
+// The most a symbol's staff space is drawn as, in semitones (session 52).
+const SYMBOL_SPACE_CAP = 3;
 
 export const CNBStaff = {
   /**
@@ -157,5 +165,31 @@ export const CNBStaff = {
       ? axis.unitsPerStaffSpace
       : ((config.staff && config.staff.semitonesPerStaffSpace) || 1);
     return gridContext.pxPerSemi * units;
+  },
+
+  /**
+   * The height, in semitones (axis units under a pitch axis), that a symbol
+   * drawn at LilyPond's proportions takes for one of its staff spaces, so it
+   * follows the noteheads rather than the staff's spacing (sessions 52 and
+   * 59): the least of the noteheads' mean height (the twelve pitch classes'
+   * crotchet noteheads as they resolve with no key), one staff space and 3
+   * semitones. 2.724 on the default staff, 3 on Kite 4-369, 1 on a staff
+   * with a line every semitone. The key signature's automatic sharps and
+   * flats and the clefs' automatic size are drawn to it.
+   *
+   * @param {object} config
+   * @returns {number}
+   */
+  symbolSpace(config) {
+    const shapes = config.shapes || {};
+    const heights = [];
+    for (let pc = 0; pc < 12; pc++) {
+      const head = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
+      const shape = shapes[head.shape];
+      if (shape) heights.push(head.heightSemis ?? shape.semitoneHeight);
+    }
+    const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
+    const mean = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : Infinity;
+    return Math.min(mean, space, SYMBOL_SPACE_CAP);
   },
 };

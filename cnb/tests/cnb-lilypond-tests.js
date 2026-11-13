@@ -1140,72 +1140,143 @@ export const tests = [
 
   // ── The clefs the panel offers (session 45, LY spec 1.3.13 §5.5) ──────
 
-  { name: "clef: the dozenal clef exports 'dozenal and its gutter, and registers nothing", fn: () => {
+  { name: "clef: the dozenal clef exports 'dozenal, its height and its gutter, and registers nothing", fn: () => {
       const config = builtinClefConfig(CNBConfig.createDefault(), "dozenal");
       assert(CNBConfig.validate(config).valid, "valid");
+      // Its automatic height (session 59): 3 × the noteheads' 2.724 semitones.
       contains(CNBLilypond.sectionB(config),
-        "%% Clef\n#(set! cnb:clef-style 'dozenal)\n#(set! cnb:clef-gutter-semitones 0.75)", "dozenal settings");
+        "%% Clef\n#(set! cnb:clef-style 'dozenal)\n#(set! cnb:clef-size-semitones 8.172)\n" +
+        "#(set! cnb:clef-gutter-semitones 0.75)", "dozenal settings");
       lacks(CNBLilypond.sectionB(config), "cnb:clef-name", "no name");
-      lacks(CNBLilypond.sectionB(config), "cnb:clef-size-semitones", "the engine's own size");
       lacks(CNBLilypond.sectionA(config), "cnb:register-clef!", "nothing registered");
+    }},
+
+  { name: "clef: the dozenal clef's height is exported as set by hand, or automatic (session 59)", fn: () => {
+      const config = builtinClefConfig(CNBConfig.createDefault(), "dozenal");
+      config.clef.glyphs.dozenal.semitoneHeight = 10;
+      contains(CNBLilypond.sectionB(config), "#(set! cnb:clef-size-semitones 10)", "set by hand");
+      const kite = builtinClefConfig(JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8")), "dozenal");
+      contains(CNBLilypond.sectionB(kite), "#(set! cnb:clef-size-semitones 9)", "Kite: LilyPond's 3 staff spaces of 3 semitones");
+    }},
+
+  { name: "clef: a referenced glyph clef registers its top as drawn, from its anchor, at a set and an automatic height (session 59)", fn: () => {
+      // The 300-unit test glyph anchored 100 units below its top, on 20.
+      const config = glyphClefConfig({ reference: { x: 50, y: 100 }, anchorSemi: 20 });
+      contains(CNBLilypond.sectionA(config),
+        "     (cons 'anchor-semitones 22)\n     (cons 'height-semitones 6)))", "6 semitones: the top 2 above the anchor");
+      config.clef.glyphs["express-b"].semitoneHeight = 9;
+      contains(CNBLilypond.sectionA(config),
+        "     (cons 'anchor-semitones 23)\n     (cons 'height-semitones 9)))", "9 semitones, about the anchor");
+      // Automatic: 3 staff spaces of 100 units, 2.724 semitones each on the default staff.
+      Object.assign(config.clef.glyphs["express-b"], { semitoneHeight: null, staffSpaceUnits: 100 });
+      contains(CNBLilypond.sectionA(config),
+        `     (cons 'anchor-semitones ${CNBScheme.number(20 + 2.724)})\n` +
+        `     (cons 'height-semitones ${CNBScheme.number(3 * 2.724)})))`, "automatic, about the anchor");
+      config.staff.midpoint = 7;   // on a linear staff the anchor keeps its distance from the midpoint
+      contains(CNBLilypond.sectionA(config), `(cons 'anchor-semitones ${CNBScheme.number(20 + 2.724 - 7 + 12)})`, "converted as before");
     }},
 
   { name: "clef: a treble clef from the panel exports as a registered glyph, its top and height as placed", fn: () => {
       const config = builtinClefConfig(CNBConfig.createDefault(), "treble");
-      const def = config.clef.glyphs.treble;
+      // Its top and height as drawn: automatic, its anchor on G (session 59).
+      const shown = CNBClef.shown(config);
       const a = CNBLilypond.sectionA(config);
       contains(a, "#(cnb:register-clef! 'treble", "registered");
-      contains(a, `(cons 'anchor-semitones ${def.anchorSemi})`, "its top (midpoint 12: as is)");
-      contains(a, `(cons 'height-semitones ${def.semitoneHeight})`, "its height");
+      contains(a, `(cons 'anchor-semitones ${CNBScheme.number(shown.top)})`, "its top (midpoint 12: as is)");
+      contains(a, `(cons 'height-semitones ${CNBScheme.number(shown.height)})`, "its height");
       contains(CNBLilypond.sectionB(config), "#(set! cnb:clef-style 'custom)\n#(set! cnb:clef-name 'treble)", "shown");
     }},
 
-  { name: "clef (engine): the dozenal clef engraves where and as wide as the preview draws it", fn: async () => {
+  { name: "clef (engine): the dozenal clef, at its automatic size and one set by hand, engraves where, as tall and as wide as the preview draws it, about the middle line", fn: async () => {
       // The preview draws the engine's numeral 50 (CNBClef.extent,
-      // CNBClef.measure); measured in half staff spaces from the middle line.
+      // CNBClef.measure), scaled about the middle line (session 59, engine
+      // 1.8.0); measureClef reads it in half staff spaces from the middle line.
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
-      for (const base of [CNBConfig.createDefault(), JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"))]) {
+      const kite = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"));
+      const sized = (base, height) => {
         const config = builtinClefConfig(base, "dozenal");
+        config.clef.glyphs.dozenal.semitoneHeight = height;
+        return config;
+      };
+      for (const [label, config] of [
+        ["default, automatic (8.172 semitones)", builtinClefConfig(CNBConfig.createDefault(), "dozenal")],
+        ["Kite 4-369, automatic (9 semitones)", builtinClefConfig(kite, "dozenal")],
+        ["default, 14 semitones set by hand", sized(CNBConfig.createDefault(), 14)],
+        ["Kite 4-369, 6 semitones set by hand", sized(kite, 6)],
+      ]) {
         const sps = config.staff.semitonesPerStaffSpace;
+        const mid = config.staff.midpoint;
+        const shown = CNBClef.shown(config);
         const want = CNBClef.extent(config);
         const ly = CNBLilypond.generate(config);
         const { clef, error } = await measureClef(engine, ly);
-        assert(!error, `the export must compile: ${error}`);
-        const top = 2 * (want.top - config.staff.midpoint) / sps;
-        const bottom = 2 * (want.bottom - config.staff.midpoint) / sps;
-        assert(clef && Math.abs(clef.top - top) < 0.01, `sps ${sps}: top ${clef && clef.top}, preview ${top}`);
-        assert(Math.abs(clef.bottom - bottom) < 0.01, `sps ${sps}: bottom ${clef.bottom}, preview ${bottom}`);
+        assert(!error, `${label}: the export must compile: ${error}`);
+        assert(clef, `${label}: a clef was engraved`);
+        // In staff spaces from the middle line, the preview's and the engraving's.
+        const top = (want.top - mid) / sps, bottom = (want.bottom - mid) / sps;
+        assert(Math.abs(clef.top / 2 - top) < 0.001, `${label}: top ${clef.top / 2} staff spaces, preview ${top}`);
+        assert(Math.abs(clef.bottom / 2 - bottom) < 0.001, `${label}: bottom ${clef.bottom / 2}, preview ${bottom}`);
+        // Its anchor, the middle line, divides it as at LilyPond's 3 staff spaces.
+        const height = shown.height / sps;
+        assert(Math.abs((clef.top - clef.bottom) / 2 - height) < 0.001,
+          `${label}: height ${(clef.top - clef.bottom) / 2} staff spaces, preview ${height}`);
+        assert(Math.abs(clef.top / (clef.top - clef.bottom) - 1.4418 / 3) < 0.001,
+          `${label}: ${clef.top / (clef.top - clef.bottom)} of it above the middle line, at 3 staff spaces ${1.4418 / 3}`);
         const spacing = await measureSpacing(engine, ly, "c'4");
         assert(!spacing.error, spacing.error);
         const gutter = config.clef.gutter.paddingH / config.display.pxPerSemi / sps;
         const engraved = spacing.clef.right - spacing.clef.left - gutter;
-        const drawn = CNBClef.measure(config.clef.glyphs.dozenal, 1, 1).pixelWidth;
-        assert(Math.abs(engraved - drawn) < 0.02, `sps ${sps}: width ${engraved} staff spaces, preview ${drawn}`);
+        const drawn = CNBClef.measure(config.clef.glyphs.dozenal, 1 / sps, 1, shown.height).pixelWidth;
+        assert(Math.abs(engraved - drawn) < 0.02 * height / 3,
+          `${label}: width ${engraved} staff spaces, preview ${drawn}`);
       }
     }},
 
-  { name: "clef (engine): the treble, bass and alto clefs as placed, and a treble moved and resized, engrave over their ranges", fn: async () => {
+  { name: "clef (engine): the treble, bass and alto clefs at their automatic size and resized, and a treble moved, engrave over their ranges with each anchor on its pitch", fn: async () => {
+      // Each glyph clef's anchor is its line's point (session 59): G for the
+      // treble, F for the bass, C for the alto, at reference.y in its SVG.
+      // Resized, it keeps that point on its pitch.
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
-      const placed = builtinClefConfig(CNBConfig.createDefault(), "treble");
-      const moved = CNBConfig.clone(placed);
-      moved.clef = CNBClefEditor.withRange(placed.clef, 22.5, 4.25);
-      for (const [label, config] of [
-        ["treble as placed", placed],
-        ["bass as placed", builtinClefConfig(CNBConfig.createDefault(), "bass")],
-        ["alto as placed", builtinClefConfig(CNBConfig.createDefault(), "alto")],
-        ["treble moved and resized", moved],
-      ]) {
+      const kite = JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", "kite-4-369-config.json"), "utf8"));
+      const resized = (config, height) => {
+        const copy = CNBConfig.clone(config);
+        copy.clef = CNBClefEditor.withHeight(config.clef, height);
+        return copy;
+      };
+      const cases = [];
+      for (const [staff, base] of [["default", CNBConfig.createDefault()], ["Kite 4-369", kite]]) {
+        for (const name of ["treble", "bass", "alto"]) {
+          const config = builtinClefConfig(base, name);
+          cases.push([`${name} on ${staff}, automatic`, config]);
+          cases.push([`${name} on ${staff}, resized to 1.5×`, resized(config, CNBClef.shown(config).height * 1.5)]);
+          cases.push([`${name} on ${staff}, resized to 10 semitones`, resized(config, 10)]);
+        }
+      }
+      const treble = builtinClefConfig(CNBConfig.createDefault(), "treble");
+      const moved = CNBConfig.clone(treble);
+      moved.clef = CNBClefEditor.withHeight(CNBClefEditor.withAnchor(treble.clef, 9.5), 12);
+      cases.push(["treble moved to 9.5 and resized to 12 semitones", moved]);
+      for (const [label, config] of cases) {
+        const shown = CNBClef.shown(config);
         const { top, bottom } = CNBClef.extent(config);
         const mid = config.staff.midpoint;
         const sps = config.staff.semitonesPerStaffSpace;
         const { clef, error } = await measureClef(engine, CNBLilypond.generate(config));
         assert(!error, `${label}: the export must compile: ${error}`);
-        assert(clef && Math.abs(clef.top - 2 * (top - mid) / sps) < 0.01,
-          `${label}: top ${clef && clef.top} half staff spaces, preview ${2 * (top - mid) / sps}`);
-        assert(Math.abs(clef.bottom - 2 * (bottom - mid) / sps) < 0.01,
-          `${label}: bottom ${clef.bottom}, preview ${2 * (bottom - mid) / sps}`);
+        assert(clef, `${label}: a clef was engraved`);
+        assert(Math.abs(clef.top / 2 - (top - mid) / sps) < 0.001,
+          `${label}: top ${clef.top / 2} staff spaces, preview ${(top - mid) / sps}`);
+        assert(Math.abs(clef.bottom / 2 - (bottom - mid) / sps) < 0.001,
+          `${label}: bottom ${clef.bottom / 2}, preview ${(bottom - mid) / sps}`);
+        // The anchor, read from the engraved edges at its place in the glyph.
+        const def = shown.def;
+        const depth = (def.reference.y - (def.viewBoxMinY || 0)) / def.naturalHeight;
+        const anchor = clef.top / 2 - depth * (clef.top - clef.bottom) / 2;
+        const pitch = (def.anchorSemi - mid) / sps;
+        assert(Math.abs(anchor - pitch) < 0.001,
+          `${label}: anchor ${anchor} staff spaces, its pitch (semitone ${def.anchorSemi}) ${pitch}`);
       }
     }},
 

@@ -479,13 +479,14 @@
       },
       // Shapes or repeated heads, beside the duration buttons (session 36).
       // With the Clef section open, dragging the clef moves it, or its
-      // bottom edge resizes it (session 45): its range through withRange.
+      // bottom edge resizes it (session 45). Since session 59 a move changes the semitone its anchor sits on, and
+      // a resize its height by the semitones dragged down, about its anchor.
       onClefDrag: (kind, semis) => {
-        const range = CNBClef.extent(appConfig);
-        if (!range) return;
-        const round4 = (v) => Math.round(v * 1e4) / 1e4;
-        const top = kind === "move" ? range.top + semis : range.top;
-        const next = CNBClefEditor.withRange(appConfig.clef, round4(top), round4(range.bottom + semis));
+        const shown = CNBClef.shown(appConfig);
+        if (!shown) return;
+        const next = kind === "move"
+          ? CNBClefEditor.withAnchor(appConfig.clef, shown.def.anchorSemi + semis)
+          : CNBClefEditor.withHeight(appConfig.clef, shown.height - semis);
         if (!next) return;   // resized to nothing
         appConfig.clef = next;
         mountClefEditor();

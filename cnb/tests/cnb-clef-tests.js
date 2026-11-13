@@ -76,10 +76,11 @@ function clefConfig(glyphOverrides = {}, clefOverrides = {}) {
 /** The engine's dozenal clef (session 45). */
 const DOZENAL = { kind: "dozenal", displayName: "Dozenal" };
 
-/** Default config showing the dozenal clef. */
-function dozenalConfig() {
+/** Default config showing the dozenal clef, at a height set by hand when given. */
+function dozenalConfig(height) {
   const config = CNBConfig.createDefault();
-  config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: { ...DOZENAL } } };
+  const def = height === undefined ? { ...DOZENAL } : { ...DOZENAL, semitoneHeight: height };
+  config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: def } };
   return config;
 }
 
@@ -162,16 +163,30 @@ export const tests = [
       approx(m.pixelWidth / 64, 2.385, "about 2.385 staff spaces (the engine's 2.395, measured)", 0.0005);
     }},
 
-  { name: "gutterWidth: the dozenal clef is measured at the staff's staff space", fn: () => {
-      const config = dozenalConfig();
-      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 64 + 24, "sps 4 → 64 px a staff space");
+  { name: "gutterWidth: the dozenal clef is measured at its height, LilyPond's 3 staff spaces or automatic", fn: () => {
+      const config = dozenalConfig(12);
+      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 64 + 24, "12 semitones at sps 4: 64 px a staff space");
       config.staff.semitonesPerStaffSpace = 3;
-      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 48 + 24, "sps 3 → 48 px");
+      config.clef.glyphs.dozenal.semitoneHeight = 9;
+      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 48 + 24, "9 semitones at sps 3: 48 px");
+      // Automatic (session 59): 3 × CNBStaff.symbolSpace, 3 × 2.724 on the default staff.
+      approx(CNBClef.gutterWidth(dozenalConfig(), 16), 574 / 722 * 3 * 2.724 * 16 + 24, "automatic");
+    }},
+
+  { name: "shown: the dozenal clef's height is set by hand, or automatic, 3 × symbolSpace (session 59)", fn: () => {
+      approx(CNBClef.shown(dozenalConfig()).height, 3 * 2.724, "automatic on the default staff", 1e-9);
+      approx(CNBClef.shown(dozenalConfig(null)).height, 3 * 2.724, "null is automatic", 1e-9);
+      eq(CNBClef.shown(dozenalConfig(10)).height, 10, "set by hand");
+      eq(CNBClef.shown(dozenalConfig()).top, null, "no top: it sits on the middle line");
+      const kite = dozenalConfig();
+      kite.staff.semitonesPerStaffSpace = 3;
+      kite.shapes["crotchet-minim"].semitoneHeight = 4;
+      approx(CNBClef.shown(kite).height, 9, "capped at a staff space: LilyPond's 3 staff spaces", 1e-9);
     }},
 
   { name: "render: the dozenal clef draws 5 and 0 on the middle line, as the engine engraves 50", fn: () => {
       withSvgStub(svg => {
-        const config = dozenalConfig();
+        const config = dozenalConfig(12);
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
         // midpoint 12 → y = (28 − 12) × 16 = 256; a staff space is 64 px.
@@ -187,14 +202,97 @@ export const tests = [
       });
     }},
 
+  { name: "render: the dozenal clef at another height is scaled about the middle line (session 59)", fn: () => {
+      withSvgStub(svg => {
+        const config = dozenalConfig(6);
+        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+        const g = CNBClef.render(svg, grid, config);
+        // Half LilyPond's 12 semitones: half the staff space, the middle line unmoved.
+        eq(g.getAttribute("transform"), "translate(12,256) scale(32)", "scaled about the middle line");
+        const auto = CNBClef.render(svg, grid, dozenalConfig());
+        const m = /^translate\(12,256\) scale\(([^)]+)\)$/.exec(auto.getAttribute("transform"));
+        assert(m, "automatic: on the middle line");
+        approx(Number(m[1]), 64 * 2.724 / 4, "automatic: 2.724 semitones a staff space", 1e-9);
+      });
+    }},
+
   { name: "extent: the dozenal numeral spans 1.4418 above to 1.5582 below the middle line", fn: () => {
-      const config = dozenalConfig();
+      const config = dozenalConfig(12);
       const e = CNBClef.extent(config);
       approx(e.top, 12 + 1.4418 * 4, "top (engine: 1.44181 staff spaces)", 0.001);
       approx(e.bottom, 12 - 1.5582 * 4, "bottom (engine: −1.55819)", 0.001);
       config.staff.semitonesPerStaffSpace = 3;
       config.staff.midpoint = 10;
+      config.clef.glyphs.dozenal.semitoneHeight = 9;
       approx(CNBClef.extent(config).top, 10 + 1.4418 * 3, "follows the staff's middle and spacing", 0.001);
+    }},
+
+  { name: "extent: the dozenal numeral at a set or automatic height, about the middle line (session 59)", fn: () => {
+      const set = CNBClef.extent(dozenalConfig(6));
+      approx(set.top, 12 + 1.4418 * 2, "6 semitones: half of 3 staff spaces' top", 0.001);
+      approx(set.bottom, 12 - 1.5582 * 2, "and bottom", 0.001);
+      const auto = CNBClef.extent(dozenalConfig());
+      approx(auto.top, 12 + 1.4418 * 2.724, "automatic: 2.724 semitones a staff space", 0.001);
+      approx(auto.bottom, 12 - 1.5582 * 2.724, "bottom", 0.001);
+    }},
+
+  // ── Sized about an anchor (session 59) ─────────────────────────────────
+
+  { name: "shown: a glyph clef without a reference keeps anchorSemi as its top and semitoneHeight as its height", fn: () => {
+      const shown = CNBClef.shown(clefConfig({ anchorSemi: 20.5 }));
+      eq(shown.top, 20.5, "top = anchorSemi");
+      eq(shown.height, 6, "height = semitoneHeight");
+      eq(CNBClef.shown(CNBConfig.createDefault()), null, "no clef shown");
+    }},
+
+  { name: "shown: a referenced clef's anchor sits on anchorSemi, its top above it at each size", fn: () => {
+      // The test glyph is 300 units tall; its anchor 100 units below its top.
+      const at = (height) => CNBClef.shown(clefConfig({ reference: { x: 50, y: 100 }, anchorSemi: 10, semitoneHeight: height }));
+      eq(at(6).top, 12, "6 semitones: the anchor a third down, 2 below the top");
+      eq(at(3).top, 11, "3 semitones: 1 below the top");
+      eq(at(9).top, 13, "9 semitones: 3 below the top");
+      const e = CNBClef.extent(clefConfig({ reference: { x: 50, y: 100 }, anchorSemi: 10, semitoneHeight: 9 }));
+      eq(e.top, 13, "extent: top");
+      eq(e.bottom, 4, "extent: bottom, the anchor two-thirds up");
+      // A viewBox offset: the reference is in the glyph's own coordinates.
+      eq(CNBClef.shown(clefConfig({ reference: { x: 0, y: 0 }, viewBoxMinY: -150, anchorSemi: 10 })).top, 13,
+        "origin in the middle: half the height above");
+    }},
+
+  { name: "shown: an automatic glyph height is its LilyPond height in staff spaces × symbolSpace", fn: () => {
+      // 300 units at 100 a staff space: 3 staff spaces, 2.724 semitones each on the default staff.
+      const shown = CNBClef.shown(clefConfig({ semitoneHeight: null, staffSpaceUnits: 100, reference: { x: 0, y: 150 }, anchorSemi: 7 }));
+      approx(shown.height, 3 * 2.724, "automatic height", 1e-9);
+      approx(shown.top, 7 + 1.5 * 2.724, "the anchor in the middle stays on 7", 1e-9);
+      const set = CNBClef.shown(clefConfig({ semitoneHeight: 12, staffSpaceUnits: 100, reference: { x: 0, y: 150 }, anchorSemi: 7 }));
+      eq(set.height, 12, "a height set by hand stays");
+      eq(set.top, 13, "about the anchor");
+    }},
+
+  { name: "shown: under a pitch axis a referenced clef's top is found in axis positions (Twinline)", fn: () => {
+      const config = clefConfig({ reference: { x: 0, y: 150 }, anchorSemi: 7, semitoneHeight: 4 });
+      config.staff.midpoint = 7;
+      config.pitchAxis = {
+        enabled: true, kind: "pitch-class-map-v1", octaveStride: 7, axisUnitsPerStaffSpace: 2,
+        pitchClasses: [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6].map((position, pc) => ({ pc, position })),
+      };
+      // G (7) is at position 4; 2 axis units above it is position 6, A♯ (10).
+      eq(CNBClef.shown(config).top, 10, "the top 2 axis units above G");
+      config.clef.glyphs["test-clef"].semitoneHeight = 3;
+      // 1.5 units above position 4 is 5.5, halfway from A (9, at 5) to A♯ (10, at 6).
+      approx(CNBClef.shown(config).top, 9.5, "fractional, interpolated as the grid places it", 1e-9);
+    }},
+
+  { name: "render: a referenced clef is drawn at its height with its anchor on its semitone", fn: () => {
+      withSvgStub(svg => {
+        const config = clefConfig({ reference: { x: 50, y: 100 }, anchorSemi: 10, semitoneHeight: 3 });
+        const grid = CNBGrid.create(config, { minSemi: 0, maxSemi: 24 });
+        const g = CNBClef.render(svg, grid, config);
+        // The top is 11: y = (24 − 11) × 16 = 208; the path at 3 × 16 / 300 = 0.16.
+        eq(g.getAttribute("transform"), "translate(12,208)", "top edge at the anchor's top");
+        assert(g.children[0].getAttribute("transform").startsWith("scale(0.16)"), "scaled to 3 semitones");
+        eq(Number(g.children[1].getAttribute("width")), 16, "the handle spans the scaled width");
+      });
     }},
 
   { name: "extent: a glyph's and a text clef's top and bottom; null when no clef shows", fn: () => {
@@ -381,8 +479,13 @@ export const tests = [
       eq(glyph.naturalHeight, 300, "natural height");
       eq(glyph.naturalWidth, 100, "natural width");
       eq(glyph.semitoneHeight, 6, "semitone height");
-      // Default anchor centers the glyph on the default midpoint 12: 12 + 6/2
-      approx(glyph.anchorSemi, 15, "default anchor centers on midpoint");
+      // The anchor starts at the box's centre, on the default midpoint 12
+      // (session 59), so the glyph is centred there: its top 12 + 6/2.
+      eq(JSON.stringify(glyph.reference), JSON.stringify({ x: 0, y: 0 }), "the box's centre");
+      eq(glyph.anchorSemi, 12, "anchored on the midpoint");
+      const config = clefConfig();
+      config.clef.glyphs["test-clef"] = glyph;
+      approx(CNBClef.shown(config).top, 15, "centred on the midpoint, as before");
       assert(!warnings.some(w => /stem/i.test(w)), "no stem warnings for clefs");
     }},
 
@@ -393,7 +496,8 @@ export const tests = [
       }));
       const { glyph, warnings } = CNBSvgImporter.buildClefGlyph(ex, "X", { defaultMidpoint: 10 });
       approx(glyph.semitoneHeight, 4.5, "450 / 100 units per semitone");
-      approx(glyph.anchorSemi, 12.25, "10 + 4.5/2");
+      eq(JSON.stringify(glyph.reference), JSON.stringify({ x: 60, y: 225 }), "the box's centre");
+      eq(glyph.anchorSemi, 10, "anchored on the midpoint, its top 10 + 4.5/2");
       assert(warnings.some(w => w.includes("data-semitone-height")), "derivation warned");
     }},
 

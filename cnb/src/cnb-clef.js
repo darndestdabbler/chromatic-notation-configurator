@@ -45,11 +45,31 @@
  * clef also draws rect.cnb-clef-resize along its bottom edge, unpainted and
  * hidden; the editor's canvas shows it as the handle that resizes the clef.
  *
+ * Sized about an anchor (session 59). A glyph definition's optional
+ * reference { x, y }, in its native SVG units, is its anchor point (the
+ * treble clef's curl, the point between the bass clef's dots, the alto
+ * clef's middle, each on the line it marks). With one, anchorSemi is the
+ * semitone the anchor sits on, and the clef is drawn with that point there;
+ * without one (every clef saved before session 59, and text clefs),
+ * anchorSemi is the top edge, as before. A glyph's semitoneHeight may be
+ * null, automatic, when it carries staffSpaceUnits (its native units per
+ * LilyPond staff space, 250 for LilyPond's own clefs): its LilyPond height in
+ * staff spaces, naturalHeight / staffSpaceUnits, each drawn as
+ * CNBStaff.symbolSpace semitones, as the key signature's sharps and flats
+ * are. The dozenal clef's semitoneHeight is the height of its left digit,
+ * 3 staff spaces at LilyPond's size; absent or null it is automatic,
+ * 3 × symbolSpace, and the numeral is scaled about the staff's middle line.
+ * shown(config) resolves the clef as drawn, its height and top, which
+ * measure, extent, gutterWidth and render use, so a height set by hand or an
+ * automatic one changes the clef about its anchor.
+ *
  * Dependencies: Module 1 (grid context passed in), Module A (clef schema),
- * Module 24 (the staff space under a pitch axis).
+ * Module 3 (the symbols' staff space), Module 24 (the staff space under a
+ * pitch axis).
  */
 
 import { CNBPitchAxis } from "./cnb-pitch-axis.js";
+import { CNBStaff } from "./cnb-staff.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -85,6 +105,64 @@ function unitsPerStaffSpace(config) {
     : ((config.staff && config.staff.semitonesPerStaffSpace) || 1);
 }
 
+/** A positive finite number, or null. */
+function positive(v) {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * The semitone whose axis position is `position`: under a pitch axis,
+ * positionOfSemi interpolates linearly between whole semitones, as the
+ * preview and the engine place a fractional anchor, so the semitone is found
+ * the same way from the whole semitones around it (on a shared position, the
+ * first semitone there). On a linear staff it is the position itself.
+ *
+ * @param {object} axis  CNBPitchAxis.create(config)
+ * @param {number} position
+ * @param {number} near  a semitone near the answer, where the search starts
+ * @returns {number}
+ */
+function semiAtPosition(axis, position, near) {
+  if (!axis.enabled) return position;
+  for (let s = Math.floor(near) - 48; s < Math.floor(near) + 48; s++) {
+    const lo = axis.positionOfSemi(s);
+    const hi = axis.positionOfSemi(s + 1);
+    if (lo === position) return s;
+    if (lo < position && position < hi) return s + (position - lo) / (hi - lo);
+  }
+  return position;   // out of reach: not met for a valid map
+}
+
+/**
+ * A clef definition's height in semitones (axis units under a pitch axis),
+ * as drawn: a number set by hand, else automatic (session 59): a glyph with
+ * staffSpaceUnits its LilyPond height in staff spaces × symbolSpace, the
+ * dozenal clef 3 × symbolSpace; a text clef's textHeightSemis.
+ */
+function heightOf(config, def) {
+  const kind = def.kind || "glyph";
+  if (kind === "text") return def.textHeightSemis;
+  const set = positive(def.semitoneHeight);
+  if (set !== null) return set;
+  if (kind === "dozenal") return 3 * CNBStaff.symbolSpace(config);
+  const units = positive(def.staffSpaceUnits);
+  return units === null ? def.semitoneHeight : def.naturalHeight / units * CNBStaff.symbolSpace(config);
+}
+
+/**
+ * A glyph or text clef's top edge in semitones, at its height: anchorSemi
+ * without a reference (the top, as before session 59); with one, the
+ * semitone the anchor's depth below the top lies above anchorSemi, on the
+ * grid (in axis positions under a pitch axis).
+ */
+function topOf(config, def, height) {
+  const ref = (def.kind || "glyph") === "glyph" ? def.reference : null;
+  if (!ref) return def.anchorSemi;
+  const depth = (ref.y - (def.viewBoxMinY || 0)) / def.naturalHeight * height;
+  const axis = CNBPitchAxis.create(config);
+  return semiAtPosition(axis, axis.positionOfSemi(def.anchorSemi) + depth, def.anchorSemi);
+}
+
 export const CNBClef = {
 
   /**
@@ -102,26 +180,48 @@ export const CNBClef = {
   },
 
   /**
+   * The shown clef as drawn (session 59): its definition, its height in
+   * semitones (axis units under a pitch axis), resolved when automatic, and,
+   * for a glyph or text clef, its top edge's semitone, found from its anchor
+   * (null for the dozenal clef). Null when no clef is shown.
+   *
+   * @param {object} config
+   * @returns {{name:string, def:object, height:number, top:number|null}|null}
+   */
+  shown(config) {
+    const active = CNBClef.activeGlyph(config);
+    if (!active) return null;
+    const height = heightOf(config, active.def);
+    const top = active.def.kind === "dozenal" ? null : topOf(config, active.def, height);
+    return { ...active, height, top };
+  },
+
+  /**
    * Compute pixel dimensions for a clef definition.
    * Glyph kind mirrors CNBNotehead.measure; text kind sizes the em-box
    * from textHeightSemis and estimates width per glyph at 0.6 em; the
    * dozenal kind is measured in staff spaces, so it needs staffSpacePx.
+   * height is the clef's as drawn, in semitones (shown(config).height);
+   * without it a glyph takes its semitoneHeight and the dozenal numeral
+   * LilyPond's 3 staff spaces.
    *
    * @param {object} def        clef.glyphs[name] entry
    * @param {number} pxPerSemi
    * @param {number} [staffSpacePx]  px per staff space (the dozenal kind)
+   * @param {number} [height]   the height drawn, in semitones
    * @returns {{scaleFactor:number, pixelWidth:number, pixelHeight:number}}
    */
-  measure(def, pxPerSemi, staffSpacePx) {
+  measure(def, pxPerSemi, staffSpacePx, height) {
     if (def.kind === "dozenal") {
-      return { scaleFactor: 1, pixelWidth: DOZENAL_WIDTH * staffSpacePx, pixelHeight: 3 * staffSpacePx };
+      const pixelHeight = height === undefined ? 3 * staffSpacePx : height * pxPerSemi;
+      return { scaleFactor: 1, pixelWidth: DOZENAL_WIDTH * pixelHeight / 3, pixelHeight };
     }
     if ((def.kind || "glyph") === "text") {
       const pixelHeight = (def.textHeightSemis || 0) * pxPerSemi;
       const pixelWidth = 0.6 * pixelHeight * String(def.text || "").length;
       return { scaleFactor: 1, pixelWidth, pixelHeight };
     }
-    const scaleFactor = (def.semitoneHeight * pxPerSemi) / def.naturalHeight;
+    const scaleFactor = ((height ?? def.semitoneHeight) * pxPerSemi) / def.naturalHeight;
     return {
       scaleFactor,
       pixelWidth: def.naturalWidth * scaleFactor,
@@ -139,11 +239,11 @@ export const CNBClef = {
    * @returns {number}
    */
   gutterWidth(config, pxPerSemi) {
-    const active = CNBClef.activeGlyph(config);
-    if (!active) return 0;
+    const shown = CNBClef.shown(config);
+    if (!shown) return 0;
     const paddingH = config.clef?.gutter?.paddingH ?? 12;
-    return CNBClef.measure(active.def, pxPerSemi, CNBClef.staffSpacePx(config, pxPerSemi)).pixelWidth +
-      2 * paddingH;
+    return CNBClef.measure(shown.def, pxPerSemi, CNBClef.staffSpacePx(config, pxPerSemi), shown.height)
+      .pixelWidth + 2 * paddingH;
   },
 
   /**
@@ -160,32 +260,31 @@ export const CNBClef = {
   },
 
   /**
-   * The shown clef's top and bottom in semitones (session 45): a glyph's
-   * anchorSemi and anchorSemi − semitoneHeight, a text clef's with
-   * textHeightSemis, the dozenal numeral's from the middle line. Null when
-   * no clef is shown. Under a pitch axis the dozenal clef's staff spaces
-   * are counted in axis units.
+   * The shown clef's top and bottom in semitones (session 45): a glyph's or
+   * text clef's top (shown(config).top) and that less its height, the
+   * dozenal numeral's from the middle line at its height (3 staff spaces at
+   * LilyPond's size, counted in axis units under a pitch axis). Null when no
+   * clef is shown.
    *
    * @param {object} config
    * @returns {{top:number, bottom:number}|null}
    */
   extent(config) {
-    const active = CNBClef.activeGlyph(config);
-    if (!active) return null;
-    const { def } = active;
-    if (def.kind === "dozenal") {
+    const shown = CNBClef.shown(config);
+    if (!shown) return null;
+    if (shown.def.kind === "dozenal") {
       const mid = config.staff?.midpoint ?? 12;
-      const units = unitsPerStaffSpace(config);
-      return { top: mid + DOZENAL_TOP * units, bottom: mid + DOZENAL_BOTTOM * units };
+      return { top: mid + DOZENAL_TOP * shown.height / 3, bottom: mid + DOZENAL_BOTTOM * shown.height / 3 };
     }
-    const height = (def.kind || "glyph") === "text" ? def.textHeightSemis : def.semitoneHeight;
-    return { top: def.anchorSemi, bottom: def.anchorSemi - height };
+    return { top: shown.top, bottom: shown.top - shown.height };
   },
 
   /**
-   * Render the active clef into svgParent. The glyph's TOP edge is placed
-   * at semiToY(anchorSemi); the left edge sits at gutter.paddingH. The
-   * dozenal numeral is placed on the middle line, semiToY(staff.midpoint).
+   * Render the active clef into svgParent. A glyph's or text clef's TOP edge
+   * is placed at semiToY of its top (shown(config).top: anchorSemi, or found
+   * from its anchor), at its height; the left edge sits at gutter.paddingH.
+   * The dozenal numeral is placed on the middle line, semiToY(staff.midpoint),
+   * at its height, scaled about that line.
    * Returns null (rendering nothing) when no clef is active.
    *
    * @param {SVGElement} svgParent
@@ -194,9 +293,9 @@ export const CNBClef = {
    * @returns {SVGGElement|null}
    */
   render(svgParent, gridContext, config) {
-    const active = CNBClef.activeGlyph(config);
-    if (!active) return null;
-    const { def } = active;
+    const shown = CNBClef.shown(config);
+    if (!shown) return null;
+    const { def, height } = shown;
 
     const paddingH = config.clef?.gutter?.paddingH ?? 12;
     const g = document.createElementNS(NS, "g");
@@ -204,8 +303,11 @@ export const CNBClef = {
 
     if (def.kind === "dozenal") {
       // In staff spaces from the middle line, Y down: the left digit's ink
-      // at (y × scale) − 1.5 up, the right digit's at (y × 2/3 scale) − 1.
-      const space = CNBClef.staffSpacePx(config, gridContext.pxPerSemi);
+      // at (y × scale) − 1.5 up, the right digit's at (y × 2/3 scale) − 1;
+      // at another height than LilyPond's 3 staff spaces, all of it scaled
+      // about the middle line (session 59).
+      const space = CNBClef.staffSpacePx(config, gridContext.pxPerSemi) *
+        (height / (3 * unitsPerStaffSpace(config)));
       const middleY = gridContext.semiToY(config.staff?.midpoint ?? 12);
       g.setAttribute("transform", `translate(${paddingH},${middleY}) scale(${space})`);
       const digits = [
@@ -223,8 +325,9 @@ export const CNBClef = {
       return g;
     }
 
-    const topY = gridContext.semiToY(def.anchorSemi);
-    const { scaleFactor, pixelHeight } = CNBClef.measure(def, gridContext.pxPerSemi);
+    const topY = gridContext.semiToY(shown.top);
+    const { scaleFactor, pixelWidth, pixelHeight } =
+      CNBClef.measure(def, gridContext.pxPerSemi, undefined, height);
     g.setAttribute("transform", `translate(${paddingH},${topY})`);
 
     if ((def.kind || "glyph") === "text") {
@@ -251,7 +354,6 @@ export const CNBClef = {
       g.appendChild(path);
       // The resize handle along the bottom edge (session 45): hidden, and
       // shown by the editor's canvas while the Clef section is open.
-      const { pixelWidth } = CNBClef.measure(def, gridContext.pxPerSemi);
       const handle = document.createElementNS(NS, "rect");
       handle.setAttribute("class", "cnb-clef-resize");
       handle.setAttribute("x", "0");

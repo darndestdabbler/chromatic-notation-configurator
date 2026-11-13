@@ -18,26 +18,26 @@
  *
  * A standard clef is placed as LilyPond places it on a staff: its line on
  * the pitch it marks (G for treble, F for bass, C for alto), here in the
- * octave nearest the staff's middle (staff.midpoint), at LilyPond's size in
- * staff spaces (semitonesPerStaffSpace semitones, or axisUnitsPerStaffSpace
- * under a pitch axis, where the line lands on the marked pitch's axis
- * position and the top is the semitone at the position that many axis
- * units above it). It is then an ordinary glyph clef: its anchorSemi is
- * its top and its semitoneHeight its height, which the designer can change,
- * and it exports through cnb:register-clef! as an imported glyph does.
- *
- * Dependencies: Module 20 (CNBClef.staffSpacePx, the staff space).
+ * octave nearest the staff's middle (staff.midpoint). Since session 59 that
+ * point is its anchor (CNBClef): its reference is on the marked line, the
+ * glyph's origin, at the treble clef's curl, between the bass clef's dots
+ * and at the alto clef's middle, and its anchorSemi is the marked pitch. Its
+ * size is automatic (semitoneHeight null): LilyPond's size in staff spaces,
+ * staffSpaceUnits 250 font units each, each drawn as CNBStaff.symbolSpace
+ * semitones, so it follows the staff and its noteheads, as the key
+ * signature's sharps and flats do. The designer can set a height, which
+ * scales it about its anchor, and it exports through cnb:register-clef! as
+ * an imported glyph does. The dozenal clef's size is automatic too.
  */
-
-import { CNBClef } from "../src/cnb-clef.js";
-import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 
 /** Font units per staff space in Emmentaler. */
 const UNITS_PER_STAFF_SPACE = 250;
 
 /**
- * The standard clefs: the pitch class each marks, and its glyph. lineFromTop
- * is the marked line's depth below the glyph's top, in font units.
+ * The standard clefs: the pitch class each marks, and its glyph. anchorX is
+ * the anchor's x on the marked line, in font units: the treble clef's curl
+ * (the middle of its eye on the G line, measured from the outline), the
+ * point between the bass clef's dots, the alto clef's middle.
  */
 const STANDARD = {
   treble: {
@@ -49,7 +49,7 @@ const STANDARD = {
     naturalHeight: 1829.75,
     viewBoxMinX: 2,
     viewBoxMinY: -1194.75,
-    lineFromTop: 1194.75,
+    anchorX: 313,
   },
   bass: {
     displayName: "Bass",
@@ -60,7 +60,7 @@ const STANDARD = {
     naturalHeight: 776,
     viewBoxMinX: -13,
     viewBoxMinY: -263,
-    lineFromTop: 263,
+    anchorX: 608,
   },
   alto: {
     displayName: "Alto",
@@ -71,7 +71,7 @@ const STANDARD = {
     naturalHeight: 1000,
     viewBoxMinX: 0,
     viewBoxMinY: -500,
-    lineFromTop: 500,
+    anchorX: 318,
   },
 };
 
@@ -82,11 +82,6 @@ const CHOICES = [
   { name: "bass", displayName: STANDARD.bass.displayName },
   { name: "alto", displayName: STANDARD.alto.displayName },
 ];
-
-/** Rounded to 4 places, the precision the panel's fields show. */
-function round4(v) {
-  return Math.round(v * 1e4) / 1e4;
-}
 
 /**
  * The semitone of pitch class pc nearest the staff's middle (the higher of
@@ -101,30 +96,6 @@ function markedSemi(config, pc) {
   return pc + 12 * Math.round((mid - pc) / 12);
 }
 
-/**
- * The semitone whose axis position is `position` (session 45): under a
- * pitch axis, positionOfSemi interpolates linearly between whole
- * semitones, as the preview and the engine place a fractional anchor, so
- * the semitone is found the same way from the whole semitones around it
- * (on a shared position, the first semitone there). On a linear staff it
- * is the position itself.
- *
- * @param {object} axis  CNBPitchAxis.create(config)
- * @param {number} position
- * @param {number} near  a semitone near the answer, where the search starts
- * @returns {number}
- */
-function semiAtPosition(axis, position, near) {
-  if (!axis.enabled) return position;
-  for (let s = Math.floor(near) - 48; s < Math.floor(near) + 48; s++) {
-    const lo = axis.positionOfSemi(s);
-    const hi = axis.positionOfSemi(s + 1);
-    if (lo === position) return s;
-    if (lo < position && position < hi) return s + (position - lo) / (hi - lo);
-  }
-  return position;   // out of reach: not met for a valid map
-}
-
 export const CNBBuiltinClefs = {
 
   /** The clefs offered: [{ name, displayName }], in the panel's order. */
@@ -132,35 +103,32 @@ export const CNBBuiltinClefs = {
 
   /**
    * The clef definition for this config's staff, or null for a name that
-   * is not offered. The dozenal clef has no size or place of its own; a
-   * standard clef's line is on its pitch in the octave nearest the middle
-   * of the staff, at LilyPond's size in staff spaces.
+   * is not offered. The dozenal clef has no place of its own, and its size
+   * is automatic; a standard clef's anchor, on its line, is on its pitch in
+   * the octave nearest the middle of the staff, and its size is automatic,
+   * LilyPond's in staff spaces drawn at the staff's symbol size (session 59).
    *
    * @param {object} config
    * @param {string} name  "dozenal" | "treble" | "bass" | "alto"
    * @returns {object|null}  a config.clef.glyphs entry
    */
   definition(config, name) {
-    if (name === "dozenal") return { kind: "dozenal", displayName: "Dozenal" };
+    if (name === "dozenal") return { kind: "dozenal", displayName: "Dozenal", semitoneHeight: null };
     const glyph = STANDARD[name];
     if (!glyph) return null;
-    const units = CNBClef.staffSpacePx(config, 1) / UNITS_PER_STAFF_SPACE;
-    // The top is the line's depth above the marked pitch, on the grid: in
-    // axis positions under a pitch axis, in semitones on a linear staff.
-    const axis = CNBPitchAxis.create(config);
-    const marked = markedSemi(config, glyph.pc);
-    const top = semiAtPosition(axis, axis.positionOfSemi(marked) + glyph.lineFromTop * units, marked);
     return {
       displayName: glyph.displayName,
       kind: "glyph",
       svgPath: glyph.svgPath,
       naturalHeight: glyph.naturalHeight,
       naturalWidth: glyph.naturalWidth,
-      semitoneHeight: round4(glyph.naturalHeight * units),
+      semitoneHeight: null,
+      staffSpaceUnits: UNITS_PER_STAFF_SPACE,
       viewBoxMinX: glyph.viewBoxMinX,
       viewBoxMinY: glyph.viewBoxMinY,
+      reference: { x: glyph.anchorX, y: 0 },
       lilypondPath: null,
-      anchorSemi: round4(top),
+      anchorSemi: markedSemi(config, glyph.pc),
     };
   },
 };

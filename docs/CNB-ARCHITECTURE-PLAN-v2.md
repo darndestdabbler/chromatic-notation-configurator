@@ -871,18 +871,23 @@ clef: {
   //                  or alto clef chosen in the panel (session 45)
   //   kind "text"  — register label (octave numeral/letter) rendered as
   //                  an SVG <text> sized by textHeightSemis
-  //   kind "dozenal" — the engine's dozenal clef (session 45): no path,
-  //                  size or anchor; the engine draws and places it
+  //   kind "dozenal" — the engine's dozenal clef (session 45): no path
+  //                  or anchor; the engine draws and places it on the
+  //                  middle line, at semitoneHeight (session 59: null =
+  //                  automatic, 3 symbol spaces)
   glyphs: {
     // "express-b": {
     //   displayName: "Express B Clef",
     //   kind: "glyph",
     //   svgPath: "M ...",
     //   naturalHeight: 300, naturalWidth: 100,
-    //   semitoneHeight: 6,
+    //   semitoneHeight: 6,          // or null = automatic (session 59),
+    //   staffSpaceUnits: 100,       //   needing this: native units a staff space
     //   viewBoxMinX: 0, viewBoxMinY: 0,
+    //   reference: { x: 50, y: 150 }, // OPTIONAL anchor point, native units (session 59)
     //   lilypondPath: null,
-    //   anchorSemi: 22.784          // per-definition anchor (see below)
+    //   anchorSemi: 20              // the anchor's semitone; the TOP edge's
+    //                               //   without a reference (see below)
     // }
   },
 
@@ -894,22 +899,40 @@ clef: {
 ```
 
 **Design notes:**
-- **Per-definition float top-edge anchor.** `anchorSemi` lives on EACH
-  definition and is the semitone position of the glyph's TOP edge, stored
-  as a float. Surveyed designs (Bravura/SMuFL gClef, Clairnote 2017 clefs,
-  Express Stave F/B/D) register clefs by interior musical features, which
-  puts the bounding-box top at fractional grid offsets — any interior
-  registration reduces to `anchorSemi = markedPitchSemi + k` with
-  fractional `k`. Validation accepts any finite number and warns outside
-  −24…72.
+- **Per-definition float anchor.** `anchorSemi` lives on EACH definition,
+  stored as a float. Surveyed designs (Bravura/SMuFL gClef, Clairnote 2017
+  clefs, Express Stave F/B/D) register clefs by interior musical features.
+  Since session 59 a glyph definition may name that feature: `reference
+  { x, y }`, its anchor point in native SVG units, and `anchorSemi` is then
+  the semitone the anchor sits on. The glyph's top is drawn and exported
+  `depth = (reference.y − viewBoxMinY) ÷ naturalHeight × height` above it
+  (`CNBClef.shown`), on a pitch axis by the axis position. A definition
+  without a reference, every clef saved before session 59 and every text
+  clef among them, keeps `anchorSemi` as its TOP edge (the fractional
+  `markedPitchSemi + k` of set 009), and draws and exports as before.
+  Validation accepts any finite number and warns outside −24…72; a
+  reference must be a point of finite numbers.
+- **The size (session 59).** A glyph clef's `semitoneHeight` may be
+  `null`, automatic, when it gives `staffSpaceUnits`, the native units in
+  one of LilyPond's staff spaces (250 for Emmentaler's clefs): its height
+  is `naturalHeight ÷ staffSpaceUnits × CNBStaff.symbolSpace(config)`, its
+  LilyPond size in the staff's symbol spaces (Module 3: the least of the
+  noteheads' mean crotchet height, one staff space and 3 semitones). The
+  dozenal clef's automatic size is 3 symbol spaces: 8.172 semitones on the
+  default staff, 9 on Kite 4-369. A number set by hand stays when the
+  noteheads or the staff change. The operator picked the rule from
+  mock-ups (`docs/planning/clef-size-mockups/`).
 - **Grid-positioned rendering (Module 20, `cnb-clef.js`).** The clef
   renders into a left gutter column of the card collection; the glyph top
-  is placed at `semiToY(anchorSemi)` — the grid module is the positioning
+  is placed at `semiToY(top)`, the top `CNBClef.shown` gives (`anchorSemi`
+  itself without a reference) — the grid module is the positioning
   system, as §5 Module 1 anticipated for clefs.
 - **Import rides the shape pipeline.** Clef glyphs are imported through
   Module 16 (`extractClef` / `buildClefGlyph` / `parseClefSvgText`),
   reusing the toolkit `data-*` contract; stem/anchor attributes are not
-  required for clefs.
+  required for clefs. Since session 59 an imported glyph takes its box's
+  centre as its anchor point, on `staff.midpoint`, and the panel opens a
+  picker on the enlarged glyph where a click moves it.
 - **Clefs to choose from (session 45).** The Clef panel's buttons add a
   clef without an import (`ui/builtin-clefs.js`): the dozenal clef, drawn
   as the engine engraves it under the score's default treble clef (the
@@ -917,16 +940,23 @@ clef: {
   on the middle line), and LilyPond's own treble, bass and alto glyphs
   (Emmentaler `clefs.G`, `clefs.F`, `clefs.C`, SIL OFL 1.1), each with its
   line on the pitch it marks (G, F, C) in the octave nearest
-  `staff.midpoint`, at LilyPond's size in staff spaces. The licences are in
-  `cnb/assets/fonts/`.
-- **A glyph clef's range (session 45).** A glyph clef is shown from
-  semitone `anchorSemi − semitoneHeight` to `anchorSemi`. The panel edits
-  the two ends, and with the Clef section open the canvas moves the clef
-  by a drag on it and resizes it by a drag on its bottom edge; both write
-  through `CNBClefEditor.withRange`. A card row's grid widens to hold a
-  clef that reaches past its noteheads (`CNBCollection.gridRange(pcs,
-  config)`, from `CNBClef.extent`). Text clefs keep their top field, and
-  the dozenal clef has neither.
+  `staff.midpoint`. Since session 59 each has its anchor point on that line
+  (the treble clef's curl, the point between the bass clef's dots, the alto
+  clef's middle; the operator confirmed them from the mock-ups) and the
+  automatic size, 250 units a staff space, so it is LilyPond's size in
+  symbol spaces. The licences are in `cnb/assets/fonts/`.
+- **Moving and resizing a clef (session 45, session 59).** A glyph clef
+  is shown from its top to `height` below it. The panel edits where it
+  sits ("Sits on semitone", or "Top at semitone" for a clef without an
+  anchor point) and its height (automatic, or a number of semitones), and
+  with the Clef section open the canvas moves the clef by a drag on it and
+  resizes it by a drag on its bottom edge, about its anchor. Both write
+  through `CNBClefEditor.withAnchor` and `withHeight` (session 45's
+  `withRange`, which set the top and bottom, is gone). The dozenal clef
+  takes the height and resizes about the middle line. A card row's grid
+  widens to hold a clef that reaches past its noteheads
+  (`CNBCollection.gridRange(pcs, config)`, from `CNBClef.extent`). Text
+  clefs keep their top field.
 - **LilyPond export (session 30, LY spec 1.3.7 §5.5).** Set 009 wrote
   nothing for clefs, because the engine then had no clef hook
   (`docs/session-sets/009-custom-clefs/s1-engine-coordination.md`). Its
@@ -937,7 +967,11 @@ clef: {
   clef, as a markup of its font, colour and weight at its height. A shown
   clef also gets its gutter, `paddingH ÷ pxPerSemi` semitones, on the right
   only. The engine places a text clef at a fixed height of its own rather
-  than at `anchorSemi`, a known divergence.
+  than at `anchorSemi`, a known divergence. Since session 59 (LY spec
+  1.3.21 §5.5, §5.5a) `cnb:register-clef!` carries the top and height the
+  preview draws, from the anchor, and the dozenal clef writes
+  `cnb:clef-size-semitones`, which engine 1.8.0 scales about the middle
+  line.
 
 ### 4.13 Pitch Axis (added set 014)
 
@@ -1254,6 +1288,15 @@ CNBStaff.lilypondPosition(config, semi) → number
 
 // Pixels per staff space on a grid (axis units under a pitch axis)
 CNBStaff.staffSpacePx(config, gridContext) → number
+
+// The staff's symbol space (session 59), in semitones (axis units under a
+// pitch axis): the least of the noteheads' mean crotchet height (the twelve
+// pitch classes, no key), one staff space and 3. 2.724 on the default
+// staff, 3 on Kite 4-369, 2 on Twinline. The key signature's automatic
+// signs (CNBKeySignature.signHeight) and the clefs' automatic size
+// (Module 20: a glyph's naturalHeight ÷ staffSpaceUnits of them, the
+// dozenal clef 3) follow it.
+CNBStaff.symbolSpace(config) → number
 ```
 
 **Visual test page:** Full-width SVG with staff lines at correct positions, debug grid visible. Default 4-8 (lines at 4, 8, 16, 20).
@@ -1674,31 +1717,47 @@ Detailed specifications deferred. Summary:
 **Module 20 — Clef Renderer** (`cnb-clef.js`, Rendering): pure
 config-in/DOM-out renderer for the `clef` config section (§4.12). API:
 `activeGlyph(config)` (resolves the active definition or null),
-`measure(def, pxPerSemi, staffSpacePx)` (the dozenal kind is measured in
-staff spaces), `gutterWidth(config, pxPerSemi)` (0 when no clef renders —
-the collection reserves no gutter), `staffSpacePx(config, pxPerSemi)`,
-`extent(config)` (the shown clef's top and bottom in semitones, session
-45), and `render(svgParent, gridContext, config)` (glyph TOP edge at
-`semiToY(anchorSemi)`, left edge at `gutter.paddingH`, with a hidden
+`shown(config)` (session 59: the shown clef, `{ name, def, height, top }`,
+its height set or automatic and its top from its anchor point, `top` null
+for the dozenal clef; null when no clef is shown — measure, extent,
+gutterWidth, render, the key signature's spacing after a clef and the
+export all read it), `measure(def, pxPerSemi, staffSpacePx, height)` (at
+the height `shown` gives; the dozenal kind 3 staff spaces without one),
+`gutterWidth(config, pxPerSemi)` (0 when no clef renders — the collection
+reserves no gutter), `staffSpacePx(config, pxPerSemi)`, `extent(config)`
+(the shown clef's top and bottom in semitones, session 45; the dozenal
+numeral scaled about the middle line, session 59), and
+`render(svgParent, gridContext, config)` (glyph TOP edge at
+`semiToY(shown.top)`, left edge at `gutter.paddingH`, with a hidden
 `rect.cnb-clef-resize` on a glyph's bottom edge that the editor's canvas
-shows; the dozenal numeral on the middle line). Integrated into
+shows; the dozenal numeral on the middle line, at its height). Integrated into
 Module 10 as a `div.clef-col` prepended inside `.pc-columns` behind
 `clef.enabled`; the background staff SVG spans the gutter.
-Dependencies: Module 1, Module A. Visual test page: `test-clef.html`.
-Since session 30 Module 11 exports the clef this module draws
-(`CNBClef.activeGlyph` decides both; LY spec 1.3.7 §5.5).
+Dependencies: Module 1, Module 3 (the symbol space), Module A. Visual test
+page: `test-clef.html`. Since session 30 Module 11 exports the clef this
+module draws (`CNBClef.activeGlyph` decides both; LY spec 1.3.7 §5.5), and
+since session 59 at the top and height `CNBClef.shown` gives (LY spec
+1.3.21).
 
 **Module 21 — Clef Editor** (`ui/clef-editor.js`, UI): edits the `clef`
 section — enable toggle, the Dozenal, Treble, Bass and Alto buttons
 (session 45, `ui/builtin-clefs.js`), clef glyph import (wraps Module 16's
-`parseClefSvgText`), glyph selection, a glyph clef's range ("Shown from
-semitone … to …", through the pure `withRange(clef, top, bottom)`, which
-the canvas drag also uses) or a text clef's anchor-semitone control
-(float, step "any"), and gutter sizing. Same editor contract as Modules
+`parseClefSvgText`), glyph selection, where the clef sits ("Sits on
+semitone", the anchor's; "Top at semitone" for a text clef or a glyph
+without an anchor point; float, step "any"), through the pure
+`withAnchor(clef, semi)`, its height (the drawn height, and "Automatic:
+follows the staff and its noteheads" where the clef can be automatic),
+through the pure `withHeight(clef, height | null)`, both of which the
+canvas drag also uses (session 59; they replace `withRange`), the anchor
+picker ("Pick the anchor point", opened after an import: a click on the
+enlarged glyph moves `reference`, through the key-signature editor's
+`referenceGeometry` / `referenceAt`), the dozenal clef's height, and gutter
+sizing. Same editor contract as Modules
 12–17: property-based event wiring (Node-testable `render()`), pure
 `buildClef` / `applyToConfig` / `stateFromConfig` builders, Module A
 validation pass-through, `onChange({ clef }, state)`. Dependencies:
-Module A, Module 16, the built-in clefs.
+Module A, Module 16, Module 20, the key-signature editor's reference
+picker, the built-in clefs.
 
 ---
 

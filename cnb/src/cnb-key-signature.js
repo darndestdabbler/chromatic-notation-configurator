@@ -163,9 +163,6 @@ function magnification(config) {
   return r && r.num > 0 ? r.num / (r.den ?? 1) : 7 / 4;
 }
 
-/** The automatic size's cap, in semitones (session 52). */
-const SIGN_HEIGHT_CAP = 3;
-
 /** The order of a signature's sharps (and, reversed, its flats) by letter. */
 const SHARP_ORDER = "FCGDAEB";
 
@@ -187,14 +184,14 @@ function ledgerLength(markWidth, space) {
 /** CNBKeySignature.padding for a measured signature. */
 function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const space = CNBStaff.staffSpacePx(config, { pxPerSemi, axis: CNBPitchAxis.create(config) });
-  const clef = CNBClef.activeGlyph(config);
+  const clef = CNBClef.shown(config);
   const scaleStack = CNBKeySignature.isScaleStack(config);
   const mag = magnification(config);
   const fromClef = (CLEF_SPACE + (scaleStack ? SCALE_STACK_INSET : 0) - 1 / mag) * space;
   const firstNote = FIRST_NOTE_CENTRE -
     (TIME_SIGNATURE_WIDTH[26] - TIME_SIGNATURE_WIDTH[CNBAccidentalGlyphs.designSize(mag)]);
   const left = clef
-    ? Math.max(0, fromClef - CNBClef.measure(clef.def, pxPerSemi, space).pixelWidth -
+    ? Math.max(0, fromClef - CNBClef.measure(clef.def, pxPerSemi, space, clef.height).pixelWidth -
         (config.clef?.gutter?.paddingH ?? 12))
     : SPACE_BEFORE * space;
   // Without the first card, a column for a notehead the size of the marks
@@ -639,10 +636,10 @@ export const CNBKeySignature = {
    * height from the top left of its upper bar to the top left of its lower
    * bar, in semitones (axis units under a pitch axis). A number set in
    * keySignature.signs.heightSemis is kept as it is. Otherwise it is
-   * automatic, the least of the noteheads' mean height (the twelve pitch
-   * classes' crotchet noteheads as they resolve with no key), one staff
-   * space and 3 semitones: 2.724 on the default staff, 3 on Kite 4-369, 1 on
-   * a staff with a line every semitone.
+   * automatic, CNBStaff.symbolSpace (session 59): the least of the
+   * noteheads' mean height (the twelve pitch classes' crotchet noteheads as
+   * they resolve with no key), one staff space and 3 semitones: 2.724 on the
+   * default staff, 3 on Kite 4-369, 1 on a staff with a line every semitone.
    *
    * @param {object} config
    * @returns {{semis:number, automatic:boolean}}
@@ -650,16 +647,7 @@ export const CNBKeySignature = {
   signHeight(config) {
     const set = (((config.keys || {}).keySignature || {}).signs || {}).heightSemis;
     if (typeof set === "number" && Number.isFinite(set) && set > 0) return { semis: set, automatic: false };
-    const shapes = config.shapes || {};
-    const heights = [];
-    for (let pc = 0; pc < 12; pc++) {
-      const head = CNBConfig.resolveNotehead(config, pc, "crotchet", null);
-      const shape = shapes[head.shape];
-      if (shape) heights.push(head.heightSemis ?? shape.semitoneHeight);
-    }
-    const space = CNBStaff.staffSpacePx(config, { pxPerSemi: 1, axis: CNBPitchAxis.create(config) });
-    const mean = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : Infinity;
-    return { semis: Math.min(mean, space, SIGN_HEIGHT_CAP), automatic: true };
+    return { semis: CNBStaff.symbolSpace(config), automatic: true };
   },
 
   /**

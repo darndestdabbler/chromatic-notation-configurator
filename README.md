@@ -255,9 +255,14 @@ conventional notehead on the 4-8 staff.
   engine engraves it, the numeral 50 of the default treble register) or
   LilyPond's own treble, bass and alto clef, placed on the pitch it marks
   (G, F or C, nearest the middle of the staff); or import a clef glyph. A
-  glyph clef is shown from one semitone to another: type them, or, with
-  the section open, drag the clef up or down on the staff and drag its
-  bottom edge to make it taller or shorter.
+  glyph clef sits on a semitone by its anchor point (the treble clef's
+  curl, the point between the bass clef's dots, the alto clef's middle;
+  an imported glyph's centre until you pick its anchor point on the
+  enlarged glyph). Its height is automatic, following the staff and its
+  noteheads, or a number of semitones you set, and it grows and shrinks
+  about its anchor. The dozenal clef's size is set the same way, about the
+  middle line. Type them, or, with the section open, drag the clef up or
+  down on the staff and drag its bottom edge to make it taller or shorter.
 - **Advanced** — rules for particular durations or keys, the duration list
   and engine settings, the pitch axis map, the pitch range shown, and the
   file as JSON.
@@ -444,7 +449,9 @@ The clef and the rest of the key signature export (LY export spec 1.3.7
 §5.5, §5.6, and 1.3.13 §5.5a). A config with no clef shown engraves none,
 and one showing the dozenal clef engraves the engine's own. A glyph clef,
 imported or a treble, bass or alto clef, is registered and engraves over
-the semitones the preview draws it over, and a
+the semitones the preview draws it over, its anchor on its pitch, and the
+dozenal clef engraves at its size about the middle line (1.3.21, which
+needs engine 1.8.0); a
 text clef engraves in its font, colour and size, but at the engine's own
 height rather than at its anchor. A key signature that is off engraves
 none. One that is on engraves with its bar's colour, thickness and extent,
@@ -517,7 +524,7 @@ example data in, DOM nodes out:
 | Staff/Ledger Rule Editor | Staff pattern and ledger template configuration |
 | Notehead Rule Editor | Shape/hollow/color rules by pitch, duration, key |
 | Common Properties Editor | Durations, representation mode, engine settings, metadata |
-| Clef Editor | Clef enable, the dozenal, treble, bass and alto clefs, glyph import and selection, a glyph clef's range |
+| Clef Editor | Clef enable, the dozenal, treble, bass and alto clefs, glyph import and selection, a clef's anchor point and its automatic or set size |
 | Key Signature Editor | The magnified signature canvas, Edit and the look card, the key picker and the touch check, the key definitions |
 | Pitch Axis Editor | Pitch-axis presets and the pitch-class → position map |
 | Config Save/Load | JSON import/export |

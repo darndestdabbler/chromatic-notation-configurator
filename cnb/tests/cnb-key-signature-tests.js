@@ -34,6 +34,7 @@ import { CNBCard } from "../src/cnb-card.js";
 import { CNBNotehead } from "../src/cnb-notehead.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
+import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { findEngine, measureSpacing, readKeys } from "./engine-probe.js";
 import { withSvgStub, withDomStub } from "./svg-stub.js";
@@ -1253,6 +1254,8 @@ export const tests = [
         const h = CNBKeySignature.signHeight(config);
         assert(h.automatic, `${label}: automatic`);
         approx(h.semis, semis, label);
+        // The rule is CNBStaff.symbolSpace, which the clefs share (session 59).
+        eq(h.semis, CNBStaff.symbolSpace(config), `${label}: CNBStaff.symbolSpace`);
       }
       // The mean of the twelve crotchet noteheads, as they resolve with no key.
       const mixed = keysigConfig();

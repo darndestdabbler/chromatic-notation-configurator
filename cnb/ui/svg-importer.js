@@ -730,9 +730,10 @@ export const CNBSvgImporter = {
    * Build a `config.clef.glyphs[name]` entry from extractClef() output.
    * Pure function — no DOM access.
    *
-   * anchorSemi (the semitone of the glyph's TOP edge — a float; see
-   * cnb-clef.js) defaults to centering the glyph on defaultMidpoint, so a
-   * freshly imported clef lands mid-staff until positioned.
+   * The clef's anchor point (reference, session 59; see cnb-clef.js)
+   * starts at its box's centre, and anchorSemi, the semitone it sits on, at
+   * defaultMidpoint, so a freshly imported clef lands centred mid-staff
+   * until its anchor is picked and it is positioned.
    *
    * @param {object} extracted           Output of extractClef()
    * @param {string} [displayName]
@@ -799,7 +800,11 @@ export const CNBSvgImporter = {
         "LilyPond export converts this glyph's SVG path instead");
     }
 
+    // The anchor (session 59) starts at the box's centre, on the staff's
+    // middle, so the clef lands centred there until its anchor is picked.
     const midpoint = opts.defaultMidpoint ?? 12;
+    const viewBoxMinX = extracted.viewBoxMinX ?? 0;
+    const viewBoxMinY = extracted.viewBoxMinY ?? 0;
     const glyph = {
       displayName: displayName || "Imported Clef",
       kind: "glyph",
@@ -807,10 +812,11 @@ export const CNBSvgImporter = {
       naturalHeight,
       naturalWidth,
       semitoneHeight,
-      viewBoxMinX: extracted.viewBoxMinX ?? 0,
-      viewBoxMinY: extracted.viewBoxMinY ?? 0,
+      viewBoxMinX,
+      viewBoxMinY,
       lilypondPath,
-      anchorSemi: roundTo(midpoint + semitoneHeight / 2, 4),
+      reference: { x: roundTo(viewBoxMinX + naturalWidth / 2, 4), y: roundTo(viewBoxMinY + naturalHeight / 2, 4) },
+      anchorSemi: midpoint,
     };
     return { glyph, warnings, error: null };
   },

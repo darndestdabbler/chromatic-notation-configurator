@@ -2112,6 +2112,18 @@ without the clef leaving its pitch.
 3. Preview and engraving alike, with an engine round trip. *Engine work:*
    the dozenal clef's size; a glyph clef needs none.
 
+*(Amended during session 59, 2026-11-13: from the mock-up in
+`docs/planning/clef-size-mockups/` (`shots/clefs.png`) the operator picked
+the automatic size, LilyPond's size with each staff space drawn as the
+least of the noteheads' mean height, one staff space and 3 semitones (the
+signs' rule; 68% of today's size on the default staff, unchanged on Kite
+4-369's), and confirmed the four anchors as marked. The engine work is
+engine session 41, "The dozenal clef sized about the middle line"
+(`cnb:clef-size-semitones` scaling the dozenal numeral's offsets with its
+height), in the engine repository's plan, followed by its session 42, the
+1.8.0 release. This session's round trip waits for engine session 41 to
+land.)*
+
 ### Session 60: Noteheads centred by their shape's reference point
 
 **Why.** The operator's try-out in session 57 (item 1): some shapes are

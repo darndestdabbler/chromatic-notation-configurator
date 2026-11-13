@@ -319,66 +319,142 @@ export const tests = [
       });
     }},
 
-  // ── withRange (session 45) ──
-  { name: "withRange: moves and resizes the active glyph clef (top → anchorSemi, top − bottom → semitoneHeight)", fn: () => {
+  // ── withAnchor and withHeight (session 59) ──
+  { name: "withAnchor: moves the active glyph clef's anchor to a semitone; the argument is not mutated", fn: () => {
       const clef = clefConfig().clef;
-      const moved = E.withRange(clef, 23.5, 17.5);
-      eq(moved.glyphs["test-clef"].anchorSemi, 23.5, "top");
-      eq(moved.glyphs["test-clef"].semitoneHeight, 6, "same height: moved");
-      const taller = E.withRange(clef, 20, 8.25);
-      eq(taller.glyphs["test-clef"].semitoneHeight, 11.75, "resized");
-      eq(taller.glyphs["register-5"].anchorSemi, 18, "other definitions untouched");
+      const moved = E.withAnchor(clef, 23.5);
+      eq(moved.glyphs["test-clef"].anchorSemi, 23.5, "moved");
+      eq(moved.glyphs["test-clef"].semitoneHeight, 6, "same height");
+      eq(moved.glyphs["register-5"].anchorSemi, 18, "other definitions untouched");
       eq(clef.glyphs["test-clef"].anchorSemi, 20, "the argument is not mutated");
-      eq(clef.glyphs["test-clef"].semitoneHeight, 6, "nor its height");
+      eq(E.withAnchor(clef, 7.123456).glyphs["test-clef"].anchorSemi, 7.1235, "to 4 places");
     }},
 
-  { name: "withRange: null for an empty or reversed range, a non-number, or a clef that is not a glyph", fn: () => {
+  { name: "withAnchor: null for a non-number, or a clef that is not a glyph", fn: () => {
       const clef = clefConfig().clef;
-      eq(E.withRange(clef, 14, 14), null, "empty range");
-      eq(E.withRange(clef, 10, 14), null, "bottom above top");
-      eq(E.withRange(clef, NaN, 14), null, "not a number");
-      eq(E.withRange({ ...clef, active: "register-5" }, 20, 14), null, "a text clef");
-      eq(E.withRange({ ...clef, active: null }, 20, 14), null, "no clef active");
-      eq(E.withRange({ ...clef, active: "d", glyphs: { d: { kind: "dozenal" } } }, 20, 14), null, "the dozenal clef");
+      eq(E.withAnchor(clef, NaN), null, "not a number");
+      eq(E.withAnchor({ ...clef, active: "register-5" }, 20), null, "a text clef");
+      eq(E.withAnchor({ ...clef, active: null }, 20), null, "no clef active");
+      eq(E.withAnchor({ ...clef, active: "d", glyphs: { d: { kind: "dozenal" } } }, 20), null, "the dozenal clef");
     }},
 
-  // ── render(): the range of a glyph clef (session 45) ──
-  { name: "render: a glyph clef's range fields show its bottom and top and write them, decimals included", fn: () => {
+  { name: "withHeight: a glyph or dozenal clef at a height, or automatic where it can be", fn: () => {
+      const clef = clefConfig().clef;
+      const taller = E.withHeight(clef, 11.75);
+      eq(taller.glyphs["test-clef"].semitoneHeight, 11.75, "resized");
+      eq(taller.glyphs["test-clef"].anchorSemi, 20, "its anchor kept");
+      eq(clef.glyphs["test-clef"].semitoneHeight, 6, "the argument is not mutated");
+      eq(E.withHeight(clef, null), null, "an imported glyph cannot be automatic");
+      const builtin = { ...clef, glyphs: { ...clef.glyphs, "test-clef": { ...clef.glyphs["test-clef"], staffSpaceUnits: 100 } } };
+      eq(E.withHeight(builtin, null).glyphs["test-clef"].semitoneHeight, null, "automatic with staffSpaceUnits");
+      const dozenal = { ...clef, active: "d", glyphs: { d: { kind: "dozenal", semitoneHeight: 8 } } };
+      eq(E.withHeight(dozenal, 6).glyphs.d.semitoneHeight, 6, "the dozenal clef's height");
+      eq(E.withHeight(dozenal, null).glyphs.d.semitoneHeight, null, "the dozenal clef automatic");
+    }},
+
+  { name: "withHeight: null for zero, a negative or a non-number, or a text clef", fn: () => {
+      const clef = clefConfig().clef;
+      eq(E.withHeight(clef, 0), null, "zero");
+      eq(E.withHeight(clef, -2), null, "negative");
+      eq(E.withHeight(clef, NaN), null, "not a number");
+      eq(E.withHeight({ ...clef, active: "register-5" }, 4), null, "a text clef");
+      eq(E.withHeight({ ...clef, active: null }, 4), null, "no clef active");
+    }},
+
+  // ── render(): a glyph clef's place and height (session 59) ──
+  { name: "render: a glyph clef without an anchor point shows its top and height, and writes them", fn: () => {
       withDomStub(container => {
         let last = null;
         const api = E.render(container, {
           config: clefConfig(),
           onChange: (slices) => { last = slices; },
         });
-        eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no top-only field for a glyph");
-        const bottom = findAll(api.root, "cnb-cle-range-bottom")[0];
-        const top = findAll(api.root, "cnb-cle-range-top")[0];
-        eq(bottom.value, "14", "bottom = anchorSemi − semitoneHeight");
-        eq(top.value, "20", "top = anchorSemi");
-        top.oninput({ target: { value: "22.784" } });
-        eq(last.clef.glyphs["test-clef"].anchorSemi, 22.784, "top written");
-        eq(last.clef.glyphs["test-clef"].semitoneHeight, 8.784, "the bottom stays put");
-        findAll(api.root, "cnb-cle-range-bottom")[0].oninput({ target: { value: "10" } });
-        eq(last.clef.glyphs["test-clef"].semitoneHeight, 12.784, "bottom written, the top stays");
+        eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no text-clef field for a glyph");
+        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Top at semitone"), "its top, without an anchor");
+        const sits = findAll(api.root, "cnb-cle-sits")[0];
+        eq(sits.value, "20", "anchorSemi");
+        eq(findAll(api.root, "cnb-cle-height")[0].value, "6", "its height");
+        eq(findAll(api.root, "cnb-cle-height-auto").length, 0, "an imported clef has no automatic size");
+        sits.oninput({ target: { value: "22.784" } });
+        eq(last.clef.glyphs["test-clef"].anchorSemi, 22.784, "written");
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "9.5" } });
+        eq(last.clef.glyphs["test-clef"].semitoneHeight, 9.5, "height written");
         eq(last.clef.glyphs["register-5"].anchorSemi, 18, "other definition untouched");
-        assert(subtreeText(findAll(api.root, "cnb-cle-glyph-option")[0]).includes("semitones 10 to 22.784"),
-          "the glyph's row shows its range");
+        assert(subtreeText(findAll(api.root, "cnb-cle-glyph-option")[0]).includes("top at semitone 22.784"),
+          "the glyph's row shows its top");
       });
     }},
 
-  { name: "render: range input that is not a number, or leaves no room, is ignored (no onChange)", fn: () => {
+  { name: "render: a built-in clef sits on its pitch, its height automatic until one is typed", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, {
+          config: CNBConfig.createDefault(),
+          onChange: (slices) => { last = slices; },
+        });
+        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
+        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Sits on semitone"), "its anchor's semitone");
+        eq(findAll(api.root, "cnb-cle-sits")[0].value, "12", "C");
+        eq(findAll(api.root, "cnb-cle-height")[0].value, String(Math.round(4 * 2.724 * 1e4) / 1e4), "automatic: 4 symbol staff spaces");
+        const auto = findAll(api.root, "cnb-cle-height-auto-check")[0];
+        eq(auto.checked, true, "automatic");
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "8" } });
+        eq(last.clef.glyphs.alto.semitoneHeight, 8, "set by hand");
+        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, false, "no longer automatic");
+        findAll(api.root, "cnb-cle-height-auto-check")[0].onchange({ target: { checked: true } });
+        eq(last.clef.glyphs.alto.semitoneHeight, null, "automatic again");
+        assert(subtreeText(findAll(api.root, "cnb-cle-glyph-option")[0]).includes("on semitone 12"), "the row says where it sits");
+      });
+    }},
+
+  { name: "render: the dozenal clef has a height, automatic or set, and no place of its own", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, {
+          config: CNBConfig.createDefault(),
+          onChange: (slices) => { last = slices; },
+        });
+        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "dozenal").onclick();
+        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no semitone: it sits on the middle line");
+        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, true, "automatic");
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "6" } });
+        eq(last.clef.glyphs.dozenal.semitoneHeight, 6, "set by hand");
+      });
+    }},
+
+  { name: "render: place or height input that is not a number, or not positive, is ignored (no onChange)", fn: () => {
       withDomStub(container => {
         let calls = 0;
         const api = E.render(container, {
           config: clefConfig(),
           onChange: () => { calls++; },
         });
-        findAll(api.root, "cnb-cle-range-top")[0].oninput({ target: { value: "not-a-number" } });
-        findAll(api.root, "cnb-cle-range-top")[0].oninput({ target: { value: "12" } });
-        findAll(api.root, "cnb-cle-range-bottom")[0].oninput({ target: { value: "20" } });
+        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "not-a-number" } });
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "0" } });
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "-3" } });
         eq(calls, 0, "no onChange");
         eq(api.getState().glyphs["test-clef"].anchorSemi, 20, "state unchanged");
         eq(api.getState().glyphs["test-clef"].semitoneHeight, 6, "height unchanged");
+      });
+    }},
+
+  { name: "render: Pick the anchor point opens the enlarged clef; a click sets its reference", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, {
+          config: clefConfig(),
+          onChange: (slices) => { last = slices; },
+        });
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "closed");
+        findAll(api.root, "cnb-cle-pick-anchor")[0].onclick();
+        const svg = findAll(api.root, "cnb-cle-anchor-picker")[0].children.find(c => c.getAttribute("class") === "cnb-cle-anchor-svg");
+        assert(svg, "the enlarged clef");
+        // The test glyph's box is 100 × 300 units, drawn 120 px tall: 0.4 px a unit, 12 px around.
+        svg.onclick({ clientX: 12 + 50 * 0.4, clientY: 12 + 100 * 0.4 });
+        deepEq(last.clef.glyphs["test-clef"].reference, { x: 50, y: 100 }, "the point clicked, in the clef's units");
+        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Sits on semitone"), "now placed by it");
+        findAll(api.root, "cnb-cle-anchor-done")[0].onclick();
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "Done closes it");
       });
     }},
 
@@ -397,8 +473,8 @@ export const tests = [
         eq(last.clef.enabled, true, "the clef is turned on");
         eq(last.clef.active, "treble", "treble shown");
         eq(last.clef.glyphs.treble.kind, "glyph", "LilyPond's treble glyph added");
-        // G (7) nearest the default middle, 4 semitones a staff space.
-        assert(Math.abs(last.clef.glyphs.treble.anchorSemi - (7 + 1194.75 / 250 * 4)) < 1e-4, "its line on G");
+        // Its anchor, on its line, on G (7) nearest the default middle (session 59).
+        eq(last.clef.glyphs.treble.anchorSemi, 7, "its line on G");
         const on = findAll(api.root, "cnb-cle-choice").filter(b => b.className.includes(" on"));
         eq(on.length, 1, "one button marked");
         eq(on[0].getAttribute("data-clef"), "treble", "the treble button");
@@ -418,11 +494,11 @@ export const tests = [
           onChange: (slices) => { last = slices; },
         });
         findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "bass").onclick();
-        findAll(api.root, "cnb-cle-range-top")[0].oninput({ target: { value: "30" } });
+        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "30" } });
         findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
         findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "bass").onclick();
         eq(last.clef.active, "bass", "bass shown again");
-        eq(last.clef.glyphs.bass.anchorSemi, 30, "its moved top kept");
+        eq(last.clef.glyphs.bass.anchorSemi, 30, "its moved anchor kept");
       });
     }},
 
@@ -437,19 +513,21 @@ export const tests = [
         });
         current.staff.midpoint = 24;   // the staff moved after the panel was drawn
         findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
-        eq(last.clef.glyphs.alto.anchorSemi, 24 + 8, "C nearest 24 is 24; the top is 2 staff spaces above");
+        eq(last.clef.glyphs.alto.anchorSemi, 24, "C nearest 24 is 24, its anchor's semitone");
       });
     }},
 
-  { name: "render: the dozenal clef has no fields; the panel says the engine places it", fn: () => {
+  { name: "render: the dozenal clef has no place of its own; the panel says it sits on the middle of the staff", fn: () => {
       withDomStub(container => {
         const config = CNBConfig.createDefault();
         config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: { kind: "dozenal", displayName: "Dozenal" } } };
         const api = E.render(container, { config });
-        eq(findAll(api.root, "cnb-cle-range-top").length, 0, "no range");
+        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no semitone field");
         eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no top field");
+        eq(findAll(api.root, "cnb-cle-height").length, 1, "a height (session 59)");
         const note = findAll(api.root, "cnb-cle-dozenal-note")[0];
         assert(note && note.textContent.includes("50 for treble"), "the note names the numeral");
+        assert(note.textContent.includes("middle of the staff"), "where it sits");
       });
     }},
 
@@ -528,8 +606,9 @@ export const tests = [
           parser: stubParserFor(CLEF_SVG_DOC),
         });
         api.importClefText("<svg/>", "centered.svg");
-        // semitoneHeight 6 → anchor = midpoint + height/2 = 18 + 3
-        eq(api.getState().glyphs["centered"].anchorSemi, 21, "midpoint forwarded to the importer");
+        // The anchor at the box's centre, on the midpoint (session 59).
+        eq(api.getState().glyphs["centered"].anchorSemi, 18, "midpoint forwarded to the importer");
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 1, "the anchor picker opens on the import");
       });
     }},
 

@@ -236,6 +236,27 @@ export const tests = [
         }
       });
     }},
+
+  // ── symbolSpace (session 59) ───────────────────────────────────────────
+
+  { name: "symbolSpace: the least of the noteheads' mean height, one staff space and 3 semitones", fn: () => {
+      const near = (a, b, msg) => assert(Math.abs(a - b) < 1e-9, `${msg}: expected ${b}, got ${a}`);
+      near(CNBStaff.symbolSpace(CNBConfig.createDefault()), 2.724, "the default staff: the noteheads' height");
+      const kite = JSON.parse(readFileSync(path.join(FIXTURES, "kite-4-369-config.json"), "utf8"));
+      near(CNBStaff.symbolSpace(CNBConfig.merge(kite)), 3, "Kite 4-369: one staff space");
+      const big = CNBConfig.createDefault();
+      big.staff.semitonesPerStaffSpace = 6;
+      big.shapes["crotchet-minim"].semitoneHeight = 5;
+      near(CNBStaff.symbolSpace(big), 3, "capped at 3 semitones");
+      const fine = CNBConfig.createDefault();
+      fine.staff.semitonesPerStaffSpace = 1;
+      near(CNBStaff.symbolSpace(fine), 1, "a line every semitone: one staff space");
+      const mixed = CNBConfig.createDefault();
+      mixed.noteheadRules.push({ name: "small", priority: 5,
+        match: { pitchClasses: [0, 2, 4, 5, 7], durations: "all", keys: "all" }, apply: { heightSemis: 1.5 } });
+      near(CNBStaff.symbolSpace(mixed), (7 * 2.724 + 5 * 1.5) / 12, "a mean of the twelve crotchets' heights");
+      near(CNBStaff.symbolSpace(twinlineConfig()), 2, "a pitch axis: one staff space in axis units");
+    }},
 ];
 
 /** Default config on the 013 Twinline axis with staff lines at axis {1,3,5}. */

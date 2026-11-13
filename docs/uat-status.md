@@ -78,7 +78,15 @@ from their size (45).
    dots) and the pitch on the staff it sits on, and resizing keeps the
    anchor on that pitch. The operator suspects Paul Morris drew Clairnote's
    own clefs partly because the standard ones looked a little funny on its
-   staff.
+   staff. *Picked in session 59 (2026-11-13):* from the mock-up
+   ([`clef-size-mockups`](planning/clef-size-mockups/index.html),
+   `shots/clefs.png`) the operator chose the automatic size, LilyPond's
+   size with each staff space drawn as the least of the noteheads' mean
+   height, one staff space and 3 semitones (the signs' rule): 68% of today's
+   size on the default 4-8 staff, unchanged on Kite 4-369's. They confirmed
+   the four anchors as marked: the treble clef's curl on the G line, the
+   point between the bass clef's dots on the F line, the alto clef's middle
+   on the C line and the dozenal clef's middle on the staff's middle line.
 5. **The key-signature designer is too complicated** (*planned*: session 61
    designs it with mock-ups, then the sessions it plans). The operator's
    outline, as steps:

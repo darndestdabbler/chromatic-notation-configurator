@@ -2,9 +2,10 @@
  * cnb-builtin-clefs-tests.js — Unit tests for the clefs the Clef panel
  * offers (session 45, cnb/ui/builtin-clefs.js)
  *
- * Each definition validates; a standard clef puts its line (G, F, C) on its
- * pitch in the octave nearest the staff's middle, at LilyPond's size in
- * staff spaces, on the default, Kite 4-369 and Twinline (pitch axis)
+ * Each definition validates; a standard clef puts its anchor, on its line
+ * (G, F, C), on its pitch in the octave nearest the staff's middle, at an
+ * automatic size, LilyPond's in staff spaces drawn at the staff's symbol size
+ * (session 59), on the default, Kite 4-369 and Twinline (pitch axis)
  * staves; and its path uses only the commands the exporter converts.
  */
 
@@ -15,6 +16,8 @@ import { CNBBuiltinClefs as B } from "../ui/builtin-clefs.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
+import { CNBClef } from "../src/cnb-clef.js";
+import { CNBStaff } from "../src/cnb-staff.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -49,9 +52,9 @@ function withClef(config, name) {
   return out;
 }
 
-/** The semitone a standard clef's line marks. */
-function lineSemi(def, name, unitsPerStaffSpace) {
-  return def.anchorSemi - EMMENTALER[name].line / 250 * unitsPerStaffSpace;
+/** A clef's top edge and height as drawn (CNBClef.shown, session 59). */
+function shownOn(config, name) {
+  return CNBClef.shown(withClef(config, name));
 }
 
 export const tests = [
@@ -76,66 +79,78 @@ export const tests = [
       }
     }},
 
-  { name: "definition: the dozenal clef has no size or place of its own", fn: () => {
+  { name: "definition: the dozenal clef has no place of its own, and its size is automatic (session 59)", fn: () => {
       const def = B.definition(CNBConfig.createDefault(), "dozenal");
-      eq(JSON.stringify(def), JSON.stringify({ kind: "dozenal", displayName: "Dozenal" }), "dozenal");
+      eq(JSON.stringify(def), JSON.stringify({ kind: "dozenal", displayName: "Dozenal", semitoneHeight: null }), "dozenal");
+    }},
+
+  { name: "definition: each standard clef's anchor is on its line, its size automatic (session 59)", fn: () => {
+      const config = CNBConfig.createDefault();
+      for (const [name, x] of [["treble", 313], ["bass", 608], ["alto", 318]]) {
+        const def = B.definition(config, name);
+        eq(JSON.stringify(def.reference), JSON.stringify({ x, y: 0 }), `${name}: the anchor on its line, the glyph's origin`);
+        eq(def.semitoneHeight, null, `${name}: automatic`);
+        eq(def.staffSpaceUnits, 250, `${name}: Emmentaler's 250 units a staff space`);
+        eq(-def.viewBoxMinY, EMMENTALER[name].line, `${name}: the line ${EMMENTALER[name].line} units below the top`);
+      }
     }},
 
   { name: "definition: on the default staff, G, F and C nearest the middle (12) are marked", fn: () => {
-      const config = CNBConfig.createDefault();   // midpoint 12, 4 semitones a staff space
-      approx(lineSemi(B.definition(config, "treble"), "treble", 4), 7, "treble: G below the middle");
-      approx(lineSemi(B.definition(config, "bass"), "bass", 4), 17, "bass: F above the middle");
-      approx(lineSemi(B.definition(config, "alto"), "alto", 4), 12, "alto: C on the middle");
-      const alto = B.definition(config, "alto");
-      eq(alto.anchorSemi, 20, "the alto clef spans the 4-8 staff: top on its top line");
-      eq(alto.semitoneHeight, 16, "4 staff spaces tall");
+      const config = CNBConfig.createDefault();   // midpoint 12
+      eq(B.definition(config, "treble").anchorSemi, 7, "treble: G below the middle");
+      eq(B.definition(config, "bass").anchorSemi, 17, "bass: F above the middle");
+      eq(B.definition(config, "alto").anchorSemi, 12, "alto: C on the middle");
+      // Automatic: 4 staff spaces of 2.724 semitones (the noteheads' height), about C.
+      const alto = shownOn(config, "alto");
+      approx(alto.height, 4 * 2.724, "4 staff spaces of 2.724 semitones");
+      approx(alto.top, 12 + 2 * 2.724, "its middle on C");
     }},
 
-  { name: "definition: on Kite 4-369 (3 semitones a staff space) the clefs follow its spacing", fn: () => {
+  { name: "definition: on Kite 4-369 (3 semitones a staff space) the clefs are LilyPond's size", fn: () => {
       const config = json("fixtures/kite-4-369-config.json");
       eq(config.staff.semitonesPerStaffSpace, 3, "Kite's spacing");
       for (const [name, semi] of [["treble", 7], ["bass", 17], ["alto", 12]]) {
-        const def = B.definition(config, name);
-        approx(lineSemi(def, name, 3), semi, `${name} marks semitone ${semi}`);
-        approx(def.semitoneHeight, EMMENTALER[name].height / 250 * 3, `${name} at LilyPond's size`);
+        eq(B.definition(config, name).anchorSemi, semi, `${name} marks semitone ${semi}`);
+        const shown = shownOn(config, name);
+        approx(shown.height, EMMENTALER[name].height / 250 * 3, `${name} at LilyPond's size`);
+        approx(shown.top, semi + EMMENTALER[name].line / 250 * 3, `${name}: its line on ${semi}`);
       }
     }},
 
   { name: "definition: a moved middle moves the marked octave", fn: () => {
       const config = CNBConfig.createDefault();
       config.staff.midpoint = 20;
-      approx(lineSemi(B.definition(config, "treble"), "treble", 4), 19, "G nearest 20 is 19");
-      approx(lineSemi(B.definition(config, "alto"), "alto", 4), 24, "C nearest 20 is 24");
+      eq(B.definition(config, "treble").anchorSemi, 19, "G nearest 20 is 19");
+      eq(B.definition(config, "alto").anchorSemi, 24, "C nearest 20 is 24");
       config.staff.midpoint = 6;   // F♯: C at 0 and 12 equally near, the higher taken
-      approx(lineSemi(B.definition(config, "alto"), "alto", 4), 12, "a tie takes the higher");
+      eq(B.definition(config, "alto").anchorSemi, 12, "a tie takes the higher");
     }},
 
-  { name: "definition: under a pitch axis the staff space is axisUnitsPerStaffSpace", fn: () => {
+  { name: "definition: under a pitch axis the size is in axis units (Twinline)", fn: () => {
       const config = CNBConfig.merge(json("assets/examples/gallery/twinline-compact.json"));
-      const units = config.pitchAxis.axisUnitsPerStaffSpace;
-      const def = B.definition(config, "treble");
-      approx(def.semitoneHeight, EMMENTALER.treble.height / 250 * units, "height in axis units");
+      const units = CNBStaff.symbolSpace(config);
+      approx(shownOn(config, "treble").height, EMMENTALER.treble.height / 250 * units, "height in axis units");
     }},
 
   { name: "definition: under a pitch axis each clef's line lands on its pitch's axis position (Twinline)", fn: () => {
       const config = CNBConfig.merge(json("assets/examples/gallery/twinline-compact.json"));
       const axis = CNBPitchAxis.create(config);
       assert(axis.enabled, "Twinline has a pitch axis");
-      const units = config.pitchAxis.axisUnitsPerStaffSpace;
+      const units = CNBStaff.symbolSpace(config);
       const mid = config.staff.midpoint;
       for (const [name, pc] of [["treble", 7], ["bass", 5], ["alto", 0]]) {
         const marked = pc + 12 * Math.round((mid - pc) / 12);
-        const def = B.definition(config, name);
-        const line = axis.positionOfSemi(def.anchorSemi) - EMMENTALER[name].line / 250 * units;
+        const shown = shownOn(config, name);
+        const line = axis.positionOfSemi(shown.top) - EMMENTALER[name].line / 250 * units;
         approx(line, axis.positionOfSemi(marked), `${name}: its line at the axis position of semitone ${marked}`, 1e-3);
       }
     }},
 
-  { name: "definition: LilyPond's proportions and sizes (treble 7.319, bass 3.104, alto 4 staff spaces)", fn: () => {
+  { name: "definition: LilyPond's proportions, sized as the staff's symbols are (treble 7.319, bass 3.104, alto 4 staff spaces)", fn: () => {
       const config = CNBConfig.createDefault();
       for (const [name, spaces] of [["treble", 7.319], ["bass", 3.104], ["alto", 4]]) {
         const def = B.definition(config, name);
-        approx(def.semitoneHeight / 4, spaces, `${name} height`, 0.001);
+        approx(shownOn(config, name).height / 2.724, spaces, `${name} height in symbol staff spaces`, 0.001);
         eq(def.naturalHeight, EMMENTALER[name].height, `${name} natural height`);
         eq(def.kind, "glyph", `${name} is a glyph clef`);
         eq(def.lilypondPath, null, `${name}: the exporter converts its SVG path`);

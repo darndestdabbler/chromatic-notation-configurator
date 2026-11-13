@@ -120,7 +120,9 @@
  * its handle moves only the handle, and the release calls
  * opts.onClefDrag("move" | "resize", semis), semis the semitones dragged
  * upward (pixels ÷ display.pxPerSemi, to 2 places; the host applies
- * CNBClefEditor.withRange). Esc, a cancel or a move under NUDGE_THRESHOLD
+ * CNBClefEditor.withAnchor to a move, and withHeight to a resize, which
+ * grows the clef about its anchor by the semitones dragged down, session 59).
+ * Esc, a cancel or a move under NUDGE_THRESHOLD
  * pixels puts it back and reports nothing.
  *
  * Session 36 (the rebuilds' rough edges): beside the duration buttons, when
@@ -203,7 +205,7 @@ const PITCH_HINT = "Drag the labels on the left to move the pitches against the 
 /** The pixels a notehead drag must move before it nudges (session 43). */
 const NUDGE_THRESHOLD = 3;
 /** The toolbar hint with the Clef section open and a glyph clef shown (session 45). */
-const CLEF_HINT = "Drag the clef up or down to move it, or its bottom edge to make it taller or shorter";
+const CLEF_HINT = "Drag the clef up or down to move it, or its bottom edge down or up to make it taller or shorter about its anchor";
 /** The toolbar hint when noteheads can be selected (session 38). */
 const SELECT_HINT = "Click a notehead to give it a look; Shift+click or Ctrl+click to select several";
 

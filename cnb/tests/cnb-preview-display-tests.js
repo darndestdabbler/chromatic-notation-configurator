@@ -1252,7 +1252,7 @@ export const tests = [
         assert(!on(), "off with no section open");
         api.setFocus("clef");
         assert(on(), "on with the Clef section open");
-        assertEqual(hint(), "Drag the clef up or down to move it, or its bottom edge to make it taller or shorter", "hint");
+        assertEqual(hint(), "Drag the clef up or down to move it, or its bottom edge down or up to make it taller or shorter about its anchor", "hint");
         api.setPitchMode(true);
         assert(!on(), "pitch mode wins");
         api.setPitchMode(false);

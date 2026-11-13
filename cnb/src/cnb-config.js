@@ -216,7 +216,9 @@ function buildDefault() {
     // one by name. Each definition carries its own anchorSemi — the semitone
     // the TOP edge of the glyph sits on (floats allowed: glyph designs like
     // the traditional treble clef do not top-align to a staff unit, so the
-    // anchor is not restricted to integers).
+    // anchor is not restricted to integers). Since session 59 a glyph with a
+    // reference (its anchor point) sits that point on anchorSemi instead,
+    // and a null semitoneHeight is automatic (CNBClef).
     clef: {
       enabled: false,
       active: null,
@@ -488,8 +490,22 @@ export const CNBConfig = {
           if (!def.svgPath) {
             errors.push(`Clef glyph "${clef.active}" has no svgPath`);
           }
-          if (!(def.naturalHeight > 0) || !(def.naturalWidth > 0) || !(def.semitoneHeight > 0)) {
+          // A null semitoneHeight is automatic (session 59), which needs the
+          // glyph's units per LilyPond staff space.
+          const automatic = def.semitoneHeight === null && def.staffSpaceUnits > 0;
+          if (!(def.naturalHeight > 0) || !(def.naturalWidth > 0) || !(automatic || def.semitoneHeight > 0)) {
             errors.push(`Clef glyph "${clef.active}" is missing positive natural dimensions / semitoneHeight`);
+          }
+          // The anchor point (session 59): native SVG units.
+          if (def.reference !== undefined && (!isPlainObject(def.reference) ||
+              !Number.isFinite(def.reference.x) || !Number.isFinite(def.reference.y))) {
+            errors.push(`Clef glyph "${clef.active}" has a reference that is not a point { x, y } of finite numbers`);
+          }
+        } else if (kind === "dozenal") {
+          // Absent or null is automatic (session 59); a number is the height.
+          if (def.semitoneHeight !== undefined && def.semitoneHeight !== null &&
+              !(typeof def.semitoneHeight === "number" && Number.isFinite(def.semitoneHeight) && def.semitoneHeight > 0)) {
+            errors.push(`Clef "${clef.active}" needs a positive semitoneHeight, or none for the automatic size`);
           }
         } else if (kind === "text") {
           if (typeof def.text !== "string" || def.text.length === 0) {
@@ -498,14 +514,15 @@ export const CNBConfig = {
           if (!(def.textHeightSemis > 0)) {
             errors.push(`Clef text entry "${clef.active}" needs a positive textHeightSemis`);
           }
-        } else if (kind !== "dozenal") {
+        } else {
           errors.push(`Clef glyph "${clef.active}" has unknown kind "${kind}" (expected "glyph", "text" or "dozenal")`);
         }
         // anchorSemi is deliberately a float: surveyed clef designs
         // (Bravura gClef top +1.392 staff-spaces above the top line,
         // Clairnote glyph tops at fractional extents) do not top-align to
-        // integer grid positions. The engine's dozenal clef (session 45)
-        // has no anchor: it sits on the middle line.
+        // integer grid positions. With a reference (session 59) it is the
+        // semitone the anchor point sits on. The engine's dozenal clef
+        // (session 45) has no anchor: it sits on the middle line.
         if (kind === "dozenal") {
           // nothing to check: no path, size or anchor of its own
         } else if (typeof def.anchorSemi !== "number" || !Number.isFinite(def.anchorSemi)) {

@@ -1059,6 +1059,21 @@
       "what": "step 'export': its files",
       "reason": "uat-common-props-editor.mjs still counts 6 engine rows in the Advanced editor; the preview step removed the Multinote padding row (engine.multinotePadding retired), so the driver counts 5 and checks the padding row is gone. Found while running the export-related UAT drivers for this step.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 59,
+      "dateTime": "2026-11-13T01:08:28.280000-05:00",
+      "task": "Size the clefs about an anchor point (the session-57 try-out, docs/uat-status.md item 4). Mock-ups come first: the treble, bass, alto and dozenal clefs on the default 4-8 and Kite 4-369 staffs at today's size beside an automatic size that follows the staff as the signs' does (LilyPond's size in staff spaces, each staff space drawn as the least of the noteheads' mean height, one staff space and 3 semitones), each with its anchor point marked; the operator picks the default size and confirms the anchors, and the picks are recorded. Then a glyph clef's definition gains an optional reference, its anchor point in native SVG units (the treble clef's curl, the point between the bass clef's dots, the alto clef's middle, each on the line it marks; an imported clef's picked by a click on the enlarged clef, as the key signature's reference point is, and its box's centre until then): with one, anchorSemi is the semitone the anchor sits on, and without one (every clef saved before this session) it is the top edge, as before, so saved configs draw and export unchanged. A built-in clef's height (semitoneHeight) and the dozenal clef's may be null, automatic, following the staff; a number set by hand stays. Resizing, in the Clef panel's Height field or by the canvas's bottom-edge handle, scales the clef about its anchor, and moving changes the semitone it sits on. The automatic rule of CNBKeySignature.signHeight moves to a shared CNBStaff.symbolSpace that the signs and the clefs both use. The export writes a glyph clef's top and height as the preview draws them, which the engine needs nothing new for, and the dozenal clef's height as cnb:clef-size-semitones; the engine scales the dozenal numeral about the middle line only once this session inserts that work into the engine repository's plan as its session 41 and the 1.8.0 release as its session 42. Once engine session 41 lands, engine round trips hold every clef's engraved top and bottom to the preview's within 0.001 staff spaces. The LY spec, the architecture plan and the README follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 59,
+      "dateTime": "2026-11-13T01:20:50.155000-05:00",
+      "what": "step 'builtin-clefs': its files",
+      "reason": "The built-in clefs now carry an automatic (null) semitoneHeight and an anchor on their line, so the exporter must register a glyph clef's resolved top and height (CNBClef.shown) in this step or every export of a built-in clef fails; the importer and clef-editor placement tests that assert the old top-edge anchor live in cnb-clef-tests.js and cnb-clef-editor-tests.js. The export step keeps the dozenal clef's size and its tests.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

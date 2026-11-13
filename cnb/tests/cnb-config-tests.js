@@ -571,6 +571,38 @@ export const tests = [
     assert(!result.warnings.some(w => /clef/i.test(w)), "no clef warnings: " + result.warnings.join("; "));
   }},
 
+  { name: "clef: validate — the dozenal clef's semitoneHeight is a positive number, or none or null for automatic (session 59)", fn: () => {
+    const dozenal = (extra) => {
+      const config = CNBConfig.createDefault();
+      config.clef = { ...config.clef, enabled: true, active: "dozenal",
+        glyphs: { dozenal: { kind: "dozenal", displayName: "Dozenal", ...extra } } };
+      return CNBConfig.validate(config);
+    };
+    assert(dozenal({ semitoneHeight: null }).valid, "null is automatic");
+    assert(dozenal({ semitoneHeight: 8 }).valid, "a number");
+    for (const bad of [0, -2, "8"]) {
+      assert(dozenal({ semitoneHeight: bad }).errors.some(e => e.includes("positive semitoneHeight")),
+        "error for " + JSON.stringify(bad));
+    }
+  }},
+
+  { name: "clef: validate — a glyph's null semitoneHeight needs staffSpaceUnits (session 59)", fn: () => {
+    assert(CNBConfig.validate(clefConfig({ semitoneHeight: null, staffSpaceUnits: 250 })).valid,
+      "automatic with staffSpaceUnits");
+    assert(CNBConfig.validate(clefConfig({ semitoneHeight: null })).errors
+      .some(e => e.includes("positive natural dimensions / semitoneHeight")), "automatic without them");
+    assert(CNBConfig.validate(clefConfig({ semitoneHeight: null, staffSpaceUnits: 0 })).errors
+      .some(e => e.includes("positive natural dimensions / semitoneHeight")), "zero units");
+  }},
+
+  { name: "clef: validate — a glyph's reference is a point of finite numbers (session 59)", fn: () => {
+    assert(CNBConfig.validate(clefConfig({ reference: { x: 0, y: -12.5 } })).valid, "a point");
+    for (const bad of [null, 3, { x: 1 }, { x: 1, y: "2" }, { x: NaN, y: 0 }]) {
+      assert(CNBConfig.validate(clefConfig({ reference: bad })).errors
+        .some(e => e.includes("has a reference that is not a point")), "error for " + JSON.stringify(bad));
+    }
+  }},
+
   { name: "clef: validate — wrong-typed clef.glyphs reports errors instead of throwing", fn: () => {
     for (const badGlyphs of [42, "map", [1, 2]]) {
       const cfg = clefConfig();

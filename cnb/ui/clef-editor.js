@@ -26,12 +26,18 @@
  * Session 45 (clefs): a row of buttons, Dozenal, Treble, Bass and Alto,
  * adds that clef (CNBBuiltinClefs.definition, for the config's staff) when
  * the config has none of that name, makes it the active one and turns the
- * clef on; a clef already there keeps its placement. A glyph clef is shown
- * over a range of semitones, "Shown from semitone … to …", which
- * withRange(clef, top, bottom) writes as its anchorSemi (the top) and
- * semitoneHeight (top − bottom); the canvas's drag uses it too. A text
- * clef keeps its top field; the dozenal clef has neither, since the engine
- * sets its size and place.
+ * clef on; a clef already there keeps its placement. A text clef keeps its
+ * top field.
+ *
+ * Session 59 (clefs sized about an anchor): a glyph clef is placed by the
+ * semitone its anchor point sits on ("Sits on semitone", withAnchor; "Top at
+ * semitone" for a clef saved before session 59, which has no anchor point)
+ * and sized by its Height, a number in semitones or Automatic, which follows
+ * the staff (withHeight); the clef is scaled about its anchor. "Pick the
+ * anchor point" opens the clef enlarged, and a click on it sets its
+ * reference (CNBKeySignatureEditor.referenceGeometry / referenceAt); an
+ * import opens it. The dozenal clef sits on the middle line and has a
+ * Height. The canvas's drags use withAnchor and withHeight too.
  *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
@@ -56,13 +62,18 @@
  * Hosts own layout and styling via the .cnb-cle-* class hooks.
  *
  * Dependencies: Module A (validation pass-through), Module 16
- * (CNBSvgImporter.parseClefSvgText for the import wiring), the built-in
- * clefs (builtin-clefs.js).
+ * (CNBSvgImporter.parseClefSvgText for the import wiring), Module 20 (the
+ * clef as drawn, CNBClef.shown), the built-in clefs (builtin-clefs.js), the
+ * key-signature editor's reference picker geometry.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBClef } from "../src/cnb-clef.js";
 import { CNBSvgImporter } from "./svg-importer.js";
 import { CNBBuiltinClefs } from "./builtin-clefs.js";
+import { CNBKeySignatureEditor } from "./key-signature-editor.js";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -74,7 +85,7 @@ function isPlainObject(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-/** Rounded to 4 places, as the range fields show a value. */
+/** Rounded to 4 places, as the fields show a value. */
 function round4(v) {
   return Math.round(v * 1e4) / 1e4;
 }
@@ -85,6 +96,21 @@ function activeGlyphDef(clef) {
     ? clef.glyphs[clef.active]
     : null;
   return isPlainObject(def) && (def.kind || "glyph") === "glyph" ? def : null;
+}
+
+/** The active definition when it has a height of its own (a glyph or the
+ *  dozenal clef), or null. */
+function activeSizedDef(clef) {
+  const def = isPlainObject(clef) && typeof clef.active === "string" && isPlainObject(clef.glyphs)
+    ? clef.glyphs[clef.active]
+    : null;
+  return isPlainObject(def) && ["glyph", "dozenal"].includes(def.kind || "glyph") ? def : null;
+}
+
+/** Whether a definition's size can be automatic: the dozenal clef, or a
+ *  glyph that knows its units per LilyPond staff space (session 59). */
+function canBeAutomatic(def) {
+  return def.kind === "dozenal" || def.staffSpaceUnits > 0;
 }
 
 export const CNBClefEditor = {
@@ -121,25 +147,41 @@ export const CNBClefEditor = {
   },
 
   /**
-   * A clef slice with its active glyph clef shown from semitone `bottom` to
-   * semitone `top` (session 45): anchorSemi = top, semitoneHeight =
-   * top − bottom. Null, changing nothing, when top is not above bottom,
-   * either is not a finite number, or the active clef is not a glyph clef.
-   * Pure: the argument is not mutated.
+   * A clef slice with its active glyph clef's anchor on semitone `semi`
+   * (session 59): its anchorSemi, the semitone its anchor point sits on (the
+   * top, for a clef with no anchor point). Null, changing nothing, when semi
+   * is not a finite number or the active clef is not a glyph clef. Pure: the
+   * argument is not mutated.
    *
-   * @param {object} clef    a config.clef slice (or editor state)
-   * @param {number} top     semitone of the clef's top
-   * @param {number} bottom  semitone of its bottom
+   * @param {object} clef  a config.clef slice (or editor state)
+   * @param {number} semi
    * @returns {object|null}
    */
-  withRange(clef, top, bottom) {
-    if (!activeGlyphDef(clef) || !Number.isFinite(top) || !Number.isFinite(bottom) || !(top > bottom)) {
-      return null;
-    }
+  withAnchor(clef, semi) {
+    if (!activeGlyphDef(clef) || !Number.isFinite(semi)) return null;
     const out = deepClone(clef);
-    const def = out.glyphs[out.active];
-    def.anchorSemi = top;
-    def.semitoneHeight = round4(top - bottom);
+    out.glyphs[out.active].anchorSemi = round4(semi);
+    return out;
+  },
+
+  /**
+   * A clef slice with its active glyph or dozenal clef at `height`
+   * semitones (session 59), scaled about its anchor, or automatic for null
+   * (the dozenal clef, or a glyph with staffSpaceUnits). Null, changing
+   * nothing, for a height that is not a positive finite number or null, a
+   * null the clef cannot take, or an active clef with no height of its own.
+   * Pure: the argument is not mutated.
+   *
+   * @param {object} clef  a config.clef slice (or editor state)
+   * @param {number|null} height
+   * @returns {object|null}
+   */
+  withHeight(clef, height) {
+    const def = activeSizedDef(clef);
+    if (!def) return null;
+    if (height === null ? !canBeAutomatic(def) : !(Number.isFinite(height) && height > 0)) return null;
+    const out = deepClone(clef);
+    out.glyphs[out.active].semitoneHeight = height === null ? null : round4(height);
     return out;
   },
 
@@ -188,9 +230,10 @@ export const CNBClefEditor = {
    *   ├── div.cnb-cle-choices      (Dozenal, Treble, Bass, Alto buttons)
    *   ├── div.cnb-cle-import       (clef SVG file input + import status)
    *   ├── div.cnb-cle-glyphs       (glyph selection rows, or empty-state note)
-   *   ├── div.cnb-cle-anchor       (a glyph clef's range inputs, a text
-   *   │                             clef's anchorSemi input, the dozenal
-   *   │                             note, or .cnb-cle-anchor-empty note)
+   *   ├── div.cnb-cle-anchor       (a glyph clef's anchor semitone, height
+   *   │                             and anchor picker, the dozenal note and
+   *   │                             height, a text clef's anchorSemi input,
+   *   │                             or .cnb-cle-anchor-empty note)
    *   ├── div.cnb-cle-gutter       (gutter.paddingH input)
    *   └── div.cnb-cle-validation   (CNBConfig.validate pass-through)
    *
@@ -244,6 +287,8 @@ export const CNBClefEditor = {
     let importStatus = "";
     let importError = "";
     let importWarnings = [];
+    // The anchor picker, open for the active glyph clef (session 59).
+    let picking = false;
 
     const changed = () => {
       redraw();
@@ -277,6 +322,7 @@ export const CNBClefEditor = {
       const replaced = result.name in state.glyphs;
       state.glyphs[result.name] = result.glyph;
       state.active = result.name;
+      picking = true;   // its anchor point is picked next (session 59)
       importError = "";
       importStatus = `Imported the clef "${result.name}"` +
         (replaced ? " (it replaces the clef of that name)" : "");
@@ -315,6 +361,7 @@ export const CNBClefEditor = {
           }
           state.active = name;
           state.enabled = true;
+          picking = false;
           changed();
         };
         row.appendChild(button);
@@ -375,12 +422,13 @@ export const CNBClefEditor = {
           ? "the engine's number, on the middle of the staff"
           : kind === "text"
             ? `text “${(def && def.text) || ""}” · top at semitone ${top}`
-            : `drawing · semitones ${typeof top === "number" && typeof def.semitoneHeight === "number"
-                ? round4(top - def.semitoneHeight) : "?"} to ${top}`;
+            : def && def.reference
+              ? `drawing · on semitone ${top}`
+              : `drawing · top at semitone ${top}`;
         row.appendChild(el("span", "cnb-cle-glyph-name",
           ((def && def.displayName) || name)));
         row.appendChild(el("span", "cnb-cle-glyph-detail", detail));
-        row.onclick = () => { state.active = name; changed(); };
+        row.onclick = () => { state.active = name; picking = false; changed(); };
         wrap.appendChild(row);
       }
       return wrap;
@@ -403,11 +451,12 @@ export const CNBClefEditor = {
       if (kind === "dozenal") {
         wrap.appendChild(el("div", "cnb-cle-title", "Where the clef is shown"));
         wrap.appendChild(el("div", "cnb-cle-dozenal-note",
-          "The engine sets the dozenal clef's size and place, on the middle of the staff. " +
+          "The dozenal clef sits on the middle of the staff, and grows or shrinks about it. " +
           "The score's own clef sets its number: 50 for treble, 40 for alto, 30 for bass."));
+        wrap.appendChild(drawHeight(active));
         return wrap;
       }
-      if (kind === "glyph") return drawRange(wrap, active);
+      if (kind === "glyph") return drawPlace(wrap, active);
 
       wrap.appendChild(el("div", "cnb-cle-title", "Top of the clef"));
 
@@ -431,45 +480,124 @@ export const CNBClefEditor = {
       return wrap;
     }
 
-    /** A glyph clef's range: its bottom and top semitones (session 45). */
-    function drawRange(wrap, active) {
-      wrap.appendChild(el("div", "cnb-cle-title", "Where the clef is shown"));
-      wrap.appendChild(el("div", "cnb-cle-hint",
-        "The semitones from the bottom of the clef to its top, in the preview and in LilyPond. " +
-        "Decimals are allowed. With this section open you can also drag the clef up or down " +
-        "on the staff, or drag its bottom edge to make it taller or shorter."));
+    /** Write an edited clef slice back into the state and report it. */
+    function adopt(next) {
+      if (!next) return;   // not a number, or not a size the clef can take
+      state.glyphs = next.glyphs;
+      changed();
+    }
 
-      const top = active.anchorSemi;
-      const bottom = round4(active.anchorSemi - active.semitoneHeight);
+    /** A number field. */
+    function numberField(className, value) {
+      const input = el("input", className);
+      input.type = "number";
+      input.step = "any";
+      input.value = String(value);
+      return input;
+    }
+
+    /**
+     * A glyph clef's place (session 59): the semitone its anchor point sits
+     * on (its top, without one), its height, and its anchor picker.
+     */
+    function drawPlace(wrap, active) {
+      const anchored = !!active.reference;
+      wrap.appendChild(el("div", "cnb-cle-title", "Where the clef is shown"));
+      wrap.appendChild(el("div", "cnb-cle-hint", anchored
+        ? "The semitone the clef's anchor point sits on, such as the curl of a treble clef. " +
+          "Decimals are allowed. A new height grows or shrinks the clef about its anchor. With " +
+          "this section open you can also drag the clef up or down on the staff, or drag its " +
+          "bottom edge to make it taller or shorter."
+        : "The semitone the top of the clef sits on. Pick an anchor point to place it by a " +
+          "point inside it instead: that point then sits on this semitone."));
       const row = el("div", "cnb-cle-fields");
-      const field = (className, value) => {
-        const input = el("input", className);
-        input.type = "number";
-        input.step = "any";
-        input.value = String(value);
-        return input;
+      const sits = numberField("cnb-cle-sits", active.anchorSemi);
+      sits.oninput = (e) => {
+        const v = numberFrom(e, sits);
+        if (v !== null) adopt(CNBClefEditor.withAnchor(state, v));
       };
-      const bottomInput = field("cnb-cle-range-bottom", bottom);
-      const topInput = field("cnb-cle-range-top", top);
-      const apply = (newTop, newBottom) => {
-        const next = CNBClefEditor.withRange(state, newTop, newBottom);
-        if (!next) return;   // not a number, or no room between them
-        state.glyphs = next.glyphs;
+      row.appendChild(el("span", "cnb-cle-range-label", anchored ? "Sits on semitone" : "Top at semitone"));
+      row.appendChild(sits);
+      wrap.appendChild(row);
+      wrap.appendChild(drawHeight(active));
+      const pick = el("button", "cnb-cle-pick-anchor" + (picking ? " on" : ""), "Pick the anchor point");
+      pick.type = "button";
+      pick.onclick = () => { picking = !picking; redraw(); };
+      wrap.appendChild(pick);
+      if (picking) wrap.appendChild(drawPicker(active));
+      return wrap;
+    }
+
+    /**
+     * The active clef's height (session 59): a number in semitones, or
+     * Automatic, which follows the staff, for a clef that can take it. The
+     * field shows the height drawn.
+     */
+    function drawHeight(active) {
+      const row = el("div", "cnb-cle-fields cnb-cle-size");
+      let drawn = null;
+      try {
+        // Measured as shown, whether or not the clef is on yet.
+        const config = CNBClefEditor.applyToConfig(currentConfig(), { ...state, enabled: true });
+        const shown = CNBClef.shown(config);
+        drawn = shown && Number.isFinite(shown.height) ? round4(shown.height) : null;
+      } catch { /* an invalid state: the validation section says why */ }
+      const automatic = active.semitoneHeight === null || active.semitoneHeight === undefined;
+      const height = numberField("cnb-cle-height", drawn ?? "");
+      height.oninput = (e) => {
+        const v = numberFrom(e, height);
+        if (v !== null) adopt(CNBClefEditor.withHeight(state, v));
+      };
+      row.appendChild(el("span", "cnb-cle-range-label", "Height"));
+      row.appendChild(height);
+      row.appendChild(el("span", "cnb-cle-unit", "semitones"));
+      if (canBeAutomatic(active)) {
+        const label = el("label", "cnb-cle-height-auto");
+        const box = el("input", "cnb-cle-height-auto-check");
+        box.type = "checkbox";
+        box.checked = automatic;
+        box.onchange = (e) => adopt(CNBClefEditor.withHeight(state, checkedFrom(e, box) ? null : drawn));
+        label.appendChild(box);
+        label.appendChild(el("span", "", "Automatic: follows the staff and its noteheads"));
+        row.appendChild(label);
+      }
+      return row;
+    }
+
+    /**
+     * The anchor picker (session 59): the clef enlarged, its anchor point
+     * marked; a click on it moves the point (the clef's reference, in its
+     * native SVG units), which then sits on the clef's semitone.
+     */
+    function drawPicker(active) {
+      const wrap = el("div", "cnb-cle-anchor-picker");
+      wrap.appendChild(el("div", "cnb-cle-hint",
+        "Click the clef at the point that sits on its pitch: the curl of a treble clef, between " +
+        "the dots of a bass clef."));
+      const SVG = (tag, attrs) => {
+        const e = doc.createElementNS(SVG_NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+        return e;
+      };
+      const g = CNBKeySignatureEditor.referenceGeometry(active);
+      const svg = SVG("svg", { width: Math.ceil(g.width), height: Math.ceil(g.height), class: "cnb-cle-anchor-svg" });
+      svg.appendChild(SVG("path", { d: active.svgPath, fill: "#1c1c1e",
+        transform: `translate(${g.ox} ${g.oy}) scale(${g.k})` }));
+      if (active.reference) {
+        const cx = g.ox + active.reference.x * g.k, cy = g.oy + active.reference.y * g.k;
+        svg.appendChild(SVG("path", { class: "cnb-cle-anchor-mark",
+          d: `M ${cx - 8} ${cy} H ${cx + 8} M ${cx} ${cy - 8} V ${cy + 8}` }));
+      }
+      svg.onclick = (e) => {
+        const rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : { left: 0, top: 0 };
+        active.reference = CNBKeySignatureEditor.referenceAt(g, e.clientX - rect.left, e.clientY - rect.top);
         changed();
       };
-      bottomInput.oninput = (e) => {
-        const v = numberFrom(e, bottomInput);
-        if (v !== null) apply(top, v);
-      };
-      topInput.oninput = (e) => {
-        const v = numberFrom(e, topInput);
-        if (v !== null) apply(v, bottom);
-      };
-      row.appendChild(el("span", "cnb-cle-range-label", "Shown from semitone"));
-      row.appendChild(bottomInput);
-      row.appendChild(el("span", "cnb-cle-range-label", "to"));
-      row.appendChild(topInput);
-      wrap.appendChild(row);
+      wrap.appendChild(svg);
+      const done = el("button", "cnb-cle-anchor-done", "Done");
+      done.type = "button";
+      done.onclick = () => { picking = false; redraw(); };
+      wrap.appendChild(done);
       return wrap;
     }
 

@@ -387,7 +387,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Numeric and short text fields keep a compact width. */
-.cnb-cle-anchor-input, .cnb-cle-range-bottom, .cnb-cle-range-top, .cnb-cle-gutter-input,
+.cnb-cle-anchor-input, .cnb-cle-sits, .cnb-cle-height, .cnb-cle-gutter-input,
 .cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-sign-size,
 .cnb-kse-window-sharp, .cnb-kse-window-flat,
 .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
@@ -566,12 +566,18 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-kse-look-import .cnb-svg-drop-zone { padding: var(--space-2) var(--space-3); font-size: 13px; }
 .cnb-kse-look-import-status { font-size: 13px; color: var(--error); }
 /* An imported symbol's reference point (session 56, design §13.3): enlarged, a click sets it. */
-.cnb-kse-reference-picker {
+.cnb-kse-reference-picker, .cnb-cle-anchor-picker {
   display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2);
   border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--surface);
 }
-.cnb-kse-reference-svg { align-self: center; cursor: crosshair; background: var(--bg); border-radius: var(--radius-s); }
-.cnb-kse-reference-done { align-self: flex-start; font-size: 13px; }
+.cnb-kse-reference-svg, .cnb-cle-anchor-svg { align-self: center; cursor: crosshair; background: var(--bg); border-radius: var(--radius-s); }
+.cnb-kse-reference-done, .cnb-cle-anchor-done { align-self: flex-start; font-size: 13px; }
+/* A clef's anchor point (session 59): marked as a symbol's reference point is. */
+.cnb-cle-anchor-mark { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.cnb-cle-pick-anchor { margin-top: var(--space-2); font-size: 13px; }
+.cnb-cle-pick-anchor.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.cnb-cle-anchor-picker { margin-top: var(--space-2); }
+.cnb-cle-size { margin-top: var(--space-2); }
 /* Notes, Stacks and Place (design §7): a label column, then the row's controls. */
 .cnb-kse-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-3); margin: var(--space-3) 0; max-width: 720px; }
 .cnb-kse-row-label { font-size: 13px; font-weight: 600; color: var(--ink-2); padding-top: 2px; }

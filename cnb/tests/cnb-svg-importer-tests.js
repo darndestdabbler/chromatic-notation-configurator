@@ -722,6 +722,16 @@ export const tests = [
       assert(error === null, "no error: " + error);
       assert(glyph.lilypondPath === "'(\n    (moveto 0 1.5)\n    (closepath))", "re-serialized: " + JSON.stringify(glyph.lilypondPath));
     }},
+  { name: "buildClefGlyph anchors an imported clef at its box's centre, on the staff's midpoint (session 59)", fn: () => {
+      const doc = stubDoc({ viewBox: "10 -40 120 300" }, {
+        clef: stubEl("path", { id: "clef", d: "M 10 -40 L 130 260", "data-semitone-height": "6" }),
+      });
+      const { glyph, error } = CNBSvgImporter.buildClefGlyph(CNBSvgImporter.extractClef(doc), "C", { defaultMidpoint: 14 });
+      assert(error === null, "no error: " + error);
+      assert(glyph.reference.x === 70 && glyph.reference.y === 110, "the box's centre: " + JSON.stringify(glyph.reference));
+      assert(glyph.anchorSemi === 14, "anchored on the midpoint: " + glyph.anchorSemi);
+      assert(glyph.semitoneHeight === 6, "its own size, set by its SVG");
+    }},
 
   // — glyph-mode import (toolkit audit M5, M7) —
   { name: "extractClef imports every data-lilypond-glyph path and buildClefGlyph merges them (M5)", fn: () => {
