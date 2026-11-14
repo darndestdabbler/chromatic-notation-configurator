@@ -2,8 +2,9 @@
  * cnb-ledger-set-tests.js — Unit tests for Module 5 (Ledger Set)
  *
  * Covers the architecture plan's exhaustive ledger test cases: C, D, E, F,
- * C' under both 4-8 and 3-6-9 patterns, C'', A♯, and octave awareness —
- * plus buildDefs expansion, isBetweenNoteAndStaff, and proximity mode.
+ * C' under both 4-8 and 3-6-9 patterns, C'', A♯ — plus buildDefs
+ * expansion, isBetweenNoteAndStaff, proximity mode, and session 70's one
+ * rule: no staff line between a ledger and its note, no octave gate.
  */
 
 import { CNBConfig } from "../src/cnb-config.js";
@@ -40,6 +41,16 @@ function config369() {
   const cfg = CNBConfig.createDefault();
   cfg.staff.semitonePattern = [3, 6, 9];
   cfg.staff.semitonesPerStaffSpace = 3;
+  return cfg;
+}
+
+/** The 3-5-7-9 staff (spacing 2) with the given ledger templates. */
+function config3579(templates) {
+  const cfg = CNBConfig.createDefault();
+  cfg.staff.semitonePattern = [3, 5, 7, 9];
+  cfg.staff.semitonesPerStaffSpace = 2;
+  cfg.ledgers.templates = templates;
+  cfg.ledgers.proximityRule = true;
   return cfg;
 }
 
@@ -121,6 +132,14 @@ export const tests = [
       assert(CNBLedgerSet.isBetweenNoteAndStaff(2, 0, STAFF_48) === true, "periodic staff has -4 below 0");
     }},
 
+  { name: "isBetween (session 70): false when a staff line lies between the note and the ledger", fn: () => {
+      assert(CNBLedgerSet.isBetweenNoteAndStaff(12, 23, [3, 5, 7, 9, 15, 17, 19, 21, 27]) === false,
+        "the B ledger at 23 is across four lines from C at 12");
+      assert(CNBLedgerSet.isBetweenNoteAndStaff(12, 0, STAFF_48) === false, "lines 4 and 8 lie between 12 and 0");
+      assert(CNBLedgerSet.isBetweenNoteAndStaff(6, 2, STAFF_48) === false, "the line at 4 lies between");
+      assert(CNBLedgerSet.isBetweenNoteAndStaff(12, 11, [3, 5, 7, 9, 15]) === true, "B's ledger just below C");
+    }},
+
   // ── resolve: architecture-plan exhaustive cases (default 4-8 config) ──────
 
   { name: "C (semi 0): C-ledger shown at semi 0", fn: () => {
@@ -169,7 +188,7 @@ export const tests = [
       eqArr(CNBLedgerSet.resolve([22], defs48(), STAFF_48), [22]);
     }},
 
-  { name: "octave awareness: lower C ledger (0) NOT triggered by note at 24", fn: () => {
+  { name: "no ledger across the staff: the C ledgers at 0 and 12 are NOT triggered by the note at 24", fn: () => {
       const result = CNBLedgerSet.resolve([24], defs48(), STAFF_48);
       assert(!result.includes(0), "ledger 0 must not appear");
       assert(!result.includes(12), "ledger 12 must not appear");
@@ -199,32 +218,82 @@ export const tests = [
       eqArr(CNBLedgerSet.resolve([0], defs, STAFF_48), [0]);
     }},
 
-  { name: "proximity is octave-aware too", fn: () => {
+  { name: "proximity: no octave gate, but never across the staff (session 70)", fn: () => {
+      // The def at 0 answers B at -1 below it (no line between them, -4
+      // beyond), though B is in the octave below; not the note at 12,
+      // across the lines at 4 and 8.
       const defs = [{ semi: 0, triggerPCs: [], triggerMode: "proximity" }];
-      // Note at 12 is region 1; def at 0 is region 0 → never shown,
-      // even though |12-0| is irrelevant here.
-      eqArr(CNBLedgerSet.resolve([12], defs, STAFF_48), []);
+      eqArr(CNBLedgerSet.resolve([-1], defs, STAFF_48), [0], "B below the C ledger");
+      eqArr(CNBLedgerSet.resolve([12], defs, STAFF_48), [], "C' across the staff");
     }},
 
-  { name: "proximity (session 32): 3-5-7-9's Automatic ledgers give C one ledger above and none below", fn: () => {
+  { name: "proximity (session 70): 3-5-7-9's Automatic ledgers give C both B's and C♯'s, in every octave", fn: () => {
       // 3-5-7-9 at spacing 2: its Automatic ledgers are proximity templates
-      // at C♯ (1) and B (11). Resolution is octave-aware (region
-      // floor(semi / 12)), so C at 12 reaches only the C♯ ledger at 13 in
-      // its own region; B's ledger at 11 belongs to region 0 and only B
-      // draws it. Pinned as it resolves today, for the operator's judgment.
-      const cfg = CNBConfig.createDefault();
-      cfg.staff.semitonePattern = [3, 5, 7, 9];
-      cfg.staff.semitonesPerStaffSpace = 2;
-      cfg.ledgers.templates = [
+      // at C♯ (1) and B (11). C lies midway, one semitone from each and
+      // three from the nearest lines, so it takes both (rule A, the
+      // operator's choice, docs/planning/ledger-rule-consult.md).
+      const cfg = config3579([
         { semiWithinOctave: 1, triggerPCs: [], triggerMode: "proximity" },
         { semiWithinOctave: 11, triggerPCs: [], triggerMode: "proximity" },
-      ];
-      cfg.ledgers.proximityRule = true;
-      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: -4, maxSemi: 28 });
-      const staff = [-9, -7, -5, -3, 3, 5, 7, 9, 15, 17, 19, 21, 27];
-      eqArr(CNBLedgerSet.resolve([12], defs, staff), [13], "C at 12: the C♯ ledger above only");
-      eqArr(CNBLedgerSet.resolve([11], defs, staff), [11], "B at 11: its own ledger");
-      eqArr(CNBLedgerSet.resolve([13], defs, staff), [13], "C♯ at 13: its own ledger");
+      ]);
+      const range = { minSemi: -6, maxSemi: 30 };
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [0], range), [-1, 1], "C at 0");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [12], range), [11, 13], "C at 12");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [24], range), [23, 25], "C at 24");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [11], range), [11], "B at 11: its own ledger");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [13], range), [13], "C♯ at 13: its own ledger");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [10], range), [], "A♯ beside the A line");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [14], range), [], "D beside the D♯ line");
+    }},
+
+  { name: "own rules (session 70): the operator's 3-5-7-9 screenshot — every C takes B's and C♯'s ledgers, nothing across the staff", fn: () => {
+      // A B ledger for C and B, a C♯ ledger for C and C♯. Before, the C at
+      // 12 drew the C♯ ledger and a stray B ledger at 23, across four lines.
+      const cfg = config3579([
+        { semiWithinOctave: 11, triggerPCs: [0, 11], triggerMode: "override" },
+        { semiWithinOctave: 1, triggerPCs: [0, 1], triggerMode: "override" },
+      ]);
+      for (const range of [{ minSemi: -6, maxSemi: 30 }, { minSemi: 0, maxSemi: 24 }]) {
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [0], range), [-1, 1], "C at 0");
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [12], range), [11, 13], "C at 12");
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [24], range), [23, 25], "C at 24");
+      }
+    }},
+
+  { name: "proximity (session 70): the automatic 4-8 and 3-6-9 staffs give B the C ledger as they give it C♯", fn: () => {
+      const auto = [{ semiWithinOctave: 0, triggerPCs: [], triggerMode: "proximity" }];
+      const c48 = config48();
+      c48.ledgers.templates = auto;
+      const c369 = config369();
+      c369.ledgers.templates = auto;
+      const range = { minSemi: -6, maxSemi: 30 };
+      for (const [name, cfg] of [["4-8", c48], ["3-6-9", c369]]) {
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [11], range), [12], `${name}: B`);
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [12], range), [12], `${name}: C`);
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [13], range), [12], `${name}: C♯`);
+        eqArr(CNBLedgerSet.ledgersFor(cfg, [-1], range), [0], `${name}: the low B`);
+      }
+    }},
+
+  { name: "ledgersFor (session 70): the default config's ledgers for semitones 0–24 are unchanged", fn: () => {
+      const expected = { 0: [0], 1: [0], 2: [0, 2], 10: [10], 12: [12], 13: [12], 14: [12, 14], 22: [22], 24: [24] };
+      const cfg = config48();
+      for (let s = 0; s <= 24; s++) {
+        for (const range of [{ minSemi: s - 12, maxSemi: s + 12 }, { minSemi: -6, maxSemi: 30 }]) {
+          eqArr(CNBLedgerSet.ledgersFor(cfg, [s], range), expected[s] || [], `semitone ${s}`);
+        }
+      }
+    }},
+
+  { name: "ledgersFor (session 70): a note at the top or bottom of the range takes the ledgers a note in the middle takes", fn: () => {
+      const cfg = config3579([
+        { semiWithinOctave: 1, triggerPCs: [], triggerMode: "proximity" },
+        { semiWithinOctave: 11, triggerPCs: [], triggerMode: "proximity" },
+      ]);
+      const range = { minSemi: 0, maxSemi: 24 };
+      const middle = CNBLedgerSet.ledgersFor(cfg, [12], range);
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [24], range), middle.map(s => s + 12), "the top C");
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [0], range), middle.map(s => s - 12), "the bottom C");
     }},
 
   // ── resolve: hygiene ───────────────────────────────────────────────────────
@@ -369,14 +438,22 @@ export const tests = [
         CNBPitchAxis.create(tie)), [], "tie with staff line at axis 2 → not shown");
     }},
 
-  { name: "resolve (axis): region gate uses axis.regionOfSemi", fn: () => {
+  { name: "resolve (axis, session 70): no octave gate, and no ledger across a staff line in axis positions", fn: () => {
+      // Staff on D and A: axis lines 1 and 5, then 8 and 12. The B ledger
+      // (semi 11, axis 6) answers C' (semi 12, axis 7) in the next axis
+      // octave, with no line between them; the C ledger (semi 0, axis 0)
+      // does not, across the lines at 1 and 5.
       const cfg = twinline({ pattern: [2, 9], templates: [
         { semiWithinOctave: 0, triggerPCs: [0], triggerMode: "override" },
+        { semiWithinOctave: 11, triggerPCs: [0], triggerMode: "override" },
       ] });
       const axis = CNBPitchAxis.create(cfg);
-      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 11 }); // def at semi 0 only
-      eqArr(CNBLedgerSet.resolve([12], defs, staffSemis(cfg), axis), [], "C' (region 1) ignores the region-0 C ledger");
-      eqArr(CNBLedgerSet.resolve([0], defs, staffSemis(cfg), axis), [0], "C (region 0) triggers it");
+      const defs = CNBLedgerSet.buildDefs(cfg, { minSemi: 0, maxSemi: 11 });   // defs at 0 and 11
+      eqArr(CNBLedgerSet.resolve([12], defs, staffSemis(cfg), axis), [11], "C' takes B's ledger, not C's");
+      eqArr(CNBLedgerSet.resolve([0], defs, staffSemis(cfg), axis), [0], "C takes its own");
+      const range = { minSemi: 0, maxSemi: 24 };
+      eqArr(CNBLedgerSet.ledgersFor(cfg, [24], range, axis), CNBLedgerSet.ledgersFor(cfg, [12], range, axis).map(s => s + 12),
+        "a C at the top of the range takes what the C in the middle takes");
     }},
 
   { name: "resolve (axis): betweenness in axis coordinates — no ledger on a note that sits on a staff line", fn: () => {

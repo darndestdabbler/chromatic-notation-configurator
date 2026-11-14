@@ -322,14 +322,15 @@ ledgers: {
 
   // Default display rule when triggerMode is "proximity":
   // Show ledger at semitone L for notehead at semitone N when
-  // |N - L| < |N - nearestStaffLine| AND L is in the same octave region as N.
+  // |N - L| < |N - nearestStaffLine| AND no staff line lies between N and L
+  // (session 70: no octave gate; a note midway between two ledgers takes both).
   proximityRule: true
 }
 ```
 
 **Design notes:**
 - **No "outside staff" hard gate.** Some staff configurations have gaps (e.g., 3-6-9 has a gap between 9 and 15). Ledger lines within those gaps may be needed. The display rules (proximity and override) handle this correctly without filtering.
-- **Octave awareness is critical.** A ledger template at `semiWithinOctave: 0` in octave 0 (absolute semi 0) only responds to noteheads in or near octave 0. It does NOT respond to a notehead at semi 24 (octave 2's C). Each octave gets its own instance of each template.
+- **One rule, no octave gate (session 70).** Each octave gets its own instance of each template, and an instance answers a note only when no staff line lies between them, the note included, and a staff line lies beyond the ledger. So the C ledger at semi 0 does not answer the C at semi 24, across the staff, but the B ledger at 11 answers the C at 12 on 3-5-7-9, where no line lies between them. An Automatic (proximity) ledger shows when the note is strictly nearer to it than to any staff line (rule A, the operator's choice, `docs/planning/ledger-rule-consult.md`): a note midway between two takes both (C on 3-5-7-9 takes B's and C♯'s), and on 4-8 and 3-6-9 B takes the C ledger as C♯ does. Until session 70 an octave-region gate (octaves starting at C) kept a ledger from answering a note in another octave, which gave C♯ the C ledger but not B, and let a designer's rule draw a ledger across the staff. `CNBLedgerSet.ledgersFor` builds the instances and the staff lines an octave beyond the drawn range, so a note's ledgers are the same in every octave.
 - **The ledgers are drawn as the engine engraves them (session 34):** black,
   0.2 staff spaces thick, with fully rounded ends, 1.5 times as long as the
   notehead (in repeat mode, the group of heads) is wide
@@ -1217,8 +1218,9 @@ CNBMusic.pcLabel(pc) → { text: string, sharp: boolean }
 // All 13 labels for a chromatic row (C through C')
 CNBMusic.chromaticLabels() → [ { text, sharp }, ... ]
 
-// Which octave region "owns" a given absolute semitone for ledger purposes
-// (Used by Module 5 for octave-aware ledger logic)
+// Which octave region "owns" a given absolute semitone (octaves from C).
+// Module 5 read it for its octave gate until session 70, which dropped the
+// gate (§4.4); it stays as public API.
 CNBMusic.ledgerOctaveRegion(semi) → number
 
 // The seven modes LilyPond's \key names, and a key's pitch classes (session 36)
@@ -1433,17 +1435,12 @@ resolve(noteSemitones, ledgerDefs, staffPositions):
 
   for each noteSemi in noteSemitones:
     pc = pitchClass(noteSemi)
-    noteOctaveRegion = ledgerOctaveRegion(noteSemi)
 
+    // No octave gate (session 70): any def may answer, if the rule lets it
     for each ld in ledgerDefs:
-      ldOctaveRegion = ledgerOctaveRegion(ld.semi)
-
-      // Octave awareness: only consider ledgers in same octave region as note
-      if ldOctaveRegion ≠ noteOctaveRegion: continue
-
       if ld.triggerMode == "override":
         if pc in ld.triggerPCs:
-          // Show this ledger if it's between the note and the nearest staff line
+          // Show this ledger if no staff line lies between it and the note
           if isBetweenNoteAndStaff(noteSemi, ld.semi, staffPositions):
             result.add(ld.semi)
 
@@ -1456,13 +1453,22 @@ resolve(noteSemitones, ledgerDefs, staffPositions):
   return result
 ```
 
+`ledgersFor` builds the defs and the staff positions an octave beyond the
+range drawn (session 70), so a note at the top or bottom of the canvas takes
+the ledgers a note in the middle takes. Under a pitch axis the same rule runs
+in axis positions.
+
 **Key: No "outside staff" hard filter.** The algorithm does not skip ledgers that fall between staff lines. If a staff configuration has a gap (e.g., 3-6-9 system has a gap between semi 9 and semi 15), a ledger template at semi 12 within that gap CAN be shown if a notehead triggers it. The `isBetweenNoteAndStaff` check ensures ledgers only appear where they help connect a note to the staff — it doesn't require the ledger to be outside the staff's outer boundaries.
 
 **`isBetweenNoteAndStaff(noteSemi, ledgerSemi, staffPositions)`:**
-True when the ledger is on the path from the note to the nearest staff line. Specifically:
+True when the ledger is on the path from the note to the staff. Specifically (session 70):
+- No staff line lies between the note and the ledger, either included.
 - If noteSemi < ledgerSemi: the ledger is above the note. There must be a staff line above the ledger (ledgerSemi < some staffPosition).
 - If noteSemi > ledgerSemi: the ledger is below the note. There must be a staff line below the ledger.
 - If noteSemi == ledgerSemi: the ledger is at the note position — show it if the note isn't on a staff line.
+
+Before session 70 the first condition was missing, so a designer's rule could
+draw a ledger across the staff (the B ledger at 23 for the C at 12 on 3-5-7-9).
 
 **Visual test page:** Column with noteheads at various positions (on staff, in gaps, far outside), showing ledger resolution.
 
@@ -1474,7 +1480,8 @@ True when the ledger is on the path from the note to the nearest staff line. Spe
 - C' (semi 12): depends on staff config — in 4-8, it's between staff lines 8 and 16 (inside staff, no ledgers). In 3-6-9, it's in the gap between 9 and 15, so ledger at 12 could be triggered.
 - C'' (semi 24): upper C-ledger shown
 - A♯ (semi 22): A♯-ledger shown above staff line 20
-- Octave awareness: lower C ledger (semi 0) NOT triggered by note at semi 24
+- Across the staff: lower C ledger (semi 0) NOT triggered by note at semi 24
+- No octave gate (session 70): on 3-5-7-9's Automatic ledgers, C at 12 takes the B (11) and C♯ (13) ledgers, and C at 0 and 24 likewise; on the automatic 4-8 and 3-6-9 staffs B takes the C ledger, as C♯ does
 
 **Dependencies:** Module 4, Module 1, Module B, Module A
 

@@ -74,7 +74,7 @@ export const tests = [
 - **Notehead rules** are cumulative, priority-ordered. Higher priority overrides lower. Partial apply blocks inherit from previous match.
 - **Colour lives on the notehead rules** (`apply.color`, `null` = black). There is no palette; a saved one is moved onto the rules on load (`CNBConfig.paletteToRules`), and a colour-blind version is a second config.
 - **Ledger display** has no "outside staff" hard gate. Proximity and override rules handle gaps within the staff (e.g., 3-6-9 system).
-- **Ledger rules are octave-aware** — a ledger in octave 0 only responds to noteheads in octave 0
+- **One ledger rule, no octave gate** (session 70) — a ledger answers a note only when no staff line lies between them and one lies beyond it; an Automatic ledger shows when the note is strictly nearer it than any staff line, so a note midway between two takes both
 
 ## Preview Rendering Notes
 

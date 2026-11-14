@@ -39,7 +39,10 @@
  *     opening and saving changes nothing. Anything else is "own" (My own
  *     rules), today's template list. Since session 28 the automatic spots
  *     follow the lines as the config's pitch axis places them (the nudges
- *     of the Pitch section), kept in the state as `pitchAxis`.
+ *     of the Pitch section), kept in the state as `pitchAxis`. Since
+ *     session 70 a change of the staff pattern switches the ledgers to
+ *     Automatic while they are still the default notation's own rules
+ *     (followsStaff); a designer's own rules stay.
  *   - `staff.midpoint` is the center of the two-octave octave-chord card
  *     range (semis 0–24), i.e. 12, for every pattern — every preset (4-8,
  *     3-6-9, 2-4-6-8-10, 3-5-7-9) uses it and the card/stem modules assume it. That
@@ -271,6 +274,27 @@ export const CNBStaffRuleEditor = {
   },
 
   /**
+   * Whether the ledgers follow a change of the staff pattern (session 70,
+   * docs/uat-status.md session 69 item 4): true while they are Automatic,
+   * or still the default notation's own rules (CNBConfig.createDefault()'s
+   * templates with the proximity rule on), which were written for its 4–8
+   * staff. A designer's own rules, or a gallery file's, stay.
+   * @param {object} state  editor state
+   * @returns {boolean}
+   */
+  followsStaff(state) {
+    if (state.ledgerMode === "automatic") return true;
+    if (!state.proximityRule) return false;
+    let templates;
+    try {
+      templates = CNBStaffRuleEditor.buildLedgers(state).templates;
+    } catch {
+      return false;
+    }
+    return JSON.stringify(templates) === JSON.stringify(CNBConfig.createDefault().ledgers.templates);
+  },
+
+  /**
    * Derive staff geometry from a semitone-within-octave pattern.
    *
    * semitonesPerStaffSpace: GCD of consecutive pattern gaps including the
@@ -498,6 +522,19 @@ export const CNBStaffRuleEditor = {
 
     const title = (text) => el("div", "cnb-sre-title", text);
 
+    // A change of the staff pattern: the ledgers switch to Automatic while
+    // they follow the staff (followsStaff, session 70).
+    const patternChange = (mutate) => {
+      const before = patternOf(state).join(",");
+      const follows = CNBStaffRuleEditor.followsStaff(state);
+      mutate();
+      if (follows && patternOf(state).join(",") !== before) {
+        state.ledgerMode = "automatic";
+        state.proximityRule = true;
+      }
+      changed();
+    };
+
     // ── Pattern section ──────────────────────────────────────────────────
     function drawPattern() {
       const wrap = el("div", "cnb-sre-section cnb-sre-pattern");
@@ -516,7 +553,7 @@ export const CNBStaffRuleEditor = {
       const options = el("div", "cnb-sre-pattern-options");
       for (const [key, preset] of Object.entries(STAFF_PATTERN_PRESETS)) {
         const opt = option(key, preset.title, preset.description);
-        opt.onclick = () => { state.patternKey = key; changed(); };
+        opt.onclick = () => patternChange(() => { state.patternKey = key; });
         options.appendChild(opt);
       }
 
@@ -546,13 +583,12 @@ export const CNBStaffRuleEditor = {
         pill.type = "button";
         pill.setAttribute("data-pc", String(pc));
         pill.title = (on ? "Remove the line on " : "Add a line on ") + PC_LABELS[pc];
-        pill.onclick = () => {
+        pill.onclick = () => patternChange(() => {
           toCustom();
           const set = new Set(state.customPattern || []);
           if (set.has(pc)) set.delete(pc); else set.add(pc);
           state.customPattern = [...set].sort((a, b) => a - b);
-          changed();
-        };
+        });
         pcs.appendChild(pill);
       }
       wrap.appendChild(pcs);
@@ -622,6 +658,11 @@ export const CNBStaffRuleEditor = {
     function drawLedgers() {
       const wrap = el("div", "cnb-sre-section cnb-sre-ledgers");
       wrap.appendChild(title("My own rules"));
+      wrap.appendChild(el("div", "cnb-sre-hint cnb-sre-ledgers-staff-hint",
+        CNBStaffRuleEditor.followsStaff(state)
+          ? "These are the default notation's rules, written for its 4–8 staff: " +
+            "choosing another staff switches the ledgers to Automatic."
+          : "These rules stay when the staff changes: fit them to the new staff, or choose Automatic."));
 
       (state.templates || []).forEach((t, idx) => {
         const row = el("div", "cnb-sre-template-row");
@@ -766,8 +807,8 @@ export const CNBStaffRuleEditor = {
    * Render a live staff/ledger preview for a config: continuous staff lines
    * (Module 3) plus, per example note, that note's resolved ledger lines
    * (Module 5) and a small marker dot at the note position. The example
-   * notes are display samples, not config — they exercise the octave-aware
-   * ledger rules across the range.
+   * notes are display samples, not config — they exercise the ledger rules
+   * across the range.
    *
    * @param {HTMLElement} host  container the <svg> is appended to
    * @param {object} config     full CNB config

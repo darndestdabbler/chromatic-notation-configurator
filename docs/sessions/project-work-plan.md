@@ -81,7 +81,11 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 67 | The walk-through | no | 2026-11-13 |
 | 68 | The tutorial | no | 2026-11-14 |
 | 69 | The UI is stable | no | 2026-11-14 |
-| 70 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 70 | Ledgers by one rule | no | 2026-11-14 |
+| 71 | Back, Forward and work kept | — | not declared |
+| 72 | A repeated minim's stem on its notehead | — | not declared |
+| 73 | The UI is stable, a second try | — | not declared |
+| 74 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -707,3 +711,15 @@ Write the tutorial of step-by-step design §7: one HTML page, docs/playbook/tuto
 **Releasable: no.**
 
 Make the UI stable for the 1.1.0 release. The operator tries what sessions 58-68 added, in the app served locally and in the tutorial (the repeated heads' overlap and the breve's tie between its groups, clefs sized about an anchor point with the anchor picker, noteheads placed by their shape's reference point, importing a hand-drawn SVG, the twelve steps with their sidebar, step bar, Next and Back, the key signature's spelled looks and column gap, steps 6-9 of the key signature, and the tutorial page following the walk-through), and the findings are recorded in a session-69 section of docs/uat-status.md, each rough edge marked fix-here or planned. The small rough edges are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 70. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the stepped UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 70), is recorded in docs/uat-status.md.
+
+### Session 70 — Ledgers by one rule
+
+**Releasable: no.**
+
+Make the ledger lines follow one rule, as the operator chose (docs/planning/ledger-rule-consult.md; docs/uat-status.md, session 69, rough edges 2-5). In cnb/src/cnb-ledger-set.js, on a linear staff and under a pitch axis alike, a ledger answers a note only when no staff line lies between them, the note included, and a line lies beyond it; an automatic (proximity) ledger is shown by rule A, when the note is strictly nearer to it than to any staff line, so a note midway between two ledger spots takes both; the octave-region gate goes for automatic ledgers and a designer's own rules alike; and ledgersFor builds the ledger spots an octave beyond the drawn range, as it already builds the staff lines, so a note's ledgers are the same in every octave. The export writes the preview's ledgers (LY spec 5.7), so its format does not change; the pinned previews, signatures and the tutorial's export follow, and the architecture plan's and CLAUDE.md's 'octave-aware' wording is corrected. In cnb/ui/staff-rule-editor.js a change of the staff pattern switches the ledgers to Automatic while they are still the default notation's own rules (or already Automatic); a designer's or a gallery file's own rules stay, and the hint under My own rules says so. The tutorial's step 2 chooses the 3-5-7-9 pattern instead of building it by hand, its step 4 reads the new rule (Automatic already chosen, C taking both the B and C-sharp ledgers), cnb/uat/uat-tutorial.mjs follows the page, and its downloads and the shots whose ledgers change are regenerated. The other browser UAT drivers that relied on the default rules surviving a staff change follow, and the full UAT passes.
+
+**Amended after acceptance:**
+
+- 2026-11-14 — step 'pins': its files: The new rule changes no pinned probe: every preview and key-signature baseline still matches, and a script outside the tree found every gallery file's ledgers for semitones 0-24 unchanged; only the tutorial's export (its C ledgers) changes. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-14 — step 'tutorial': its files: Every canvas, spelled-notes grid and signature that draws a C changed (pixel diff against HEAD; 01-notehead-height is identical), so 16 shots changed, not 7; tutorial.json differed only in its timestamps and was restored; tutorial.ly is unchanged from the pins step. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-14 — step 'uat-drivers': its files: The full UAT failed only in uat-staff-rule-editor.mjs (it added rules after choosing 3-6-9); golden-path, kite-pipeline, config-export, pitch and app-layout pass unchanged. (claude-code (anthropic, claude-opus-5-5))

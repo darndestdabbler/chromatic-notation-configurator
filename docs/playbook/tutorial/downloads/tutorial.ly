@@ -100,11 +100,11 @@
 %% there: engine semitone (middle C = 0) → ledger staff positions. Any
 %% other pitch keeps the engine's ledger rule.
 #(define cnb:ledgers-by-semitone
-   '((0 . (-11)) (1 . (-11)) (2 . ()) (3 . ()) (4 . ()) (5 . ())
+   '((0 . (-13 -11)) (1 . (-11)) (2 . ()) (3 . ()) (4 . ()) (5 . ())
      (6 . ()) (7 . ()) (8 . ()) (9 . ()) (10 . ()) (11 . (-1))
-     (12 . (1)) (13 . (1)) (14 . ()) (15 . ()) (16 . ()) (17 . ())
+     (12 . (-1 1)) (13 . (1)) (14 . ()) (15 . ()) (16 . ()) (17 . ())
      (18 . ()) (19 . ()) (20 . ()) (21 . ()) (22 . ()) (23 . (11))
-     (24 . (13))
+     (24 . (11 13))
      ))
 #(define (cnb:ledgers-of grob)
    (assv (ly:pitch-semitones (ly:event-property (event-cause grob) 'pitch))

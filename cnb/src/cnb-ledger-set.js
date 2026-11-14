@@ -1,20 +1,23 @@
 /**
  * cnb-ledger-set.js — Module 5: Ledger Set
  *
- * Evaluates ledger display rules (octave-aware proximity/override algorithm)
- * for a set of noteheads and renders the resulting ledger lines.
+ * Evaluates ledger display rules (proximity/override) for a set of
+ * noteheads and renders the resulting ledger lines.
  *
  * Key design points (Architecture Plan §5, Module 5):
  * - No "outside staff" hard gate: ledgers inside staff gaps (e.g. semi 12 in
  *   a 3-6-9 pattern) can be shown when a notehead triggers them.
- * - Octave awareness: a ledger def only responds to noteheads in the same
- *   octave region (a C ledger at semi 0 is never triggered by a C at semi 24).
- * - The staff is periodic. render() expands the staff pattern one octave
- *   beyond the grid range so that viewport cropping does not change ledger
- *   decisions near the range edges.
+ * - One rule for every ledger (session 70, docs/planning/ledger-rule-consult.md):
+ *   a ledger answers a note only when no staff line lies between them, the
+ *   note included, and a line lies beyond the ledger. There is no octave
+ *   gate, so a note's ledgers are the same in every octave, and a note
+ *   midway between two automatic ledgers takes both.
+ * - The staff is periodic. ledgersFor() expands the staff pattern and the
+ *   ledger spots one octave beyond the grid range so that viewport cropping
+ *   does not change ledger decisions near the range edges.
  * - Set 014 (pitch axis): with an enabled gridContext.axis, resolve/render
  *   run the same algorithm in axis coordinates and key lines by axis
- *   position (design §2.4); otherwise the literal pre-set-014 arithmetic.
+ *   position (design §2.4); otherwise the same rule in semitones.
  *
  * - The lines are drawn as the engine draws them (session 34): LilyPond's
  *   0.2 staff spaces thick, 1.5 notehead widths long, black, rounded ends.
@@ -71,7 +74,6 @@ function resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis) {
   for (const noteSemi of noteSemitones) {
     const pc = CNBMusic.pitchClass(noteSemi);
     const notePos = axis.positionOfSemi(noteSemi);
-    const noteRegion = axis.regionOfSemi(noteSemi);
     let nearestStaff = Infinity;
     for (const s of staffPos) {
       const d = Math.abs(notePos - s);
@@ -79,7 +81,6 @@ function resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis) {
     }
 
     for (const ld of ledgerDefs) {
-      if (axis.regionOfSemi(ld.semi) !== noteRegion) continue;
       const ledgerPos = axis.positionOfSemi(ld.semi);
       const between = CNBLedgerSet.isBetweenNoteAndStaff(notePos, ledgerPos, staffPos);
 
@@ -146,13 +147,15 @@ export const CNBLedgerSet = {
   },
 
   /**
-   * True when the ledger lies on the path connecting the note to the staff:
-   * - note below ledger → a staff line must exist above the ledger
-   * - note above ledger → a staff line must exist below the ledger
-   * - note at the ledger → show unless the note sits on a staff line
+   * True when the ledger lies on the path connecting the note to the staff
+   * (session 70): no staff line lies between the note and the ledger, either
+   * included, and
+   * - note below ledger → a staff line exists above the ledger
+   * - note above ledger → a staff line exists below the ledger
+   * - note at the ledger → true (unless the note sits on a staff line).
    *
    * The staff is conceptually periodic, so callers should pass staff
-   * positions expanded beyond the note range (render() does this).
+   * positions expanded beyond the note range (ledgersFor() does this).
    *
    * @param {number} noteSemi
    * @param {number} ledgerSemi
@@ -160,9 +163,12 @@ export const CNBLedgerSet = {
    * @returns {boolean}
    */
   isBetweenNoteAndStaff(noteSemi, ledgerSemi, staffPositions) {
-    if (noteSemi === ledgerSemi) return !staffPositions.includes(ledgerSemi);
+    const lo = Math.min(noteSemi, ledgerSemi);
+    const hi = Math.max(noteSemi, ledgerSemi);
+    if (staffPositions.some(s => s >= lo && s <= hi)) return false;
     if (noteSemi < ledgerSemi) return staffPositions.some(s => s > ledgerSemi);
-    return staffPositions.some(s => s < ledgerSemi);
+    if (noteSemi > ledgerSemi) return staffPositions.some(s => s < ledgerSemi);
+    return true;
   },
 
   /**
@@ -170,14 +176,15 @@ export const CNBLedgerSet = {
    *
    * Override mode: show when the note's pitch class is in the def's
    * triggerPCs. Proximity mode: show when the note is strictly closer to the
-   * ledger than to any staff line. Both modes additionally require
-   * isBetweenNoteAndStaff, and both are octave-aware: a def only responds to
-   * notes in its own octave region.
+   * ledger than to any staff line, so a note midway between two ledgers
+   * takes both. Both modes additionally require isBetweenNoteAndStaff (no
+   * staff line between the note and the ledger, one beyond the ledger). No
+   * octave gate (session 70): a def answers any note the rule lets it.
    *
    * Axis mode (set 014, design §2.4): with an enabled axis, every input is
    * converted to axis positions at the top and the SAME predicates run in
-   * axis coordinates — region via axis.regionOfSemi, the strict `<`
-   * proximity rule, betweenness against the deduplicated staff positions.
+   * axis coordinates — the strict `<` proximity rule, betweenness against
+   * the deduplicated staff positions.
    * Defs collapsing onto one axis position yield ONE result: the lowest
    * shown def semitone at that position stands for the line.
    *
@@ -190,16 +197,13 @@ export const CNBLedgerSet = {
   resolve(noteSemitones, ledgerDefs, staffPositions, axis) {
     if (axis && axis.enabled) return resolveOnAxis(noteSemitones, ledgerDefs, staffPositions, axis);
 
-    // Linear path — the literal pre-set-014 arithmetic.
+    // Linear path.
     const result = new Set();
 
     for (const noteSemi of noteSemitones) {
       const pc = CNBMusic.pitchClass(noteSemi);
-      const noteRegion = CNBMusic.ledgerOctaveRegion(noteSemi);
 
       for (const ld of ledgerDefs) {
-        if (CNBMusic.ledgerOctaveRegion(ld.semi) !== noteRegion) continue;
-
         if (ld.triggerMode === "override") {
           if (
             ld.triggerPCs.includes(pc) &&
@@ -228,10 +232,11 @@ export const CNBLedgerSet = {
 
   /**
    * The ledger semitones the preview draws for a set of noteheads on a grid
-   * spanning `range`: the templates expanded over the range, the staff one
-   * octave beyond it (the staff is periodic, so cropping must not change a
-   * decision near the edge), resolved. render() draws these; the LilyPond
-   * export writes them for every pitch (session 34).
+   * spanning `range`: the templates and the staff expanded one octave
+   * beyond it (the staff is periodic, so cropping must not change a
+   * decision near the edge; session 70 for the templates), resolved.
+   * render() draws these; the LilyPond export writes them for every pitch
+   * (session 34).
    *
    * @param {object} config
    * @param {number[]} noteSemitones
@@ -240,7 +245,7 @@ export const CNBLedgerSet = {
    * @returns {number[]} sorted ledger semitones
    */
   ledgersFor(config, noteSemitones, { minSemi, maxSemi }, axis) {
-    const defs = CNBLedgerSet.buildDefs(config, { minSemi, maxSemi });
+    const defs = CNBLedgerSet.buildDefs(config, { minSemi: minSemi - 12, maxSemi: maxSemi + 12 });
     const staffPositions = expandStaffPositions(config, minSemi - 12, maxSemi + 12);
     return CNBLedgerSet.resolve(noteSemitones, defs, staffPositions, axis && axis.enabled ? axis : null);
   },

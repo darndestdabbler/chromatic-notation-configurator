@@ -7,9 +7,10 @@
  * result on the page and in the live config, and screenshots the main area
  * as NN-<id>.png.
  *
- *   1 Notehead height 2.  2 Lines at 3, 5, 7 and 9, the middle C (12).
- *   3 No change, the middle confirmed C.  4 The automatic ledgers: B (11)
- *   and C♯ (13) in the gap, B taking B's, C and C♯ C♯'s, A♯ and D none.
+ *   1 Notehead height 2.  2 The 3-5-7-9 pattern: lines at 3, 5, 7 and 9,
+ *   the middle C (12), the ledgers switched to Automatic.  3 No change,
+ *   the middle confirmed C.  4 No change, the automatic ledgers: B (11) and
+ *   C♯ (13) in the gap, B taking B's, C♯ C♯'s, C both, A♯ and D none.
  *   5 diamond.svg imported for every notehead, solid, C♯ D♯ F♯ G♯ A♯ red
  *   (#cc0000); minims as repeated heads at the default overlap
  *   (05-noteheads-repeated.png), then each duration's own look with Hollow
@@ -274,13 +275,16 @@ async function main() {
 
     async staff() {
       await open("staff");
-      for (const pc of [3, 5, 7, 9, 4, 8]) {   // add four, then remove E and G♯
-        await page.click(`#staff-editor-host .cnb-sre-pc-toggle[data-pc="${pc}"]`);
-      }
+      await page.click('#staff-editor-host [data-pattern-key="3-5-7-9"]');
       const c = await live();
-      check("2. Staff: lines at 3, 5, 7 and 9 (E♭, F, G, A), 2 semitones a staff space, the middle C (12)",
+      check("2. Staff: the 3-5-7-9 pattern chosen, lines at 3, 5, 7 and 9 (E♭, F, G, A), 2 semitones a staff space, the middle C (12)",
         JSON.stringify(c.staff.semitonePattern) === "[3,5,7,9]" && c.staff.semitonesPerStaffSpace === 2 &&
-        c.staff.midpoint === 12, JSON.stringify(c.staff));
+        c.staff.midpoint === 12 &&
+        (await page.$eval('#staff-editor-host [data-pattern-key="3-5-7-9"]', o => o.classList.contains("selected"))),
+        JSON.stringify(c.staff));
+      check("2. Staff: the default's ledger rules follow the staff, switched to Automatic (session 70)",
+        CNBStaffRuleEditor.ledgerModeOf(c.staff.semitonePattern, c.ledgers) === "automatic",
+        JSON.stringify(c.ledgers));
       const ys = await page.$$eval(".cnb-pvd-preview .staff-lines-bg line", ls => ls.map(l => Number(l.getAttribute("y1"))));
       const gaps = [...new Set(ys.slice(1).map((y, i) => Math.round(Math.abs(y - ys[i]))))].sort((a, b) => a - b);
       check("2. Staff: the canvas draws the new staff, lines a staff space apart with a gap of 3 staff spaces",
@@ -297,16 +301,15 @@ async function main() {
 
     async "ledger-lines"() {
       await open("ledger-lines");
-      // The default's own ledger rules stay with the old staff: Automatic
-      // gives the new one's.
-      await page.click('#ledger-editor-host [data-ledger-mode="automatic"]');
+      // Nothing to click: step 2's staff change switched the default's own
+      // ledger rules to Automatic (session 70).
       const c = await live();
       const automatic = CNBStaffRuleEditor.ledgerModeOf(c.staff.semitonePattern, c.ledgers) === "automatic";
       const range = { minSemi: -6, maxSemi: 30 };
       const at = (s) => JSON.stringify(CNBLedgerSet.ledgersFor(c, [s], range));
-      check("4. Ledger lines: Automatic chosen, and in the gap B (11) takes the B ledger, C (12) and C♯ (13) the C♯ ledger, A♯ (10) and D (14) none",
+      check("4. Ledger lines: Automatic already on, and in the gap B (11) takes the B ledger, C♯ (13) the C♯ ledger, C (12) both, A♯ (10) and D (14) none",
         automatic && (await page.$eval('#ledger-editor-host [data-ledger-mode="automatic"]', b => b.classList.contains("on"))) &&
-        at(11) === "[11]" && at(12) === "[13]" && at(13) === "[13]" && at(10) === "[]" && at(14) === "[]",
+        at(11) === "[11]" && at(12) === "[11,13]" && at(13) === "[13]" && at(10) === "[]" && at(14) === "[]",
         JSON.stringify({ automatic, b: at(11), c: at(12), cs: at(13), as: at(10), d: at(14) }));
       const ledgered = await page.$$eval(".cnb-pvd-preview .pc-col", cols =>
         [...new Set(cols.filter(col => col.dataset.ledgers !== "0").map(col => Number(col.dataset.pc)))].sort((a, b) => a - b));

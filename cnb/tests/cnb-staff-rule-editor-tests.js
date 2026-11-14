@@ -769,6 +769,95 @@ export const tests = [
     }),
   },
 
+  // ── The ledgers follow a staff change while they are the defaults (session 70) ──
+  {
+    name: "followsStaff: Automatic and the default notation's own rules follow; edited rules and every gallery file's own rules stay",
+    fn: () => {
+      assert(E.followsStaff(defaultState()) === true, "the default's rules");
+      assert(E.followsStaff({ ...defaultState(), ledgerMode: "automatic" }) === true, "Automatic");
+      const removed = defaultState();
+      removed.templates.pop();
+      assert(E.followsStaff(removed) === false, "a rule removed");
+      const added = defaultState();
+      added.templates.push({ semiWithinOctave: 5, triggerPCs: [5], triggerMode: "override" });
+      assert(E.followsStaff(added) === false, "a rule added");
+      assert(E.followsStaff({ ...defaultState(), proximityRule: false }) === false, "the proximity rule off");
+      assert(E.followsStaff({ ...defaultState(), templates: [{ semiWithinOctave: 99, triggerPCs: [], triggerMode: "x" }] }) === false,
+        "an invalid rule list is not the default's");
+      const dir = new URL("../assets/examples/gallery/", import.meta.url);
+      for (const f of readdirSync(dir).filter(n => n.endsWith(".json"))) {
+        const { config } = CNBConfigIO.loadFromText(readFileSync(new URL(f, dir), "utf8"));
+        const state = E.stateFromConfig(config);
+        assert(E.followsStaff(state) === (state.ledgerMode === "automatic"), `${f}: its own rules stay`);
+      }
+    },
+  },
+  {
+    name: "render (session 70): from the default config a preset or a line clicked switches the ledgers to Automatic, for the new staff",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      findByAttr(handle.root, "data-pattern-key", "3-5-7-9")[0].onclick();
+      assert(handle.getState().ledgerMode === "automatic", "Automatic after the preset");
+      assertEqualArrays(lastSlices.ledgers, { templates: E.automaticTemplates([3, 5, 7, 9]), proximityRule: true },
+        "the slice carries 3-5-7-9's automatic spots");
+      assert(String(findByAttr(handle.root, "data-ledger-mode", "automatic")[0].className).includes("on"), "Automatic shown on");
+
+      const pills = withDomStub((c2) => {
+        const h2 = E.render(c2, { onChange: (slices) => { lastSlices = slices; } });
+        findAll(h2.root, "cnb-sre-pc-toggle")[0].onclick();   // a line on C
+        return h2;
+      });
+      assert(pills.getState().ledgerMode === "automatic", "Automatic after a line added");
+      assertEqualArrays(lastSlices.ledgers.templates, E.automaticTemplates([0, 4, 8]), "the new staff's spots");
+
+      // Automatic stays Automatic, and its spots keep following.
+      findByAttr(handle.root, "data-pattern-key", "3-6-9")[0].onclick();
+      assert(handle.getState().ledgerMode === "automatic", "still Automatic");
+      assertEqualArrays(lastSlices.ledgers.templates, E.automaticTemplates([3, 6, 9]), "3-6-9's spots");
+    }),
+  },
+  {
+    name: "render (session 70): the default's rules stay while the pattern does not change (its own preset clicked again)",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container, {});
+      findByAttr(handle.root, "data-pattern-key", "4-8")[0].onclick();
+      findByAttr(handle.root, "data-pattern-key", "custom")[0].onclick();
+      assert(handle.getState().ledgerMode === "own", "still My own rules");
+      assert(handle.getState().templates.length === 3, "the default's three rules");
+    }),
+  },
+  {
+    name: "render (session 70): a designer's edited rules, and a gallery file's, survive a pattern change",
+    fn: () => withDomStub((container) => {
+      let lastSlices = null;
+      const handle = E.render(container, { onChange: (slices) => { lastSlices = slices; } });
+      findAll(handle.root, "cnb-sre-template-add")[0].onclick();
+      findByAttr(handle.root, "data-pattern-key", "3-6-9")[0].onclick();
+      assert(handle.getState().ledgerMode === "own", "own rules kept");
+      assert(lastSlices.ledgers.templates.length === 4, "all four rules written");
+      assertEqualArrays(lastSlices.staff.semitonePattern, [3, 6, 9], "the staff changed");
+
+      const text = readFileSync(new URL("../assets/examples/gallery/clairnote-dn.json", import.meta.url), "utf8");
+      const { config } = CNBConfigIO.loadFromText(text);
+      assert(E.stateFromConfig(config).ledgerMode === "own", "Clairnote DN has its own rules");
+      const h2 = withDomStub((c2) => E.render(c2, { config, onChange: (slices) => { lastSlices = slices; } }));
+      withDomStub(() => findAll(h2.root, "cnb-sre-pc-toggle")[0].onclick());
+      assert(h2.getState().ledgerMode === "own", "the gallery file's rules kept");
+      assertEqualArrays(lastSlices.ledgers.templates, config.ledgers.templates, "unchanged");
+    }),
+  },
+  {
+    name: "render (session 70): the hint under My own rules says whether the rules follow the staff",
+    fn: () => withDomStub((container) => {
+      const handle = E.render(container, {});
+      const hint = () => findAll(handle.root, "cnb-sre-ledgers-staff-hint").map(h => h.textContent);
+      assert(hint().length === 1 && hint()[0].includes("switches the ledgers to Automatic"), "the default's rules: they follow");
+      findAll(handle.root, "cnb-sre-template-add")[0].onclick();
+      assert(hint().length === 1 && hint()[0].includes("stay when the staff changes"), "edited rules: they stay");
+    }),
+  },
+
   // ── renderPreview() against the DOM stub ──
   {
     name: "renderPreview: default config over 0–24 → 4 staff lines, 25 note columns",

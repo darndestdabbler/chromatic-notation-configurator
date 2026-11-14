@@ -180,7 +180,7 @@ check("PREVIEW note columns: 25 markers (chromatic 0–24)", (await markerCount(
 check("PREVIEW column C (semi 0) shows 1 ledger", (await ledgerCount(0)) === 1);
 check("PREVIEW column D (semi 2) shows 2 ledgers (C + D)", (await ledgerCount(2)) === 2);
 check("PREVIEW column F (semi 5) shows 0 ledgers (inside staff)", (await ledgerCount(5)) === 0);
-check("PREVIEW column C'' (semi 24) shows 1 ledger (octave-aware upper C)", (await ledgerCount(24)) === 1);
+check("PREVIEW column C'' (semi 24) shows 1 ledger (the upper C, none across the staff)", (await ledgerCount(24)) === 1);
 let j = await readJson();
 check("JSON PANEL staff.semitonePattern [4,8], sps 4",
   JSON.stringify(j.staff.semitonePattern) === "[4,8]" && j.staff.semitonesPerStaffSpace === 4);
@@ -203,19 +203,29 @@ check("CLICK 3-6-9: no line style controls; every preview staff line is black an
     [...document.querySelector("#preview-host .cnb-staff").children].every(l =>
       l.getAttribute("stroke") === "#000000" && !l.getAttribute("stroke-dasharray"))));
 
+// The default's own ledger rules were written for 4-8: choosing another
+// staff switches them to Automatic, the new staff's (session 70).
+check("CLICK 3-6-9: the default's ledger rules follow the staff, switched to Automatic with 3-6-9's spot (C)",
+  JSON.stringify(j.ledgers) === JSON.stringify({ templates: [{ semiWithinOctave: 0, triggerPCs: [], triggerMode: "proximity" }], proximityRule: true }) &&
+  await page.evaluate(() => document.querySelector('[data-ledger-mode="automatic"]').classList.contains("on")),
+  JSON.stringify(j.ledgers));
+
 // ── Add a ledger template ───────────────────────────────────────────────────
 check("BEFORE TEMPLATE: column F (semi 5) has 0 ledgers", (await ledgerCount(5)) === 0);
+await page.click('[data-ledger-mode="own"]');
+check("MY OWN RULES: the hint says these rules stay when the staff changes",
+  await page.evaluate(() => (document.querySelector(".cnb-sre-ledgers-staff-hint")?.textContent || "").includes("stay when the staff changes")));
 await page.click(".cnb-sre-template-add");
 j = await readJson();
-check("ADD TEMPLATE: 4 template rows, new one at position 0 triggered by C",
-  j.ledgers.templates.length === 4 && j.ledgers.templates[3].semiWithinOctave === 0 &&
-  JSON.stringify(j.ledgers.templates[3].triggerPCs) === "[0]");
-await page.selectOption('.cnb-sre-template-row[data-template-index="3"] .cnb-sre-template-pos', "5");
-await page.click('.cnb-sre-template-row[data-template-index="3"] .cnb-sre-trigger-pill[data-pc="5"]');
-await page.click('.cnb-sre-template-row[data-template-index="3"] .cnb-sre-trigger-pill[data-pc="0"]');
+check("ADD TEMPLATE: 2 template rows (the automatic spot, then the new one at position 0 triggered by C)",
+  j.ledgers.templates.length === 2 && j.ledgers.templates[1].semiWithinOctave === 0 &&
+  JSON.stringify(j.ledgers.templates[1].triggerPCs) === "[0]");
+await page.selectOption('.cnb-sre-template-row[data-template-index="1"] .cnb-sre-template-pos', "5");
+await page.click('.cnb-sre-template-row[data-template-index="1"] .cnb-sre-trigger-pill[data-pc="5"]');
+await page.click('.cnb-sre-template-row[data-template-index="1"] .cnb-sre-trigger-pill[data-pc="0"]');
 j = await readJson();
 check("EDIT TEMPLATE: position 5 (F), triggerPCs [5]",
-  j.ledgers.templates[3].semiWithinOctave === 5 && JSON.stringify(j.ledgers.templates[3].triggerPCs) === "[5]");
+  j.ledgers.templates[1].semiWithinOctave === 5 && JSON.stringify(j.ledgers.templates[1].triggerPCs) === "[5]");
 check("PREVIEW: column F (semi 5) now shows 1 ledger", (await ledgerCount(5)) === 1);
 check("PREVIEW: column F' (semi 17) shows the same per-octave ledger", (await ledgerCount(17)) === 1);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-s1-template.png"), fullPage: true });
