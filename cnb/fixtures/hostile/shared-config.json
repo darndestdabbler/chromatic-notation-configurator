@@ -1,0 +1,14 @@
+{
+  "_comment": [
+    "Hostile-input fixture (session 10, audit 2026-11-02 H1 poc2): a shared",
+    "config whose notation label ends the %% header comment with a newline",
+    "and carries live Scheme. Before session 10 LilyPond printed the marker",
+    "and reported success. It must export with the label inert."
+  ],
+  "version": "1.0",
+  "meta": {
+    "configName": "Shared System",
+    "fileSuffix": "-Shared",
+    "notationLabel": "Innocent\n#(display \"INJECTED-VIA-NOTATION-LABEL\")\n%%"
+  }
+}

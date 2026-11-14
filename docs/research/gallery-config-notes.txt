@@ -1,0 +1,12 @@
+S = staff line
+SB = bold staff line
+SD0 = dotted staff line
+SD1 = smaller-dashed staff line
+SD2 = larger-dashed staff line (like ledger length)
+L = ledger line
+G = gap (no line where a line could be)
+
+H = hollow notehead
+S = solid notehead
+For some shapes, I used unicode chars or text labels
+normal = conventional oval (solid and/or hollow)
