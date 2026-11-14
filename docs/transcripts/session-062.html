@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 062 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 062 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T14:18:37.445Z by dabbler-ai-router 3.32.4 at f257553b1a2e5a5d3ed08796fd4444fd97543422.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T08:29:14.130-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 62: Importing a hand-drawn SVG</h3>
+<p><strong>Why.</strong> A file straight from Inkscape does not import where it was drawn: the importer reads no group's or layer's transform, and the export skips relative and arc path commands. The operator's C clef has both (design §8).</p>
+<ol><li>Register.</li><li><code>cnb/ui/svg-importer.js</code> normalises each imported path to absolute M, L, C and Z with the transforms of the path and every ancestor applied (every transform kind, skew included), arcs within 0.01 stored units, basic shapes converted, the hollow, stem rects and reference point transformed with the head, and text, stroke-only paths, <code>use</code>, images, nested <code>svg</code>, clipping, masks and filters refused by name. A path already absolute and untransformed, as toolkit output is, is stored as it is.</li><li>The operator's clef (<code>D:\sample-c-clef.svg</code>) checked in as <code>docs/playbook/tutorial/downloads/c-clef.svg</code>, its leftover style properties removed, and imported in <code>uat-clef-editor.mjs</code>, engraved where the canvas draws it. The five export baselines unchanged.</li></ol>
+<h2>Work Plan</h2>
+<p>Make a file saved straight from Inkscape import where it was drawn (step-by-step design §8), in cnb/ui/svg-importer.js and nowhere else downstream. Each imported path's d (a notehead's #notehead and #hollow, which the key signature's symbol import also uses, and a clef's glyph paths) is normalised once, at import, to absolute M, L, C and Z in the root &lt;svg&gt;'s user space (the viewBox's units): relative commands made absolute, H and V as lines, S, Q and T as cubics, each arc as cubics within 0.01 stored units (the tolerance taken after the transforms), z returning the current point to its subpath's start, with the composed transform of the element and every ancestor &lt;g&gt; up to the root applied (matrix, translate, scale, rotate with or without a centre, skewX and skewY). rect (rounded corners included), circle, ellipse, polygon and polyline are converted to paths; the toolkit's stem rects stay rects, read as today with their ancestors' transforms composed onto their own. Because everything is stored in the root's units, the hollow, the stem anchors and the reference points the panels set (a clef's box centre, a key-signature symbol's origin) sit on the ink as they are drawn. A path with no transform on it or its ancestors whose commands are all absolute ones every reader already reads (M, L, H, V, C, Z), as toolkit output always is, is stored exactly as it is, so every import that works today imports byte for byte as before. Refused by name, with what to do in Inkscape: &lt;text&gt; (Object to Path), a path drawn only by its stroke (Stroke to Path), &lt;use&gt;, &lt;image&gt;, a nested &lt;svg&gt;, and clip-path, mask or filter on an imported element or its ancestors. The operator's C clef (D:\sample-c-clef.svg, a translated layer, relative commands and arcs) is checked in as docs/playbook/tutorial/downloads/c-clef.svg with its leftover style properties removed; it imports with its box matching its drawn extent, and uat-clef-editor.mjs imports it through the clef panel and engraves it where the canvas draws it. The five export baselines are unchanged. The README's import section says what a hand-drawn file may contain.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/d66a2fd4fff4debf5a79dc25453cc1c79601139d"><code>d66a2fd4fff4debf5a79dc25453cc1c79601139d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Normalise</td><td><p>In cnb/ui/svg-importer.js add the pure geometry the import needs: parseTransform accepts skewX and skewY besides matrix, translate, scale and rotate; CNBSvgImporter.normalizePath(d, matrix) returns d as absolute M, L, C and Z with the matrix applied to every point (every SVG 1.1 command: relative made absolute, H and V as lines, S, Q and T as cubics, z returning to the subpath's start, each arc split into cubics with enough segments that the error is within 0.01 units after the matrix, numbers rounded to 4 decimals), or null for a d it cannot parse; CNBSvgImporter.shapeToPath(element) returns the d of a rect (with rx/ry), circle, ellipse, polygon or polyline, and of a path its d. Add tests named after each in cnb/tests/cnb-svg-importer-tests.js: each command kind, an arc against points sampled on the true ellipse within 0.01 after a scaling matrix, each basic shape, skewX and skewY.</p></td><td><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Import</td><td><p>Wire the normalisation into extract and extractClef. Compose each imported element's transform with every ancestor's up to the root &lt;svg&gt; (walking parentNode; a stub without it is the root); normalise each imported element's d through it, storing it as it is when there is no transform and its commands are all absolute M, L, H, V, C or Z; accept a basic shape as the #notehead or #hollow element; compose the stem rects' ancestors' transforms with their own; in extractClef's last fallback take every drawn shape element (path and the basic shapes) in document order, outside &lt;defs&gt; and other than the stem rects, instead of every &lt;path&gt;. Refuse, naming the element and the Inkscape command to use: &lt;text&gt; (Object to Path), a path whose fill (its own or inherited, attribute or style) is none while it has a stroke (Stroke to Path), &lt;use&gt;, &lt;image&gt;, a nested &lt;svg&gt;, and clip-path, mask or filter on an imported element or an ancestor. Update the module header to describe what is read and refused. Extend parseSvgDocument in cnb/tests/svg-stub.js to build the element tree (parentNode, end tags) and to take a comma list of tags in querySelectorAll, in document order. Tests in cnb/tests/cnb-svg-importer-tests.js: a translated layer; nested groups with each transform kind; a hollow, stem rects and a clef's reference point under a group transform landing on the transformed ink; each refused element named; toolkit output (the kite and 45deg fixtures, an untransformed absolute path) stored byte for byte as before.</p></td><td><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span><br><span class="mono">cnb/tests/svg-stub.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>C clef</td><td><p>Check in the operator's clef, D:\sample-c-clef.svg, as docs/playbook/tutorial/downloads/c-clef.svg, as Inkscape saved it (its layer transform, relative commands and arcs kept) but with the leftover style properties removed (stroke widths, line caps and joins, dash arrays, opacity; each path keeps fill:#000000). Add a test in cnb/tests/cnb-svg-importer-tests.js that imports it with parseClefSvgText through the stub parser: both paths are imported, the stored svgPath is absolute M, L, C and Z, and its box (CNBNotehead.box over the stored path) matches the file's drawn extent, the page Inkscape fitted to it (its viewBox), within 0.01; and that the five export baselines still match (the existing baseline tests).</p></td><td><span class="mono">docs/playbook/tutorial/downloads/c-clef.svg</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>git diff --exit-code -- cnb/fixtures</code></td><td>yes</td></tr>
+<tr><td>Uat</td><td><p>In cnb/uat/uat-clef-editor.mjs import docs/playbook/tutorial/downloads/c-clef.svg through the clef panel's file input: it is imported without error and selected; its stored box matches the extent Chromium itself computes for the file's drawn paths (the raw file's getBBox in the page, root user units) within 0.01; the canvas draws it with its top at semiToY(CNBClef.shown(...).top); the downloaded .ly equals CNBLilypond.generate on the same config and registers it; and, through cnb/tests/engine-probe.js's measureClef, it engraves with its top and bottom within 0.001 staff spaces of CNBClef.extent (skipped with the reason logged when the engine is not found, as the engine-backed tests do).</p></td><td><span class="mono">cnb/uat/uat-clef-editor.mjs</span></td><td><code>node --check cnb/uat/uat-clef-editor.mjs</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Say in README.md's import section and the architecture plan's Module 16 / §4.12 import note that a file drawn by hand in Inkscape imports where it was drawn (transforms and every path command read, basic shapes converted), what is refused and what to do instead, and that the tutorial's c-clef.svg is such a file.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Stroke to Path/.test(r)||!/c-clef\.svg/.test(r)||!/Object to Path/.test(a)){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change downstream of the importer: CNBNotehead.svgCommands, the preview, the exporter and the key signature read stored paths as they do today; the export format and the LY spec are unchanged.</li><li>A shape import still needs its notehead element marked id=&quot;notehead&quot; (the toolkit's contract); the importer does not guess which element is the notehead in an unmarked file.</li><li>Saved configs and already-imported shapes are not re-normalised; only a new import is.</li><li>Fill rules, compound paths' holes, scripts and external references are not interpreted or followed: the path is stored with its own fill rule, and nothing is fetched.</li><li>The tutorial itself, the step-by-step navigation and the AI support are later sessions (63 onwards); this session only checks the clef file in where the tutorial will download it.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[13:29:14]</span> <span class="muted">run-started</span> session=062 mode=pull</div>
+<div class="line"><span class="at">[13:29:14]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[13:32:32]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[13:32:32]</span> <span class="muted">plan-accepted</span> steps=[&quot;normalise&quot;,&quot;import&quot;,&quot;c-clef&quot;,&quot;uat&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[13:32:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[13:32:34]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=normalise</div>
+<div class="line"><span class="at">[13:40:31]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:42:30]</span> <span class="muted">check-passed</span> step=normalise argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[13:42:31]</span> <span class="muted">report-accepted</span> seq=2 step=normalise files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=normalizePath (all SVG 1.1 commands, arcs within 0.01 after the matrix), shapeToPath (rect/rounded, circle, ellipse, polygon, polyline), skewX/skewY in transforms; tests added</div>
+<div class="line"><span class="at">[13:42:31]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=import</div>
+<div class="line"><span class="at">[13:49:24]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:51:34]</span> <span class="muted">check-passed</span> step=import argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[13:51:35]</span> <span class="muted">report-accepted</span> seq=3 step=import files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;,&quot;cnb/tests/svg-stub.js&quot;] notes=extract/extractClef read each element through its composed transform (stem rects too), basic shapes accepted, clef fallback takes drawn shapes outside defs; text/use/image/nested svg, no-fill paths, clip-path/mask/filter refused by name; toolkit output byte for byte; stub builds the tree</div>
+<div class="line"><span class="at">[13:51:35]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=c-clef</div>
+<div class="line"><span class="at">[13:55:43]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:57:50]</span> <span class="muted">check-passed</span> step=c-clef argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[13:57:50]</span> <span class="muted">check-passed</span> step=c-clef argv=[&quot;git&quot;,&quot;diff&quot;,&quot;--exit-code&quot;,&quot;--&quot;,&quot;cnb/fixtures&quot;]</div>
+<div class="line"><span class="at">[13:57:51]</span> <span class="muted">report-accepted</span> seq=4 step=c-clef files=[&quot;docs/playbook/tutorial/downloads/c-clef.svg&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=c-clef.svg checked in (layer transform, relative commands, arcs kept; styles reduced to fill:#000000; its page fitted to its drawing, 74.8739 x 100.2604 as Chromium's getBBox measures it, since Inkscape's page was 0.13/0.26 short of the ink); test: imports as absolute M/L/C/Z, box on the drawn extent within 0.01; baselines unchanged</div>
+<div class="line"><span class="at">[13:57:51]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=uat</div>
+<div class="line"><span class="at">[13:58:49]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:58:51]</span> <span class="muted">check-passed</span> step=uat argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;]</div>
+<div class="line"><span class="at">[13:58:51]</span> <span class="muted">report-accepted</span> seq=5 step=uat files=[&quot;cnb/uat/uat-clef-editor.mjs&quot;] notes=uat-clef-editor imports c-clef.svg through the clef panel: box = Chromium's getBBox of the file within 0.01, canvas transform and path parity, export = generate(), engraved top/bottom within 0.001 staff spaces (engine-probe measureClef); 54/54 checks passed locally</div>
+<div class="line"><span class="at">[13:58:51]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[13:59:27]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:59:30]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Stroke to Path/.test(r)||!/c-clef\\.svg/.test(r)||!/Object to Path/.test(a)){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[13:59:30]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=README import section: hand-drawn files, what is read, what is refused and the Inkscape command for each, fit the page to the drawing, c-clef.svg; architecture plan §4.12 note and Module 16 row</div>
+<div class="line"><span class="at">[13:59:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[13:59:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[13:59:31]</span> <span class="muted">job-started</span> name=verification pid=17776 log=.dabbler/runs/s62/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:01:39]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s62/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:01:39]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[14:01:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[14:01:39]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=4</div>
+<div class="line"><span class="at">[14:02:01]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[14:02:01]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2,3] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:3,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[14:02:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[14:02:01]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[14:06:08]</span> <span class="muted">run-resumed</span> session=062 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=normalise</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=import</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=c-clef</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;git&quot;,&quot;diff&quot;,&quot;--exit-code&quot;,&quot;--&quot;,&quot;cnb/fixtures&quot;] owner=c-clef</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;] owner=uat</div>
+<div class="line"><span class="at">[14:13:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Stroke to Path/.test(r)||!/c-clef\\.svg/.test(r)||!/Object to Path/.test(a)){console.error('documents not updated');process.exit(1)}&quot;] owner=docs</div>
+<div class="line"><span class="at">[14:13:05]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;,&quot;docs/playbook/tutorial/downloads/c-clef.svg&quot;] notes=[0] a data-lilypond-* path on an element drawn through a transform is dropped with a warning (notehead, hollow, clef pieces), so the export converts the transformed SVG path; [1] rect ry defaults from rx as given, then each clamped; [2] c-clef.svg replaced by the operator's revised file (one path, 100 units tall, page fitted) with every style attribute removed; [3] regression tests: transformed pre-baked notehead/hollow dropped and the export draws the moved path, clef piece likewise; rx-only and ry-only rects. Clef UAT 54/54 incl. engraving.</div>
+<div class="line"><span class="at">[14:13:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:13:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:13:06]</span> <span class="muted">job-started</span> name=verification pid=58956 log=.dabbler/runs/s62/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:13:54]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s62/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:13:54]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[14:13:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[14:13:55]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[14:13:56]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=42672 log=.dabbler/runs/s62/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[14:16:42]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s62/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[14:16:42]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[14:16:43]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=9040 log=.dabbler/runs/s62/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[14:18:15]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s62/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[14:18:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[14:18:22]</span> <span class="muted">landed</span> commit=d66a2fd4fff4debf5a79dc25453cc1c79601139d</div>
+<div class="line"><span class="at">[14:18:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[14:18:23]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[14:18:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[14:18:24]</span> <span class="muted">job-started</span> name=close pid=55912 log=.dabbler/runs/s62/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:18:37]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s62/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:18:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Transformed SVG geometry and retained pre-baked LilyPond geometry diverge**</td><td>fixed — [0] a data-lilypond-* path on an element drawn through a transform is dropped with a warning (notehead, hollow, clef pieces), so the export converts the transformed SVG path; [1] rect ry defaults from rx as given, then each clamped; [2] c-clef.svg replaced by the operator's revised file (one path, 100 units tall, page fitted) with every style attribute removed; [3] regression tests: transformed pre-baked notehead/hollow dropped and the export draws the moved path, clef piece likewise; rx-only and ry-only rects. Clef UAT 54/54 incl. engraving. — (cnb/ui/svg-importer.js, cnb/tests/cnb-svg-importer-tests.js, docs/playbook/tutorial/downloads/c-clef.svg)</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Rounded rectangles with only `rx` can be converted with the wrong `ry`. In `shapeToPath()`, `rx` is clamped before `ry ?? rx` is evaluated.</td><td>fixed — [0] a data-lilypond-* path on an element drawn through a transform is dropped with a warning (notehead, hollow, clef pieces), so the export converts the transformed SVG path; [1] rect ry defaults from rx as given, then each clamped; [2] c-clef.svg replaced by the operator's revised file (one path, 100 units tall, page fitted) with every style attribute removed; [3] regression tests: transformed pre-baked notehead/hollow dropped and the export draws the moved path, clef piece likewise; rx-only and ry-only rects. Clef UAT 54/54 incl. engraving. — (cnb/ui/svg-importer.js, cnb/tests/cnb-svg-importer-tests.js, docs/playbook/tutorial/downloads/c-clef.svg)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The promised removal of the tutorial SVG’s leftover style properties is incomplete. `docs/playbook/tutorial/downloads/c-clef.svg` still contains `style=&quot;fill:#000000&quot;` on both paths, despite black being SVG’s default fill and the task requiring its leftover style properties removed.</td><td>fixed — [0] a data-lilypond-* path on an element drawn through a transform is dropped with a warning (notehead, hollow, clef pieces), so the export converts the transformed SVG path; [1] rect ry defaults from rx as given, then each clamped; [2] c-clef.svg replaced by the operator's revised file (one path, 100 units tall, page fitted) with every style attribute removed; [3] regression tests: transformed pre-baked notehead/hollow dropped and the export draws the moved path, clef piece likewise; rx-only and ry-only rects. Clef UAT 54/54 incl. engraving. — (cnb/ui/svg-importer.js, cnb/tests/cnb-svg-importer-tests.js, docs/playbook/tutorial/downloads/c-clef.svg)</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** Add a regression test for the blocking scenario: start with a toolkit-style `#notehead` containing both `d` and `data-lilypond-notehead`, place it below `&lt;g transform=&quot;translate(...)&quot;&gt;`, import/build/export it, and assert the selected LilyPond geometry is not the original untransformed pre-baked path. Today `shape.lilypondPath` remains derived from the unchanged attribute.</td><td>fixed — [0] a data-lilypond-* path on an element drawn through a transform is dropped with a warning (notehead, hollow, clef pieces), so the export converts the transformed SVG path; [1] rect ry defaults from rx as given, then each clamped; [2] c-clef.svg replaced by the operator's revised file (one path, 100 units tall, page fitted) with every style attribute removed; [3] regression tests: transformed pre-baked notehead/hollow dropped and the export draws the moved path, clef piece likewise; rx-only and ry-only rects. Clef UAT 54/54 incl. engraving. — (cnb/ui/svg-importer.js, cnb/tests/cnb-svg-importer-tests.js, docs/playbook/tutorial/downloads/c-clef.svg)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `importedPath()` marks a path as `transformed` when any `transform` attribute is present, including identity or cancelling transforms such as `&lt;g transform=&quot;translate(10 0)&quot;&gt;&lt;path transform=&quot;translate(-10 0)&quot; ...&gt;`. `extract()` and `extractClef()` then discard valid pre-baked LilyPond geometry despite the final SVG geometry being unchanged. Add a test with `transform=&quot;translate(0 0)&quot;` and `data-lilypond-notehead`; it should retain the attribute without a warning, while today it drops it and falls back to SVG-path conversion.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>163s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>90s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

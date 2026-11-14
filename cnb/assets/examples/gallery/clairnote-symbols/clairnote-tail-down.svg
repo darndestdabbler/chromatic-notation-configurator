@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="111.873" height="82.591" viewBox="-156.567 15.412 111.873 82.591">
+  <!-- Session 55: the Clairnote gallery files' sharp tail, the flat tail
+       (clairnote-tail-up.svg) mirrored: it leaves the dot down and to the
+       left at 30 degrees, in music-glyph-toolkit output format. Its origin is
+       the dot's centre, which the gallery files set as its reference point. -->
+  <path id="notehead"
+        d="M -62.694 15.412 L -147.564 64.412 C -156.174 69.382 -159.123 80.39 -154.153 89 C -149.182 97.61 -138.174 100.559 -129.564 95.588 L -44.694 46.588 Z"
+        data-semitone-height="0.82591"
+        style="fill:#000000;stroke:none"/>
+</svg>
