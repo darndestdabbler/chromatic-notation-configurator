@@ -444,6 +444,10 @@ edge of the hole, so a stem never crosses the hollow.
 Two operator-facing guides under [`docs/playbook/`](docs/playbook/) cover the
 design workflow end to end:
 
+- **[Tutorial](docs/playbook/tutorial/index.html)** — one notation built from
+  start to finish, a notehead drawn in Inkscape to an engraved score, one
+  section per step of the Configurator with a picture of each (on the site
+  at `/tutorial/`, linked from the app's header).
 - **[Notation-builder playbook](docs/playbook/notation-builder-playbook.md)** —
   the platform model, what the platform can and cannot express (five
   architectural invariants, with exemplar systems and evidence), how much of the

@@ -79,7 +79,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 65 | Key-signature steps 6 and 7 | no | 2026-11-13 |
 | 66 | Key-signature steps 8 and 9 | no | 2026-11-13 |
 | 67 | The walk-through | no | 2026-11-13 |
-| 68 | The tutorial | — | not declared |
+| 68 | The tutorial | no | 2026-11-14 |
 | 69 | The UI is stable | — | not declared |
 | 70 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
@@ -695,3 +695,9 @@ Build the stepped UI's golden-path UAT, the walk-through of step-by-step design 
 **Amended after acceptance:**
 
 - 2026-11-14 — step 'shots': its files: The walk-through saves its downloaded config and .ly into the screenshot directory, so a run with CNB_UAT_TUTORIAL_SHOTS would put them in docs/playbook/tutorial/shots; the driver must save downloads to a temporary directory instead. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 68 — The tutorial
+
+**Releasable: no.**
+
+Write the tutorial of step-by-step design §7: one HTML page, docs/playbook/tutorial/index.html, self-contained (inline styles, no script, nothing fetched from elsewhere), with relative links to its shots/ and downloads/ beside it, which build the tutorial notation of §5 from start to finish. Its sections: Before you start (what it builds, with the finished notation's picture; Inkscape and the Music Glyph Toolkit; the downloads, and taking the finished diamond.svg to skip the drawing); Drawing the notehead, the draft of docs/planning/tutorial-drawing-chapter.md folded in as the operator's drawing in session 67 left it; one section per step headed "N. title" in the registry's order and words (cnb/ui/steps.js), each saying what the step is for, what to do in it for this notation (as uat-tutorial.mjs does it) and the walk-through's screenshot (step 5 both, step 4 explaining why C hangs below the C♯ ledger, step 7 skipped and why, step 8 crediting Clairnote); Optional: a custom key-signature symbol, with its screenshots; and Engraving it, the exported .ly with a short score through the engine as the README describes. cnb-steps-tests.js holds the page to the registry: its step headings are the registry's numbers and titles in order, each step section shows its NN-<id>.png, and every relative link and image on the page names a file that exists. cnb/site/assemble-site.mjs copies the folder to /tutorial/ on the site; the app's header links to it (tutorial/), and the README and the notation-builder playbook link to it; uat-site.mjs loads /tutorial/ on the assembled site (its pictures and downloads served, no failed request), follows the header's link to it, and opens the page from the repository over file:// with every picture loaded and every download link resolving.

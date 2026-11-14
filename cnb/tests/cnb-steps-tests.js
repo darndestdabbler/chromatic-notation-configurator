@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const GALLERY_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "examples", "gallery");
+const TUTORIAL_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "docs", "playbook", "tutorial");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -315,6 +316,40 @@ export const tests = [
       // STAGES is written out by hand in the driver (design §4, §6), so a
       // step renamed or reordered in the registry and not there fails here.
       eq(STAGES, ids(), "STAGES");
+    },
+  },
+  {
+    name: "the tutorial (docs/playbook/tutorial/index.html): one section per step, headed \"N. title\" in the registry's order and words, each showing the walk-through's NN-<id>.png",
+    fn: () => {
+      const html = fs.readFileSync(path.join(TUTORIAL_DIR, "index.html"), "utf8");
+      const sections = [...html.matchAll(/<section id="step-([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)];
+      eq(sections.map(m => m[1]), ids(), "step section ids");
+      const plain = (s) => s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+      eq(sections.map(m => plain((m[2].match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [])[1] || "")),
+        CNBSteps.map(s => `${s.number}. ${s.title}`), "step headings");
+      for (const [i, m] of sections.entries()) {
+        const shot = `shots/${String(CNBSteps[i].number).padStart(2, "0")}-${CNBSteps[i].id}.png`;
+        assert(m[2].includes(`src="${shot}"`), `${m[1]} shows ${shot}`);
+      }
+    },
+  },
+  {
+    name: "the tutorial: every image and relative link names a file beside it, and every picture has alt text",
+    fn: () => {
+      const html = fs.readFileSync(path.join(TUTORIAL_DIR, "index.html"), "utf8");
+      const refs = [...html.matchAll(/\b(?:src|href)="([^"]*)"/g)].map(m => m[1])
+        .filter(u => !/^(?:[a-z]+:|#)/i.test(u));
+      assert(refs.length > 0, "the page links to its pictures and downloads");
+      const missing = refs.filter(u => !fs.existsSync(path.join(TUTORIAL_DIR, decodeURIComponent(u.split("#")[0]))));
+      eq(missing, [], "links to missing files");
+      const images = [...html.matchAll(/<img\b[^>]*>/g)].map(m => m[0]);
+      eq(images.filter(img => !/\balt="[^"]+"/.test(img)), [], "images without alt text");
+      for (const file of fs.readdirSync(path.join(TUTORIAL_DIR, "shots"))) {
+        assert(refs.includes(`shots/${file}`), `the page shows shots/${file}`);
+      }
+      for (const file of fs.readdirSync(path.join(TUTORIAL_DIR, "downloads"))) {
+        assert(refs.includes(`downloads/${file}`), `the page links downloads/${file}`);
+      }
     },
   },
 ];

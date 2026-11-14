@@ -10,6 +10,11 @@
  *    site, and the labels are drawn in it.
  * 2. Loads the working tree's cnb/index.html over file://: the notice is
  *    visible and links to the live site.
+ * 3. The tutorial (session 68): on the assembled site the header's Tutorial
+ *    link leads to /tutorial/, whose every picture loads and every download
+ *    answers, with no error or failed request; opened from the repository
+ *    (docs/playbook/tutorial/index.html over file://), every picture loads
+ *    and every relative link names a file that exists.
  *
  * Usage: node cnb/uat/uat-site.mjs
  *
@@ -105,6 +110,7 @@ if (assembled.status !== 0) {
 const MIME = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
   ".svg": "image/svg+xml", ".json": "application/json", ".ttf": "font/ttf",
+  ".png": "image/png", ".ly": "text/plain",
 };
 const server = http.createServer(async (req, res) => {
   try {
@@ -197,6 +203,58 @@ async function newPage() {
   check("FILE: the notice gives the two local commands and the page to open",
     text.includes("npx serve .") && text.includes("python -m http.server 8000") &&
     text.includes("/cnb/ on that server"), text);
+  await page.close();
+}
+
+// ── 3. The tutorial, on the site and from the repository (session 68) ───────
+/** The page's pictures (each loaded or not) and its relative links,
+ *  resolved against the page. */
+const tutorialParts = (page) => page.evaluate(async () => {
+  await Promise.all([...document.images].map(img => img.decode().catch(() => {})));
+  return {
+    title: document.title,
+    steps: document.querySelectorAll('section[id^="step-"]').length,
+    images: [...document.images].map(img => ({ src: img.src, ok: img.complete && img.naturalWidth > 0 })),
+    links: [...document.querySelectorAll("a[href]")]
+      .filter(a => !/^(?:[a-z]+:|#)/i.test(a.getAttribute("href")))
+      .map(a => a.href.split("#")[0]),
+  };
+});
+{
+  const { page, errors } = await newPage();
+  await page.goto(`http://localhost:${PORT}/`, { waitUntil: "load" });
+  const link = await page.$("#tutorial-link");
+  const href = link && await link.evaluate(a => a.href);
+  check('TUTORIAL: the header\'s Tutorial link leads to "/tutorial/"', href === `http://localhost:${PORT}/tutorial/`, String(href));
+  await page.goto(`http://localhost:${PORT}/tutorial/`, { waitUntil: "load" });
+  const parts = await tutorialParts(page);
+  check("TUTORIAL: /tutorial/ serves the tutorial, a section for each of the twelve steps",
+    parts.title === "Configurator Tutorial" && parts.steps === 12, JSON.stringify({ title: parts.title, steps: parts.steps }));
+  const broken = parts.images.filter(i => !i.ok).map(i => i.src);
+  check("TUTORIAL: every picture on /tutorial/ loads", parts.images.length > 0 && broken.length === 0, broken.join(" | "));
+  const downloads = [...new Set(parts.links.filter(u => u.includes("/tutorial/downloads/")))];
+  const failed = [];
+  for (const u of downloads) {
+    const status = await page.evaluate(async (u) => (await fetch(u)).status, u);
+    if (status !== 200) failed.push(`${status} ${u}`);
+  }
+  check("TUTORIAL: every download on /tutorial/ answers 200", downloads.length >= 6 && failed.length === 0,
+    `${downloads.length} downloads; ${failed.join(" | ")}`);
+  check("TUTORIAL: no page errors, console errors or failed requests on /tutorial/", errors.length === 0, errors.join(" | "));
+  await page.close();
+}
+{
+  const { page, errors } = await newPage();
+  await page.goto(pathToFileURL(path.join(CNB, "..", "docs", "playbook", "tutorial", "index.html")).href, { waitUntil: "load" });
+  const parts = await tutorialParts(page);
+  check("TUTORIAL (repository): the page opens over file://, a section for each of the twelve steps",
+    parts.title === "Configurator Tutorial" && parts.steps === 12, JSON.stringify({ title: parts.title, steps: parts.steps }));
+  const broken = parts.images.filter(i => !i.ok).map(i => i.src);
+  check("TUTORIAL (repository): every picture loads", parts.images.length > 0 && broken.length === 0, broken.join(" | "));
+  const missing = [...new Set(parts.links)].filter(u => !existsSync(fileURLToPath(u)));
+  check("TUTORIAL (repository): every relative link names a file that exists",
+    parts.links.length > 0 && missing.length === 0, missing.join(" | "));
+  check("TUTORIAL (repository): no page errors or console errors", errors.length === 0, errors.join(" | "));
   await page.close();
 }
 

@@ -9,6 +9,10 @@ Notation Configurator.**
 > AI-assisted workflow guide (`ai-assisted-workflow.md`) covers where an AI
 > assistant helps at specific steps.
 >
+> **New to the Configurator?** Start with the [tutorial](tutorial/index.html):
+> one notation built from start to finish, through each of the Configurator's
+> twelve steps, with a picture of each.
+>
 > **How claims are grounded.** Every "the platform can do X" statement below
 > cites the config schema, a source module, or a checked-in example fixture.
 > Every "the platform cannot do X" statement cites a named *invariant* of the
