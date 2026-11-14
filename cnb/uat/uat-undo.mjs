@@ -29,7 +29,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection, selectNotehead, useDownloads } from "./app-page.mjs";
+import { openSection, selectNotehead, startAfresh, useDownloads } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -234,8 +234,8 @@ await page.click("#redo-config");
 check("OPEN: redo opens it again", (await state()) === opened);
 
 // ── 6. Save adds no step ────────────────────────────────────────────────────
-await page.reload();
-await page.waitForSelector(".cnb-pvd-preview .pc-col");
+// A fresh page (a reload would restore the kept notation, session 71).
+await startAfresh(page);
 const fresh = await state();
 await openSection(page, "staff");
 await page.click('[data-panel="staff"] .cnb-sre-pattern-option:not(.selected)');

@@ -325,6 +325,14 @@ summary:focus-visible, [tabindex]:focus-visible {
   color: var(--accent); font-size: 13px; font-weight: 600;
 }
 .checks-link:hover { text-decoration: underline; }
+/* Step 8 opened from a key in step 9 (session 71): back to every key, a
+   button that reads as a link. */
+.back-to-keys {
+  display: block; min-height: 0; padding: 0; margin-bottom: var(--space-3);
+  border: 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600;
+}
+.back-to-keys:hover { text-decoration: underline; }
+.back-to-keys[hidden] { display: none; }
 .checks-note { padding: var(--space-3) var(--space-4); color: var(--ink-2); font-size: 12px; }
 
 /* The editors' own validation lists: the checks list says it once. */

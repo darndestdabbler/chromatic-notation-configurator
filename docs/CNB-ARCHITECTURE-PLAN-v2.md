@@ -1788,7 +1788,7 @@ Detailed specifications deferred. Summary:
 | 16 — SVG Shape Importer | Parse SVG for paths, anchors, LY data attributes | SVG importer |
 | 17 — Config Save/Load | JSON export/import | New |
 | 18 — Config Export (LY) | LilyPond file download (wraps Module 11) | LY export button |
-| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`) | New (replaces monolith preview) |
+| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`); since session 71 each step opened is an entry in the browser's history, its id after the address's `#` (`CNBStepNav.fromHash`), so Back and Forward move between steps and an address with a step opens it, the notation in progress is kept in the browser after every change with its step and whether it is saved to a file (`ui/kept-work.js`, `CNBKeptWork`, localStorage guarded) and restored through `CNBConfigIO.mergeLoaded` when the page opens again, **New** starts afresh, New and leaving the page (`beforeunload`) ask first while it is not saved, and step 8 opened from a key in step 9 shows **Back to every key**, its history entry marked `fromKeys` | New (replaces monolith preview) |
 
 ---
 
@@ -2203,6 +2203,7 @@ cnb/
 │   ├── config-io.js
 │   ├── preview-display.js
 │   ├── steps.js                 (session 63; the step registry: the twelve steps, their order, availability, Next and Back)
+│   ├── kept-work.js             (session 71; the notation in progress, kept in the browser)
 │   └── app.js
 │
 ├── assets/

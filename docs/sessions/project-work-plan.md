@@ -82,7 +82,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 68 | The tutorial | no | 2026-11-14 |
 | 69 | The UI is stable | no | 2026-11-14 |
 | 70 | Ledgers by one rule | no | 2026-11-14 |
-| 71 | Back, Forward and work kept | — | not declared |
+| 71 | Back, Forward and work kept | no | 2026-11-14 |
 | 72 | A repeated minim's stem on its notehead | — | not declared |
 | 73 | The UI is stable, a second try | — | not declared |
 | 74 | Release 1.1.0 (release: 1.1.0) | — | not declared |
@@ -723,3 +723,9 @@ Make the ledger lines follow one rule, as the operator chose (docs/planning/ledg
 - 2026-11-14 — step 'pins': its files: The new rule changes no pinned probe: every preview and key-signature baseline still matches, and a script outside the tree found every gallery file's ledgers for semitones 0-24 unchanged; only the tutorial's export (its C ledgers) changes. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-14 — step 'tutorial': its files: Every canvas, spelled-notes grid and signature that draws a C changed (pixel diff against HEAD; 01-notehead-height is identical), so 16 shots changed, not 7; tutorial.json differed only in its timestamps and was restored; tutorial.ly is unchanged from the pins step. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-14 — step 'uat-drivers': its files: The full UAT failed only in uat-staff-rule-editor.mjs (it added rules after choosing 3-6-9); golden-path, kite-pipeline, config-export, pitch and app-layout pass unchanged. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 71 — Back, Forward and work kept
+
+**Releasable: no.**
+
+Stop the browser's Back button losing the notation, and give step 8 a clear way back to the key preview (docs/uat-status.md, session 69, rough edges 6 and 7). In cnb/index.html each step opened becomes an entry in the browser's history, the step's id after the address's '#' (CNBStepNav.fromHash in cnb/ui/steps.js reads one back), so Back and Forward move between the steps opened and a page opened at an address with an available step opens it. The notation in progress is kept in the browser after each change, with its step and whether it has been saved to a file, by a small module cnb/ui/kept-work.js (localStorage, every access guarded as the canvas Size is; blocked or broken storage keeps nothing and restores nothing); a page opened again restores it through CNBConfigIO.mergeLoaded, as an opened file is checked, and a kept notation that cannot be loaded is dropped for the default. A New button in the top bar starts afresh (the default notation at step 1, the kept work cleared), asking first when the notation has changes not saved; leaving the page with such changes asks first through beforeunload. Save completed and Open mark the notation saved. Step 8 opened from a key in step 9 records that in its history entry and shows 'Back to every key' above its canvas, which goes back as the browser's Back does. A new browser UAT driver covers Back, Forward, an address with a step, a reload restoring the work and its step, the leave warning, New, and the link; the other drivers follow where the kept work or the warning changes what they see, and the full UAT passes. The README and the architecture plan say what the page now does.

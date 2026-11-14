@@ -20,6 +20,10 @@
  *
  * The registry is data: it imports no editor. The order is suggested, not
  * enforced: every available step can be opened at any time.
+ *
+ * Since session 71 the open step is in the page's address, its id after the
+ * '#' (Advanced's "advanced"), so the browser's Back and Forward move
+ * between steps; CNBStepNav.fromHash reads it back.
  */
 
 import { CNBClef } from "../src/cnb-clef.js";
@@ -116,6 +120,20 @@ export const CNBStepNav = {
   /** Which of step 6's starting points the signature is exactly:
    *  "noteheads", "traditional" or null (session 65, design §3.1). */
   startingPoint,
+
+  /**
+   * The step an address's hash names (session 71): the page puts the open
+   * step's id after the '#', so Back and Forward move between steps.
+   * "#staff" and "staff" alike give "staff", "#advanced" gives "advanced";
+   * an empty, unknown or non-string hash gives null.
+   * @param {string} hash
+   * @returns {string|null}
+   */
+  fromHash(hash) {
+    if (typeof hash !== "string") return null;
+    const id = hash.startsWith("#") ? hash.slice(1) : hash;
+    return id === ADVANCED.id || CNBStepNav.byId(id) ? id : null;
+  },
 
   /** A step by its id, or null. */
   byId(id) {

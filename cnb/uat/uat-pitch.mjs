@@ -46,7 +46,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { openSection, selectNotehead, setField, useDownloads } from "./app-page.mjs";
+import { openSection, selectNotehead, setField, startAfresh, useDownloads } from "./app-page.mjs";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBPitchAxis } from "../src/cnb-pitch-axis.js";
 import { CNBConfigIO } from "../ui/config-io.js";
@@ -309,8 +309,8 @@ check("CUSTOM: its button opens Advanced › Pitch axis map",
   await page.isVisible('[data-panel="advanced"]') && await page.$eval("#pitch-axis-map", d => d.open));
 
 // ── Nudging C and dragging a notehead (session 43) ──────────────────────────
-await page.reload();
-await page.waitForSelector(".cnb-pvd-preview .pc-col");
+// The default notation (a reload would restore the kept one, session 71).
+await startAfresh(page);
 await openSection(page, "pitch");
 const cField = '.cnb-pp-nudge[data-pc="0"] .cnb-pp-nudge-field';
 check("NUDGE C: no sliders, and C's field, the middle of the staff, is enabled",
@@ -345,8 +345,7 @@ check("DRAG NOTEHEAD: the drag does not select: the Pitch section stays open",
 await page.screenshot({ path: path.join(SHOT_DIR, "pitch-nudges-framed.png"), fullPage: true });
 
 // ── Renaming C to F♯ on the default staff ───────────────────────────────────
-await page.reload();
-await page.waitForSelector(".cnb-pvd-preview .pc-col");
+await startAfresh(page);
 await selectNotehead(page, 0);
 check("RENAME: the notehead panel names the notehead C",
   (await page.inputValue(".cnb-nhp-name-select")) === "0");

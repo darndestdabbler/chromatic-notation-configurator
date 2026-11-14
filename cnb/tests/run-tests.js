@@ -56,6 +56,7 @@ const TEST_FILES = [
   "./cnb-config-export-tests.js",
   "./cnb-save-file-tests.js",
   "./cnb-history-tests.js",
+  "./cnb-kept-work-tests.js",
   "./cnb-checks-wording-tests.js",
   "./cnb-preview-display-tests.js",
   "./cnb-steps-tests.js",

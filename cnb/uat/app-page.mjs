@@ -14,6 +14,28 @@
  * module, which the drivers import, is named app-page.mjs.
  */
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
+import { CNBKeptWork } from "../ui/kept-work.js";
+
+/**
+ * Open the app afresh, as on a first visit (session 71): the notation kept
+ * in the browser forgotten and the page loaded again at its address without
+ * a step, so it opens the default notation at step 1. A reload would
+ * restore the kept notation at its step. A leave warning (beforeunload) is
+ * accepted.
+ */
+export async function startAfresh(page) {
+  await page.evaluate((key) => {
+    try { localStorage.removeItem(key); } catch { /* blocked: nothing kept */ }
+  }, CNBKeptWork.STORAGE_KEY);
+  const accept = (dialog) => { if (dialog.type() === "beforeunload") dialog.accept(); };
+  page.on("dialog", accept);
+  try {
+    await page.goto(page.url().split("#")[0]);
+  } finally {
+    page.off("dialog", accept);
+  }
+  await page.waitForSelector(".cnb-pvd-preview .pc-col");
+}
 
 /**
  * Before the page loads: draw the canvas at this Size ("small", "medium"

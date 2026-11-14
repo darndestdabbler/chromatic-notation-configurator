@@ -142,7 +142,9 @@ the UI again (`docs/sessions/session-plan.md`).
    (`ledgersFor` gives semitone 12 the ledgers 13 and 23), centred on the
    first stack. The same fix removes it; the signature canvas and its
    mark-table export read `ledgersFor`, so nothing else changes there.
-6. **The browser's Back button loses the notation** (*planned*, session 71). The
+6. **The browser's Back button loses the notation** (*fixed*, session 71, as
+   the fix below says, with New in the top bar to start afresh;
+   `cnb/uat/uat-back-forward.mjs` covers it). The
    operator pressed it by accident and the page went, with everything
    designed and no warning. The app keeps no history of its own, so Back
    leaves it. The fix: each step opened becomes an entry in the browser's
@@ -152,7 +154,8 @@ the UI again (`docs/sessions/session-plan.md`).
    operator asked, the notation in progress is kept in the browser
    (`localStorage`, every access guarded, as the canvas size is) after each
    change, and a page opened again restores it, with the step it was on.
-7. **No way back from a key to the key preview** (*planned*, session 71). The key
+7. **No way back from a key to the key preview** (*fixed*, session 71, as
+   the fix below says; `cnb/uat/uat-back-forward.mjs` covers it). The key
    preview (step 9, session 66) looked good, and a click on a key opens it
    enlarged in the designer (step 8), which is good, but the way back is
    only step 8's Next, at the bottom of the page, which does not say it

@@ -40,6 +40,7 @@
     <a id="tutorial-link" class="topbar-link" href="tutorial/" target="_blank" rel="noopener">Tutorial</a>
     <button type="button" id="undo-config" class="btn-ghost" title="Undo (Ctrl+Z)" disabled>Undo</button>
     <button type="button" id="redo-config" class="btn-ghost" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
+    <button type="button" id="new-config" class="btn-ghost">New</button>
     <button type="button" id="open-config" class="btn-ghost">Open…</button>
     <input type="file" id="open-file" accept=".json,application/json" hidden>
     <button type="button" id="save-config">Save</button>
@@ -120,7 +121,11 @@
 
         <section class="card panel" data-panel="ks-designer" hidden>
           <div class="card-head"><h2>Key signature designer</h2><span class="sub">Which notes, how they stack, the gold stem and the place</span></div>
-          <div class="card-body"><div id="ks-designer-host"></div></div>
+          <div class="card-body">
+            <!-- Shown when a key in step 9 opened this step (session 71). -->
+            <button type="button" id="back-to-keys" class="back-to-keys" hidden>← Back to every key</button>
+            <div id="ks-designer-host"></div>
+          </div>
         </section>
 
         <section class="card panel" data-panel="ks-preview" hidden>
@@ -214,12 +219,52 @@
     import { CNBSaveFile } from "./ui/save-file.js";
     import { CNBHistory } from "./ui/history.js";
     import { CNBSteps, CNBStepNav } from "./ui/steps.js";
+    import { CNBKeptWork } from "./ui/kept-work.js";
 
     // ── Shared state ─────────────────────────────────────────────────────
     // The page (UI shell) owns the single shared config object. Editors
     // write slices into it via onChange; the preview/IO/export panels read
     // it via getConfig accessors and are redrawn after every change.
     let appConfig = CNBConfig.createDefault();
+
+    // ── The work kept in the browser (session 71) ────────────────────────
+    // The notation, its step and whether it is saved to a file are kept in
+    // localStorage after every change and every step opened, and a page
+    // opened again restores them, checked as an opened file is. The kept
+    // work is cleared while the page starts and kept again once it has, so
+    // a notation the page cannot draw is not restored a second time.
+    // `saved`: no change since the last Save or Open (the untouched default
+    // is saved); leaving the page or New asks first while it is not.
+    function browserStorage() {
+      try {
+        return globalThis.localStorage ?? null;
+      } catch {
+        return null;
+      }
+    }
+    const storage = browserStorage();
+    let saved = true;
+    let keptStep = null;
+    let started = false;
+    const kept = CNBKeptWork.read(storage);
+    CNBKeptWork.clear(storage);
+    if (kept) {
+      try {
+        appConfig = CNBConfigIO.mergeLoaded(kept.config).config;
+        saved = kept.saved;
+        keptStep = kept.step;
+      } catch {
+        appConfig = CNBConfig.createDefault();
+      }
+    }
+    function keepWork() {
+      if (started) CNBKeptWork.keep(storage, { config: appConfig, step: currentSection, saved });
+    }
+    window.addEventListener("beforeunload", (e) => {
+      if (saved) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
 
     const byId = (id) => document.getElementById(id);
     const stateJson = byId("state-json");
@@ -257,9 +302,24 @@
       CNBStepNav.renderBar(stepBar, opts);
       stepBar.hidden = !CNBStepNav.byId(currentSection);
     }
-    function showSection(name) {
+    // Since session 71 each step opened is an entry in the browser's history,
+    // its id after the address's '#', so Back and Forward move between steps
+    // (a popstate opens the entry's step without adding one). how: "push" (a
+    // step the designer opens), "replace" (the page moving off a step, or
+    // starting) or "none" (Back or Forward). fromKeys: step 8 opened from a
+    // key in step 9, recorded in its entry, which shows Back to every key.
+    function showSection(name, { how = "push", fromKeys = false } = {}) {
       if (CNBStepNav.byId(name) && !CNBStepNav.isAvailable(name, appConfig)) return;
       currentSection = name;
+      const hash = "#" + name;
+      const entryFromKeys = !!(history.state && history.state.fromKeys);
+      if (how !== "none" && (location.hash !== hash || (fromKeys && !entryFromKeys))) {
+        const state = fromKeys ? { fromKeys: true } : null;
+        if (how === "replace") history.replaceState(state, "", hash);
+        else history.pushState(state, "", hash);
+      }
+      byId("back-to-keys").hidden = !(name === "ks-designer" && history.state && history.state.fromKeys);
+      keepWork();
       closeNoteheadPanel();
       for (const panel of document.querySelectorAll(".panel")) {
         panel.hidden = panel.dataset.panel !== name;
@@ -279,8 +339,21 @@
     function keepStepAvailable() {
       if (!CNBStepNav.byId(currentSection) || CNBStepNav.isAvailable(currentSection, appConfig)) return;
       const back = CNBStepNav.back(currentSection, appConfig);
-      showSection(back ? back.id : CNBSteps[0].id);
+      showSection(back ? back.id : CNBSteps[0].id, { how: "replace" });
     }
+    /** A step id the page can open now (a step available, or Advanced), else null. */
+    function openable(id) {
+      id = CNBStepNav.fromHash(id);
+      return id && (!CNBStepNav.byId(id) || CNBStepNav.isAvailable(id, appConfig)) ? id : null;
+    }
+    // Back and Forward (session 71): the entry's step, or step 1 in place of
+    // one that is greyed or unknown.
+    window.addEventListener("popstate", () => {
+      const id = openable(location.hash);
+      if (id) showSection(id, { how: "none" });
+      else showSection(CNBSteps[0].id, { how: "replace" });
+    });
+    byId("back-to-keys").onclick = () => history.back();
 
     // ── The notehead panel (design §2) ───────────────────────────────────
     // A click on the canvas selects a pitch class (Shift- or Ctrl-click adds one) and
@@ -605,9 +678,10 @@
       },
     });
 
-    // The page opens on the first section; this sets the focus, which
-    // redraws the partial staffs at the canvas Size.
-    showSection("notehead-height");
+    // The page opens on the step its address names (session 71), else the
+    // kept step, else the first; this sets the focus, which redraws the
+    // partial staffs at the canvas Size.
+    showSection(openable(location.hash) || openable(keptStep) || CNBSteps[0].id, { how: "replace" });
 
     // ── The Noteheads section's rule list (design §5.4) ──────────────────
     // Hovering a line tints the canvas columns it covers.
@@ -634,7 +708,14 @@
       const pending = pendingSave;
       pendingSave = null;
       pending.then(
-        (name) => setStatus(name ? verb + " as " + name : "Not saved: the save was cancelled."),
+        (name) => {
+          setStatus(name ? verb + " as " + name : "Not saved: the save was cancelled.");
+          // A notation saved to a file needs no warning on leaving (session 71).
+          if (name && verb === "Saved") {
+            saved = true;
+            keepWork();
+          }
+        },
         (err) => setStatus(verb === "Saved" ? "Save failed: " + err.message : "Export failed: " + err.message, true));
     }
 
@@ -694,6 +775,16 @@
       else setStatus(ioError(), true);
     };
 
+    // New (session 71): the default notation at step 1, the kept work
+    // cleared, asking first while the notation has changes not saved.
+    byId("new-config").onclick = () => {
+      if (!saved && !confirm("Start a new notation? The changes not saved to a file will be lost.")) return;
+      started = false;
+      saved = true;
+      CNBKeptWork.clear(storage);
+      location.href = location.pathname + location.search;
+    };
+
     const openFile = byId("open-file");
     byId("open-config").onclick = () => openFile.click();
     openFile.onchange = () => {
@@ -702,8 +793,14 @@
       file.text().then(
         (text) => {
           const result = ioApi.loadText(text, file.name);
-          if (result) setStatus("Opened " + file.name);
-          else setStatus(ioError(), true);
+          if (result) {
+            setStatus("Opened " + file.name);
+            // The notation is the file's (session 71).
+            saved = true;
+            keepWork();
+          } else {
+            setStatus(ioError(), true);
+          }
         },
         (err) => setStatus("Open failed: could not read the file (" + err.message + ")", true)
       ).finally(() => { openFile.value = ""; });
@@ -749,8 +846,9 @@
       keepStepAvailable();
       renderSteps();
       // Last, so a config that could not be drawn is not recorded.
-      if (undoHistory && record) undoHistory.record(appConfig, inputTarget);
+      if (undoHistory && record && undoHistory.record(appConfig, inputTarget)) saved = false;
       refreshUndoButtons();
+      keepWork();
     }
 
     // ── Undo and redo (session 41) ───────────────────────────────────────
@@ -777,6 +875,7 @@
     function restore(config) {
       if (!config) return;
       appConfig = config;
+      saved = false;
       mountEditors();
       refreshShared({ record: false });
     }
@@ -843,7 +942,8 @@
           // A key picked in step 9 opens in step 8 (session 66, design §3.4).
           onKey: (picked) => {
             previewApi.setState({ key: picked });
-            if (part === "preview") showSection("ks-designer");
+            // Its history entry says so: step 8 then shows Back to every key (session 71).
+            if (part === "preview") showSection("ks-designer", { fromKeys: true });
           },
           // A look's Import from SVG (session 50): the shape is added to the
           // notation and given to that look.
@@ -1062,6 +1162,9 @@
     refreshPanel();
     refreshChecks();
     undoHistory = CNBHistory.create(appConfig);
+    // Started: from now on the work is kept (session 71).
+    started = true;
+    keepWork();
   </script>
 </body>
 </html>

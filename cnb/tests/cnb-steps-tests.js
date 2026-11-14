@@ -107,6 +107,23 @@ export const tests = [
     },
   },
   {
+    name: "CNBStepNav.fromHash: every step's id and Advanced, with and without the '#'",
+    fn: () => {
+      for (const id of [...ids(), "advanced"]) {
+        eq(CNBStepNav.fromHash("#" + id), id, `#${id}`);
+        eq(CNBStepNav.fromHash(id), id, id);
+      }
+    },
+  },
+  {
+    name: "CNBStepNav.fromHash: an empty, unknown or non-string hash gives null",
+    fn: () => {
+      for (const hash of ["", "#", "#nope", "nope", "##staff", "#Staff", null, undefined, 3, {}]) {
+        eq(CNBStepNav.fromHash(hash), null, JSON.stringify(hash));
+      }
+    },
+  },
+  {
     name: "CNBStepNav.isAvailable / reason: step 7 needs a signature of its own symbols, 8 and 9 a signature, step 11 a clef, the rest are always available",
     fn: () => {
       for (const on of ALL) {

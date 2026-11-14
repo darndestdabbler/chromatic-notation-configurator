@@ -330,7 +330,8 @@ in the steps' own **Key** picker, which is the staff's too.
    A key whose marks touch is outlined with its count, and a line above
    says in how many of the 105 keys they do and lists them (the checks warn
    too, without blocking the export). A click on a key, or on one in the
-   list, opens it in step 8.
+   list, opens it in step 8, which then shows **Back to every key** above
+   its canvas (the browser's Back does the same).
 
 **Clef**
 
@@ -366,10 +367,17 @@ Cmd on a Mac) step back and forward through the last 100 changes: an edit
 in any step, on the canvas or in the notehead panel, an imported shape,
 or an opened config. A value typed a key at a time, or a colour dragged, is
 one step. The step shown, the selection, and the canvas's Size,
-duration and key are not undone, and the history does not survive a reload.
-The browser's Back button leaves the page, and an unsaved design with it,
-so save as you go (keeping the design in the browser, and Back and Forward
-between steps, are planned).
+duration and key are not undone, and the undo history starts afresh on a
+reload.
+
+Each step opened is in the page's address (`…/cnb/#staff`), so the
+browser's **Back** and **Forward** move between the steps you opened, and
+an address with a step opens that step. The design in progress is kept in
+the browser after every change, with its step: a page reloaded or opened
+again restores it (in that browser only, so Save is still how to keep a
+design). **New** in the top bar starts afresh, from the default notation
+at step 1. New, and leaving the page, ask first while the design has
+changes not saved to a file.
 
 ### 4. Save and export
 
