@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="400.029"
+   height="400.0"
+   viewBox="-200.015 -200.000 400.029 400.000"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="45deg.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#c5c5c5"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.5152812506293863"
+     inkscape:cx="124.2040146460359"
+     inkscape:cy="432.7733635322813"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     showguides="true">
+    <sodipodi:guide
+       position="200.015,199.0000041500898"
+       orientation="1,0"
+       id="guide3"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="177.7927842848256,-200.4999937696778"
+       orientation="1,0"
+       id="guide4"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="222.2372274949701,0.5000041449021069"
+       orientation="1,0"
+       id="guide5"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       id="stem-down"
+       x="-22.22221565246582"
+       y="164.945556640625"
+       width="44.44444274902344"
+       height="350"
+       style="fill:#00ffff;stroke:none" />
+    <rect
+       id="stem-up"
+       x="-22.22221565246582"
+       y="-514.9110717773438"
+       width="44.44444274902344"
+       height="350"
+       style="fill:#ff00ff;stroke:none" />
+    <path
+       id="notehead"
+       style="fill:#56b3e9;stroke-width:1.25159;stroke-linecap:round;stroke-linejoin:round"
+       d="M 102.891 102.887 C 8.182 197.596 -114.661 228.307 -171.486 171.481 C -228.311 114.656 -197.6 -8.186 -102.892 -102.895 C -57.411 -148.376 -2.952 -181.154 48.503 -194.018 C 99.959 -206.882 144.197 -198.778 171.485 -171.49 C 228.31 -114.665 197.6 8.178 102.891 102.887 Z"
+       data-semitone-height="4.0"
+       data-lilypond-notehead="'(&#10;    (moveto 1.0289 -1.0289)&#10;    (curveto 0.0818 -1.976 -1.1466 -2.2831 -1.7149 -1.7148)&#10;    (curveto -2.2831 -1.1466 -1.976 0.0819 -1.0289 1.029)&#10;    (curveto -0.5741 1.4838 -0.0295 1.8115 0.485 1.9402)&#10;    (curveto 0.9996 2.0688 1.442 1.9878 1.7149 1.7149)&#10;    (curveto 2.2831 1.1467 1.976 -0.0818 1.0289 -1.0289)&#10;    (closepath))" />
+    <path
+       id="hollow"
+       style="fill:#ffffff;stroke-width:0.8396;stroke-linecap:round;stroke-linejoin:round"
+       d="M 51.447 51.443 C -33.791 136.681 -125.924 182.746 -154.337 154.333 C -167.982 140.688 -164.807 111.342 -145.511 72.75 C -126.216 34.158 -92.38 -10.518 -51.447 -51.451 C -10.515 -92.384 34.162 -126.22 72.754 -145.515 C 111.346 -164.811 140.692 -167.985 154.336 -154.341 C 182.75 -125.928 136.684 -33.795 51.447 51.443 Z"
+       data-lilypond-hollow="'(&#10;    (moveto 0.5145 -0.5144)&#10;    (curveto -0.3379 -1.3668 -1.2592 -1.8275 -1.5434 -1.5433)&#10;    (curveto -1.6798 -1.4069 -1.6481 -1.1134 -1.4551 -0.7275)&#10;    (curveto -1.2622 -0.3416 -0.9238 0.1052 -0.5145 0.5145)&#10;    (curveto -0.1052 0.9238 0.3416 1.2622 0.7275 1.4551)&#10;    (curveto 1.1135 1.6481 1.4069 1.6799 1.5434 1.5434)&#10;    (curveto 1.8275 1.2593 1.3668 0.338 0.5145 -0.5144)&#10;    (closepath))" />
+  </g>
+  <g
+     id="guidelines-layer"
+     inkscape:groupmode="layer"
+     inkscape:label="Semitone Guidelines"
+     style="display:inline">
+    <g
+       id="guideline-semi-iminus6"
+       inkscape:label="semitone i - 6">
+      <line
+         id="guideline-semi-iminus6-upper"
+         x1="-200.01455682289304"
+         y1="599.5"
+         x2="200.01455682289304"
+         y2="599.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus6-lower"
+         x1="-200.01455682289304"
+         y1="600.5"
+         x2="200.01455682289304"
+         y2="600.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iminus5"
+       inkscape:label="semitone i - 5">
+      <line
+         id="guideline-semi-iminus5-upper"
+         x1="-200.01455682289304"
+         y1="499.5"
+         x2="200.01455682289304"
+         y2="499.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus5-lower"
+         x1="-200.01455682289304"
+         y1="500.5"
+         x2="200.01455682289304"
+         y2="500.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iminus4"
+       inkscape:label="semitone i - 4">
+      <line
+         id="guideline-semi-iminus4-upper"
+         x1="-200.01455682289304"
+         y1="399.5"
+         x2="200.01455682289304"
+         y2="399.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus4-lower"
+         x1="-200.01455682289304"
+         y1="400.5"
+         x2="200.01455682289304"
+         y2="400.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iminus3"
+       inkscape:label="semitone i - 3">
+      <line
+         id="guideline-semi-iminus3-upper"
+         x1="-200.01455682289304"
+         y1="299.5"
+         x2="200.01455682289304"
+         y2="299.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus3-lower"
+         x1="-200.01455682289304"
+         y1="300.5"
+         x2="200.01455682289304"
+         y2="300.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iminus2"
+       inkscape:label="semitone i - 2">
+      <line
+         id="guideline-semi-iminus2-upper"
+         x1="-200.01455682289304"
+         y1="199.5"
+         x2="200.01455682289304"
+         y2="199.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus2-lower"
+         x1="-200.01455682289304"
+         y1="200.5"
+         x2="200.01455682289304"
+         y2="200.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iminus1"
+       inkscape:label="semitone i - 1">
+      <line
+         id="guideline-semi-iminus1-upper"
+         x1="-200.01455682289304"
+         y1="99.5"
+         x2="200.01455682289304"
+         y2="99.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iminus1-lower"
+         x1="-200.01455682289304"
+         y1="100.5"
+         x2="200.01455682289304"
+         y2="100.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-i"
+       inkscape:label="semitone i">
+      <line
+         id="guideline-semi-i-upper"
+         x1="-200.01455682289304"
+         y1="-0.5"
+         x2="200.01455682289304"
+         y2="-0.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-i-lower"
+         x1="-200.01455682289304"
+         y1="0.5"
+         x2="200.01455682289304"
+         y2="0.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus1"
+       inkscape:label="semitone i + 1">
+      <line
+         id="guideline-semi-iplus1-upper"
+         x1="-200.01455682289304"
+         y1="-100.5"
+         x2="200.01455682289304"
+         y2="-100.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus1-lower"
+         x1="-200.01455682289304"
+         y1="-99.5"
+         x2="200.01455682289304"
+         y2="-99.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus2"
+       inkscape:label="semitone i + 2">
+      <line
+         id="guideline-semi-iplus2-upper"
+         x1="-200.01455682289304"
+         y1="-200.5"
+         x2="200.01455682289304"
+         y2="-200.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus2-lower"
+         x1="-200.01455682289304"
+         y1="-199.5"
+         x2="200.01455682289304"
+         y2="-199.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus3"
+       inkscape:label="semitone i + 3">
+      <line
+         id="guideline-semi-iplus3-upper"
+         x1="-200.01455682289304"
+         y1="-300.5"
+         x2="200.01455682289304"
+         y2="-300.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus3-lower"
+         x1="-200.01455682289304"
+         y1="-299.5"
+         x2="200.01455682289304"
+         y2="-299.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus4"
+       inkscape:label="semitone i + 4">
+      <line
+         id="guideline-semi-iplus4-upper"
+         x1="-200.01455682289304"
+         y1="-400.5"
+         x2="200.01455682289304"
+         y2="-400.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus4-lower"
+         x1="-200.01455682289304"
+         y1="-399.5"
+         x2="200.01455682289304"
+         y2="-399.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus5"
+       inkscape:label="semitone i + 5">
+      <line
+         id="guideline-semi-iplus5-upper"
+         x1="-200.01455682289304"
+         y1="-500.5"
+         x2="200.01455682289304"
+         y2="-500.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus5-lower"
+         x1="-200.01455682289304"
+         y1="-499.5"
+         x2="200.01455682289304"
+         y2="-499.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+    <g
+       id="guideline-semi-iplus6"
+       inkscape:label="semitone i + 6">
+      <line
+         id="guideline-semi-iplus6-upper"
+         x1="-200.01455682289304"
+         y1="-600.5"
+         x2="200.01455682289304"
+         y2="-600.5"
+         style="stroke:#FF8000;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+      <line
+         id="guideline-semi-iplus6-lower"
+         x1="-200.01455682289304"
+         y1="-599.5"
+         x2="200.01455682289304"
+         y2="-599.5"
+         style="stroke:#00FF00;stroke-width:1.0;stroke-dasharray:6,4;stroke-opacity:0.8" />
+    </g>
+  </g>
+  <view
+     id="full-view"
+     viewBox="-200.015 -514.911 400.029 1029.857" />
+</svg>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clef size mock-ups</title>
+<link rel="stylesheet" href="../../../cnb/assets/fonts/oswald.css">
+<style>
+  :root { --bg: #f4f3ef; --surface: #ffffff; --ink: #1c1c1e; --ink-2: #5b5d63; --line: #e2e0da; --anchor: #d62f2f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; }
+  .intro { padding: 24px 32px 8px; max-width: 1100px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 10px; color: var(--ink-2); }
+  .mock { padding: 8px 32px 24px; }
+  .notation { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px 16px; margin-bottom: 14px; }
+  .notation h3 { font-size: 15px; margin: 0 0 2px; }
+  .notation > p { margin: 0 0 10px; color: var(--ink-2); font-size: 13px; }
+  .clefs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; align-items: end; }
+  .clef-case { min-width: 0; }
+  .clef-case h4 { font-size: 13.5px; margin: 0 0 4px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end; }
+  .variant { min-width: 0; overflow: hidden; }
+  .caption { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+  .key { color: var(--anchor); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Clefs sized about an anchor</h1>
+  <p>Session 59, for the operator's pick (the session-57 try-out, <code>docs/uat-status.md</code> item 4).
+    Drawn with the Configurator's own card collection, beside C, E and G crotchets for scale. Each clef is
+    shown at <b>today's size</b>, LilyPond's size in staff spaces, beside the <b>proposed automatic
+    size</b>: LilyPond's size with each staff space drawn as the least of the noteheads' mean height, one
+    staff space and 3 semitones, the rule the sharps and flats already follow (2.724 semitones on the
+    default staff, 3 on Kite 4-369's). The <span class="key">red dot</span> is the clef's proposed anchor
+    point, which stays on its semitone when the clef is resized: the treble clef's curl, the point between
+    the bass clef's dots and the alto clef's middle, each on the line it marks, and the dozenal clef's
+    middle, on the staff's middle line.</p>
+</div>
+
+<section class="mock" id="clefs">
+  <div id="clef-cases"></div>
+</section>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>

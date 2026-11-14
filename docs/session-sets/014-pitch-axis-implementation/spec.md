@@ -1,0 +1,248 @@
+# Pitch-axis implementation (I2 relaxation) — Configurator side
+
+> **Purpose:** Implement the operator-approved pitch-axis design: the
+> `pitchAxis` config section, the `CNBPitchAxis` axis gatekeeper, the
+> consumer-module rethread, the v1.3 export surface with its fail-loud gate,
+> compact-staff fixtures with an engine round-trip, UI presets, and the
+> feasibility-matrix re-tier of the Twinline family (records 32–40).
+> **Session Set:** `docs/session-sets/014-pitch-axis-implementation/`
+> **Created:** 2026-07-10
+> **Workflow:** full
+> **Authorization:** set 013's per-set UAT — the operator's verbatim decision
+> "Approve — authorize implementation set (Recommended)" is on record in
+> [`../013-pitch-axis-engine-discovery/s2-uat.md`](../013-pitch-axis-engine-discovery/s2-uat.md).
+> **Design inputs (authoritative — implement these, do not re-design):**
+> [`docs/planning/pitch-axis-design.md`](../../planning/pitch-axis-design.md)
+> (schema §1, grid contract §2, disambiguation §3, program plan §5, named
+> consult deviations §6) and
+> [`docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`](../../planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md)
+> (the export draft this set adopts). Engine dependency: the engine repo's
+> set `008-pitch-axis-hook` (E13-1…E13-5, from
+> [`../013-pitch-axis-engine-discovery/s1-engine-coordination.md`](../013-pitch-axis-engine-discovery/s1-engine-coordination.md) §6).
+
+---
+
+## Session Set Configuration
+
+```yaml
+tier: full                         # high-stakes engine-contract + geometry work; cross-provider verification per session
+requiresUAT: true                      # the operator reviews the compact-staff preview/engrave results before the set closes
+requiresE2E: true                      # sessions 3–4 drive the preview and export in a real browser (Playwright) per the repo's UAT-driver pattern
+uatScope: per-set                      # one review pass at session 4 covering fixtures, presets, and the round-trip
+uatStyle: ad-hoc                       # operator review of rendered compact-staff output, not a scripted DSL flow
+verificationMode: out-of-band-or-none  # Lightweight only; inert on Full
+totalSessions: 4
+prerequisites:
+  - slug: 013-pitch-axis-engine-discovery
+    condition: complete
+```
+
+> **Tier:** `full` | `lightweight` — SSoT:
+> <https://github.com/darndestdabbler/dabbler-ai-orchestration/blob/master/docs/concepts/tier-model.md>.
+>
+> Rationale: this set changes the platform's core coordinate system and its
+> export contract. Every session carries the byte-identity pins (Kite
+> round-trip, export baselines, full test suite) and a cross-provider
+> verifier checking the implementation against the adopted design.
+
+> **Scope note — lifecycle records (explicit exemption; carried forward at
+> authoring time from set 013's spec, where the precedent chain from sets
+> 006/007 continues):** each session's **Touches** line scopes the
+> session's *product* changes only. The Dabbler session lifecycle
+> additionally writes this set's own runtime records under
+> `docs/session-sets/014-pitch-axis-implementation/` —
+> `session-state.json`, `session-events.jsonl`, `activity-log.json`,
+> per-session working notes, `sN-uat.md`, `sN-verification.md` (and
+> `sN-issues.json` when a round finds issues), `disposition.json`, and
+> `change-log.md` on the final session — as the workflow SSoT describes
+> ("Runtime artifacts such as `session-state.json`, … appear as the first
+> session runs") and as the shared close gate enforces
+> (`check_activity_log_entry`, `working_tree_clean`, `pushed_to_remote`).
+> These records are **exempt from the Touches restriction** and are
+> committed as docs-only commits, separate from product changes.
+
+---
+
+## Project Overview
+
+Set 013 proved (by real engine render) that the CNB engine can place
+noteheads, stems, and ledgers from an arbitrary many-to-one
+semitone→staff-position procedure, designed the `pitchAxis` schema and the
+v1.3 export surface around it, and obtained the operator's authorization to
+implement. This set is the configurator-side implementation, phase for
+phase the design's §5.1 plan (P1–P6). The engine-side work (P0: the
+`cnb:get-pitch-staff-position` hook E13-1, the `x-offset` field E13-2, and
+follow-ons E13-3…E13-5) is owned by the **engine repo's set
+`008-pitch-axis-hook`** and may run in parallel; only session 3's
+round-trip work is blocked on it.
+
+**Binding rules:**
+
+1. **Implement the design as approved — do not re-design.** The design doc
+   and the v1.3 draft are the authoritative inputs; any implementation-forced
+   departure is called out with its reason in the session record and, if it
+   changes the operator-reviewed surface, re-attested at UAT.
+2. **Default-off byte-identity is enforced by construction, at every
+   phase.** Disabled/absent `pitchAxis` runs the literal pre-existing code
+   paths (design §1.3, deviation D3); `createDefault()` gains no `pitchAxis`
+   section; every session runs the full suite, the Kite round-trip, and the
+   export baselines before commit, and they must be byte-identical until a
+   fixture explicitly enables the feature.
+3. **Fail-loud export gate until the engine capability lands.** `generate()`
+   throws on `pitchAxis.enabled` (draft §8a) until session 3 verifies, from
+   the engine repo's set-008 configurator-handoff record, that E13-1 and
+   E13-2 have shipped; the gate is removed in the same session that first
+   emits §5.4/§6.3, with the engine round-trip as evidence. No silent linear
+   `.ly` for a compact config, ever.
+4. **No engine commits from this set.** Engine work happens in the engine
+   repo's own sets; this set consumes its handoff records (the sets-005/006
+   cross-repo rule of engagement).
+
+**Non-goals:** non-monotonic axis kinds (rejected by PA-8 in
+`pitch-class-map-v1`; a future kind must specify them first); multi-pc
+mixed-offset chord preview (outside the octave-card example surface —
+engine E13-2 territory); fixing the pre-existing in-gap ledger
+preview↔engine divergence (documented parity limit, design §2.4);
+off-key marking; any Tier-4 family other than I2.
+
+---
+
+## Sessions
+
+### Session 1 of 4: Export-spec adoption + `CNBPitchAxis` + grid (P1, P2)
+
+**Goal:** the v1.3 draft is adopted as the canonical export spec, the
+architecture plan is amended, and the axis gatekeeper + grid axis path
+exist with exhaustive tests — with all pins byte-identical.
+
+**Steps:**
+1. Adopt `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md` as
+   `docs/CNB-LY-EXPORT-SPEC-v1_3.md` (v1.2 stays in place for history);
+   amend `docs/CNB-ARCHITECTURE-PLAN-v2.md` with the `pitchAxis` section
+   (§4.x addendum, the sets-009/010 addendum pattern) and Module inventory
+   entries for `CNBPitchAxis`.
+2. Build `cnb/src/cnb-pitch-axis.js` per design §2.1: `create(config)`,
+   `positionOfSemi` (integer + fractional interpolation), `regionOfSemi`,
+   `distance`, `semisAtPosition`, `nearestSemisForY`; linear degeneracy
+   exact.
+3. Add the grid axis path per design §2.2: axis-enabled contexts get the
+   axis formula, `yToAxis`, no scalar `yToSemi`, axis-aware
+   `renderDebugOverlay`; the disabled branch keeps the literal current
+   `semiToY` body.
+4. Module A: `pitchAxis` validation PA-1…PA-8 and PA-W1/W3/W4 (design
+   §1.4), type-safe posture; `resolveNotehead` gains `xOffsetStaffSpaces`
+   (default 0).
+5. Tests (in the existing per-module test files plus
+   `cnb-pitch-axis-tests.js`): disabled output byte-identical against a
+   pre-change baseline; the design's two machine-checked anchors (linear
+   degeneracy; the 013 spike geometry `'(-3 -1 1 4 6 8)` reproduction);
+   non-uniform 1:1 maps; many-to-one candidate inverses; PA-8 rejection
+   cases.
+
+**Creates:** `cnb/src/cnb-pitch-axis.js`, `cnb/tests/cnb-pitch-axis-tests.js`,
+`docs/CNB-LY-EXPORT-SPEC-v1_3.md`.
+**Touches:** `cnb/src/cnb-grid.js`, `cnb/src/cnb-config.js`,
+`cnb/tests/cnb-grid-tests.js`, `cnb/tests/cnb-config-tests.js`,
+`cnb/tests/run-tests.js`, `docs/CNB-ARCHITECTURE-PLAN-v2.md`.
+**Progress keys:** `session-001/spec-adoption`, `session-001/axis-and-grid`
+
+### Session 2 of 4: Consumer rethread (P3)
+
+**Goal:** every geometry consumer reads the axis through the grid, with the
+entire existing surface byte-identical (feature still off everywhere).
+
+**Steps:**
+1. Staff: axis-position dedup on the axis path (design §2.3); literal
+   current loop on the linear path.
+2. Ledger set: re-metrication per design §2.4 — axis conversion at the top,
+   strict `<` preserved, axis-keyed rendering, region via
+   `axis.regionOfSemi`; literal current arithmetic on the linear path.
+3. Stem direction (axis-position average, design §2.5); double-notehead
+   per-note X offsets; card offset + stem-centerX plumbing +
+   `columnWidth` widening; collection pass-through (design §2.3).
+4. Visual test page `test-pitch-axis.html` (compact-axis card row with the
+   013 Twinline map; debug grid) + Chromium geometry smoke per the repo's
+   driver pattern.
+5. All existing tests, the Kite round-trip, and the export baselines
+   byte-identical; new tests for each consumer's axis behavior.
+
+**Creates:** `cnb/test-pages/test-pitch-axis.html`.
+**Touches:** `cnb/src/cnb-staff.js`, `cnb/src/cnb-ledger-set.js`,
+`cnb/src/cnb-stem.js`, `cnb/src/cnb-double-notehead.js`,
+`cnb/src/cnb-card.js`, `cnb/src/cnb-collection.js`,
+`cnb/src/cnb-key-signature.js`, their test files, `cnb/tests/run-tests.js`.
+**Progress keys:** `session-002/consumer-rethread`, `session-002/byte-identity-pins`
+
+### Session 3 of 4: Exporter + fixtures + engine round-trip (P4) — **gated on engine set 008**
+
+**Gate (check FIRST):** read the engine repo's
+`docs/session-sets/008-pitch-axis-hook/` state and configurator-handoff
+record. E13-1 (the hook) and E13-2 (the `x-offset` field) must be landed
+with their golden-baseline evidence. **If they are not, stop after step 1
+and surface to the operator** — do not emit axis output against an engine
+that lacks the hook (binding rule 3); the fail-loud gate stays.
+
+**Steps:**
+1. Implement the fail-loud gate (draft §8a) + exporter validation additions
+   (§8 checks 8–12) — legal and useful even if the engine gate fails.
+2. Implement v1.3 emission per the adopted spec: §5.4a/b (compiled
+   procedure, axis staff-line positions with dedup), §4.4a/§5.3a
+   (`axisUnitsPerStaffSpace` substitutions), §6.3 (`(x-offset . N)` in the
+   grouping key), reconciled against the engine handoff's exact contract
+   (names/units may have set-008 deviations — reconcile and record).
+3. Compact fixtures: at minimum a Twinline-family fixture using the
+   013 map with shared-pair `xOffsetStaffSpaces` disambiguation, loaded
+   through `CNBConfigIO` like the gallery fixtures.
+4. Engine round-trip: export → `lilypond -dbackend=svg` (engine repo,
+   LilyPond 2.24.2) → `tools/harvest_svg.py` → measure mapped positions
+   (the 013-s1 instrument); preview↔engine parity checks against the
+   documented divergence list.
+5. Export baselines: all existing (axis-disabled) exports still
+   byte-identical; new pinned baseline for the compact fixture.
+
+**Creates:** compact fixture(s) under `cnb/assets/examples/`, round-trip
+driver + evidence under this set's session records.
+**Touches:** `cnb/src/cnb-lilypond.js`, `cnb/tests/cnb-lilypond-tests.js`,
+`cnb/tests/run-tests.js`, `cnb/ui/config-io.js` (only if fixture loading
+needs it).
+**Progress keys:** `session-003/exporter-and-gate`, `session-003/fixtures-and-roundtrip`
+
+### Session 4 of 4: UI presets + re-tier + operator UAT (P5, P6)
+
+**Steps:**
+1. Pitch-axis editor panel (`cnb/ui/pitch-axis-editor.js`, Modules 12–17
+   editor contract: property-based event wiring, Node-testable `render()`,
+   pure builders, Module A validation pass-through) — enable, kind, stride,
+   per-pc positions, `axisUnitsPerStaffSpace`, plus preset(s)
+   ("Twinline-like 7-position") that compile into the explicit map +
+   offset rules (design §1.1).
+2. Wire into the preview app; `xOffsetStaffSpaces` editing on the notehead
+   rule editor.
+3. Feasibility-matrix re-tier: records 32–40 re-tiered as a dated
+   amendment (the 008-s2 framework-change rule) with the reproduced
+   fixture as evidence.
+4. UAT (per-set): the operator reviews the compact-staff preview, the
+   engine render, and the preset flow; verbatim decision in `s4-uat.md`
+   (attestation before verification round 1).
+5. Final session: `change-log.md`.
+
+**Creates:** `cnb/ui/pitch-axis-editor.js`,
+`cnb/tests/cnb-pitch-axis-editor-tests.js`, `change-log.md`.
+**Touches:** `cnb/ui/app.js`, `cnb/ui/notehead-rule-editor.js`,
+`cnb/index.html`, `cnb/tests/run-tests.js`,
+`docs/research/gallery-survey/feasibility-matrix.md` (dated amendment).
+**Progress keys:** `session-004/presets-and-editor`, `session-004/retier-and-uat`
+
+---
+
+## End-of-set deliverables
+
+- `pitchAxis` end to end: schema + validation, axis gatekeeper, grid,
+  consumers, exporter (emission live only with the engine capability
+  verified; fail-loud otherwise), fixtures, presets, editor.
+- Canonical `docs/CNB-LY-EXPORT-SPEC-v1_3.md`; architecture plan amended.
+- A Twinline-family fixture reproducing through preview **and** engine,
+  with a pinned round-trip baseline.
+- Feasibility-matrix records 32–40 re-tiered by dated amendment.
+- Operator UAT decision on record; all pre-existing baselines byte-identical
+  throughout.
