@@ -138,6 +138,26 @@ specific Chromium binary, and `CNB_UAT_PLAYWRIGHT` at another directory whose
 `node_modules` holds `playwright-core`. Results are recorded in
 [`docs/uat-status.md`](docs/uat-status.md).
 
+**The walk-through**, `cnb/uat/uat-tutorial.mjs`, is the stepped editor's
+golden path. It builds the tutorial's notation one step at a time, in the
+order of the step registry (`cnb/ui/steps.js`), through the controls a
+reader uses: it types into fields, clicks, imports the tutorial's SVGs and
+picks points. Each stage checks the page and the live config. Then it
+compares the result with the tutorial's downloads in
+`docs/playbook/tutorial/downloads/`:
+- the saved config with `tutorial.json`, leaving out `meta.created` and
+  `meta.modified`;
+- the two exports with `tutorial.ly` and `tutorial-custom.ly`, byte for
+  byte apart from their `%% Date:` line.
+
+So a change that alters the tutorial's result fails it. Two variables
+change what it writes:
+
+```bash
+CNB_UAT_TUTORIAL_SHOTS=docs/playbook/tutorial/shots node cnb/uat/uat-tutorial.mjs   # refresh the tutorial's screenshots (by default they go to a temporary directory)
+CNB_UAT_TUTORIAL_UPDATE=1 node cnb/uat/uat-tutorial.mjs                             # regenerate the three downloads, on purpose, instead of comparing them
+```
+
 ## End-to-End Walkthrough: From Shape to Rendered Score
 
 This is the full three-tool pipeline in practice — the same path used to

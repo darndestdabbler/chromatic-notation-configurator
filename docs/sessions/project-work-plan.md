@@ -78,7 +78,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 64 | The key signature's spelled looks | no | 2026-11-13 |
 | 65 | Key-signature steps 6 and 7 | no | 2026-11-13 |
 | 66 | Key-signature steps 8 and 9 | no | 2026-11-13 |
-| 67 | The walk-through | — | not declared |
+| 67 | The walk-through | no | 2026-11-13 |
 | 68 | The tutorial | — | not declared |
 | 69 | The UI is stable | — | not declared |
 | 70 | Release 1.1.0 (release: 1.1.0) | — | not declared |
@@ -685,3 +685,13 @@ Build key-signature steps 6 and 7 of the step-by-step design (§3.1–§3.3). CN
 **Releasable: no.**
 
 Build key-signature steps 8 and 9 of the step-by-step design (§3.4). Step 8, the designer, keeps its key picker and magnified canvas (with its mark drags as they are) and its Notes and Place rows, and its Stacks row gains the spacing between stacks, columnGap, as a number field in semitones (axis units under a pitch axis), negative to tighten, and as a grip on the canvas over the second column whose horizontal drag sets it, snapped to tenths and shown while dragging, the change reported once on release so one drag is one step of undo (a pure CNBKeySignatureEditor.dragGap(start, dx, px) beside dragOffset and dragSize); and every second stack's look (the alternate layer) as a look card under Stacks, which session 65 left for step 8. The gold stem (drawn or not, colour, thickness, shared) stays in Stacks as today. Step 9, the preview, draws every key and mode: a line above saying in how many of the 105 keys the marks touch (opening their list), then the 7 modes as rows, each named, with its 15 spellings, sharp keys then flat keys (keyOrder), as small signatures, the picked key highlighted and a key whose marks touch outlined with its count; a click on a key, or on one in the touch list, picks it on the staff and opens step 8 (the host's onKey in cnb/index.html). Unit tests in cnb/tests/cnb-key-signature-editor-tests.js, uat-key-signature.mjs extended (the gap by field and by drag, one step of undo; the alternate card; step 9's 105 keys and a key picked there opening in step 8), and the README and architecture plan updated.
+
+### Session 67 — The walk-through
+
+**Releasable: no.**
+
+Build the stepped UI's golden-path UAT, the walk-through of step-by-step design §6, which builds the tutorial notation of §5 from the default config. First a draft of the tutorial's drawing chapter (§7.2: flat ovals or a rounded rectangle for the head and the hollow, grouped, rotated and ungrouped; for the diamond a square and a smaller rounded square rotated 45° and stretched to 1.5 times as wide; the stem rects; the Music Glyph Toolkit's Notehead mode at a semitone height of 2; where the reference point goes), written for the operator, who follows it in Inkscape to draw diamond.svg (2 × 3 semitones) and the optional diamond-wide.svg (2 × 4), checked in beside c-clef.svg in docs/playbook/tutorial/downloads/ with an import test each. Then cnb/uat/uat-tutorial.mjs: STAGES, the twelve registry ids written by hand, one handler each, in order; each stage opens its step from the sidebar, does what §5 says through the controls a reader uses, checks the page and the live config, and screenshots the main area (step 5 twice, repeated heads then hollow minims; step 7 checked greyed with its reason); then a second pass of stages 6–8 and 12 for the optional custom symbol (Custom marks, All selected and diamond-wide.svg imported in step 7, the columns tightened in step 8). It saves and compares the config with tutorial.json (meta.created and meta.modified left out) and each export with tutorial.ly and tutorial-custom.ly byte for byte, all checked in in downloads/, and writes them instead when asked to regenerate them on purpose; screenshots go to a temporary directory, or to docs/playbook/tutorial/shots/ with CNB_UAT_TUTORIAL_SHOTS, where this session takes them. cnb-steps-tests.js holds STAGES equal to the registry's ids, read without starting a browser; cnb-lilypond-tests.js holds the exporter's output for tutorial.json equal to tutorial.ly and renders tutorial.ly through the engine, each notehead the diamond's size. The README's UAT section names the walk-through.
+
+**Amended after acceptance:**
+
+- 2026-11-14 — step 'shots': its files: The walk-through saves its downloaded config and .ly into the screenshot directory, so a run with CNB_UAT_TUTORIAL_SHOTS would put them in docs/playbook/tutorial/shots; the driver must save downloads to a temporary directory instead. (claude-code (anthropic, claude-opus-5-5))

@@ -1223,6 +1223,36 @@ export const tests = [
       approx(box.x[1] - box.x[0], glyph.naturalWidth, "the page's width, fitted to the drawing", 0.01);
       approx(box.y[1] - box.y[0], glyph.naturalHeight, "the page's height, fitted to the drawing", 0.01);
     }},
+  ...[["diamond.svg", 3], ["diamond-wide.svg", 4]].map(([file, wide]) => ({
+    name: `the tutorial's ${file}, drawn in Inkscape and formatted by the toolkit, imports 2 × ${wide} semitones with a hollow and stems`,
+    fn: () => {
+      // The operator's diamond (session 67): drawn as the drawing chapter
+      // says, then the toolkit's Notehead Formatter at a height of 2.
+      const text = readFileSync(path.join(FIXTURES, "..", "..", "docs", "playbook", "tutorial", "downloads", file), "utf8");
+      assert(!/stroke-width:[0-9.]+;stroke-linecap/.test(text), "no leftover style properties");
+      const result = CNBSvgImporter.parseSvgText(text, file, { parser: { parseFromString: parseSvgDocument } });
+      assert(result.error === null, "imports: " + result.error);
+      const { shape } = result;
+      assert(shape.svgHollowPath, "a hollow");
+      for (const k of ["crotchetUp", "crotchetDown", "minimUp", "minimDown"]) {
+        const a = shape.anchors && shape.anchors[k];
+        assert(a && Number.isFinite(a.x) && Number.isFinite(a.y), `the ${k} stem anchor: ${JSON.stringify(a)}`);
+      }
+      const perSemi = shape.naturalHeight / shape.semitoneHeight;
+      const head = CNBNotehead.box(shape);
+      approx((head.y[1] - head.y[0]) / perSemi, 2, "2 semitones tall", 0.05);
+      approx((head.x[1] - head.x[0]) / perSemi, wide, `${wide} semitones wide`, 0.05);
+      // Inside the head: every hollow vertex within the diamond's four sides
+      const cx = (head.x[0] + head.x[1]) / 2, cy = (head.y[0] + head.y[1]) / 2;
+      const hw = (head.x[1] - head.x[0]) / 2, hh = (head.y[1] - head.y[0]) / 2;
+      const points = pathCommands(shape.svgHollowPath).filter(c => c.nums.length >= 2);
+      assert(points.length >= 4, "the hollow's vertices: " + shape.svgHollowPath);
+      for (const { nums } of points) {
+        const [x, y] = nums.slice(-2);
+        assert(Math.abs(x - cx) / hw + Math.abs(y - cy) / hh < 1, `hollow point (${x}, ${y}) inside the head`);
+      }
+    },
+  })),
   { name: "extract: a path whose data cannot be read is refused, naming it", fn: () => {
       const ex = CNBSvgImporter.extract(parseSvgDocument(
         `<svg viewBox="0 0 10 10"><path id="notehead" d="M 0 0 Q 1" data-semitone-height="1"/></svg>`));

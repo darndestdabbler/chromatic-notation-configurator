@@ -533,6 +533,30 @@ export const tests = [
       eq(normalize(CNBLilypond.generate(CNBConfig.createDefault())), normalize(baseline), "default export");
     }},
 
+  // The tutorial's notation (session 67, step-by-step design §5): the config
+  // the walk-through (cnb/uat/uat-tutorial.mjs) builds and saves, and its
+  // export, checked in as the tutorial's downloads.
+  { name: "tutorial: tutorial.json, loaded as the app loads a file, exports byte-identically to tutorial.ly", fn: () => {
+      const normalize = (text) => text.replace(/\r\n/g, "\n").replace(/^%% Date: .*$/m, "%% Date: <NORMALIZED>");
+      const dir = path.join(CNB_DIR, "..", "docs", "playbook", "tutorial", "downloads");
+      const { config } = CNBConfigIO.loadFromText(readFileSync(path.join(dir, "tutorial.json"), "utf8"));
+      eq(normalize(CNBLilypond.generate(config)), normalize(readFileSync(path.join(dir, "tutorial.ly"), "utf8")), "tutorial export");
+    }},
+
+  { name: "tutorial (engine): tutorial.ly engraves every pitch class's notehead 1 staff space tall and 1.5 wide (±5%)", fn: async () => {
+      // The diamond, 2 semitones tall and 3 wide, on a staff of 2 semitones
+      // a staff space.
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const ly = readFileSync(path.join(CNB_DIR, "..", "docs", "playbook", "tutorial", "downloads", "tutorial.ly"), "utf8");
+      const { noteheads, error } = await measureNoteheads(engine, ly);
+      assert(!error, `tutorial.ly must engrave: ${error}`);
+      eq(JSON.stringify([...new Set(noteheads.map(n => n.pc))].sort((a, b) => a - b)),
+        JSON.stringify([...Array(12).keys()]), "every pitch class engraved");
+      const off = noteheads.filter(n => Math.abs(n.height - 1) > 0.05 || Math.abs(n.width - 1.5) > 0.05 * 1.5);
+      assert(off.length === 0, "notehead sizes: " + JSON.stringify(off));
+    }},
+
   { name: "baselines: the Kite 4-369 export still exports byte-identically to kite-4-369-export-baseline.ly", fn: () => {
       // Captured before session 11's path-unit change: the export set 007
       // matched to the engine's golden score, which the rebuilt fixture must

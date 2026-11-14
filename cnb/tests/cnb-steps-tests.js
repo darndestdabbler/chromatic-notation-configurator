@@ -13,6 +13,7 @@ import { CNBConfig } from "../src/cnb-config.js";
 import { CNBConfigIO } from "../ui/config-io.js";
 import { CNBKeySignatureEditor } from "../ui/key-signature-editor.js";
 import { withDomStub } from "./svg-stub.js";
+import { STAGES } from "../uat/uat-tutorial.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -306,6 +307,14 @@ export const tests = [
         eq(CNBStepNav.isAvailable("ks-custom-symbols", config), custom.includes(file), file + " step 7");
         eq(CNBStepNav.reason("ks-custom-symbols", config), custom.includes(file) ? null : STEP_7_REASON, file + " reason");
       }
+    },
+  },
+  {
+    name: "the walk-through's stages (cnb/uat/uat-tutorial.mjs, imported without starting a browser) are the registry's ids in its order",
+    fn: () => {
+      // STAGES is written out by hand in the driver (design §4, §6), so a
+      // step renamed or reordered in the registry and not there fails here.
+      eq(STAGES, ids(), "STAGES");
     },
   },
 ];
