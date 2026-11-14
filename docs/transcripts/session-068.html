@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 068 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 068 transcript</h1>
+<p class="stamp">Rendered 2026-11-14T09:00:34.913Z by dabbler-ai-router 3.32.4 at dd725217809558257a2d98785fb17937744ca24e.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-14T03:38:27.167-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 68: The tutorial</h3>
+<p><strong>Why.</strong> One notation built from start to finish, for a designer to follow (design §7).</p>
+<ol><li>Register.</li><li><code>docs/playbook/tutorial/index.html</code>: before you start, drawing the notehead, one section per step in the registry's order and words with the walk-through's screenshots, the optional custom symbol, and engraving it; held to the registry by <code>cnb-steps-tests.js</code>.</li><li><code>cnb/site/assemble-site.mjs</code> copies it to <code>/tutorial/</code>; the app's header, the README and the playbook link to it; <code>uat-site.mjs</code> checks it on the site and opened from the repository.</li></ol>
+<h2>Work Plan</h2>
+<p>Write the tutorial of step-by-step design §7: one HTML page, docs/playbook/tutorial/index.html, self-contained (inline styles, no script, nothing fetched from elsewhere), with relative links to its shots/ and downloads/ beside it, which build the tutorial notation of §5 from start to finish. Its sections: Before you start (what it builds, with the finished notation's picture; Inkscape and the Music Glyph Toolkit; the downloads, and taking the finished diamond.svg to skip the drawing); Drawing the notehead, the draft of docs/planning/tutorial-drawing-chapter.md folded in as the operator's drawing in session 67 left it; one section per step headed &quot;N. title&quot; in the registry's order and words (cnb/ui/steps.js), each saying what the step is for, what to do in it for this notation (as uat-tutorial.mjs does it) and the walk-through's screenshot (step 5 both, step 4 explaining why C hangs below the C♯ ledger, step 7 skipped and why, step 8 crediting Clairnote); Optional: a custom key-signature symbol, with its screenshots; and Engraving it, the exported .ly with a short score through the engine as the README describes. cnb-steps-tests.js holds the page to the registry: its step headings are the registry's numbers and titles in order, each step section shows its NN-&lt;id&gt;.png, and every relative link and image on the page names a file that exists. cnb/site/assemble-site.mjs copies the folder to /tutorial/ on the site; the app's header links to it (tutorial/), and the README and the notation-builder playbook link to it; uat-site.mjs loads /tutorial/ on the assembled site (its pictures and downloads served, no failed request), follows the header's link to it, and opens the page from the repository over file:// with every picture loaded and every download link resolving.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/c97c924725a36ad979f6d2c4b20c51d63bd53548"><code>c97c924725a36ad979f6d2c4b20c51d63bd53548</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Tutorial page</td><td><p>Write docs/playbook/tutorial/index.html as the task describes, reading cnb/uat/uat-tutorial.mjs for what each stage does so the instructions match the controls, and docs/planning/tutorial-drawing-chapter.md for the drawing chapter. Each step section is &lt;section id=&quot;step-&lt;registry id&gt;&quot;&gt; with an &lt;h2&gt; reading &quot;N. title&quot; from the registry, and its screenshot an &lt;img&gt; of shots/NN-&lt;id&gt;.png with alt text. Add to cnb/tests/cnb-steps-tests.js the tutorial's part: the page's step headings, in order, are the registry's &quot;number. title&quot;; each step section's ids are the registry's in order and each shows its NN-&lt;id&gt;.png; every src and relative href on the page names an existing file under docs/playbook/tutorial/ (read from disk, no browser).</p></td><td><span class="mono">docs/playbook/tutorial/index.html</span><br><span class="mono">cnb/tests/cnb-steps-tests.js</span></td><td><code>node -e const t=require('fs').readFileSync('docs/playbook/tutorial/index.html','utf8');for(const w of ['Before you start','Drawing the notehead','Optional','Engraving it','shots/05-noteheads-repeated.png','downloads/diamond.svg','downloads/tutorial.ly','Clairnote']){if(!t.includes(w)){console.error('missing: '+w);process.exit(1)}}</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Links</td><td><p>Link to the tutorial: a Tutorial link in the app's header (cnb/index.html, href &quot;tutorial/&quot;, styled as the header's ghost buttons in cnb/ui/app.css if needed), a line in README.md's &quot;Designing a Notation System&quot; list, and a pointer near the top of docs/playbook/notation-builder-playbook.md, both to docs/playbook/tutorial/index.html by relative path.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span><br><span class="mono">README.md</span><br><span class="mono">docs/playbook/notation-builder-playbook.md</span></td><td><code>node -e const fs=require('fs');const need={'cnb/index.html':'href=&quot;tutorial/&quot;','README.md':'docs/playbook/tutorial/index.html','docs/playbook/notation-builder-playbook.md':'tutorial/index.html'};for(const [f,w] of Object.entries(need)){if(!fs.readFileSync(f,'utf8').includes(w)){console.error(f+' lacks '+w);process.exit(1)}}</code></td><td>yes</td></tr>
+<tr><td>Site</td><td><p>cnb/site/assemble-site.mjs copies docs/playbook/tutorial/ to &lt;outDir&gt;/tutorial/ as it is (its header comment updated). cnb/uat/uat-site.mjs (its MIME map gaining .png and .ly): on the assembled site, /tutorial/ serves the page, its every image loads (naturalWidth &gt; 0), its every download link answers 200, no failed request or console error, and the app's header Tutorial link leads there; opened from the repository over file://, docs/playbook/tutorial/index.html shows every image and every relative link names an existing file.</p></td><td><span class="mono">cnb/site/assemble-site.mjs</span><br><span class="mono">cnb/uat/uat-site.mjs</span></td><td><code>node --check cnb/uat/uat-site.mjs</code><br><code>node -e const fs=require('fs'),os=require('os'),p=require('path'),cp=require('child_process');const d=fs.mkdtempSync(p.join(os.tmpdir(),'cnb-site-'));const r=cp.spawnSync(process.execPath,['cnb/site/assemble-site.mjs',d],{stdio:'inherit'});if(r.status!==0)process.exit(1);for(const f of ['tutorial/index.html','tutorial/shots/12-export.png','tutorial/downloads/diamond.svg','tutorial/downloads/tutorial.ly','index.html']){if(!fs.existsSync(p.join(d,f))){console.error('missing on site: '+f);process.exit(1)}}fs.rmSync(d,{recursive:true,force:true})</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the app's behaviour, the config schema, the exporter, the engine or the walk-through (uat-tutorial.mjs); the screenshots and downloads are the ones session 67 checked in, not retaken or regenerated.</li><li>The header's relative tutorial/ link resolves on the published site; in a repository served locally the tutorial is opened as docs/playbook/tutorial/index.html, and no copy of it is kept under cnb/.</li><li>The rest of the notation-builder playbook (its Part 4 walkthrough of the Hass fixture) and the AI-assisted workflow guide are not rewritten; they gain a link only.</li><li>The operator's trial of the app and the tutorial, and the 1.1.0 release, are session 69.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:38:27]</span> <span class="muted">run-started</span> session=068 mode=pull</div>
+<div class="line"><span class="at">[08:38:27]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:40:35]</span> <span class="muted">run-resumed</span> session=068 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[08:40:35]</span> <span class="muted">plan-accepted</span> steps=[&quot;tutorial-page&quot;,&quot;links&quot;,&quot;site&quot;] non_goals=4</div>
+<div class="line"><span class="at">[08:40:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:40:37]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=tutorial-page</div>
+<div class="line"><span class="at">[08:47:51]</span> <span class="muted">run-resumed</span> session=068 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:50:49]</span> <span class="muted">check-passed</span> step=tutorial-page argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/playbook/tutorial/index.html','utf8');for(const w of ['Before you start','Drawing the notehead','Optional','Engraving it','shots/05-noteheads-repeated.png','downloads/diamond.svg','downloads/tutorial.ly','Clairnote']){if(!t.includes(w)){console.error('missing: '+w);process.exit(1)}}&quot;]</div>
+<div class="line"><span class="at">[08:50:49]</span> <span class="muted">check-passed</span> step=tutorial-page argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:50:50]</span> <span class="muted">report-accepted</span> seq=2 step=tutorial-page files=[&quot;docs/playbook/tutorial/index.html&quot;,&quot;cnb/tests/cnb-steps-tests.js&quot;] notes=Tutorial page written (before you start, drawing chapter folded in, 12 step sections in registry order and words with the walk-through's shots, optional custom symbol, engraving); cnb-steps-tests holds headings, ids, shots, alt text and every relative link. Noticed: the 06 screenshot's 21 spelled notes still draw the default ovals, not the diamonds (a stale step-6 render), left for session 69.</div>
+<div class="line"><span class="at">[08:50:50]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=links</div>
+<div class="line"><span class="at">[08:51:31]</span> <span class="muted">run-resumed</span> session=068 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:51:34]</span> <span class="muted">check-passed</span> step=links argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const need={'cnb/index.html':'href=\&quot;tutorial/\&quot;','README.md':'docs/playbook/tutorial/index.html','docs/playbook/notation-builder-playbook.md':'tutorial/index.html'};for(const [f,w] of Object.entries(need)){if(!fs.readFileSync(f,'utf8').includes(w)){console.error(f+' lacks '+w);process.exit(1)}}&quot;]</div>
+<div class="line"><span class="at">[08:51:35]</span> <span class="muted">report-accepted</span> seq=3 step=links files=[&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;,&quot;README.md&quot;,&quot;docs/playbook/notation-builder-playbook.md&quot;] notes=Header Tutorial link (href tutorial/, opens in a new tab so work in progress stays, styled as a ghost button); README's Designing a Notation System list and the playbook's intro link docs/playbook/tutorial/index.html.</div>
+<div class="line"><span class="at">[08:51:35]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=site</div>
+<div class="line"><span class="at">[08:52:32]</span> <span class="muted">run-resumed</span> session=068 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:52:36]</span> <span class="muted">check-passed</span> step=site argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-site.mjs&quot;]</div>
+<div class="line"><span class="at">[08:52:36]</span> <span class="muted">check-passed</span> step=site argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs'),os=require('os'),p=require('path'),cp=require('child_process');const d=fs.mkdtempSync(p.join(os.tmpdir(),'cnb-site-'));const r=cp.spawnSync(process.execPath,['cnb/site/assemble-site.mjs',d],{stdio:'inherit'});if(r.status!==0)process.exit(1);for(const f of ['tutorial/index.html','tutorial/shots/12-export.png','tutorial/downloads/diamond.svg','tutorial/downloads/tutorial.ly','index.html']){if(!fs.existsSync(p.join(d,f))){console.error('missing on site: '+f);process.exit(1)}}fs.rmSync(d,{recursive:true,force:true})&quot;]</div>
+<div class="line"><span class="at">[08:52:36]</span> <span class="muted">report-accepted</span> seq=4 step=site files=[&quot;cnb/site/assemble-site.mjs&quot;,&quot;cnb/uat/uat-site.mjs&quot;] notes=assemble-site copies docs/playbook/tutorial/ to &lt;outDir&gt;/tutorial/; uat-site checks the header link, /tutorial/ (12 step sections, every picture loaded, every download 200, no errors) and the page from the repository over file:// (pictures load, relative links exist): 19/19.</div>
+<div class="line"><span class="at">[08:52:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:52:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:52:38]</span> <span class="muted">job-started</span> name=verification pid=19688 log=.dabbler/runs/s68/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:53:23]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s68/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:53:23]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:53:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:53:24]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[08:53:25]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=57320 log=.dabbler/runs/s68/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[08:57:02]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s68/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[08:57:03]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[08:57:05]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=65272 log=.dabbler/runs/s68/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[08:59:47]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s68/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[08:59:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:00:02]</span> <span class="muted">landed</span> commit=c97c924725a36ad979f6d2c4b20c51d63bd53548</div>
+<div class="line"><span class="at">[09:00:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:00:03]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:00:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:00:06]</span> <span class="muted">job-started</span> name=close pid=27148 log=.dabbler/runs/s68/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:00:34]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s68/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:00:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `cnb/uat/uat-site.mjs` claims it “follows the header’s link,” but reads `#tutorial-link`’s resolved `href` and then directly calls `page.goto()` instead of activating the link.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>212s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>157s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

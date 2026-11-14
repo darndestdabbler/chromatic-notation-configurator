@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurator Tutorial</title>
+<link rel="icon" href="data:,">
+<!-- The tutorial (step-by-step design §7, session 68). One page, read in two
+     places: on the site at /tutorial/ (cnb/site/assemble-site.mjs copies this
+     folder as it is) and opened from the repository. Every link is relative,
+     to shots/ and downloads/ beside it, or absolute to the web. The step
+     sections follow the step registry (cnb/ui/steps.js) in its order and
+     words, which cnb/tests/cnb-steps-tests.js holds; the pictures and the
+     downloads are the walk-through's (cnb/uat/uat-tutorial.mjs). -->
+<style>
+  :root {
+    --bg: #f6f5f2; --paper: #ffffff; --ink: #1f2328; --ink-2: #57606a;
+    --line: #d8dee4; --accent: #2b5fd9; --code: #eef1f5; --note: #fff8e1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c; --paper: #1f2228; --ink: #e6e8eb; --ink-2: #a3abb5;
+      --line: #353a42; --accent: #8fb0ff; --code: #2a2e35; --note: #33301f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header.intro h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+  header.intro p { color: var(--ink-2); margin: 0 0 16px; }
+  nav.toc { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 20px; margin: 24px 0; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  nav.toc li { break-inside: avoid; }
+  section { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 24px 20px; margin: 24px 0; }
+  h2 { font-size: 22px; margin: 16px 0 8px; }
+  h3 { font-size: 17px; margin: 20px 0 6px; }
+  a { color: var(--accent); }
+  code, pre { font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 14px; background: var(--code); border-radius: 4px; }
+  code { padding: 1px 4px; }
+  pre { padding: 12px 14px; overflow-x: auto; }
+  figure { margin: 16px 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { color: var(--ink-2); font-size: 14px; margin-top: 6px; }
+  .why { color: var(--ink-2); font-style: italic; margin-top: 0; }
+  .note { background: var(--note); border-radius: 6px; padding: 10px 14px; }
+  .credit { font-size: 14px; color: var(--ink-2); }
+  @media (max-width: 640px) { nav.toc ol { columns: 1; } section { padding: 4px 16px 16px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="intro">
+  <h1>Building a notation: the Configurator tutorial</h1>
+  <p>One chromatic notation built from start to finish in the Chromatic
+  Notation Configurator, from a notehead drawn in Inkscape to a LilyPond file
+  that engraves music in it. It follows the Configurator's twelve steps in
+  order, with a picture of each.</p>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <ol>
+    <li><a href="#before">Before you start</a></li>
+    <li><a href="#drawing">Drawing the notehead</a></li>
+    <li><a href="#step-notehead-height">1. Notehead height</a></li>
+    <li><a href="#step-staff">2. Staff</a></li>
+    <li><a href="#step-pitch">3. Pitch</a></li>
+    <li><a href="#step-ledger-lines">4. Ledger lines</a></li>
+    <li><a href="#step-noteheads">5. Noteheads</a></li>
+    <li><a href="#step-ks-symbol-type">6. Key signature symbol type</a></li>
+    <li><a href="#step-ks-custom-symbols">7. Custom key signature symbols</a></li>
+    <li><a href="#step-ks-designer">8. Key signature designer</a></li>
+    <li><a href="#step-ks-preview">9. Key signature preview</a></li>
+    <li><a href="#step-clef-symbol">10. Clef symbol import and sizing</a></li>
+    <li><a href="#step-clef-placement">11. Clef semitone/staff assignment</a></li>
+    <li><a href="#step-export">12. Export</a></li>
+    <li><a href="#optional">Optional: a custom key-signature symbol</a></li>
+    <li><a href="#engraving">Engraving it</a></li>
+  </ol>
+</nav>
+
+<section id="before">
+  <h2>Before you start</h2>
+  <p>You will build <strong>Tutorial 3-5-7-9</strong>: four staff lines in
+  each octave, on D♯ (E♭), F, G and A, two semitones apart, with a gap of six
+  semitones from A to the next D♯; diamond noteheads two semitones tall and
+  three wide, red on C♯, D♯, F♯, G♯ and A♯ and black on the rest, hollow for
+  minims; a key signature of noteheads in Clairnote's stacks; and a C clef of
+  your own. This is the finished notation:</p>
+  <figure>
+    <img src="shots/12-export.png" alt="The finished notation: the 3-5-7-9 staff with diamond noteheads, red on the black keys, a crotchet row of solid heads and a minim row of hollow ones, the C clef and an E-flat major key signature in two stacks with gold stems">
+    <figcaption>The finished notation, in step 12.</figcaption>
+  </figure>
+
+  <h3>What you need</h3>
+  <ul>
+    <li><strong>The Configurator</strong>, at
+      <a href="https://configurator.darndestdabbler.org/">configurator.darndestdabbler.org</a>,
+      or run from a clone of its repository as its README describes.</li>
+    <li><strong>Inkscape</strong> 1.x, to draw the notehead.</li>
+    <li><strong>The Music Glyph Toolkit</strong>, an Inkscape extension
+      (<a href="https://github.com/darndestdabbler/inkscape-music-glyph-toolkit">inkscape-music-glyph-toolkit</a>):
+      copy <code>music_glyph_toolkit.inx</code> and
+      <code>music_glyph_toolkit.py</code> into Inkscape's user extensions
+      folder (Edit › Preferences › System › User extensions names it) and
+      restart Inkscape. It is under Extensions › Music Typography › Music
+      Glyph Toolkit….</li>
+    <li>To engrave music at the end: <strong>LilyPond</strong> 2.24 or 2.26
+      and the engine,
+      <a href="https://github.com/darndestdabbler/lilypond-chromatic-notation-base">lilypond-chromatic-notation-base</a>.</li>
+  </ul>
+
+  <h3>The downloads</h3>
+  <ul>
+    <li><a href="downloads/diamond.svg">diamond.svg</a>: the notehead, drawn
+      as the next section describes. If you would rather not draw, take it and
+      go on at step 1.</li>
+    <li><a href="downloads/c-clef.svg">c-clef.svg</a>: the C clef, for
+      step 10.</li>
+    <li><a href="downloads/diamond-wide.svg">diamond-wide.svg</a>: the wider
+      diamond for the optional section.</li>
+    <li><a href="downloads/tutorial.json">tutorial.json</a>: the finished
+      notation, to open with <strong>Open…</strong> and compare with yours.</li>
+    <li><a href="downloads/tutorial.ly">tutorial.ly</a> and
+      <a href="downloads/tutorial-custom.ly">tutorial-custom.ly</a>: its
+      exports, without and with the optional section.</li>
+  </ul>
+</section>
+
+<section id="drawing">
+  <h2>Drawing the notehead</h2>
+  <p>The notehead is a diamond, 2 semitones tall and 3 wide, with a hollow
+  for its minims. You draw it once in Inkscape, at any size, and the Music
+  Glyph Toolkit gives it its height, centres it and adds its stems. The file
+  you save is the one you import in step 5.</p>
+
+  <h3>The idea: draw the head and its hollow together, then turn them together</h3>
+  <p>A notehead is two filled shapes: the <strong>head</strong>, and the
+  <strong>hollow</strong>, a smaller shape inside it that minims show as
+  white. Draw both upright and centred on each other, where they are easy to
+  line up. Then group them and turn or stretch the group, so the hollow keeps
+  its place inside the head.</p>
+  <p>For a traditional, slanted notehead, start from <strong>flat
+  ovals</strong>: an ellipse for the head and a flatter one inside it for the
+  hollow (a rounded rectangle also serves for the hollow). Centre one on the
+  other, group them, rotate the group about 20° anticlockwise, and ungroup
+  it. The diamond below is the same recipe with squares.</p>
+
+  <h3>The diamond, 2 × 3 semitones</h3>
+  <ol>
+    <li><strong>The head.</strong> Draw a square with the Rectangle tool (R),
+      holding Ctrl to keep it square. Give it a black fill and no stroke.</li>
+    <li><strong>The hollow.</strong> Draw a smaller square inside it, about
+      half as wide. In the Rectangle tool's bar, round its corners a little (Rx
+      and Ry, about a tenth of its width). Give it a white fill and no
+      stroke.</li>
+    <li><strong>Centre the hollow on the head.</strong> Select both, open
+      Align and Distribute (Shift+Ctrl+A), align relative to the biggest
+      object, and centre on both axes.</li>
+    <li><strong>Make them paths.</strong> With both selected, Path › Object to
+      Path (Shift+Ctrl+C).</li>
+    <li><strong>Group, turn and stretch.</strong> Group them (Ctrl+G). Open
+      Object › Transform (Shift+Ctrl+M):
+      <ul>
+        <li>Rotate: 45°, Apply. The squares are now diamonds.</li>
+        <li>Scale: untick <em>Scale proportionally</em>, set the width to 150%
+          and the height to 100%, Apply. The diamond is now 1.5 times as wide
+          as tall, and the hollow is stretched with it.</li>
+      </ul></li>
+    <li><strong>Ungroup</strong> (Shift+Ctrl+G).</li>
+    <li><strong>Name them.</strong> Open Object Properties (Shift+Ctrl+O).
+      Select the head and set its ID to <code>notehead</code>, then the hollow
+      and set its ID to <code>hollow</code>, pressing Set after each.</li>
+    <li><strong>Run the toolkit in Notehead mode, with a semitone height of
+      2.</strong> Extensions › Music Typography › Music Glyph Toolkit…, the
+      <strong>Notehead Formatter</strong> tab:
+      <ul>
+        <li>Notehead Height (Semitones): <strong>2</strong></li>
+        <li>Stem placemarkers: ticked</li>
+        <li>Action: <strong>Update SVG Canvas</strong></li>
+        <li>Include LilyPond path data: ticked</li>
+      </ul>
+      Apply. The toolkit bakes the rotation and the stretch into the paths,
+      centres the head on 0,0, scales it to 2 semitones tall (so 3 wide), and
+      adds the two stem rectangles, <code>stem-up</code> at the right point and
+      <code>stem-down</code> at the left, with dashed semitone guidelines in
+      their own layer.</li>
+    <li><strong>The stems.</strong> The rectangles mark where each stem's
+      centre meets the head. The toolkit's places suit the diamond; move a
+      rectangle only if you want a stem elsewhere, then run Update SVG Canvas
+      again.</li>
+    <li><strong>Save</strong> as <code>diamond.svg</code> (File › Save As…,
+      Inkscape SVG or Plain SVG).</li>
+  </ol>
+
+  <h3>Where the reference point goes</h3>
+  <p>A notehead sits on its pitch by its <strong>reference point</strong>:
+  the point placed at the pitch's height. It belongs on the head's visual
+  centre. For a symmetric shape like the diamond that is its middle, where
+  the toolkit already centred it, which is the default: there is nothing to
+  set. For a lopsided shape (a teardrop, or a head heavier on one side) it
+  is the centre of mass, where the eye puts the note.</p>
+  <p>You pick it in step 5, after the import, by clicking on the enlarged
+  shape (<strong>Pick the point that sits on the pitch</strong>, then
+  <strong>Done</strong>). The head moves; the staff lines stay where they
+  are.</p>
+</section>
+
+<section id="step-notehead-height">
+  <h2>1. Notehead height</h2>
+  <p class="why">How tall every notehead is. It comes first because the
+  staff, the ledger lines and each notehead's own size are judged against
+  it.</p>
+  <p>Set <strong>Height</strong> to <strong>2</strong> semitones. The
+  diamond will be one staff space of the staff you draw next. The default
+  noteheads shrink on the canvas; each keeps its shape's proportions.</p>
+  <figure>
+    <img src="shots/01-notehead-height.png" alt="Step 1: the Height field set to 2 semitones, and the default noteheads drawn smaller on the canvas">
+    <figcaption>Every notehead 2 semitones tall.</figcaption>
+  </figure>
+</section>
+
+<section id="step-staff">
+  <h2>2. Staff</h2>
+  <p class="why">Where the staff lines are, within each octave.</p>
+  <p>Under <strong>Staff lines on</strong>, click D♯, F, G and A to add them,
+  then E and G♯ to take the default's lines away. The staff now has four
+  lines an octave, on semitones 3, 5, 7 and 9: two semitones a staff space,
+  and a gap of three staff spaces from A up to the next D♯, which the
+  ledger lines of step 4 fill. The panel confirms the spacing and that the
+  middle of the staff is still C, semitone 12.</p>
+  <figure>
+    <img src="shots/02-staff.png" alt="Step 2: Staff lines on D-sharp, F, G and A selected; the canvas draws four lines an octave with a wide gap between the octaves">
+    <figcaption>Lines on D♯, F, G and A: 2 semitones per staff space.</figcaption>
+  </figure>
+</section>
+
+<section id="step-pitch">
+  <h2>3. Pitch</h2>
+  <p class="why">Which note sits in the middle of the staff, and the pitch
+  axis for notations that are not one semitone a step.</p>
+  <p>Nothing to change. Look at the step to see that the middle of the staff
+  is C, semitone 12, and go on.</p>
+  <figure>
+    <img src="shots/03-pitch.png" alt="Step 3: the Pitch panel with C in the middle of the staff">
+    <figcaption>The middle stays C.</figcaption>
+  </figure>
+</section>
+
+<section id="step-ledger-lines">
+  <h2>4. Ledger lines</h2>
+  <p class="why">Where short lines appear for notes off the staff, or in its
+  gaps.</p>
+  <p>Under <strong>Which ones show</strong>, click
+  <strong>Automatic</strong>. The default's own ledger rules belong to the
+  old staff; Automatic gives this one's: a ledger can appear wherever the
+  staff's spacing continues past its lines, and shows when a notehead is
+  closer to it than to any staff line. In the six-semitone gap that puts two
+  ledgers, at B (semitone 11) and C♯ (13). A♯ and D sit in the spaces beside
+  the staff and take none.</p>
+  <p class="note"><strong>Why C does not sit on B's ledger.</strong> Look at
+  B, C and C♯ together, on the right of the canvas. B sits on the B ledger
+  and C♯ on the C♯ ledger, but C, a semitone above B, hangs below the C♯
+  ledger instead of sitting above B's. A ledger answers only to the notes in
+  its own octave: the B ledger belongs to the octave that ends at B, and C
+  begins the next octave, so C takes the C♯ ledger. This is a rule of the
+  Configurator's ledgers, not of conventional notation.</p>
+  <figure>
+    <img src="shots/04-ledger-lines.png" alt="Step 4: Automatic chosen; C, C-sharp, B and the upper C draw ledgers in the gap, shown dashed across the canvas">
+    <figcaption>The gap's ledgers at B and C♯, with B, C and C♯ highlighted.</figcaption>
+  </figure>
+</section>
+
+<section id="step-noteheads">
+  <h2>5. Noteheads</h2>
+  <p class="why">Each notehead's look: its shape, fill and colour, and how
+  the longer durations show.</p>
+  <ol>
+    <li><strong>Every notehead the diamond.</strong> Click C on the canvas,
+      then Shift+click the other eleven, so the panel reads 12 noteheads.
+      Under <strong>Shape</strong>, click <strong>Import from SVG…</strong>
+      and choose <code>diamond.svg</code>. The reference point picker opens on
+      the enlarged diamond; its middle is right, so click
+      <strong>Done</strong>. Pick the diamond under Shape, and
+      <strong>Solid</strong> under Fill (the default's sharps are hollow, and a
+      hollow crotchet would read as a minim once minims are hollow).</li>
+    <li><strong>The black keys red.</strong> Click C♯ and Shift+click D♯, F♯,
+      G♯ and A♯. Under <strong>Colour</strong>, choose <strong>New
+      colour…</strong> and enter <code>#cc0000</code>. The rest stay black.</li>
+    <li><strong>Minims, one way.</strong> Above the canvas, click
+      <strong>minim</strong> among the durations to show a minim row, and
+      <strong>Repeat the notehead</strong>: a minim is two diamonds, each
+      overlapping the last by a third of its width.</li>
+  </ol>
+  <figure>
+    <img src="shots/05-noteheads-repeated.png" alt="Step 5, first way: the minim row draws each minim as two overlapping diamonds">
+    <figcaption>Minims as repeated heads: tried, and not kept.</figcaption>
+  </figure>
+  <ol start="4">
+    <li><strong>Minims, the other way.</strong> Click <strong>Its own shape
+      for each duration</strong>, and tick <strong>Hollow minims</strong>
+      beside it. The tick adds one ordinary rule, "Hollow minims", which
+      Advanced shows like any other: every minim hollow, every crotchet
+      solid, one head a note. This is the one the tutorial keeps.</li>
+  </ol>
+  <figure>
+    <img src="shots/05-noteheads.png" alt="Step 5, kept: a crotchet row of solid diamonds and a minim row of hollow ones, red on C-sharp, D-sharp, F-sharp, G-sharp and A-sharp, with the notehead panel open on the five red noteheads">
+    <figcaption>Each duration its own look, with hollow minims.</figcaption>
+  </figure>
+</section>
+
+<section id="step-ks-symbol-type">
+  <h2>6. Key signature symbol type</h2>
+  <p class="why">Whether the notation shows a key signature, and what its
+  marks start from: noteheads, traditional sharps and flats, or symbols of
+  your own.</p>
+  <p>Tick <strong>Show the key signature</strong>, then click the
+  <strong>Noteheads</strong> card: the signature's marks are the notation's
+  own diamonds, on the notes of the key's scale, as the staff above the
+  cards shows. Below the cards are the 21 spelled notes, C♭ to B♯, which the
+  optional section gives symbols of their own.</p>
+  <figure>
+    <img src="shots/06-ks-symbol-type.png" alt="Step 6: Show the key signature ticked and the Noteheads card chosen; the staff above starts with a signature of diamonds and a gold stem">
+    <figcaption>A signature of noteheads.</figcaption>
+  </figure>
+</section>
+
+<section id="step-ks-custom-symbols">
+  <h2>7. Custom key signature symbols</h2>
+  <p class="why">A symbol of your own for each of the 21 spelled notes, C♭
+  to B♯.</p>
+  <p>Skip it. With the Noteheads starting point the step is greyed in the
+  list, and its tooltip says why: <em>Choose Custom marks in step 6 to design
+  your own symbols.</em> The optional section below comes back to it.</p>
+  <figure>
+    <img src="shots/07-ks-custom-symbols.png" alt="Step 7 greyed in the step list; the page still shows step 6">
+    <figcaption>Greyed while the signature starts from noteheads.</figcaption>
+  </figure>
+</section>
+
+<section id="step-ks-designer">
+  <h2>8. Key signature designer</h2>
+  <p class="why">Which notes the signature shows, how they stack, the gold
+  stem between the stacks, and where it sits on the staff.</p>
+  <p>Under <strong>Stacks</strong>, choose <strong>A new stack at each change
+  of odd and even</strong>, and keep <strong>Gold stem between the
+  stacks</strong> ticked. Change the key above the canvas to see the stacks
+  follow it.</p>
+  <figure>
+    <img src="shots/08-ks-designer.png" alt="Step 8: C major's signature in the designer, the scale's diamonds in stacks that change at each change of odd and even semitones, gold stems between the stacks">
+    <figcaption>Clairnote's stacks, with the gold stem.</figcaption>
+  </figure>
+  <p class="credit">Stacked signatures after Clairnote, by Paul Morris
+  (<a href="https://clairnote.org/">clairnote.org</a>), CC BY-SA 4.0; the idea
+  only, no code.</p>
+</section>
+
+<section id="step-ks-preview">
+  <h2>9. Key signature preview</h2>
+  <p class="why">Every key in every mode at once, to check the design holds
+  up in all of them, and to say which marks touch.</p>
+  <p>Look over the seven modes' fifteen keys each. In the major row, click
+  <strong>G</strong>: the staff shows G major, and the designer opens on it.
+  Come back to step 9 and click <strong>E♭</strong> in the same row; the
+  staff now shows E♭ major, as in the pictures from here on.</p>
+  <figure>
+    <img src="shots/09-ks-preview.png" alt="Step 9: the signature in every key of the seven modes, E-flat major highlighted">
+    <figcaption>Every key and mode, E♭ major picked.</figcaption>
+  </figure>
+</section>
+
+<section id="step-clef-symbol">
+  <h2>10. Clef symbol import and sizing</h2>
+  <p class="why">The clef at the start of the staff: one of the built-in
+  clefs or your own, and its size.</p>
+  <ol>
+    <li>Under <strong>Import a clef from SVG</strong>, choose
+      <code>c-clef.svg</code>. It becomes the clef, and the anchor point
+      picker opens on it.</li>
+    <li>The anchor is the point of the clef that sits on its pitch. Click the
+      clef's left middle, the left edge of its box half way up, and
+      <strong>Done</strong>.</li>
+    <li>Tick <strong>Show a clef at the start of the staff</strong>.</li>
+    <li>Set <strong>Height</strong> to <strong>8</strong> semitones, four
+      staff spaces. An imported clef has no automatic size, so you give it
+      one.</li>
+  </ol>
+  <figure>
+    <img src="shots/10-clef-symbol.png" alt="Step 10: the C clef imported, shown at the start of the staff, 8 semitones tall">
+    <figcaption>The C clef at 8 semitones.</figcaption>
+  </figure>
+</section>
+
+<section id="step-clef-placement">
+  <h2>11. Clef semitone/staff assignment</h2>
+  <p class="why">Which semitone the clef's anchor sits on.</p>
+  <p>Set <strong>Sits on semitone</strong> to <strong>12</strong>: the
+  anchor on middle C, the staff's C at semitone 12. You can also drag the
+  clef on the canvas.</p>
+  <figure>
+    <img src="shots/11-clef-placement.png" alt="Step 11: the clef's anchor on semitone 12, middle C">
+    <figcaption>The clef marks middle C.</figcaption>
+  </figure>
+</section>
+
+<section id="step-export">
+  <h2>12. Export</h2>
+  <p class="why">The notation's name, and the LilyPond file.</p>
+  <ol>
+    <li>Set <strong>Name</strong> and <strong>Notation label</strong> to
+      <code>Tutorial 3-5-7-9</code>, and <strong>File suffix</strong> to
+      <code>-Tutorial3579</code>.</li>
+    <li><strong>Save</strong> (at the top of the page) keeps the design as
+      JSON, to open again later. Yours should match
+      <a href="downloads/tutorial.json">tutorial.json</a> apart from its
+      dates.</li>
+    <li><strong>Export for LilyPond</strong> downloads
+      <code>tutorial3579.ly</code>, which should match
+      <a href="downloads/tutorial.ly">tutorial.ly</a> apart from its date.</li>
+  </ol>
+  <figure>
+    <img src="shots/12-export.png" alt="Step 12: the Export panel named Tutorial 3-5-7-9 with suffix -Tutorial3579, exported as tutorial3579.ly, under the finished notation">
+    <figcaption>Named, saved and exported.</figcaption>
+  </figure>
+</section>
+
+<section id="optional">
+  <h2>Optional: a custom key-signature symbol</h2>
+  <p>The signature's marks need not be the noteheads. Here every one becomes
+  a wider diamond, twice as wide as tall.</p>
+  <h3>Draw it</h3>
+  <p>Draw it as the notehead, with one change: in step 5 of the recipe, scale
+  the width to <strong>200%</strong>. Run the toolkit with the same height, 2,
+  and save it as <code>diamond-wide.svg</code> (2 semitones tall, 4 wide). Its
+  stems are not used: a key-signature symbol has none. Or take
+  <a href="downloads/diamond-wide.svg">diamond-wide.svg</a> from the
+  downloads.</p>
+
+  <h3>6. Key signature symbol type: Custom marks</h3>
+  <p>Back in step 6, click the <strong>Custom marks</strong> card and confirm:
+  every spelled note gets the built-in parallelogram, and step 7 opens up.</p>
+  <figure>
+    <img src="shots/06-ks-symbol-type-optional.png" alt="Step 6 with Custom marks chosen: the 21 spelled notes drawn as parallelograms">
+    <figcaption>Custom marks: the parallelogram, to start from.</figcaption>
+  </figure>
+
+  <h3>7. Custom key signature symbols: every note the wide diamond</h3>
+  <p>In step 7, click <strong>All</strong> in the Select row, so the card
+  reads 21 spelled notes selected. In the card, click <strong>Import from
+  SVG…</strong> and choose <code>diamond-wide.svg</code>, then
+  <strong>Done</strong> in the reference point picker. Every spelled note is
+  now the wide diamond, solid, in its notehead's colour.</p>
+  <figure>
+    <img src="shots/07-ks-custom-symbols-optional.png" alt="Step 7: all 21 spelled notes selected and drawn as the wide diamond, red on the black keys">
+    <figcaption>All 21 selected, the wide diamond imported.</figcaption>
+  </figure>
+
+  <h3>8. Key signature designer: tighter stacks</h3>
+  <p>The wide diamonds push the stacks apart. Set <strong>Space between
+  stacks</strong> to <strong>−0.5</strong> semitones, or drag the grip over the
+  second stack to the left.</p>
+  <figure>
+    <img src="shots/08-ks-designer-optional.png" alt="Step 8: the signature of wide diamonds, its stacks half a semitone closer">
+    <figcaption>The stacks half a semitone closer.</figcaption>
+  </figure>
+
+  <h3>12. Export</h3>
+  <p><strong>Export for LilyPond</strong> again. The signature now exports as
+  a table of marks, one entry a key; compare it with
+  <a href="downloads/tutorial-custom.ly">tutorial-custom.ly</a>.</p>
+  <figure>
+    <img src="shots/12-export-optional.png" alt="Step 12: the finished notation with the custom key signature of wide diamonds, exported">
+    <figcaption>The notation with its custom signature.</figcaption>
+  </figure>
+</section>
+
+<section id="engraving">
+  <h2>Engraving it</h2>
+  <p>In a clone of
+  <a href="https://github.com/darndestdabbler/lilypond-chromatic-notation-base">lilypond-chromatic-notation-base</a>,
+  put <code>tutorial3579.ly</code> beside a score that includes it. The export
+  includes the engine itself, so the score needs only the one line:</p>
+<pre>\version "2.24.2"
+\include "tutorial3579.ly"
+
+\score {
+  \new Staff {
+    \key ees \major
+    \time 4/4
+    \relative c'' { ees4 f g aes | bes2 c | d4 c bes aes | g1 }
+  }
+}</pre>
+  <p>Save it as <code>tutorial-score.ly</code> and run
+  <code>lilypond tutorial-score.ly</code> (or
+  <code>lilypond -dbackend=svg tutorial-score.ly</code> for an SVG). The
+  engraving has the staff, ledger lines, diamonds, colours, key signature and
+  clef the canvas shows. The engine's README covers installing it and its
+  options.</p>
+</section>
+
+</div>
+</body>
+</html>
