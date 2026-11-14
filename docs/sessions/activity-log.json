@@ -1,0 +1,1198 @@
+{
+  "sessionSetName": "014-pitch-axis-implementation",
+  "createdDate": "2026-07-12T23:37:52.936659+00:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-12T23:37:52.936659+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/spec-adoption",
+      "dateTime": "2026-07-12T20:01:04.279533-04:00",
+      "description": "v1.3 draft adopted as docs/CNB-LY-EXPORT-SPEC-v1_3.md (git mv, adoption header, links rebased, fail-loud gate noted in effect); architecture plan amended (Module 24 inventory row, section 4.1 pitchAxis line, section 4.13 addendum, Module 24 spec block, section 8 file entries).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:01:04.279533-04:00",
+      "description": "CNBPitchAxis built per design 2.1 (positionOfSemi with fractional interpolation, regionOfSemi, distance, candidate inverses semisAtPosition/nearestSemisForY, exact linear degeneracy); grid axis path per design 2.2 (literal disabled branch, yToAxis, no scalar yToSemi, axis-aware debug overlay); Module A PA-1..PA-8 + PA-W1/W3/W4 validation and resolveNotehead xOffsetStaffSpaces. Tests 709 -> 752 (+16 config, +9 grid, +18 pitch-axis new), all byte-identity pins green: grid pre-change baseline fixture byte-identical, default export baseline, Kite export byte-identical vs base 2cf7d647 worktree.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 3,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:13:32.939428-04:00",
+      "description": "Verification round-1 remediation (supersedes step 2 counts): section-8a fail-loud gate implemented in CNBLilypond.generate (PITCH_AXIS_GATE_MESSAGE, throws on pitchAxis.enabled before any other validation) and mirrored as a blocking error in CNBConfigExport.validateForExport (parity contract); candidate-inverse contract corrected to arrays of any length with a boundary-equality 3-candidate test. Final suite: 757 passed 0 failed (752 + 5: lilypond 56->59, config-export 26->27, pitch-axis 18->19). Kite export re-verified byte-identical vs base 2cf7d647.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 4,
+      "stepKey": "session-001/axis-and-grid",
+      "dateTime": "2026-07-12T20:18:01.950536-04:00",
+      "description": "Verification round-2 remediation (supersedes step 3 counts): section-8a gate condition made strict boolean (=== true, the design 1.3 consumer gate) in generate() and validateForExport, matching CNBGrid/CNBPitchAxis; regression tests for non-boolean truthy enabled values (export normal linear output; malformed truthy sections blocked by normal validation, not the gate). Final suite: 758 passed 0 failed (757 + 1: lilypond 59->60). Kite export re-verified byte-identical vs base 2cf7d647.",
+      "status": "complete"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 2,
+      "dateTime": "2026-10-31T04:45:24.068000-04:00",
+      "task": "Rethread every preview geometry consumer through the grid's pitch axis (design docs/planning/pitch-axis-design.md \u00a72.3\u2013\u00a72.5, \u00a73.3), keeping the axis-disabled surface byte-identical by construction. First, before any source change, capture a pre-change preview-DOM baseline fixture (CNBCollection.render through the svg/DOM stub for the default config, the Kite 4-369 config, every gallery example, a key-signature-enabled config, a debug-grid config, and the same configs with a present-but-disabled pitchAxis section) and pin it with a test. Then: CNBStaff.render dedups lines by axis position on the axis path (overrides merged) and keeps its literal loop on the linear path; CNBLedgerSet.resolve/render gain an axis path that converts to axis positions at the top, gates on axis.regionOfSemi, keeps the strict `<` proximity rule, and draws keyed by axis position, while the linear path runs the literal current arithmetic; CNBStem.direction averages axis positions against positionOfSemi(staff.midpoint) when given an enabled axis (literal body otherwise); CNBDoubleNotehead.layout accepts additive per-note lowerOffsetPx/upperOffsetPx (default 0); CNBCard computes offsetPx = xOffsetStaffSpaces \u00d7 axis.unitsPerStaffSpace \u00d7 pxPerSemi in axis mode only, applies it to both noteheads, the ledgers and the stem centerX, and widens columnWidth by |offsetPx|; CNBKeySignature treats separator.extentSemis as a length on the axis path and applies the same resolved offset to its marks. The collection needs no code change (everything flows through the grid context) and gets an axis-row integration test. Finally a visual test page cnb/test-pages/test-pitch-axis.html renders a compact-axis card row with the 013 Twinline map and debug grid, and a Chromium geometry smoke driver cnb/uat/uat-pitch-axis.mjs (the repo's existing driver pattern) asserts its geometry in a real browser.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:09:32.090000-04:00",
+      "task": "Session 3 (P4) of the pitch-axis program. The engine gate is met: the engine repo's set 008-pitch-axis-hook closed 2026-07-13 and its configurator-handoff.md records E13-1 (the cnb:get-pitch-staff-position hook) and E13-2 (the x-offset field) as shipped with golden-baseline evidence. This session (1) removes the \u00a78a fail-loud gate from cnb-lilypond.js and its mirror in the UI export wrapper in the same change that first emits the v1.3 surface: the compiled pitch-axis procedure and axis staff-line positions with collapse dedup (\u00a75.4a/b), the axisUnitsPerStaffSpace substitutions in attachments and staff-line thickness (\u00a74.4a/\u00a75.3a), and the (x-offset . N) field in the Section C grouping key (\u00a76.3), with exporter-level tests that \u00a78 checks 8-12 (already Module A PA-1..PA-8) now block generate(), reconciled against the handoff: cnb:semitones-per-staff-space is emitted as axisUnitsPerStaffSpace under an axis (handoff \u00a74.1) and an explicit cnb:keysig-tonic-octave is emitted under an axis (handoff \u00a74.2, octave convention verified by the round-trip render); (2) records those reconciliations as a v1.3.1 clarification of the canonical spec; (3) adds a Twinline-family compact fixture (the 013 map, shared-pair xOffsetStaffSpaces 0.85) under cnb/assets/examples/gallery/ so it loads through CNBConfigIO via the existing gallery gate, with a pinned export baseline; (4) runs the engine round-trip (export, then lilypond 2.24.2 -dbackend=svg in the engine repo, then tools/harvest_svg.py) and commits a driver, the harvested evidence and a node measurement script that checks engine positions and x-offsets against the preview's CNBPitchAxis model, excluding the documented divergence list. All axis-disabled exports stay byte-identical (existing default and Kite baselines unchanged).",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:20:20.561000-04:00",
+      "what": "step 'spec-clarification': its files",
+      "reason": "The architecture plan's \u00a74.13 export-surface note still states that generate() throws on pitchAxis.enabled (the lifted \u00a78a gate); it must be corrected alongside the spec.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:23:18.762000-04:00",
+      "what": "step 'compact-fixture': its files",
+      "reason": "The set-014 s2 preview baseline sweeps every gallery fixture to pin the axis-DISABLED (pre-rethread) preview; an axis-enabled gallery fixture has no linear baseline, so previewProbes() must skip pitchAxis-enabled fixtures (axis previews are covered by the s2 axis render tests).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-31T05:24:17.706000-04:00",
+      "what": "step 'engine-roundtrip': its files",
+      "reason": "A shared-position chord pair is already separated by LilyPond's own arrangement (+0.49 here), so the x-offset effect is measured test-minus-control (engine set 008 s2 method): the control export, score, SVG and harvest join the evidence; measure.mjs reads the key-signature marks from the SVGs, so both SVGs are kept.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 4,
+      "dateTime": "2026-10-31T05:37:36.034000-04:00",
+      "task": "Finish the pitch-axis implementation (design phases P5 and P6). Build the pitch-axis editor panel (cnb/ui/pitch-axis-editor.js) on the Modules 12\u201317 editor contract: property-based event wiring, a Node-testable render(), pure stateFromConfig/buildPitchAxis/applyToConfig builders and Module A validation pass-through. It edits enable, kind, octaveStride, axisUnitsPerStaffSpace and the 12 per-pc positions, and offers one preset, \"Twinline-like 7-position\", which compiles into the explicit design \u00a71.1 map plus a named notehead rule carrying the shared-pair xOffsetStaffSpaces. The editor never creates a pitchAxis section the user did not ask for, so default configs stay byte-identical. Let the notehead rule editor keep and edit apply.xOffsetStaffSpaces; today its builder drops the field, so loading the Twinline fixture loses its offsets. Wire the panel into the app shell, cnb/index.html (the repository has no cnb/ui/app.js; index.html is the shell that the plan's app.js entry stands for). Re-tier feasibility-matrix records 32\u201340 as a dated amendment, with the twinline-compact fixture and the session-3 engine round-trip as evidence. Record the operator's verbatim UAT decision in docs/sessions/uat-session-4.md. Close out the pitch-axis work in docs/sessions/change-log.md.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 5,
+      "dateTime": "2026-10-31T07:22:41.557000-04:00",
+      "task": "Make the browser UAT reproducible from a fresh clone. Add a private root package.json with no runtime dependencies that declares playwright-core as its only devDependency (with the generated package-lock.json committed and node_modules/ ignored), a `test` script (`node cnb/tests/run-tests.js`) and a `uat` script that runs a small sequential runner, cnb/uat/run-uat.mjs, which spawns every cnb/uat/uat-*.mjs driver in turn and exits non-zero on the first failure; document `npm install` and `npx playwright install chromium` in the README. The drivers already resolve playwright-core from their own location first (which reaches the repository's node_modules) and fall back to CNB_UAT_PLAYWRIGHT; their not-found messages are updated to point at `npm install` at the repository root. Then run every driver (there are eleven uat-*.mjs files, not the ten the plan counts: uat-gallery-previews.mjs is a capture tool and is included), fix whatever drift broke in the drivers or the app, and record each driver's result in docs/uat-status.md. Finally declare the UAT run as a second suite `cnb-uat` in dabbler.yaml (`command: npm run uat`, expensive, whole_at_close, runs_whole, covers [cnb/]) and update the comment there that says the drivers are undeclared.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 6,
+      "dateTime": "2026-11-01T17:19:34.833000-05:00",
+      "task": "Make the app report hostile input instead of failing in the console, prove it in three browsers, and read the toolkit's minim stem anchors. A probe of the current code found the gaps: wrong-typed sections in a loaded JSON (shapes as an array, noteheadRules as an object, staff.semitonePattern as a string, palette.colors as a string) either throw inside CNBConfig.validate with an unhelpful message or load cleanly and then crash the preview/editors inside the load promise, which reaches the console and leaves the app half-mounted; the SVG import control has no catch around reading/parsing a file; and the non-toolkit-SVG error does not say what to do. The fixes stay small: config-io checks the merged config's value types against createDefault() (array vs object vs primitive, where the default is not null) and rejects a mismatch with a message naming the field, and catches a throwing onLoad into its error area; the app shell's onLoad restores the previous config and re-mounts when adopting a loaded config throws; the import control catches read/parse failures into an error result, and the missing-#notehead error says the file is not Music Glyph Toolkit output. The toolkit has shipped the minim pair (its session 4: <rect id=\"stem-minim-up\"> / <rect id=\"stem-minim-down\">), so the SVG importer reads it with the same rect rule as the regular pair into anchors.minimUp/minimDown, falling back to the crotchet anchors when the pair is absent (with a warning on a half pair); the exporter already emits minim-up/minim-down from lilypondAnchors, which a new export test pins. A new Playwright driver runs the hostile inputs against cnb/index.html in Chromium, Firefox and Edge, asserting a visible message for each and no page or console errors; anything it finds broken is fixed, and the README gains a Supported browsers table.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 6,
+      "dateTime": "2026-11-01T17:34:19.713000-05:00",
+      "what": "step 'uat-hostile-input': its files",
+      "reason": "Firefox logs an 'XML Parsing Error' console error whenever DOMParser receives non-XML text; the importer now refuses text with no <svg element before parsing, which needs the importer and its tests",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 7,
+      "dateTime": "2026-11-01T19:01:32.368000-05:00",
+      "task": "Retire the legacy monolith and bring the repository's front-door documentation up to a 1.0.0 product. Tag the current commit `legacy-monolith-final`, delete `legacy/`, and repoint every live reference to it at the tag: the architecture plan's file-structure section, `docs/planning/project-plan.md`, the port-origin comments in four `cnb/` files, and `cnb/tests/cnb-lilypond-tests.js`, which (contrary to the session plan's note) still requires `legacy/configurator-core.js` for three legacy-parity tests; those tests and their now-unused helpers go with the code they compared against. Rewrite the README for a complete 1.0.0 product: status complete, export spec v1.3, no `legacy/`, a \"Known limitations\" section summarizing and linking Part 2 of the notation-builder playbook (I1, I3, I4, I5 as hard limits; I2 relaxed by the optional `pitchAxis` section per the feasibility matrix \u00a79), a \"Running the tests and UAT\" section matching `dabbler.yaml`, and LilyPond 2.24.x or 2.26.x for engraving. Update `CLAUDE.md` (spec v1.3, Module 24 `cnb-pitch-axis.js`, no legacy section or legacy test command). Replace the placeholder `docs/planning/lessons-learned.md` with real lessons harvested from the session-set change logs, delete the empty `lessons-archive.md` and the TODO-template `project-guidance.md`, leaving no v1 `ai_router` instructions, and add a root `version.json` reading `{ \"version\": \"1.0.0\" }`.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 8,
+      "dateTime": "2026-11-01T19:20:06.788000-05:00",
+      "task": "Declare how this repository packages a release: add a `packaging:` block to dabbler.yaml with a `pack` and no `push`, whose argv makes a source archive of the trunk with `git archive --format=zip --output={output}/chromatic-notation-configurator-1.0.0.zip HEAD`, and correct the comment above it that says the repository declares no packaging. The block is checked with `dabbler packaging --rehearse`.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 9,
+      "dateTime": "2026-11-02T05:22:54.145000-05:00",
+      "task": "Release 1.0.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 10,
+      "dateTime": "2026-11-02T06:32:58.357000-05:00",
+      "task": "Close audit findings H1, L6 and M5 (docs/planning/audit-2026-11-02.md) so that no text from an imported config or SVG can become Scheme in the exported .ly. A new pure module, cnb/src/cnb-scheme.js (CNBScheme), holds the only emitters the exporter may use: comment text (control characters and newlines become spaces), Scheme strings (escape backslash and double quote), symbols (must match ^[a-z][a-z0-9-]*$, else throw naming the field), numbers (finite JavaScript numbers formatted by the exporter; engine.defaultMagnify's fraction string is parsed into two finite numbers and re-emitted from them), versions (^\\d+\\.\\d+\\.\\d+$), and LilyPond path data (strictly parsed into moveto/lineto/curveto/closepath commands with numeric arguments and re-emitted from the numbers in the exporter's existing layout), plus the slug function shape symbols come from. cnb/src/cnb-lilypond.js routes every emitted value through these emitters and never interpolates raw config text. CNBConfig.validate uses the same predicates so it rejects every value an emitter would reject (version, magnify, schemeSymbols values, unparseable lilypondPath/lilypondHollowPath, non-finite numeric fields the exporter emits), and adds the M5 errors: a shape whose slug is empty or not a valid symbol, and two shapes whose slugs collide, each error naming the shapes. The SVG importer parses data-lilypond-* paths (notehead, hollow and clef) and turns a path that does not parse into an import error, storing the re-serialized form otherwise. Hostile-input fixtures (the audit's shared-config.json label payload, an SVG whose data-lilypond-notehead carries #(display ...), and one payload per affected field) drive unit tests asserting each payload is rejected by validation and export alike or exports a .ly whose #( and $( occurrences are exactly those of the same config without the payload, and an engine-backed test that compiles each accepted export with LilyPond (skipping with a logged reason when lilypond is not on PATH or the engine repository is not found) and asserts the payload text is never printed. Output for every valid existing config, including the default, Kite and twinline-compact baselines and the gallery, stays byte-identical.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 11,
+      "dateTime": "2026-11-03T01:21:20.928000-05:00",
+      "task": "Close audit findings H2 and H3 and toolkit-audit findings M5, M7 and M8 (importer side), so every exported notehead path is in the staff-space units the engine draws. One conversion function in cnb/src/cnb-lilypond.js, CNBLilypond.pathToStaffSpace(commands, unitsPerStaffSpace, flipY), serves both sources. Toolkit data-lilypond-* paths are in semitone units, Y up; they are divided by the staff's semitones per staff space (axisUnitsPerStaffSpace under a pitch axis), the same divisor attachmentPoints() uses for anchors. The fallback svgPathToLilypond(svgPath, unitsPerSemitone, sps) converts SVG M/L/H/V/C/Z to path commands and applies the toolkit normalisation through the same function: divide by the shape's SVG units per semitone (naturalHeight / semitoneHeight, which is 100 for toolkit output), negate Y, then divide by sps. The centre is the shape's coordinate origin. The toolkit centres its output there, and both the preview and the stored anchors already treat that point as the notehead centre. Re-centring on the bounding box would pull the deliberately asymmetric gallery shapes (the oval-slash heads) off their own stem anchors. Unit tests cover both sources at sps 1, 2 and 3. Fixtures are regenerated from real data. First, the current Kite export (which matched the engine's golden score in set 007) is pinned as cnb/fixtures/kite-4-369-export-baseline.ly. Then kite-up.svg and kite-down.svg get true toolkit-unit data-lilypond-* attributes, produced by the toolkit's own format_scheme(parse_and_normalize(d)), plus stem-minim rects that carry the engine reference's minim anchors. A tracked script, cnb/fixtures/rebuild-kite-shapes.mjs (with a --check mode), rebuilds the Kite config's shapes by importing those SVGs through CNBSvgImporter. The rebuilt Kite export must equal the pinned baseline, and it is also rendered through the engine against the golden score using the set-007 recipe, with the result recorded in the step notes. If either check fails, the step finds which side is wrong and records it rather than scaling by hand. twinline-compact has no source SVG, so its real data is its stored svgPath: its hand-pre-divided lilypondPath and lilypondHollowPath are removed and the corrected fallback produces them. default-export-baseline.ly is re-baselined. A shared test helper, cnb/tests/engine-probe.js, finds LilyPond and the engine and measures engraved notehead stencil extents from a real render, skipping with a logged reason when either is missing. It drives two engine-backed tests. The first asserts that the default config's noteheads are 0.5 to 3 staff spaces in width and height. The second covers every gallery export, per the operator's decision this session: three Express Stave fixtures legitimately engrave at about 0.33 staff spaces, the size the preview shows. Each notehead's engraved width and height must therefore match its preview size within 5%: semitoneHeight / sps tall, and naturalWidth / (naturalHeight / semitoneHeight) / sps wide. On the importer side: extractClef accepts the toolkit's glyph-mode data-lilypond-glyph attribute and imports every glyph path, merging their path data, not only the first. When an element carries both modes' attributes, the importer prefers the one that matches the import target (notehead data for shapes, clef or glyph data for clefs) and warns. A stem rect's own transform attribute (matrix, translate, scale, rotate) is applied before its anchor is read. Each of these gets a unit test. The LY export spec gains a 1.3.2 entry recording the path-unit rule, and the architecture plan's \u00a74.2 note on pre-baked paths is corrected.",
+      "releasable": false
+    },
+    {
+      "kind": "rollback",
+      "sessionNumber": 12,
+      "through": 12,
+      "dateTime": "2026-11-03T04:39:17.622000-05:00",
+      "reason": "Rollback to Start of This Session from the Work Explorer",
+      "by": "operator"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 12,
+      "dateTime": "2026-11-03T04:43:17.077000-05:00",
+      "task": "Make the LilyPond export carry only what the engine engraves, and say so wherever a setting stops at the preview (audit 2026-11-02 M1-M4, L1-L5). The exporter stops emitting cnb:stem-thickness (undefined in the engine, fatal in LilyPond) and the no-op cnb:default-staff-line-thickness / -color settings. The export header lists the preview-only settings (staff line colour and thickness, ledger rules, stem thickness, repeat counts, the CB-safe preview toggle, key-scoped notehead rules), names the colour palette only when Section A actually registers colours from it, and no longer claims a cb-safe mode the file does not engrave. The matching UI controls (stem thickness, staff line styling, ledger rules, CB-safe toggle, repeat counts) carry a preview-only note, and README Known limitations lists them. A notehead rule scoped to a key gets a CNBConfig.validate() warning naming the rule, which the export panel shows, instead of vanishing silently. The staff editor keeps the loaded staff.midpoint and semitonesPerStaffSpace while the pattern is unchanged, re-deriving them only when the pattern itself changes, with a test that edits twinline-compact (midpoint 7) and finds its pitch-axis export byte-identical. The derived-geometry panel shows the staff-line positions the exporter computes for the full config, so it is right under a pitch axis. Every approx() test helper fails on NaN, and the test runner counts a test file with no tests export as a failure. The pinned export baselines are regenerated by running the exporter, the LY spec records the change as 1.3.3, and the cnb-unit suite passes.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 13,
+      "dateTime": "2026-11-03T04:57:31.280000-05:00",
+      "task": "Finish the documentation and archive work for 1.0.1. Push the local `legacy-monolith-final` tag to origin (audit M6) and confirm that every README and CLAUDE.md mention of it now resolves on GitHub. The README names it in plain text, and CLAUDE.md does not mention it. Fix the README's description of `cnb/assets/` to say gallery example configs (L7). Confirm that README \"Known limitations\" lists everything sessions 10\u201312 made preview-only, and set its status line to 1.0.1. Add a `.gitattributes` that export-ignores `.vscode/`, `AGENTS.md`, `CLAUDE.md`, `docs/sessions/`, `docs/transcripts/` and `docs/planning/`. Make the declared pack read the working-tree attributes and name the zip by `{version}`, so that `dabbler packaging --rehearse` shows the exclusion before the commit and session 14 packs a 1.0.1 zip. List the rehearsed zip in `docs/sessions/session-013/notes.md`. Set `version.json` to 1.0.1 and add a `CHANGELOG.md` with 1.0.0 and 1.0.1. The 1.0.1 entry says that 1.0.0 exports with toolkit shapes or fallback paths were mis-scaled and should be regenerated.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 14,
+      "dateTime": "2026-11-03T05:01:02.488000-05:00",
+      "task": "Release 1.0.1: the framework packs and publishes what is on the trunk.",
+      "releasable": true
+    },
+    {
+      "kind": "rollback",
+      "sessionNumber": 15,
+      "through": 15,
+      "dateTime": "2026-11-05T04:51:56.180000-05:00",
+      "reason": "Rollback to Start of This Session from the Work Explorer",
+      "by": "operator"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 15,
+      "dateTime": "2026-11-05T05:54:53.376000-05:00",
+      "task": "Put the configurator online and make a file:// open explain itself. cnb/index.html gains a small classic inline script, run before the module script, that shows a visible notice at the top of the page when location.protocol is \"file:\": the app must be served over HTTP, a link to https://configurator.darndestdabbler.org/, and the README's two local commands (npx serve . / python -m http.server 8000, then open /cnb/index.html); the page also gets an inline <link rel=\"icon\"> so a served page logs no favicon 404. A dependency-free Node script, cnb/site/assemble-site.mjs <outDir>, copies cnb/index.html, cnb/src/, cnb/ui/ and cnb/assets/ into <outDir> so the app sits at the site root, with no transform. A GitHub Actions workflow, .github/workflows/pages.yml, runs on push of v* tags and on workflow_dispatch, assembles the site into _site and deploys it with actions/configure-pages, actions/upload-pages-artifact and actions/deploy-pages (pinned to major versions, pages/id-token write and contents read permissions, a pages concurrency group, no tests); .gitattributes export-ignores /.github. A Chromium UAT driver, cnb/uat/uat-site.mjs, on the existing driver pattern, assembles the site into a temp directory, serves it over HTTP and checks that / renders the preview and mounts the editors with no notice and no page or console errors, then opens the working tree's cnb/index.html over file:// and checks the notice is visible and names the live URL. The README's Usage leads with the live site, keeps the local-server instructions for development and mentions the notice; CHANGELOG.md opens a 1.0.2 entry; docs/uat-status.md records the new driver's result and the dabbler.yaml comment's driver count goes to 13. The operator prerequisites (public repository, Pages source GitHub Actions, the custom domain, DNS and HTTPS) are checked read-only with gh api and recorded in the notes.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 15,
+      "dateTime": "2026-11-05T05:56:59.011000-05:00",
+      "what": "step 'file-protocol-notice': its checks",
+      "reason": "node cnb/tests/run-tests.js fails identically on the unchanged tree: its engine-backed gallery size check (check-gallery-examples) measures noteheads at 7/4 the preview size against the sibling engine repo, which changed on 2026-11-05 (its sessions 22-23). That failure does not describe this step; the markup check does, and the whole suite still runs as the run of record.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T20:57:43.076000-05:00",
+      "task": "Make 45deg-369 a checked-in, test-gated reference notation beside Kite 4-369, and plan the follow-on work from the operator's 2026-11-05 Configurator feedback. The operator handed over cnb/fixtures/45deg-369-config.json and 45deg-369-from-configurator.ly made in the app; on the operator's instruction this session corrects the config where it departs from the design (the shape is imported from the committed cnb/fixtures/45deg.svg and named 45deg instead of draft-notehead, the unused crotchet-minim shape is removed, and the meta block gets the 45deg-369 name, suffix, label and footnote instead of the default 4-8 system's), keeping the staff, the operator's empty ledger templates, the #56b3e9 blue, the keys section and the repeat mode as the operator made them. The hand-exported .ly is superseded by an export from the corrected config and is not committed. The one-fixture export driver becomes cnb/fixtures/export-config.mjs <config.json> [out.ly], with export-kite-4-369.mjs kept as a wrapper the umbrella pipeline names; 45deg-369-export-baseline.ly is pinned byte-identically as Kite's is; the importer tests prove the fixture imports with the toolkit's anchors (up (0, 1.649), down (0, -1.650), minim pair equal to crotchet pair) read from the SVG's rects and that the export divides them by 3; the config joins the preview baseline probes; joy-to-the-world-45deg.ly engraves through the engine (1.2.0 or later) as a test that skips with a reason when lilypond or the engine is absent. README, CHANGELOG 1.0.2 and version.json 1.0.2 follow. Finally, sessions 18-21 are added to the session plan after the 1.0.2 release: the notehead-height preview bug, a preview of repeated noteheads and multinote padding, a 1.1.0 release, and a design session for a notehead-first editor with rule inference.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T20:58:34.126000-05:00",
+      "what": "step 'correct-config': its checks",
+      "reason": "The shape cannot be named 45deg: validation rejects it because a Scheme symbol must start with a Latin letter. It is named ellipse-45deg instead; the check follows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 16,
+      "dateTime": "2026-11-05T21:03:34.169000-05:00",
+      "what": "step 'engine-round-trip': its files",
+      "reason": "The engraved round trip shows the 45deg-369 footnote set in step correct-config running off the page; it is shortened to Kite's length, and the export baseline follows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 17,
+      "dateTime": "2026-11-06T02:58:31.477000-05:00",
+      "task": "Find and fix why the app's preview drew a freshly imported 4-semitone notehead too small until an unrelated edit redrew it. A new Playwright driver, cnb/uat/uat-imported-notehead.mjs, loads cnb/fixtures/kite-4-369-config.json into cnb/index.html, imports cnb/fixtures/45deg.svg, applies it in the default notehead rule, and measures every drawn notehead's height in the preview before any further edit. It checks that each is 4 semitones (4 x pxPerSemi) and that the preview is unchanged by a later unrelated edit (a notehead colour change). A first in-browser probe through the file input, including re-importing a shape under the same name, drew it at 64 px (4 semitones) at once, so the driver also follows the operator's other routes (drag-and-drop, applying through a new rule, a colour edit afterwards) until it finds the path that leaves the preview stale or wrongly scaled. The fix goes at that cause. A unit test goes in the test file named after the source file that changes, the driver pins the behaviour in the browser, and docs/uat-status.md records the driver and its run.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 17,
+      "dateTime": "2026-11-06T03:17:24.190000-05:00",
+      "what": "step 'fix': its files",
+      "reason": "The driver did not reproduce the stale height on any route and found no cause, so no source file changes; the step adds a regression unit test pinning the imported 45deg shape's preview size (4 x pxPerSemi) in the importer's test file",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 18,
+      "dateTime": "2026-11-06T04:18:33.327000-05:00",
+      "task": "Make the preview show what repeat mode engraves, and say why no key signature draws. In representationMode \"repeat\", each card draws a duration's notehead as the engine's cnb:build-duration-stencil lays it out: the engine's fixed counts (lilypondDuration 3 or more: 1 head; 2 (minim): 2; 1 or 0 (semibreve, breve): 4), each copy placed edge to edge with engine.multinotePadding staff spaces between them (staff space = staff.semitonesPerStaffSpace semitones, or axis.unitsPerStaffSpace axis units under a pitch axis), the group centred on the head position. The stem attaches as LilyPond's relative stem-attachment does, at the anchor's relative position across the whole group's width, and the ledgers and column widen by the group's extra width. Shape mode is unchanged and byte-identical: the shape-mode preview-baseline probes stay pinned, and only the two repeat-mode probes (kite-4-369, 45deg-369, which render minims) are re-captured. An engine-backed test (skipping without LilyPond) engraves the Kite and 45deg-369 exports at minim, semibreve and breve and checks that the engraved notehead group's width matches the preview's group width within 5%. The key-signature panel and the preview's key selector each say when keys and the signature are enabled but no key is defined or none is selected, so nothing draws. The common-props editor's repeat-count text and its renderPreview legend state the counts the preview and engine actually use, and README \"Preview-only settings\", the architecture plan's open question 3 and the CHANGELOG 1.0.2 entry are updated.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 18,
+      "dateTime": "2026-11-06T04:25:58.514000-05:00",
+      "what": "step 'repeat-counts-text': its files",
+      "reason": "The common-props test page's intro describes the old repeat-mode preview (single base row); it changes with renderPreview",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 19,
+      "dateTime": "2026-11-06T05:40:52.803000-05:00",
+      "task": "Write the design for a notehead-first editor, docs/planning/notehead-first-editor-design.md, for the operator's approval, and build static HTML mock-ups of its main screens under docs/planning/notehead-first-mockups/. The design covers: the flow (the staff editor stays, then 13 placeholder noteheads C to C' with default-proximity ledgers, and a way to replace the ledger rule); what clicking a notehead sets (colour, solid/hollow, shape, size, pitch class, pitch-axis nudge); pitch (staff.midpoint, snapped to semitones) and pitch axis (a nudge of -1 to +1 semitone per pitch class, exported through today's pitch-axis machinery with octave stride 12, fractional positions and axis units per staff space equal to the staff's semitones per staff space, never reordering notes), including Twinline's fit and configs that need more than +/-1; assigning a pitch class by naming a clicked notehead or by dragging labels in a staggered two-column strip, and whether a nudge travels with its pitch class or its spot in each; a rule-inference algorithm (period 1, 2, 3, 4, 6 or 12, the accidentals, or explicit pitch classes, per colour, hollowness and shape) with the inferred rules shown and the no-pattern case; previews per panel; what existing panels and modules it retires, hides behind an advanced view or keeps, and what happens to configs the inference cannot reproduce; and the look (layout, type, design tokens, wording for a notation designer, validation speaking once, JSON and advanced settings out of the way), answering each finding of the screenshot review. The mock-ups use the real cnb/src preview modules where they can, are screenshotted at 1440 and 1280 px by a small Playwright script, judged against the design and revised until they hold up, and the screenshots are committed. The document ends with a proposed program of implementation sessions and release versions whose first release is the site's first deploy, once the new UI is stable, with every UI session ending in screenshot checks at 1440 and 1280 px against the approved mock-ups.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 20,
+      "dateTime": "2026-11-06T06:28:08.023000-05:00",
+      "task": "Revise the session 19 notehead-first design and its mock-ups so the staff canvas reflows instead of scaling. In docs/planning/notehead-first-editor-design.md: noteheads are drawn at a fixed px per semitone (the editor's default chosen and justified, with the saved display.pxPerSemi as the size control rather than the window width); the canvas is a table of 13 equal pitch columns, each at least as wide as the widest column the config needs, sharing spare width equally with each drawing centred, after a fixed 14th column holding the label strip and the clef and key-signature gutters; the staff lines are drawn one SVG per row stretched to the row width, chosen over per-column slices after weighing the fractional-pixel seam; one row or two (C to F-sharp, G to C-prime, each with its own strip and gutters), picked by page code from the space available while the rendering modules stay pure (a rows option on the collection and a reported minimum width), with what happens below the two-row minimum; and the look improvements (equal columns, plain pitch labels, full-height selection and hover marks, a quiet gutter, space between rows). The proposed program is renumbered to sessions 23-30 with the release last, its new-page session builds this canvas, and the design names the cnb/src modules that change (at least cnb-collection.js) and how the preview baseline is kept. The mock-ups are revised to draw the canvas this way with the real preview modules, screenshotted at 1440 and 1280 px showing one row and two rows for the default config and for Kite 4-369, judged and revised until they hold up, the screenshots in the design's section 10 replaced, and the mock-up stylesheet's unused side-panel styles removed.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 21,
+      "dateTime": "2026-11-06T17:08:19.768000-05:00",
+      "task": "Stop the colour picker closing on every change. In the four editors that own colour inputs -- cnb/ui/palette-editor.js (custom palette cells), cnb/ui/notehead-rule-editor.js (a rule's explicit colour), cnb/ui/key-signature-editor.js (the separator colour) and cnb/ui/staff-rule-editor.js (staff and ledger line colour) -- split the colour input's wiring: its `input` handler updates the state and calls onChange with the built config slice so the preview follows the drag live, without redrawing the panel; its `change` handler, which fires when the picker closes, does the full changed() redraw so derived text such as the palette's nearest-colour names catches up. Each editor gets a small emit() (the onChange half of changed(), which becomes redraw() + emit()). Every other control keeps its wiring. The behaviour is pinned in each editor's own test file (an input event on the colour control leaves that same element in the DOM and emits onChange; a change event redraws), the four editors are exercised in the browser, and the check is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 22,
+      "dateTime": "2026-11-06T18:00:20.376000-05:00",
+      "task": "Give each notehead its own height and width. A notehead rule's apply block gains optional heightSemis and widthSemis (absolute sizes in semitones), resolved through CNBConfig.resolveNotehead's cumulative pipeline like hollow and xOffsetStaffSpaces (null when no matching rule sets it, meaning the shape's own semitoneHeight and natural width, each independently). Validation errors on a present value that is not a finite positive number and warns outside 0.25-4 semitones. In the preview, CNBNotehead.measure takes the resolved size and returns separate x and y scale factors; render draws scale(sx, sy) only when they differ, so an unsized config renders byte-identically (the preview and export baselines stay pinned unchanged). The card's stem anchors, ledger width (CNBCard passes the resolved width to CNBLedgerSet, which takes its width from the caller), column width and repeat-mode group, the octave pair (cnb-double-notehead.js) and the key-signature marks all follow the resolved measurement. The exporter registers, for each distinct resolved (shape, height, width) that differs from the shape's own size, a Section A variant named after the shape with a size suffix (-h<height>-w<width>, decimal point written as p), whose path, hollow cutout and attachment points are scaled by the same x and y factors; Section C points the pitch classes at the variant, and the size joins the grouping key. A sized fixture config is pinned against a new export baseline, and an engine-backed test (skipping without LilyPond, via cnb/tests/engine-probe.js) checks the engraved sizes. The notehead rule editor gets height and width controls with a keep-aspect-ratio lock, on by default, and a natural-width hint; the browser check goes in docs/uat-status.md. The architecture plan \u00a74.5, the LY export spec (1.3.4, a section on variant naming and scaling) and the README's Preview-only settings section document that size exports.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 22,
+      "dateTime": "2026-11-06T18:19:29.367000-05:00",
+      "what": "step 'browser-check-record': its files",
+      "reason": "The browser check found the new size row unstyled in the app (default font size, no spacing); cnb/index.html needs CSS for the .cnb-nre-size* hooks, matching the neighbouring apply-row controls",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 23,
+      "dateTime": "2026-11-06T21:40:42.269000-05:00",
+      "task": "Build the notehead-first editor's model with no UI (design docs/planning/notehead-first-editor-design.md \u00a70.4, \u00a75). A new pure-function module cnb/ui/notehead-inference.js gives: the look table of a config (one row per pitch class: shape, fill, colour, size as heightSemis/widthSemis, side step as xOffsetStaffSpaces), resolved through CNBConfig.resolveNotehead from the rules the inference owns (rules matching every duration and key and setting no offKeyMark), with colour from the rule's apply.color or else the primary palette entry; the \u00a75.1 inference of one attribute (default = most common value, ties broken by C; smallest period in 1, 2, 3, 4, 6; else the accidentals or naturals; else an explicit list), with rule names in words such as \"Hollow on the accidentals\" or \"Kite-up, every 4 semitones from C\u266f and D\"; and the write back of a look table to a config: a Default rule plus one rule per non-default value for shape, fill, size and side step (priorities in that order, apply.color never set, zero side steps and shape-own sizes omitted), colour written to palette.colors (entries whose hex is unchanged are kept as they are and in their order, cbSafeColors untouched, \u00a75.3), and the rules the inference does not own kept verbatim above the inferred ones, their priorities raised only if needed to stay above (\u00a75.5). Tests in cnb/tests/cnb-notehead-inference-tests.js, registered in the runner, pin: for every gallery and fixture config, writing back its own look table resolves to the same notehead (and the same colour) for every pitch class, every defined duration and every defined key or none; the default, Kite 4-369 and 45deg-369 exports of the written-back configs match their baseline .ly files byte for byte; the \u00a75.2 worked examples (default, Kite, 45deg, Twinline) infer the rules and names the design shows; and a small built config shows a key- or duration-scoped rule and an apply.color rule surviving the write back with the same resolutions.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 24,
+      "dateTime": "2026-11-07T02:12:23.218000-05:00",
+      "task": "Build the arithmetic of the notehead-first editor's two pitch variables with no UI (design docs/planning/notehead-first-editor-design.md \u00a73, \u00a74). A new pure-function module cnb/ui/pitch-model.js exports CNBPitchModel with: shiftPitch(config, d), which moves the pitch by d semitones and rewrites together, by the same d, staff.midpoint, each staff.semitonePattern entry (mod 12, kept sorted), each ledger template's semiWithinOctave and triggerPCs (mod 12), and the keys of staff.lineOverrides and ledgers.lineOverrides (\u00a73.1), leaving the pitchAxis map alone so each nudge travels with its pitch class (\u00a74.3); readNudges(config), which gives { nudges[12], staffSpacing } for a config, all zeros and staff.semitonesPerStaffSpace when no pitch axis is active, otherwise nudge(pc) = (position(pc) \u2212 position(0)) \u00d7 12 / octaveStride \u2212 pc and staffSpacing = axisUnitsPerStaffSpace \u00d7 12 / octaveStride (\u00a73.3, \u00a73.4), rounded to 4 decimals, or null when any nudge falls outside \u00b11 so the map is kept as a custom axis (\u00a73.5); writeNudges(config, nudges, staffSpacing), which writes staff.semitonesPerStaffSpace = staffSpacing (a decimal allowed, \u00a73.4) and a stride-12 pitchAxis (kind pitch-class-map-v1, position pc + nudge rounded to 4 decimals so shared spots compare equal, axisUnitsPerStaffSpace = the staff spacing), or removes the pitchAxis section when every nudge is 0 (\u00a73.2), and throws on a nudge outside its limits or a spacing that is not a positive finite number; nudgeLimits(nudges, pc), the range [max(\u22121, nudge(pc\u22121) \u2212 1), min(+1, nudge(pc+1) + 1)] wrapping at B and C (\u00a73.2); renameDelta(fromPc, toPc), the d in \u22126\u2026+5; and renameNotehead(config, fromPc, toPc), which shifts the pitch by that d and rotates the look table (session 23's lookTable / writeBack) and the nudges by the same d, so each look and nudge stays at its spot (\u00a74.1, \u00a74.3). The engine probe gains a measure of each engraved notehead's staff position and the staff's line positions, and an engine render of Twinline in nudge form (staff spacing 3.4286) is compared with the stride-7 fixture: every notehead's staff position and the staff lines within 0.01 half-space, skipping with the reason when lilypond or the engine is missing. Tests in cnb/tests/cnb-pitch-model-tests.js, registered in the runner, pin: shiftPitch leaves the exported staff-line positions unchanged and relabels which pitch class sits on each line for the default and Kite 4-369 configs, and shifting by d then \u2212d restores the config; Twinline's nudges and spacing match the \u00a73.3 table and \u00a73.4 value; the nudge form validates and its staff lines and notehead positions, through CNBPitchAxis and the exporter's computeStaffLinePositions, equal the stride-7 fixture's; writing all-zero nudges removes the section and the default export stays byte-identical to its baseline; the no-reordering limits, including the wrap at B and C and a nudge that reaches its neighbour; a map that needs more than \u00b11 reads as null; renameNotehead keeps every spot's look and nudge and the export's staff-line positions. The design's \u00a711 decimal-spacing risk is updated to say the render was made.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 25,
+      "dateTime": "2026-11-07T02:35:22.110000-05:00",
+      "task": "Replace the 7,200 px column of eleven panels in cnb/index.html with the one-screen editor of design docs/planning/notehead-first-editor-design.md \u00a77, the look of \u00a78.1\u20138.3 and the reflowing canvas of \u00a76.1. The canvas Size stays in the browser (operator, 2026-11-06): Small 9, Medium 11, Large 16 px per semitone, Medium the first time, remembered in localStorage under one key (per browser and origin, synchronous, survives reloads and closing the browser, never sent to the server, unlike a cookie; sessionStorage would forget it when the tab closes, and IndexedDB is asynchronous machinery for one word), every read and write wrapped in try/catch so a blocked storage falls back to Medium; the canvas draws a display copy of the config at that size and ignores the saved display.pxPerSemi, which keeps its meaning for the test pages and the gallery; the design's \u00a76.1, \u00a710 and \u00a711 are updated from the saved-field version. In cnb/src: CNBCard.render takes an optional layout argument whose fluid flag drops the column's fixed width so it fills its grid cell, centres the note-slice drawing in it and marks the column with data-pc; CNBStaff.render accepts the width \"100%\" so fluid rows draw every line to 100%; CNBCollection.render gains the fluid and rows options (rows 2 splits the pitch classes into C to F\u266f and G to C\u2032, each system with its own gutters, on one grid of equal columns no narrower than the widest column plus 2 px each side, the staff SVG a grid item spanning the clef and key-signature gutters and the row's own columns, so the second row's staff ends after C\u2032), and CNBCollection.minRowWidth(config, options) reports a row's narrowest width. data-pc and every other change appear only with fluid on, so with both options off the output is unchanged and the preview baseline (cnb/fixtures/preview-baseline.json) still matches. In cnb/ui, preview-display.js gains the Size control and picks one row or two with a ResizeObserver, redrawing only when the count changes; below the two-row minimum the canvas scrolls inside its own card with a fade at the cut edge and a hint to choose a smaller Size; its pitch-range control can be drawn into a host the page puts in Advanced (\u00a79). A new stylesheet cnb/ui/app.css (inside cnb/ui so the site assembly copies it unchanged) holds the \u00a78.1 tokens, the \u00a78.2 type, the \u00a78.3 control styling, the shell layout and the editors' host styling moved out of index.html. The page becomes a top bar (app and config name, the checks indicator, Open, Save, Export for LilyPond), a section list (Staff, Noteheads, Clef, Key signature, then Advanced and Export below a divider), the canvas, and one panel at a time under it. The checks indicator is the only place validation shows: it reads CNBConfigExport.validateForExport, says No problems, N warnings or N errors, opens a list of the messages, and an error that blocks export also shows as the Export button's tooltip; the editors' own validation blocks are hidden. Open and Save drive Module 17's loadText and save, whose panel is retired from view; Export drives Module 18's exportLy. The existing editors are mounted per \u00a79: the staff and ledger editor in Staff; the notehead rule editor, palette editor and SVG importer in Noteheads until session 27's notehead panel replaces them; the clef and key-signature editors in their sections; durations and engine, the raw pitch-axis map, the pitch range and View file (JSON), collapsed with a Copy button, in Advanced; the export panel in Export. Unit tests in each changed module's test file pin the fluid layout, minRowWidth, the row split, the lines drawn to 100%, the Size control and storage, and the row choice. The app's UAT drivers follow the moved panels, and a new driver screenshots the app at 1440 and 1280 px, checking the row count each width gives and that the page never scrolls sideways; the screenshots are judged against the \u00a710 mock-ups and recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 25,
+      "dateTime": "2026-11-07T02:46:58.575000-05:00",
+      "what": "step 'app-shell': its files",
+      "reason": "The canvas's display copy must also zero display.column.paddingH so the fluid column minimum is the ledger width plus 2 px either side (design 6.1); with the config's 16 px padding the default config cannot fit one row at 1440 px as the design and the screenshot driver require. One line in CNBPreviewDisplay.displayConfig and its test.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 25,
+      "dateTime": "2026-11-07T02:51:16.738000-05:00",
+      "what": "step 'uat-drivers-follow': its files and checks",
+      "reason": "The shared helper was declared as cnb/uat/uat-app.mjs, but run-uat.mjs spawns every file matching ^uat-.*\\.mjs$ as a driver; naming it app-page.mjs keeps it a module the drivers import, not a driver.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 25,
+      "dateTime": "2026-11-07T02:57:02.128000-05:00",
+      "what": "step 'screenshot-record': its files",
+      "reason": "The judgement against the 10 mock-ups found the canvas's display copy still uses the config's 22 px label chips spacing, not the editor's compact label style that design 6.1 and the mock-ups use, so two rows fill a 1280x800 window; the fix is in CNBPreviewDisplay.displayConfig and its test. The driver's screenshots become full-page to compare with the full-page mock-up shots.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:10:51.241000-05:00",
+      "task": "Make the kept panels speak to a notation designer (design docs/planning/notehead-first-editor-design.md \u00a71, \u00a76, \u00a78.4, \u00a78.6, \u00a78.8). The staff and ledger editor (Module 13) renders only the parts it is given (staff, ledgers, overrides; all three by default, so its test page is unchanged), and the page mounts it three times: Staff (pattern, staff lines on, staff spacing and middle of the staff read-only, staff line look), a new Ledger lines section after Noteheads (a segmented Automatic or My own rules choice: Automatic writes proximity templates at every position where the staff's own spacing continues past its lines and is recognised on load only when the templates are exactly those, in order, with the proximity rule on; switching to My own rules starts from those positions; My own rules is today's template list reworded as 'at this spot, show a ledger line when one of these is played'; then the ledger line look), and Advanced > Staff line overrides; an edit in one mount re-seeds the other two. The staff, ledger, clef, key-signature and export panels are reworded in designer terms, with units as suffixes and no module or set numbers, and their repeated Preview-only paragraphs become a small Preview only badge with a one-line tooltip beside each such control. The Export section holds the notation's name, the output file suffix, the notation label and the footnote (written to meta through a new onMeta callback of Module 18) and names the preview-only settings once, in one sentence. Each section gets its \u00a76 preview: the Ledger lines section tints the canvas columns that draw ledger lines (CNBCard marks a fluid column with data-ledgers) and draws every candidate ledger spot faintly (a ledgerSpots option of CNBCollection's fluid mode, off by default), and the Clef and Key signature panels each show a partial staff, that gutter and the first three columns, drawn by a new CNBPreviewDisplay.renderPartial at the canvas Size with the selected duration and key. Unit tests follow in each changed module's test file, the app's UAT drivers follow the wording and the new section, the full UAT runs, and the panels' screenshots are judged and recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:36:37.600000-05:00",
+      "what": "step 'uat-drivers-follow': its files",
+      "reason": "Running every driver showed the wording changes break uat-clef-editor, uat-key-signature and the test-page driver uat-staff-rule-editor (its derived-panel checks); uat-golden-path and uat-kite-pipeline use only class hooks that did not change and pass as they are.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 26,
+      "dateTime": "2026-11-07T04:39:03.739000-05:00",
+      "what": "step 'uat-record': its files",
+      "reason": "Judging the panel screenshots found a browser-default file input in the Clef panel (design 8.3), the Ledger lines panel repeating its card title as a group title, and the 'when a note is near' checkbox shown when no rule uses that mode; the fixes are in app.css and the staff editor with its tests.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 27,
+      "dateTime": "2026-11-07T05:17:52.031000-05:00",
+      "task": "Build the notehead panel of the notehead-first editor (design docs/planning/notehead-first-editor-design.md \u00a72, \u00a75.3\u2013\u00a75.5). Two inference fixes come first in cnb/ui/notehead-inference.js: writeBack removes a pitch class's palette.colors entry (and its colour-blind twin in palette.cbSafeColors) when its colour is taken back to none, and a changed colour's twin follows the twin another pitch class of the new colour already has, else is dropped; and a rule kept for particular durations or keys keeps its priority when it already sits above every inferred rule and is otherwise raised just enough to sit above them and after the kept rules before it, instead of all kept rules being lifted in bulk. The module also gains the rule list in words, one line per attribute (shape, fill, size, side step, colour) with the pitch classes each value covers. A new data module cnb/ui/builtin-shapes.js holds the four built-in shapes (the default oval crotchet-minim, ellipse-45deg, kite-up, kite-down, with their SVG and LilyPond data, pinned equal to the default config and the fixtures) and copies one into config.shapes when it is first chosen. The canvas (cnb/ui/preview-display.js) gains click and Shift-click selection on its columns' existing data-pc hit targets (C\u2032 selects C) and selection and hover marks kept across redraws. A new cnb/ui/notehead-panel.js draws the panel docked under the canvas for the selected pitch classes: the selected notehead alone at Large, colour (swatches of the colours in use, none, New colour with session 21's input/change wiring, the colour-blind-safe alternative, Start from a palette from the palette editor's presets), fill (Solid or Hollow), shape (thumbnails of the config's shapes, then the built-in ones, then Import from SVG through the existing importer), size (session 22's height and width with the aspect lock on by default and the shape's own size as reset), side step (only when the pitch axis makes the notehead share a spot with a neighbour), Give this look to (All, Every other, Every 3rd, 4th, 6th from the selected pitch class, The accidentals, The naturals, choosing which parts of the look to copy), and a marker when a kept rule for particular durations or keys also changes the notehead. Every change edits the look table and goes through writeBack. The page (cnb/index.html, cnb/ui/app.css) shows the rule list in the Noteheads section with hover tint on the canvas, opens the notehead panel in the panel's place on selection (Esc or \u2715 closes it), and moves the notehead rule editor to Advanced \u203a Rules for particular durations or keys and the palette editor to Advanced \u203a Colour palette, unchanged, recording that in design \u00a79. Tests go in the test files named after the changed and new modules; the app's UAT drivers follow the moved controls; a new driver builds the Kite 4-369 looks by clicking, starting from the Kite fixture with its rules reduced to the Default and its palette colours cleared, and checks the export equals cnb/fixtures/kite-4-369-export-baseline.ly; and the layout driver's screenshots at 1440 and 1280 px, now with a notehead selected, are judged against mock-up 2 and recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 27,
+      "dateTime": "2026-11-07T05:43:43.494000-05:00",
+      "what": "step 'uat-drivers-follow': its files and checks",
+      "reason": "Running every app driver showed uat-site.mjs also follows the panel: it requires every *-host element to be filled at load, and the notehead panel's host fills only while a notehead is selected.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 27,
+      "dateTime": "2026-11-07T05:49:30.349000-05:00",
+      "what": "step 'uat-record': its files and checks",
+      "reason": "Judging the screenshots against mock-up 2 found the rule list hidden under an open panel (design 2 lists it there), a head without the look in words, and an empty import status gap and misaligned rule words; the fixes are in index.html, app.css and the panel with its test, and the Kite driver's selection check follows the rule list staying visible.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 28,
+      "dateTime": "2026-11-07T07:05:22.528000-05:00",
+      "task": "Build the Pitch part of the notehead-first editor (design docs/planning/notehead-first-editor-design.md \u00a73, \u00a74) on session 24's pitch model, and settle the three pitch-model questions sessions 24 and 25 left open. First the model. readNudges measures every map's nudges from C's position, so a uniformly shifted map reads as no nudges and C's own nudge is always 0, the reference. Automatic ledger spots follow the staff spacing from the lines as the pitch axis places them, and shiftPitch, writeNudges and renameNotehead keep Automatic ledgers automatic. The exported staff is the pattern over the 24 semitones centred on the middle of the staff, from midpoint \u2212 12 to midpoint + 11, as the operator chose in planning. That is 0\u201323 for every config with midpoint 12, so only Twinline's export (midpoint 7) changes. Its baseline is regenerated, LY spec 1.3.5 records the change, and a test that renames C to F\u266f on the default staff pins it. The canvas keeps drawing C to C\u2032 with every staff line inside its range, so it needs no change, and the design records both decisions. Then the UI. CNBCollection gains a labelStrip option for the fluid canvas: a label column first in each row's 14th column, one pitch-class label per semitone level with its spot, even pitch classes left and odd right, a same-column shared spot joined as \"C\u00b7D\", and the middle of the staff marked. The preview display draws the strip quiet everywhere and, in pitch mode, lets the user drag it by whole semitones, which reports a pitch shift. A new Pitch panel (cnb/ui/pitch-panel.js) holds the middle of the staff, a decimal staff spacing and the twelve nudges with their limits, and falls back to \"This file uses a custom pitch axis that nudges can't show\" with a way to Advanced \u203a Pitch axis map when readNudges gives null (\u00a73.5). The notehead panel gains \"This notehead is: C \u25be\" (renaming, \u00a74.1) and the selected notehead's nudge. The app gets a Pitch section. Tests go in each module's test file. A UAT driver rebuilds Twinline from nudges and checks it engraves at the fixture's positions, and the screenshot check is judged against mock-up 3.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 28,
+      "dateTime": "2026-11-07T07:40:10.490000-05:00",
+      "what": "step 'uat-record': its files",
+      "reason": "The full UAT run found uat-key-signature.mjs counting the canvas row's columns without the new label strip, so the driver is fixed in this step; the screenshot judgement's fixes were CSS only, so index.html and pitch-panel.js are not changed.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 29,
+      "dateTime": "2026-11-07T07:54:33.012000-05:00",
+      "task": "Close the small defects, test gaps and stale documents that the reviews of sessions 2\u201326 and the v1 sets 001\u2013014 left open, as session 29 of the plan lists them. CNBScheme.parseRatio and parsePath refuse a number that parses to Infinity, so a 400-digit engine.defaultMagnify fails validation by name and a 400-digit path number is an import error. The SVG importer reads a stem rect's anchor from its transformed edges instead of its bounding box, so rotate(90) on {0, 0, 10, 20} anchors at (-20, 5) while Inkscape's scale(-1) flip still reads as before. Two engine-backed tests, which skip with the reason when lilypond or the engine is missing: a duration rule (\"C minims are hollow\" on the Kite fixture) engraves c'4 solid and c'2 hollow, and in repeat mode a stem anchored off the notehead's centre engraves at the preview's x, measured from the render. Small fixes: the repeat counts' inactive label says they are kept but not used; Automatic ledger lines are recognised on load only when every loaded template is exactly the automatic one, with triggerPCs present and no other fields; with every duration deselected the Clef and Key signature panels draw no partial staff; the design's \u00a710 880 px measurement and uat-status's \"no repairs\" sentence are corrected. Oswald is served from cnb/assets/fonts/ under its OFL with the licence beside it, the Google links and the drivers' font stubs go, and uat-site.mjs fails on any request outside the site's own origin. Off-key marks get a validation warning naming each rule that sets one, a Preview only badge on the control, and a mention in the Export sentence. The UAT setup docs say Node 20+ for the browser UAT, install browsers with the locked playwright-core's own installer and name Playwright's Chromium, and uat-hostile-input.mjs pins Firefox's console for malformed XML that contains an <svg token. The stale documents are brought up to date: the project plan's current state, the pitch-axis design's superseded chord diagnosis, the two engine behaviours under a pitch axis (in the export spec and README Known limitations), the playbook's I2, and architecture \u00a711's settled questions.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 29,
+      "dateTime": "2026-11-07T08:11:34.894000-05:00",
+      "what": "step 'engine-repeat-stem-test': its files",
+      "reason": "The render shows the exporter emits stem attachments in staff spaces while the engine passes them to LilyPond's stem-attachment, which reads fractions of the notehead extent, so the engraved stem cannot match the preview without changing export bytes (a declared non-goal). The operator chose to defer the fix: this step inserts a new session for it into session-plan.md and adds the probe and the test, skipping with that session named until the fix lands.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 30,
+      "dateTime": "2026-11-07T09:31:32.965000-05:00",
+      "task": "Make the LilyPond export carry the clef and the key signature, so the engraving matches the preview. Following the engine handoffs (set 005 \u00a75, set 006 \u00a73, set 008 \u00a75 flag 5), the exporter writes `cnb:clef-style` emit-if-changed. It is `'none` when no clef is shown, which is also the decision for the default config: it exports `'none`, the preview's answer, so the engine's dozenal clef is no longer engraved unasked. It is `'custom` for a glyph clef, registered with `cnb:register-clef!` (path from `lilypondPath` or the converted `svgPath`, the top-edge anchor converted to the engine's origin, `height-semitones` from `semitoneHeight`, and the colour) and named by `cnb:clef-name`. It is `'text` for a text clef, with `cnb:clef-text` as a markup carrying the definition's font, colour and bold weight, plus `cnb:clef-size-semitones`. When a clef is shown, `cnb:clef-gutter-semitones` is `paddingH \u00f7 pxPerSemi`, on the right only. For the key signature the exporter writes `cnb:keysig-style 'none` unless keys and the signature are both on. With the signature on, it writes the bar's colour, its thickness (`thicknessPct / (10 \u00d7 semitones per staff space)`, and 0 when the separator is off) and its extent, each only when it differs from the engine's default. It also writes `cnb:keysig-tonic-octave` on linear staves for an explicit tonic octave, numbered as the linear round trip measures (the handoff's \u22121). Under an axis the existing explicit octave stays as it is. The default, Kite, 45deg, sized and Twinline baselines are regenerated on purpose, and the change is named in CHANGELOG.md. The \"no clef token\" and \"no keysig token\" pins are lifted, and new tests pin what is emitted. Engine round trips go through new `cnb/tests/engine-probe.js` measurements and skip, giving the reason, when lilypond is absent: a glyph clef on a pitch axis with a fractional anchor engraves its top edge where the preview draws it; a text clef engraves at its preview height; a key signature with a styled bar engraves its marks' span where the preview draws them, with the bar's colour and thickness in its stencil. The engine places text clefs at a fixed height, not at the anchor, so that divergence is recorded in the spec. The LY export spec gains the addendum as 1.3.7, because 1.3.5 and 1.3.6 were taken by sessions 28 and 29. The architecture plan \u00a74.9, \u00a74.12 and its Module 20/22 notes stop saying nothing is emitted. The Clef panel loses its Preview only badge, and so do the Key signature panel's Placement and Separator bar. The spacing badge stays, since the engine has no setting for it. The Export section's sentence, the header's preview-only comment and the README's \"Preview-only settings\" follow. `uat-app-layout.mjs` saves the Clef panel with a glyph clef on and the Key signature panel with keys and a signature on for a key chosen on the canvas, and checks that each partial staff draws its gutter. The shots are judged and recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 30,
+      "dateTime": "2026-11-07T09:57:14.600000-05:00",
+      "what": "step 'panel-screenshots': its files",
+      "reason": "The panel-clef-glyph screenshot shows the clef importer's warning that a glyph without pre-baked data 'will need a fallback conversion if the engine gains clef support', which this session made false: the export now converts the glyph's SVG path. The importer wording and its test are fixed in this step.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 31,
+      "dateTime": "2026-11-07T10:12:32.051000-05:00",
+      "task": "Make the checks list speak to a notation designer (design \u00a78.5, mock-up 4). A new pure module, `cnb/ui/checks-wording.js` (`CNBChecksWording.describe(message, config)`), matches each validation and export message a designer can meet through the page against a short table of patterns and returns designer wording plus a link: a target that is a rule (by its index in `noteheadRules`, labelled **Show the rule**), the noteheads to select (pitch classes worked out from the config, labelled **Select the notehead** or **Select the noteheads**), or a section to open with an optional control in it (labelled **Open Staff**, **Open Key signature** and so on). The key-scoped rule warning reads as in \u00a78.5: \u201cIn G, F\u266f is hollow\u201d is not engraved: LilyPond ignores rules for particular keys\u2026. A message the table does not know comes back as itself with no link. The messages in `CNBConfig.validate` and `CNBConfigExport.validateForExport` do not change, so their tests and the export-blocking rules stay as they are. `cnb/index.html`'s `refreshChecks` shows each item's wording and link; following a link opens the section (or Advanced's rules disclosure, scrolled to the rule card with its name focused, or the notehead panel for the pitch classes) and closes the list. The Export button's tooltip uses the same wording. Tests in `cnb/tests/cnb-checks-wording-tests.js` pin the wording and targets for every mapped message and the pass-through. `uat-app-layout.mjs` opens, through Open, a Kite config with keys on and a rule scoped to G, checks that the list shows the designer wording and a Show the rule link, follows it and checks that Advanced shows that rule; it also saves the open list at 1440 (checks-list-1440.png), which is judged against mock-up 4 in docs/uat-status.md. CHANGELOG.md's 1.0.2 section names the change.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 32,
+      "dateTime": "2026-11-07T10:57:43.189000-05:00",
+      "task": "Add two staff presets to the Staff panel: \"2-4-6-8-10\" (title 2\u20134\u20136\u20138\u201310, \"Five lines an octave, on D, E, F\u266f, G\u266f and A\u266f\", pattern [2, 4, 6, 8, 10]) and \"3-5-7-9\" (title 3\u20135\u20137\u20139, \"Four lines an octave, on D\u266f, F, G and A\", pattern [3, 5, 7, 9]), after 4-8 and 3-6-9 in `STAFF_PATTERN_PRESETS` (`cnb/ui/staff-rule-editor.js`), with the `patternKey` type and the comments that name the presets (the preset table's, `automaticTemplates`') updated. The midpoint stays 12 and the spacing derives as 2, so no geometry code changes. Tests pin it: in `cnb-staff-rule-editor-tests.js` each new pattern opens as its preset and saves back unchanged, and `automaticTemplates` gives `[0]` for 2\u20134\u20136\u20138\u201310 and `[1, 11]` for 3\u20135\u20137\u20139; in `cnb-ledger-set-tests.js` 3\u20135\u20137\u20139's Automatic ledgers around C (C at 12 draws the C\u266f ledger at 13 only, B at 11 its own ledger at 11, so C shows one ledger above and none below \u2014 pinned as it is, shown at the UAT, and if judged wrong the fix is planned, not made here); in `cnb-lilypond-tests.js` the staff-line positions `'(-10 -8 -6 -4 -2 2 4 6 8 10)` and `'(-9 -7 -5 -3 3 5 7 9)`, and one engine engraving of 3\u20135\u20137\u20139 through `engine-probe.js`'s `measureStaffPositions`, skipping with the reason without lilypond, checking the lines fall at those positions. `cnb/uat/uat-app-layout.mjs` chooses each new preset and saves the Staff panel and canvas; the shots are judged against the mock-ups in a session-32 section of `docs/uat-status.md`.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 33,
+      "dateTime": "2026-11-07T12:04:24.628000-05:00",
+      "task": "Make exported stems engrave where the preview draws them. The engine hands cnb:register-attachment! points unchanged to LilyPond's NoteHead.stem-attachment, which reads each coordinate as a fraction of the notehead stencil's extent (-1 left/bottom edge, 1 right/top edge, about the extent's centre), while the exporter writes staff spaces. The exporter (cnb/src/cnb-lilypond.js, attachmentPoints) will write each attachment in those relative units: the anchor, in semitone units, measured against the extent of the very path Section A registers for the shape (the pre-baked lilypondPath, or svgPath through the fallback normalisation; exact Bezier extents, as LilyPond's make-path-stencil computes them). The staff-space divisor (sps, or axisUnitsPerStaffSpace under a pitch axis, LY spec 4.4a) and a sized variant's scale (4.1c) both cancel, so a sized variant registers the same relative points as its shape; lilypondAnchors stay semitone units in the config. The Kite fixture's SVG stem rects move so the imported semitone anchors (1.8 and -/+0.73 against the kite's 4x4-semitone path) export to the golden file's (0 . 0.9) / (-0.365 . 0.9); kite-4-369-config.json is rebuilt from the SVGs with rebuild-kite-shapes.mjs, never hand-edited. The 45deg-369 fixture and all gallery files already carry true anchors (SVG anchors from their source SVGs; Twinline's lilypondAnchors equal its SVG anchors in semitones), so their data stays and only their exports change. The default, Kite 4-369, 45deg-369, sized and Twinline baselines are regenerated. Session 29's engine-backed test in cnb/tests/cnb-card-tests.js loses its skip and covers minims and crotchets, stem up and down, within half the engraved stem width. The change is recorded in the LY spec as 1.3.8 (the plan names 1.3.7, which session 30 already used for the clef and key signature), with a note that 1.0.0 exports with stems should be regenerated, and the architecture plan's notes on lilypondAnchors and attachment conversion are corrected. If the engraved stems differ from the preview by a visible amount within that half width, the session stops and asks the operator whether the preview or the export moves.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 33,
+      "dateTime": "2026-11-07T12:17:23.911000-05:00",
+      "what": "step 'relative-attachments': its files",
+      "reason": "The Kite fixture's moved anchors reach three copies the plan did not list: the built-in kite shapes (pinned equal to the fixture), the kite-4-369 preview-baseline probe, and the Kite UAT's anchor checks; a second export-value test (config-export) and a stale importer comment on the anchor conversion also change.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 33,
+      "dateTime": "2026-11-07T12:45:37.625000-05:00",
+      "what": "step 'engine-stem-test': its files",
+      "reason": "The engine test showed every engraved stem half its width (0.065 staff space) inward of the preview: LilyPond puts the stem's edge on the attachment, the preview centred it. Asked per the plan, the operator ruled that a difference users may notice must be fixed; the preview moves (cnb-stem.js puts an up stem's right edge and a down stem's left edge on the anchor), which holds for any stem thickness, unlike hard-coding LilyPond's stem width into the export. Stem and card tests and every preview-baseline probe follow.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T13:47:58.701000-05:00",
+      "task": "Close, on the Configurator's side, every gap where the preview draws something the engine never receives (LY spec 5.2a). Where the engine has a fixed value and no simple-mode setting, the preview draws the engine's value, measured from engine renders and expressed in staff spaces (axis units per staff space under a pitch axis), and the setting leaves the editors and the defaults. Configs that still carry these settings load, and the settings are ignored. This covers stems (LilyPond's 0.13 thickness and its length past the far notehead, including shortened stems and stems carried to the middle line; display.stemThicknessPct, display.stemExtension and engine.stemThickness stop being read), staff and ledger lines (the engine's thickness and ledger length, black and solid; the staff and ledger lineDefaults styling, lineOverrides, widthMultiplier and roundedEnds go), the key-signature gutter (the engine's spacing) and the repeat counts, which are already fixed. Ledger rules are exported instead: for every notehead position in the engine's ledger range, Section B writes the exact ledgers the preview draws for a note there as cnb:ledger-overrides, linear and pitch-axis alike, so in-gap ledgers engrave. Section C dispatches on the key's pitch-class list the engine passes, so a key-scoped notehead rule engraves as previewed, and the preview-only warning goes. Engine-backed tests pin stems, line sizes, ledger positions (default, Kite 4-369, 45deg-369, Twinline and every gallery file) and a key-scoped colour rule in two keys. The export and preview baselines are regenerated as each step changes them, and the changes are listed in docs/sessions/change-log.md. LY spec 1.3.9, the architecture plan and the README record the result.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T13:54:10.825000-05:00",
+      "what": "step 'engine-stems': its files",
+      "reason": "The engine shortens a stem by how far it reaches past the staff, which needs the staff's LilyPond line positions; the exporter's computeStaffLinePositions moves to CNBStaff so the stem and the export share one copy, and the stem test page passes the grid context the geometry now needs.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T14:03:27.471000-05:00",
+      "what": "step 'engine-stems': its files",
+      "reason": "Removing the stem thickness control leaves its CSS rules (.cnb-cpe-stem-control, .cnb-cpe-stem-auto-label) in app.css and three test pages; they go with the control.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T14:08:34.657000-05:00",
+      "what": "step 'engine-lines': its files",
+      "reason": "The staff line overrides have a panel of their own in index.html (Advanced), with CSS in app.css, test-page markup and a layout UAT check; the one staff-space size the stem, staff and ledgers now share becomes a CNBStaff helper the stem uses too; key-signature ledgers and the collection's tests read ledger width and style.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T14:38:20.575000-05:00",
+      "what": "step 'ledger-export': its files",
+      "reason": "Measured: the engine passes its ledger rule the notehead's position rounded to a whole number (half to even), so on a 4-semitone staff B (-0.5) and C (0) share one cnb:ledger-overrides key and need different ledgers; the export therefore keys the preview's ledgers by the pitch, through NoteHead.ledger-positions / no-ledgers (verified honoured, fractional positions included), which needs a semitone-to-staff-position helper in CNBStaff and the preview's per-note ledger set from CNBLedgerSet. Ledgers stop being preview-only, so the staff editor's ledger badge and the export panel's sentence change with the header.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T14:58:29.621000-05:00",
+      "what": "step 'key-scoped-rules': its files",
+      "reason": "The export panel's test pinned the retired M3 warning (a key-scoped rule is not exported); it changes to the rule exporting without a warning.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T15:18:12.803000-05:00",
+      "what": "step 'gutter-and-repeat-counts': its files",
+      "reason": "With the gutter and repeat counts gone the export header and the export panel name only the colour-blind toggle as preview-only (config-export.js and its test, deferred here from key-scoped-rules), and the removed controls' CSS goes from app.css and two more test pages.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 34,
+      "dateTime": "2026-11-07T15:28:21.956000-05:00",
+      "what": "step 'docs': its files",
+      "reason": "The \"Limits kept on purpose\" list that names the in-gap ledger difference is in session-plan.md (After 1.1.0), not the README; it also calls architecture \u00a711 question 8 moot because stem thickness was preview-only, which this session settles.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-07T18:33:31.426000-05:00",
+      "task": "Make the new UI stable for the 1.1.0 release. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the app and, on the way, checks every colour picker by hand (drag in the field, type a full hex value), the check session 21 left owed; the findings are recorded in docs/uat-status.md. The rough edges found are fixed here when small (already known: the Staff and Ledger lines panel subtitles still promise 'how they look', which session 34 removed), and any large one is planned in session-plan.md as a session before 36. The README is brought in line with the new UI: the walkthrough names the new sections (Staff, Noteheads, Pitch, Ledger lines, Clef, Key signature, Advanced, Export) instead of the old editor names, the stale 'per-line styling' and staff 'line styling' claims go, the repeat counts are no longer introduced as a setting that changes the preview (session 18 review), the 'Preview-only settings' list matches the Export section's sentence, and a screenshot of the new page is added. The full browser UAT runs and its result, with the operator's declaration that the UI is stable, is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-08T05:55:55.416000-05:00",
+      "what": "step 'uat-and-declaration': its checks",
+      "reason": "The operator's rebuild found rough edges they chose to plan as sessions 36-39 before the release, so they do not declare the UI stable today; the declaration moves to session 40 (The UI is stable). The step still runs the full UAT and records it, and now records that the declaration moved.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 35,
+      "dateTime": "2026-11-08T06:03:55.166000-05:00",
+      "what": "step 'uat-and-declaration': its files",
+      "reason": "While capturing the README screenshot it turned out the canvas already selects several noteheads with Shift+click (index.html, notehead-panel.js); the operator did not know. Session 38 as planned would rebuild what exists, so the plan and the session-35 findings must say the gap is discoverability. The last step is the remaining one that can carry that correction.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 36,
+      "dateTime": "2026-11-08T06:43:05.694000-05:00",
+      "task": "Smooth the rough edges the operator found rebuilding Kite 4-369 and 45deg-369 in session 35 (docs/uat-status.md). Item 1, registration, was done when the session started. Save and Export for LilyPond open the browser's save dialog where it has one (showSaveFilePicker, in Chrome and Edge), suggesting the file names they use today, and keep today's download where it has none (Firefox); the top bar reports the name chosen, or that the save was cancelled. The choice between distinct shapes per duration and repeated heads moves from Advanced -> Durations and engine to the canvas toolbar beside the duration buttons, in a designer's words. Every colour field (notehead panel colour and its colour-blind twin, palette editor, rule editor, key-signature bar) changes only its swatch, and in the notehead panel the close-up notehead, while the designer drags, and applies the colour once when the drag ends; palette.schemeSymbols keeps names only for colours the config uses, pruned when a colour is applied and when the config is saved. Validation's warnings about a shape's paths name only shapes some notehead uses. The canvas toolbar gets a key and mode picker (a tonic and one of the seven modes LilyPond's \\key names) that draws the chosen key's signature, using the defined key the export engraves for that pitch-class set when there is one, plus one button that turns on the default signature (the scale stack); its messages are in a designer's words, and the validation warning that a signature has no defined key to draw goes, since the picker always supplies one. Unit tests and the browser UAT drivers follow each change, and the README and docs/uat-status.md record the result.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 36,
+      "dateTime": "2026-11-08T07:38:49.505000-05:00",
+      "what": "step 'colour-fields-apply-once': its files",
+      "reason": "Three more drivers set a colour with an input event alone and now also fire change (imported-notehead, kite-pipeline) or had a stale comment (notehead-rule-editor); golden-path gains the check that Save drops unused colour names.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 36,
+      "dateTime": "2026-11-08T07:53:22.270000-05:00",
+      "what": "step 'unused-shape-quiet': its files",
+      "reason": "Running the drivers for this step's warnings found two test pages and their drivers that still clicked the representation-mode control step repeat-mode-on-canvas removed; they gain the page-owned mode toggle test-common-props-editor.html already has.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 36,
+      "dateTime": "2026-11-08T08:16:44.636000-05:00",
+      "what": "step 'signature-on-canvas': its files",
+      "reason": "The Key signature editor's status note and empty-keys note said a signature needs a key chosen in the old Key menu or a defined key; with the picker neither is true, so both are reworded and its test updated.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T08:51:16.238000-05:00",
+      "task": "Session 37 moves colour from the palette onto the noteheads. Item 1, registration, was done when the session started. A notehead's colour is a notehead rule's apply.color. The look-table inference writes colour as rules, the way it writes shape, fill, size and side step, and null now means none (black). The config loses its palette: createDefault has none, CNBConfig.resolveColor and the palette validation go, and the preview draws the resolved colour or black. A config that still carries a palette is converted when it loads (new CNBConfig.paletteToRules, called by CNBConfigIO.mergeLoaded), so it previews and exports as before. Its primary colours become colour rules below every existing rule, so explicit rule colours still win. Explicit color:null fields are dropped, and the palette and its colour-blind set go. The colour-blind alternative goes everywhere: the notehead panel's twin field, palette.useCBSafe, engine.useAccessibleColors and its editor row, and the export's cnb:use-accessible-colors branch. A colour-blind variant is a config saved under another name with session 36's save dialog. The Advanced \u203a Colour palette editor is retired. Its curated sets, colour-blind-safe ones among them, become suggestions in a help disclosure in the notehead panel's Colour group, which a designer can apply. The colour naming the exporter needs moves from the palette editor into cnb/src/cnb-color.js. The exporter then registers the colours the resolved noteheads use, unconditionally, named from their hex (nearestColorName \u2192 toSchemeSymbol), with no palette.schemeSymbols. The fixtures are converted, the five export baselines regenerated, the test pages and UAT drivers follow, and LY spec 1.3.10, the architecture plan, the README and CLAUDE.md say what changed.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T09:25:17.980000-05:00",
+      "what": "step 'colour-on-noteheads': its files",
+      "reason": "createDefault losing its palette and validation no longer checking palette.schemeSymbols break two exporter tests now: the comment-escape test writes the default palette's name, and the hostile payload for palette.schemeSymbols expects validation to reject it. Both are removed here so the step's suite stays green; the rest of the exporter's palette handling stays in export-colours.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T10:20:04.581000-05:00",
+      "what": "step 'uat-drivers': its files",
+      "reason": "The whole UAT suite, run after the planned drivers were updated, failed in two more: uat-common-props-editor counts seven engine rows (the retired accessible-colours row made six), and uat-imported-notehead picks the Kite fixture's rule 0 as its Default, which the converted fixture's colour rules now precede. Both are one-line consequences of export-colours.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 37,
+      "dateTime": "2026-11-08T10:20:06.730000-05:00",
+      "what": "step 'uat-drivers': its checks",
+      "reason": "Syntax checks for the two drivers added to the step's files, as for the others.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 38,
+      "dateTime": "2026-11-08T13:46:11.015000-05:00",
+      "task": "Session 38 makes the existing ways of changing several noteheads at once easy to find; item 1, registration, was done when the session started. The canvas already selects several noteheads with Shift+click, and the notehead panel's Give this look to copies a look to many, but the operator did not find either (session 35, docs/uat-status.md). The canvas toolbar gets a hint, shown whenever it is not in pitch mode: click a notehead to give it a look, Shift+click or Ctrl+click to select several. Ctrl+click (and Cmd+click on a Mac) selects as Shift+click does. The Noteheads section's subtitle says the same. The notehead panel's head says how to add noteheads to the selection, and with several selected how to drop one, and that Esc or Close clears the selection in one move; the Close button's tooltip says it clears the selection. Give this look to gets a line saying it copies the ticked parts of the selected notehead's look to the noteheads chosen below, and each of its buttons names in its tooltip the noteheads it would change. Unit tests and the notehead-panel UAT driver follow, the README and the editor design say how to select several, and the operator rebuilds Kite 4-369 from a fresh page and judges whether the selection and Give this look to are now found without being told, recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 38,
+      "dateTime": "2026-11-09T04:41:46.483000-05:00",
+      "what": "step 'operator-trial': its files",
+      "reason": "The operator asked for two new sessions before 1.1.0 (workflow order; stems placed as the SVG specifies), inserted into the session plan as sessions 39 and 40",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T04:57:54.753000-05:00",
+      "task": "Put the page's sections in the order a notation is designed, starting from the general notehead height. The page still starts from the default config (the conventional crotchet-minim notehead on the 4-8 staff), but opens on a new first section, Notehead height, whose one field sets the height in semitones of every notehead (the width follows at each shape's own ratio), written through the look table so the Default rule carries it and the canvas draws the noteheads at that height. The notehead panel module gains the pure generalHeight(config) and setGeneralHeight(config, height) and the small renderGeneralHeight control, with unit tests. index.html then lists and stacks the sections as Notehead height, Staff, Pitch (beside Staff), Ledger lines, Noteheads, Key signature, Clef, then Advanced and Export, and opens on Notehead height. The UAT drivers follow the new first section and check that setting the height draws the noteheads that tall, and the README, the design's flow and docs/uat-status.md describe the new order.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T04:59:16.755000-05:00",
+      "what": "step 'general-height': its files",
+      "reason": "A size every notehead shares is written by the inference as a separate rule over all twelve pitch classes ('every 1 semitones from C'), not on the Default; the Default must carry the general height, as it carries the most common colour, so the inference changes too.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 39,
+      "dateTime": "2026-11-09T05:09:44.858000-05:00",
+      "what": "step 'section-order': its files",
+      "reason": "On the page the Notehead height control's reset button sat flush against the field's unit; giving the control the panel's existing cnb-nhp-group class spaces it with the page's own styles.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 40,
+      "dateTime": "2026-11-09T05:58:18.806000-05:00",
+      "task": "Make a shape's stem anchor the stem's own position rather than the place its edge sits. The importer already reads an anchor as the centre of the SVG's stem rect, so the preview now draws the stem centred on its anchor (CNBStem.geometry drops the half-thickness inward shift), and the export writes each cnb:register-attachment! point as the anchor moved outward by half the engine's stem thickness (0.065 staff spaces, in semitones by semitonesPerStaffSpace or axisUnitsPerStaffSpace), because LilyPond puts the stem's edge on that point; preview and engraving keep the same edge in repeat mode and for sized variants, whose attachment points are then computed at the variant's scale. The Kite 4-369 and 45deg-369 stems, whose rects are drawn centred, therefore preview and engrave centred. The default crotchet-minim notehead's anchors move so that on its default staff (4 semitones per staff space) the up stem's right edge is on the notehead's right extent and the down stem's left edge on its left extent, heights unchanged; the default config, the gallery files and the sized fixture that carry that shape take the new anchors. The five export baselines and the preview baseline are regenerated, the engine round trip in cnb/tests/cnb-card-tests.js also pins each stem's x for the default, Kite and 45deg fixtures, and LY spec 1.3.11 and the architecture plan record the change.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 40,
+      "dateTime": "2026-11-09T06:10:46.831000-05:00",
+      "what": "step 'stem-centre': its files",
+      "reason": "Two more tests pin exported attachment numbers: the 45deg.svg import test (cnb-svg-importer-tests.js) and the minim-pair export test (cnb-config-export-tests.js).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 41,
+      "dateTime": "2026-11-09T07:04:17.894000-05:00",
+      "task": "Give the configurator undo and redo of every change to the config. A new small module, cnb/ui/history.js (CNBHistory), keeps a bounded stack of config snapshots (JSON strings, 100 levels): create(config), record(config, group) which adds a step when the config differs from the current one and folds consecutive records of the same non-null group into one step, seal() which ends the open group, amend(config) which replaces the current snapshot without a step, undo() / redo() which return the config to restore or null, and canUndo() / canRedo(). cnb/index.html records the config at the end of every change (refreshShared), so every editor, the notehead panel, the canvas, an SVG import and opening a config are each a step; the group is the form control whose input event is being handled, and its change event seals it, so a typed value or a dragged colour is one step; Save's meta stamp amends the current step instead of adding one. Undo and Redo buttons in the top bar, disabled when there is nothing to undo or redo, and Ctrl+Z / Ctrl+Shift+Z (Cmd on a Mac, Ctrl+Y too) restore the snapshot, re-seed every editor and redraw, without recording. A browser UAT driver checks it in the real page.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 42,
+      "dateTime": "2026-11-09T07:32:41.313000-05:00",
+      "task": "Make the UI stable for the 1.1.0 release. The operator tries what sessions 36-41 added in the app (the save dialog, repeat mode beside the durations, colours chosen on the noteheads with suggested sets, selecting several noteheads, the sections in design order with Notehead height first, stems where the SVG puts them, and undo and redo), and the findings are recorded in a session-42 section of docs/uat-status.md. The small rough edges found are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 43. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is, undo and redo included, and its local-serving instructions are checked against the page as served. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 43), is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 42,
+      "dateTime": "2026-11-10T06:42:26.687000-05:00",
+      "what": "step 'fix-rough-edges': its files",
+      "reason": "The three fixes live in the colour sets and the notehead panel (with their tests, CSS, UAT driver and design doc), not cnb/index.html; the planned items' session numbers were added to the session-42 record.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 42,
+      "dateTime": "2026-11-10T06:46:41.091000-05:00",
+      "what": "step 'readme': its files",
+      "reason": "Checking the serving instructions found npx serve breaks /cnb/index.html, so the page's file:// notice (and its site UAT check) changed with the README; the new screenshot showed Shift+click selecting label text, fixed in app.css; both recorded in docs/uat-status.md.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 42,
+      "dateTime": "2026-11-10T06:47:15.498000-05:00",
+      "what": "step 'uat-and-declaration': its checks",
+      "reason": "At the operator's request the four large rough edges come before the 1.1.0 release (sessions 43-46 and on), so the operator did not declare the UI stable in this session; the record states that the declaration moves to the session before the release, and the check reads that instead of a declaration for session 43.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 43,
+      "dateTime": "2026-11-10T07:16:10.369000-05:00",
+      "task": "Make every notehead nudgeable and nudge it where it is drawn. Nudges stop being measured from a fixed C: a stride-12 pitch axis (the form writeNudges writes) is read as each pitch class's own offset, position minus pitch class, so C, and with it the notehead in the middle of the default staff, has a nudge like any other; a map at another stride (Twinline's 7) is still rescaled and read from C, which is only how it is brought into nudge form. The Pitch section's sliders and shaded bars go: each pitch class keeps its name, its number field and its 'shares' mark, framed with a light grey border and background so it is clear which notehead it belongs to, and C's field is enabled. On the canvas, with the Pitch section open, dragging a notehead's column up or down moves it with the pointer and the release nudges that pitch class by the distance dragged (a new pure CNBPitchModel.dragNudge, which converts the drag to a nudge, clamps it to the neighbours' limits and writes it); a press that does not move stays a click that selects. The notehead panel's nudge loses its slider and its 'C is the reference' hint the same way. Tests named after each changed source file follow, the browser UAT drives the field and the drag, and the design document and docs/uat-status.md record the change.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 44,
+      "dateTime": "2026-11-10T12:13:41.980000-05:00",
+      "task": "In repeat mode, a breve engraves and previews as two semibreves joined by a tie, instead of 4 heads like the semibreve. The operator chose (2026-11-10) to keep the breve as one note whose repeat-mode stencil is the composite: two of today's 4-head semibreve groups, 1 staff space apart, with a tie in the gap. The tie is LilyPond's make-tie-stencil from the left group's right edge to the right group's left edge, at the head's centre line, bowing down, 0.12 staff spaces thick, with LilyPond's default height limit and ratio. Longer values (longa, maxima) get 2^(-log) such groups, tied in turn. The engine work is the engine repository's own session: this session inserts it into the engine's plan as its session 25 (the operator's choice), with the geometry above, its goldens and a configurator handoff. Here, the card (cnb/src/cnb-card.js) draws the breve so: the same groups, gap and tie, the tie's path computed as LilyPond's bezier sandwich, and the ledgers and column following the wider group. The repeat-mode hint and the docs (README, architecture plan, LY spec 1.3.12) say so. Once the engine session has landed, an engine round trip pins the engraved breve's width and height to the preview's for the Kite and 45deg-369 fixtures, and the export baselines are confirmed unchanged, since the export text does not change (the engine draws the breve from the existing (repeat . #t)).",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 44,
+      "dateTime": "2026-11-10T17:01:20.527000-05:00",
+      "what": "step 'roundtrip': its files",
+      "reason": "Engine handoff 025 section 1: the tie engraves black, not in the notehead's colour; the preview follows, so the step also touches the card module",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 44,
+      "dateTime": "2026-11-10T18:02:36.684000-05:00",
+      "what": "accepted step 'engine-session': its checks",
+      "reason": "The engine released 1.3.0 as its session 27, not 26 (it inserted 'Session 26: Document 1.3.0' when landing session 25); the check accepts the release at any session number. The other three conditions are unchanged. Operator's choice, 2026-11-10.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 45,
+      "dateTime": "2026-11-10T19:08:21.699000-05:00",
+      "task": "Make the clef a choice that works. The Clef panel gains buttons for the engine's dozenal clef and the standard treble, bass and alto clefs; each adds its clef (if the config does not have it yet), makes it the active one and turns the clef on. The preview draws the dozenal clef as the engine engraves it under the score's default treble clef (the register numeral 50, two bold digits 3 and 2 staff spaces tall, centred on the middle line, the left digit half-width), its digits taken from TeX Gyre Schola Bold (GUST Font License), whose digit metrics are identical to C059, the font LilyPond 2.24 uses; it exports as cnb:clef-style 'dozenal with its gutter. The standard clefs are LilyPond's own Emmentaler glyphs (clefs.G, clefs.F, clefs.C; SIL OFL 1.1, the licence shipped with them), each placed with its reference line on the pitch it marks (G, F, C, in the octave nearest the staff's middle) at LilyPond's size in staff spaces, and export as glyph clefs through the existing cnb:register-clef! path, so no engine work is needed. Every glyph clef, imported or standard, says over which semitones it is shown: the panel's 'Top of the clef' field becomes a range, 'Shown from semitone \u2026 to \u2026', which writes the definition's anchorSemi (the top) and semitoneHeight (top minus bottom); with the Clef section open the clef is moved by dragging it up and down on the canvas and resized by dragging a handle on its bottom edge, both through one pure CNBClefEditor.withRange. The engine already places a glyph by its top and height, so the range engraves where the preview draws it. A row's grid grows to hold a clef that reaches past its noteheads, so a tall clef is not cut off. Engine round trips pin the dozenal clef and a moved and resized standard clef to the preview; the LY spec (1.3.13), the architecture plan, the README, the clef UAT driver and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 45,
+      "dateTime": "2026-11-10T19:10:01.279000-05:00",
+      "what": "step 'dozenal-and-range-preview': its files",
+      "reason": "The key signature spaces itself from the clef's width through CNBClef.measure, which needs the staff space to measure the dozenal clef, so cnb-key-signature.js passes it (one line).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 46,
+      "dateTime": "2026-11-11T01:32:20.720000-05:00",
+      "task": "In repeat mode a breve's tie moves below the noteheads (the operator's finding in the session-45 try-out, 2026-11-11). Today each notehead of the breve carries a tie in the 1-staff-space gap between its two semibreve groups, on the heads' centre line. Instead, each notehead carries one tie whose ends are at the centres of the first head of the first group and the last head of the last group, at the bottom of the heads (the group stencil's lower Y edge, which for LilyPond's own heads is where its ties under a note start), curving down as LilyPond's ties under a note do: LilyPond's make-tie-stencil, 0.12 staff spaces thick, DOWN, default height limit 1.0 and ratio 0.33, still black. The two groups and the gap between them stay as they are, so the breve's width, its ledgers and its column are unchanged. Engine 1.3.0 draws the tie, so the engine work is the engine repository's own session: this session inserts it into the engine's plan as its session 28, followed by its patch release 1.3.1 as session 29, with the geometry above, its goldens, version.json 1.3.1 and a configurator handoff. Here, the card (cnb/src/cnb-card.js: CNBCard.repeatLayout's ties and the render) draws the tie so through CNBCard.tiePath. Once the engine session has landed, the engine round trip in cnb/tests/cnb-card-tests.js measures the engraved tie's ends and lowest point against the preview's, and the LY spec's section 4.1d (1.3.14), the architecture plan and the README follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 46,
+      "dateTime": "2026-11-11T01:34:14.699000-05:00",
+      "what": "step 'preview': its files",
+      "reason": "The tie below the heads reaches about 5 semitones below a pc-0 breve (Kite 4.7, default 5.0), past the card grid's 4-semitone headroom, so CNBCollection.gridRange must widen a breve row's range for the tie not to be clipped (the step's own requirement); its test follows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T02:47:35.926000-05:00",
+      "task": "Design the key-signature designer, as a document only, for the operator's approval. docs/planning/key-signature-designer-design.md works from the operator's outline in docs/uat-status.md (session 42): two kinds of signature, traditional accidentals or scale notes, chosen once rather than defined per key and mode. For scale notes it covers the shape, colour and size of the signature's noteheads for naturals, flats and sharps across all pitches; the upper tonic shown or hidden; the option of showing only the tonic and the notes a half step apart; the stacking (two stacks of odd and even notes, optionally with the gold stem, or a new stack to the right at each half step, optionally alternating fill, colour or shape, enough for Clairnote's signatures); and how the signature repeats across the staff's line groups (once, placed on the bottom group, the top group or near the notes, or repeated across every visible group with the root as a double notehead). It says how the choices are stored in keys.keySignature, how a config saved today (the notehead-chords scale stack) loads and looks the same, how the preview draws each choice and how each reaches LilyPond, naming the engine work: the mark-list rendering hook the engine backlog section 2.3 says to reopen, and whatever else the engine needs. The design then goes to a cross-provider consult, one identical brief to GPT and Gemini, recorded verbatim with a synthesis in docs/planning/key-signature-designer-consult.md, and the design is revised from it. The operator reviews and approves the revised design, and the approval is recorded in the document. Finally the design's proposed program becomes numbered sessions in docs/sessions/session-plan.md: the sessions that build the designer (sessions 48 and on, each naming its engine work), then the session in which the operator declares the UI stable, then the 1.1.0 release, numbered.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T04:09:59.104000-05:00",
+      "what": "step 'operator-approval': its files",
+      "reason": "The operator asked, before approving, for mock-ups of normal and edge cases to review visually (placement on the bottom set, top set or both, and a signature starting midway up a set); static mock-ups under docs/planning, as session 19's, nothing under cnb/.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 47,
+      "dateTime": "2026-11-11T04:34:14.578000-05:00",
+      "what": "step 'operator-approval': its files",
+      "reason": "The operator, reviewing the mock-ups, added four stack-membership rules, custom symbols and a styleable gold stem, and asked for a second consult with Sol and Argon (gpt-6.1-sol, gemini-4-argon) before approving; the consult record gains that round.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 48,
+      "dateTime": "2026-11-11T05:03:40.328000-05:00",
+      "task": "Build the scale-note half of the approved key-signature design (docs/planning/key-signature-designer-design.md, session 47) on the canvas, after first proving its engine contract. A LilyPond probe (cnb/tests/engine-probe.js) shows that, under the engine, a Staff engraver acknowledging each KeySignature grob reads the tonic's note name and alteration (the context's tonic) and the key's seven pitch classes (keyAlterations over the seven steps) from real \\key events: a sharp key (F sharp major), a flat key (B flat major), an enharmonic pair (F sharp and G flat major), a key change, a transposed score and the signature repeated at a system start; if it cannot, the session stops and the design is revisited. A baseline captured before any code changes pins the canvas's signature (CNBCollection.render with keys and the signature on) for every fixture and gallery file in four keys, so the defaults are proved to draw exactly as before. CNBMusic gains key spelling: each mode's 15 tonic spellings (design section 3), the alteration of each note of a key spelled from its tonic's name, and a default spelling. keys.keySignature gains the fields of design section 6 (notes, upperTonic, looks.all/flat/sharp, stacking, alternate, columns, placement.position, separator.shareThickness), each defaulting to today's signature, with validation, carried through unchanged by the key-signature editor, and the architecture plan's section 4.9. CNBKeySignature.marks(config, key) computes, for a key definition carrying its tonic and spelling, the marks (semitone, column, resolved look: the notehead's own, then all marks, then flats or sharps, then every second stack), the columns' x offsets in staff spaces, the gold stems (between neighbouring stacks, their colour, and thickness shared among them when set) and the overlaps of marks in one stack, for every scale-note choice of design section 4: the whole scale or the tonic and the half steps, the upper tonic, the four stacking rules, the direction, and the middle, bottom, top or every line set, centred; render, measure and the gutter draw from it. The staff's picker offers each mode's 15 spellings and passes the spelling with the picked key. Finally the engine's session 30 (the mark-list hook, design section 9) and session 31 (release 1.4.0) are inserted into the engine repository's plan.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 48,
+      "dateTime": "2026-11-11T05:13:47.768000-05:00",
+      "what": "step 'config-fields': its files",
+      "reason": "A config-io round-trip test hand-builds keys.keySignature without the new fields, and loading now merges their defaults; its fixture is built over the schema's default keySignature instead",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 49,
+      "dateTime": "2026-11-11T07:13:22.873000-05:00",
+      "task": "Export the key-signature designer's scale-note signatures to LilyPond (design docs/planning/key-signature-designer-design.md section 9), once engine session 30, the mark-list hook (cnb:keysig-style 'marks and cnb:keysig-marks), has landed in the engine repository; until then the export step is reported blocked. The exporter decides from the signature's effective settings (those that apply to its kind and stacking rule, not every stored field) whether it is today's: today's signature exports byte for byte as before ('chord, or 'none when off), and any other writes cnb:keysig-style 'marks and a mark table of 105 entries, the 15 spellings of each of the 7 modes, each keyed by the tonic's note name and alteration and the key's sorted pitch classes, giving its columns' x offsets in staff spaces, its gold bars (x, two ends in engine semitones, colour, thickness) and its marks (engine semitone, column, head with the shape, hollow and colour names Section A registers, a sized variant where sized), all computed by CNBKeySignature.marks; Section A registers the shapes, variants and colours the table uses. The LY spec gains 1.3.15 section 5.6a, and the architecture plan and the README follow. An engine round trip on a representative set (the default and Clairnote DN fixtures; each stacking rule; the upper tonic on and off; the half steps alone; the bottom, top and every line set; several gold stems) holds each engraved mark's height, column and look, each bar, and the signature's width to the preview's within 0.001 staff spaces; a key the table lacks engraves no signature and warns; the five export baselines stay byte-identical.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 49,
+      "dateTime": "2026-11-11T08:55:38.566000-05:00",
+      "what": "step 'engine-round-trip': its files",
+      "reason": "The operator asked for the preview to be as true as possible (2026-11-11): the round trip found the engine spaces a mark-table signature from its ink (0.75 before, 2.5 after, handoff 030 section 3), draws its bars with round caps and its ledgers 4/3 of a head plus round caps, so the preview follows (cnb-key-signature.js, its tests, the canvas signature baseline), the scale-stack test moves to CNBKeySignature for the exporter to share, and the engine's signature ledgers, which ignore the config's ledger rules, are planned as engine work (operator's choice) and recorded in the spec, the plan and the README.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 49,
+      "dateTime": "2026-11-11T09:04:46.212000-05:00",
+      "what": "step 'engine-round-trip': its files",
+      "reason": "The preview-DOM baseline also pins the key-signature probes (default-key-signature and the two Clairnote gallery files), whose gold stems now have round caps and whose ledgers their engraved length; it is re-captured with capturePreviewBaseline(), as its description provides for an approved preview change.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T09:44:55.206000-05:00",
+      "task": "Give the key-signature designer its panel (design docs/planning/key-signature-designer-design.md section 7). The Key signature section, in a designer's words, edits the settings session 48 added: Show the key signature; Notes (the whole scale, or the tonic and the half steps; the tonic an octave up); Stacks (the four stacking rules, the direction, to the right or to the left in sharp keys, hidden under odd-left-even-right; the gold stem between the stacks with its colour and its thickness in staff spaces, and several stems sharing the thickness, saying what each stem gets); Looks (all marks, flats, sharps and every second stack, each a menu that opens the notehead panel's own controls, shape, fill, colour, height and width, with 'as the noteheads', 'as all marks' or 'as the others' clearing a field); Place (the middle of the staff, the bottom, top or every line set); and a note beside the stacks when two marks of one stack overlap in the key picked on the staff, pointing to the looks' size. The panel drops the old Marks, placement-rule, tonic-octave and bar-extent controls, whose stored values are kept, and the key definitions move below it under 'Keys for notehead rules'. The Clairnote SN and DN gallery files take Clairnote-style signatures: a dot, a dot with a rising tail for sharps and a dot with a falling tail for flats, each placed by the dot's centre, with tails thick and steep enough to read; a new stack at each change of parity, going left in sharp keys; no upper tonic; no gold stem; on the bottom line set; their fill following the noteheads. An engine round trip holds those signatures to the preview, and they are checked at concert size on an engraved page. The key-signature UAT driver exercises each choice on the canvas, with screenshots at 1440 and 1280 px judged against the mock-ups; the README, the architecture plan's Module 23 and docs/uat-status.md follow. No engine work.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:00:46.860000-05:00",
+      "what": "step 'panel-settings': its files",
+      "reason": "Engine 1.4.1 (engine session 33) landed before this session ran and broke the step's check (the unit suite): a key-signature engine round trip. At the operator's choice (2026-11-11) session 51's item 4 moves here: the scale stack is spaced by its ink, the export gives mark-table marks beyond semitones 0-24 their ledger entries, the round trips hold every signature's ledgers and ink, LY spec 1.3.16, session plan item moved. cnb-checks-wording-tests.js and uat-app-layout.mjs needed no change.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:24:06.368000-05:00",
+      "what": "step 'clairnote-signatures': its files",
+      "reason": "The Clairnote files' signatures sit on the bottom line set, where G major's lowest mark (semitone -5) fell below the row's grid and was cut off on the canvas; CNBCollection.gridRange now widens to a signature mark beyond the range (only then, so no other file's drawing changes), with a test in cnb-collection-tests.js.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 50,
+      "dateTime": "2026-11-11T10:48:55.409000-05:00",
+      "what": "step 'concert-check': its files",
+      "reason": "The concert-size engraving showed the one-sided tails meeting the next dot and the balancing slivers printing as specks; at the operator's choice the symbols became slashed dots, symmetric about the dot. Slashed and plain dots differ in width, and the engine sizes each signature ledger from its own head, so the preview now draws each head's ledgers at its own width and spaces by the true ink (cnb-key-signature.js), with a unit test, the spacing and Clairnote round trips updated, and a sentence in LY spec 1.3.16 section 5.6a.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 51,
+      "dateTime": "2026-11-11T11:37:49.643000-05:00",
+      "task": "Give the key-signature designer its second kind of signature, the traditional accidentals (design docs/planning/key-signature-designer-design.md section 5). keys.keySignature.style gains the value \"accidentals\": CNBKeySignature.marks then gives a sharp for each sharp of the key in the order F C G D A E B, or a flat for each flat in the order B E A D G C F, and nothing for a key with neither, each sign in its own column, left to right, at the semitone of the note it makes, in the octave the signature's place gives that note in the scale; on every line set each copy's columns start again from the first. Signs are black, have no ledger lines and no gold stems, and the scale-note settings (notes, upper tonic, looks, stacking, direction, gold stem) do not apply, while the place does. The signs are Emmentaler's accidentals.sharp and accidentals.flat (SIL OFL 1.1, its licence already in cnb/assets/fonts/), copied from LilyPond 2.24's emmentaler-20 font at LilyPond's size in staff spaces, placed and spaced as engine 1.4.0 draws them (a sharp's origin at its centre line, a flat's at its bowl's line, X extent centred on its column). The panel gains 'Draw: The key's notes / Sharps or flats', hiding the scale-note rows for sharps or flats. The export writes the signs through the mark table as (semi column sharp) and (semi column flat), and an engine round trip holds C major, a sharp key and a flat key, on the bottom line set and on every line set, to the preview. The key-signature UAT, README, architecture plan, LY spec and docs/uat-status.md follow. No engine work.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 51,
+      "dateTime": "2026-11-11T11:50:59.498000-05:00",
+      "what": "step 'export-accidentals': its files",
+      "reason": "The first engine round trip showed LilyPond draws the flat from Emmentaler's optical size nearest 20 pt x the staff's magnification (emmentaler-26 at the default 7/4), whose box differs from emmentaler-20's by up to 0.06 staff spaces; the preview needs each design size's sharp and flat, kept in their own data module with tests, so the signs engrave where and as large as the canvas draws them.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 52,
+      "dateTime": "2026-11-11T15:52:14.283000-05:00",
+      "task": "Size the traditional key signature's sharps and flats in semitones, as the noteheads are, instead of at LilyPond's 3-staff-space size (12 semitones on the default staff). keys.keySignature.signs.heightSemis is the sharp's height from the top left of its upper bar to the top left of its lower bar, in semitones (axis units under a pitch axis); null, the default, is automatic: the least of the mean height of the twelve pitch classes' crotchet noteheads resolved with no key, one staff space, and 3 semitones (2.72 on the default staff, 3 on Kite 4-369, 1 on 0-5-7 and Avique, 2 on the rest of the gallery). The sharp and flat are scaled by one factor, the size / the sharp's bar spacing (measured from the outline in each optical size, about 1.05 staff spaces) / the semitones per staff space, and the columns are the scaled signs' widths apart. Validation accepts null or a finite number > 0 and warns outside 1-12. The key-signature panel gains a Size row under Sharps or flats (Automatic (n), or a number in semitones, with a way back to automatic), and the Place hint stops mentioning the tonic and the half steps there. Against engine 1.5.0 (engine sessions 35 and 36, released), the export writes each sign's factor as the mark's fourth element, (semi column sharp 0.6473), left out when it is 1; an engine round trip holds every sign's origin, box and the ink to 0.001 staff spaces and the spacing to 0.005, for the default and Kite 4-369, middle and every line set, C, D and B flat major, automatic and hand-set sizes, at magnifications 1, 7/4 and 5/2; and, since engine 1.5.0 makes a plain score engrave at the exported cnb:default-magnify, the round trips drop their \\magnifyStaff #cnb:default-magnify prefix and LY spec section 5.6a's magnification paragraph is rewritten. LY spec 1.3.18, the architecture plan, the README, the UAT and docs/uat-status.md follow, and the five export baselines stay byte-identical.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 52,
+      "dateTime": "2026-11-11T15:59:50.393000-05:00",
+      "what": "step 'sign-size': its files",
+      "reason": "Scaling the signs moves their columns, so the existing sharps-and-flats engine round trips and export-text test fail until the export writes each sign's scale (cnb-lilypond.js, its tests); the editor's buildKeys/stateFromConfig must carry the new keySignature.signs or its default round-trip test fails. With engine 1.5.0 the gutter round trip at magnify 1 and 5/2 now really engraves at those sizes, so the preview's spacing must follow the clef's X-offset and the time signature's optical width in cnb-key-signature.js.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 53,
+      "dateTime": "2026-11-11T17:35:38.897000-05:00",
+      "task": "Design the key-signature editor, as a design only, for the operator's approval: an amendment to docs/planning/key-signature-designer-design.md. It replaces the two styles with one model for every signature, four choices (which notes get a mark: the whole scale or the altered notes only; what each mark is drawn with; how the marks are arranged; their sizes and offsets), with the notehead signature the default and the traditional signature a starting point (altered notes, Emmentaler's signs, the cycle of fifths, no gold stem), and says how a config with either of today's styles loads and draws as it does now. It covers symbols (a notehead's own look or a chosen shape, Emmentaler's sharp or flat, or an imported SVG, chosen separately for naturals, flats and sharps; a mark as a base plus up to two added symbols such as a tail; each symbol's reference point and whether it takes ledgers, set on import); when a look applies (natural, flat or sharp; line or ledger, or space; every second stack); the arrangement (today's stacking rules, or the cycle of fifths one sign to a column, with a zigzag rule for a chromatic staff); the editor (the signature magnified on a canvas from the notehead panel's thumbnails, controls and import, drags that move or resize a symbol in semitones for its whole category, a key picker and small previews of other keys); placing a mark by its reference point plus an offset rather than by centring its box; how a tail clears the next dot of a stack; and the config, the panel rows the editor replaces, the preview, the mark table's format and the engine's work (imported symbols as signs, placement by reference point and offset, layered marks). Mock-ups follow before approval: the editor at 1440 and 1280 px with its key picker and previews of other keys, and the notehead signature, a traditional one with the zigzag, and Clairnote SN and DN with tails, each in a sharp and a flat key at concert size. One identical brief goes to two providers' models as a cross-provider consult, recorded with a synthesis, and the design is revised from it. The operator reviews the mock-ups and the design, approves it, and decides whether the sessions it plans come before the 1.1.0 release; those sessions, and the engine session they need, are then numbered in the session plan.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T02:58:04.492000-05:00",
+      "task": "Build the approved key-signature model of design docs/planning/key-signature-designer-design.md section 13 on the canvas, and plan the engine's part. keys.keySignature loses style and gains section 13.9's model: notes \"altered\" (the sharps or flats only), looks.natural, looks.line and looks.space beside all, flat and sharp, a look's sign (\"sharp\" or \"flat\", one slot with shape), offset { x, y } and added (at most two symbols, each replaced whole by a layer that sets it), stacking \"fifths\" (the cycle of fifths, one mark to a column) with heights \"window\" or \"scale\" and window { sharp, flat }; shapes gain optional reference { x, y } and ledgers. Validation covers each new field. CNBConfig.signatureStyleToModel, called by CNBConfigIO.mergeLoaded before the defaults are merged, drops a saved style, turning \"accidentals\" into the sharps or flats only, black Emmentaler signs and the cycle of fifths climbing (heights \"scale\"), its looks and alternate cleared first; it is idempotent. CNBKeySignature.marks, measure, the ink, padding and render draw the model: the layers in section 13.4's order with the line or space decided from the mark's pitch, the signs as a look (black unless a look colours them), added symbols drawn solid in the mark's colour over the base with no ledgers, placement by a shape's reference point plus offset (a shape without one centred as today, the offset moving it), a head's ledgers moving with it and as long as its base is wide, a shape with ledgers false taking none, the column step the farthest reach right plus the farthest reach left, and the cycle of fifths with its order by letter, no gold stem, columns left to right, no upper tonic, every second column as every second stack, and the window shared by each copy's key family. Every fixture and gallery file, and both of today's styles after conversion, draw (and export) exactly as before. Today's key-signature panel keeps working on the model: its Draw row sets the traditional starting point or the defaults, until session 56 replaces it. The engine's session of design section 13.10 and its 1.6.0 release are inserted into the engine repository's plan. The key-signature UAT, the architecture plan, the README and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:02:30.917000-05:00",
+      "what": "step 'config-model': its checks",
+      "reason": "The whole suite cannot pass after this step alone: the key-signature panel still reads and writes style until the panel-on-model step changes it, so this step's check runs the config and config-io tests, the files it changes; the panel step keeps the whole-suite check.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:02:48.942000-05:00",
+      "what": "step 'config-model': its checks",
+      "reason": "The second check validated a default config, whose signature is off, so validation never looked at the look; it now turns keys and the signature on before testing that shape plus sign is rejected.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 54,
+      "dateTime": "2026-11-12T03:21:19.333000-05:00",
+      "what": "step 'signature-model': its checks",
+      "reason": "The key-signature panel still reads and writes style until the panel-on-model step, so two of its tests cannot pass after this step; this step's check runs every suite the runner lists except the panel's, and the panel step keeps the whole-suite check.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 55,
+      "dateTime": "2026-11-12T04:17:03.174000-05:00",
+      "task": "Carry the key signature's one model (design docs/planning/key-signature-designer-design.md section 13.10) to LilyPond through the mark table, as engine 1.6.0 reads it (engine sessions 37 and 38, landed and released; its docs/session-sets/037-placed-keysig-marks/configurator-handoff.md is the contract). Each symbol CNBKeySignature.marks gives a mark becomes one table mark, in order (the base, then its added symbols), so layered marks share a semitone and column: a head (head kind), a base whose shape has ledgers false or an added symbol (the new symbol kind, solid or with its cutout, no ledgers), or a sharp or flat. A symbol the preview places away from the engine's default (box centred on its column, origin at its semitone) writes the optional last element (at dx . dy) in staff spaces, its origin from the column and the pitch; a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an at writes its scale even at 1. Section A registers the added symbols' shapes, sizes, cutouts and colours and the signs' colours; ledger entries come from head bases only. An unchanged table is written byte for byte as before, so the five export baselines stay byte-identical. The Clairnote SN and DN gallery files take Clairnote's own signatures: dots, solid on a line or ledger and hollow in a space (SN through the line and space looks, DN through its noteheads), flats with a tail up and sharps with a tail down, each tail an imported filled shape with a reference point and no ledgers, added to the flats' and sharps' looks and shallow enough to clear the next dot (design section 13.7); they are engraved at concert size and judged, as session 50 judged its slashed dots. An engine round trip holds every symbol's placement, size and colour, every stack's ledgers and the ink to the preview's within 0.001 staff spaces across the cases the session plan lists. LY spec 1.3.19 section 5.6a, the architecture plan, the README, the key-signature UAT and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 55,
+      "dateTime": "2026-11-12T04:22:27.695000-05:00",
+      "what": "step 'export-model': its checks",
+      "reason": "The check expected the colour symbol red-cc0000; the exporter names #cc0000 from its hex as every colour is (CNBColor.schemeSymbol: fire-engine-red-cc0000), so the check now asks CNBColor for the name",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 55,
+      "dateTime": "2026-11-12T04:35:26.706000-05:00",
+      "what": "step 'clairnote-signatures': its files",
+      "reason": "A tail is a one-sided symbol whose box is not centred on its origin (its reference point); the preview took every placed symbol's box as centred there, so the column step, the ink and a placed head's ledgers would be wrong for the tails. The fix measures a placed symbol's box from its path's exact extent, the exporter's pathExtent moved into Module 6 as CNBNotehead.box (with its test) so the preview and the exporter share it.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 55,
+      "dateTime": "2026-11-12T04:48:45.763000-05:00",
+      "what": "step 'clairnote-signatures': its files",
+      "reason": "The Clairnote files are also pinned by the collection preview baseline (cnb/fixtures/preview-baseline.json, its comment in cnb-collection-tests.js); session 50's Clairnote round trip in cnb-lilypond-tests.js assumed one box-centred head per mark and is brought to the model's symbols (holdMarkTable, which step engine-round-trip extends); and the panel words the sharps' and flats' added tails (lookSummary in key-signature-editor.js, with its test), as the non-goal on the panel allows.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:08:50.838000-05:00",
+      "task": "Build the key-signature editor of design docs/planning/key-signature-designer-design.md section 13.8 in the Key signature panel (cnb/ui/key-signature-editor.js, Module 23), as the mock-ups in docs/planning/key-signature-editor-mockups/ show it. The panel heads with Show the key signature and Start from (The noteheads, Traditional sharps and flats), which replaces the signature's settings after asking to confirm, keeping Show and the picked key. Beneath it the key picker (the staff's own tonic and mode, which it changes too), the Edit layer chips (all marks, naturals, flats, sharps, on a line or ledger, in a space, every second stack) and the magnified canvas: the picked key's signature drawn through CNBKeySignature.render on a grid context at 24 px a semitone, with the staff's lines near the marks and the marks' ledgers, its height capped at 360 px and scrolling inside. A click on a mark selects its spelling's layer, or the layer picked in Edit, and the base or the added symbol clicked; the selection shows its reference point, its box and a corner handle. Dragging a symbol sets the layer's offset, or an added symbol's own offset; the handle sets the symbol's size, or signs.heightSemis for a sign; values snap to tenths of a semitone and show beside the handle while dragging, and one drag is one change, so one step of undo. Beside the canvas the look card: the notehead panel's thumbnails with Emmentaler's sharp and flat as two more, Import from SVG with the imported symbol shown enlarged, its reference point set by a click, and Takes ledger lines (on for naturals and all marks, off for flats and sharps), fill, colour, size (Automatic for the signs, kept), offset fields, and up to two added symbols, the selection named Base, Added 1 or Added 2, each removable, each field's as-beneath clearing it, and a line saying the edit applies to the category in every key. Beneath the canvas the picked mode's 15 keys as small signatures at the staff's scale, a click picking one, a key whose marks touch outlined with the number of places, and a line saying how many of the 105 keys have touching marks, opening a list whose keys pick their tonic and mode. The touch check of design section 13.7 runs over the 105 keys (every line set's copy and the seams included), comparing whole marks in the same and neighbouring stacks by their boxes and then by their ink rasterised into a small mask, a hollow mark's cut-out excluded, after a change and not while a drag moves; it is a warning in the checks list, never blocking the export. Notes gains The sharps or flats only and Stacks the cycle of fifths with its heights and window; Place stays. The rows the editor replaces are removed: Draw, Looks, Size and the overlap note (with marks().overlaps, which only the note read). A UAT driver covers each drag and choice, with screenshots at 1440 and 1280 px judged against the mock-ups; the architecture plan, the README and docs/uat-status.md follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:14:14.258000-05:00",
+      "what": "step 'touch-check': its checks",
+      "reason": "The planned check expected the default signature under parity stacking to touch nowhere, but parity puts the 2.724-semitone default heads 2 semitones apart in one stack, so they do touch (session 50's overlap note reported the same). The amended check asserts the default stacked sevenths touch nowhere and parity does, with the same 105-key count and time budget.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 56,
+      "dateTime": "2026-11-12T05:53:04.357000-05:00",
+      "what": "step 'uat-and-docs': its files",
+      "reason": "The step asks to fix what the screenshots' judgement against the mock-ups finds; it found the canvas's 2-semitone margins pushing B-flat major's lowest mark past the 360 px cap and the other keys' small signatures too wide for one row at 1440 px, both fixed in cnb/ui/key-signature-editor.js, which the step's file list did not name.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 57,
+      "dateTime": "2026-11-12T06:35:19.168000-05:00",
+      "task": "Make the UI stable for the 1.1.0 release. The operator tries what sessions 43-56 added in the app (nudging any notehead by dragging it on the canvas or by its framed field, the breve as two tied semibreves with the tie below the heads, the Dozenal, Treble, Bass and Alto clefs and a glyph clef's range set by typing or dragging, and the key signature: its one model, sharps and flats sized to the noteheads, the magnified canvas with its selection, drags and snapping, Edit and the look card, Import from SVG with its reference point, the key picker with the mode's 15 keys, the touch check and Start from), and the findings are recorded in a session-57 section of docs/uat-status.md. The small rough edges found are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 58. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 58), is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 57,
+      "dateTime": "2026-11-12T08:23:47.450000-05:00",
+      "what": "step 'fix-rough-edges': its files",
+      "reason": "The one fix-here edge is the Pitch section's nudges hint (pitch-panel.js), decided by a consult the operator asked for, recorded in docs/planning; the key-signature and notehead panels are untouched.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T12:03:42.020000-05:00",
+      "task": "Make the repeated noteheads' overlap a fraction of each head's width, set beside the repeat-mode choice, and give the breve the tie the operator picks (the session-57 try-out, docs/uat-status.md items 2 and 3). Mock-ups come first: on the default, Kite 4-369 and 45deg-369 noteheads, the minim, semibreve and breve at today's overlap (engine.multinotePadding -0.5 staff spaces) beside 1/3 of the head's width, and the breve's tie as today (first head's centre to the last's, below the heads) beside a tie from the middle of the first semibreve group to the middle of the second. The operator picks the tie, the default overlap and whether a value per shape is needed, and the picks are recorded. Then durations.repeatOverlap (a fraction of the head's width, 0 to below 1, defaulting to the picked fraction) replaces engine.multinotePadding, which is retired (a saved one loads and is not read); CNBCard.repeatLayout steps the copies by the head's width times (1 - overlap), draws the tie as picked, and the canvas toolbar shows an Overlap field beside the repeat choice in repeat mode, while Advanced loses Multinote padding. The engine builds the repeated stencil and its tie, so this session inserts the engine work into the engine repository's plan as its session 39 (cnb:multinote-overlap, a fraction of the base stencil's width that replaces cnb:multinote-padding when set, and the picked tie) and its release as session 40; the export writes cnb:multinote-overlap in repeat mode and no longer writes cnb:multinote-padding, and once the engine session lands an engine round trip holds the engraved minim, semibreve and breve, their widths and the breve's tie, to the preview's within 0.001 staff spaces. The LY spec, the architecture plan and the README follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:29:43.394000-05:00",
+      "what": "step 'preview': its files",
+      "reason": "Moving the overlap to durations.repeatOverlap changes two things beyond the card: the Advanced editor (Module 15) builds the durations and engine slices, so without passing repeatOverlap through and dropping the retired multinotePadding it would drop the new field and its default-slice tests fail; and the Kite and 45deg-369 preview-baseline probes (repeat mode, minims) render the new spacing, so they are re-captured with the reason in the fixture's description. The control step keeps the canvas field.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:35:33.727000-05:00",
+      "what": "step 'preview': its checks",
+      "reason": "The engine round trips in the suite measure repeat-mode heads and the breve's tie against the installed engine (1.6.0), which pads copies by -0.5 staff spaces; they can agree only once engine session 39 (cnb:multinote-overlap, the group-middle tie) has landed AND the export step writes cnb:multinote-overlap, so they fail inherently on every step before the roundtrip step. These steps therefore run the whole unit suite with CNB_ENGINE_DIR pointed away, so only findEngine's engine-backed tests skip (with their reason logged); the roundtrip step keeps the full node cnb/tests/run-tests.js against the engine, and the close's run of record runs everything.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:35:33.941000-05:00",
+      "what": "step 'control': its checks",
+      "reason": "The engine round trips in the suite measure repeat-mode heads and the breve's tie against the installed engine (1.6.0), which pads copies by -0.5 staff spaces; they can agree only once engine session 39 (cnb:multinote-overlap, the group-middle tie) has landed AND the export step writes cnb:multinote-overlap, so they fail inherently on every step before the roundtrip step. These steps therefore run the whole unit suite with CNB_ENGINE_DIR pointed away, so only findEngine's engine-backed tests skip (with their reason logged); the roundtrip step keeps the full node cnb/tests/run-tests.js against the engine, and the close's run of record runs everything.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:35:34.151000-05:00",
+      "what": "step 'export': its checks",
+      "reason": "The engine round trips in the suite measure repeat-mode heads and the breve's tie against the installed engine (1.6.0), which pads copies by -0.5 staff spaces; they can agree only once engine session 39 (cnb:multinote-overlap, the group-middle tie) has landed AND the export step writes cnb:multinote-overlap, so they fail inherently on every step before the roundtrip step. These steps therefore run the whole unit suite with CNB_ENGINE_DIR pointed away, so only findEngine's engine-backed tests skip (with their reason logged); the roundtrip step keeps the full node cnb/tests/run-tests.js against the engine, and the close's run of record runs everything.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:35:59.697000-05:00",
+      "what": "step 'control': its files",
+      "reason": "The Advanced editor's Multinote padding control and its tests were removed in the preview step (amended there, because its default-slice tests failed once the config default changed), so this step no longer touches cnb/ui/common-props-editor.js or its tests; the new Overlap field needs its style in cnb/ui/app.css beside the repeat choice's.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:37:32.064000-05:00",
+      "what": "step 'control': its files",
+      "reason": "uat-config-io.mjs drives test-config-io.html, which mounts only the Advanced editor and no canvas toolbar, so it cannot reach the Overlap field: it edits the indent in place of the retired multinote padding, and uat-golden-path.mjs, which drives the app and already picks repeat mode on the canvas, sets the overlap through the new field and holds it through save and load.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:39:46.815000-05:00",
+      "what": "step 'export': its files",
+      "reason": "Two key-signature tests pin whole exports by hash (an inline hash for Kite acc-sized, and the export probes of key-signature-styles-baseline.json); the Kite 4-369 and 45deg-369 fixtures are in repeat mode, so their exports gain the cnb:multinote-overlap line and those export hashes are re-captured, with the reason recorded in the fixture's description and the test's comment, as sessions 50 and 55 did. Only the export probes of those two fixtures change; every drawing probe and every other export keeps its hash.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 58,
+      "dateTime": "2026-11-12T17:40:40.904000-05:00",
+      "what": "step 'export': its files",
+      "reason": "uat-common-props-editor.mjs still counts 6 engine rows in the Advanced editor; the preview step removed the Multinote padding row (engine.multinotePadding retired), so the driver counts 5 and checks the padding row is gone. Found while running the export-related UAT drivers for this step.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 59,
+      "dateTime": "2026-11-13T01:08:28.280000-05:00",
+      "task": "Size the clefs about an anchor point (the session-57 try-out, docs/uat-status.md item 4). Mock-ups come first: the treble, bass, alto and dozenal clefs on the default 4-8 and Kite 4-369 staffs at today's size beside an automatic size that follows the staff as the signs' does (LilyPond's size in staff spaces, each staff space drawn as the least of the noteheads' mean height, one staff space and 3 semitones), each with its anchor point marked; the operator picks the default size and confirms the anchors, and the picks are recorded. Then a glyph clef's definition gains an optional reference, its anchor point in native SVG units (the treble clef's curl, the point between the bass clef's dots, the alto clef's middle, each on the line it marks; an imported clef's picked by a click on the enlarged clef, as the key signature's reference point is, and its box's centre until then): with one, anchorSemi is the semitone the anchor sits on, and without one (every clef saved before this session) it is the top edge, as before, so saved configs draw and export unchanged. A built-in clef's height (semitoneHeight) and the dozenal clef's may be null, automatic, following the staff; a number set by hand stays. Resizing, in the Clef panel's Height field or by the canvas's bottom-edge handle, scales the clef about its anchor, and moving changes the semitone it sits on. The automatic rule of CNBKeySignature.signHeight moves to a shared CNBStaff.symbolSpace that the signs and the clefs both use. The export writes a glyph clef's top and height as the preview draws them, which the engine needs nothing new for, and the dozenal clef's height as cnb:clef-size-semitones; the engine scales the dozenal numeral about the middle line only once this session inserts that work into the engine repository's plan as its session 41 and the 1.8.0 release as its session 42. Once engine session 41 lands, engine round trips hold every clef's engraved top and bottom to the preview's within 0.001 staff spaces. The LY spec, the architecture plan and the README follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 59,
+      "dateTime": "2026-11-13T01:20:50.155000-05:00",
+      "what": "step 'builtin-clefs': its files",
+      "reason": "The built-in clefs now carry an automatic (null) semitoneHeight and an anchor on their line, so the exporter must register a glyph clef's resolved top and height (CNBClef.shown) in this step or every export of a built-in clef fails; the importer and clef-editor placement tests that assert the old top-edge anchor live in cnb-clef-tests.js and cnb-clef-editor-tests.js. The export step keeps the dozenal clef's size and its tests.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 60,
+      "dateTime": "2026-11-13T05:06:55.916000-05:00",
+      "task": "Place each notehead by its shape's reference point (the session-57 try-out, docs/uat-status.md item 1; nudge-staff-lines-consult.md decisions 3-5). A shape's optional reference point (shapes[name].reference, native SVG units), which the key signature already reads, becomes the point a notehead puts on its pitch as well, vertically: the preview draws the notehead reference.y (scaled with the notehead's height) above or below where it draws it today, the stem's attached end and a breve's tie follow the drawn head, and the staff lines, the ledgers, the stem's far end and the head's horizontal place stay at the pitch. A shape without a reference, or with reference.y 0 (every shape in today's fixtures and gallery files), draws and exports exactly as before. In the notehead panel's Shape group the selected shape's reference point can be picked on the enlarged shape, as the key signature's and the clef's are (CNBKeySignatureEditor.referenceGeometry / referenceAt), and put back on the centre; the picker opens after a notehead SVG is imported. The export registers a vertically translated variant of the shape (or of its sized variant) for the noteheads, named after it with a -ref suffix, its path and cutout moved by the reference's height and its attachment points (relative to its extent) unchanged, which Section C names; the key signature's marks keep the untranslated registration and their (at dx . dy), so the reference is not applied twice. No engine change. An engine round trip holds an off-centre reference's heads, stems, dots (which stay at the pitch) and repeat-mode minim, semibreve and breve heads and tie to the preview within 0.001 staff spaces. The LY spec (1.3.22), the architecture plan and the README follow.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 61,
+      "dateTime": "2026-11-13T07:47:29.565000-05:00",
+      "task": "Design the step-by-step Configurator, as a design only, for the operator's approval: a new document, docs/planning/step-by-step-configurator-design.md, from the operator's outline in docs/uat-status.md (session 57, item 5). It lays out the steps (Notehead height, Staff, Pitch, Ledger lines, Noteheads, Key signature symbol type, Custom key signature symbols, Key signature designer, Key signature preview, Clef symbol import and sizing, Clef semitone/staff assignment), what each edits and shows (the key-signature steps without the whole-staff canvas), the navigation panel (grouping as darndestdabbler/uat-checklist-editor does, numbering the steps or enabling them in order), and one step registry that the navigation, the walk-through and the tutorial read. It specifies the tutorial notation (from the default config to an exported .ly: a 3-5-7-9 staff with ledgers at B and C sharp in the gap, diamond noteheads about 1.5 times as wide as tall drawn in Inkscape with the toolkit, the five black-key pitch classes red, minims as repeated heads then hollows, a credited key signature of the same noteheads in Clairnote's stacks, the operator's C clef anchored at its left middle on middle C, and an optional twice-as-wide diamond as a custom key-signature symbol); the Playwright walk-through, one stage and screenshot per step, as the stepped UI's golden-path UAT importing checked-in SVG fixtures; the tutorial in docs/playbook/ and on the site, one section per step, with its notehead-drawing chapter, and which session writes it; the importer applying a path's ancestor transforms, and which build session carries it; and AI-assisted designing (step boundaries as config components, their schemas, partial import at a step, a prompt per step in the AI-assisted workflow guide, command-line validate, export and render-to-image), built at 1.2.0 unless the operator moves it. Mock-ups follow (the stepped UI at 1440 and 1280 px, the key-signature steps, and the tutorial notation drawn with the real modules), then one identical brief to two providers' models as a cross-provider consult, recorded with a synthesis, and the design is revised from it. The operator reviews and approves it, and the sessions it plans are numbered in the session plan before the UI-stable session and the 1.1.0 release.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 61,
+      "dateTime": "2026-11-13T08:02:13.686000-05:00",
+      "what": "step 'consult': its files",
+      "reason": "Both consult replies move 'Hollow for minims' out of the notehead panel (selection scope); the step-5 mock-up must show the revised placement, and re-shooting rewrites every shot",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 62,
+      "dateTime": "2026-11-13T08:32:33.192000-05:00",
+      "task": "Make a file saved straight from Inkscape import where it was drawn (step-by-step design \u00a78), in cnb/ui/svg-importer.js and nowhere else downstream. Each imported path's d (a notehead's #notehead and #hollow, which the key signature's symbol import also uses, and a clef's glyph paths) is normalised once, at import, to absolute M, L, C and Z in the root <svg>'s user space (the viewBox's units): relative commands made absolute, H and V as lines, S, Q and T as cubics, each arc as cubics within 0.01 stored units (the tolerance taken after the transforms), z returning the current point to its subpath's start, with the composed transform of the element and every ancestor <g> up to the root applied (matrix, translate, scale, rotate with or without a centre, skewX and skewY). rect (rounded corners included), circle, ellipse, polygon and polyline are converted to paths; the toolkit's stem rects stay rects, read as today with their ancestors' transforms composed onto their own. Because everything is stored in the root's units, the hollow, the stem anchors and the reference points the panels set (a clef's box centre, a key-signature symbol's origin) sit on the ink as they are drawn. A path with no transform on it or its ancestors whose commands are all absolute ones every reader already reads (M, L, H, V, C, Z), as toolkit output always is, is stored exactly as it is, so every import that works today imports byte for byte as before. Refused by name, with what to do in Inkscape: <text> (Object to Path), a path drawn only by its stroke (Stroke to Path), <use>, <image>, a nested <svg>, and clip-path, mask or filter on an imported element or its ancestors. The operator's C clef (D:\\sample-c-clef.svg, a translated layer, relative commands and arcs) is checked in as docs/playbook/tutorial/downloads/c-clef.svg with its leftover style properties removed; it imports with its box matching its drawn extent, and uat-clef-editor.mjs imports it through the clef panel and engraves it where the canvas draws it. The five export baselines are unchanged. The README's import section says what a hand-drawn file may contain.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 63,
+      "dateTime": "2026-11-13T13:09:07.208000-05:00",
+      "task": "Make the Configurator read as a sequence of twelve numbered steps (step-by-step design \u00a71, \u00a72, \u00a74, \u00a710 session 63). A new data module, cnb/ui/steps.js, is the one registry the navigation reads: for each step its id, number, group, short label, full title, component and canvas, the availability of design \u00a72.1 with its reason (steps 7, 8 and 9 unavailable while no key signature is shown, step 11 while no clef is shown; by the operator's decision of 2026-11-13, step 7 is available whenever a signature is shown until session 65 adds the Custom marks starting point and tightens it), next and back skipping an unavailable step, and the builders of the sidebar and the step bar, imported by no editor; cnb/tests/cnb-steps-tests.js holds it to the design. The page's sidebar is built from it (static group headings, numbers, short labels, an unavailable step greyed with its reason and not opened, Advanced unnumbered below), each step's panel is headed by its title, and a sticky bar at the bottom of the panel offers Back and Next by title. The key-signature panel becomes steps 6\u20139 and the clef panel steps 10\u201311 by giving each editor a parts option (one editor serving several steps, as the staff editor already does): step 6 Show the key signature (which also turns keys on) and Start from, with the signature's partial staff; step 7 Edit and the look card on the editor's magnified canvas; step 8 the key picker, the canvas, Notes, Stacks and Place; step 9 the mode's 15 keys and the touch list; step 10 the clef buttons, import, the clef chosen, its height and anchor picker; step 11 where it sits, with the canvas drag. The whole-staff canvas is hidden in steps 6\u20139, and the key definitions (Use keys and Keys for notehead rules) move to an Advanced disclosure. The checks' links open the new steps. Beside the canvas's longer-durations choice, while each duration has its own look, a Hollow minims checkbox adds or removes one ordinary rule (every pitch class, minims, hollow), ticked when that rule is present and never doubled (design \u00a75.1). The drivers whose sections moved (uat-app-layout, uat-key-signature, uat-clef-editor, and app-page's helper) use the steps, open them by keyboard and check them at 1280 px, and uat-undo undoes Hollow minims; the README and the architecture plan describe the steps.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 63,
+      "dateTime": "2026-11-13T13:48:59.656000-05:00",
+      "what": "step 'drivers': its files",
+      "reason": "Hiding the canvas in steps 6-9 (step app-steps) makes its ResizeObserver report width 0, which redraws the hidden canvas as two rows; the drivers found it. The canvas must keep its layout while hidden: one guard in preview-display.js resized(), with its test.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:10:52.707000-05:00",
+      "task": "Give the key signature its spelled looks and column gap (step-by-step design \u00a73.5). keys.keySignature gains looks.spelled, a map from the 21 spelled notes (C\u266d to B\u266f, written as CNBMusic.spellings writes a tonic) to a look of today's form, laid over the line and space looks and under alternate, and columnGap, semitones (axis units under a pitch axis) added between neighbouring columns, 0 by default, negative to tighten them. CNBConfig gives both defaults, validates them (a spelled key must be one of the 21 notes and its look a look; the gap a finite number) and clears looks.spelled when it converts a saved accidentals style. CNBKeySignature.marks resolves each mark's spelled note from the key's spelling and lays the layer in its place, spaces the columns by the gap (the gold stems midway between the columns' boxes), measure/render/the editor's canvas place columns by that step, and isScaleStack is false when either is set; the mark table writes what marks gives, with no LY spec change. The checks list warns when columns would cross in some of the 105 keys. A built-in parallelogram shape (2 semitones high, 4 wide, leaning right, solid, no ledgers) is added to cnb/ui/builtin-shapes.js, available by name for key-signature looks but not added to the notehead panel's list. The Clairnote SN and DN gallery files are redrawn with spelled looks, each spelled note one of the six symbols (a solid or hollow dot, plain, with a tail up on a flat or a tail down on a sharp), their mark tables pinned byte for byte before the redraw and unchanged after it; the five export baselines stay unchanged; an engine round trip holds a spelled look and a negative gap to the canvas within 0.001 staff spaces. The architecture plan's \u00a74.9 gains the two fields and the parallelogram.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:15:25.006000-05:00",
+      "what": "step 'config-fields': its files",
+      "reason": "The key-signature editor's state builders carry the designer's fields by a list; columnGap must join it or the editor drops the new default (buildKeys/stateFromConfig round trip).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:38:37.177000-05:00",
+      "what": "step 'clairnote-redraw': its files",
+      "reason": "A touch test lengthens Clairnote SN's flat tail through looks.flat, which the redraw moves into the spelled looks; the test must lengthen the flats' spelled tails instead.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-11-13T14:39:01.517000-05:00",
+      "what": "step 'clairnote-redraw': its files",
+      "reason": "uat-key-signature.mjs step 9b reads Clairnote SN's sharp tail from the sharps' look card; the redraw carries the tail in the spelled looks, which the panel shows from session 65, so the check reads them from the loaded config.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 65,
+      "dateTime": "2026-11-13T15:03:53.576000-05:00",
+      "task": "Build key-signature steps 6 and 7 of the step-by-step design (\u00a73.1\u2013\u00a73.3). CNBKeySignature gains spelledNotes(config), the 21 spelled notes C\u266d to B\u266f with each one's pitch near the staff's middle, whether it is on a line or ledger, and its mark resolved as the signature resolves a mark (the notehead's own at crotchet, then the all, natural/flat/sharp, line/space and spelled looks; not alternate), and renderMark, which draws one such mark with its ledgers and symbols and shares render()'s drawing, so every signature draws byte for byte as before. The step registry gains startingPoint(config) (\"noteheads\" when no look is set, \"traditional\" when the signature is exactly the Accidentals starting point, else null), and step 7 becomes available exactly when a signature is shown and it is neither, with the reason \"Choose Custom marks in step 6 to design your own symbols.\". startFrom gains \"custom\": the 21 spelled notes given the built-in parallelogram, the signs removed from the flats' and sharps' looks, and stacking, columns, the gold stem, the notes and the place kept. Step 6 shows Show a key signature and three cards (Noteheads, Accidentals, Custom marks), each asking first and undoable, the one the signature exactly is highlighted, else \"Your own symbols\", over a magnified canvas of the 21 spelled notes (7 letters across, sharp, natural and flat rows, each mark drawn with its look on its pitch's line or space with its label beneath, the naturals at 30% opacity when only the altered notes are drawn); Custom marks adds the parallelogram to the shapes. Step 7 draws the same canvas, selectable by click, Shift+click or Ctrl+click and by keyboard, with a Select row (All, Naturals, Flats, Sharps, On a line or ledger, In a space), and the look card applied to every selected note's looks.spelled entry, a field the selection disagrees on shown as mixed; an imported symbol is added to the shapes by name, left alone when that name already holds the same shape and refused, named, when it holds another. uat-key-signature.mjs is rewritten to the steps, building Clairnote SN's signature in step 7 from its six symbols (solid and hollow dots, plain, tail up, tail down) to the gallery file's spelled looks, selecting by pointer and keyboard, with undo after each starting point and each import; the other drivers and the README and architecture plan follow.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 65,
+      "dateTime": "2026-11-13T15:38:12.333000-05:00",
+      "what": "step 'drivers': its files",
+      "reason": "Rewriting the driver showed that a step 6 card pins the layer (pickLayer('all')), so a click on step 8's canvas then picks All marks and a drag moves every mark; the card must leave the layer unpinned, with a unit test",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 66,
+      "dateTime": "2026-11-13T16:28:18.055000-05:00",
+      "task": "Build key-signature steps 8 and 9 of the step-by-step design (\u00a73.4). Step 8, the designer, keeps its key picker and magnified canvas (with its mark drags as they are) and its Notes and Place rows, and its Stacks row gains the spacing between stacks, columnGap, as a number field in semitones (axis units under a pitch axis), negative to tighten, and as a grip on the canvas over the second column whose horizontal drag sets it, snapped to tenths and shown while dragging, the change reported once on release so one drag is one step of undo (a pure CNBKeySignatureEditor.dragGap(start, dx, px) beside dragOffset and dragSize); and every second stack's look (the alternate layer) as a look card under Stacks, which session 65 left for step 8. The gold stem (drawn or not, colour, thickness, shared) stays in Stacks as today. Step 9, the preview, draws every key and mode: a line above saying in how many of the 105 keys the marks touch (opening their list), then the 7 modes as rows, each named, with its 15 spellings, sharp keys then flat keys (keyOrder), as small signatures, the picked key highlighted and a key whose marks touch outlined with its count; a click on a key, or on one in the touch list, picks it on the staff and opens step 8 (the host's onKey in cnb/index.html). Unit tests in cnb/tests/cnb-key-signature-editor-tests.js, uat-key-signature.mjs extended (the gap by field and by drag, one step of undo; the alternate card; step 9's 105 keys and a key picked there opening in step 8), and the README and architecture plan updated.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 67,
+      "dateTime": "2026-11-13T17:37:45.502000-05:00",
+      "task": "Build the stepped UI's golden-path UAT, the walk-through of step-by-step design \u00a76, which builds the tutorial notation of \u00a75 from the default config. First a draft of the tutorial's drawing chapter (\u00a77.2: flat ovals or a rounded rectangle for the head and the hollow, grouped, rotated and ungrouped; for the diamond a square and a smaller rounded square rotated 45\u00b0 and stretched to 1.5 times as wide; the stem rects; the Music Glyph Toolkit's Notehead mode at a semitone height of 2; where the reference point goes), written for the operator, who follows it in Inkscape to draw diamond.svg (2 \u00d7 3 semitones) and the optional diamond-wide.svg (2 \u00d7 4), checked in beside c-clef.svg in docs/playbook/tutorial/downloads/ with an import test each. Then cnb/uat/uat-tutorial.mjs: STAGES, the twelve registry ids written by hand, one handler each, in order; each stage opens its step from the sidebar, does what \u00a75 says through the controls a reader uses, checks the page and the live config, and screenshots the main area (step 5 twice, repeated heads then hollow minims; step 7 checked greyed with its reason); then a second pass of stages 6\u20138 and 12 for the optional custom symbol (Custom marks, All selected and diamond-wide.svg imported in step 7, the columns tightened in step 8). It saves and compares the config with tutorial.json (meta.created and meta.modified left out) and each export with tutorial.ly and tutorial-custom.ly byte for byte, all checked in in downloads/, and writes them instead when asked to regenerate them on purpose; screenshots go to a temporary directory, or to docs/playbook/tutorial/shots/ with CNB_UAT_TUTORIAL_SHOTS, where this session takes them. cnb-steps-tests.js holds STAGES equal to the registry's ids, read without starting a browser; cnb-lilypond-tests.js holds the exporter's output for tutorial.json equal to tutorial.ly and renders tutorial.ly through the engine, each notehead the diamond's size. The README's UAT section names the walk-through.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 67,
+      "dateTime": "2026-11-14T02:56:38.367000-05:00",
+      "what": "step 'shots': its files",
+      "reason": "The walk-through saves its downloaded config and .ly into the screenshot directory, so a run with CNB_UAT_TUTORIAL_SHOTS would put them in docs/playbook/tutorial/shots; the driver must save downloads to a temporary directory instead.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 68,
+      "dateTime": "2026-11-14T03:40:35.910000-05:00",
+      "task": "Write the tutorial of step-by-step design \u00a77: one HTML page, docs/playbook/tutorial/index.html, self-contained (inline styles, no script, nothing fetched from elsewhere), with relative links to its shots/ and downloads/ beside it, which build the tutorial notation of \u00a75 from start to finish. Its sections: Before you start (what it builds, with the finished notation's picture; Inkscape and the Music Glyph Toolkit; the downloads, and taking the finished diamond.svg to skip the drawing); Drawing the notehead, the draft of docs/planning/tutorial-drawing-chapter.md folded in as the operator's drawing in session 67 left it; one section per step headed \"N. title\" in the registry's order and words (cnb/ui/steps.js), each saying what the step is for, what to do in it for this notation (as uat-tutorial.mjs does it) and the walk-through's screenshot (step 5 both, step 4 explaining why C hangs below the C\u266f ledger, step 7 skipped and why, step 8 crediting Clairnote); Optional: a custom key-signature symbol, with its screenshots; and Engraving it, the exported .ly with a short score through the engine as the README describes. cnb-steps-tests.js holds the page to the registry: its step headings are the registry's numbers and titles in order, each step section shows its NN-<id>.png, and every relative link and image on the page names a file that exists. cnb/site/assemble-site.mjs copies the folder to /tutorial/ on the site; the app's header links to it (tutorial/), and the README and the notation-builder playbook link to it; uat-site.mjs loads /tutorial/ on the assembled site (its pictures and downloads served, no failed request), follows the header's link to it, and opens the page from the repository over file:// with every picture loaded and every download link resolving.",
+      "releasable": false
+    }
+  ]
+}
