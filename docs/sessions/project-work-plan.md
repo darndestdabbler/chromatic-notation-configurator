@@ -80,7 +80,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 66 | Key-signature steps 8 and 9 | no | 2026-11-13 |
 | 67 | The walk-through | no | 2026-11-13 |
 | 68 | The tutorial | no | 2026-11-14 |
-| 69 | The UI is stable | — | not declared |
+| 69 | The UI is stable | no | 2026-11-14 |
 | 70 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -701,3 +701,9 @@ Build the stepped UI's golden-path UAT, the walk-through of step-by-step design 
 **Releasable: no.**
 
 Write the tutorial of step-by-step design §7: one HTML page, docs/playbook/tutorial/index.html, self-contained (inline styles, no script, nothing fetched from elsewhere), with relative links to its shots/ and downloads/ beside it, which build the tutorial notation of §5 from start to finish. Its sections: Before you start (what it builds, with the finished notation's picture; Inkscape and the Music Glyph Toolkit; the downloads, and taking the finished diamond.svg to skip the drawing); Drawing the notehead, the draft of docs/planning/tutorial-drawing-chapter.md folded in as the operator's drawing in session 67 left it; one section per step headed "N. title" in the registry's order and words (cnb/ui/steps.js), each saying what the step is for, what to do in it for this notation (as uat-tutorial.mjs does it) and the walk-through's screenshot (step 5 both, step 4 explaining why C hangs below the C♯ ledger, step 7 skipped and why, step 8 crediting Clairnote); Optional: a custom key-signature symbol, with its screenshots; and Engraving it, the exported .ly with a short score through the engine as the README describes. cnb-steps-tests.js holds the page to the registry: its step headings are the registry's numbers and titles in order, each step section shows its NN-<id>.png, and every relative link and image on the page names a file that exists. cnb/site/assemble-site.mjs copies the folder to /tutorial/ on the site; the app's header links to it (tutorial/), and the README and the notation-builder playbook link to it; uat-site.mjs loads /tutorial/ on the assembled site (its pictures and downloads served, no failed request), follows the header's link to it, and opens the page from the repository over file:// with every picture loaded and every download link resolving.
+
+### Session 69 — The UI is stable
+
+**Releasable: no.**
+
+Make the UI stable for the 1.1.0 release. The operator tries what sessions 58-68 added, in the app served locally and in the tutorial (the repeated heads' overlap and the breve's tie between its groups, clefs sized about an anchor point with the anchor picker, noteheads placed by their shape's reference point, importing a hand-drawn SVG, the twelve steps with their sidebar, step bar, Next and Back, the key signature's spelled looks and column gap, steps 6-9 of the key signature, and the tutorial page following the walk-through), and the findings are recorded in a session-69 section of docs/uat-status.md, each rough edge marked fix-here or planned. The small rough edges are fixed here, with tests named after each changed source file; a large one is planned in session-plan.md as a session before 70. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the stepped UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 70), is recorded in docs/uat-status.md.

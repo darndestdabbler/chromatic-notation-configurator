@@ -27,7 +27,7 @@ The Configurator is the design environment where notation creators make creative
   folder you choose
 - **Undo and redo** every change to the design
 
-![The Configurator with Kite 4-369 open in the Noteheads section: the top bar with Undo and Redo, the staff canvas with its durations, repeat mode and key, and under it the notehead panel for C♯, F and A selected together](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo and Redo, the staff canvas with its durations, repeat mode and overlap, key and size, and under it the notehead panel for C♯, F and A selected together, with Back and Next at the bottom](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -367,6 +367,9 @@ in any step, on the canvas or in the notehead panel, an imported shape,
 or an opened config. A value typed a key at a time, or a colour dragged, is
 one step. The step shown, the selection, and the canvas's Size,
 duration and key are not undone, and the history does not survive a reload.
+The browser's Back button leaves the page, and an unsaved design with it,
+so save as you go (keeping the design in the browser, and Back and Forward
+between steps, are planned).
 
 ### 4. Save and export
 

@@ -21,6 +21,156 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Trying sessions 58–68 — 2026-11-14 (session 69)
+
+The operator tried what sessions 58–68 added, in the app served locally
+(`python -m http.server 8000`) and in the tutorial
+(`docs/playbook/tutorial/index.html`), and stopped there (2026-11-14):
+the rough edges below are planned as sessions 70–72, and session 73 tries
+the UI again (`docs/sessions/session-plan.md`).
+
+**Rough edges**, each marked *fix here* or *planned*.
+
+1. **A repeated minim's stem misses its notehead** (*planned*, session 72, with engine
+   work; the operator's rule below, a centred stem's side decided with
+   mock-ups there). With the tutorial's diamonds
+   in repeat mode, a minim's stem does not reach the noteheads. The stem
+   is placed at the anchor's relative position across the whole group of
+   heads, as LilyPond reads `stem-attachment` against the group's stencil
+   (`CNBStem.geometry`'s `widthScale`, the engine's `cnb:stem-attachment`
+   in `cnb/stems.ly`). For a centred stem that is the middle of the group,
+   where two diamonds meet in a notch well below their tops, so the stem
+   ends in the air. The operator also doubts that centred stems are placed
+   right. Their engravings show the two ways: in
+   `JoyToTheWorld-denici.svg` (Kite 4-369, centred stems) the last note's
+   up stem stands on the first of its two heads; in `JoyToTheWorld.svg`
+   (Oval 2-3579, side stems) it stands on the right edge of the last.
+   From their earlier study of stem placements, the operator proposes that
+   a repeated minim's stem attach to one head of its group, as a single
+   head's stem does: the last head when the stem is up (where an up stem
+   is on a head's right) and the first when it is down (a down stem on its
+   left). A centred stem would follow the same rule, or a side chosen once
+   (perhaps a setting). Longer durations have no stem, so the rule solves
+   the gap. The alternative they raised is a nudge in the UI. The
+   preview and the engine both need the change, with an engine round trip,
+   so it is too large for this session.
+2. **The tutorial builds a standard staff by hand** (*planned*, session 70). Its step 2
+   has the reader click D♯, F, G and A under Staff lines on and then take
+   away E and G♯, which makes the 3–5–7–9 staff, one of the Staff panel's
+   standard patterns ("Four lines an octave, on D♯, F, G and A"). The
+   tutorial should tell the reader to choose 3–5–7–9 instead. Its UAT
+   (`cnb/uat/uat-tutorial.mjs`) follows the page, so it clicks the pattern
+   too, and the step's screenshot (`shots/02-staff.png`) is recaptured
+   with 3–5–7–9 chosen.
+3. **Automatic ledgers stop at C** (*planned*, session 70). On the 3–5–7–9 staff a C
+   between the octaves lies midway between the C♯ and B ledgers, one
+   semitone from each and three from the nearest line, yet it is drawn
+   with the C♯ ledger alone (semitone 12 takes 13, not 11; semitone 24
+   takes none). The proximity rule (`CNBLedgerSet.resolve`) only lets a
+   ledger answer notes in its own octave region, which starts at C, so B's
+   ledger, in the octave below, cannot answer C. The same gate makes the
+   automatic 4–8 and 3–6–9 staffs give C♯ the C ledger but not B, though B
+   is as close to it. The operator first proposed a simpler rule (A): by
+   default, a ledger is shown when the note is closer to it than to any
+   staff line, so a note midway between two ledgers takes both (C on
+   3–5–7–9, as D on Parncutt's 6-6 Tetragram, lines F G A B, and D♯ on
+   Brennink's A-B Chromatic Notation take their two). On second thought
+   they proposed a two-step rule (B): find the staff line nearest the
+   note, then show every ledger between the note's centre and that line.
+   They asked to check `clairnote.ly` and to consult Sol and Argon
+   (`docs/planning/ledger-rule-consult.md`). Clairnote's rule is B with a
+   per-notation recipe that may also draw a ledger up to 2 semitones
+   beyond the note (its "further-add"), and on a tie it takes the lower
+   line. A and B differ only on the wide spaces of 4–8 and 3–6–9: A gives
+   C♯ and B the C ledger, B gives them none. Both models recommend A, a
+   note equidistant from two lines taking both directions' ledgers, no
+   octave gate, and Clairnote's further-add left to a notation's own rules
+   (it would put a ledger under C♯ beside the D line on 2-4-6-8-10). The
+   operator chose rule A (2026-11-14). The fix: the proximity templates lose the
+   octave-region gate, on a linear staff and under a pitch axis; a ledger
+   still lies on the note or between it and a staff line (never beyond a
+   note, away from the staff); the ledger spots are built an octave beyond
+   the drawn range, as the staff lines already are, so a C at the top of
+   the canvas is treated as one in the middle. Override templates lose the
+   gate too, with item 5's fix, which keeps a C ledger from answering
+   every C. What changes in the Automatic
+   ledgers of a staff chosen in the editor: the tutorial's C takes both
+   ledgers (its downloads and the shots that show C are regenerated), and
+   the automatic 4–8 and 3–6–9 staffs give B the C ledger. The export
+   writes what the preview draws (LY spec §5.7), so no engine change
+   follows.
+4. **The default ledgers stay when the staff changes** (*planned*, session 70). The
+   default notation's ledgers are its own rules, written for 4–8 (the C
+   ledger for C, C♯ and D, a D ledger, an A♯ ledger), so a new staff
+   chosen from it keeps them, which is confusing on 3–5–7–9. Only
+   Automatic ledgers follow the staff today. The operator asked that the
+   ledgers follow the ledger rule when the staff changes. Both consulted
+   models advise resetting only ledgers that are inherited, not a
+   designer's edited rules, and the operator agreed (2026-11-14): reset
+   only while they are still the defaults. The fix: a change of the staff pattern
+   switches the ledgers to Automatic when they are the default notation's
+   own rules (or already Automatic); rules a designer wrote, or a gallery
+   file's, are kept, and the hint under My own rules says so.
+5. **My own rules draw a ledger across the staff, and differ by octave**
+   (*planned*, session 70). The operator's screenshot: the 3–5–7–9 staff with two
+   rules, a B ledger for C and B and a C♯ ledger for C and C♯. The middle
+   C (semitone 12) is drawn with the C♯ ledger and a stray B ledger eleven
+   semitones above it (semitone 23), across four staff lines, and without
+   the B ledger just below it; the low C has the C♯ ledger alone; the top C
+   the C♯ above it. Two causes. (a) A rule's ledger needs only some staff
+   line beyond it (`CNBLedgerSet.isBetweenNoteAndStaff`), not that no line
+   lies between it and the note, so the B ledger at 23 answers the C at 12
+   (the proximity rule hid this, since it also needs the ledger nearer than
+   any line). (b) The octave-region gate (item 3) bars the B ledger at 11
+   from the C at 12, and the ledger spots are built only within the drawn
+   range, so the C at 24 has none above it. The fix: a ledger answers a
+   note only when no staff line lies between them, the note included, and
+   a line lies beyond it, for rules and Automatic ledgers alike; no octave
+   gate for either; the spots built an octave beyond the drawn range. A
+   script outside the tree compared every config's ledgers, semitones
+   0–24, before and after: the screenshot's three Cs each take B and C♯;
+   the default config, the five fixtures behind the export baselines,
+   Twinline, Clairnote and every other gallery file are unchanged, except
+   that the top C (semitone 24) of four gallery files now takes the
+   ledgers their lower Cs take (6-6 Trigram C, D and E; Hass 3-line,
+   Numbered Notes and Trilinear C♯), as the operator asked: a note's
+   ledgers are the same in every octave. The operator's second screenshot
+   shows the same stray in the key-signature designer (C major, a new
+   stack at each change of odd and even): the B ledger beside the second
+   stack's B runs back across the first stack. It is two ledgers, the
+   second stack's own and the stray B ledger the first stack's low C draws
+   (`ledgersFor` gives semitone 12 the ledgers 13 and 23), centred on the
+   first stack. The same fix removes it; the signature canvas and its
+   mark-table export read `ledgersFor`, so nothing else changes there.
+6. **The browser's Back button loses the notation** (*planned*, session 71). The
+   operator pressed it by accident and the page went, with everything
+   designed and no warning. The app keeps no history of its own, so Back
+   leaves it. The fix: each step opened becomes an entry in the browser's
+   history (the step in the address's `#`), so Back and Forward move
+   between the steps the designer opened; leaving the page while the
+   notation has changes not saved asks first (`beforeunload`); and, as the
+   operator asked, the notation in progress is kept in the browser
+   (`localStorage`, every access guarded, as the canvas size is) after each
+   change, and a page opened again restores it, with the step it was on.
+7. **No way back from a key to the key preview** (*planned*, session 71). The key
+   preview (step 9, session 66) looked good, and a click on a key opens it
+   enlarged in the designer (step 8), which is good, but the way back is
+   only step 8's Next, at the bottom of the page, which does not say it
+   leads back to every key. The fix: when step 8 was opened from a key in
+   step 9, it shows a "Back to every key" link above the canvas; item 6's
+   history makes the browser's Back do the same.
+
+**The full UAT** (`npm run uat`, 2026-11-14, after the README's picture was
+recaptured): 19 of 19 drivers passed, 701 checks, the hostile-input
+checklist in Chromium 156, Firefox 157 and Edge 157 among them.
+
+**Not yet declared stable.** The operator, 2026-11-14: "At this point, I
+don't want to look at any more. Let's fix the things that I uncovered, and
+then do another round of UAT." The rough edges above are planned as
+sessions 70–72, and the declaration, the condition for the 1.1.0 release
+(now session 74), moves to the second try-out, session 73
+(`docs/sessions/session-plan.md`).
+
 ## Trying sessions 43–56 — 2026-11-12 (session 57)
 
 The operator tried what sessions 43–56 added, in the app served locally

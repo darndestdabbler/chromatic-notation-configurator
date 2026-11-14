@@ -2210,7 +2210,8 @@ static group headings, numbered steps with Next and Back and no enforced
 order; the importer's transforms and path commands in session 62; the
 diamonds drawn by the operator in session 67; the tutorial in session 68;
 AI-assisted designing at 1.2.0; sessions 62–69 below before the 1.1.0
-release, now session 70.)*
+release, then session 70, now session 74 after the fixes planned in
+session 69.)*
 
 ### Session 62: Importing a hand-drawn SVG
 
@@ -2336,7 +2337,101 @@ here in session 61).
 4. The operator declares the UI stable, which is the condition for
    session 70.
 
-### Session 70: Release 1.1.0 (release: 1.1.0)
+*(Session 69: the operator's try-out found seven rough edges
+([`docs/uat-status.md`](../uat-status.md), session 69). The operator chose
+to fix them in sessions of their own and then try the UI again
+(2026-11-14), so they are planned as sessions 70–73 below, and the release
+moves to session 74. The UI is not yet declared stable.)*
+
+### Session 70: Ledgers by one rule
+
+**Why.** The operator's try-out (session 69, rough edges 2–5): automatic
+ledgers stop at C, the default ledgers stay when the staff changes, and a
+designer's own ledger rules draw a ledger across the staff and differ by
+octave (in the key-signature designer too). The operator chose the rule
+(2026-11-14, `docs/planning/ledger-rule-consult.md`).
+
+1. Register.
+2. `cnb/src/cnb-ledger-set.js`, linear and on a pitch axis: a ledger
+   answers a note only when no staff line lies between them, the note
+   included, and a line lies beyond it; automatic ledgers by rule A (the
+   note strictly nearer the ledger than any staff line, a tie taking both
+   sides); no octave-region gate, for automatic and own rules alike; the
+   ledger spots built an octave beyond the drawn range. Tests in
+   `cnb-ledger-set-tests.js`. The export writes the preview's ledgers
+   (LY spec §5.7), so its format does not change; the architecture plan's
+   and `CLAUDE.md`'s "octave-aware" wording, the gallery and fixture export
+   pins, and the tutorial's downloads follow.
+3. `cnb/ui/staff-rule-editor.js`: a staff pattern change switches the
+   ledgers to Automatic while they are still the default notation's own
+   rules (or already Automatic); a designer's or a gallery file's rules
+   stay, and the hint under My own rules says so. Tests in
+   `cnb-staff-rule-editor-tests.js`.
+4. The tutorial's step 2 chooses 3–5–7–9 rather than building it by hand;
+   `cnb/uat/uat-tutorial.mjs` clicks the pattern, and its shots
+   (`02-staff.png` and any whose ledgers change) are recaptured.
+
+### Session 71: Back, Forward and work kept
+
+**Why.** The operator pressed the browser's Back button and lost the
+notation; and a key opened from the key preview has no clear way back to
+it (session 69, rough edges 6 and 7).
+
+1. Register.
+2. Each step opened is an entry in the browser's history (the step after
+   `#` in the address), so Back and Forward move between steps, and a page
+   opened at an address with a step opens it.
+3. The notation in progress is kept in the browser (`localStorage`, every
+   access guarded, as the canvas size is) after each change, with its
+   step, and a page opened again restores it; New starts afresh. Leaving
+   the page with changes not saved to a file asks first
+   (`beforeunload`).
+4. Step 8 opened from a key in step 9 shows "Back to every key" above the
+   canvas. The UAT covers Back, Forward, a reload and the link.
+
+### Session 72: A repeated minim's stem on its notehead
+
+**Why.** In repeat mode a minim's stem is placed at the anchor's share of
+the whole group of heads, so with the tutorial's diamonds it stops in the
+notch between two heads, in the air (session 69, rough edge 1). The engine
+places the stem the same way (`cnb:stem-attachment` in its `cnb/stems.ly`),
+so it changes too, in engine session 43 (released as engine 1.9.0, engine
+session 44), after this session decides the rule; session 73 runs the
+engine round trip once that release is out, as sessions 58 and 59 did.
+
+1. Register.
+2. The rule, from the operator's study of stem placements: a repeated
+   minim's stem attaches to one head of its group as a single head's stem
+   does, the last head when the stem is up and the first when it is down.
+   Where a centred stem goes (the same rule, or a side chosen once) is
+   decided with mock-ups, the tutorial's diamonds, Kite 4-369 and the
+   default notehead among them, before it is built.
+3. `CNBStem.geometry` draws the rule in the preview, and the export writes
+   what the engine needs to engrave it: the setting engine session 43 adds,
+   in repeat mode (LY spec §4.4c amended; the five export baselines change
+   only where they are in repeat mode). The engine session's brief, the
+   rule and the figures it is to measure, is written for it in
+   `docs/planning/`.
+
+### Session 73: The UI is stable, a second try
+
+**Why.** The release waits for a stable UI; the operator tries it again
+once sessions 70–72 are in, and engine 1.9.0 is released (2026-11-14).
+
+1. Register.
+2. The engine round trip for session 72's stems, against engine 1.9.0:
+   every card's stem, crotchet and minim, up and down, in repeat mode,
+   within 0.001 staff spaces of the preview for the default, Kite 4-369
+   and the tutorial's diamonds.
+3. The operator tries sessions 70–72 and anything left from session 69's
+   try-out. Rough edges found are fixed here, or planned as sessions before
+   74 if they are large.
+4. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+5. The operator declares the UI stable, which is the condition for
+   session 74.
+
+### Session 74: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
