@@ -1,0 +1,230 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 154.72,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -154.7207,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 154.72,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -154.7207,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 1.136,
+          "y": 0.3157
+        },
+        "crotchetDown": {
+          "x": -1.136,
+          "y": -0.3157
+        },
+        "minimUp": {
+          "x": 1.136,
+          "y": 0.3157
+        },
+        "minimDown": {
+          "x": -1.136,
+          "y": -0.3157
+        }
+      }
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      2,
+      5,
+      6,
+      8,
+      9
+    ],
+    "midpoint": 7,
+    "semitonesPerStaffSpace": 4,
+    "lineDefaults": {
+      "thicknessPct": 20,
+      "style": "solid",
+      "color": "#000000"
+    },
+    "lineOverrides": {}
+  },
+  "pitchAxis": {
+    "enabled": true,
+    "kind": "pitch-class-map-v1",
+    "octaveStride": 7,
+    "axisUnitsPerStaffSpace": 2,
+    "pitchClasses": [
+      {
+        "pc": 0,
+        "position": 0
+      },
+      {
+        "pc": 1,
+        "position": 0
+      },
+      {
+        "pc": 2,
+        "position": 1
+      },
+      {
+        "pc": 3,
+        "position": 2
+      },
+      {
+        "pc": 4,
+        "position": 2
+      },
+      {
+        "pc": 5,
+        "position": 3
+      },
+      {
+        "pc": 6,
+        "position": 3
+      },
+      {
+        "pc": 7,
+        "position": 4
+      },
+      {
+        "pc": 8,
+        "position": 5
+      },
+      {
+        "pc": 9,
+        "position": 5
+      },
+      {
+        "pc": 10,
+        "position": 6
+      },
+      {
+        "pc": 11,
+        "position": 6
+      }
+    ]
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 0,
+        "triggerPCs": [
+          0,
+          1
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 1,
+        "triggerPCs": [
+          1
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 10,
+        "triggerPCs": [
+          10,
+          11
+        ],
+        "triggerMode": "override"
+      },
+      {
+        "semiWithinOctave": 11,
+        "triggerPCs": [
+          11
+        ],
+        "triggerMode": "override"
+      }
+    ],
+    "proximityRule": true,
+    "lineDefaults": {
+      "thicknessPct": 40,
+      "widthMultiplier": 2,
+      "style": "solid",
+      "color": "#000000",
+      "roundedEnds": true
+    },
+    "lineOverrides": {}
+  },
+  "noteheadRules": [
+    {
+      "name": "Default",
+      "priority": 0,
+      "match": {
+        "pitchClasses": "all",
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "crotchet-minim",
+        "hollow": false,
+        "color": null,
+        "offKeyMark": false
+      }
+    },
+    {
+      "name": "Sharps are hollow",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": true
+      }
+    },
+    {
+      "name": "Upper member of each shared position sits right",
+      "priority": 10,
+      "match": {
+        "pitchClasses": [
+          1,
+          4,
+          6,
+          9,
+          11
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "xOffsetStaffSpaces": 0.85
+      }
+    }
+  ],
+  "meta": {
+    "configName": "Twinline Compact Axis (fixture)",
+    "fileSuffix": "-TwinlineCompact",
+    "notationLabel": "Twinline-family compact axis — fixture",
+    "notationFootnote": "",
+    "author": "",
+    "description": "Pitch-axis fixture (set 014 session 3): the Twinline family's compact staff — 12 pitch classes on 7 axis positions per octave (shared pairs C/C#, D#/E, F/F#, G#/A, A#/B), octave stride 7, 2 axis units per staff space, three staff lines per octave at axis positions 1, 3, 5, midpoint G. The upper member of each shared pair is offset 0.85 staff space right (xOffsetStaffSpaces), with the usual hollow sharps. A family fixture for the pitch-axis export and engine round-trip, not a reproduction of any one gallery record (records 32-40 disambiguate shared pairs by notehead shape). The crotchet-minim shape is the default geometry at semitoneHeight 2 (one staff space at 2 axis units per space) and carries lilypondAnchors in semitone units; its lilypondPath / lilypondHollowPath are null (there is no source SVG), so the exporter converts its SVG data (÷ SVG units per semitone, Y up, ÷ axisUnitsPerStaffSpace) and the export engraves at the size the preview shows.",
+    "created": null,
+    "modified": null
+  }
+}

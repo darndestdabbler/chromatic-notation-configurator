@@ -1,0 +1,63 @@
+$ lilypond -dbackend=svg -I D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip -o D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip-score.ly
+$ python D:\Projects\lilypond-chromatic-notation-base\tools\harvest_svg.py D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip.svg -o D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip.harvested.json --pretty
+$ lilypond -dbackend=svg -I D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip -o D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip-control D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip-control-score.ly
+$ python D:\Projects\lilypond-chromatic-notation-base\tools\harvest_svg.py D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip-control.svg -o D:\Projects\chromatic-notation-configurator\docs\sessions\session-003\roundtrip\twinline-roundtrip-control.harvested.json --pretty
+staff: top_y=6.05 bottom_y=11.55 lines=6 (exported '(-3 -1 1 4 6 8))
+
+noteheads: 37
+column     semi    exp     meas   delta
+1@0.000       0 -4.000   -3.990  +0.010
+1@0.250       1 -4.000   -3.990  +0.010
+1@0.500       2 -3.000   -2.990  +0.010
+1@0.750       3 -2.000   -1.990  +0.010
+2@0.000       4 -2.000   -1.990  +0.010
+2@0.250       5 -1.000   -0.990  +0.010
+2@0.500       6 -1.000   -0.990  +0.010
+2@0.750       7 +0.000   +0.010  +0.010
+3@0.000       8 +1.000   +1.010  +0.010
+3@0.250       9 +1.000   +1.010  +0.010
+3@0.500      10 +2.000   +2.010  +0.010
+3@0.750      11 +2.000   +2.010  +0.010
+4@0.000      12 +3.000   +3.010  +0.010
+4@0.250      13 +3.000   +3.010  +0.010
+4@0.500      14 +4.000   +4.010  +0.010
+4@0.750      15 +5.000   +5.010  +0.010
+5@0.000      16 +5.000   +5.010  +0.010
+5@0.250      17 +6.000   +6.010  +0.010
+5@0.500      18 +6.000   +6.010  +0.010
+5@0.750      19 +7.000   +7.010  +0.010
+6@0.000      20 +8.000   +8.010  +0.010
+6@0.250      21 +8.000   +8.010  +0.010
+6@0.500      22 +9.000   +9.010  +0.010
+6@0.750      23 +9.000   +9.010  +0.010
+7@0.000      24 +10.000  +10.010  +0.010
+8@0.000       0 -4.000   -3.990  +0.010
+8@0.000       1 -4.000   -3.990  +0.010
+8@0.250       3 -2.000   -1.990  +0.010
+8@0.250       4 -2.000   -1.990  +0.010
+8@0.500       5 -1.000   -0.990  +0.010
+8@0.500       6 -1.000   -0.990  +0.010
+8@0.750       8 +1.000   +1.010  +0.010
+8@0.750       9 +1.000   +1.010  +0.010
+9@0.000      10 +2.000   +2.010  +0.010
+9@0.000      11 +2.000   +2.010  +0.010
+9@0.250      12 +3.000   +3.010  +0.010
+9@0.250      13 +3.000   +3.010  +0.010
+
+chord pairs (dpos must be 0; effect = dx(test) − dx(control), staff spaces):
+  8@0.500  midi 65/66: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+  9@0.250  midi 72/73: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+  8@0.750  midi 68/69: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+  9@0.000  midi 70/71: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+  8@0.250  midi 63/64: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+  8@0.000  midi 60/61: dpos=+0.000 dx=+1.340 control=+0.490 effect=+0.850 expected +0.850
+
+single-note stems: all flip at the midpoint (30 stems harvested)
+
+key signature (G major, exported cnb:keysig-tonic-octave): preview semis [7 9 11 12 14 16 18 19]
+  expected positions [+0.000 +1.000 +2.000 +3.000 +4.000 +5.000 +6.000 +7.000]
+  measured positions [+0.009 +1.009 +2.009 +3.009 +4.009 +5.009 +6.009 +7.009]
+
+ledger-line grobs: 1 (report only — design §2.4)
+
+PARITY: PASS — the engine places noteheads, chord offsets, stems and key-signature marks where the preview does

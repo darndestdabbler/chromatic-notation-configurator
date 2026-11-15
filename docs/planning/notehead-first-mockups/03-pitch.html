@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock-up 3: Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="app">Chromatic Notation Configurator</span>
+    <span class="doc">Twinline (compact)</span>
+    <span class="spacer"></span>
+    <span class="checks ok"><span class="dot"></span>No problems</span>
+    <button class="btn ghost">Open…</button>
+    <button class="btn">Save</button>
+    <button class="btn primary">Export for LilyPond</button>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar nav">
+      <a href="#">Staff</a>
+      <a href="#">Noteheads</a>
+      <a class="on" href="#">Pitch</a>
+      <a href="#">Ledger lines</a>
+      <a href="#">Clef</a>
+      <a href="#">Key signature</a>
+      <hr>
+      <a href="#">Advanced</a>
+      <a href="#">Export</a>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+        <section class="card">
+          <div class="canvas-toolbar">
+            <span>Showing crotchets</span>
+            <span class="spacer"></span>
+            <span>Drag the labels on the left to move the pitches against the staff</span><span class="tool" id="size"></span>
+          </div>
+          <div class="canvas" id="canvas"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Pitch</h2>
+            <span class="sub">Which pitch sits where on the staff</span>
+          </div>
+          <div class="card-body stack">
+            <div class="row" style="gap: var(--space-6); align-items: flex-start">
+              <div class="field">
+                <span class="label">Middle of the staff</span>
+                <select class="select" style="width: 120px"><option>G</option></select>
+                <span class="hint">The same as dragging the labels: the noteheads keep their looks and move with their names.</span>
+              </div>
+              <div class="field">
+                <span class="label">Staff spacing</span>
+                <div class="row"><input class="input num" id="sps"><span class="unit">semitones per staff space</span></div>
+                <span class="hint">Twinline fits an octave into 3½ staff spaces.</span>
+              </div>
+            </div>
+
+            <div>
+              <p class="group-title">Nudges</p>
+              <p class="lead small" style="margin-bottom: var(--space-3)">Each pitch class can sit up to a semitone above or below its own place. Neighbours may meet, never cross. The shaded part of each bar is how far that note can go.</p>
+              <div class="nudges" id="nudges"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { loadConfig, nudgeForm, renderStaff, sizeControl, NAMES, ready } from "./mockup.js";
+    ready(async () => {
+      const { config, nudges } = nudgeForm(await loadConfig("cnb/assets/examples/gallery/twinline-compact.json"));
+      renderStaff(document.getElementById("canvas"), config, { strip: "drag" });
+      document.getElementById("size").innerHTML = sizeControl("medium");
+      document.getElementById("sps").value = config.staff.semitonesPerStaffSpace.toFixed(2);
+
+      const pos = pc => pc + nudges[((pc % 12) + 12) % 12];
+      const pct = v => ((v + 1) / 2 * 100).toFixed(1) + "%";
+      const fmt = v => (Math.abs(v) < 1e-9 ? "0" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(2));
+      document.getElementById("nudges").innerHTML = NAMES.map((name, pc) => {
+        const lo = Math.max(-1, nudges[(pc + 11) % 12] - 1);
+        const hi = Math.min(1, nudges[(pc + 1) % 12] + 1);
+        const shared = Math.abs(pos(pc) - pos(pc - 1)) < 1e-9 || Math.abs(pos(pc + 1) - pos(pc)) < 1e-9;
+        return `<div class="nudge${shared ? " shared" : ""}">
+          <div class="top"><b>${name}</b><span>${fmt(nudges[pc])}</span></div>
+          <div class="slider"><div class="track"></div>
+            <div class="range" style="left:${pct(lo)};right:calc(100% - ${pct(hi)})"></div>
+            <div class="zero"></div><div class="knob" style="left:${pct(nudges[pc])}"></div></div>
+        </div>`;
+      }).join("");
+    });
+  </script>
+</body>
+</html>

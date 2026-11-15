@@ -1,0 +1,12 @@
+[
+  {
+    "severity": "Major",
+    "description": "Spec step 6 requires a thickness-from-pct conversion test in cnb-staff-tests.js; only the override-merge of thicknessPct is tested, not the pct-to-px conversion itself.",
+    "status": "accepted"
+  },
+  {
+    "severity": "Minor",
+    "description": "CC0 LICENSE + README license section bundled into the session commit (pre-existing operator working-tree change, disclosed in the commit message).",
+    "status": "acknowledged-no-rework"
+  }
+]

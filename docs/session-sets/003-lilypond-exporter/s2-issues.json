@@ -1,0 +1,20 @@
+{
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Required end-to-end legacy parity check was not completed",
+      "location": "cnb/tests/cnb-lilypond-tests.js (parity section)",
+      "resolution": "Added a full-file parity test: exports the default 4-8 config through both CNBLilypond.generate() and legacy generateLy(), splits on the section banners, and compares section by section — header invariants, Section A semantic line-for-line equality (legacy 2-point anchors + 100% overlap reproduce the new 4-point attachment set exactly), Section B settings parity (sps, file-suffix, notation-label, emit-if-changed both empty) with the one documented deviation pinned (staff-line-positions: legacy V1 symmetric placeholder '(-6 -4 -2 2 4 6) vs the architecture plan §4.3 midpoint formula '(-2 -1 1 2)), and Section C full semantic equivalence from the end-to-end outputs.",
+      "status": "fixed"
+    },
+    {
+      "id": 2,
+      "title": "Invalid duration mappings degrade into wildcard matches",
+      "location": "cnb/src/cnb-lilypond.js sectionC()",
+      "resolution": "Removed the #t fallback. sectionC() now throws when a duration-varying clause is needed for a duration whose definition lacks a numeric lilypondDuration (generate() propagates the throw). Added a unit test covering the throw.",
+      "status": "fixed"
+    }
+  ]
+}
