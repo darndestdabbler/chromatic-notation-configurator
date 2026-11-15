@@ -66,7 +66,10 @@ const STYLES_BASELINE = path.join(FIXTURES, "key-signature-styles-baseline.json"
 // key-signature-styles-baseline.json were re-captured in session 55 too.
 // In session 58 the export probes of the Kite 4-369 and 45deg-369 fixtures,
 // which are in repeat mode, were re-captured when a repeat-mode export began
-// writing cnb:multinote-overlap; their signatures are unchanged.
+// writing cnb:multinote-overlap; their signatures are unchanged. They were
+// re-captured again in session 72, when a repeat-mode export began writing
+// cnb:multinote-stem-on-head and the Kite fixture's minim attachments were
+// centred; their signatures are unchanged.
 
 /** The keys each probe draws: name, pitch classes and tonic. */
 const SIGNATURE_KEYS = [
@@ -1050,8 +1053,10 @@ export const tests = [
       }
       for (const [source, variant, hash] of [
         ["default", "acc-every", "f713446a7c930a909adf98b9d2e3019ce4a502aa15391a6c5f1f2d489196aa55"],
-        // Re-captured in session 58: a repeat-mode export (Kite is one) writes cnb:multinote-overlap.
-        ["kite", "acc-sized", "6f27970131c2f316d5c1d1a468705b287ad55b416b33ce7f0fab975f65457952"],
+        // Re-captured in session 58: a repeat-mode export (Kite is one) writes cnb:multinote-overlap;
+        // and in session 72, when it began writing cnb:multinote-stem-on-head and Kite's minim
+        // attachments were centred.
+        ["kite", "acc-sized", "80fc421a31ed15b80431f6f80b22abcbfdac53f9f22867b4944ffe23dcf5fd5f"],
         ["twinline", "acc-middle", "fa94ec1d0bcf3f208225d7c7fa0fc31cc5fc6e11e3653fa6dbca8c027e10f8e0"],
       ]) {
         const ly = CNBLilypond.generate(saved(source, variant)).replace(/^%% Date: .*$/m, "");

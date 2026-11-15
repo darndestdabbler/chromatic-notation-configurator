@@ -1085,9 +1085,14 @@ export const CNBLilypond = {
     // share of the head's width, written in repeat mode, since the engine's
     // default (#f) keeps the retired cnb:multinote-padding, which is never
     // written; engine.multinotePadding is not read.
+    // A repeated minim's stem stands on one head of its group, the last when
+    // up and the first when down, as the preview draws it (session 72, LY
+    // spec 1.3.23 §4.4c): engine 1.9.0's cnb:multinote-stem-on-head, written
+    // in repeat mode beside the overlap.
     if ((config.durations || {}).representationMode === "repeat") {
       const overlap = config.durations.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
       changed.push(`#(set! cnb:multinote-overlap ${fmtNum(overlap, "durations.repeatOverlap")})`);
+      changed.push("#(set! cnb:multinote-stem-on-head #t)");
     }
     if (engine.defaultMagnify !== undefined && String(engine.defaultMagnify) !== d.defaultMagnify) {
       changed.push(`#(set! cnb:default-magnify ${CNBScheme.ratio(engine.defaultMagnify, "engine.defaultMagnify")})`);

@@ -2413,6 +2413,19 @@ engine round trip once that release is out, as sessions 58 and 59 did.
    rule and the figures it is to measure, is written for it in
    `docs/planning/`.
 
+*(Amended during session 72, 2026-11-15: engine session 43 ran first, from
+the operator's decision of 2026-11-14, and engine 1.9.0 is released with
+`cnb:multinote-stem-on-head`, a boolean. From the mock-up in
+`docs/planning/repeat-minim-stem-mockups/` (`shots/stems.png`) the operator
+confirmed that a centred stem follows the same rule, on the chosen head's
+centre, with no side chosen once, so this session's export writes
+`#(set! cnb:multinote-stem-on-head #t)` in repeat mode. They also chose
+that the stem attaches at the same place on a notehead however the minim is
+drawn, so the Kite 4-369 fixture's minim stem points, 0.73 semitones off
+centre for the old placement across the group, become its centred crotchet
+points (`kite-up.svg`, `kite-down.svg`, the fixture config and its export
+baseline).)*
+
 ### Session 73: The UI is stable, a second try
 
 **Why.** The release waits for a stable UI; the operator tries it again

@@ -28,8 +28,10 @@
  * (cnb:build-duration-stencil, engine cnb/stencils.ly): minim ×2, semibreve
  * and breve ×4, each copy edge to edge with engine.multinotePadding staff
  * spaces between them, the group centred on the head position. The stem
- * attaches at the anchor's relative position across the whole group (as
- * LilyPond's stem-attachment does), and the ledgers and the column widen
+ * attached at the anchor's relative position across the whole group (as
+ * LilyPond's stem-attachment does) until session 72, when it moved onto one
+ * head of the group, the last when up and the first when down (engine
+ * 1.9.0's cnb:multinote-stem-on-head), and the ledgers and the column widen
  * by the group's extra width. One head (shape mode, crotchets) takes the
  * existing code path unchanged.
  *
@@ -429,7 +431,7 @@ export const CNBCard = {
         noteYPositions: [gridContext.semiToY(lowerSemi), gridContext.semiToY(upperSemi)],
         direction,
         duration,
-        widthScale: repeat.groupWidth / pixelWidth,
+        headOffsets: repeat.offsets,
       });
       CNBStem.render(svg, geometry);
     }

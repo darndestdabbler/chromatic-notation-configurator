@@ -881,9 +881,9 @@ export const tests = [
       const { shape } = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), "kite-up");
       // d="M 0 -200 L 200 -100 …" → (moveto 0 2) (lineto 2 1) …, as the toolkit writes it
       assert(shape.lilypondPath.startsWith("'(\n    (moveto 0 2)\n    (lineto 2 1)"), JSON.stringify(shape.lilypondPath));
-      // The engine reference's minim anchor (-0.365 . 0.9), relative to the
-      // kite's ±2-semitone extent, is (-0.73, 1.8) semitones (session 33).
-      assertSame(shape.lilypondAnchors.minimUp, { x: -0.73, y: 1.8 }, "minim rect carries the engine reference's minim anchor");
+      // The minim rect is centred as the crotchet's (session 72: a repeated
+      // minim's stem stands on one head, so its point is a single head's).
+      assertSame(shape.lilypondAnchors.minimUp, { x: 0, y: 1.8 }, "minim rect centred, as the crotchet's");
     }},
   { name: "fixtures/45deg.svg imports to exactly the 45deg-369 config's shape (session 16)", fn: () => {
       const shapes = JSON.parse(readFileSync(path.join(FIXTURES, "45deg-369-config.json"), "utf8")).shapes;

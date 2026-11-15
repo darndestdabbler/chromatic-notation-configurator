@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.22 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point)
-**Date:** November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.23 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point; a repeated minim's stem on one of its noteheads)
+**Date:** November 15, 2026 (1.3.23); November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -95,7 +95,12 @@ placed by their shape's reference point, §4.1e. A notehead whose shape's
 reference point is above or below its origin registers a `-ref` variant,
 moved so the point is on the pitch. Only a config with such a shape exports
 anything new; the five export baselines are byte-identical, and no engine
-change is needed.)*
+change is needed. 1.3.23, for both: a repeated minim's stem on one of its
+noteheads, §4.4c. Every config in repeat mode writes
+`cnb:multinote-stem-on-head #t`, which needs engine 1.9.0; the Kite 4-369
+and 45deg-369 baselines, in repeat mode, gain that line, Kite's with its
+minim attachments centred as its crotchet's, and the default, sized and
+Twinline baselines are byte-identical.)*
 
 Summary of additions:
 
@@ -118,6 +123,7 @@ Summary of additions:
 | The repeated heads' overlap (1.3.20, linear and axis alike) | `cnb:multinote-padding` from `engine.multinotePadding`, staff spaces, written when changed | `cnb:multinote-overlap`, a share of the head's width, written in repeat mode; the breve's tie between its groups' centres, as engine 1.7.0 engraves it (§4.1d) |
 | Clefs sized about an anchor (1.3.21, linear and axis alike) | a glyph clef's top (`anchorSemi`) and height (`semitoneHeight`) as stored; the dozenal clef at the engine's 3 staff spaces | a glyph clef's top as drawn from its anchor point, at an automatic or a set height; the dozenal clef's `cnb:clef-size-semitones`, scaled about the middle line as engine 1.8.0 engraves it (§5.5, §5.5a) |
 | Noteheads placed by their shape's reference point (1.3.22, linear and axis alike) | a notehead's shape centred on its pitch by its origin | a shape whose reference point is off its origin vertically registered for the noteheads as `<registration>-ref`, its path and cutout moved so the point is on the pitch, its attachments unchanged; the key signature's marks keep the unmoved shape (§4.1e) |
+| A repeated minim's stem (1.3.23, linear and axis alike) | the minim's attachment point read across the whole group of heads | the stem on one head of the group, the last when up and the first when down, as a single head's: `cnb:multinote-stem-on-head #t`, written in repeat mode, as engine 1.9.0 engraves it (§4.4c) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -429,7 +435,8 @@ change the path and the anchor alike, so they cancel. A sized variant
 registers its shape's points, and an axis config writes the same points as
 a linear one. `lilypondAnchors` stay semitone units in the config. In repeat
 mode the engine's stencil is the group of repeated heads, and LilyPond reads
-the same relative point across the group, as the preview draws it.
+the same relative point across the group, as the preview draws it. *(1.3.23:
+a repeated minim's stem stands on one head of the group instead, §4.4c.)*
 
 LilyPond puts the stem's **edge** on the attachment point: an up stem's
 right edge and a down stem's left edge. Since 1.3.8 the preview does the
@@ -482,10 +489,11 @@ y = relative(a.y)
   points are computed at its `scale.x` rather than copied from its shape.
   Y is the anchor's alone, as in §4.4b.
 
-The preview draws a one-head stem centred on its anchor. Across a repeated
-group, LilyPond reads the attachment across the group's extent, so the
-preview places the anchored edge at the same scaled point and the centre
-half a stem inward of it, and the two still coincide.
+The preview draws a one-head stem centred on its anchor. *(1.3.11–1.3.22:
+across a repeated group, LilyPond read the attachment across the group's
+extent, so the preview placed the anchored edge at the same scaled point and
+the centre half a stem inward of it. Since 1.3.23 a repeated minim's stem
+stands on one head, below.)*
 
 **The default notehead's stems sit on its sides.** Its anchors are
 x ±146.426 SVG units (the path's extent is ±172.426): on its staff of 4
@@ -512,6 +520,50 @@ development, should be regenerated.**
 every card's octave chord, crotchet and minim, on the default, Kite 4-369
 and 45deg-369 fixtures, the engraved stem's centre lands within 0.001 staff
 spaces of the preview's, as do its width and ends.
+
+**A repeated minim's stem on one of its noteheads (1.3.23).** In repeat
+mode a minim is two copies of its head, and LilyPond read its attachment
+point across the whole group, so the point landed at the same share of the
+group as of one head: a centred stem, as on the tutorial's diamonds, stood
+in the notch where the two heads meet, in the air (session 69). Since
+session 72 (engine session 43, engine 1.9.0, its handoff in
+`docs/session-sets/043-repeat-minim-stem/configurator-handoff.md`) the stem
+attaches to **one head of the group as a single head's stem does: the last
+head when the stem is up, the first when it is down**, a centred stem on
+that head's centre (the operator's rule, confirmed from the mock-up in
+`docs/planning/repeat-minim-stem-mockups/`; the brief is
+`docs/planning/repeat-minim-stem-brief.md`). In repeat mode Section B writes,
+after the overlap (§4.1d):
+
+```lilypond
+#(set! cnb:multinote-overlap 0.3333)
+#(set! cnb:multinote-stem-on-head #t)
+```
+
+- **The attachment points are unchanged**: the minim's point, written as
+  above, relative to one head. The engine places it on the chosen head and
+  rewrites it relative to the group. A point at the head's outer edge stays
+  at the group's, so a side stem (the default notehead's) lands where it
+  did; a centred one stands on its head's centre, as the crotchet's.
+- **The preview** (`CNBStem.geometry`, given the card's repeated heads'
+  offsets) draws the stem as a single head's, centred on its anchor, on the
+  last head when up and the first when down. Its ends are unchanged.
+- **The stem attaches at the same place on a notehead however the minim is
+  drawn** (operator, 2026-11-15), so a shape's minim point is not set to
+  suit the group. The Kite 4-369 fixture's minim points, 0.73 semitones off
+  centre to suit the old placement, are centred as its crotchet's, and its
+  export writes `(0.0975 . 0.9)` for both.
+- **Unchanged:** crotchets, a single head (shape mode), the stem's length,
+  thickness and far end, the overlap; semibreves and longer have no stem.
+- **It needs engine 1.9.0**: on an earlier engine the variable is unbound
+  and LilyPond stops. Shape-mode exports do not write it.
+
+**Verified** by the engine round trips already in `cnb/tests/cnb-card-tests.js`
+(the default notehead in repeat mode, crotchet and minim, up and down; every
+card's stem on the default, Kite 4-369 and 45deg-369 fixtures), run against
+engine 1.9.0, each engraved stem within 0.001 staff spaces of the preview's.
+Session 73 adds the round trip of the engine's measured figures (the default
+notehead, Kite 4-369 and the tutorial's diamonds).
 
 ### 4.5a Colours on the noteheads (new in 1.3.10, linear and axis configs alike)
 
@@ -1617,6 +1669,7 @@ engine round-trip test as evidence.
 | `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:multinote-overlap` | `#f` or number (a share of the head's width) | `#f` | In repeat mode (§4.1d) — **new 1.3.20**, engine 1.7.0 |
+| `cnb:multinote-stem-on-head` | boolean | `#f` | `#t` in repeat mode (§4.4c) — **new 1.3.23**, engine 1.9.0 |
 | `cnb:semitones-per-staff-space` | Integer | `2` | Always; `pitchAxis.axisUnitsPerStaffSpace` under an axis (§5.4a) — **clarified 1.3.1** |
 
 ### Procedure Return Alist
@@ -1631,7 +1684,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.22** | **Nov 13, 2026** | **Noteheads placed by their shape's reference point (session 60): new §4.1e. A notehead whose shape's `reference.y` is nonzero draws with `<registration>-ref`, the shape or its sized variant with its path and cutout moved up the reference's height, so the point is on the pitch; its attachment points are unchanged, Section C names it, and the key signature's marks keep the unmoved shape and their `at`; a signature sharing a shape whose reference is off its origin across exports the mark table rather than `'chord`. The reference's x is not applied to noteheads. The notehead panel picks the height on the enlarged shape, after an import or later. An engine round trip holds heads, stems, dots and repeated heads with an off-centre reference to the preview within 0.001 staff spaces. Output changes only for a config with such a shape; the five export baselines are byte-identical. No engine change.** |
+| **1.3.23** | **Nov 15, 2026** | **A repeated minim's stem on one of its noteheads (session 72, engine sessions 43 and 44): §4.4c. In repeat mode a minim's stem attaches to one head of its group as a single head's does, the last when up and the first when down, a centred stem on its head's centre; the export writes `cnb:multinote-stem-on-head #t` after the overlap, and the preview draws the same. The Kite 4-369 fixture's minim attachments are centred as its crotchet's. The engine round trips in the suite hold every stem to the preview within 0.001 staff spaces against engine 1.9.0. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines; the default, sized and Twinline baselines are byte-identical. Needs engine 1.9.0.** |
+| 1.3.22 | Nov 13, 2026 | Noteheads placed by their shape's reference point (session 60): new §4.1e. A notehead whose shape's `reference.y` is nonzero draws with `<registration>-ref`, the shape or its sized variant with its path and cutout moved up the reference's height, so the point is on the pitch; its attachment points are unchanged, Section C names it, and the key signature's marks keep the unmoved shape and their `at`; a signature sharing a shape whose reference is off its origin across exports the mark table rather than `'chord`. The reference's x is not applied to noteheads. The notehead panel picks the height on the enlarged shape, after an import or later. An engine round trip holds heads, stems, dots and repeated heads with an off-centre reference to the preview within 0.001 staff spaces. Output changes only for a config with such a shape; the five export baselines are byte-identical. No engine change. |
 | 1.3.21 | Nov 13, 2026 | Clefs sized about an anchor (session 59, engine sessions 41 and 42): §5.5, §5.5a. A glyph clef may carry an anchor point, `reference { x, y }`, with `anchorSemi` the semitone it sits on, and is registered with its top as drawn, `depth` above it; a clef without one keeps `anchorSemi` as its top. Its `semitoneHeight` may be `null`, automatic, from `staffSpaceUnits` and the staff's symbol space (`CNBStaff.symbolSpace`, the least of the noteheads' mean height, one staff space and 3 semitones), and `height-semitones` is the height drawn. The treble, bass and alto clefs take their anchors on their lines and the automatic size. The dozenal clef writes `cnb:clef-size-semitones`, automatic 3 symbol spaces (8.172 on the default staff), which engine 1.8.0 scales about the middle line. The panel sets the anchor, picked on the glyph, and the size, automatic or a number; the canvas drag moves the anchor and resizes about it. Engine round trips hold every clef's top and bottom, and each anchor on its pitch, to the preview within 0.001 staff spaces. Output changes only for a config showing the dozenal clef or an anchored glyph clef; the five export baselines are byte-identical. Needs engine 1.8.0. |
 | 1.3.20 | Nov 13, 2026 | The repeated heads' overlap and the breve's tie between its groups (session 58, engine sessions 39 and 40): §4.1d, §5.2a. The copies of a repeated head overlap by `durations.repeatOverlap`, a share of each head's own width (1/3 by default, one fraction for every shape), which a repeat-mode export writes as `cnb:multinote-overlap`; `engine.multinotePadding` is retired and `cnb:multinote-padding` never written. The breve's tie runs from the middle of its first semibreve group to the middle of the second. The canvas sets the overlap beside the repeat choice. An engine round trip holds every minim, semibreve and breve width and the tie to the preview within 0.001 staff spaces, at overlaps 1/3 and 0.25. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines gain the line; the default, sized and Twinline baselines are byte-identical. Needs engine 1.7.0. |
 | 1.3.19 | Nov 12, 2026 | The key signature's placed, coloured and layered symbols (session 55, engine sessions 37 and 38): §5.6a. A mark is written as its symbols, base then added ones, at one semitone and column, the table's order the layer order; a base whose shape takes no ledgers and every added symbol are the new `symbol` kind, with no ledgers or ledger entry; `(at dx . dy)`, the optional last element, places a symbol's origin in staff spaces where the canvas does not centre it (a reference point, an offset); a sign coloured by a look writes its registered colour after its scale, and a sign with a colour or an `at` writes its scale at 1 too. The canvas measures a placed symbol by its path's box. The Clairnote SN and DN gallery files take dots with imported tails. An engine round trip holds every symbol, every stack's ledgers and the ink to the canvas within 0.001 staff spaces. Output changes only for a table using the model; the five export baselines are byte-identical. Needs engine 1.6.0. |

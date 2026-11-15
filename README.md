@@ -182,9 +182,11 @@ the [engine repository's README](https://github.com/darndestdabbler/lilypond-chr
    placemarker rects (attachment anchors), and pre-baked
    `data-lilypond-notehead` / `data-lilypond-hollow` path strings.
    A stem is drawn where its rect is, centred on it, in the preview and the
-   engraving. If minims attach their stems elsewhere, draw the optional
-   second pair of rects, `stem-minim-up` / `stem-minim-down`; without it,
-   minims use the crotchet anchors.
+   engraving. If minims attach their stems elsewhere on the notehead, draw
+   the optional second pair of rects, `stem-minim-up` / `stem-minim-down`;
+   without it, minims use the crotchet anchors. When the notehead is
+   repeated, a minim's stem attaches to one head as on a single one, so
+   the rects are placed for one head.
 
 ### 2. Import the shape into the Configurator
 
@@ -546,7 +548,10 @@ it (session 34, LY export spec 1.3.9):
   semibreves, 1 staff space apart, the tie black and below the heads, from
   the middle of the first group to the middle of the second. The export
   writes the overlap as `cnb:multinote-overlap`, which needs engine 1.7.0.
-  How many heads there are, the gap and the tie are not settings.
+  A minim's stem stands on one of its two heads as a single head's does,
+  on the last head when the stem is up and the first when it is down; the
+  export asks for it with `cnb:multinote-stem-on-head`, which needs engine
+  1.9.0. How many heads there are, the gap and the tie are not settings.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem

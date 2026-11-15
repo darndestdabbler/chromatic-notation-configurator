@@ -58,17 +58,18 @@ export const CNBStem = {
    * @param {number[]} opts.noteYPositions   Array of Y coordinates for each notehead in the chord
    * @param {"up"|"down"} opts.direction
    * @param {string} opts.duration          Duration name ("crotchet", "minim", etc.)
-   * @param {number} [opts.widthScale=1]    Notehead group width ÷ one head's width.
-   *        Repeat mode (session 18) draws a group of heads; the anchor's x
-   *        offset scales with it, so the stem attaches at the anchor's
-   *        relative position across the group, as LilyPond's
-   *        stem-attachment (relative to the notehead extent) does.
+   * @param {number[]} [opts.headOffsets=[0]]  Each repeated head's x, px
+   *        from the group's centre (CNBCard.repeatLayout's offsets). Repeat
+   *        mode (session 18) draws a minim as a group of heads; since session
+   *        72 its stem attaches to one of them as a single head's stem does,
+   *        the last head when the stem is up and the first when it is down,
+   *        as engine 1.9.0 engraves it with cnb:multinote-stem-on-head.
    * @param {number} [opts.scaleX=scaleFactor]  Horizontal scale of a sized
    *        notehead (session 22, CNBNotehead.measure's scaleX); the anchor's
    *        x offset uses it, its y offset uses scaleFactor (= scaleY).
    * @returns {{x:number,y1:number,y2:number,thickness:number}|null}
    */
-  geometry(config, { gridContext, shape, scaleFactor, scaleX = scaleFactor, centerX, noteYPositions, direction, duration, widthScale = 1 }) {
+  geometry(config, { gridContext, shape, scaleFactor, scaleX = scaleFactor, centerX, noteYPositions, direction, duration, headOffsets = [0] }) {
     if (!shape.anchors) return null;
     // only crotchet/minim have stems
     if (duration !== "crotchet" && duration !== "minim") return null;
@@ -89,14 +90,15 @@ export const CNBStem = {
     const thickness = STEM_THICKNESS * 2 * pxPerHalfSpace;
 
     // The anchor is the stem's centre, as the SVG's stem rect draws it
-    // (session 40). LilyPond puts the stem's edge (an up stem's right, a
-    // down stem's left) on the attachment point, which the export writes
-    // half a stem outward of the anchor, relative to the notehead's extent
-    // (LY spec §4.4c). Across a repeated group that edge scales with the
-    // group, so the preview places the edge the same way and the centre
-    // half a stem inward of it: for one head, the centre is on the anchor.
+    // (session 40); the export writes the attachment half a stem outward of
+    // it, where LilyPond puts the stem's edge (LY spec §4.4c). A repeated
+    // minim's stem stands on one head of its group as on a single head:
+    // the last when up, the first when down (session 72, LY spec §4.4c).
+    // (Summed through the edge, as before session 72, so a single head
+    // draws byte for byte as it did.)
+    const head = direction === "up" ? Math.max(...headOffsets) : Math.min(...headOffsets);
     const side = direction === "up" ? 1 : -1;
-    const edgeX = centerX + (anchor.x * scaleX + side * thickness / 2) * widthScale;
+    const edgeX = centerX + head + (anchor.x * scaleX + side * thickness / 2);
     const stemX = edgeX - side * thickness / 2;
 
     const low = Math.max(...noteYPositions);

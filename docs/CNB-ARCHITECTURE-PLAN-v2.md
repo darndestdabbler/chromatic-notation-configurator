@@ -583,8 +583,10 @@ durations: {
   // "repeat" = repeat the same notehead: the engine's fixed counts,
   //   minim ×2, semibreve ×4 (session 18), and a breve as two semibreves
   //   1 staff space apart, joined by a tie from the middle of the first to
-  //   the middle of the second (sessions 44 and 58). repeatCounts, which
-  //   neither the preview nor the export read, is retired (session 34).
+  //   the middle of the second (sessions 44 and 58). A minim's stem stands
+  //   on one of its two heads, the last when up and the first when down
+  //   (session 72). repeatCounts, which neither the preview nor the export
+  //   read, is retired (session 34).
   representationMode: "shape",
 
   // In repeat mode, the share of a head's own width each copy overlaps the
@@ -601,6 +603,7 @@ durations: {
 | `representationMode == "repeat"` | `(repeat . #t)` (or omit, since default) |
 | `durations[].lilypondDuration` | Used in compound `cond` conditions: `(= duration 3)` |
 | `repeatOverlap`, in repeat mode | Section B `#(set! cnb:multinote-overlap 0.3333)`, engine 1.7.0 (LY spec 1.3.20 §4.1d) |
+| `representationMode == "repeat"` (the minim's stem on one head) | Section B `#(set! cnb:multinote-stem-on-head #t)`, engine 1.9.0 (LY spec 1.3.23 §4.4c) |
 
 **Design note on the overlap (session 58).** The operator picked it from
 mock-ups (`docs/planning/repeat-overlap-mockups/`): the old −0.5 staff
@@ -1577,7 +1580,9 @@ CNBStem.geometry(config, {
   centerX: number,
   noteYPositions: number[],
   direction: "up" | "down",
-  duration: string            // needed to select crotchet vs. minim anchor
+  duration: string,           // needed to select crotchet vs. minim anchor
+  headOffsets: number[]       // repeat mode: each head's x from the group's
+                              // centre (CNBCard.repeatLayout), default [0]
 }) → { x: number, y1: number, y2: number, thickness: number } | null
 
 // Render a stem line
@@ -1616,14 +1621,23 @@ the far notehead's pitch, as LilyPond engraves it (LY spec §4.1e).
 the SVG's stem rect puts the stem, so the preview draws a one-head stem
 centred on it. LilyPond puts an up stem's right edge and a down stem's left
 edge on the attachment point, so the export writes that point half the
-stem's 0.13 staff spaces outward of the anchor (LY spec §4.4c). Across a
-repeated group LilyPond scales the point with the group, and the preview
-places the anchored edge at the same scaled point, its centre half a stem
-inward. The engraved and previewed stems then sit at the same place (an
-engine round trip in `cnb/tests/cnb-card-tests.js` measures the centre
-within 0.001 staff spaces for the default, Kite and 45deg-369 fixtures).
-From session 33 to 39 the anchor was the stem's edge, so a stem drawn
-centred in its SVG previewed and engraved half a stem off centre.
+stem's 0.13 staff spaces outward of the anchor (LY spec §4.4c). The
+engraved and previewed stems then sit at the same place (an engine round
+trip in `cnb/tests/cnb-card-tests.js` measures the centre within 0.001
+staff spaces for the default, Kite and 45deg-369 fixtures). From session 33
+to 39 the anchor was the stem's edge, so a stem drawn centred in its SVG
+previewed and engraved half a stem off centre.
+
+**A repeated minim's stem stands on one head (session 72).** In repeat mode
+a minim is two heads, and its stem attaches to one of them as a single
+head's does: the last head when the stem is up, the first when it is down
+(`headOffsets`), a centred stem on that head's centre. Until session 72 the
+anchor was read across the whole group, as LilyPond reads stem-attachment
+against the group's stencil, so a centred stem stood in the notch between
+the heads. The export writes `cnb:multinote-stem-on-head #t` in repeat mode,
+which engine 1.9.0 engraves the same way (LY spec 1.3.23 §4.4c). The stem
+attaches at the same place on a notehead however the minim is drawn, so the
+Kite fixture's minim anchors are centred as its crotchet's.
 
 **Test cases:**
 - Stem up: X on right side, extends above upper notehead
@@ -2244,6 +2258,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:staff-line-positions` | `'(-4 -2 0 2 4)` | Computed from `staff.semitonePattern` + `staff.midpoint` | Always |
 | `cnb:false-hollow` | `#f` | `engine.falseHollow` | If changed |
 | `cnb:multinote-overlap` | `#f` (the engine's `cnb:multinote-padding`, never written) | `durations.repeatOverlap` (session 58) | In repeat mode (LY spec 1.3.20 §4.1d), engine 1.7.0 |
+| `cnb:multinote-stem-on-head` | `#f` | `durations.representationMode` (session 72) | `#t` in repeat mode (LY spec 1.3.23 §4.4c), engine 1.9.0 |
 | `cnb:default-magnify` | `7/4` | `engine.defaultMagnify` | If changed |
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |
@@ -2325,9 +2340,11 @@ Build Module X: [one-line description]
    semibreve ×4 (fixed; `durations.repeatCounts` is not read), each copy
    starting (1 − `durations.repeatOverlap`) head widths after the last
    (session 58; before it, `engine.multinotePadding` staff spaces apart),
-   the group centred on the head position. The stem attaches at the
+   the group centred on the head position. The stem attached at the
    anchor's relative position across the group, as LilyPond's
-   stem-attachment does, and the ledgers widen with the group
+   stem-attachment does, until session 72, when a minim's stem came to
+   stand on one head, the last when up and the first when down (engine
+   1.9.0's `cnb:multinote-stem-on-head`), and the ledgers widen with the group
    (`CNBCard.repeatCount` / `CNBCard.repeatLayout`). Since session 44 (engine
    session 25, engine 1.3.0) a breve is two semibreve groups 1 staff space
    apart, tied on each notehead with LilyPond's `make-tie-stencil`, drawn

@@ -97,6 +97,7 @@
 
 %% Engine settings (non-default)
 #(set! cnb:multinote-overlap 0.3333)
+#(set! cnb:multinote-stem-on-head #t)
 
 %% Metadata
 #(set! cnb:file-suffix "-45deg-369")

@@ -10,8 +10,8 @@
   <g id="layer1">
     <rect id="stem-down" x="-10" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
     <rect id="stem-up" x="-10" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
-    <rect id="stem-minim-down" x="63" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
-    <rect id="stem-minim-up" x="-83" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
+    <rect id="stem-minim-down" x="-10" y="180" width="20" height="350" style="fill:#00FFFF;stroke:none"/>
+    <rect id="stem-minim-up" x="-10" y="-530" width="20" height="350" style="fill:#FF00FF;stroke:none"/>
     <path id="notehead"
           d="M 0 200 L -200 100 L 0 -200 L 200 100 L 0 200 Z"
           data-semitone-height="4"

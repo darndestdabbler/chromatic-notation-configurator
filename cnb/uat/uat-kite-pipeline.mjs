@@ -240,10 +240,12 @@ check("AUTHOR/import: stem placemarker rects produce native crotchet anchors (0,
 // these SVGs by cnb/fixtures/rebuild-kite-shapes.mjs — so import reproduces
 // the reference's distinct minim offsets. (Semitone units per the D5 fix:
 // ∓0.73 semitones = the reference's ∓0.365 of the kite's ±2-semitone
-// half width, LilyPond's stem-attachment units — session 33.)
-check("AUTHOR/import (D6 closed): imported minim anchors equal the fixture's distinct minim x-offsets -0.73/0.73 semitones",
-  cfg.shapes["kite-up"].lilypondAnchors.minimUp.x === -0.73 &&
-  cfg.shapes["kite-up"].lilypondAnchors.minimDown.x === 0.73 &&
+// half width, LilyPond's stem-attachment units — session 33.) Session 72:
+// a repeated minim's stem stands on one head as a crotchet's does, so the
+// minim rects are centred like the crotchet's, x 0.
+check("AUTHOR/import (D6 closed): imported minim anchors equal the fixture's minim anchors, centred (session 72)",
+  cfg.shapes["kite-up"].lilypondAnchors.minimUp.x === 0 &&
+  cfg.shapes["kite-up"].lilypondAnchors.minimDown.x === 0 &&
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-up"].lilypondAnchors) &&
   JSON.stringify(cfg.shapes["kite-down"].lilypondAnchors) === JSON.stringify(fixtureJson.shapes["kite-down"].lilypondAnchors),
   JSON.stringify(cfg.shapes["kite-up"].lilypondAnchors));
@@ -384,12 +386,12 @@ check("AUTHOR/export: authored colors registered with the exact Kite hexes (symb
 // Session 40: the anchor is the stem's centre, so each attachment is written
 // half the engine's 0.13-staff-space stem outward (0.195 semitones at sps 3,
 // relative to the kite's ±2-semitone extent): the centred crotchet stem is
-// '(0.0975 . 0.9) and the minim's -0.73 is '(-0.2675 . 0.9) (LY spec §4.4c).
-check("AUTHOR/export (D5, D6 closed): authored attachments emit relative stem-attachment units with the stems centred where the rects put them ('(0.0975 . 0.9)) and the distinct minim x-offsets ('(-0.2675 . 0.9)), as the fixture export does",
+// '(0.0975 . 0.9), and since session 72 the minim's, centred too, is the same.
+check("AUTHOR/export (D5, D6 closed): authored attachments emit relative stem-attachment units with the stems centred where the rects put them ('(0.0975 . 0.9)), the minim's as the crotchet's (session 72), as the fixture export does",
   authored.includes("(cons 'crotchet-up   '(0.0975 . 0.9))") &&
-  authored.includes("(cons 'minim-up      '(-0.2675 . 0.9))") &&
+  authored.includes("(cons 'minim-up      '(0.0975 . 0.9))") &&
   fixtureExport.includes("(cons 'crotchet-up   '(0.0975 . 0.9))") &&
-  fixtureExport.includes("(cons 'minim-up      '(-0.2675 . 0.9))"));
+  fixtureExport.includes("(cons 'minim-up      '(0.0975 . 0.9))"));
 check("AUTHOR/export PIN(no engine/meta editors): authored export omits cnb:false-hollow (engine default #f) and keeps the default config's meta (no meta editor exists to change it); the fixture export sets the Kite values for all three",
   !authored.includes("cnb:false-hollow") &&
   authored.includes('#(set! cnb:file-suffix "-Default48")') &&

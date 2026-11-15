@@ -824,6 +824,14 @@ export const tests = [
       contains(CNBLilypond.sectionB(cfg), "#(set! cnb:multinote-overlap 0.3333)", "unset: 1/3");
     }},
 
+  { name: "sectionB writes cnb:multinote-stem-on-head #t after the overlap in repeat mode only (session 72, engine 1.9.0)", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      lacks(CNBLilypond.sectionB(cfg), "cnb:multinote-stem-on-head", "shape mode");
+      cfg.durations.representationMode = "repeat";
+      contains(CNBLilypond.sectionB(cfg),
+        "#(set! cnb:multinote-overlap 0.3333)\n#(set! cnb:multinote-stem-on-head #t)");
+    }},
+
   { name: "M1: a set engine.stemThickness is never exported (the engine has no cnb:stem-thickness)", fn: () => {
       const cfg = CNBConfig.createDefault();
       cfg.engine.stemThickness = 1.5;

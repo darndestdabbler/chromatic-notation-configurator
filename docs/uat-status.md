@@ -54,6 +54,15 @@ the UI again (`docs/sessions/session-plan.md`).
    the gap. The alternative they raised is a nudge in the UI. The
    preview and the engine both need the change, with an engine round trip,
    so it is too large for this session.
+   *Session 72 (2026-11-15):* from the mock-up in
+   `docs/planning/repeat-minim-stem-mockups/` (`shots/stems.png`) the
+   operator confirmed the rule, a centred stem included: it stands on the
+   centre of the last head when up and of the first when down, as engine
+   1.9.0 engraves it with `cnb:multinote-stem-on-head #t`, with no side
+   chosen once. They also chose that the stem attaches at the same place on
+   a notehead however the minim is drawn, so Kite 4-369's minim stem
+   points, 0.73 semitones off centre to suit the old placement across the
+   group, become its centred crotchet points.
 2. **The tutorial builds a standard staff by hand** (*planned*, session 70). Its step 2
    has the reader click D♯, F, G and A under Staff lines on and then take
    away E and G♯, which makes the 3–5–7–9 staff, one of the Staff panel's

@@ -137,6 +137,20 @@ export const tests = [
       approx(at("down", "minim").x, 50, "and a down stem");
     }},
 
+  { name: "geometry stands a repeated minim's stem on one head (session 72): the last when up, the first when down, as on a single head", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      const s = { anchors: { crotchetUp:{x:10,y:0}, crotchetDown:{x:-10,y:0}, minimUp:{x:10,y:0}, minimDown:{x:-10,y:0} }, semitoneHeight:2 };
+      const at = (direction, headOffsets) => CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:s, scaleFactor:1, centerX:50, noteYPositions:[0], direction, duration:"minim", headOffsets });
+      approx(at("up", [-8, 8]).x, 68, "up: on the last head's anchor");
+      approx(at("down", [-8, 8]).x, 32, "down: on the first head's anchor");
+      approx(at("up", [0]).x, at("up", undefined).x, "one head: as without offsets");
+      approx(at("up", [0]).x, 60, "one head: on its anchor");
+      const centred = { ...s, anchors: { ...s.anchors, minimUp:{x:0,y:0}, minimDown:{x:0,y:0} } };
+      const c = (direction) => CNBStem.geometry(cfg, { gridContext: grid(cfg), shape:centred, scaleFactor:1, centerX:50, noteYPositions:[0], direction, duration:"minim", headOffsets:[-8, 8] });
+      approx(c("up").x, 58, "a centred stem on the last head's centre");
+      approx(c("down").x, 42, "and on the first head's centre");
+    }},
+
   { name: "THICKNESS is the engine's stem, 0.13 staff spaces", fn: () => {
       eq(CNBStem.THICKNESS, 0.13);
     }},
@@ -233,18 +247,17 @@ export const tests = [
       eq(axis.enabled, false, "inactive axis");
       eq(CNBStem.direction([8], 9, axis), "up", "linear result");
     }},
-  { name: "geometry widthScale: default 1 is unchanged; 2 doubles the anchored edge's x offset, as LilyPond scales the attachment across the group", fn: () => {
+  { name: "geometry headOffsets: default [0] is unchanged; a repeated minim's stem moves with its chosen head, its ends unchanged", fn: () => {
       const cfg = CNBConfig.createDefault();
       const s = { anchors: { crotchetUp:{x:10,y:-4}, crotchetDown:{x:-10,y:4}, minimUp:{x:6,y:-4}, minimDown:{x:-6,y:4} }, semitoneHeight:2 };
       const opts = { gridContext: grid(cfg), shape:s, scaleFactor:1.5, centerX:50, noteYPositions:[100, 40], direction:"up", duration:"minim" };
       const plain = CNBStem.geometry(cfg, opts);
-      const half = plain.thickness / 2;
-      eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, widthScale: 1 })), JSON.stringify(plain), "explicit 1 = default");
+      eq(JSON.stringify(CNBStem.geometry(cfg, { ...opts, headOffsets: [0] })), JSON.stringify(plain), "explicit [0] = default");
       approx(plain.x, 50 + 6 * 1.5, "default x: the centre on the anchor");
-      const doubled = CNBStem.geometry(cfg, { ...opts, widthScale: 2 });
-      approx(doubled.x + half, 50 + 2 * (6 * 1.5 + half), "the right edge's offset doubled");
-      eq(doubled.y1, plain.y1, "y1 unchanged");
-      eq(doubled.y2, plain.y2, "y2 unchanged");
+      const group = CNBStem.geometry(cfg, { ...opts, headOffsets: [-12, 12] });
+      approx(group.x, plain.x + 12, "on the last head");
+      eq(group.y1, plain.y1, "y1 unchanged");
+      eq(group.y2, plain.y2, "y2 unchanged");
     }},
   { name: "geometry scaleX (session 22): default scaleFactor is unchanged; a sized notehead's scaleX moves the anchor x only", fn: () => {
       const cfg = CNBConfig.createDefault();
@@ -256,9 +269,8 @@ export const tests = [
       approx(wide.x, 50 + 10 * 3, "anchor x follows scaleX");
       eq(wide.y1, plain.y1, "anchor y follows scaleFactor");
       eq(wide.y2, plain.y2, "y2 unchanged");
-      const half = plain.thickness / 2;
-      const down = CNBStem.geometry(cfg, { ...opts, direction: "down", scaleX: 3, widthScale: 2 });
-      approx(down.x - half, 50 + 2 * (-10 * 3 - half), "scaleX composes with widthScale (the left edge)");
+      const down = CNBStem.geometry(cfg, { ...opts, direction: "down", duration: "minim", scaleX: 3, headOffsets: [-12, 12] });
+      approx(down.x, 50 - 12 + -6 * 3, "scaleX composes with the chosen head's offset");
     }},
 ];
 

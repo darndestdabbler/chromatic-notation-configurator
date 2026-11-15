@@ -1528,7 +1528,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "f32e32296c1e9db92f74485e7f6063423eab03d8",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.32.4",
+      "startCommit": "f32e32296c1e9db92f74485e7f6063423eab03d8"
+    },
+    {
+      "number": 72,
+      "title": "A repeated minim's stem on its notehead",
+      "status": "in-progress",
+      "startedAt": "2026-11-15T08:35:13.796000-05:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "2bc09914d3d8994357ee9bad5a634af4fc40ac29",
       "frameworkVersion": "3.32.4",
       "verification": {
         "rounds": 1,
@@ -1536,15 +1558,6 @@
         "verifierProvider": "openai",
         "transport": "api"
       }
-    },
-    {
-      "number": 72,
-      "title": "A repeated minim's stem on its notehead",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 73,

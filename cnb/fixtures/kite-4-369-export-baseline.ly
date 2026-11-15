@@ -60,15 +60,15 @@
    (list
      (cons 'crotchet-up   '(0.0975 . 0.9))
      (cons 'crotchet-down '(-0.0975 . -0.9))
-     (cons 'minim-up      '(-0.2675 . 0.9))
-     (cons 'minim-down    '(0.2675 . -0.9))))
+     (cons 'minim-up      '(0.0975 . 0.9))
+     (cons 'minim-down    '(-0.0975 . -0.9))))
 
 #(cnb:register-attachment! 'kite-up-attach
    (list
      (cons 'crotchet-up   '(0.0975 . 0.9))
      (cons 'crotchet-down '(-0.0975 . -0.9))
-     (cons 'minim-up      '(-0.2675 . 0.9))
-     (cons 'minim-down    '(0.2675 . -0.9))))
+     (cons 'minim-up      '(0.0975 . 0.9))
+     (cons 'minim-down    '(-0.0975 . -0.9))))
 
 %% --- Register colors ---
 #(cnb:register-color! 'sky-blue-50b4e9 "#50b4e9")
@@ -118,6 +118,7 @@
 %% Engine settings (non-default)
 #(set! cnb:false-hollow #t)
 #(set! cnb:multinote-overlap 0.3333)
+#(set! cnb:multinote-stem-on-head #t)
 
 %% Metadata
 #(set! cnb:file-suffix "-Kite-4-369-Procedure")

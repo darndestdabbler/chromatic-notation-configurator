@@ -574,7 +574,7 @@ export const tests = [
       approx(minim.staffSpacePx, 2 * 16, "a staff space is 2 axis units");
     }},
 
-  { name: "render (repeat): minim draws 2 octave pairs, semibreve 4; heads, stem and ledgers follow the group", fn: () => {
+  { name: "render (repeat): minim draws 2 octave pairs, semibreve 4; heads and ledgers follow the group, the stem stands on one head", fn: () => {
       const { config, grid, shape } = repeatFixture();
       const { pixelWidth: w, scaleFactor } = CNBNotehead.measure(shape, grid.pxPerSemi);
       withDomStub(container => {
@@ -585,10 +585,9 @@ export const tests = [
         const centerX = Number(svg.getAttribute("width")) / 2;
         noteheads.forEach((g, i) => approx(Number(/translate\(([^,]+),/.exec(g.getAttribute("transform"))[1]),
           centerX + layout.offsets[Math.floor(i / 2)], `head ${i} x`));
-        const half = Number(stem.getAttribute("stroke-width")) / 2;
-        approx(stemEdge(stem, "up"),
-          centerX + (shape.anchors.minimUp.x * scaleFactor + half) * (layout.groupWidth / w),
-          "the stem's anchored edge at its relative position across the group, as LilyPond scales the attachment");
+        approx(Number(stem.getAttribute("x1")),
+          centerX + layout.offsets[layout.offsets.length - 1] + shape.anchors.minimUp.x * scaleFactor,
+          "the up stem on the last head, centred on its anchor as a single head's (session 72)");
         const ledger = ledgerG.children[0];
         approx(Number(ledger.getAttribute("width")), 1.5 * layout.groupWidth, "ledger: 1.5 × the group, as LilyPond draws it");
         approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "minim" }),
@@ -697,9 +696,11 @@ export const tests = [
   // not its centre, on the attachment point (an up stem's right edge, a down
   // stem's left); the export writes that point half a stem outward of the
   // anchor (session 40), in LilyPond's stem-attachment units, relative to the
-  // notehead's extent (session 33), and the preview scales the same edge
-  // across the group, so the anchored edges agree. Since session 34 the
-  // stems' widths agree as well (the next test).
+  // notehead's extent (session 33), so the anchored edges agree. Since
+  // session 34 the stems' widths agree as well (the next test). Since
+  // session 72 a repeated minim's stem stands on one head, the last when up
+  // and the first when down, which the export asks of engine 1.9.0 with
+  // cnb:multinote-stem-on-head.
   { name: "repeat mode (engine): the engraved stem's anchored edge matches the preview's, crotchet and minim, up and down", fn: async () => {
       const { config, grid } = repeatFixture();
       const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
