@@ -1261,6 +1261,14 @@
       "what": "step 'stem': its files",
       "reason": "The notehead panel's built-in kite-up and kite-down shapes (cnb/ui/builtin-shapes.js) are pinned equal to the Kite 4-369 fixture's shapes by cnb-builtin-shapes-tests, so the operator's centred minim anchors reach them too; without it that pin fails.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "rollback",
+      "sessionNumber": 73,
+      "through": 73,
+      "dateTime": "2026-11-16T07:33:32.741000-05:00",
+      "reason": "Rollback to Start of This Session from the Work Explorer",
+      "by": "operator"
     }
   ]
 }

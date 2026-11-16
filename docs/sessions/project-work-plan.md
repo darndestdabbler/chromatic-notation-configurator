@@ -740,3 +740,9 @@ Put a repeated minim's stem on one of its noteheads (session 69, rough edge 1). 
 
 - 2026-11-15 — step 'stem': its files: The operator chose (operator-pick step, recorded in docs/uat-status.md and the session-72 amendment note) that a stem attaches at the same place on a notehead however the minim is drawn, so the Kite 4-369 fixture's minim stem rects (x -/+73 SVG units, tuned for the old placement across the group) move to the crotchet's centred rects in kite-up.svg and kite-down.svg, the fixture's shapes are rebuilt from them with cnb/fixtures/rebuild-kite-shapes.mjs, and the importer test and Kite pipeline UAT that pin the old -0.73 semitone minim anchor follow. The Kite export baseline was already in this step. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-15 — step 'stem': its files: The notehead panel's built-in kite-up and kite-down shapes (cnb/ui/builtin-shapes.js) are pinned equal to the Kite 4-369 fixture's shapes by cnb-builtin-shapes-tests, so the operator's centred minim anchors reach them too; without it that pin fails. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 73 — The UI is stable, a second try
+
+**Rolled back:**
+
+- 2026-11-16 — session 73 — Rollback to Start of This Session from the Work Explorer (operator)
