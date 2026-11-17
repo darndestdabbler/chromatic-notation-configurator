@@ -1,0 +1,13 @@
+# Transcript: Kite export byte-identity after round-2 remediation
+# Date: 2026-07-12T20:17:14-04:00
+$ node <base-worktree 2cf7d647>/cnb/fixtures/export-kite-4-369.mjs $TEMP/kite-base-r3.ly
+wrote C:\Users\denmi\AppData\Local\Temp/kite-base-r3.ly (7665 bytes)
+exit: 0
+
+$ node cnb/fixtures/export-kite-4-369.mjs $TEMP/kite-r3.ly   (working tree)
+wrote C:\Users\denmi\AppData\Local\Temp/kite-r3.ly (7665 bytes)
+exit: 0
+
+$ cmp $TEMP/kite-base-r3.ly $TEMP/kite-r3.ly && echo BYTE-IDENTICAL
+BYTE-IDENTICAL
+exit: 0
