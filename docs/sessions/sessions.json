@@ -1562,9 +1562,9 @@
     {
       "number": 73,
       "title": "The UI is stable, a second try",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-11-16T17:13:46.027000-05:00",
-      "completedAt": null,
+      "completedAt": "2026-11-16T20:55:21.021000-05:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
