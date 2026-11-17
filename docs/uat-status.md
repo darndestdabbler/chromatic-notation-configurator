@@ -21,6 +21,88 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Trying sessions 70–72 — 2026-11-16 (session 73)
+
+The operator tried what sessions 70–72 added (ledgers by one rule, the
+step history, kept work and New, the repeated minim's stem on its
+notehead) in the app served locally (`python -m http.server 8000`) and
+built the tutorial's notation with it, saving `tutorial-3-5-7-9.cnb.json`
+and exporting `tutorial3579.ly` (2026-11-16). The export is the app's
+export of the saved config, apart from its date and source lines. The
+operator: "It seemed to be working correctly." Their notation differs from
+the tutorial's download where they chose so: their own C clef, a toolkit
+glyph anchored at its centre on semitone 12 (so its top exports at 16, the
+tutorial's at 15.9872), beside the tutorial's clef imported as Sample C
+Clef. It has no Hollow minims rule (item 2).
+
+Before session 73's try-out the stems of session 72 were held to the
+engine: an engine round trip in `cnb/tests/cnb-card-tests.js` puts the
+default notehead, Kite 4-369 and the tutorial's diamonds in repeat mode and
+holds every card's stem, crotchet and minim, up and down, to the preview
+within 0.001 staff spaces against engine 1.9.0.
+
+**Rough edges**, each marked *fix here* or *planned*.
+
+1. **The notehead panel changes every duration, and the durations above
+   the canvas are several at once** (*planned*, sessions 74–77). With only
+   minims shown, the operator selected noteheads and made them hollow, and
+   the crotchets changed too; with only crotchets shown, making them solid
+   made the minims solid. The panel edits one look a pitch class, for every
+   duration (the look table, session 23), and the duration buttons only
+   choose the rows the canvas draws, which nothing on the page says. The
+   operator asked first for the duration buttons to be one choice rather
+   than several, then for a simpler model of the noteheads altogether
+   (2026-11-16), which "might simplify the entire UI":
+   - **A. Conventional noteheads**: the conventional crotchet, minim,
+     semibreve and breve, only the colour varying by pitch, and the
+     notehead's height set by the designer. The operator will draw the
+     conventional noteheads in SVG if the app needs them.
+   - **B. A custom notehead**: shape, colour and fill vary by pitch, and the
+     designer chooses how duration shows, with very few options:
+     - **i. Hollows**, when crotchets are always solid: a minim is one
+       hollow head with a stem, a semibreve one hollow head without, and a
+       breve, as the designer chooses, a double notehead or two tied
+       semibreves. That breve needs an engine change.
+     - **ii. Repeated heads**, when crotchets may be hollow: the pitch alone
+       gives the notehead's shape, colour and fill, the same for every
+       duration; a minim is two heads with a stem, a semibreve four without,
+       and a breve two tied groups of four (repeat mode as it is).
+
+   The Noteheads step would ask first which design, and then for B which
+   way duration shows. This replaces the Shape or Repeat choice and the
+   Hollow minims tick above the canvas, and the duration buttons become a
+   choice of what the canvas shows. It is a redesign of the step, too large
+   for this session: designed with mock-ups in session 74, its breve given
+   to the engine, built in sessions 75 and 76, and tried in session 77
+   before the release, now session 78 (`docs/sessions/session-plan.md`).
+2. **The Hollow minims rule went missing** (*planned*, with item 1; not
+   reproduced). The operator had ticked Hollow minims, and their saved
+   notation has no such rule, so the fills of item 1 changed the minims as
+   well. They do not recall unticking it or undoing past it. A browser run
+   of their steps (minims alone shown, four noteheads made hollow; crotchets
+   alone shown, made solid; two undos, two redos, a reload restoring the
+   kept work) kept the rule throughout. One way to lose it was found: the
+   tick re-seeds the Advanced rule editor but not the pitch-axis editor,
+   which keeps a copy of the rules from its last mount, so a pitch-axis
+   preset applied afterwards writes the rules back without it. The operator
+   did not use a pitch axis. Item 1's design retires the tick; session 75
+   re-seeds every editor that keeps the rules after any change to them.
+3. **The configurator's address does not open** (no change). The README
+   says to use the configurator at its address, which the site serves only
+   from its first deploy, in the 1.1.0 release. The operator keeps the
+   wording as it is.
+
+**The full UAT** (`node cnb/uat/run-uat.mjs`, 2026-11-16, after the
+README's picture was recaptured with New in the top bar): 20 of 20 drivers
+passed, 739 checks, the hostile-input checklist in Chromium 156, Firefox
+157 and Edge 157 among them.
+
+**Not yet declared stable.** The redesign of item 1 changes the Noteheads
+step and the canvas's controls, so the operator's declaration, the
+condition for the 1.1.0 release, moves to the third try-out, session 77,
+and the release to session 78. Session 74 designs the new step with
+mock-ups (`docs/sessions/session-plan.md`).
+
 ## Trying sessions 58–68 — 2026-11-14 (session 69)
 
 The operator tried what sessions 58–68 added, in the app served locally

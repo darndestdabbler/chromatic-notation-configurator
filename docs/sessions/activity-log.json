@@ -1269,6 +1269,21 @@
       "dateTime": "2026-11-16T07:33:32.741000-05:00",
       "reason": "Rollback to Start of This Session from the Work Explorer",
       "by": "operator"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 73,
+      "dateTime": "2026-11-16T17:15:27.038000-05:00",
+      "task": "Make the UI stable for the 1.1.0 release, a second try. First the engine round trip for session 72's stems, against engine 1.9.0 (released 2026-11-14): a new engine-backed test in cnb/tests/cnb-card-tests.js puts the default notehead, Kite 4-369 and the tutorial's diamonds (docs/playbook/tutorial/downloads/tutorial.json) in repeat mode and holds every card's stem, crotchet and minim, up and down, its direction, centre x, width and both ends, to the preview within 0.001 staff spaces. Then the operator tries what sessions 70-72 added (ledgers by one rule, the step history, kept work and New, the repeated minim's stem on its notehead) and anything left from session 69's try-out, in the app served locally and in the tutorial; the findings are recorded in a session-73 section of docs/uat-status.md, each rough edge marked fix-here or planned. Small rough edges are fixed here, with tests named after each changed source file (the step's files amended on the record when they are known); a large one is planned in session-plan.md as a session before 74. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 74), is recorded in docs/uat-status.md.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 73,
+      "dateTime": "2026-11-16T20:43:08.156000-05:00",
+      "what": "step 'tryout': its files",
+      "reason": "The operator's rough edge (the notehead panel and the durations) is a redesign, planned as sessions 74-77 before the release in session-plan.md, as the step's ask directs for a large one; no source file changes here.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

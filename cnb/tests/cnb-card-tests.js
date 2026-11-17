@@ -744,40 +744,35 @@ export const tests = [
   { name: "stem (engine): every card's stem engraves at the preview's direction, x, thickness and ends, default, Kite and 45deg, crotchet and minim", fn: async () => {
       const engine = findEngine();
       if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
-      const names = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
       const load = (f) => CNBConfigIO.loadFromText(readFileSync(path.join(FIXTURES, f), "utf8")).config;
       const failures = [];
       for (const [label, config] of [["default", CNBConfig.createDefault()],
         ["Kite 4-369", load("kite-4-369-config.json")], ["45deg-369", load("45deg-369-config.json")]]) {
-        const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
-        const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
-        const middleY = grid.semiToY(config.staff.midpoint);
+        failures.push(...await stemRoundTrip(engine, label, config));
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // Engine-backed (session 73, LY spec §4.4c): session 72's stems against
+  // engine 1.9.0. In repeat mode a minim's stem stands on one of its two
+  // heads, the last when up and the first when down
+  // (cnb:multinote-stem-on-head #t). For every card's octave chord, crotchet
+  // and minim, on the default notehead (side stems), Kite 4-369 and the
+  // tutorial's diamonds (centred stems), the engraved stem's direction,
+  // centre x, width and both ends match the rendered card's within 0.001
+  // staff spaces. The cards cover stems up and down.
+  { name: "repeat mode (engine): every card's stem engraves where the preview draws it, default, Kite and the tutorial's diamonds, crotchet and minim", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const load = (file) => CNBConfigIO.loadFromText(readFileSync(file, "utf8")).config;
+      const tutorial = path.join(FIXTURES, "..", "..", "docs", "playbook", "tutorial", "downloads", "tutorial.json");
+      const failures = [];
+      for (const [label, config] of [["default", CNBConfig.createDefault()],
+        ["Kite 4-369", load(path.join(FIXTURES, "kite-4-369-config.json"))], ["the tutorial's diamonds", load(tutorial)]]) {
+        config.durations.representationMode = "repeat";
         const ly = CNBLilypond.generate(config);
-        for (const [duration, token] of [["crotchet", "4"], ["minim", "2"]]) {
-          // Card pc p draws semitones p and p + 12, the engine's p' and p''.
-          const previews = names.map((_, pc) => withDomStub(container => {
-            const { svg, stem } = dissect(CNBCard.render(container, grid, config, { pc, duration }));
-            const [y1, y2] = ["y1", "y2"].map(k => (middleY - Number(stem.getAttribute(k))) / staffSpacePx);
-            return { direction: y2 > y1 ? 1 : -1, width: Number(stem.getAttribute("stroke-width")) / staffSpacePx,
-              x: (stemCentre(stem) - Number(svg.getAttribute("width")) / 2) / staffSpacePx,
-              bottom: Math.min(y1, y2), top: Math.max(y1, y2) };
-          }));
-          const { stems, error } = await measureStems(engine, ly, names.map(n => `<${n}' ${n}''>${token}`).join(" "));
-          if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
-          if (stems.length !== names.length) { failures.push(`${label} ${duration}: ${stems.length} stems engraved`); continue; }
-          previews.forEach((want, pc) => {
-            const got = stems[pc];
-            if (got.direction !== want.direction) {
-              failures.push(`${label} ${duration} pc ${pc}: engraved direction ${got.direction}, preview ${want.direction}`);
-              return;
-            }
-            for (const k of ["x", "width", "bottom", "top"]) {
-              if (!(Math.abs(got[k] - want[k]) <= 1e-3)) {
-                failures.push(`${label} ${duration} pc ${pc} ${k}: engraved ${got[k]} staff spaces, preview ${want[k]} (±0.001)`);
-              }
-            }
-          });
-        }
+        assert(ly.includes("#(set! cnb:multinote-stem-on-head #t)"), `${label}: the export asks for the stem on one head`);
+        failures.push(...await stemRoundTrip(engine, label, config));
       }
       if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
@@ -999,6 +994,50 @@ function deepEqOffsets(a, b) {
 /** A stem's centre x, which sits on its anchor for one head (session 40). */
 function stemCentre(stem) {
   return Number(stem.getAttribute("x1"));
+}
+
+/**
+ * Engrave every card's octave chord (pc p draws semitones p and p + 12, the
+ * engine's p' and p''), as crotchets and as minims, and compare each stem's
+ * direction, centre x from the card's centre, width and both ends, in staff
+ * spaces from the middle line, with the rendered card's (±0.001). Returns
+ * the failures.
+ */
+async function stemRoundTrip(engine, label, config) {
+  const names = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
+  const failures = [];
+  const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+  const staffSpacePx = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
+  const middleY = grid.semiToY(config.staff.midpoint);
+  const ly = CNBLilypond.generate(config);
+  for (const [duration, token] of [["crotchet", "4"], ["minim", "2"]]) {
+    const previews = names.map((_, pc) => withDomStub(container => {
+      const { svg, stem } = dissect(CNBCard.render(container, grid, config, { pc, duration }));
+      const [y1, y2] = ["y1", "y2"].map(k => (middleY - Number(stem.getAttribute(k))) / staffSpacePx);
+      return { direction: y2 > y1 ? 1 : -1, width: Number(stem.getAttribute("stroke-width")) / staffSpacePx,
+        x: (stemCentre(stem) - Number(svg.getAttribute("width")) / 2) / staffSpacePx,
+        bottom: Math.min(y1, y2), top: Math.max(y1, y2) };
+    }));
+    const { stems, error } = await measureStems(engine, ly, names.map(n => `<${n}' ${n}''>${token}`).join(" "));
+    if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
+    if (stems.length !== names.length) { failures.push(`${label} ${duration}: ${stems.length} stems engraved`); continue; }
+    const directions = new Set();
+    previews.forEach((want, pc) => {
+      const got = stems[pc];
+      directions.add(want.direction);
+      if (got.direction !== want.direction) {
+        failures.push(`${label} ${duration} pc ${pc}: engraved direction ${got.direction}, preview ${want.direction}`);
+        return;
+      }
+      for (const k of ["x", "width", "bottom", "top"]) {
+        if (!(Math.abs(got[k] - want[k]) <= 1e-3)) {
+          failures.push(`${label} ${duration} pc ${pc} ${k}: engraved ${got[k]} staff spaces, preview ${want[k]} (±0.001)`);
+        }
+      }
+    });
+    if (directions.size !== 2) failures.push(`${label} ${duration}: the cards' stems do not go both up and down`);
+  }
+  return failures;
 }
 
 /** The stem edge LilyPond puts on the attachment point: an up stem's right edge, a down stem's left. */

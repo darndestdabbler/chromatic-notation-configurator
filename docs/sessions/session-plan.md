@@ -2444,7 +2444,90 @@ once sessions 70–72 are in, and engine 1.9.0 is released (2026-11-14).
 5. The operator declares the UI stable, which is the condition for
    session 74.
 
-### Session 74: Release 1.1.0 (release: 1.1.0)
+*(Session 73, 2026-11-16: the operator found the notehead panel changing
+every duration while the canvas showed one, and asked for a simpler model of
+the noteheads, conventional or custom, and for a custom notehead, duration
+shown by hollows or by repeated heads
+([`docs/uat-status.md`](../uat-status.md), session 73). It is a redesign of
+the Noteheads step, planned as sessions 74–77 below, and the release moves
+to session 78. The UI is not yet declared stable.)*
+
+### Session 74: Designing how noteheads show duration
+
+**Why.** The operator's try-out (session 73, rough edge 1): the notehead
+panel edits one look a pitch class for every duration, the duration buttons
+above the canvas only choose the rows drawn, and with one duration shown a
+designer expects to edit that one. The operator's model (2026-11-16), with
+very few options:
+
+- **A. Conventional noteheads**: the conventional crotchet, minim, semibreve
+  and breve; only the colour varies by pitch; the designer sets the
+  notehead's height.
+- **B. A custom notehead**, its shape, colour and fill varying by pitch, and
+  duration shown either way:
+  - **i. Hollows**, crotchets always solid: a minim one hollow head with a
+    stem, a semibreve one hollow head without, a breve a double notehead or
+    two tied semibreves, as the designer chooses.
+  - **ii. Repeated heads**: the pitch alone gives the notehead, the same for
+    every duration; a minim two heads with a stem, a semibreve four without,
+    a breve two tied groups of four (today's repeat mode).
+
+1. Register.
+2. A design document in `docs/planning/` with mock-ups the operator looks
+   at before approving it: the Noteheads step opening with the choice of
+   design, and for B the way duration shows; what the notehead panel offers
+   under each (no Fill under A and B.i; the colour alone, and the height,
+   under A); what becomes of the duration buttons, the Shape or Repeat
+   choice and the Hollow minims tick above the canvas; where the
+   conventional noteheads come from (the operator will draw them in SVG if
+   the app needs them); how the choice is stored and exported (today's
+   `durations.representationMode` and rules where they suffice); and how a
+   saved notation that fits none of the three opens (several gallery files
+   vary fill by pitch with hollow minims), as the key signature's starting
+   points show "your own symbols".
+3. The engine session's brief for B.i's breve, in `docs/planning/`: in shape
+   mode, a breve drawn as a double notehead or as two tied semibreves, the
+   designer's choice, and the figures the engine is to measure, as session
+   72's brief did. The engine session runs after this one, released as an
+   engine minor version.
+
+### Session 75: The notehead design, built
+
+**Why.** Session 74's design, approved.
+
+1. Register.
+2. The Noteheads step, the notehead panel and the canvas's controls as the
+   design says, with each module's tests, the UAT and the tutorial (its step
+   5, its downloads and shots) following.
+3. Every editor that keeps a copy of the notehead rules is re-seeded after
+   any change to them (session 73, rough edge 2: the pitch-axis editor is
+   not re-seeded after the Hollow minims tick).
+
+### Session 76: B.i's breve reaches LilyPond
+
+**Why.** Session 74's brief, once the engine release that engraves it is
+out.
+
+1. Register.
+2. The preview draws B.i's breve as a double notehead or two tied
+   semibreves, as chosen, and the export writes the engine's setting (LY
+   spec amended). An engine round trip holds every card's breve to the
+   preview within 0.001 staff spaces.
+
+### Session 77: The UI is stable, a third try
+
+**Why.** The release waits for a stable UI.
+
+1. Register.
+2. The operator tries sessions 74–76 in the app and the tutorial. Rough
+   edges found are fixed here, or planned as sessions before 78 if they
+   are large.
+3. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+4. The operator declares the UI stable, which is the condition for
+   session 78.
+
+### Session 78: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 

@@ -26,8 +26,11 @@ The Configurator is the design environment where notation creators make creative
 - **Save/load configurations** as JSON for iterative design, in the
   folder you choose
 - **Undo and redo** every change to the design
+- **Pick up where you left off** — the design in progress is kept in the
+  browser, the browser's Back and Forward move between the steps you
+  opened, and **New** starts afresh
 
-![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo and Redo, the staff canvas with its durations, repeat mode and overlap, key and size, and under it the notehead panel for C♯, F and A selected together, with Back and Next at the bottom](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo, Redo and New, the staff canvas with its durations, repeat mode and overlap, key and size, and under it the notehead panel for C♯, F and A selected together, with Back and Next at the bottom](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 

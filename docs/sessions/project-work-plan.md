@@ -84,7 +84,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 70 | Ledgers by one rule | no | 2026-11-14 |
 | 71 | Back, Forward and work kept | no | 2026-11-14 |
 | 72 | A repeated minim's stem on its notehead | no | 2026-11-15 |
-| 73 | The UI is stable, a second try | — | not declared |
+| 73 | The UI is stable, a second try | no | 2026-11-16 |
 | 74 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -742,6 +742,14 @@ Put a repeated minim's stem on one of its noteheads (session 69, rough edge 1). 
 - 2026-11-15 — step 'stem': its files: The notehead panel's built-in kite-up and kite-down shapes (cnb/ui/builtin-shapes.js) are pinned equal to the Kite 4-369 fixture's shapes by cnb-builtin-shapes-tests, so the operator's centred minim anchors reach them too; without it that pin fails. (claude-code (anthropic, claude-opus-5-5))
 
 ### Session 73 — The UI is stable, a second try
+
+**Releasable: no.**
+
+Make the UI stable for the 1.1.0 release, a second try. First the engine round trip for session 72's stems, against engine 1.9.0 (released 2026-11-14): a new engine-backed test in cnb/tests/cnb-card-tests.js puts the default notehead, Kite 4-369 and the tutorial's diamonds (docs/playbook/tutorial/downloads/tutorial.json) in repeat mode and holds every card's stem, crotchet and minim, up and down, its direction, centre x, width and both ends, to the preview within 0.001 staff spaces. Then the operator tries what sessions 70-72 added (ledgers by one rule, the step history, kept work and New, the repeated minim's stem on its notehead) and anything left from session 69's try-out, in the app served locally and in the tutorial; the findings are recorded in a session-73 section of docs/uat-status.md, each rough edge marked fix-here or planned. Small rough edges are fixed here, with tests named after each changed source file (the step's files amended on the record when they are known); a large one is planned in session-plan.md as a session before 74. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 74), is recorded in docs/uat-status.md.
+
+**Amended after acceptance:**
+
+- 2026-11-16 — step 'tryout': its files: The operator's rough edge (the notehead panel and the durations) is a redesign, planned as sessions 74-77 before the release in session-plan.md, as the step's ask directs for a large one; no source file changes here. (claude-code (anthropic, claude-opus-5-5))
 
 **Rolled back:**
 

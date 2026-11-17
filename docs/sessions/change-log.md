@@ -621,3 +621,10 @@ Twinline compact fixtures): each changed in two places, and nowhere else.
 - Orchestrator provider (excluded): anthropic
 - Verifier's read surface: agency: none — this round's verifier could not look at the tree
 - Raw round output: `.dabbler/runs/s72/`
+
+## Session 73 verification — VERIFIED after 2 round(s)
+
+- Verifier: gpt-5.6-terra (openai) over api
+- Orchestrator provider (excluded): anthropic
+- Verifier's read surface: agency: none — this round's verifier could not look at the tree
+- Raw round output: `.dabbler/runs/s73/`
