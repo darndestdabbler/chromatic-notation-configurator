@@ -594,4 +594,136 @@ export const tests = [
         eq(findAll(h.api.root, "cnb-nhp-kept").length, 0, "C♯: none");
       });
     }},
+
+  // ── The designs (session 75, notehead-duration design §2, §3) ──
+
+  { name: "rows by design: conventional the colour and one Height; hollows no Fill; repeated and your own every row", fn: () => {
+      const rows = (config) => withPanel(config, [0], (h) =>
+        ["cnb-nhp-colour", "cnb-nhp-fill", "cnb-nhp-shape", "cnb-nhp-size"].filter(t => findAll(h.api.root, t).length));
+      const def = CNBConfig.createDefault();
+      deepEq(rows(I.withDesign(def, "conventional")), ["cnb-nhp-colour", "cnb-nhp-size"], "conventional");
+      withPanel(I.withDesign(def, "conventional"), [0], (h) => {
+        eq(findAll(h.api.root, "cnb-nhp-width").length, 0, "no width");
+        eq(findOne(h.api.root, "cnb-nhp-general-height").value, "2.724", "every notehead's height");
+      });
+      deepEq(rows(I.withDesign(def, "hollows")), ["cnb-nhp-colour", "cnb-nhp-shape", "cnb-nhp-size"], "hollows");
+      deepEq(rows(I.withDesign(def, "repeated")), ["cnb-nhp-colour", "cnb-nhp-fill", "cnb-nhp-shape", "cnb-nhp-size"], "repeated");
+      deepEq(rows(def), ["cnb-nhp-colour", "cnb-nhp-fill", "cnb-nhp-shape", "cnb-nhp-size"], "your own");
+    }},
+
+  { name: "rows by design: under conventional the Height sets every notehead's, the semibreve and breve in their own proportions", fn: () => {
+      withPanel(I.withDesign(CNBConfig.createDefault(), "conventional"), [3], (h) => {
+        findOne(h.api.root, "cnb-nhp-general-height").onchange({ target: { value: "3" } });
+        eq(I.designOf(h.config), "conventional", "still conventional");
+        const at = (d) => CNBConfig.resolveNotehead(h.config, 7, d, null);
+        deepEq([at("crotchet").heightSemis, at("crotchet").widthSemis], [3, 3.7975], "crotchet");
+        deepEq([at("semibreve").heightSemis, at("semibreve").widthSemis], [3, 5.5], "semibreve");
+        eq(at("breve").heightSemis, 3, "breve");
+      });
+    }},
+
+  { name: "setGeneralHeight: conventional noteheads stay conventional (session 75)", fn: () => {
+      const out = P.setGeneralHeight(I.withDesign(CNBConfig.createDefault(), "conventional"), 2);
+      eq(I.designOf(out), "conventional", "design kept");
+      eq(CNBConfig.resolveNotehead(out, 0, "semibreve", null).heightSemis, null, "2 semitones: each at its own size");
+    }},
+
+  { name: "the marker for rules for particular durations shows only for your own noteheads", fn: () => {
+      withPanel(I.withDesign(CNBConfig.createDefault(), "conventional"), [0], (h) => {
+        eq(findAll(h.api.root, "cnb-nhp-kept").length, 0, "the design's rules are not the designer's");
+      });
+    }},
+
+  { name: "close-up: drawn at the duration getDuration gives, else the crotchet", fn: () => {
+      // Conventional crotchets are solid and minims hollow: a hollow is drawn as a white path.
+      const config = I.withDesign(CNBConfig.createDefault(), "conventional");
+      const walk = (e) => [e, ...(e.children || []).flatMap(walk)];
+      const hollows = (extra) => withPanel(config, [0], (h) =>
+        walk(findOne(h.api.root, "cnb-nhp-closeup")).filter(e => e.getAttribute && e.getAttribute("fill") === "white").length, extra);
+      eq(hollows(), 0, "a crotchet, solid");
+      assert(hollows({ getDuration: () => "minim" }) > 0, "a minim, hollow");
+      eq(hollows({ getDuration: () => "crotchet" }), 0, "crotchets asked for");
+    }},
+
+  { name: "designChange: what a pick would replace, or null", fn: () => {
+      const def = CNBConfig.createDefault();
+      assert(/replace its shape and fill/.test(P.designChange(def, "conventional")), "the default's oval and hollow sharps");
+      assert(/make every crotchet solid/.test(P.designChange(def, "hollows")), "the default's hollow sharps");
+      eq(P.designChange(def, "repeated"), null, "repeated keeps the look table");
+      const conventional = I.withDesign(def, "conventional");
+      eq(P.designChange(conventional, "hollows"), null, "nothing hollow, a design's rules");
+      const own = CNBConfig.clone(I.withDesign(def, "hollows"));
+      delete own.durations.breveStyle;
+      assert(/rules for particular durations/.test(P.designChange(own, "repeated")), "your own rules for durations");
+    }},
+
+  { name: "renderDesign: the question, two cards with their four durations, the notation's highlighted", fn: () => {
+      withDomStub(container => {
+        let config = I.withDesign(CNBConfig.createDefault(), "conventional");
+        const api = P.renderDesign(container, { getConfig: () => config, onChange: (c) => { config = c; } });
+        eq(findOne(api.root, "cnb-nhd-question").textContent, "How should the noteheads show duration?");
+        const cards = findAll(api.root, "cnb-nhd-design");
+        deepEq(cards.map(c => c.getAttribute("data-design")), ["conventional", "own"], "two cards");
+        deepEq(cards.map(c => c.className.includes(" on")), [true, false], "conventional highlighted");
+        for (const card of cards) {
+          deepEq(findAll(card, "cnb-nhd-duration").map(d => d.getAttribute("data-duration")),
+            ["crotchet", "minim", "semibreve", "breve"], "its four durations");
+        }
+        eq(findAll(api.root, "cnb-nhd-own").length, 0, "no your-own note");
+        eq(findAll(api.root, "cnb-nhd-overlap").length, 0, "no overlap");
+      });
+    }},
+
+  { name: "renderDesign: Your own notehead picks hollows with two tied semibreves; the breve and the way change it; Overlap under repeated and double", fn: () => {
+      withDomStub(container => {
+        let config = I.withDesign(CNBConfig.createDefault(), "conventional");
+        const asked = [];
+        const api = P.renderDesign(container, {
+          getConfig: () => config, onChange: (c) => { config = c; }, confirm: (q) => { asked.push(q); return true; },
+        });
+        findAll(api.root, "cnb-nhd-pick")[1].onclick();
+        eq(I.designOf(config), "hollows", "hollows");
+        eq(config.durations.breveStyle, "tied", "two tied semibreves first");
+        eq(asked.length, 0, "nothing replaced, nothing asked");
+        deepEq(findAll(api.root, "cnb-nhd-option").filter(b => b.className.includes(" on"))
+          .map(b => b.getAttribute("data-way") || b.getAttribute("data-breve")), ["hollows", "tied"], "the picks shown");
+        findOne(api.root, "cnb-nhd-breve-note");
+        byData(api.root, "cnb-nhd-option", "data-breve", "double").onclick();
+        eq(config.durations.breveStyle, "double", "double notehead");
+        findOne(api.root, "cnb-nhd-overlap-input").onchange({ target: { value: "25" } });
+        eq(config.durations.repeatOverlap, 0.25, "the double breve's overlap");
+        byData(api.root, "cnb-nhd-option", "data-way", "repeated").onclick();
+        eq(I.designOf(config), "repeated", "repeated heads");
+        eq(config.durations.representationMode, "repeat", "repeat mode");
+        eq(findOne(api.root, "cnb-nhd-overlap-input").value, "25", "the overlap, under repeated heads");
+        findAll(api.root, "cnb-nhd-pick")[0].onclick();
+        eq(asked.length, 0, "repeated's solid conventional-look table: nothing replaced");
+        eq(I.designOf(config), "conventional", "back to conventional");
+      });
+    }},
+
+  { name: "renderDesign: a pick that would replace something is confirmed first, and a No changes nothing", fn: () => {
+      withDomStub(container => {
+        let config = CNBConfig.createDefault();
+        let answer = false;
+        const asked = [];
+        const api = P.renderDesign(container, {
+          getConfig: () => config, onChange: (c) => { config = c; }, confirm: (q) => { asked.push(q); return answer; },
+        });
+        findAll(api.root, "cnb-nhd-pick")[0].onclick();
+        eq(asked.length, 1, "asked");
+        eq(I.designOf(config), null, "No: unchanged");
+        answer = true;
+        findAll(api.root, "cnb-nhd-pick")[0].onclick();
+        eq(I.designOf(config), "conventional", "Yes: conventional");
+      });
+    }},
+
+  { name: "renderDesign: a notation that fits none highlights neither card and says Your own noteheads", fn: () => {
+      withDomStub(container => {
+        const api = P.renderDesign(container, { getConfig: () => CNBConfig.createDefault() });
+        deepEq(findAll(api.root, "cnb-nhd-design").map(c => c.className.includes(" on")), [false, false], "neither");
+        assert(findOne(api.root, "cnb-nhd-own").children[0].textContent === "Your own noteheads. ", "the note");
+      });
+    }},
 ];

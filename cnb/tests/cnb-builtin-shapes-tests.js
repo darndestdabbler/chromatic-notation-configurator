@@ -13,6 +13,8 @@ import { fileURLToPath } from "url";
 import { CNBBuiltinShapes as B } from "../ui/builtin-shapes.js";
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
+import { CNBNotehead } from "../src/cnb-notehead.js";
+import { CNBSvgImporter } from "../ui/svg-importer.js";
 
 const CNB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -32,6 +34,38 @@ function deepEq(a, b, msg) {
 
 function fixture(name) {
   return JSON.parse(readFileSync(path.join(CNB_DIR, "fixtures", name), "utf8"));
+}
+
+function near(a, b, msg) {
+  if (Math.abs(a - b) > 1e-3) throw new Error(`${msg}: expected ${b}, got ${a}`);
+}
+
+/**
+ * A conventional notehead's SVG (cnb/assets/shapes/conventional/), read by
+ * the SVG importer. Node has no DOMParser, so the document is the file's
+ * svg, path and rect elements by id, which is all the importer reads.
+ */
+function importConventional(file) {
+  const text = readFileSync(path.join(CNB_DIR, "assets", "shapes", "conventional", file + ".svg"), "utf8");
+  const els = {};
+  let root = null;
+  for (const m of text.matchAll(/<(svg|path|rect)\b([^>]*?)\/?>/g)) {
+    const attrs = {};
+    for (const a of m[2].matchAll(/([\w:-]+)="([^"]*)"/g)) attrs[a[1]] = a[2].replace(/&#10;/g, "\n");
+    const el = { tagName: m[1], getAttribute: k => (k in attrs ? attrs[k] : null) };
+    if (m[1] === "svg") root = el;
+    else if (attrs.id) els[attrs.id] = el;
+  }
+  const doc = { documentElement: root, getElementById: id => els[id] || null };
+  const built = CNBSvgImporter.buildShape(CNBSvgImporter.extract(doc), file);
+  if (built.error) throw new Error(`${file}: ${built.error}`);
+  return { shape: built.shape, doc };
+}
+
+/** Twice the signed area of a subpath's end points: its winding's sign. */
+function winding(d) {
+  const v = [...d.matchAll(/[MLC]([^MLCZ]*)/g)].map(m => m[1].trim().split(/\s+/).map(Number).slice(-2));
+  return v.reduce((s, [x, y], i) => { const [x2, y2] = v[(i + 1) % v.length]; return s + x * y2 - x2 * y; }, 0);
 }
 
 export const tests = [
@@ -100,6 +134,73 @@ export const tests = [
       const ly = CNBLilypond.generate(config);
       assert(ly.includes("cnb:register-path! 'parallelogram"), "its path registered");
       assert(/\(\d+ \d+ symbol parallelogram #f black-000000\)/.test(ly), "its marks the symbol kind, with no ledgers");
+    }},
+
+  { name: "get: the conventional crotchet and semibreve are their SVGs as the importer reads them, by name, not among NAMES (session 75)", fn: () => {
+      for (const [name, file] of [["conventional-crotchet", "crotchet-and-minim"], ["conventional-semibreve", "semibreve"]]) {
+        const { shape } = importConventional(file);
+        const builtin = B.get(name);
+        assert(!B.NAMES.includes(name), `${name}: not among the noteheads' NAMES`);
+        deepEq({ ...builtin, displayName: null }, { ...shape, displayName: null }, name);
+      }
+    }},
+
+  { name: "get: the conventional breve is the semibreve's head with its two bars joined, each winding as the head does (session 75)", fn: () => {
+      const { shape, doc } = importConventional("breve-with-bars-01");
+      const breve = B.get("conventional-breve");
+      assert(!B.NAMES.includes("conventional-breve"), "not among NAMES");
+      const parts = breve.svgPath.split(/(?=M )/).map(s => s.trim());
+      eq(parts.length, 3, "the head and two bars");
+      eq(parts[0], shape.svgPath, "the head is the file's notehead");
+      eq(breve.svgHollowPath, shape.svgHollowPath, "its hollow is the file's");
+      const points = d => [...d.matchAll(/-?\d+(?:\.\d+)?/g)].map(Number)
+        .reduce((ps, v, i, a) => (i % 2 ? ps : [...ps, `${a[i]},${a[i + 1]}`]), []).sort();
+      for (const [i, id] of [[1, "breve-bar-left"], [2, "breve-bar-right"]]) {
+        const bar = CNBSvgImporter.normalizePath(doc.getElementById(id).getAttribute("d"));
+        deepEq([...new Set(points(parts[i]))], [...new Set(points(bar))], `${id}: the file's bar`);
+        eq(Math.sign(winding(parts[i])), Math.sign(winding(parts[0])), `${id} winds as the head does, so they fill together`);
+      }
+      const box = CNBNotehead.box(breve);
+      eq(breve.naturalWidth, Math.round((box.x[1] - box.x[0]) * 1e4) / 1e4, "its natural width is the bars' extent");
+      eq(breve.lilypondPath, null, "the exporter converts its SVG path");
+    }},
+
+  { name: "conventional heads: each 2 semitones tall at its own size, the breve's bars taller than its head (session 75)", fn: () => {
+      for (const name of ["conventional-crotchet", "conventional-semibreve", "conventional-breve"]) {
+        const s = B.get(name);
+        eq(s.semitoneHeight, 2, `${name}: 2 semitones`);
+        eq(s.naturalHeight, 200, `${name}: its head's height`);
+      }
+      const head = CNBNotehead.box(B.get("conventional-semibreve"));
+      eq(Math.round(head.y[1] - head.y[0]), 200, "the semibreve's ink is its height");
+      const breve = CNBNotehead.box(B.get("conventional-breve"));
+      assert(breve.y[1] - breve.y[0] > 250, "the breve's bars reach past its head");
+    }},
+
+  { name: "conventional crotchet: its stem anchors at its stem rects, the stem's centre at each rect's end (session 75)", fn: () => {
+      const { doc } = importConventional("crotchet-and-minim");
+      const rect = id => Object.fromEntries(["x", "y", "width", "height"].map(k => [k, Number(doc.getElementById(id).getAttribute(k))]));
+      const up = rect("stem-up"), down = rect("stem-down");
+      const a = B.get("conventional-crotchet").anchors;
+      near(a.crotchetUp.x, up.x + up.width / 2, "up: the rect's centre across");
+      near(a.crotchetUp.y, up.y + up.height, "up: the rect's lower end");
+      near(a.crotchetDown.x, down.x + down.width / 2, "down: the rect's centre across");
+      near(a.crotchetDown.y, down.y, "down: the rect's upper end");
+      deepEq(a.minimUp, a.crotchetUp, "the minim's as the crotchet's");
+      eq(B.get("conventional-semibreve").anchors, null, "the semibreve is stemless");
+      eq(B.get("conventional-breve").anchors, null, "and so is the breve");
+    }},
+
+  { name: "withShape: the conventional heads enter a config by name and export (session 75)", fn: () => {
+      let config = CNBConfig.createDefault();
+      for (const name of ["conventional-crotchet", "conventional-semibreve", "conventional-breve"]) config = B.withShape(config, name);
+      config.noteheadRules[0].apply.shape = "conventional-crotchet";
+      config.noteheadRules.push({ name: "Breves", priority: 5,
+        match: { pitchClasses: "all", durations: ["breve"], keys: "all" }, apply: { shape: "conventional-breve" } });
+      assert(CNBConfig.validate(config).valid, `valid: ${CNBConfig.validate(config).errors}`);
+      const ly = CNBLilypond.generate(config);
+      assert(ly.includes("cnb:register-path! 'conventional-crotchet"), "the crotchet registered");
+      assert(ly.includes("cnb:register-path! 'conventional-breve"), "the breve registered");
     }},
 
   { name: "withShape: an unused shape leaves the export unchanged", fn: () => {

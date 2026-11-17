@@ -240,21 +240,13 @@ summary:focus-visible, [tabindex]:focus-visible {
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
 }
 .cnb-pvd-range-to { font-size: 13px; color: var(--ink-2); }
-.cnb-pvd-size-options, .cnb-pvd-repeat-options { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
-.cnb-pvd-size-option, .cnb-pvd-repeat-option {
+.cnb-pvd-size-options { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.cnb-pvd-size-option {
   min-height: 26px; padding: 0 var(--space-2); font-size: 12px;
   border: 0; border-right: 1px solid var(--line); border-radius: 0;
 }
-.cnb-pvd-size-option:last-child, .cnb-pvd-repeat-option:last-child { border-right: 0; }
-.cnb-pvd-size-option.on, .cnb-pvd-repeat-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-/* Shapes or repeated heads (session 36), beside the duration buttons. */
-.cnb-pvd-repeat { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: var(--space-2); }
-.cnb-pvd-repeat-hint { font-size: 12px; color: var(--ink-2); }
-/* The repeated heads' overlap, in repeat mode (session 58). */
-.cnb-pvd-overlap { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 12px; color: var(--ink-2); }
-.cnb-pvd-overlap-label { font-weight: 600; color: var(--ink); }
-.cnb-pvd-overlap input[type="number"] { width: 56px; min-height: 26px; }
-.cnb-pvd-hollow-minims { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; cursor: pointer; }
+.cnb-pvd-size-option:last-child { border-right: 0; }
+.cnb-pvd-size-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .cnb-pvd-size-hint:empty { display: none; }
 .cnb-pvd-size-hint { font-size: 12px; color: var(--warn); }
 .cnb-pvd-key-note { font-size: 12px; color: var(--ink-2); max-width: 360px; }
@@ -849,3 +841,21 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
   .cnb-nhp-body { grid-template-columns: 180px minmax(0, 1fr); }
   .cnb-nhp-right { grid-column: 1 / -1; }
 }
+
+/* The Noteheads step's choice of design (session 75, notehead-duration design §2): two cards, the notation's highlighted. */
+.cnb-nhd { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.cnb-nhd-question { font-size: 14px; font-weight: 600; color: var(--ink); }
+.cnb-nhd-designs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--space-3); }
+.cnb-nhd-design {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m);
+}
+.cnb-nhd-design.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cnb-nhd-pick { font-size: 14px; font-weight: 600; }
+.cnb-nhd-words { font-size: 12px; color: var(--ink-2); }
+.cnb-nhd-durations { display: flex; gap: var(--space-2); align-items: flex-end; }
+.cnb-nhd-duration { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--ink-2); }
+.cnb-nhd-choice { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); font-size: 13px; }
+.cnb-nhd-choice-label { font-weight: 600; color: var(--ink); }
+.cnb-nhd-overlap input[type="number"] { width: 64px; min-height: 26px; }
+.cnb-nhd-own { font-size: 13px; color: var(--accent); }

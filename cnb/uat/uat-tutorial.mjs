@@ -11,10 +11,11 @@
  *   the middle C (12), the ledgers switched to Automatic.  3 No change,
  *   the middle confirmed C.  4 No change, the automatic ledgers: B (11) and
  *   C♯ (13) in the gap, B taking B's, C♯ C♯'s, C both, A♯ and D none.
- *   5 diamond.svg imported for every notehead, solid, C♯ D♯ F♯ G♯ A♯ red
- *   (#cc0000); minims as repeated heads at the default overlap
- *   (05-noteheads-repeated.png), then each duration's own look with Hollow
- *   minims (05-noteheads.png).  6 Show the key signature, Noteheads.
+ *   5 Your own notehead, Hollows with two tied semibreves (the page starts
+ *   from conventional noteheads, session 75); diamond.svg imported for every
+ *   notehead, C♯ D♯ F♯ G♯ A♯ red (#cc0000); all four durations shown as
+ *   repeated heads at the default overlap (05-noteheads-repeated.png), then
+ *   Hollows again (05-noteheads.png).  6 Show the key signature, Noteheads.
  *   7 Greyed, with its reason.  8 Stacks at each change of parity, the gold
  *   stem drawn.  9 Every key shown, G major and E♭ major picked.
  *   10 c-clef.svg imported, its anchor picked at its left middle, 8
@@ -83,6 +84,7 @@ async function main() {
   const { CNBLedgerSet } = await import("../src/cnb-ledger-set.js");
   const { CNBLilypond } = await import("../src/cnb-lilypond.js");
   const { CNBNoteheadPanel } = await import("../ui/notehead-panel.js");
+  const { CNBNoteheadInference } = await import("../ui/notehead-inference.js");
   const { CNBPreviewDisplay } = await import("../ui/preview-display.js");
   const { CNBStaffRuleEditor } = await import("../ui/staff-rule-editor.js");
   const { CNBKeySignatureEditor } = await import("../ui/key-signature-editor.js");
@@ -266,9 +268,12 @@ async function main() {
       await open("notehead-height");
       await setField(page, ".cnb-nhp-general-height", "2");
       const c = await live();
-      check("1. Notehead height: 2 semitones, every notehead",
+      // The page starts from conventional noteheads (session 75), whose own
+      // height is 2: every notehead at it, so no rule sets a size.
+      check("1. Notehead height: 2 semitones, every notehead, the conventional crotchet's own",
         Math.abs(CNBNoteheadPanel.generalHeight(c) - 2) < 1e-9 &&
-        [...Array(12).keys()].every(pc => resolved(c, pc).heightSemis === 2) &&
+        CNBNoteheadInference.designOf(c) === "conventional" &&
+        [...Array(12).keys()].every(pc => (resolved(c, pc).heightSemis ?? c.shapes[resolved(c, pc).shape].semitoneHeight) === 2) &&
         (await page.inputValue(".cnb-nhp-general-height")) === "2",
         JSON.stringify(resolved(c, 0)));
     },
@@ -319,8 +324,15 @@ async function main() {
 
     async noteheads() {
       await open("noteheads");
-      // Every notehead: the diamond, solid (the default's sharps are hollow,
-      // and a hollow crotchet would read as a minim once minims are hollow).
+      // Your own notehead (session 75): Hollows, two tied semibreves, every
+      // crotchet solid and every longer note hollow.
+      await page.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
+      let c = await live();
+      check("5. Noteheads: Your own notehead picks Hollows, with two tied semibreves for the breve",
+        CNBNoteheadInference.designOf(c) === "hollows" && c.durations.breveStyle === "tied" &&
+        (await page.$$('.cnb-nhd-design.on[data-design="own"]')).length === 1,
+        JSON.stringify(c.durations));
+      // Every notehead: the diamond.
       await selectNotehead(page, 0);
       for (let pc = 1; pc < 12; pc++) await selectNotehead(page, pc, { add: true });
       check("5. Noteheads: all twelve selected", (await page.textContent(".cnb-nhp-title")).endsWith("(12 noteheads)"),
@@ -333,8 +345,8 @@ async function main() {
         await page.textContent("#import-status"));
       await page.click(".cnb-nhp-reference-done");
       await page.click('.cnb-nhp-shape-option[data-shape="diamond"]');
-      await page.click('.cnb-nhp-fill-option[data-fill="solid"]');
-      let c = await live();
+      check("5. Noteheads: under Hollows the panel has no Fill", (await page.$$(".cnb-nhp-fill")).length === 0);
+      c = await live();
       const diamond = c.shapes.diamond;
       const box = CNBNotehead.box(diamond);
       const perSemi = diamond.naturalHeight / diamond.semitoneHeight;
@@ -354,26 +366,27 @@ async function main() {
         JSON.stringify([...Array(12).keys()].map(pc => resolved(c, pc).color)));
       check("5. Noteheads: the canvas draws the red diamonds",
         (await page.$$eval(`.cnb-pvd-preview path[fill="${RED}"]`, els => els.length)) > 0);
-      // Minims shown, as repeated heads first.
-      await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
-      await page.click('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]');
+      // All four durations shown, as repeated heads first.
+      await page.click('.cnb-pvd-duration-pill[data-duration="all"]');
+      await page.click('.cnb-nhd-option[data-way="repeated"]');
       c = await live();
       const heads = await pathsIn(0, diamond.svgPath);
-      check("5. Noteheads: minims as repeated heads at the default overlap, two heads a minim (C's column: 2 crotchet heads, 4 minim heads)",
+      check("5. Noteheads: all four durations shown, as repeated heads at the default overlap (C's column: 2 crotchet heads, 4 minim, 8 semibreve, 16 breve)",
         c.durations.representationMode === "repeat" && Math.abs((c.durations.repeatOverlap ?? 1 / 3) - 1 / 3) < 1e-9 &&
-        JSON.stringify(heads) === "[2,4]", JSON.stringify({ mode: c.durations.representationMode, overlap: c.durations.repeatOverlap, heads }));
+        JSON.stringify(heads) === "[2,4,8,16]", JSON.stringify({ mode: c.durations.representationMode, overlap: c.durations.repeatOverlap, heads }));
       await shot(shotName("noteheads", "-repeated"));
-      // Then each duration's own look, and hollow minims.
-      await page.click('.canvas-card .cnb-pvd-repeat-option[data-mode="shape"]');
-      await page.check(".cnb-pvd-hollow-minims-check");
+      // Then Hollows again, the one the tutorial keeps.
+      await page.click('.cnb-nhd-option[data-way="hollows"]');
       c = await live();
       const solid = await pathsIn(0, diamond.svgPath);
       const hollow = await pathsIn(0, diamond.svgHollowPath);
-      check("5. Noteheads: switched to each duration's own look with Hollow minims: one rule, minims hollow and crotchets solid, one head a note",
-        c.durations.representationMode === "shape" && CNBPreviewDisplay.hasHollowMinims(c) &&
-        c.noteheadRules.filter(r => r.name === "Hollow minims").length === 1 &&
-        [...Array(12).keys()].every(pc => resolved(c, pc, "minim").hollow === true && resolved(c, pc).hollow === false) &&
-        JSON.stringify(solid) === "[2,2]" && JSON.stringify(hollow) === "[0,2]",
+      check("5. Noteheads: Hollows again: one rule, minims, semibreves and breves hollow, crotchets solid, one head a note",
+        CNBNoteheadInference.designOf(c) === "hollows" && c.durations.representationMode === "shape" &&
+        c.durations.breveStyle === "tied" &&
+        c.noteheadRules.filter(r => r.name === "Hollow minims and longer").length === 1 &&
+        [...Array(12).keys()].every(pc => ["minim", "semibreve", "breve"].every(d => resolved(c, pc, d).hollow === true) &&
+          resolved(c, pc).hollow === false) &&
+        JSON.stringify(solid) === "[2,2,2,2]" && JSON.stringify(hollow) === "[0,2,2,2]",
         JSON.stringify({ mode: c.durations.representationMode, solid, hollow }));
     },
 

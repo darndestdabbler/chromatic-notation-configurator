@@ -14,6 +14,12 @@
  *   3. Every 3rd semitone from C, from C♯ and from D, each selected
  *      together → sky-blue, rose and black through the colour input.
  *
+ * Before it opens the fixture (session 75) it checks the designs: the page
+ * opens on conventional noteheads, the Noteheads step asks how duration
+ * shows, the Show choice draws one duration or all four, the notehead
+ * panel offers the rows each design lets vary, Your own notehead picks
+ * Hollows and then Repeated heads, and New starts on conventional noteheads.
+ *
  * First (session 38) it checks the help for selecting several: the
  * toolbar's hint, the panel's hint, Ctrl-click adding and dropping a
  * notehead, and Esc. Give this look to went in session 42: a look reaches
@@ -41,6 +47,7 @@ import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { openSection, selectNotehead, useDownloads } from "./app-page.mjs";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBNoteheadInference } from "../ui/notehead-inference.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -157,6 +164,57 @@ page.on("pageerror", e => consoleErrors.push(String(e)));
 await useDownloads(page);
 await page.goto(`http://localhost:${PORT}/cnb/index.html`);
 await page.waitForSelector(".cnb-pvd-preview .pc-col");
+
+// ── The designs (session 75, notehead-duration design §2–§4, §7) ────────────
+const designNow = async () => CNBNoteheadInference.designOf(JSON.parse(await page.textContent("#state-json")));
+const cardsOn = () => page.$$eval(".cnb-nhd-design.on", els => els.map(e => e.dataset.design));
+const panelRows = () => page.$$eval(".cnb-notehead-panel .cnb-nhp-look > .cnb-nhp-group",
+  els => els.map(e => [...e.classList].find(c => c !== "cnb-nhp-group")));
+check("DESIGN: the page's first open is on conventional noteheads", await designNow() === "conventional");
+await openSection(page, "noteheads");
+check("DESIGN: the Noteheads step asks how duration shows, Conventional noteheads highlighted",
+  (await page.textContent(".cnb-nhd-question")) === "How should the noteheads show duration?" &&
+  JSON.stringify(await cardsOn()) === '["conventional"]', JSON.stringify(await cardsOn()));
+
+const showOn = () => page.$$eval(".cnb-pvd-duration-pill.on", els => els.map(e => e.dataset.duration));
+const captions = () => page.$$eval(".canvas-card .cnb-duration-caption", els => els.length);
+check("SHOW: one choice, Crotchets on when the page opens; no shape-or-repeat choice or Hollow minims tick",
+  JSON.stringify(await showOn()) === '["crotchet"]' &&
+  (await page.$$(".cnb-pvd-repeat, .cnb-pvd-hollow-minims, .cnb-pvd-overlap")).length === 0, JSON.stringify(await showOn()));
+await page.click('.cnb-pvd-duration-pill[data-duration="all"]');
+check("SHOW: All four draws a row a duration, All four alone on",
+  await captions() === 4 && JSON.stringify(await showOn()) === '["all"]', `${await captions()} rows`);
+await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
+check("SHOW: Minims, one row", await captions() === 0 && JSON.stringify(await showOn()) === '["minim"]');
+
+await selectNotehead(page, 0);
+check("PANEL: under conventional noteheads, the colour and one Height (every notehead's)",
+  JSON.stringify(await panelRows()) === '["cnb-nhp-colour","cnb-nhp-size"]' &&
+  (await page.$$(".cnb-notehead-panel .cnb-nhp-general-height")).length === 1, JSON.stringify(await panelRows()));
+check("PANEL: the close-up shows the minim the canvas shows, hollow",
+  (await page.$$('.cnb-nhp-closeup path[fill="white"]')).length > 0);
+await page.keyboard.press("Escape");
+await page.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
+check("DESIGN: Your own notehead picks Hollows, two tied semibreves first, with the one-head note",
+  await designNow() === "hollows" && JSON.stringify(await cardsOn()) === '["own"]' &&
+  (await page.$$('.cnb-nhd-option.on[data-breve="tied"]')).length === 1 &&
+  (await page.$$(".cnb-nhd-breve-note")).length === 1);
+await selectNotehead(page, 0);
+check("PANEL: under Hollows, no Fill",
+  JSON.stringify(await panelRows()) === '["cnb-nhp-colour","cnb-nhp-shape","cnb-nhp-size"]', JSON.stringify(await panelRows()));
+await page.keyboard.press("Escape");
+await page.click('.cnb-nhd-option[data-way="repeated"]');
+check("DESIGN: Repeated heads, with the Overlap in the step",
+  await designNow() === "repeated" && (await page.$$(".cnb-nhd-overlap-input")).length === 1);
+await page.click('.cnb-pvd-duration-pill[data-duration="crotchet"]');
+
+// New starts afresh on conventional noteheads (it asks first: the notation is not saved).
+const acceptAll = (d) => d.accept();
+page.on("dialog", acceptAll);
+await Promise.all([page.waitForNavigation(), page.click("#new-config")]);
+page.off("dialog", acceptAll);
+await page.waitForSelector(".cnb-pvd-preview .pc-col");
+check("NEW: starts from conventional noteheads", await designNow() === "conventional");
 
 await page.setInputFiles("#open-file", {
   name: "kite-without-looks.json", mimeType: "application/json",

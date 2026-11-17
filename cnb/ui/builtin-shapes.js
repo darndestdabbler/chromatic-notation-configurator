@@ -10,7 +10,8 @@
  * data, as an imported shape does; cnb/tests/cnb-builtin-shapes-tests.js
  * pins each one equal to its source. Since session 64 the key signature has
  * one of its own, the parallelogram, reached by name but not offered among
- * the noteheads (NAMES).
+ * the noteheads (NAMES), and since session 75 the conventional noteheads
+ * are reached so too (CONVENTIONAL_SHAPES).
  *
  * A built-in shape enters a config only when it is first chosen
  * (withShape). The exporter emits only the shapes in use, so an unused
@@ -185,7 +186,72 @@ const SIGNATURE_SHAPES = {
   },
 };
 
-const ALL = { ...SHAPES, ...SIGNATURE_SHAPES };
+/**
+ * The conventional noteheads (session 75, design
+ * docs/planning/notehead-duration-design.md §5), by name, not among the
+ * noteheads' NAMES: the Conventional noteheads design gives them. Each is
+ * the operator's SVG under cnb/assets/shapes/conventional/, drawn with the
+ * music-glyph-toolkit from LilyPond's Emmentaler glyphs (SIL OFL 1.1,
+ * cnb/assets/fonts/OFL-Emmentaler.txt), as the SVG importer reads it:
+ * crotchet-and-minim.svg the crotchet's head, solid, and the minim's,
+ * hollow; semibreve.svg the semibreve; breve-with-bars-01.svg the breve,
+ * the semibreve's head with its breve-bar-left and breve-bar-right paths
+ * joined to it (single bars), each bar turned to wind as the head does so
+ * that the two fill together. Each head is 2 semitones tall at its own
+ * size; the breve's bars reach past its head, and its natural width is
+ * the bars' extent. The breve and its hollow have no pre-baked LilyPond
+ * path: the exporter converts their SVG paths.
+ */
+const CONVENTIONAL_SHAPES = {
+  "conventional-crotchet": {
+    "displayName": "Conventional crotchet",
+    "svgPath": "M 120.122 -59.891 C 130.711 -38.652 128.211 -11.973 113.172 14.277 C 98.132 40.527 71.785 64.197 39.927 80.081 C 8.068 95.965 -26.691 102.761 -56.706 98.975 C -86.722 95.188 -109.533 81.129 -120.122 59.89 C -130.711 38.651 -128.211 11.973 -113.172 -14.277 C -98.132 -40.527 -71.785 -64.197 -39.927 -80.081 C -8.069 -95.965 26.691 -102.762 56.706 -98.976 C 86.722 -95.189 109.532 -81.13 120.122 -59.891 Z",
+    "svgHollowPath": "M 100.102 -49.909 C 111.127 -27.796 75.248 12.476 19.964 40.041 C -35.321 67.604 -89.076 72.023 -100.102 49.908 C -111.127 27.795 -75.248 -12.477 -19.964 -40.041 C 35.321 -67.605 89.076 -72.023 100.102 -49.909 Z",
+    "naturalHeight": 200,
+    "naturalWidth": 253.168,
+    "semitoneHeight": 2,
+    "anchors": {
+      "crotchetUp": { "x": 115.4726, "y": -31.5765 },
+      "crotchetDown": { "x": -115.4726, "y": 31.5761 },
+      "minimUp": { "x": 115.4726, "y": -31.5765 },
+      "minimDown": { "x": -115.4726, "y": 31.5761 }
+    },
+    "lilypondPath": "'(\n    (moveto 1.2012 0.5989)\n    (curveto 1.3071 0.3865 1.2821 0.1197 1.1317 -0.1428)\n    (curveto 0.9813 -0.4053 0.7178 -0.642 0.3993 -0.8008)\n    (curveto 0.0807 -0.9597 -0.2669 -1.0276 -0.5671 -0.9898)\n    (curveto -0.8672 -0.9519 -1.0953 -0.8113 -1.2012 -0.5989)\n    (curveto -1.3071 -0.3865 -1.2821 -0.1197 -1.1317 0.1428)\n    (curveto -0.9813 0.4053 -0.7178 0.642 -0.3993 0.8008)\n    (curveto -0.0807 0.9597 0.2669 1.0276 0.5671 0.9898)\n    (curveto 0.8672 0.9519 1.0953 0.8113 1.2012 0.5989)\n    (closepath))",
+    "lilypondHollowPath": "'(\n    (moveto 1.001 0.4991)\n    (curveto 1.1113 0.278 0.7525 -0.1248 0.1996 -0.4004)\n    (curveto -0.3532 -0.676 -0.8908 -0.7202 -1.001 -0.4991)\n    (curveto -1.1113 -0.278 -0.7525 0.1248 -0.1996 0.4004)\n    (curveto 0.3532 0.6761 0.8908 0.7202 1.001 0.4991)\n    (closepath))",
+    "lilypondAnchors": {
+      "crotchetUp": { "x": 1.1547, "y": 0.3158 },
+      "crotchetDown": { "x": -1.1547, "y": -0.3158 },
+      "minimUp": { "x": 1.1547, "y": 0.3158 },
+      "minimDown": { "x": -1.1547, "y": -0.3158 }
+    }
+  },
+  "conventional-semibreve": {
+    "displayName": "Conventional semibreve",
+    "svgPath": "M 183.333 0.0 C 183.333 26.522 164.018 51.957 129.637 70.711 C 95.255 89.464 48.623 100.0 0.0 100.0 C -48.623 100.0 -95.254 89.464 -129.636 70.711 C -164.017 51.957 -183.333 26.522 -183.333 0.0 C -183.333 -26.522 -164.017 -51.957 -129.636 -70.711 C -95.254 -89.464 -48.623 -100.0 0.0 -100.0 C 48.623 -100.0 95.255 -89.464 129.637 -70.711 C 164.018 -51.957 183.333 -26.522 183.333 0.0 Z",
+    "svgHollowPath": "M 37.184 74.578 C 21.36 82.467 2.267 82.176 -15.895 73.769 C -34.057 65.361 -49.8 49.526 -59.662 29.747 C -80.198 -11.442 -70.133 -58.149 -37.183 -74.578 C -4.232 -91.007 39.127 -70.935 59.663 -29.747 C 80.198 11.442 70.134 58.149 37.184 74.578 Z",
+    "naturalHeight": 200,
+    "naturalWidth": 366.666,
+    "semitoneHeight": 2,
+    "anchors": null,
+    "lilypondPath": "'(\n    (moveto 1.8333 0)\n    (curveto 1.8333 -0.2652 1.6402 -0.5196 1.2964 -0.7071)\n    (curveto 0.9526 -0.8946 0.4862 -1 0 -1)\n    (curveto -0.4862 -1 -0.9525 -0.8946 -1.2964 -0.7071)\n    (curveto -1.6402 -0.5196 -1.8333 -0.2652 -1.8333 0)\n    (curveto -1.8333 0.2652 -1.6402 0.5196 -1.2964 0.7071)\n    (curveto -0.9525 0.8946 -0.4862 1 0 1)\n    (curveto 0.4862 1 0.9526 0.8946 1.2964 0.7071)\n    (curveto 1.6402 0.5196 1.8333 0.2652 1.8333 0)\n    (closepath))",
+    "lilypondHollowPath": "'(\n    (moveto 0.3718 -0.7458)\n    (curveto 0.2136 -0.8247 0.0227 -0.8218 -0.159 -0.7377)\n    (curveto -0.3406 -0.6536 -0.498 -0.4953 -0.5966 -0.2975)\n    (curveto -0.802 0.1144 -0.7013 0.5815 -0.3718 0.7458)\n    (curveto -0.0423 0.9101 0.3913 0.7094 0.5966 0.2975)\n    (curveto 0.802 -0.1144 0.7013 -0.5815 0.3718 -0.7458)\n    (closepath))",
+    "lilypondAnchors": null
+  },
+  "conventional-breve": {
+    "displayName": "Conventional breve",
+    "svgPath": "M 183.333 0.0 C 183.333 26.522 164.018 51.957 129.637 70.711 C 95.255 89.464 48.623 100.0 0.0 100.0 C -48.623 100.0 -95.254 89.464 -129.636 70.711 C -164.017 51.957 -183.333 26.522 -183.333 0.0 C -183.333 -26.522 -164.017 -51.957 -129.636 -70.711 C -95.254 -89.464 -48.623 -100.0 0.0 -100.0 C 48.623 -100.0 95.255 -89.464 129.637 -70.711 C 164.018 -51.957 183.333 -26.522 183.333 0.0 Z M -184.4674 -130.6875 C -176.481 -130.6875 -169.9466 -124.1531 -169.9466 -116.1667 L -169.9466 116.1667 C -169.9466 124.1531 -176.481 130.6875 -184.4674 130.6875 C -192.4539 130.6875 -198.9883 124.1531 -198.9883 116.1667 L -198.9883 -116.1667 C -198.9883 -124.1531 -192.4539 -130.6875 -184.4674 -130.6875 Z M 183.333 -130.6875 C 191.3195 -130.6875 197.8538 -124.1531 197.8538 -116.1667 L 197.8538 116.1667 C 197.8538 124.1531 191.3195 130.6875 183.333 130.6875 C 175.3465 130.6875 168.8122 124.1531 168.8122 116.1667 L 168.8122 -116.1667 C 168.8122 -124.1531 175.3465 -130.6875 183.333 -130.6875 Z",
+    "svgHollowPath": "M 37.184 74.578 C 21.36 82.467 2.267 82.176 -15.895 73.769 C -34.057 65.361 -49.8 49.526 -59.662 29.747 C -80.198 -11.442 -70.133 -58.149 -37.183 -74.578 C -4.232 -91.007 39.127 -70.935 59.663 -29.747 C 80.198 11.442 70.134 58.149 37.184 74.578 Z",
+    "naturalHeight": 200,
+    "naturalWidth": 396.8421,
+    "semitoneHeight": 2,
+    "anchors": null,
+    "lilypondPath": null,
+    "lilypondHollowPath": null,
+    "lilypondAnchors": null
+  },
+};
+
+const ALL = { ...SHAPES, ...SIGNATURE_SHAPES, ...CONVENTIONAL_SHAPES };
 
 export const CNBBuiltinShapes = {
 

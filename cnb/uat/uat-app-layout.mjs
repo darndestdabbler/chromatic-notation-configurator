@@ -279,16 +279,21 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   await page.screenshot({ path: path.join(SHOT_DIR, `app-default-${width}.png`), fullPage: true });
 
   // ── The general notehead height (session 39) ──
+  // The page opens on conventional noteheads (session 75): the crotchet's
+  // height is every notehead's, the semibreve and breve in their proportions.
   await setField(page, ".cnb-nhp-general-height", "4");
   const sized = JSON.parse(await page.textContent("#state-json"));
-  const def = sized.noteheadRules.find(r => r.match.pitchClasses === "all");
-  check(`${width}: a height of 4 semitones is carried by the Default rule, the width at the shape's ratio`,
-    def.apply.heightSemis === 4 && def.apply.widthSemis === Math.round(4 * 344.852 / 272.4 * 1e4) / 1e4 &&
-    sized.noteheadRules.filter(r => "heightSemis" in r.apply).length === 1, JSON.stringify(def.apply));
+  const def = sized.noteheadRules.find(r => r.match.pitchClasses === "all" && r.match.durations === "all");
+  const crotchet = sized.shapes["conventional-crotchet"];
+  const sizedRules = sized.noteheadRules.filter(r => "heightSemis" in r.apply);
+  check(`${width}: a height of 4 semitones is carried by the Default rule, the width at the shape's ratio, and by the semibreve and breve rules`,
+    def.apply.heightSemis === 4 && def.apply.widthSemis === Math.round(4 * crotchet.naturalWidth / crotchet.naturalHeight * 1e4) / 1e4 &&
+    JSON.stringify(sizedRules.map(r => [r.match.durations, r.apply.heightSemis])) === JSON.stringify([["all", 4], [["semibreve"], 4], [["breve"], 4]]),
+    JSON.stringify(sizedRules.map(r => r.apply)));
   const want = 4 * canvasConfig(sized, "medium").display.pxPerSemi;
   const boxes = await page.evaluate((naturalHeight) =>
     [...document.querySelectorAll(".cnb-pvd-preview .note-slice > g:not(.cnb-ledger-set) > path:first-child")]
-      .map(p => p.getBoundingClientRect().height / p.getBBox().height * naturalHeight), 272.4);
+      .map(p => p.getBoundingClientRect().height / p.getBBox().height * naturalHeight), crotchet.naturalHeight);
   check(`${width}: every canvas notehead is drawn 4 semitones tall (${want} px at Medium)`,
     boxes.length === 26 && boxes.every(h => Math.abs(h - want) < 0.5),
     `${boxes.length} heads, ${Math.min(...boxes).toFixed(2)}–${Math.max(...boxes).toFixed(2)} px`);
@@ -296,7 +301,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
   const reset = JSON.parse(await page.textContent("#state-json"));
   check(`${width}: The shape's own height writes no size`,
     reset.noteheadRules.every(r => !("heightSemis" in r.apply) && !("widthSemis" in r.apply)) &&
-    (await page.inputValue(".cnb-nhp-general-height")) === "2.724");
+    (await page.inputValue(".cnb-nhp-general-height")) === "2");
 
   // ── One panel at a time ──
   let onePanel = true;
@@ -391,17 +396,17 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     (await partial("clef-preview-host")) === "0,1,2", await partial("clef-preview-host"));
   check(`${width}: the Key signature panel shows a partial staff of C, C♯ and D`,
     (await partial("key-signature-preview-host")) === "0,1,2", await partial("key-signature-preview-host"));
-  // With every duration deselected the canvas draws no staff, and neither do
-  // the two panels (session 26 review); reselecting one draws them again.
-  const pills = await page.$$eval(".cnb-pvd-duration-pill.on", els => els.map(e => e.dataset.duration));
-  for (const d of pills) await page.click(`.cnb-pvd-duration-pill[data-duration="${d}"]`);
-  const emptyHosts = await page.evaluate(() => ["clef-preview-host", "key-signature-preview-host"]
-    .map(id => document.getElementById(id).children.length));
-  check(`${width}: with no duration selected, the Clef and Key signature panels show no partial staff`,
-    pills.length > 0 && emptyHosts.every(n => n === 0), JSON.stringify({ pills, emptyHosts }));
-  for (const d of pills) await page.click(`.cnb-pvd-duration-pill[data-duration="${d}"]`);
-  check(`${width}: reselecting the durations draws the partial staffs again`,
-    (await partial("clef-preview-host")) === "0,1,2" && (await partial("key-signature-preview-host")) === "0,1,2",
+  // The partial staffs draw the duration the canvas shows (Show, session 75):
+  // conventional minims are hollow, drawn with a white cut-out.
+  const hollows = () => page.evaluate(() => ["clef-preview-host", "key-signature-preview-host"]
+    .map(id => document.getElementById(id).querySelectorAll('path[fill="white"]').length));
+  await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
+  const minims = await hollows();
+  check(`${width}: Show › Minims draws the Clef and Key signature panels' partial staffs in minims`,
+    minims.every(n => n > 0), JSON.stringify(minims));
+  await page.click('.cnb-pvd-duration-pill[data-duration="crotchet"]');
+  check(`${width}: Show › Crotchets draws them in crotchets again`,
+    (await hollows()).every(n => n === 0) && (await partial("clef-preview-host")) === "0,1,2" && (await partial("key-signature-preview-host")) === "0,1,2",
     (await partial("clef-preview-host")) + " / " + (await partial("key-signature-preview-host")));
 
   // ── The staff editor's three mounts stay in step (session 26) ──

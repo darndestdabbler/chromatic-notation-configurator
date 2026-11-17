@@ -13,7 +13,9 @@
  *      so that is 13.6 px right of its middle — and their stems shift with
  *      them;
  *   4. the linear row ignores the offset (every head centered);
- *   5. no console or page errors.
+ *   5. the app (session 75): a pitch-axis preset applied after picking a
+ *      design in the Noteheads step keeps the design's rules;
+ *   6. no console or page errors.
  *
  * Usage: node cnb/uat/uat-pitch-axis.mjs
  * Dependencies resolved with explicit errors, no silent fallbacks (the
@@ -133,6 +135,27 @@ const geometry = await page.evaluate(() => {
   return { axis: row("axis-row"), linear: row("linear-row") };
 });
 
+// ── The app: a preset applied after a design keeps its rules (session 75) ──
+// Session 73's rough edge 2: the pitch-axis editor kept a copy of the rules
+// from before a notehead change and wrote them back without it. Now every
+// change to the rules re-seeds it, so a preset applied after picking a design
+// keeps the design's rule.
+const app = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+app.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
+app.on("pageerror", e => consoleErrors.push(String(e)));
+app.on("dialog", d => d.accept());
+await app.goto(`http://localhost:${PORT}/cnb/index.html`, { waitUntil: "networkidle" });
+await app.waitForSelector(".cnb-pvd-preview .pc-col");
+const appConfig = () => app.$eval("#state-json", e => JSON.parse(e.textContent));
+await app.click('.section-link[data-section="noteheads"]');
+await app.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
+const designed = await appConfig();
+await app.click('.section-link[data-section="advanced"]');
+await app.evaluate(() => { document.getElementById("pitch-axis-map").open = true; });
+await app.click(".cnb-pae-preset-apply");
+const preset = await appConfig();
+await app.close();
+
 await browser.close();
 await new Promise(r => server.close(r));
 
@@ -168,6 +191,13 @@ check(axis.cards[0].stemX > axis.cards[0].headX && axis.cards[1].stemX > axis.ca
 check(linear.cards[1].stemX < linear.cards[1].headX, "linear: C♯ pair stems down");
 check(linear.cards.every(c => near(c.headX, c.centerX)), "linear: every head centered (offset ignored)");
 
+const hollowRule = (c) => (c.noteheadRules || []).filter(r => r.name === "Hollow minims and longer").length;
+check(hollowRule(designed) === 1 && designed.durations.breveStyle === "tied",
+  "app: Your own notehead in the Noteheads step writes the Hollows design's rule");
+check(!!(preset.pitchAxis && preset.pitchAxis.enabled) && hollowRule(preset) === 1,
+  "app: a pitch-axis preset applied after the design keeps the design's rule (session 73, rough edge 2)");
+check(preset.noteheadRules.length === designed.noteheadRules.length + 1,
+  `app: the preset adds its one rule and drops none (${designed.noteheadRules.length} → ${preset.noteheadRules.length})`);
 check(consoleErrors.length === 0, `no console/page errors${consoleErrors.length ? ": " + consoleErrors.slice(0, 5).join(" | ") : ""}`);
 
 console.log(failed ? `\n${failed} check(s) failed` : "\nAll pitch-axis geometry checks passed.");

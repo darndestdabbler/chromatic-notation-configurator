@@ -38,6 +38,7 @@
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBMusic } from "../src/cnb-music.js";
 import { CNBColor } from "../src/cnb-color.js";
+import { CNBBuiltinShapes } from "./builtin-shapes.js";
 
 const PERIODS = [1, 2, 3, 4, 6];
 const ACCIDENTALS = [1, 3, 6, 8, 10];
@@ -275,6 +276,131 @@ function writeBack(config, table) {
   return out;
 }
 
+// ── The notehead designs (session 75, notehead-duration design §6.1) ──────
+
+const LONGER = ["minim", "semibreve", "breve"];
+const BREVE_STYLES = ["double", "tied"];
+
+/** A rule that names keys: set aside by designOf, kept by withDesign. */
+const keyed = (rule) => ((rule && rule.match) || {}).keys !== "all";
+
+/** The height most noteheads resolve to (the notehead height, step 1). */
+function commonHeight(config, table) {
+  const heights = table.map(r => r.heightSemis ?? ((config.shapes || {})[r.shape] || {}).semitoneHeight ?? null);
+  return inferAttribute(heights).def;
+}
+
+/** A conventional head's size at height h: none at its own height. */
+function conventionalSize(name, h) {
+  const s = CNBBuiltinShapes.get(name);
+  if (h === null || round4(h) === s.semitoneHeight) return {};
+  return { heightSemis: round4(h), widthSemis: round4(h * s.naturalWidth / s.naturalHeight) };
+}
+
+const round4 = (v) => Math.round(v * 1e4) / 1e4;
+
+function durationRule(name, durations, apply) {
+  return { name, priority: 0, match: { pitchClasses: "all", durations, keys: "all" }, apply };
+}
+
+/** The rules a design writes for particular durations, at height h. */
+function designRules(design, h) {
+  if (design === "conventional") {
+    return [
+      durationRule("Minims (conventional, hollow)", ["minim"], { hollow: true }),
+      durationRule("Semibreves (conventional)", ["semibreve"],
+        { shape: "conventional-semibreve", hollow: true, ...conventionalSize("conventional-semibreve", h) }),
+      durationRule("Breves (conventional)", ["breve"],
+        { shape: "conventional-breve", hollow: true, ...conventionalSize("conventional-breve", h) }),
+    ];
+  }
+  if (design === "hollows") return [durationRule("Hollow minims and longer", LONGER, { hollow: true })];
+  return [];
+}
+
+/** The rules for particular durations, by match and apply, to compare. */
+const ruleKey = (rules) => JSON.stringify(rules.map(r => [r.match, r.apply]));
+
+/**
+ * Which design a notation's noteheads are (design §6.1): "conventional",
+ * "hollows", "repeated", or null, the designer's own. Rules that name keys
+ * are set aside first.
+ *   conventional — shape mode, no breveStyle but "single"; every notehead
+ *     the conventional crotchet, solid, at one size; and exactly the rules
+ *     withDesign writes for minims, semibreves and breves at that height.
+ *   hollows — shape mode, breveStyle "double" or "tied"; every notehead
+ *     solid for every duration; and exactly the one Hollow minims and
+ *     longer rule.
+ *   repeated — repeat mode, and every rule matches every duration.
+ * @param {object} config
+ * @returns {"conventional"|"hollows"|"repeated"|null}
+ */
+function designOf(config) {
+  const rules = (config.noteheadRules || []).filter(r => !keyed(r));
+  const durations = (config.durations || {});
+  if (durations.representationMode === "repeat") {
+    return rules.every(r => r.match.durations === "all") ? "repeated" : null;
+  }
+  const others = rules.filter(r => !ownsRule(r));
+  const table = lookTable({ ...config, noteheadRules: rules });
+  if (table.some(r => r.hollow)) return null;
+  const style = durations.breveStyle;
+  if (table.every(r => r.shape === "conventional-crotchet") && new Set(table.map(sizeKey)).size === 1 &&
+    (style === undefined || style === "single") &&
+    ruleKey(others) === ruleKey(designRules("conventional", commonHeight(config, table)))) {
+    return "conventional";
+  }
+  if (BREVE_STYLES.includes(style) && ruleKey(others) === ruleKey(designRules("hollows"))) return "hollows";
+  return null;
+}
+
+/**
+ * The config with its noteheads made a design (design §6.1, §6.2), keeping
+ * what it can of the look table: "conventional" keeps each notehead's
+ * colour and the notehead height, its head the conventional crotchet;
+ * "hollows" keeps each notehead's shape, colour and size and makes it
+ * solid; "repeated" keeps the whole look table. The rules for particular
+ * durations are replaced with the design's own (none for "repeated"), and
+ * rules that name keys are kept above them. The mode is "shape", or
+ * "repeat" for "repeated"; breveStyle is the one given under "hollows"
+ * (else the notation's own double or tied, else "tied"), and left out
+ * otherwise. The conventional heads are added to the shapes when used.
+ * The input is not changed.
+ * @param {object} config
+ * @param {"conventional"|"hollows"|"repeated"} design
+ * @param {"double"|"tied"} [breveStyle]
+ * @returns {object}
+ */
+function withDesign(config, design, breveStyle) {
+  let out = CNBConfig.clone(config);
+  const keyRules = (out.noteheadRules || []).filter(keyed);
+  out.noteheadRules = (out.noteheadRules || []).filter(r => !keyed(r) && ownsRule(r));
+  let table = lookTable(out);
+  const h = commonHeight(out, table);
+  if (design === "conventional") {
+    for (const name of ["conventional-crotchet", "conventional-semibreve", "conventional-breve"]) {
+      out = CNBBuiltinShapes.withShape(out, name);
+    }
+    const size = conventionalSize("conventional-crotchet", h);
+    table = table.map(r => ({ ...r, shape: "conventional-crotchet", hollow: false,
+      heightSemis: size.heightSemis ?? null, widthSemis: size.widthSemis ?? null }));
+  } else if (design === "hollows") {
+    table = table.map(r => ({ ...r, hollow: false }));
+  }
+  const inferred = inferRules(out, table).rules;
+  out.noteheadRules = [...inferred, ...designRules(design, h), ...keyRules];
+  out.noteheadRules.forEach((r, i) => { r.priority = i; });
+
+  const durations = { ...(out.durations || {}), representationMode: design === "repeated" ? "repeat" : "shape" };
+  delete durations.breveStyle;
+  if (design === "hollows") {
+    const own = (config.durations || {}).breveStyle;
+    durations.breveStyle = breveStyle || (BREVE_STYLES.includes(own) ? own : "tied");
+  }
+  out.durations = durations;
+  return out;
+}
+
 export const CNBNoteheadInference = {
   ownsRule,
   lookTable,
@@ -282,4 +408,6 @@ export const CNBNoteheadInference = {
   inferRules,
   ruleLines,
   writeBack,
+  designOf,
+  withDesign,
 };

@@ -47,7 +47,7 @@ import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
-import { selectNotehead } from "./app-page.mjs";
+import { selectNotehead, openDefault } from "./app-page.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -256,6 +256,9 @@ async function runIn(spec) {
   // ── Load ──
   await page.goto(`http://localhost:${PORT}/cnb/index.html`);
   await page.waitForSelector(".cnb-preview-display");
+  // New and the first open start from conventional noteheads (session 75),
+  // which have no Import from SVG: this driver builds on the default notation.
+  await openDefault(page);
   check(`${tag} LOAD: the app mounts and the preview renders cards`, (await cards()) > 0);
   check(`${tag} LOAD: no console or page errors at start`, consoleErrors.length === 0, consoleErrors.join(" | "));
 

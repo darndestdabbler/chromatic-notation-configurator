@@ -593,6 +593,14 @@ durations: {
   // last (session 58): 0 or more and below 1, one fraction for every shape.
   // It replaces engine.multinotePadding (staff spaces), which is retired.
   repeatOverlap: 1 / 3
+
+  // OPTIONAL, in shape mode only (session 75, notehead-duration design
+  // §6.2): the Hollows design's breve, "double" (two hollow heads
+  // overlapping as a repeated minim's) or "tied" (two hollow heads 1 staff
+  // space apart, tied); "single" or left out, one head, as before.
+  // Validated; not yet drawn or exported (session 76, with the engine's
+  // cnb:breve-style), so a breve stays one head until then.
+  // breveStyle: "tied"
 }
 ```
 
@@ -609,9 +617,40 @@ durations: {
 mock-ups (`docs/planning/repeat-overlap-mockups/`): the old −0.5 staff
 spaces overlapped 58% of the default notehead but 37–38% of the Kite and
 45deg-369 heads, since those staffs have 3 semitones per staff space. A
-share of the head's own width reads the same on every staff. The canvas
-sets it beside the repeat choice, as a percentage, and the preview
+share of the head's own width reads the same on every staff. The Noteheads
+step sets it under Repeated heads (beside the repeat choice above the
+canvas until session 75), as a percentage, and the preview
 (`CNBCard.repeatLayout`) and the engraving space the copies alike.
+
+**The notehead designs (session 75,
+[`docs/planning/notehead-duration-design.md`](planning/notehead-duration-design.md)).**
+The Noteheads step opens with how the noteheads show duration, and the
+design is read from the notation, not stored: `designOf(config)` in
+`ui/notehead-inference.js` returns `"conventional"`, `"hollows"`,
+`"repeated"` or `null` (the designer's own), rules naming keys set aside.
+
+| Design | Mode | Rules | `breveStyle` |
+|---|---|---|---|
+| Conventional noteheads | `"shape"` | every notehead the built-in `conventional-crotchet`, solid, at one size, colours by pitch; minims hollow; `conventional-semibreve` and `conventional-breve`, hollow, at that height in their own proportions | none (or `"single"`) |
+| Your own notehead, Hollows | `"shape"` | every notehead solid, shape, colour and size by pitch; one rule, *Hollow minims and longer* | `"double"` or `"tied"` |
+| Your own notehead, Repeated heads | `"repeat"` | every rule for every duration | — |
+
+`withDesign(config, design, breveStyle)` writes a design keeping what it
+can of the look table (conventional the colours and the height; hollows
+each notehead's shape, colour and size, made solid; repeated the whole
+table), replaces the rules for particular durations with its own and keeps
+the key-scoped ones. The rules are ordinary rules, so the Advanced rule
+editor shows them, and an edit there that breaks a design leaves the
+notation as the designer's own. Nothing is converted on load:
+`createDefault`, the fixtures and the gallery files read as the designer's
+own (the Kite 4-369 and 45deg-369 fixtures as repeated heads), and New and
+the page's first open start from `withDesign(createDefault(),
+"conventional")`. The three conventional shapes are the operator's SVGs in
+`cnb/assets/shapes/conventional/`, drawn from Emmentaler (SIL OFL 1.1),
+built in by name (`ui/builtin-shapes.js`, not among the notehead panel's
+`NAMES`), each head 2 semitones tall, the breve's bars joined to its head.
+The export needs nothing new: the conventional heads are registered shapes
+chosen by ordinary rules.
 
 ### 4.9 Key Settings (activated set 010)
 
@@ -1802,7 +1841,7 @@ Detailed specifications deferred. Summary:
 | 16 — SVG Shape Importer | Parse SVG for paths, anchors, LY data attributes | SVG importer |
 | 17 — Config Save/Load | JSON export/import | New |
 | 18 — Config Export (LY) | LilyPond file download (wraps Module 11) | LY export button |
-| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); Hollow minims beside the longer-durations choice adds or removes one ordinary rule (`CNBPreviewDisplay.withHollowMinims`); since session 71 each step opened is an entry in the browser's history, its id after the address's `#` (`CNBStepNav.fromHash`), so Back and Forward move between steps and an address with a step opens it, the notation in progress is kept in the browser after every change with its step and whether it is saved to a file (`ui/kept-work.js`, `CNBKeptWork`, localStorage guarded) and restored through `CNBConfigIO.mergeLoaded` when the page opens again, **New** starts afresh, New and leaving the page (`beforeunload`) ask first while it is not saved, and step 8 opened from a key in step 9 shows **Back to every key**, its history entry marked `fromKeys` | New (replaces monolith preview) |
+| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); session 63's Hollow minims tick and session 36's shape-or-repeat choice above the canvas went in session 75, when the duration buttons became one **Show** choice (Crotchets, Minims, Semibreves, Breves or All four, one on at a time) and the Noteheads step gained its choice of design (`CNBNoteheadPanel.renderDesign`, §4.8 "The notehead designs"), the notehead panel offering only the rows the design lets vary, its close-up at the duration shown, and every change to the notehead rules re-seeding the editors that keep a copy of them; since session 71 each step opened is an entry in the browser's history, its id after the address's `#` (`CNBStepNav.fromHash`), so Back and Forward move between steps and an address with a step opens it, the notation in progress is kept in the browser after every change with its step and whether it is saved to a file (`ui/kept-work.js`, `CNBKeptWork`, localStorage guarded) and restored through `CNBConfigIO.mergeLoaded` when the page opens again, **New** starts afresh (since session 75 from conventional noteheads), New and leaving the page (`beforeunload`) ask first while it is not saved, and step 8 opened from a key in step 9 shows **Back to every key**, its history entry marked `fromKeys` | New (replaces monolith preview) |
 
 ---
 
@@ -2221,7 +2260,7 @@ cnb/
 │   └── app.js
 │
 ├── assets/
-│   ├── shapes/                  Built-in SVG shape files
+│   ├── shapes/conventional/     The conventional noteheads' SVGs (session 75)
 │   └── fonts/                   The Oswald label font; the clef glyphs' licences
 │
 └── index.html                   Application entry point (Phase 6)

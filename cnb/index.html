@@ -99,6 +99,8 @@
         <section class="card panel" data-panel="noteheads" hidden>
           <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several); the rules follow</span></div>
           <div class="card-body">
+            <!-- The choice of design (session 75, notehead-duration design §2). -->
+            <div id="notehead-design-host"></div>
             <div>
               <p class="group-title">Rules</p>
               <div id="rule-list-host"></div>
@@ -213,6 +215,7 @@
     import { CNBConfigExport } from "./ui/config-export.js";
     import { CNBPreviewDisplay } from "./ui/preview-display.js";
     import { CNBNoteheadPanel } from "./ui/notehead-panel.js";
+    import { CNBNoteheadInference } from "./ui/notehead-inference.js";
     import { CNBPitchPanel } from "./ui/pitch-panel.js";
     import { CNBPitchModel } from "./ui/pitch-model.js";
     import { CNBChecksWording } from "./ui/checks-wording.js";
@@ -225,7 +228,10 @@
     // The page (UI shell) owns the single shared config object. Editors
     // write slices into it via onChange; the preview/IO/export panels read
     // it via getConfig accessors and are redrawn after every change.
-    let appConfig = CNBConfig.createDefault();
+    // New and the first open start from conventional noteheads (session 75,
+    // notehead-duration design §7): the default notation with that design.
+    const startingConfig = () => CNBNoteheadInference.withDesign(CNBConfig.createDefault(), "conventional");
+    let appConfig = startingConfig();
 
     // ── The work kept in the browser (session 71) ────────────────────────
     // The notation, its step and whether it is saved to a file are kept in
@@ -254,7 +260,7 @@
         saved = kept.saved;
         keptStep = kept.step;
       } catch {
-        appConfig = CNBConfig.createDefault();
+        appConfig = startingConfig();
       }
     }
     function keepWork() {
@@ -382,7 +388,7 @@
           appConfig = config;
           // A rename or a nudge also moves the staff, ledgers or pitch axis.
           mountStaffEditor();
-          mountLookEditors();
+          reseedRuleEditors();
           refreshShared({ keepPanel: true });
         },
         onClose: () => showSection(currentSection),
@@ -393,6 +399,8 @@
           openNoteheadPanel();
         },
         importControl: drawImporter,
+        // The close-up is drawn at the duration the canvas shows (session 75).
+        getDuration: shownDuration,
       });
       refreshMarks();
     }
@@ -542,6 +550,9 @@
     // canvas Size with its duration and key, redrawn with every canvas draw.
     // With no duration selected the canvas draws no staff, and neither do they.
     let canvasOptions = { durations: ["crotchet"], keys: null };
+    /** The one duration the canvas shows, or the crotchet under All four. */
+    const shownDuration = () =>
+      (canvasOptions.durations && canvasOptions.durations.length === 1 ? canvasOptions.durations[0] : "crotchet");
     // The key the Key signature panel was mounted for (session 50).
     let keySignatureEditorKey = null;
     // The layer and symbol picked in its editor, kept across re-mounts (session 56).
@@ -579,7 +590,7 @@
     function adoptPitchChange(config) {
       appConfig = config;
       mountStaffEditor();
-      mountLookEditors();
+      reseedRuleEditors();
       refreshShared();
     }
 
@@ -595,15 +606,17 @@
         if (next) adoptPitchChange(next);
       },
       onRender: (options) => {
+        const before = shownDuration();
         canvasOptions = options;
         refreshSectionPreviews();
+        // The notehead panel's close-up follows the duration shown (session 75).
+        if (panelApi && shownDuration() !== before) panelApi.redraw();
         // The Key signature panel speaks of the key picked here (its stems,
         // its overlap note), so a new pick re-mounts it (session 50).
         if (previewApi && JSON.stringify(previewApi.getState().key) !== keySignatureEditorKey) {
           mountKeySignatureEditor();
         }
       },
-      // Shapes or repeated heads, beside the duration buttons (session 36).
       // With the Clef section open, dragging the clef moves it, or its
       // bottom edge resizes it (session 45). Since session 59 a move changes the semitone its anchor sits on, and
       // a resize its height by the semitones dragged down, about its anchor.
@@ -616,24 +629,6 @@
         if (!next) return;   // resized to nothing
         appConfig.clef = next;
         mountClefEditor();
-        refreshShared();
-      },
-      onRepresentationMode: (mode) => {
-        appConfig.durations = { ...appConfig.durations, representationMode: mode };
-        mountPropsEditor();
-        refreshShared();
-      },
-      // The repeated heads' overlap, a share of a head's width (session 58).
-      onRepeatOverlap: (fraction) => {
-        appConfig.durations = { ...appConfig.durations, repeatOverlap: fraction };
-        mountPropsEditor();
-        refreshShared();
-      },
-      // Hollow minims beside the longer-durations choice: one ordinary rule,
-      // added or removed (session 63, step-by-step design §5.1).
-      onHollowMinims: (on) => {
-        appConfig = CNBPreviewDisplay.withHollowMinims(appConfig, on);
-        mountNoteheadEditor();
         refreshShared();
       },
       // One button turns on the default signature, the scale stack (session 36).
@@ -673,7 +668,20 @@
       getConfig: () => appConfig,
       onChange: (config) => {
         appConfig = config;
-        mountLookEditors();
+        reseedRuleEditors();
+        refreshShared();
+      },
+    });
+
+    // ── The Noteheads step's choice of design (session 75, notehead-duration
+    // design §2): a pick rewrites the rules and the mode, so the editors
+    // that keep a copy of them re-seed. ─────────────────────────────────
+    const designApi = CNBNoteheadPanel.renderDesign(byId("notehead-design-host"), {
+      getConfig: () => appConfig,
+      onChange: (config) => {
+        appConfig = config;
+        reseedRuleEditors();
+        mountPropsEditor();
         refreshShared();
       },
     });
@@ -840,6 +848,7 @@
       if (panelApi && !keepPanel) panelApi.redraw();
       pitchApi.redraw();
       heightApi.redraw();
+      designApi.redraw();
       exportApi.redraw();
       ioApi.redraw();
       // The steps greyed or not by the new config (session 63).
@@ -1024,11 +1033,15 @@
       });
     }
 
-    /** After a notehead panel change: the editors that read the rules or
-     *  the shapes re-seed. */
-    function mountLookEditors() {
-      mountNoteheadEditor();
-      mountPitchAxisEditor();
+    /** After any change to the notehead rules (or the shapes they name),
+     *  every editor that keeps a copy of them re-seeds, except the one that
+     *  made the change, which would lose its focus (session 75; session 73
+     *  rough edge 2, where the pitch-axis editor missed the Hollow minims
+     *  rule and could write the rules back without it): the Advanced rule
+     *  editor ("rules") and the pitch-axis editor ("pitch-axis"). */
+    function reseedRuleEditors(except = null) {
+      if (except !== "rules") mountNoteheadEditor();
+      if (except !== "pitch-axis") mountPitchAxisEditor();
     }
 
     /** Pitch axis (set 014). A null slice means "no section": the editor
@@ -1047,7 +1060,7 @@
           if (slices.pitchAxis) appConfig.pitchAxis = slices.pitchAxis;
           else delete appConfig.pitchAxis;
           if (slices.noteheadRules) appConfig.noteheadRules = slices.noteheadRules;
-          mountNoteheadEditor();
+          reseedRuleEditors("pitch-axis");
           mountStaffEditor();
           refreshShared();
         },
@@ -1093,7 +1106,7 @@
         config: appConfig,
         onChange: (slices) => {
           appConfig.noteheadRules = slices.noteheadRules;
-          mountPitchAxisEditor();
+          reseedRuleEditors("rules");
           refreshShared();
         },
       });

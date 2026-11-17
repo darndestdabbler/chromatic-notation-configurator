@@ -223,6 +223,9 @@ export const CNBNoteheadPanel = {
    * @returns {object}
    */
   setGeneralHeight(config, height) {
+    // Under conventional noteheads the semibreve and breve follow the
+    // crotchet's height in their own proportions (session 75).
+    const conventional = I.designOf(config) === "conventional";
     const table = I.lookTable(config).map(row => {
       if (height === null) return { ...row, heightSemis: null, widthSemis: null };
       const shape = shapeOf(config, row.shape);
@@ -231,7 +234,190 @@ export const CNBNoteheadPanel = {
       const w = round4(height * shape.naturalWidth / shape.naturalHeight);
       return { ...row, heightSemis: h === round4(own.height) ? null : h, widthSemis: w === own.width ? null : w };
     });
-    return I.writeBack(config, table);
+    const out = I.writeBack(config, table);
+    return conventional ? I.withDesign(out, "conventional") : out;
+  },
+
+  /**
+   * What picking a design would replace, as the question to confirm it
+   * (session 75, notehead-duration design §2), or null when it replaces
+   * nothing: conventional noteheads replace any shape or fill that is not
+   * the conventional crotchet's, hollows any hollow notehead, and either
+   * replaces the rules for particular durations of a notation that is no
+   * design.
+   * @param {object} config
+   * @param {"conventional"|"hollows"|"repeated"} design
+   * @returns {string|null}
+   */
+  designChange(config, design) {
+    const table = I.lookTable(config);
+    if (design === "conventional" && table.some(r => r.shape !== "conventional-crotchet" || r.hollow)) {
+      return "Conventional noteheads keep each notehead's colour and replace its shape and fill. Change?";
+    }
+    if (design === "hollows" && table.some(r => r.hollow)) {
+      return "Hollows keep each notehead's shape, colour and size and make every crotchet solid. Change?";
+    }
+    const durationRules = (config.noteheadRules || []).some(r => (r.match || {}).keys === "all" && !I.ownsRule(r));
+    if (I.designOf(config) === null && durationRules) {
+      return "The rules for particular durations will be replaced by the design's. Change?";
+    }
+    return null;
+  },
+
+  /**
+   * The Noteheads step's choice of design (session 75, notehead-duration
+   * design §2): "How should the noteheads show duration?", the cards
+   * Conventional noteheads and Your own notehead, each drawing its four
+   * durations in the notation's heads, the one the notation is highlighted
+   * (CNBNoteheadInference.designOf). Under Your own notehead the way
+   * duration shows, Hollows or Repeated heads; under Hollows the breve, Two
+   * tied semibreves or Double notehead, with a note that for now the breve
+   * shows as one hollow head; under Repeated heads, and a double breve, the
+   * Overlap. A notation that is no design says so ("Your own noteheads").
+   * A pick writes withDesign through onChange, after confirm(question) when
+   * it would replace something (designChange). Appended to container as a
+   * div.cnb-nhd.
+   * @param {HTMLElement} container
+   * @param {{getConfig: () => object, onChange?: (config: object) => void,
+   *          confirm?: (question: string) => boolean}} opts
+   * @returns {{root: HTMLElement, redraw: () => void}}
+   */
+  renderDesign(container, opts = {}) {
+    if (typeof opts.getConfig !== "function") {
+      throw new Error("CNBNoteheadPanel.renderDesign requires opts.getConfig — the host owns config state");
+    }
+    const { getConfig } = opts;
+    const onChange = opts.onChange || (() => {});
+    const confirm = opts.confirm || ((q) => globalThis.confirm(q));
+    const doc = globalThis.document;
+    const el = (tag, className, text) => {
+      const e = doc.createElement(tag);
+      if (className) e.className = className;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    };
+    const button = (className, text, onclick) => {
+      const b = el("button", className, text);
+      b.type = "button";
+      b.onclick = onclick;
+      return b;
+    };
+    const root = el("div", "cnb-nhd");
+
+    function pick(design, breveStyle) {
+      const question = CNBNoteheadPanel.designChange(getConfig(), design);
+      if (question && !confirm(question)) return;
+      onChange(I.withDesign(getConfig(), design, breveStyle));
+      draw();
+    }
+
+    /** The four durations of a notation, small, on G. */
+    function durations(config) {
+      const row = el("div", "cnb-nhd-durations");
+      const small = JSON.parse(JSON.stringify(config));
+      small.display = { ...small.display, pxPerSemi: 4,
+        label: { ...small.display.label, fontSize: 9, marginTop: 4, marginBottom: 4 },
+        column: { ...small.display.column, paddingH: 6 } };
+      if (small.clef) small.clef = { ...small.clef, enabled: false };
+      if (small.keys) small.keys = { ...small.keys, keySignature: { ...(small.keys.keySignature || {}), enabled: false } };
+      for (const d of CNBPreviewDisplay.durationNames(config)) {
+        const cell = el("div", "cnb-nhd-duration");
+        cell.setAttribute("data-duration", d);
+        CNBCollection.render(cell, small, { pitchClasses: [7], durations: [d] });
+        cell.appendChild(el("span", "cnb-nhd-duration-name", d));
+        row.appendChild(cell);
+      }
+      return row;
+    }
+
+    /** A segmented choice: [value, label] options, the one on, a pick. */
+    function choice(label, data, options, on, onPick) {
+      const wrap = el("div", "cnb-nhd-choice");
+      wrap.appendChild(el("span", "cnb-nhd-choice-label", label));
+      const seg = el("div", "cnb-nhp-segmented");
+      for (const [value, text] of options) {
+        const b = button("cnb-nhd-option" + (value === on ? " on" : ""), text, () => { if (value !== on) onPick(value); });
+        b.setAttribute(data, value);
+        b.setAttribute("aria-pressed", String(value === on));
+        seg.appendChild(b);
+      }
+      wrap.appendChild(seg);
+      return wrap;
+    }
+
+    function overlap(config) {
+      const wrap = el("label", "cnb-nhd-choice cnb-nhd-overlap");
+      wrap.appendChild(el("span", "cnb-nhd-choice-label", "Overlap"));
+      const input = el("input", "cnb-nhd-overlap-input");
+      input.type = "number";
+      input.min = "0";
+      input.max = "99";
+      input.step = "1";
+      input.value = String(Math.round((config.durations.repeatOverlap ?? 1 / 3) * 1000) / 10);
+      input.setAttribute("aria-label", "Overlap, as a percentage of a head's width");
+      // Only a percentage from 0 up to (not including) 100 is written.
+      input.onchange = (e) => {
+        const raw = String(e && e.target ? e.target.value : input.value).trim();
+        const pct = raw === "" ? NaN : Number(raw);
+        if (!(Number.isFinite(pct) && pct >= 0 && pct < 100)) return;
+        const c = getConfig();
+        onChange({ ...c, durations: { ...c.durations, repeatOverlap: pct / 100 } });
+        draw();
+      };
+      wrap.appendChild(input);
+      wrap.appendChild(el("span", "cnb-nhp-unit", "% of a head's width"));
+      return wrap;
+    }
+
+    function draw() {
+      root.textContent = "";
+      const config = getConfig();
+      const design = I.designOf(config);
+      root.appendChild(el("p", "cnb-nhd-question", "How should the noteheads show duration?"));
+      const cards = el("div", "cnb-nhd-designs");
+
+      const a = el("div", "cnb-nhd-design" + (design === "conventional" ? " on" : ""));
+      a.setAttribute("data-design", "conventional");
+      a.appendChild(button("cnb-nhd-pick", "Conventional noteheads", () => { if (design !== "conventional") pick("conventional"); }));
+      a.appendChild(el("p", "cnb-nhd-words", "The crotchet, minim, semibreve and breve every musician reads. Only the colour varies by pitch."));
+      a.appendChild(durations(design === "conventional" ? config : I.withDesign(config, "conventional")));
+      cards.appendChild(a);
+
+      const own = design === "hollows" || design === "repeated";
+      const b = el("div", "cnb-nhd-design" + (own ? " on" : ""));
+      b.setAttribute("data-design", "own");
+      b.appendChild(button("cnb-nhd-pick", "Your own notehead", () => { if (!own) pick("hollows"); }));
+      b.appendChild(el("p", "cnb-nhd-words", "Its shape, colour and size vary by pitch. Choose how duration shows."));
+      b.appendChild(durations(design === "conventional" ? I.withDesign(config, "hollows") : config));
+      b.appendChild(choice("Duration shows by", "data-way",
+        [["hollows", "Hollows: crotchets solid, longer notes hollow"], ["repeated", "Repeated heads: minim ×2, semibreve ×4"]],
+        own ? design : null, (way) => pick(way)));
+      if (design === "hollows") {
+        const style = config.durations.breveStyle;
+        b.appendChild(choice("The breve", "data-breve",
+          [["tied", "Two tied semibreves"], ["double", "Double notehead"]], style, (s) => pick("hollows", s)));
+        b.appendChild(el("p", "cnb-nhp-hint cnb-nhd-breve-note",
+          "For now the breve previews and exports as one hollow head."));
+      }
+      if (design === "repeated" || (design === "hollows" && config.durations.breveStyle === "double")) {
+        b.appendChild(overlap(config));
+      }
+      cards.appendChild(b);
+      root.appendChild(cards);
+
+      if (design === null) {
+        const note = el("p", "cnb-nhd-own");
+        note.appendChild(el("strong", "", "Your own noteheads. "));
+        note.appendChild(el("span", "", "These noteheads show duration in their own way. Each notehead's look " +
+          "below is the same for every duration; rules for particular durations are in Advanced › Notehead rules. " +
+          "Pick a design to use one instead."));
+        root.appendChild(note);
+      }
+    }
+
+    container.appendChild(root);
+    draw();
+    return { root, redraw: draw };
   },
 
   /**
@@ -347,7 +533,16 @@ export const CNBNoteheadPanel = {
    * @param {{getConfig: () => object, selection: number[],
    *          onChange?: (config: object) => void, onClose?: () => void,
    *          onRename?: (toPc: number) => void,
-   *          importControl?: (host: HTMLElement) => void}} opts
+   *          importControl?: (host: HTMLElement) => void,
+   *          getDuration?: () => string}} opts
+   *        The look offers only what the notation's design lets vary by
+   *        pitch (session 75, notehead-duration design §3): under
+   *        conventional noteheads the colour and one Height, every
+   *        notehead's (setGeneralHeight); under hollows no Fill; otherwise
+   *        the colour, fill, shape and size. The marker for rules for
+   *        particular durations shows only for a notation that is no
+   *        design. getDuration gives the duration the close-up is drawn at,
+   *        the one the canvas shows (crotchet without it).
    *        importControl draws the host's SVG importer into the shape row;
    *        the host adds the imported shape and calls chooseShape(name).
    *        onRename (session 28): after a rename has been reported through
@@ -436,7 +631,8 @@ export const CNBNoteheadPanel = {
       const drawn = CNBPreviewDisplay.displayConfig(config, "large");
       if (drawn.clef) drawn.clef = { ...drawn.clef, enabled: false };
       if (drawn.keys) drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };
-      CNBCollection.render(wrap, drawn, { pitchClasses: [pc], durations: ["crotchet"], fluid: true, rows: 1 });
+      const duration = (opts.getDuration && opts.getDuration()) || "crotchet";
+      CNBCollection.render(wrap, drawn, { pitchClasses: [pc], durations: [duration], fluid: true, rows: 1 });
       closeUp = wrap;
       return wrap;
     }
@@ -651,6 +847,30 @@ export const CNBNoteheadPanel = {
       return group;
     }
 
+    // ── Height, under conventional noteheads (session 75) ─────────────────
+    /** Every notehead's height, step 1's: the conventional heads keep
+     *  their proportions to each other. */
+    function drawHeight(config) {
+      const group = el("div", "cnb-nhp-group cnb-nhp-size");
+      group.appendChild(el("p", "cnb-nhp-label", "Height"));
+      const wrap = el("label", "cnb-nhp-field");
+      const input = el("input", "cnb-nhp-general-height");
+      input.type = "number";
+      input.min = "0.25";
+      input.step = "0.05";
+      input.value = String(round4(CNBNoteheadPanel.generalHeight(config)));
+      input.onchange = (e) => {
+        const v = Number(valueOf(e, input));
+        if (!(Number.isFinite(v) && v > 0)) return;
+        onChange(CNBNoteheadPanel.setGeneralHeight(getConfig(), v));
+        draw();
+      };
+      wrap.appendChild(input);
+      wrap.appendChild(el("span", "cnb-nhp-unit", "semitones, every notehead (step 1's)"));
+      group.appendChild(wrap);
+      return group;
+    }
+
     // ── Side step ─────────────────────────────────────────────────────────
     /** Shown when a selected notehead shares a spot; it edits only those
      *  that do, and shows the first one's step. */
@@ -736,7 +956,8 @@ export const CNBNoteheadPanel = {
         ? "Shift+click or Ctrl+click more noteheads on the staff to change them together."
         : "Shift+click or Ctrl+click a selected notehead to drop it. Esc or Close clears the selection."));
 
-      const kept = CNBNoteheadPanel.keptRulesFor(config, pc).length;
+      const design = I.designOf(config);
+      const kept = design === null ? CNBNoteheadPanel.keptRulesFor(config, pc).length : 0;
       if (kept) {
         root.appendChild(el("p", "cnb-nhp-kept",
           `${kept} ${kept === 1 ? "rule" : "rules"} for particular durations or keys also ${kept === 1 ? "changes" : "change"} this notehead — Advanced`));
@@ -748,9 +969,13 @@ export const CNBNoteheadPanel = {
       if (selection.length === 1) left.appendChild(drawName());
       const middle = el("div", "cnb-nhp-col cnb-nhp-look");
       middle.appendChild(drawColour(config, table));
-      middle.appendChild(drawFill(table));
-      middle.appendChild(drawShape(config, table));
-      middle.appendChild(drawSize(config, table));
+      if (design === "conventional") {
+        middle.appendChild(drawHeight(config));
+      } else {
+        if (design !== "hollows") middle.appendChild(drawFill(table));
+        middle.appendChild(drawShape(config, table));
+        middle.appendChild(drawSize(config, table));
+      }
       const right = el("div", "cnb-nhp-col cnb-nhp-right");
       const nudge = selection.length === 1 ? drawNudge(config) : null;
       if (nudge) right.appendChild(nudge);

@@ -471,6 +471,20 @@ export const tests = [
     old.engine.multinotePadding = "(display 1)";
     deepEq(CNBConfig.validate(old).errors, [], "a carried multinotePadding is not read");
   }},
+  { name: "validate: durations.breveStyle is left out, single, double or tied (session 75)", fn: () => {
+    assert(!("breveStyle" in CNBConfig.createDefault().durations), "the default leaves it out");
+    for (const v of [undefined, "single", "double", "tied"]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.breveStyle = v;
+      deepEq(CNBConfig.validate(cfg).errors, [], `${String(v)} is valid`);
+    }
+    for (const v of ["Tied", "triple", null, 2, ""]) {
+      const cfg = CNBConfig.createDefault();
+      cfg.durations.breveStyle = v;
+      const { valid, errors } = CNBConfig.validate(cfg);
+      assert(!valid && errors.some(e => e.includes("durations.breveStyle")), `${String(v)} is an error naming the field`);
+    }
+  }},
 
   // ── pctToPx ───────────────────────────────────────────────────────────────
   { name: "pctToPx(20, 16) = 3.2",  fn: () => approx(CNBConfig.pctToPx(20,  16), 3.2,  "pctToPx(20,16)") },

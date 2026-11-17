@@ -15,6 +15,7 @@
  */
 import { CNBPreviewDisplay } from "../ui/preview-display.js";
 import { CNBKeptWork } from "../ui/kept-work.js";
+import { CNBConfig } from "../src/cnb-config.js";
 
 /**
  * Open the app afresh, as on a first visit (session 71): the notation kept
@@ -35,6 +36,22 @@ export async function startAfresh(page) {
     page.off("dialog", accept);
   }
   await page.waitForSelector(".cnb-pvd-preview .pc-col");
+}
+
+/**
+ * Open the default notation, CNBConfig.createDefault(), as a file (session
+ * 75). New and the page's first open start from conventional noteheads,
+ * whose notehead panel has no Shape row and so no Import from SVG; a driver
+ * that imports a notehead, or builds on the default's rules, opens the
+ * default notation first, which is no design and offers every row.
+ */
+export async function openDefault(page) {
+  await page.setInputFiles("#open-file", {
+    name: "default.cnb.json", mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(CNBConfig.createDefault())),
+  });
+  await page.waitForFunction(() =>
+    !JSON.parse(document.getElementById("state-json").textContent).shapes["conventional-crotchet"]);
 }
 
 /**

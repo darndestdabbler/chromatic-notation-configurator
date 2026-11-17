@@ -373,8 +373,12 @@ export const tests = [
         assertEqual(from.children[1].textContent, "1 — C♯", "options labeled with note names");
         const pills = findAll(controls, "cnb-pvd-duration-pill");
         assertEqual(pills.map(p => p.getAttribute("data-duration")),
-          ["crotchet", "minim", "semibreve", "breve"]);
-        assertEqual(pills.filter(p => p.className.includes(" on")).length, 1, "only crotchet on");
+          ["crotchet", "minim", "semibreve", "breve", "all"]);
+        assertEqual(pills.map(p => p.textContent), ["Crotchets", "Minims", "Semibreves", "Breves", "All four"],
+          "the Show choice (session 75)");
+        assertEqual(findOne(controls, "cnb-pvd-durations-label").textContent, "Show");
+        assertEqual(pills.filter(p => p.className.includes(" on")).map(p => p.getAttribute("data-duration")),
+          ["crotchet"], "only crotchets on");
         assertEqual(findAll(api.root, "cnb-pvd-key").length, 1, "the key picker, whatever the config (session 36)");
       });
     },
@@ -411,27 +415,34 @@ export const tests = [
     },
   },
 
-  // ── render: duration pills ──
+  // ── render: Show (session 75, notehead-duration design §4) ──
   {
-    name: "render: toggling a second pill on renders two captioned duration rows; toggling it off returns to one",
+    name: "render: Show is one duration at a time; All four draws a row a duration, and one button is on",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg });
         const pill = (name) => findAll(api.root, "cnb-pvd-duration-pill")
           .find(p => p.getAttribute("data-duration") === name);
+        const on = () => findAll(api.root, "cnb-pvd-duration-pill")
+          .filter(p => p.className.includes(" on")).map(p => p.getAttribute("data-duration"));
         pill("minim").onclick();
-        assertEqual(api.getState().durations, ["crotchet", "minim"]);
-        assertEqual(findAll(api.root, "cnb-duration-caption").length, 2, "two captioned rows");
-        assertEqual(findAll(api.root, "pc-col").length, 26, "13 cards per row");
-        pill("minim").onclick();
+        assertEqual(api.getState().durations, ["minim"], "minims alone");
+        assertEqual(on(), ["minim"]);
+        assertEqual(findAll(api.root, "cnb-duration-caption").length, 0, "one row");
+        pill("all").onclick();
+        assertEqual(api.getState().durations, ["crotchet", "minim", "semibreve", "breve"], "all four");
+        assertEqual(on(), ["all"], "All four on, alone");
+        assertEqual(findAll(api.root, "cnb-duration-caption").length, 4, "four captioned rows");
+        assertEqual(findAll(api.root, "pc-col").length, 52, "13 cards per row");
+        pill("crotchet").onclick();
         assertEqual(api.getState().durations, ["crotchet"]);
-        assertEqual(findAll(api.root, "cnb-duration-caption").length, 0, "back to one row");
+        assertEqual(pill("crotchet").getAttribute("aria-pressed"), "true", "pressed");
       });
     },
   },
   {
-    name: "render: deselecting every pill shows the explicit empty message, renders no collection, and reports onRender(options, null)",
+    name: "render: a state with no duration (setState) shows the explicit empty message, renders no collection, and reports onRender(options, null)",
     fn: () => {
       const cfg = CNBConfig.createDefault();
       withDomStub(container => {
@@ -440,206 +451,14 @@ export const tests = [
           getConfig: () => cfg,
           onRender: (options, target) => calls.push({ options, target }),
         });
-        findAll(api.root, "cnb-pvd-duration-pill")
-          .find(p => p.getAttribute("data-duration") === "crotchet")
-          .onclick();
+        api.setState({ durations: [] });
         assertEqual(api.getState().durations, []);
+        assertEqual(findAll(api.root, "cnb-pvd-duration-pill").filter(p => p.className.includes(" on")).length, 0, "none on");
         findOne(api.root, "cnb-pvd-empty");
         assertEqual(findAll(api.root, "cnb-pvd-preview").length, 0, "no preview element");
         const last = calls[calls.length - 1];
         assertEqual(last.options.durations, [], "empty options reported");
         assert(last.target === null, "null target reported");
-      });
-    },
-  },
-
-  // ── render: shapes or repeated heads (session 36) ──
-  {
-    name: "render: without onRepresentationMode there is no shape/repeat choice",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg });
-        assertEqual(findAll(api.root, "cnb-pvd-repeat").length, 0, "no choice");
-      });
-    },
-  },
-  {
-    name: "render: onRepresentationMode draws the choice beside the duration buttons, in a designer's words, with the engine's counts",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {} });
-        const durations = findOne(api.root, "cnb-pvd-durations");
-        const choice = findOne(durations, "cnb-pvd-repeat", "inside the durations group");
-        const options = findAll(choice, "cnb-pvd-repeat-option");
-        assertEqual(options.map(o => [o.getAttribute("data-mode"), o.textContent]),
-          [["shape", "Its own shape for each duration"], ["repeat", "Repeat the notehead"]]);
-        assertEqual(options.map(o => o.className.includes(" on")), [true, false], "the config's mode is on");
-        assertEqual(options.map(o => o.getAttribute("aria-pressed")), ["true", "false"]);
-        assertEqual(findOne(choice, "cnb-pvd-repeat-hint").textContent,
-          "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves");
-      });
-    },
-  },
-  {
-    name: "render: a click on the other choice reports it; the host writes the mode and the redraw shows it on",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      withDomStub(container => {
-        const reported = [];
-        let api = null;
-        api = PVD.render(container, {
-          getConfig: () => cfg,
-          onRepresentationMode: (mode) => {
-            reported.push(mode);
-            cfg.durations.representationMode = mode;
-            api.redraw();
-          },
-        });
-        const option = (mode) => findAll(api.root, "cnb-pvd-repeat-option")
-          .find(o => o.getAttribute("data-mode") === mode);
-        option("shape").onclick();
-        assertEqual(reported, [], "the mode already on reports nothing");
-        option("repeat").onclick();
-        assertEqual(reported, ["repeat"], "repeat reported");
-        assert(option("repeat").className.includes(" on") && !option("shape").className.includes(" on"),
-          "repeat on after the redraw");
-      });
-    },
-  },
-  {
-    name: "render: in repeat mode, onRepeatOverlap draws an Overlap field (a percentage of a head's width) beside the choice; shape mode and no callback draw none (session 58)",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      withDomStub(container => {
-        let api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {}, onRepeatOverlap: () => {} });
-        assertEqual(findAll(api.root, "cnb-pvd-overlap").length, 0, "shape mode: no field");
-        cfg.durations.representationMode = "repeat";
-        api.redraw();
-        const choice = findOne(api.root, "cnb-pvd-repeat");
-        const field = findOne(choice, "cnb-pvd-overlap", "beside the repeat choice");
-        assertEqual(findOne(field, "cnb-pvd-overlap-label").textContent, "Overlap");
-        const input = findOne(field, "cnb-pvd-overlap-input");
-        assertEqual([input.type, input.min, input.max, input.value], ["number", "0", "99", "33.3"], "1/3 as a percentage");
-        assertEqual(findOne(field, "cnb-pvd-overlap-unit").textContent, "% of a head's width");
-        assertEqual(findOne(choice, "cnb-pvd-repeat-hint").textContent,
-          "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves", "the hint stays");
-        cfg.durations.repeatOverlap = 0.25;
-        api.redraw();
-        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "25", "the config's overlap");
-        delete cfg.durations.repeatOverlap;
-        api.redraw();
-        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "33.3", "unset: 1/3");
-      });
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => cfg, onRepresentationMode: () => {} });
-        assertEqual(findAll(api.root, "cnb-pvd-overlap").length, 0, "no onRepeatOverlap: no field");
-      });
-    },
-  },
-  {
-    name: "render: a change to the Overlap field reports a fraction from 0 up to 1; out-of-range or empty input reports nothing (session 58)",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      cfg.durations.representationMode = "repeat";
-      withDomStub(container => {
-        const reported = [];
-        let api = null;
-        api = PVD.render(container, {
-          getConfig: () => cfg,
-          onRepresentationMode: () => {},
-          onRepeatOverlap: (fraction) => {
-            reported.push(fraction);
-            cfg.durations.repeatOverlap = fraction;
-            api.redraw();
-          },
-        });
-        const change = (value) => findOne(api.root, "cnb-pvd-overlap-input").onchange({ target: { value } });
-        for (const bad of ["100", "-5", "", "abc"]) change(bad);
-        assertEqual(reported, [], "nothing reported");
-        change("40");
-        change("0");
-        assertEqual(reported, [0.4, 0], "fractions reported");
-        assertEqual(findOne(api.root, "cnb-pvd-overlap-input").value, "0", "the redraw shows it");
-      });
-    },
-  },
-
-  // ── Hollow minims (session 63, step-by-step design §5.1) ──
-  {
-    name: "withHollowMinims: on adds one ordinary rule above every other, and hasHollowMinims sees it; the input is unchanged",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      const before = JSON.stringify(cfg);
-      assertEqual(PVD.hasHollowMinims(cfg), false, "the default has none");
-      const on = PVD.withHollowMinims(cfg, true);
-      assertEqual(JSON.stringify(cfg), before, "the input unchanged");
-      assertEqual(on.noteheadRules.length, cfg.noteheadRules.length + 1, "one rule added");
-      const rule = on.noteheadRules[on.noteheadRules.length - 1];
-      const top = Math.max(...cfg.noteheadRules.map(r => r.priority));
-      assertEqual(rule, { name: "Hollow minims", priority: top + 1,
-        match: { pitchClasses: "all", durations: ["minim"], keys: "all" }, apply: { hollow: true } }, "the rule");
-      assertEqual(PVD.hasHollowMinims(on), true, "present");
-      assertEqual(CNBConfig.resolveNotehead(on, 0, "minim", null).hollow, true, "a minim resolves hollow");
-      assertEqual(CNBConfig.resolveNotehead(on, 0, "crotchet", null).hollow, false, "a crotchet stays solid");
-    },
-  },
-  {
-    name: "withHollowMinims: never doubled; off removes it and gives back the rules as they were (undo)",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      const on = PVD.withHollowMinims(cfg, true);
-      const twice = PVD.withHollowMinims(on, true);
-      assertEqual(twice.noteheadRules, on.noteheadRules, "a second tick adds none");
-      const off = PVD.withHollowMinims(twice, false);
-      assertEqual(off.noteheadRules, cfg.noteheadRules, "unticked: the original rules");
-      assertEqual(PVD.hasHollowMinims(off), false, "absent");
-    },
-  },
-  {
-    name: "hasHollowMinims: a rule with another name counts; one that sets more, or other durations, does not",
-    fn: () => {
-      const cfg = CNBConfig.createDefault();
-      const rule = (match, apply) => ({ name: "Mine", priority: 5,
-        match: { pitchClasses: "all", durations: ["minim"], keys: "all", ...match }, apply });
-      cfg.noteheadRules = [...cfg.noteheadRules, rule({}, { hollow: true })];
-      assertEqual(PVD.hasHollowMinims(cfg), true, "another name");
-      for (const [match, apply] of [[{}, { hollow: true, color: "#cc0000" }], [{ durations: ["minim", "semibreve"] }, { hollow: true }],
-                                    [{ pitchClasses: [0] }, { hollow: true }], [{ keys: ["C"] }, { hollow: true }], [{}, { hollow: false }]]) {
-        const other = CNBConfig.createDefault();
-        other.noteheadRules = [...other.noteheadRules, rule(match, apply)];
-        assertEqual(PVD.hasHollowMinims(other), false, JSON.stringify([match, apply]));
-      }
-    },
-  },
-  {
-    name: "render: onHollowMinims draws a Hollow minims checkbox beside the choice in shape mode, ticked with the rule; repeat mode and no callback draw none",
-    fn: () => {
-      let cfg = CNBConfig.createDefault();
-      withDomStub(container => {
-        const reported = [];
-        let api = null;
-        api = PVD.render(container, {
-          getConfig: () => cfg,
-          onRepresentationMode: () => {},
-          onHollowMinims: (on) => { reported.push(on); cfg = PVD.withHollowMinims(cfg, on); api.redraw(); },
-        });
-        const box = () => findOne(findOne(api.root, "cnb-pvd-repeat"), "cnb-pvd-hollow-minims-check");
-        assertEqual(findOne(api.root, "cnb-pvd-hollow-minims-text").textContent, "Hollow minims");
-        assertEqual(box().checked, false, "unticked without the rule");
-        box().onchange({ target: { checked: true } });
-        assertEqual(box().checked, true, "ticked with the rule");
-        box().onchange({ target: { checked: false } });
-        assertEqual(reported, [true, false], "each state reported");
-        assertEqual(PVD.hasHollowMinims(cfg), false, "removed");
-        cfg.durations.representationMode = "repeat";
-        api.redraw();
-        assertEqual(findAll(api.root, "cnb-pvd-hollow-minims").length, 0, "repeat mode: none");
-      });
-      withDomStub(container => {
-        const api = PVD.render(container, { getConfig: () => CNBConfig.createDefault(), onRepresentationMode: () => {} });
-        assertEqual(findAll(api.root, "cnb-pvd-hollow-minims").length, 0, "no callback: none");
       });
     },
   },
@@ -835,7 +654,8 @@ export const tests = [
         api.redraw();
         const pills = findAll(api.root, "cnb-pvd-duration-pill");
         assertEqual(pills.map(p => p.getAttribute("data-duration")),
-          ["crotchet", "minim", "semibreve", "breve", "longa"]);
+          ["crotchet", "minim", "semibreve", "breve", "longa", "all"]);
+        assertEqual(pills[5].textContent, "All", "All, for five durations");
         assertEqual(api.getState().durations, ["crotchet"], "selection unchanged");
       });
     },

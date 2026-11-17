@@ -16,16 +16,21 @@
  *     moving one endpoint past the other DRAGS the other endpoint along
  *     (documented interaction rule — the selects always hold a valid range,
  *     so no silent swap/clamp guessing is ever needed).
- *   - Duration selection is a set of toggle pills over the duration names in
+ *   - Duration selection is the Show choice (session 75, notehead-duration
+ *     design §4): one button per duration name in
  *     config.durations.definitions (falling back to ["crotchet"] when the
  *     config defines none — the same documented fallback Modules 11 and 18
- *     use). Selected names are RETAINED in editor state and PRUNED against
+ *     use), "Crotchets", "Minims", …, and All four (All, for another
+ *     count), which draws a row a duration; one button is on at a time,
+ *     the first duration when the page opens. Showing is all it does.
+ *     Selected names are RETAINED in editor state and PRUNED against
  *     the current config's vocabulary at build time (the verified set-005
  *     "retain in state, prune at emit" pattern), so a config change that
  *     removes a duration doesn't corrupt the selection and restoring the
- *     duration restores the selection. Deselecting every pill is allowed:
- *     the preview area then shows an explicit .cnb-pvd-empty message
- *     instead of a collection — an honest empty state, not a guessed row.
+ *     duration restores the selection. A state set with no duration
+ *     (setState) makes the preview area show an explicit .cnb-pvd-empty
+ *     message instead of a collection — an honest empty state, not a
+ *     guessed row.
  *   - The key is a tonic and a mode (session 36): a key and mode picker,
  *     shown whatever the config, over the seven modes LilyPond's \key names
  *     (CNBMusic.MODES) and, since session 48, each mode's 15 spelled tonics
@@ -53,7 +58,7 @@
  *   div.cnb-preview-display
  *   ├── div.cnb-pvd-controls
  *   │   ├── div.cnb-pvd-range      (from/to selects over PCs 0–12)
- *   │   ├── div.cnb-pvd-durations  (one toggle pill per duration name)
+ *   │   ├── div.cnb-pvd-durations  (Show: one button per duration, and All)
  *   │   └── div.cnb-pvd-key        (tonic and mode selects; the button that
  *   │                               turns the signature on, while it is
  *   │                               off; a note when keys are on and none
@@ -126,16 +131,13 @@
  * Esc, a cancel or a move under NUDGE_THRESHOLD
  * pixels puts it back and reports nothing.
  *
- * Session 36 (the rebuilds' rough edges): beside the duration buttons, when
- * the host passes opts.onRepresentationMode, a two-way choice between each
- * duration's own shape and repeated heads (durations.representationMode,
- * REPRESENTATION_CHOICES); a click on the other one calls
- * opts.onRepresentationMode("shape" | "repeat") and the host writes it.
- * Session 58: in repeat mode, when the host passes opts.onRepeatOverlap,
- * an Overlap field beside the choice sets durations.repeatOverlap, the
- * share of a head's width each copy overlaps the last, as a percentage.
+ * Session 75: the choice between each duration's own shape and repeated
+ * heads (session 36), the Overlap field (session 58) and the Hollow minims
+ * tick (session 63), which stood beside the duration buttons, are gone:
+ * the Noteheads step's choice of design sets them (notehead-duration
+ * design §2, §4).
  *
- * Session 36 also turns the key select into the key and mode picker (see
+ * Session 36 turns the key select into the key and mode picker (see
  * the scope decisions above). While the signature is off and the host
  * passes opts.onSignatureOn, a button beside the picker asks the host to
  * turn on the default signature (keys.enabled, keys.keySignature.enabled,
@@ -161,31 +163,13 @@ function deepClone(v) {
   return v === undefined ? v : JSON.parse(JSON.stringify(v));
 }
 
-/** The Hollow minims rule (session 63): every pitch class, minims, every
- *  key, hollow and nothing else. */
-function isHollowMinimsRule(rule) {
-  const m = (rule && rule.match) || {};
-  const a = (rule && rule.apply) || {};
-  return m.pitchClasses === "all" && m.keys === "all" &&
-    Array.isArray(m.durations) && m.durations.length === 1 && m.durations[0] === "minim" &&
-    Object.keys(a).length === 1 && a.hollow === true;
-}
-
 /** The canvas sizes in px per semitone (design §6.1). */
 const SIZES = { small: 9, medium: 11, large: 16 };
 const DEFAULT_SIZE = "medium";
 const SIZE_STORAGE_KEY = "cnb.canvasSize";
 
-/** The choice beside the duration buttons (session 36), in the designer's
- *  words: durations.representationMode → its label. */
-const REPRESENTATION_CHOICES = {
-  shape: "Its own shape for each duration",
-  repeat: "Repeat the notehead",
-};
-/** The engine's repeat counts (CNBCard.repeatCount), shown with the choice. */
-const REPEAT_HINT = "Repeated: minim ×2, semibreve ×4, breve as two tied semibreves";
-/** The repeated heads' overlap when the config sets none (session 58; CNBCard's default). */
-const DEFAULT_REPEAT_OVERLAP = 1 / 3;
+/** A Show button's label: "Crotchets" for crotchet. */
+const plural = (name) => name.charAt(0).toUpperCase() + name.slice(1) + "s";
 
 /** The key shown first (session 36). */
 const DEFAULT_KEY = { tonic: 0, mode: "major" };
@@ -240,8 +224,6 @@ export const CNBPreviewDisplay = {
   DEFAULT_SIZE,
   SIZE_STORAGE_KEY,
   EDITOR_LABEL,
-  REPRESENTATION_CHOICES,
-  REPEAT_HINT,
   SELECT_HINT,
   DEFAULT_KEY,
 
@@ -449,42 +431,6 @@ export const CNBPreviewDisplay = {
   },
 
   /**
-   * Whether the notation has the Hollow minims rule (session 63, step-by-step
-   * design §5.1): a rule matching every pitch class, the minim alone and
-   * every key, whose apply is exactly { hollow: true }.
-   * @param {object} config
-   * @returns {boolean}
-   */
-  hasHollowMinims(config) {
-    return (config.noteheadRules || []).some(isHollowMinimsRule);
-  },
-
-  /**
-   * The config with the Hollow minims rule added (on) or removed (off): on
-   * adds one, named "Hollow minims", above every other rule, unless one is
-   * there; off removes every such rule. The input is not changed.
-   * @param {object} config
-   * @param {boolean} on
-   * @returns {object} a new config
-   */
-  withHollowMinims(config, on) {
-    const out = deepClone(config);
-    const rules = out.noteheadRules || [];
-    if (!on) {
-      out.noteheadRules = rules.filter(r => !isHollowMinimsRule(r));
-    } else if (!rules.some(isHollowMinimsRule)) {
-      const top = rules.reduce((m, r) => Math.max(m, Number.isFinite(r.priority) ? r.priority : 0), -1);
-      out.noteheadRules = [...rules, {
-        name: "Hollow minims",
-        priority: top + 1,
-        match: { pitchClasses: "all", durations: ["minim"], keys: "all" },
-        apply: { hollow: true },
-      }];
-    }
-    return out;
-  },
-
-  /**
    * Build the CNBCollection.render() options for a config + display state,
    * applying the prune-at-build rules from the module header:
    *   - pitchClasses from the from/to range (throws via buildPitchClasses
@@ -531,20 +477,6 @@ export const CNBPreviewDisplay = {
    *   - collection: injection seam for the collection renderer (defaults
    *     to Module 10's CNBCollection; tests may pass a recorder). Must
    *     expose render(container, config, options).
-   *   - onRepresentationMode(mode) (session 36): when given, the toolbar
-   *     draws the choice between each duration's own shape ("shape") and
-   *     repeated heads ("repeat") beside the duration buttons, and a click
-   *     on the one not in the config reports it; the host writes
-   *     durations.representationMode and calls redraw().
-   *   - onRepeatOverlap(fraction) (session 58): when given, in repeat mode
-   *     an Overlap field beside that choice shows durations.repeatOverlap as
-   *     a percentage of a head's width (1/3 when unset), and a change to a
-   *     percentage from 0 up to 100 reports it as a fraction; the host
-   *     writes durations.repeatOverlap and calls redraw().
-   *   - onHollowMinims(on) (session 63): when given, while each duration
-   *     has its own shape, a Hollow minims checkbox beside that choice,
-   *     ticked when the notation has the rule (hasHollowMinims), reports
-   *     its new state; the host writes withHollowMinims and calls redraw().
    *   - onSignatureOn() (session 36): when given, while the key signature
    *     is off, a button beside the key picker asks the host to turn on the
    *     default signature (the scale stack); the host writes the config and
@@ -553,9 +485,6 @@ export const CNBPreviewDisplay = {
    * @param {HTMLElement} container
    * @param {{getConfig: () => object, onRender?: Function,
    *          collection?: {render: Function},
-   *          onRepresentationMode?: (mode: "shape"|"repeat") => void,
-   *          onRepeatOverlap?: (fraction: number) => void,
-   *          onHollowMinims?: (on: boolean) => void,
    *          onSignatureOn?: () => void}} opts
    * @returns {{root: HTMLElement, getState: () => object,
    *            setState: (partial: object) => void,
@@ -587,9 +516,6 @@ export const CNBPreviewDisplay = {
     const onNudgeDrag = opts.onNudgeDrag || null;
     let swallowClick = false; // a notehead drag moved: the click that follows does not select
     const onClefDrag = opts.onClefDrag || null;
-    const onRepresentationMode = opts.onRepresentationMode || null;
-    const onRepeatOverlap = opts.onRepeatOverlap || null;
-    const onHollowMinims = opts.onHollowMinims || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
     let pitchHint = null;     // the toolbar hint shown in pitch mode
@@ -641,83 +567,30 @@ export const CNBPreviewDisplay = {
       return wrap;
     }
 
-    // ── Duration pills ────────────────────────────────────────────────────
+    // ── Show (session 75, notehead-duration design §4) ────────────────────
+    // One duration, or all of them, a row each; one button on at a time.
     function drawDurations() {
       const wrap = el("div", "cnb-pvd-durations");
-      wrap.appendChild(el("span", "cnb-pvd-durations-label", "Durations"));
-      for (const name of CNBPreviewDisplay.durationNames(getConfig())) {
-        const on = state.durations.includes(name);
-        const pill = el("button", "cnb-pvd-duration-pill" + (on ? " on" : ""), name);
-        pill.type = "button";
-        pill.setAttribute("data-duration", name);
-        pill.onclick = () => {
-          state.durations = on
-            ? state.durations.filter(n => n !== name)
-            : [...state.durations, name];
+      wrap.setAttribute("role", "group");
+      wrap.setAttribute("aria-label", "Show");
+      wrap.appendChild(el("span", "cnb-pvd-durations-label", "Show"));
+      const names = CNBPreviewDisplay.durationNames(getConfig());
+      const shown = names.filter(n => state.durations.includes(n));
+      const all = names.length > 1 && shown.length === names.length;
+      const button = (label, durations, on, data) => {
+        const b = el("button", "cnb-pvd-duration-pill" + (on ? " on" : ""), label);
+        b.type = "button";
+        b.setAttribute("data-duration", data);
+        b.setAttribute("aria-pressed", String(on));
+        b.onclick = () => {
+          state.durations = durations;
           changed();
         };
-        wrap.appendChild(pill);
-      }
-      if (onRepresentationMode) wrap.appendChild(drawRepresentation());
-      return wrap;
-    }
-
-    // ── Shapes or repeated heads (session 36) ─────────────────────────────
-    function drawRepresentation() {
-      const current = ((getConfig() || {}).durations || {}).representationMode === "repeat" ? "repeat" : "shape";
-      const wrap = el("div", "cnb-pvd-repeat");
-      const group = el("div", "cnb-pvd-repeat-options");
-      group.setAttribute("role", "group");
-      group.setAttribute("aria-label", "Longer durations");
-      for (const [mode, label] of Object.entries(REPRESENTATION_CHOICES)) {
-        const on = mode === current;
-        const button = el("button", "cnb-pvd-repeat-option" + (on ? " on" : ""), label);
-        button.type = "button";
-        button.setAttribute("data-mode", mode);
-        button.setAttribute("aria-pressed", String(on));
-        button.onclick = () => { if (!on) onRepresentationMode(mode); };
-        group.appendChild(button);
-      }
-      wrap.appendChild(group);
-      if (current === "repeat" && onRepeatOverlap) wrap.appendChild(drawOverlap());
-      if (current === "shape" && onHollowMinims) wrap.appendChild(drawHollowMinims());
-      wrap.appendChild(el("span", "cnb-pvd-repeat-hint", REPEAT_HINT));
-      return wrap;
-    }
-
-    // ── Hollow minims (session 63, design §5.1), in shape mode ────────────
-    function drawHollowMinims() {
-      const label = el("label", "cnb-pvd-hollow-minims");
-      const input = el("input", "cnb-pvd-hollow-minims-check");
-      input.type = "checkbox";
-      input.checked = CNBPreviewDisplay.hasHollowMinims(getConfig() || {});
-      input.onchange = (e) => onHollowMinims(!!(e && e.target ? e.target.checked : input.checked));
-      label.appendChild(input);
-      label.appendChild(el("span", "cnb-pvd-hollow-minims-text", "Hollow minims"));
-      return label;
-    }
-
-    // ── The repeated heads' overlap (session 58), in repeat mode ──────────
-    function drawOverlap() {
-      const overlap = ((getConfig() || {}).durations || {}).repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
-      const label = el("label", "cnb-pvd-overlap");
-      label.appendChild(el("span", "cnb-pvd-overlap-label", "Overlap"));
-      const input = el("input", "cnb-pvd-overlap-input");
-      input.type = "number";
-      input.min = "0";
-      input.max = "99";
-      input.step = "1";
-      input.value = String(Math.round(overlap * 1000) / 10);
-      input.setAttribute("aria-label", "Overlap, as a percentage of a head's width");
-      // Only a percentage from 0 up to (not including) 100 is reported.
-      input.onchange = (e) => {
-        const raw = String(e.target.value).trim();
-        const pct = raw === "" ? NaN : Number(raw);
-        if (Number.isFinite(pct) && pct >= 0 && pct < 100) onRepeatOverlap(pct / 100);
+        wrap.appendChild(b);
       };
-      label.appendChild(input);
-      label.appendChild(el("span", "cnb-pvd-overlap-unit", "% of a head's width"));
-      return label;
+      for (const name of names) button(plural(name), [name], !all && shown.length === 1 && shown[0] === name, name);
+      if (names.length > 1) button(names.length === 4 ? "All four" : "All", names.slice(), all, "all");
+      return wrap;
     }
 
     // ── The key and mode picker (session 36) ──────────────────────────────

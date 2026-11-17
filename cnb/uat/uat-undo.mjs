@@ -30,6 +30,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { openSection, selectNotehead, startAfresh, useDownloads } from "./app-page.mjs";
+import { CNBNoteheadInference } from "../ui/notehead-inference.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -247,23 +248,22 @@ check("SAVE: one undo is back at the start, so Save added no step",
   withoutStamp(await state()) === withoutStamp(fresh));
 check("SAVE: and nothing is left to undo", !(await buttons()).undo);
 
-// ── 7. Hollow minims, beside the longer-durations choice (session 63) ──────
-const beforeHollow = await state();
-const hollowRules = (text) => JSON.parse(text).noteheadRules.filter(r => r.name === "Hollow minims");
-await page.check(".cnb-pvd-hollow-minims-check");
-const ticked = await state();
-check("HOLLOW MINIMS: ticking it adds one rule, every pitch class, minims, hollow",
-  hollowRules(ticked).length === 1 &&
-  JSON.stringify(hollowRules(ticked)[0].match) === JSON.stringify({ pitchClasses: "all", durations: ["minim"], keys: "all" }) &&
-  JSON.stringify(hollowRules(ticked)[0].apply) === JSON.stringify({ hollow: true }),
-  JSON.stringify(hollowRules(ticked)));
+// ── 7. A design, picked in the Noteheads step (session 75) ─────────────────
+const designOf = (text) => CNBNoteheadInference.designOf(JSON.parse(text));
+await openSection(page, "noteheads");
+const beforeDesign = await state();
+await page.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
+const picked = await state();
+check("DESIGN: Your own notehead turns conventional noteheads into Hollows",
+  designOf(beforeDesign) === "conventional" && designOf(picked) === "hollows",
+  `${designOf(beforeDesign)} → ${designOf(picked)}`);
+const cardOn = () => page.$$eval(".cnb-nhd-design.on", els => els.map(e => e.dataset.design).join());
 await page.click("body", { position: { x: 5, y: 300 } });
 await press("Control+z");
-check("HOLLOW MINIMS: Ctrl+Z removes the rule and unticks the box",
-  (await state()) === beforeHollow && !(await page.isChecked(".cnb-pvd-hollow-minims-check")));
+check("DESIGN: Ctrl+Z puts the conventional noteheads back, their card highlighted",
+  (await state()) === beforeDesign && (await cardOn()) === "conventional");
 await press("Control+Shift+z");
-check("HOLLOW MINIMS: Ctrl+Shift+Z puts it back, ticked", (await state()) === ticked &&
-  await page.isChecked(".cnb-pvd-hollow-minims-check"));
+check("DESIGN: Ctrl+Shift+Z puts Hollows back", (await state()) === picked && (await cardOn()) === "own");
 
 check("NO console or page errors", consoleErrors.length === 0, consoleErrors.join(" | "));
 

@@ -50,6 +50,8 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { useCanvasSize, useDownloads, openSection, openAdvanced, selectNotehead } from "./app-page.mjs";
+import { CNBConfig } from "../src/cnb-config.js";
+import { CNBNoteheadInference } from "../ui/notehead-inference.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -222,24 +224,30 @@ check("ASSEMBLY: the six always-mounted module roots on one page (Modules 13–1
     !!document.querySelector(".cnb-staff-rule-editor") &&
     !!document.querySelector(".cnb-notehead-rule-editor") &&
     !!document.querySelector(".cnb-common-props-editor")));
-check("PREVIEW: full chromatic row on load — 13 cards, one caption-less duration row, 4 duration pills (crotchet on), the key picker at C major (session 36)",
+check("PREVIEW: full chromatic row on load — 13 cards, one caption-less duration row, the Show choice (four durations and All four, crotchet on), the key picker at C major (session 36)",
   (await cardCount()) === 13 && (await captionCount()) === 0 &&
   await page.evaluate(() =>
-    document.querySelectorAll(".cnb-pvd-duration-pill").length === 4 &&
+    document.querySelectorAll(".cnb-pvd-duration-pill").length === 5 &&
     document.querySelectorAll(".cnb-pvd-duration-pill.on").length === 1 &&
     document.querySelector('.cnb-pvd-duration-pill[data-duration="crotchet"]').classList.contains("on") &&
     document.querySelector(".cnb-pvd-key-tonic").value === "C" &&
     document.querySelector(".cnb-pvd-key-mode").value === "major"),
   `cards=${await cardCount()}`);
 let cfg = await fullConfig();
-check("STATE PANEL: full default config exposed (4-8 pattern, one shape, shape mode)",
+check("STATE PANEL: full config exposed, conventional noteheads on the default staff (4-8 pattern, the conventional heads, shape mode; session 75)",
   JSON.stringify(cfg.staff.semitonePattern) === "[4,8]" &&
-  JSON.stringify(Object.keys(cfg.shapes)) === '["crotchet-minim"]' &&
-  cfg.durations.representationMode === "shape");
+  JSON.stringify(Object.keys(cfg.shapes)) === '["crotchet-minim","conventional-crotchet","conventional-semibreve","conventional-breve"]' &&
+  cfg.durations.representationMode === "shape" && CNBNoteheadInference.designOf(cfg) === "conventional");
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-initial.png"), fullPage: true });
 
 // ── STEP 1: import an SVG shape (set 004, Module 16) ────────────────────────
 // Since session 27 the importer is the notehead panel's Import from SVG.
+// Conventional noteheads have no Shape row (session 75): Your own notehead
+// first, which writes Hollows.
+await openSection(page, "noteheads");
+await page.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
+check("DESIGN: Your own notehead in the Noteheads step makes the noteheads Hollows",
+  CNBNoteheadInference.designOf(await fullConfig()) === "hollows");
 await selectNotehead(page, 0);
 await page.setInputFiles('#svg-importer-host input[type="file"]', {
   name: "uat-ellipse.svg", mimeType: "image/svg+xml",
@@ -323,26 +331,31 @@ check("NOTEHEAD RULE: the preview re-rendered live — noteheads now draw the im
       .some(p => (p.getAttribute("d") || "").startsWith("M 120 0 C 120 -55"))));
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-rule.png"), fullPage: true });
 
-// ── STEP 5: repeated heads, chosen beside the duration buttons (session 36) ─
-await page.click('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]');
+// ── STEP 5: repeated heads, the Noteheads step's design (session 75) ───────
+await openSection(page, "noteheads");
+await page.click('.cnb-nhd-option[data-way="repeated"]');
 cfg = await fullConfig();
-check("REPEAT MODE: chosen on the canvas, it reaches the shared config and shows on; Advanced › Durations and engine has no mode control",
-  cfg.durations.representationMode === "repeat" &&
+check("REPEAT MODE: Repeated heads in the Noteheads step reaches the shared config and shows on; Advanced › Durations and engine has no mode control",
+  cfg.durations.representationMode === "repeat" && CNBNoteheadInference.designOf(cfg) === "repeated" &&
   await page.evaluate(() =>
-    document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
+    document.querySelector('.cnb-nhd-option[data-way="repeated"]').classList.contains("on") &&
     !document.querySelector("#props-editor-host .cnb-cpe-mode-option")));
-// The repeated heads' overlap, beside the repeat choice (session 58).
-check("OVERLAP: in repeat mode the canvas shows the Overlap field at 1/3 of a head's width; Advanced has no Multinote padding",
+check("REPEAT MODE: the imported ellipse is still every notehead's shape",
+  CNBConfig.resolveNotehead(cfg, 5, "crotchet", null).shape === "uat-ellipse");
+// The repeated heads' overlap, under Repeated heads (session 58; in the step since session 75).
+check("OVERLAP: under Repeated heads the step shows the Overlap field at 1/3 of a head's width; Advanced has no Multinote padding",
   await page.evaluate(() =>
-    document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "33.3" &&
+    document.querySelector(".cnb-nhd-overlap-input").value === "33.3" &&
     !document.querySelector("#props-editor-host .cnb-cpe-multinote-padding")));
-await page.fill(".canvas-card .cnb-pvd-overlap-input", "25");
-await page.dispatchEvent(".canvas-card .cnb-pvd-overlap-input", "change");
+await page.fill(".cnb-nhd-overlap-input", "25");
+await page.dispatchEvent(".cnb-nhd-overlap-input", "change");
 cfg = await fullConfig();
 check("OVERLAP: setting 25% reaches the shared config as durations.repeatOverlap 0.25, and the field shows it",
   cfg.durations.repeatOverlap === 0.25 &&
-  await page.evaluate(() => document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "25"),
+  await page.evaluate(() => document.querySelector(".cnb-nhd-overlap-input").value === "25"),
   `repeatOverlap ${cfg.durations.repeatOverlap}`);
+// Repeated heads write the look table again: the rules counted from here.
+const ruleCount = cfg.noteheadRules.length;
 
 // ── STEP 6: exercise the Module 19 preview controls ─────────────────────────
 // The pitch range sits in Advanced since session 25 (design §9).
@@ -351,17 +364,15 @@ await page.selectOption(".cnb-pvd-from", "4");
 await page.selectOption(".cnb-pvd-to", "8");
 check("PREVIEW CONTROLS: narrowing the pitch range to 4–8 renders 5 cards",
   (await cardCount()) === 5, `cards=${await cardCount()}`);
-await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
-check("PREVIEW CONTROLS: toggling minim on renders two captioned duration rows (10 cards)",
-  (await cardCount()) === 10 && (await captionCount()) === 2,
+await page.click('.cnb-pvd-duration-pill[data-duration="all"]');
+check("PREVIEW CONTROLS: Show › All four renders four captioned duration rows (20 cards)",
+  (await cardCount()) === 20 && (await captionCount()) === 4,
   `cards=${await cardCount()} captions=${await captionCount()}`);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-preview-controls.png"), fullPage: true });
-await page.click('.cnb-pvd-duration-pill[data-duration="crotchet"]');
 await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
-check("PREVIEW CONTROLS: deselecting every duration shows the explicit empty message, no collection",
-  await page.evaluate(() =>
-    !!document.querySelector(".cnb-pvd-empty") &&
-    !document.querySelector(".cnb-pvd-preview")));
+check("PREVIEW CONTROLS: Show › Minims renders one row of minims, Minims alone on",
+  (await cardCount()) === 5 && (await captionCount()) === 0 &&
+  await page.evaluate(() => [...document.querySelectorAll(".cnb-pvd-duration-pill.on")].map(p => p.dataset.duration).join() === "minim"));
 await page.click('.cnb-pvd-duration-pill[data-duration="crotchet"]');
 await page.selectOption(".cnb-pvd-from", "0");
 await page.selectOption(".cnb-pvd-to", "12");
@@ -393,7 +404,7 @@ check("SAVE: everything configured this session is in the file (uat-ellipse shap
   JSON.stringify(savedJson.staff.semitonePattern) === "[3,6,9]" &&
   savedJson.durations.representationMode === "repeat" &&
   savedJson.durations.repeatOverlap === 0.25 &&
-  savedJson.noteheadRules.length === colourRules + 1);
+  savedJson.noteheadRules.length === ruleCount);
 
 // ── STEP 8: load the saved config back (Module 17 round trip) ───────────────
 await page.setInputFiles("#open-file", savedPath);
@@ -404,13 +415,13 @@ check("LOAD: round-trip fidelity — the shared config after load is deep-equal 
   JSON.stringify(cfg) === JSON.stringify(savedJson));
 check("LOAD: loaded config reported valid in the IO panel",
   await page.evaluate(() => !!document.querySelector(".cnb-cio-valid")));
-check(`LOAD: every editor re-seeded from the loaded config (3-6-9 selected, repeat selected at 25% overlap, ${colourRules + 1} rule cards) and the preview still shows 13 cards in the rule colours`,
+check(`LOAD: every editor re-seeded from the loaded config (3-6-9 selected, repeat selected at 25% overlap, ${ruleCount} rule cards) and the preview still shows 13 cards in the rule colours`,
   await page.evaluate((n) =>
     document.querySelector('.cnb-sre-pattern-option[data-pattern-key="3-6-9"]').classList.contains("selected") &&
-    document.querySelector('.canvas-card .cnb-pvd-repeat-option[data-mode="repeat"]').classList.contains("on") &&
-    document.querySelector(".canvas-card .cnb-pvd-overlap-input").value === "25" &&
+    document.querySelector('.cnb-nhd-option[data-way="repeated"]').classList.contains("on") &&
+    document.querySelector(".cnb-nhd-overlap-input").value === "25" &&
     document.querySelectorAll(".cnb-nre-rule-card").length === n &&
-    document.querySelectorAll('.cnb-pvd-preview path[fill="#1b9e77"]').length > 0, colourRules + 1) &&
+    document.querySelectorAll('.cnb-pvd-preview path[fill="#1b9e77"]').length > 0, ruleCount) &&
   (await cardCount()) === 13);
 await page.screenshot({ path: path.join(SHOT_DIR, "uat-006-s3-loaded.png"), fullPage: true });
 

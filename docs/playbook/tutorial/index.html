@@ -87,11 +87,12 @@
   <p>You will build <strong>Tutorial 3-5-7-9</strong>: four staff lines in
   each octave, on D♯ (E♭), F, G and A, two semitones apart, with a gap of six
   semitones from A to the next D♯; diamond noteheads two semitones tall and
-  three wide, red on C♯, D♯, F♯, G♯ and A♯ and black on the rest, hollow for
-  minims; a key signature of noteheads in Clairnote's stacks; and a C clef of
-  your own. This is the finished notation:</p>
+  three wide, red on C♯, D♯, F♯, G♯ and A♯ and black on the rest, solid for
+  crotchets and hollow for longer notes; a key signature of noteheads in
+  Clairnote's stacks; and a C clef of your own. This is the finished
+  notation:</p>
   <figure>
-    <img src="shots/12-export.png" alt="The finished notation: the 3-5-7-9 staff with diamond noteheads, red on the black keys, a crotchet row of solid heads and a minim row of hollow ones, the C clef and an E-flat major key signature in two stacks with gold stems">
+    <img src="shots/12-export.png" alt="The finished notation: the 3-5-7-9 staff with diamond noteheads, red on the black keys, a row of solid crotchets and rows of hollow minims, semibreves and breves, the C clef and an E-flat major key signature in two stacks with gold stems">
     <figcaption>The finished notation, in step 12.</figcaption>
   </figure>
 
@@ -133,13 +134,13 @@
 <section id="drawing">
   <h2>Drawing the notehead</h2>
   <p>The notehead is a diamond, 2 semitones tall and 3 wide, with a hollow
-  for its minims. You draw it once in Inkscape, at any size, and the Music
+  for its longer notes. You draw it once in Inkscape, at any size, and the Music
   Glyph Toolkit gives it its height, centres it and adds its stems. The file
   you save is the one you import in step 5.</p>
 
   <h3>The idea: draw the head and its hollow together, then turn them together</h3>
   <p>A notehead is two filled shapes: the <strong>head</strong>, and the
-  <strong>hollow</strong>, a smaller shape inside it that minims show as
+  <strong>hollow</strong>, a smaller shape inside it that longer notes show as
   white. Draw both upright and centred on each other, where they are easy to
   line up. Then group them and turn or stretch the group, so the hollow keeps
   its place inside the head.</p>
@@ -215,10 +216,11 @@
   staff, the ledger lines and each notehead's own size are judged against
   it.</p>
   <p>Set <strong>Height</strong> to <strong>2</strong> semitones. The
-  diamond will be one staff space of the staff you draw next. The default
-  noteheads shrink on the canvas; each keeps its shape's proportions.</p>
+  diamond will be one staff space of the staff you draw next. A new notation
+  starts from conventional noteheads, the ones every musician reads, which
+  are already 2 semitones tall, so the canvas does not change.</p>
   <figure>
-    <img src="shots/01-notehead-height.png" alt="Step 1: the Height field set to 2 semitones, and the default noteheads drawn smaller on the canvas">
+    <img src="shots/01-notehead-height.png" alt="Step 1: the Height field at 2 semitones, and the conventional noteheads on the canvas">
     <figcaption>Every notehead 2 semitones tall.</figcaption>
   </figure>
 </section>
@@ -273,39 +275,48 @@
 
 <section id="step-noteheads">
   <h2>5. Noteheads</h2>
-  <p class="why">Each notehead's look: its shape, fill and colour, and how
-  the longer durations show.</p>
+  <p class="why">How the noteheads show duration, then each notehead's look:
+  its shape and colour.</p>
+  <p>The step opens by asking how the noteheads should show duration, with
+  two cards. <strong>Conventional noteheads</strong>, where the notation
+  starts, are the crotchet, minim, semibreve and breve every musician reads,
+  with only the colour varying by pitch. <strong>Your own notehead</strong>
+  lets a notehead's shape, colour and size vary by pitch, and shows duration
+  in one of two ways.</p>
   <ol>
+    <li><strong>Your own notehead.</strong> Click <strong>Your own
+      notehead</strong>. It starts with <strong>Hollows</strong>: every
+      crotchet solid, every minim, semibreve and breve hollow, one head a
+      note. Under it, <strong>The breve</strong> is <strong>Two tied
+      semibreves</strong>; for now the breve still previews and exports as
+      one hollow head.</li>
     <li><strong>Every notehead the diamond.</strong> Click C on the canvas,
       then Shift+click the other eleven, so the panel reads 12 noteheads.
       Under <strong>Shape</strong>, click <strong>Import from SVG…</strong>
       and choose <code>diamond.svg</code>. The reference point picker opens on
       the enlarged diamond; its middle is right, so click
-      <strong>Done</strong>. Pick the diamond under Shape, and
-      <strong>Solid</strong> under Fill (the default's sharps are hollow, and a
-      hollow crotchet would read as a minim once minims are hollow).</li>
+      <strong>Done</strong>. Pick the diamond under Shape. The panel has no
+      Fill: under Hollows the duration gives the fill.</li>
     <li><strong>The black keys red.</strong> Click C♯ and Shift+click D♯, F♯,
       G♯ and A♯. Under <strong>Colour</strong>, choose <strong>New
       colour…</strong> and enter <code>#cc0000</code>. The rest stay black.</li>
-    <li><strong>Minims, one way.</strong> Above the canvas, click
-      <strong>minim</strong> among the durations to show a minim row, and
-      <strong>Repeat the notehead</strong>: a minim is two diamonds, each
-      overlapping the last by a third of its width.</li>
+    <li><strong>Duration, the other way.</strong> Above the canvas, under
+      <strong>Show</strong>, click <strong>All four</strong> to see a row for
+      each duration. In the step, under Duration shows by, click
+      <strong>Repeated heads</strong>: a minim is two diamonds, a semibreve
+      four, each overlapping the last by a third of its width.</li>
   </ol>
   <figure>
-    <img src="shots/05-noteheads-repeated.png" alt="Step 5, first way: the minim row draws each minim as two overlapping diamonds">
-    <figcaption>Minims as repeated heads: tried, and not kept.</figcaption>
+    <img src="shots/05-noteheads-repeated.png" alt="Step 5, the other way: rows of crotchets, minims, semibreves and breves, each longer note drawn as repeated diamonds">
+    <figcaption>Duration as repeated heads: tried, and not kept.</figcaption>
   </figure>
-  <ol start="4">
-    <li><strong>Minims, the other way.</strong> Click <strong>Its own shape
-      for each duration</strong>, and tick <strong>Hollow minims</strong>
-      beside it. The tick adds one ordinary rule, "Hollow minims", which
-      Advanced shows like any other: every minim hollow, every crotchet
-      solid, one head a note. This is the one the tutorial keeps.</li>
+  <ol start="5">
+    <li><strong>Back to hollows.</strong> Click <strong>Hollows</strong>
+      again. This is the one the tutorial keeps.</li>
   </ol>
   <figure>
-    <img src="shots/05-noteheads.png" alt="Step 5, kept: a crotchet row of solid diamonds and a minim row of hollow ones, red on C-sharp, D-sharp, F-sharp, G-sharp and A-sharp, with the notehead panel open on the five red noteheads">
-    <figcaption>Each duration its own look, with hollow minims.</figcaption>
+    <img src="shots/05-noteheads.png" alt="Step 5, kept: rows of solid diamond crotchets and hollow diamond minims, semibreves and breves, red on C-sharp, D-sharp, F-sharp, G-sharp and A-sharp, with the notehead panel open on the five red noteheads and the step's Your own notehead card picked">
+    <figcaption>Your own notehead, duration by hollows.</figcaption>
   </figure>
 </section>
 

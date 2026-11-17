@@ -6,9 +6,14 @@ A browser-based tool for designing custom chromatic music notation systems. The 
 
 The Configurator is the design environment where notation creators make creative decisions:
 
+- **Choose how noteheads show duration** — conventional noteheads, the
+  crotchet, minim, semibreve and breve every musician reads with only the
+  colour varying by pitch, or your own notehead, whose longer notes are
+  hollow or repeated heads
 - **Give each notehead its look** — click it on the staff (Shift+click or
   Ctrl+click to select several) and choose its colour, fill, shape and
-  size; the looks are kept as cumulative rules
+  size, as the design lets them vary; the looks are kept as cumulative
+  rules
 - **Import notehead shapes** from SVGs produced by the Music Glyph Toolkit
 - **Configure staff geometry** — any number of lines at any semitone positions
 - **Configure ledger lines** — automatic, or your own rules for which notes get them
@@ -231,14 +236,10 @@ is such a file: a layer moved by a transform, relative commands and arcs.
 ### 3. Design the notation system
 
 The page is the staff canvas, with one step at a time beside it. Above
-the staff, the canvas toolbar chooses what it shows: the durations, and
-beside them whether longer durations get **Its own shape for each
-duration** or **Repeat the notehead** (as the engine engraves them: minim
-×2, semibreve ×4, and a breve as two tied semibreves), with
-**Hollow minims** beside the first, which adds one ordinary rule making
-every minim hollow (unticked, it removes it; Advanced shows it with the
-other rules);
-and the
+the staff, the canvas toolbar chooses what it shows: **Show**, the
+crotchets, minims, semibreves or breves, or **All four**, a row a
+duration (showing is all it does: how each duration looks is the
+Noteheads step's design); and the
 **Key**, a tonic and a mode (major,
 minor and the church modes LilyPond's `\key` names), whose signature the
 staff draws. While the signature is off, **Show the key signature** turns
@@ -251,7 +252,9 @@ and the page opens on the first. **Next** and **Back**, at the bottom of
 the window, take you through them in order, and any step can be opened
 from the list at any time. A step with nothing to edit yet is greyed, and
 says why: steps 8 and 9 until a key signature is shown, step 7 until it
-uses symbols of its own (Custom marks in step 6), step 11 until a clef is. It starts from a conventional notehead on the 4-8 staff.
+uses symbols of its own (Custom marks in step 6), step 11 until a clef is.
+A new notation, the page's first and each one **New** starts, has
+conventional noteheads on the 4-8 staff.
 
 **The staff**
 
@@ -269,12 +272,25 @@ uses symbols of its own (Custom marks in step 6), step 11 until a clef is. It st
 
 **Noteheads**
 
-5. **Noteheads** — click a notehead on the staff (Shift+click or Ctrl+click
-   selects several, and Esc clears the selection) to
-   open the notehead panel: colour (with **Suggested colours** to start
-   from), fill, shape, size and nudge, for every selected notehead at once.
-   A new shape keeps the notehead's height, at the new shape's proportions.
-   The step lists the rules the looks are kept as.
+5. **Noteheads** — first, how the noteheads show duration, two cards each
+   drawing its crotchet, minim, semibreve and breve: **Conventional
+   noteheads**, LilyPond's own heads (drawn from Emmentaler, SIL OFL) with
+   only the colour and one height for every notehead to set; or **Your own
+   notehead**, whose shape, colour and size vary by pitch, its longer notes
+   shown by **Hollows** (crotchets solid, minims, semibreves and breves
+   hollow; the breve two tied semibreves or a double notehead, for now
+   drawn and exported as one hollow head) or **Repeated heads** (as the
+   engine engraves them: minim ×2, semibreve ×4, and a breve as two tied
+   groups, with their **Overlap**). The card the notation is is
+   highlighted, and a picked design that would replace looks asks first. A
+   notation that fits none, as every gallery file does, says "Your own
+   noteheads", keeps its rules, and offers every row. Then click a notehead
+   on the staff (Shift+click or Ctrl+click selects several, and Esc clears
+   the selection) to open the notehead panel, drawn at the duration shown:
+   colour (with **Suggested colours** to start from), and, as the design
+   lets them vary, fill, shape, size and nudge, for every selected notehead
+   at once. A new shape keeps the notehead's height, at the new shape's
+   proportions. The step lists the rules the looks are kept as.
 
 **Key signature** — steps 6 to 9 draw their own canvases in place of the
 staff. One model draws every signature, for the key picked on the staff or
@@ -380,8 +396,8 @@ browser's **Back** and **Forward** move between the steps you opened, and
 an address with a step opens that step. The design in progress is kept in
 the browser after every change, with its step: a page reloaded or opened
 again restores it (in that browser only, so Save is still how to keep a
-design). **New** in the top bar starts afresh, from the default notation
-at step 1. New, and leaving the page, ask first while the design has
+design). **New** in the top bar starts afresh, from conventional noteheads
+on the default 4-8 staff, at step 1. New, and leaving the page, ask first while the design has
 changes not saved to a file.
 
 ### 4. Save and export

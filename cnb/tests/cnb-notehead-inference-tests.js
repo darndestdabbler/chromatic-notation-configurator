@@ -343,4 +343,125 @@ export const tests = [
       assert(out.every(r => r.priority > top), "all above the inferred rules");
       deepEq(resolveEverything(after), resolveEverything(config), "same resolutions");
     }},
+
+  // ── designOf and withDesign (session 75, notehead-duration design §6.1) ──
+
+  { name: "designOf: the default config and every gallery file are your own noteheads; the Kite and 45deg fixtures repeated heads", fn: () => {
+      eq(I.designOf(CNBConfig.createDefault()), null, "default");
+      for (const file of galleryFixtureFiles()) eq(I.designOf(gallery(path.basename(file))), null, path.basename(file));
+      eq(I.designOf(fixture("kite-4-369-config.json")), "repeated", "kite");
+      eq(I.designOf(fixture("45deg-369-config.json")), "repeated", "45deg");
+    }},
+
+  { name: "withDesign: every design it writes is the one designOf reads, from every config", fn: () => {
+      for (const [name, config] of Object.entries(allConfigs())) {
+        for (const design of ["conventional", "hollows", "repeated"]) {
+          const out = I.withDesign(config, design);
+          eq(I.designOf(out), design, `${name} → ${design}`);
+          assert(CNBConfig.validate(out).valid, `${name} → ${design} validates: ${CNBConfig.validate(out).errors}`);
+        }
+        eq(I.designOf(I.withDesign(config, "hollows", "double")), "hollows", `${name} → hollows, double`);
+      }
+    }},
+
+  { name: "withDesign conventional: the conventional heads by duration, the colours and the height kept", fn: () => {
+      const kite = fixture("kite-4-369-config.json");
+      const out = I.withDesign(kite, "conventional");
+      eq(out.durations.representationMode, "shape", "shape mode");
+      assert(!("breveStyle" in out.durations), "no breve style");
+      for (let pc = 0; pc < 12; pc++) {
+        const before = CNBConfig.resolveNotehead(kite, pc, "crotchet", null);
+        const crotchet = CNBConfig.resolveNotehead(out, pc, "crotchet", null);
+        const minim = CNBConfig.resolveNotehead(out, pc, "minim", null);
+        const semibreve = CNBConfig.resolveNotehead(out, pc, "semibreve", null);
+        const breve = CNBConfig.resolveNotehead(out, pc, "breve", null);
+        eq(crotchet.color, before.color, `pc ${pc} keeps its colour`);
+        deepEq([crotchet.shape, crotchet.hollow], ["conventional-crotchet", false], `pc ${pc} crotchet`);
+        deepEq([minim.shape, minim.hollow], ["conventional-crotchet", true], `pc ${pc} minim`);
+        deepEq([semibreve.shape, semibreve.hollow], ["conventional-semibreve", true], `pc ${pc} semibreve`);
+        deepEq([breve.shape, breve.hollow], ["conventional-breve", true], `pc ${pc} breve`);
+        eq(breve.color, before.color, `pc ${pc} breve's colour`);
+        // Kite's heads are 4 semitones: every conventional head at 4, in its own proportions.
+        eq(crotchet.heightSemis, 4, `pc ${pc} crotchet height`);
+        eq(semibreve.heightSemis, 4, `pc ${pc} semibreve height`);
+        eq(semibreve.widthSemis, 7.3333, `pc ${pc} semibreve width, its own proportion`);
+      }
+      const def = I.withDesign(CNBConfig.createDefault(), "conventional");
+      const c = CNBConfig.resolveNotehead(def, 0, "crotchet", null);
+      deepEq([c.heightSemis, c.widthSemis], [2.724, 3.4481], "the default's height, 2.724");
+      const two = I.withDesign(I.withDesign(def, "hollows"), "conventional");
+      eq(I.designOf(two), "conventional", "back again");
+    }},
+
+  { name: "withDesign hollows: each notehead's shape, colour and size kept, solid; one Hollow minims and longer rule; the breve style", fn: () => {
+      const kite = fixture("kite-4-369-config.json");
+      const out = I.withDesign(kite, "hollows");
+      eq(out.durations.representationMode, "shape", "shape mode");
+      eq(out.durations.breveStyle, "tied", "two tied semibreves by default");
+      deepEq(out.noteheadRules.filter(r => !I.ownsRule(r)).map(r => [r.name, r.match.durations, r.apply]),
+        [["Hollow minims and longer", ["minim", "semibreve", "breve"], { hollow: true }]], "the one rule");
+      for (let pc = 0; pc < 12; pc++) {
+        const before = CNBConfig.resolveNotehead(kite, pc, "crotchet", null);
+        const crotchet = CNBConfig.resolveNotehead(out, pc, "crotchet", null);
+        deepEq([crotchet.shape, crotchet.color, crotchet.heightSemis, crotchet.widthSemis],
+          [before.shape, before.color, before.heightSemis, before.widthSemis], `pc ${pc} kept`);
+        eq(crotchet.hollow, false, `pc ${pc} crotchet solid`);
+        for (const d of ["minim", "semibreve", "breve"]) eq(CNBConfig.resolveNotehead(out, pc, d, null).hollow, true, `pc ${pc} ${d} hollow`);
+      }
+      eq(I.withDesign(out, "hollows", "double").durations.breveStyle, "double", "the breve style given");
+      eq(I.withDesign(I.withDesign(out, "hollows", "double"), "hollows").durations.breveStyle, "double", "the notation's own kept");
+    }},
+
+  { name: "withDesign repeated: the look table kept, repeat mode, no rule for particular durations", fn: () => {
+      const config = I.withDesign(CNBConfig.createDefault(), "hollows");
+      const out = I.withDesign(config, "repeated");
+      eq(out.durations.representationMode, "repeat", "repeat mode");
+      assert(!("breveStyle" in out.durations), "no breve style");
+      assert(out.noteheadRules.every(I.ownsRule), "only the look table's rules");
+      deepEq(I.lookTable(out), I.lookTable(config), "the look table kept");
+      const def = CNBConfig.createDefault();
+      deepEq(I.lookTable(I.withDesign(def, "repeated")), I.lookTable(def), "the default's sharps stay hollow");
+    }},
+
+  { name: "designOf and withDesign: rules naming keys are set aside and kept", fn: () => {
+      const config = CNBConfig.createDefault();
+      config.keys.enabled = true;
+      config.keys.definitions = [{ name: "G", pitchClasses: [0, 2, 4, 6, 7, 9, 11] }];
+      const red = { name: "F♯ red in G", priority: 9, match: { pitchClasses: [6], durations: ["minim"], keys: ["G"] }, apply: { color: "#cc0000" } };
+      config.noteheadRules.push(red);
+      for (const design of ["conventional", "hollows", "repeated"]) {
+        const out = I.withDesign(config, design);
+        const kept = out.noteheadRules.filter(r => r.name === red.name);
+        eq(kept.length, 1, `${design}: kept`);
+        deepEq([kept[0].match, kept[0].apply], [red.match, red.apply], `${design}: unchanged`);
+        assert(kept[0].priority === Math.max(...out.noteheadRules.map(r => r.priority)), `${design}: above the rest`);
+        eq(I.designOf(out), design, `${design}: set aside by designOf`);
+      }
+    }},
+
+  { name: "designOf: an edit that breaks a design leaves your own noteheads", fn: () => {
+      const conventional = I.withDesign(CNBConfig.createDefault(), "conventional");
+      const fill = I.writeBack(conventional, I.lookTable(conventional).map(r => (r.pc === 1 ? { ...r, hollow: true } : r)));
+      eq(I.designOf(fill), null, "a hollow crotchet");
+      const moved = CNBConfig.clone(conventional);
+      moved.noteheadRules.find(r => r.name.startsWith("Semibreves")).apply.hollow = false;
+      eq(I.designOf(moved), null, "a solid semibreve");
+      const tied = I.withDesign(CNBConfig.createDefault(), "hollows");
+      const single = CNBConfig.clone(tied);
+      delete single.durations.breveStyle;
+      eq(I.designOf(single), null, "hollows without a breve style");
+      const minimsOnly = CNBConfig.clone(tied);
+      minimsOnly.noteheadRules.find(r => r.name === "Hollow minims and longer").match.durations = ["minim"];
+      eq(I.designOf(minimsOnly), null, "hollow minims, solid semibreves");
+      const repeat = CNBConfig.clone(tied);
+      repeat.durations.representationMode = "repeat";
+      eq(I.designOf(repeat), null, "repeat mode with a rule for particular durations");
+    }},
+
+  { name: "withDesign: the input is not changed", fn: () => {
+      const config = CNBConfig.createDefault();
+      const before = JSON.stringify(config);
+      for (const design of ["conventional", "hollows", "repeated"]) I.withDesign(config, design);
+      eq(JSON.stringify(config), before, "unchanged");
+    }},
 ];
