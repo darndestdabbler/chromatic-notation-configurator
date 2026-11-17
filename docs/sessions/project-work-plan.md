@@ -85,7 +85,11 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 71 | Back, Forward and work kept | no | 2026-11-14 |
 | 72 | A repeated minim's stem on its notehead | no | 2026-11-15 |
 | 73 | The UI is stable, a second try | no | 2026-11-16 |
-| 74 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 74 | Designing how noteheads show duration | no | 2026-11-17 |
+| 75 | The notehead design, built | — | not declared |
+| 76 | B.i's breve reaches LilyPond | — | not declared |
+| 77 | The UI is stable, a third try | — | not declared |
+| 78 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -754,3 +758,9 @@ Make the UI stable for the 1.1.0 release, a second try. First the engine round t
 **Rolled back:**
 
 - 2026-11-16 — session 73 — Rollback to Start of This Session from the Work Explorer (operator)
+
+### Session 74 — Designing how noteheads show duration
+
+**Releasable: no.**
+
+Design how noteheads show duration (session 73, rough edge 1), as a design only, for the operator's approval. A new document, docs/planning/notehead-duration-design.md, as small as the requirements allow, lays out the operator's model of 2026-11-16: A, conventional noteheads (the conventional crotchet, minim, semibreve and breve, only the colour varying by pitch, the height set by the designer); B, a custom notehead whose shape, colour and fill vary by pitch, duration shown either by i, hollows (crotchets always solid; a minim one hollow head with a stem, a semibreve one hollow head without, a breve a double notehead or two tied semibreves, as the designer chooses) or ii, repeated heads (today's repeat mode). It says how the Noteheads step opens with the choice of design and, for B, the way duration shows; what the notehead panel offers under each (no Fill under A and B.i; the colour alone and the height under A); what becomes of the duration buttons, the Shape or Repeat choice and the Hollow minims tick above the canvas; where the conventional noteheads come from (the operator draws them in SVG if the app needs them); how the choice is stored and exported, through durations.representationMode and ordinary rules where they suffice; and how a saved notation that fits none of the three opens, as "your own noteheads" in the way the key signature's starting points show "your own symbols". Mock-ups drawn with the real cnb/src modules show the step, the panel under each design, the two breves of B.i and a gallery file that fits none. A brief for the engine session, docs/planning/, specifies B.i's breve in shape mode, a double notehead or two tied semibreves, its setting and the figures the engine is to measure, as session 72's brief did, for an engine minor release before session 76. The operator looks at the mock-ups and approves the design, and the approval and their decisions are recorded, with sessions 75 and 76 amended in the session plan where the design changes what they build.

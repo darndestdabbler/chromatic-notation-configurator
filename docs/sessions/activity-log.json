@@ -1284,6 +1284,13 @@
       "what": "step 'tryout': its files",
       "reason": "The operator's rough edge (the notehead panel and the durations) is a redesign, planned as sessions 74-77 before the release in session-plan.md, as the step's ask directs for a large one; no source file changes here.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 74,
+      "dateTime": "2026-11-17T03:06:41.031000-05:00",
+      "task": "Design how noteheads show duration (session 73, rough edge 1), as a design only, for the operator's approval. A new document, docs/planning/notehead-duration-design.md, as small as the requirements allow, lays out the operator's model of 2026-11-16: A, conventional noteheads (the conventional crotchet, minim, semibreve and breve, only the colour varying by pitch, the height set by the designer); B, a custom notehead whose shape, colour and fill vary by pitch, duration shown either by i, hollows (crotchets always solid; a minim one hollow head with a stem, a semibreve one hollow head without, a breve a double notehead or two tied semibreves, as the designer chooses) or ii, repeated heads (today's repeat mode). It says how the Noteheads step opens with the choice of design and, for B, the way duration shows; what the notehead panel offers under each (no Fill under A and B.i; the colour alone and the height under A); what becomes of the duration buttons, the Shape or Repeat choice and the Hollow minims tick above the canvas; where the conventional noteheads come from (the operator draws them in SVG if the app needs them); how the choice is stored and exported, through durations.representationMode and ordinary rules where they suffice; and how a saved notation that fits none of the three opens, as \"your own noteheads\" in the way the key signature's starting points show \"your own symbols\". Mock-ups drawn with the real cnb/src modules show the step, the panel under each design, the two breves of B.i and a gallery file that fits none. A brief for the engine session, docs/planning/, specifies B.i's breve in shape mode, a double notehead or two tied semibreves, its setting and the figures the engine is to measure, as session 72's brief did, for an engine minor release before session 76. The operator looks at the mock-ups and approves the design, and the approval and their decisions are recorded, with sessions 75 and 76 amended in the session plan where the design changes what they build.",
+      "releasable": false
     }
   ]
 }

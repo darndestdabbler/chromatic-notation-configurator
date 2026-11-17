@@ -2491,15 +2491,38 @@ very few options:
    72's brief did. The engine session runs after this one, released as an
    engine minor version.
 
+*(Done in session 74, 2026-11-17: the design,
+[`docs/planning/notehead-duration-design.md`](../planning/notehead-duration-design.md),
+approved by the operator that day after looking at the mock-ups,
+[`docs/planning/notehead-duration-mockups/`](../planning/notehead-duration-mockups/);
+the engine's brief,
+[`docs/planning/shape-mode-breve-brief.md`](../planning/shape-mode-breve-brief.md),
+for `cnb:breve-style` (`'single`, `'double`, `'tied`) in engine 1.10.0. The
+operator's decisions (design §10): the conventional noteheads are the
+operator's SVGs drawn from Emmentaler (`crotchet-and-minim.svg`,
+`semibreve.svg`, `breve-with-bars-01.svg`, single bars), built in; two tied
+semibreves first; Show one duration, crotchets first; New starts from
+conventional noteheads; the gallery files stay as their own noteheads.
+Labelled breve bars in the toolkit are a follow-up, under "After 1.1.0".)*
+
 ### Session 75: The notehead design, built
 
 **Why.** Session 74's design, approved.
 
 1. Register.
-2. The Noteheads step, the notehead panel and the canvas's controls as the
-   design says, with each module's tests, the UAT and the tutorial (its step
-   5, its downloads and shots) following.
-3. Every editor that keeps a copy of the notehead rules is re-seeded after
+2. The operator's three conventional SVGs checked in under
+   `cnb/assets/shapes/conventional/` and built in
+   (`cnb/ui/builtin-shapes.js`), the breve's head with its labelled bars
+   joined to it; `designOf` and `withDesign`
+   (`cnb/ui/notehead-inference.js`); `durations.breveStyle` validated, and
+   drawn as one head until session 76 (design §5, §6, §8).
+3. The Noteheads step's two cards and their choices, the notehead panel's
+   rows by design, the Show choice; the Shape or Repeat choice and the
+   Hollow minims tick removed; New and the first open starting from
+   conventional noteheads; with each module's tests, the UAT and the
+   tutorial (its step 5, its notation made B.i, its downloads and shots)
+   following.
+4. Every editor that keeps a copy of the notehead rules is re-seeded after
    any change to them (session 73, rough edge 2: the pitch-axis editor is
    not re-seeded after the Hollow minims tick).
 
@@ -2510,9 +2533,12 @@ out.
 
 1. Register.
 2. The preview draws B.i's breve as a double notehead or two tied
-   semibreves, as chosen, and the export writes the engine's setting (LY
-   spec amended). An engine round trip holds every card's breve to the
-   preview within 0.001 staff spaces.
+   semibreves, as `durations.breveStyle` says, and the export writes
+   `cnb:breve-style` (with `cnb:multinote-overlap` for the double notehead)
+   in shape mode (LY spec 1.3.24, §4.1d). An engine round trip, against
+   engine 1.10.0, holds every card's breve, its heads, width, height and
+   tie, to the preview within 0.001 staff spaces, on the default notehead
+   and the tutorial's diamond, at overlaps 1/3 and 0.25.
 
 ### Session 77: The UI is stable, a third try
 
@@ -2586,6 +2612,13 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
   the key-signature octave per tonic under a pitch axis, the exporter
   writes the new settings and LY spec §5.4d and §5.5 drop their "known
   divergence" notes. Needs that engine release first.
+- **Labelled breve bars in the toolkit** (operator, 2026-11-17; session 74,
+  `docs/planning/notehead-duration-design.md` §11): the music-glyph-toolkit
+  sizes a glyph by its whole height, so a breve's bars take the semitone
+  height and its head comes out too small. The toolkit labels the bars and
+  reads the height from the head, and the importer
+  (`cnb/ui/svg-importer.js`) joins them. The built-in breve uses the
+  operator's workaround meanwhile.
 - **Off-key marking** (architecture §11 question 4; sets 005, 010): draw
   the mark in the preview and export it. The engine already takes it
   (`cnb:register-off-key-mark!`, the `off-key-mark` field). Key rows in
