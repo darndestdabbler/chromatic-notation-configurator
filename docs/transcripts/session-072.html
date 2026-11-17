@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 072 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 072 transcript</h1>
+<p class="stamp">Rendered 2026-11-15T19:17:01.493Z by dabbler-ai-router 3.34.0 at e5fe55ea075a8d6d55bf2357e2f02d40a978ce8f.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-15T08:35:49.248-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 72: A repeated minim's stem on its notehead</h3>
+<p><strong>Why.</strong> In repeat mode a minim's stem is placed at the anchor's share of the whole group of heads, so with the tutorial's diamonds it stops in the notch between two heads, in the air (session 69, rough edge 1). The engine places the stem the same way (<code>cnb:stem-attachment</code> in its <code>cnb/stems.ly</code>), so it changes too, in engine session 43 (released as engine 1.9.0, engine session 44), after this session decides the rule; session 73 runs the engine round trip once that release is out, as sessions 58 and 59 did.</p>
+<ol><li>Register.</li><li>The rule, from the operator's study of stem placements: a repeated minim's stem attaches to one head of its group as a single head's stem does, the last head when the stem is up and the first when it is down. Where a centred stem goes (the same rule, or a side chosen once) is decided with mock-ups, the tutorial's diamonds, Kite 4-369 and the default notehead among them, before it is built.</li><li><code>CNBStem.geometry</code> draws the rule in the preview, and the export writes what the engine needs to engrave it: the setting engine session 43 adds, in repeat mode (LY spec §4.4c amended; the five export baselines change only where they are in repeat mode). The engine session's brief, the rule and the figures it is to measure, is written for it in <code>docs/planning/</code>.</li></ol>
+<p>*(Amended during session 72, 2026-11-15: engine session 43 ran first, from the operator's decision of 2026-11-14, and engine 1.9.0 is released with <code>cnb:multinote-stem-on-head</code>, a boolean. From the mock-up in <code>docs/planning/repeat-minim-stem-mockups/</code> (<code>shots/stems.png</code>) the operator confirmed that a centred stem follows the same rule, on the chosen head's centre, with no side chosen once, so this session's export writes <code>#(set! cnb:multinote-stem-on-head #t)</code> in repeat mode. They also chose that the stem attaches at the same place on a notehead however the minim is drawn, so the Kite 4-369 fixture's minim stem points, 0.73 semitones off centre for the old placement across the group, become its centred crotchet points (<code>kite-up.svg</code>, <code>kite-down.svg</code>, the fixture config and its export baseline).)*</p>
+<h2>Work Plan</h2>
+<p>Put a repeated minim's stem on one of its noteheads (session 69, rough edge 1). The rule is the operator's: in repeat mode a minim's stem attaches to one head of its group as a single head's stem does, the last head when the stem is up and the first when it is down. Engine session 43 has already run from the operator's decision of 2026-11-14 and engine 1.9.0 is released with the setting cnb:multinote-stem-on-head (a boolean, a centred stem following the same rule; docs/session-sets/043-repeat-minim-stem/configurator-handoff.md in the engine repository). Mock-ups come first: repeat-mode minims, stem up and down, on the default notehead, Kite 4-369 and the tutorial's diamonds, as drawn today (the anchor's share of the whole group) beside the rule (on the chosen head), Kite with its own minim anchors and with its crotchet anchors; the operator confirms where a centred stem goes and whether Kite's minim anchors change, and the picks are recorded. A brief in docs/planning/ records the rule, the setting's name and the figures for the engine session and session 73's round trip. Then CNBStem.geometry places the stem on the chosen head of the group (the card passes the repeated heads' offsets in place of the group's width scale), and the export writes #(set! cnb:multinote-stem-on-head #t) in repeat mode, so the Kite 4-369 and 45deg-369 export baselines gain that line and the default, sized and Twinline baselines stay byte-identical; the engine round trips already in the suite run against engine 1.9.0. The LY spec (1.3.23, section 4.4c), the architecture plan and the README follow.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/c4b2fd4795c71712a151990d9ec4f6202bc0edfe"><code>c4b2fd4795c71712a151990d9ec4f6202bc0edfe</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Mockups</td><td><p>Build mock-ups under docs/planning/repeat-minim-stem-mockups/, as docs/planning/repeat-overlap-mockups/ was (a page importing cnb/src modules and a screenshot script adapted from its screenshot.mjs): repeat-mode minims at the default overlap, stem up and stem down, on the default notehead, Kite 4-369 (its own minim anchors, and its crotchet anchors) and the tutorial's diamond (docs/playbook/tutorial/downloads/tutorial.json), each drawn as today (the anchor's share of the whole group) beside the rule (the stem on the last head when up, the first when down, as a single head's stem), with the crotchet beside them for reference. Screenshot into shots/stems.png.</p></td><td><span class="mono">docs/planning/repeat-minim-stem-mockups/index.html</span><br><span class="mono">docs/planning/repeat-minim-stem-mockups/mockup.js</span><br><span class="mono">docs/planning/repeat-minim-stem-mockups/screenshot.mjs</span><br><span class="mono">docs/planning/repeat-minim-stem-mockups/shots/stems.png</span></td><td><code>node -e const fs=require('fs');const d='docs/planning/repeat-minim-stem-mockups/';for(const f of ['index.html','mockup.js','screenshot.mjs','shots/stems.png']){if(!fs.existsSync(d+f)||fs.statSync(d+f).size===0){console.error('missing '+f);process.exit(1)}}const t=fs.readFileSync(d+'index.html','utf8')+fs.readFileSync(d+'mockup.js','utf8');const need=[/Kite/,/diamond/i,/minim/i,/crotchet/i,/default/i];const miss=need.filter(r=&gt;!r.test(t));if(miss.length){console.error('missing: '+miss.join(' '));process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Operator pick</td><td><p>Show the operator the mock-up and ask them to confirm where a centred stem goes (by the same rule, as engine 1.9.0 engraves it, or a side chosen once) and whether Kite 4-369's minim anchors are to become its crotchet anchors. Record the picks, with the date, under rough edge 1 of the session-69 try-out in docs/uat-status.md, and as an amendment note under session 72 in docs/sessions/session-plan.md naming the mock-ups and engine 1.9.0's setting. If a pick departs from what engine 1.9.0 engraves or changes stored anchors, amend this plan's later steps before starting them.</p></td><td><span class="mono">docs/uat-status.md</span><br><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node -e const fs=require('fs');const p=fs.readFileSync('docs/sessions/session-plan.md','utf8');const i=p.indexOf('### Session 72:');const s=p.slice(i,p.indexOf('### Session 73',i));const u=fs.readFileSync('docs/uat-status.md','utf8');if(i&lt;0||!/Amended during session 72/.test(s)||!/repeat-minim-stem-mockups/.test(s)||!/picked|chose|confirmed/i.test(s)||!/session 72/i.test(u)||!/picked|chose|confirmed/i.test(u)){console.error('the picks are not recorded');process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Brief</td><td><p>Write docs/planning/repeat-minim-stem-brief.md, the engine session's brief: the rule as picked, the setting's name and value (cnb:multinote-stem-on-head #t, written in repeat mode), the formula placing the head's attachment point on the chosen head of the group, and the figures to measure (each repeated minim's stem x and ends, up and down, at an overlap of 1/3, for the default notehead, Kite 4-369 and the tutorial's diamonds), saying that engine session 43 ran from the operator's decision before this brief was written and pointing to its handoff, whose figures session 73's round trip holds the preview to.</p></td><td><span class="mono">docs/planning/repeat-minim-stem-brief.md</span></td><td><code>node -e const fs=require('fs');const f='docs/planning/repeat-minim-stem-brief.md';if(!fs.existsSync(f)){console.error('no brief');process.exit(1)}const t=fs.readFileSync(f,'utf8');const need=[/cnb:multinote-stem-on-head/,/1\.9\.0/,/Kite/,/diamond/i,/session 73/i,/configurator-handoff/];const miss=need.filter(r=&gt;!r.test(t));if(miss.length){console.error('missing: '+miss.join(' '));process.exit(1)}</code></td><td>yes</td></tr>
+<tr><td>Stem</td><td><p>In cnb/src/cnb-stem.js, CNBStem.geometry takes the repeated heads' offsets (headOffsets, px from the group's centre, default [0]) in place of widthScale, and places the stem as a single head's stem on the last head when up and the first when down: centred on the anchor, x = centerX + offset + anchor.x × scaleX. In cnb/src/cnb-card.js the card passes repeat.offsets. In cnb/src/cnb-lilypond.js, Section B writes #(set! cnb:multinote-stem-on-head #t) after cnb:multinote-overlap when durations.representationMode is &quot;repeat&quot;, and not in shape mode. Update cnb/tests/cnb-stem-tests.js (up on the last head, down on the first, one head unchanged), cnb/tests/cnb-card-tests.js (the repeat-mode stem test), cnb/tests/cnb-lilypond-tests.js (written in repeat mode, absent in shape mode), regenerate the Kite 4-369 and 45deg-369 export baselines and re-capture the preview and key-signature pins that embed a repeat-mode minim's stem or export, with the reason in each fixture's description. The default, sized and Twinline export baselines stay byte-identical. The suite's engine round trips run against engine 1.9.0.</p></td><td><span class="mono">cnb/src/cnb-stem.js</span><br><span class="mono">cnb/tests/cnb-stem-tests.js</span><br><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/fixtures/kite-4-369-export-baseline.ly</span><br><span class="mono">cnb/fixtures/45deg-369-export-baseline.ly</span><br><span class="mono">cnb/fixtures/preview-baseline.json</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/fixtures/key-signature-styles-baseline.json</span><br><span class="mono">cnb/fixtures/kite-up.svg</span><br><span class="mono">cnb/fixtures/kite-down.svg</span><br><span class="mono">cnb/fixtures/kite-4-369-config.json</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span><br><span class="mono">cnb/uat/uat-kite-pipeline.mjs</span><br><span class="mono">cnb/ui/builtin-shapes.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Bring the documents up to date: the LY spec to 1.3.23 (section 4.4c amended for a repeated minim's stem on its chosen head and cnb:multinote-stem-on-head written in repeat mode, the section 1 compatibility note and summary table, Appendix A's engine settings, and a change-log row naming engine 1.9.0), the architecture plan (Module 8's anchor model and stem notes, section 4.8's repeat mode, and the Section B table in section 9), and the README's repeat-mode and stem lines.</p></td><td><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const r=fs.readFileSync('README.md','utf8');if(!/\*\*1\.3\.23\*\*/.test(s)||!/cnb:multinote-stem-on-head/.test(s)||!/1\.9\.0/.test(s)||!/cnb:multinote-stem-on-head/.test(a)||!/last head/i.test(r)){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No engine code, spec, golden or plan is changed from this repository: engine session 43 made the change and session 44 released 1.9.0.</li><li>The new engine round trip for these stems (every card's stem, crotchet and minim, up and down, in repeat mode, for the default, Kite 4-369 and the tutorial's diamonds) is session 73's; this session only keeps the round trips already in the suite passing.</li><li>No config setting or control for the rule: in repeat mode the preview always draws it and the export always writes it.</li><li>Crotchets, shape mode (a single head), the stem's length, thickness and far end, the repeated heads' overlap and the breve's tie are unchanged; semibreves and longer have no stem.</li><li>Shape anchors stored in fixtures, gallery files or saved configs are not changed unless the operator's pick asks for Kite's; if it does, this plan is amended before the stem step rather than built speculatively. The importer is unchanged.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[13:35:49]</span> <span class="muted">run-started</span> session=072 mode=pull</div>
+<div class="line"><span class="at">[13:35:49]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[13:38:37]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[13:38:37]</span> <span class="muted">plan-accepted</span> steps=[&quot;mockups&quot;,&quot;operator-pick&quot;,&quot;brief&quot;,&quot;stem&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[13:38:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[13:38:45]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=mockups</div>
+<div class="line"><span class="at">[13:40:15]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:40:20]</span> <span class="muted">check-passed</span> step=mockups argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const d='docs/planning/repeat-minim-stem-mockups/';for(const f of ['index.html','mockup.js','screenshot.mjs','shots/stems.png']){if(!fs.existsSync(d+f)||fs.statSync(d+f).size===0){console.error('missing '+f);process.exit(1)}}const t=fs.readFileSync(d+'index.html','utf8')+fs.readFileSync(d+'mockup.js','utf8');const need=[/Kite/,/diamond/i,/minim/i,/crotchet/i,/default/i];const miss=need.filter(r=&gt;!r.test(t));if(miss.length){console.error('missing: '+miss.join(' '));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[13:40:21]</span> <span class="muted">report-accepted</span> seq=2 step=mockups files=[&quot;docs/planning/repeat-minim-stem-mockups/index.html&quot;,&quot;docs/planning/repeat-minim-stem-mockups/mockup.js&quot;,&quot;docs/planning/repeat-minim-stem-mockups/screenshot.mjs&quot;,&quot;docs/planning/repeat-minim-stem-mockups/shots/stems.png&quot;] notes=Mock-ups of repeat-mode minims, stem up (C) and down (A), today vs the on-head rule, on the default notehead, Kite 4-369 (own and crotchet minim anchors) and the tutorial's diamonds; shot into shots/stems.png</div>
+<div class="line"><span class="at">[13:40:21]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=operator-pick</div>
+<div class="line"><span class="at">[18:29:45]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:29:51]</span> <span class="muted">check-passed</span> step=operator-pick argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const p=fs.readFileSync('docs/sessions/session-plan.md','utf8');const i=p.indexOf('### Session 72:');const s=p.slice(i,p.indexOf('### Session 73',i));const u=fs.readFileSync('docs/uat-status.md','utf8');if(i&lt;0||!/Amended during session 72/.test(s)||!/repeat-minim-stem-mockups/.test(s)||!/picked|chose|confirmed/i.test(s)||!/session 72/i.test(u)||!/picked|chose|confirmed/i.test(u)){console.error('the picks are not recorded');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[18:29:52]</span> <span class="muted">report-accepted</span> seq=3 step=operator-pick files=[&quot;docs/uat-status.md&quot;,&quot;docs/sessions/session-plan.md&quot;] notes=Operator confirmed the rule for centred stems too (as engine 1.9.0 engraves it) and chose that a stem attaches at the same place on a notehead however the minim is drawn, so Kite 4-369's minim anchors become its crotchet anchors; stem step amended to cover the Kite fixture</div>
+<div class="line"><span class="at">[18:29:52]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=brief</div>
+<div class="line"><span class="at">[18:30:47]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:30:58]</span> <span class="muted">check-passed</span> step=brief argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const f='docs/planning/repeat-minim-stem-brief.md';if(!fs.existsSync(f)){console.error('no brief');process.exit(1)}const t=fs.readFileSync(f,'utf8');const need=[/cnb:multinote-stem-on-head/,/1\\.9\\.0/,/Kite/,/diamond/i,/session 73/i,/configurator-handoff/];const miss=need.filter(r=&gt;!r.test(t));if(miss.length){console.error('missing: '+miss.join(' '));process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[18:31:01]</span> <span class="muted">report-accepted</span> seq=4 step=brief files=[&quot;docs/planning/repeat-minim-stem-brief.md&quot;] notes=Brief records the rule as confirmed, cnb:multinote-stem-on-head #t in repeat mode, the formula, and the engine-measured figures session 73 holds the preview to; notes the engine session ran first and points to its handoff</div>
+<div class="line"><span class="at">[18:31:01]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=stem</div>
+<div class="line"><span class="at">[18:58:36]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:02:25]</span> <span class="muted">check-passed</span> step=stem argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[19:02:26]</span> <span class="muted">report-accepted</span> seq=5 step=stem files=[&quot;cnb/src/cnb-stem.js&quot;,&quot;cnb/tests/cnb-stem-tests.js&quot;,&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/fixtures/kite-4-369-export-baseline.ly&quot;,&quot;cnb/fixtures/45deg-369-export-baseline.ly&quot;,&quot;cnb/fixtures/preview-baseline.json&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/fixtures/key-signature-styles-baseline.json&quot;,&quot;cnb/fixtures/kite-up.svg&quot;,&quot;cnb/fixtures/kite-down.svg&quot;,&quot;cnb/fixtures/kite-4-369-config.json&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;,&quot;cnb/uat/uat-kite-pipeline.mjs&quot;,&quot;cnb/ui/builtin-shapes.js&quot;] notes=CNBStem.geometry stands a repeated minim's stem on its last head (up) or first (down) via headOffsets from the card; repeat-mode export writes cnb:multinote-stem-on-head #t; Kite minim rects/anchors centred (SVGs, rebuilt fixture, built-in shapes); Kite and 45deg export baselines and repeat-mode preview/styles probes re-captured; suite 1475/0 against engine 1.9.0, Kite pipeline UAT 26/26</div>
+<div class="line"><span class="at">[19:02:26]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[19:05:24]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:05:29]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const r=fs.readFileSync('README.md','utf8');if(!/\\*\\*1\\.3\\.23\\*\\*/.test(s)||!/cnb:multinote-stem-on-head/.test(s)||!/1\\.9\\.0/.test(s)||!/cnb:multinote-stem-on-head/.test(a)||!/last head/i.test(r)){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[19:05:31]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;README.md&quot;] notes=LY spec 1.3.23 (section 4.4c's repeated minim stem on one head, cnb:multinote-stem-on-head in repeat mode, compatibility note, summary table, Appendix A, change log), architecture plan (4.8, Module 8 API and notes, open question 3, section 9 table), README repeat-mode and stem-rect lines</div>
+<div class="line"><span class="at">[19:05:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:05:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:05:39]</span> <span class="muted">job-started</span> name=verification pid=54492 log=.dabbler/runs/s72/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:06:59]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:06:59]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:06:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:07:02]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[19:07:03]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=26604 log=.dabbler/runs/s72/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:11:46]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:11:49]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[19:11:50]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=14756 log=.dabbler/runs/s72/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:15:50]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:15:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="muted">landed</span> commit=c4b2fd4795c71712a151990d9ec4f6202bc0edfe</div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:16:10]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:16:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:16:17]</span> <span class="muted">job-started</span> name=close pid=13008 log=.dabbler/runs/s72/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:17:01]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:17:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The mock-up is no longer reproducible as the comparison it claims to show.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>`docs/planning/repeat-minim-stem-mockups/mockup.js` still intercepts the removed `opts.widthScale` contract, but `cnb/src/cnb-card.js` now passes `headOffsets`. Consequently `widthScale` defaults to `1`, the wrapper returns `CNBStem.geometry` unchanged for both `&quot;today&quot;` and `&quot;rule&quot;`, and the two columns render the new rule identically.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>The same mock-up loads the now-migrated `cnb/fixtures/kite-4-369-config.json`, whose minim anchors are already centred, then clones it into `kiteCentred`. Its claimed “own minim anchors (0.73 semitones off centre)” and crotchet-anchor cases are therefore identical.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>A useful regression case: load the mock-up with the Kite configuration; assert that its “today” minim stem has a different `x1` from its “rule” minim stem, and that the first Kite case has `minimUp.x === -73` while the crotchet-anchor comparison has `minimUp.x === 0`. Today both position comparisons and both anchor values are equal.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>274s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>229s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

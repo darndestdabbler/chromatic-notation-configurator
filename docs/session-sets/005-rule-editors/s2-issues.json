@@ -1,0 +1,25 @@
+{
+  "session": 2,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "match.keys read-only and apply.offKeyMark had no UI; resolved surface could not show effective offKeyMark (spec step 2/3 coverage gap)",
+      "resolution": "fixed",
+      "detail": "Added key-match pills sourced from config.keys.definitions (union with the rule's current selection so loaded-but-undefined key names stay editable; a note explains when no keys are defined), an Off-key mark apply row (enable toggle emitting the explicit false, mode select No mark / Mark identifier with a text input), a key-context selector on the resolved strip, an effective-mark line in every strip cell, and mark badges in renderResolvedPreview. Unit tests +9 (buildRules offKeyMark validation, keys pills narrowing/union/no-defs note, strip key selector, mark toggle/edit/hold-on-empty, preview key+badge); UAT +6 checks (33/33)."
+    },
+    {
+      "id": 2,
+      "summary": "buildRules() accepted malformed hex color strings; 'bad color' test only exercised a non-string",
+      "resolution": "fixed",
+      "detail": "buildRules now enforces Module A's #RRGGBB rule (isValidHex) — apply.color must be null (palette) or match /^#[0-9A-Fa-f]{6}$/, anything else throws. offKeyMark similarly validated (false or non-empty string; true/empty/numbers throw). New unit tests cover named-color strings, short hex, non-hex digits, missing #, mixed-case acceptance, and null."
+    },
+    {
+      "id": 3,
+      "summary": "Change set includes files outside cnb/ (docs/session-sets/005-rule-editors/*)",
+      "resolution": "not-a-defect (adjudicated)",
+      "detail": "Those files are the orchestration-mandated session lifecycle records required by the tier: full workflow (start_session/close_session gates, the spec's own progress keys, and the per-session UAT record mandated by uatScope: per-session / uatStyle: dsl). The spec's 'Touches: none outside cnb/' constrains application code. The identical adjudication was accepted in set-004 session 2 and set-005 session 1 (both closed VERIFIED). The lifecycle records include the verification records themselves (s2-verification.md, s2-issues.json, disposition.json)."
+    }
+  ]
+}

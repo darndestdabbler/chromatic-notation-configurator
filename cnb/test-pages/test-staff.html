@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Staff Test — Modules 2 &amp; 3</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-right: 20px;
+      vertical-align: top;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+  </style>
+</head>
+<body>
+
+<h1>Module 2/3: Staff Line &amp; Staff — Render staff pattern</h1>
+<p>
+  Left: default 4‑8 configuration with range -4 to 28 — staff lines should coincide with the
+  blue marks on the debug grid (semitones 4, 8, 16, 20). Right: 3‑6‑9 pattern — lines at
+  semitones 3, 6, 9, 15, 18, 21. Every line is drawn as the engine draws it: black, solid,
+  0.1 staff spaces thick.
+</p>
+
+<div class="card">
+  <h2>4‑8 pattern (default)</h2>
+  <svg id="staff-48" width="500" style="display:block;"></svg>
+</div>
+
+<div class="card">
+  <h2>3‑6‑9 pattern</h2>
+  <svg id="staff-369" width="500" style="display:block;"></svg>
+</div>
+
+<script type="module">
+  import { CNBConfig } from "../src/cnb-config.js";
+  import { CNBGrid }   from "../src/cnb-grid.js";
+  import { CNBStaff }  from "../src/cnb-staff.js";
+
+  const MIN_SEMI = -4;
+  const MAX_SEMI = 28;
+  const WIDTH = 500;
+
+  function renderStaffCase(svgId, config) {
+    const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    const svg = document.getElementById(svgId);
+    svg.setAttribute("height", String(grid.svgHeight));
+
+    const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+    CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+    CNBStaff.render(svg, grid, config, WIDTH);
+    console.log(`${svgId} staffPositions:`, staffPositions);
+  }
+
+  // Case 1: default 4-8 system
+  renderStaffCase("staff-48", CNBConfig.createDefault());
+
+  // Case 2: 3-6-9 system
+  const cfg369 = CNBConfig.createDefault();
+  cfg369.staff.semitonePattern = [3, 6, 9];
+  cfg369.staff.midpoint = 12;
+  cfg369.staff.semitonesPerStaffSpace = 3;
+  renderStaffCase("staff-369", cfg369);
+</script>
+
+</body>
+</html>
