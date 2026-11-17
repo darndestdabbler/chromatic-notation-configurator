@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 065 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 065 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T21:07:06.335Z by dabbler-ai-router 3.32.4 at 4234d7abfce0fc8e0a57d961a811f7fe5e157aac.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T14:59:08.492-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 65: Key-signature steps 6 and 7</h3>
+<p><strong>Why.</strong> The key signature's kind of mark, and custom symbols on the 21 spelled notes (design §3.1–§3.3).</p>
+<ol><li>Register.</li><li>Step 6: Show a key signature, and the starting points Noteheads, Accidentals and Custom marks over the 21 spelled notes; a card highlighted only when the signature is exactly that starting point.</li><li>Step 7, available for any other signature: the 21 spelled notes selected by click, Shift or Ctrl and keyboard, the Select row, and the look card on the selection with mixed fields; an imported symbol added to the shapes by name.</li><li><code>uat-key-signature.mjs</code> rewritten to the steps, building Clairnote SN's signature from its six symbols; undo after each starting point and import.</li></ol>
+<h2>Work Plan</h2>
+<p>Build key-signature steps 6 and 7 of the step-by-step design (§3.1–§3.3). CNBKeySignature gains spelledNotes(config), the 21 spelled notes C♭ to B♯ with each one's pitch near the staff's middle, whether it is on a line or ledger, and its mark resolved as the signature resolves a mark (the notehead's own at crotchet, then the all, natural/flat/sharp, line/space and spelled looks; not alternate), and renderMark, which draws one such mark with its ledgers and symbols and shares render()'s drawing, so every signature draws byte for byte as before. The step registry gains startingPoint(config) (&quot;noteheads&quot; when no look is set, &quot;traditional&quot; when the signature is exactly the Accidentals starting point, else null), and step 7 becomes available exactly when a signature is shown and it is neither, with the reason &quot;Choose Custom marks in step 6 to design your own symbols.&quot;. startFrom gains &quot;custom&quot;: the 21 spelled notes given the built-in parallelogram, the signs removed from the flats' and sharps' looks, and stacking, columns, the gold stem, the notes and the place kept. Step 6 shows Show a key signature and three cards (Noteheads, Accidentals, Custom marks), each asking first and undoable, the one the signature exactly is highlighted, else &quot;Your own symbols&quot;, over a magnified canvas of the 21 spelled notes (7 letters across, sharp, natural and flat rows, each mark drawn with its look on its pitch's line or space with its label beneath, the naturals at 30% opacity when only the altered notes are drawn); Custom marks adds the parallelogram to the shapes. Step 7 draws the same canvas, selectable by click, Shift+click or Ctrl+click and by keyboard, with a Select row (All, Naturals, Flats, Sharps, On a line or ledger, In a space), and the look card applied to every selected note's looks.spelled entry, a field the selection disagrees on shown as mixed; an imported symbol is added to the shapes by name, left alone when that name already holds the same shape and refused, named, when it holds another. uat-key-signature.mjs is rewritten to the steps, building Clairnote SN's signature in step 7 from its six symbols (solid and hollow dots, plain, tail up, tail down) to the gallery file's spelled looks, selecting by pointer and keyboard, with undo after each starting point and each import; the other drivers and the README and architecture plan follow.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/28c7c0227188ec7fd89a1c59af7dc709a53d5284"><code>28c7c0227188ec7fd89a1c59af7dc709a53d5284</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Spelled notes</td><td><p>In cnb/src/cnb-key-signature.js add CNBKeySignature.spelledNotes(config): the 21 spelled notes in letter order C to B, each flat, natural and sharp, as { name, letter, alteration, pc, semi, line, mark }, semi the note in the octave from the C nearest below the staff's middle, line whether that pitch is on a staff line or one of its ledgers (as the line and space looks decide it), and mark resolved as marks() resolves one (the notehead's own at crotchet with no key, then looks.all, the alteration's look, line or space, and looks.spelled[name]; not alternate). Add CNBKeySignature.renderMark(svgParent, gridContext, config, { semi, mark }, x), drawing that mark's ledgers (for a head) and its symbols at x on its semitone, and have render() draw its symbols through the same code so every signature draws byte for byte as before. Tests in cnb/tests/cnb-key-signature-tests.js: the 21 names and order, the semis and line flags on the default and Clairnote SN configs, each layer's place in a spelled note's look, the default config's marks as its noteheads, and renderMark drawing a head with its ledger, a sign and an added symbol.</p></td><td><span class="mono">cnb/src/cnb-key-signature.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Starting points</td><td><p>In cnb/ui/steps.js export startingPoint(config): &quot;noteheads&quot; when the signature sets no look (every look and alternate empty), &quot;traditional&quot; when its notes, stacking, looks and alternate are exactly the Accidentals starting point's, else null; make step 7 (ks-custom-symbols) available exactly when a signature is shown and startingPoint is null, its reason &quot;Choose Custom marks in step 6 to design your own symbols.&quot;, and update the registry's comment. In cnb/ui/key-signature-editor.js give startFrom a &quot;custom&quot; starting point: looks.spelled set to the parallelogram for each of the 21 spelled notes, the sign removed from the flats' and sharps' looks, and everything else (notes, stacking, heights, columns, the gold stem, the place, the signs' size, the column gap, Show) kept. Tests: cnb/tests/cnb-steps-tests.js (startingPoint for each starting point, a file with looks of its own and each gallery file loaded through CNBConfigIO, step 7's availability and reason for each, next and back from step 6 under each starting point); cnb/tests/cnb-key-signature-editor-tests.js (each starting point and what it keeps, startingPoint of each startFrom result).</p></td><td><span class="mono">cnb/ui/steps.js</span><br><span class="mono">cnb/tests/cnb-steps-tests.js</span><br><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Step 6</td><td><p>Redraw the editor's symbol-type part (step 6): Show a key signature (as now, turning keys on), then three cards, Noteheads, Accidentals and Custom marks, each with a line saying what it starts from; a click asks first and replaces the signature through startFrom (Custom marks also adding the built-in parallelogram to the shapes, reported with the keys), so one change is one step of undo; the card the signature exactly is (startingPoint) highlighted, else a line saying &quot;Your own symbols&quot;; and beneath them the canvas of the 21 spelled notes at 24 px a semitone: the 7 letters across, rows for sharp, natural and flat, each note in a cell drawing a strip of the staff around its pitch with renderMark and its name beneath, the naturals at 30% opacity when the signature draws only the altered notes. Style it in cnb/ui/app.css. Tests in cnb/tests/cnb-key-signature-editor-tests.js: the three cards and the highlighted one for the default, each starting point and Clairnote SN, a cancelled question changing nothing, Custom marks reporting the parallelogram shape, the 21 cells with their names, and the dimmed naturals.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Step 7</td><td><p>Redraw the editor's custom-symbols part (step 7): a Select row (All, Naturals, Flats, Sharps, On a line or ledger, In a space) that selects those spelled notes in one click; the 21 spelled notes canvas, each cell a button that a click selects alone and Shift+click or Ctrl+click adds or removes, and Enter or Space (with Shift or Ctrl to add) selects from the keyboard, the selection outlined and kept in the editor's view across re-mounts; and the look card applied to every selected note's looks.spelled entry (symbol, fill, colour, size, offset and added symbols, each &quot;as beneath&quot; clearing the field), a field the selected notes disagree on shown as mixed (no button on, a number field's placeholder &quot;mixed&quot;), with a prompt when nothing is selected. An imported symbol is given to the selection and added to the shapes by name: a name already holding the same shape (its paths and size; the reference point and ledgers the panel sets aside) is used as it is, one holding another shape is refused with a message naming it and nothing changes. Style it in cnb/ui/app.css. Tests in cnb/tests/cnb-key-signature-editor-tests.js: each Select choice's notes, click, Shift and Ctrl selection and the keyboard, a write reaching every selected note, mixed fields for each kind of field, added symbols across a selection, an import added by name, the same import reused, a clashing import refused and named.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Drivers</td><td><p>Rewrite cnb/uat/uat-key-signature.mjs to the steps: step 6's three cards (the highlighted one, the question accepted and cancelled, Undo after each starting point putting the signature back), the 21 spelled notes canvas with dimmed naturals under Accidentals, step 7 greyed for a starting point and available after Custom marks or for a file with looks of its own; then, from Clairnote SN with its spelled looks and tails removed, Custom marks and step 7 building its signature from its six symbols (the dot by Select All, solid on a line and hollow in a space by the Select row, the tails imported from clairnote-symbols as added symbols on the flats and the sharps, Undo after each import), selecting by pointer, Shift+click, Ctrl+click and the keyboard, until its looks.spelled and its mark table match the gallery file's; mixed fields shown for a mixed selection; a clashing import refused. Keep the driver's checks of steps 8 and 9 and of the rest working, and update cnb/uat/uat-app-layout.mjs and cnb/uat/app-page.mjs where step 7's availability or reason changed. Run npm run uat before reporting.</p></td><td><span class="mono">cnb/uat/uat-key-signature.mjs</span><br><span class="mono">cnb/uat/uat-app-layout.mjs</span><br><span class="mono">cnb/uat/app-page.mjs</span><br><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span></td><td><code>node --check cnb/uat/uat-key-signature.mjs</code><br><code>node --check cnb/uat/uat-app-layout.mjs</code><br><code>node --check cnb/uat/app-page.mjs</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Update README.md's steps 6 and 7 (the three cards, the 21 spelled notes, step 7's availability, Select row, selection and mixed look card, imports added by name) and docs/CNB-ARCHITECTURE-PLAN-v2.md (Module 22's spelledNotes and renderMark; Module 23's symbol-type and custom-symbols parts, startFrom's custom starting point; Module 19's step 7 availability through startingPoint).</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Custom marks/.test(r)||!/mixed/.test(r)||!/spelledNotes/.test(a)||!/startingPoint/.test(a)){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the config schema, the export or the LY spec, and no engine change: no field records the starting point chosen, and the five export baselines and every gallery file's export stay byte for byte as they are.</li><li>Step 8's designer controls and the column gap with its drag, and step 9's every key and mode, are session 66; step 8's canvas and step 9 keep what session 63 gave them.</li><li>The stepped UI does not edit the all, natural, flat, sharp, line or space layer looks (Custom marks only removes the flats' and sharps' signs); the whole panel drawn without parts, which the unit tests use, keeps its layer editing unchanged.</li><li>No arrow-key navigation or drag on the 21 spelled notes canvas: it is selected by click, Shift or Ctrl and by Tab with Enter or Space.</li><li>The walk-through, the tutorial and their registry tests are sessions 67 and 68.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:59:08]</span> <span class="muted">run-started</span> session=065 mode=pull</div>
+<div class="line"><span class="at">[19:59:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[20:03:53]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[20:03:53]</span> <span class="muted">plan-accepted</span> steps=[&quot;spelled-notes&quot;,&quot;starting-points&quot;,&quot;step-6&quot;,&quot;step-7&quot;,&quot;drivers&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[20:03:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[20:03:54]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=spelled-notes</div>
+<div class="line"><span class="at">[20:08:30]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:10:54]</span> <span class="muted">check-passed</span> step=spelled-notes argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:10:55]</span> <span class="muted">report-accepted</span> seq=2 step=spelled-notes files=[&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;] notes=CNBKeySignature.spelledNotes and renderMark added; render draws its symbols through the shared drawSymbols, baselines unchanged</div>
+<div class="line"><span class="at">[20:10:55]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=starting-points</div>
+<div class="line"><span class="at">[20:15:30]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:17:52]</span> <span class="muted">check-passed</span> step=starting-points argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:17:53]</span> <span class="muted">report-accepted</span> seq=3 step=starting-points files=[&quot;cnb/ui/steps.js&quot;,&quot;cnb/tests/cnb-steps-tests.js&quot;,&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;] notes=CNBStepNav.startingPoint; step 7 available for a signature of its own symbols; startFrom custom writes 21 parallelograms and drops the signs</div>
+<div class="line"><span class="at">[20:17:53]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=step-6</div>
+<div class="line"><span class="at">[20:22:36]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:24:55]</span> <span class="muted">check-failed</span> step=step-6 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:24:55]</span> <span class="muted">report-rejected</span> seq=4 step=step-6 rejection=1 reasons=[&quot;[check-failed] check failed: node cnb/tests/run-tests.js -&gt; exit 1\nce-warnings ...` to show where the warning was created)\n  ✓ gallery (engine): every fixture's noteheads engrave at their preview size (±5%)\n\n──────────────────────────────────────────────────\nResults: 1432 passed, 1 failed\n\nFailed tests:\n  [cnb-lilypond-tests] hostile (engine): LilyPond never prints a payload from an accepted export\n    INJECTED-FILE-SUFFIX: the export must compile (so the payload was really read): Command failed: lilypond -dno-print-pages -I D:\\Projects\\lilypond-chromatic-notation-base -o C:\\Users\\denmi\\AppData\\Local\\Temp\\dabbler-check-vVPurF\\cnb-hostile-6D9LFb\\4\\out score.ly\nA check that no longer describes its step is amended, not fought: dabbler session plan amend --step &lt;id&gt; --checks-file &lt;path&gt; --reason \&quot;&lt;why&gt;\&quot;. A step that cannot be done is reported --status blocked, with the reason in --notes.&quot;]</div>
+<div class="line"><span class="at">[20:24:55]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection step=step-6 reasons=1</div>
+<div class="line"><span class="at">[20:25:31]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:27:42]</span> <span class="muted">check-passed</span> step=step-6 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:27:42]</span> <span class="muted">report-accepted</span> seq=5 step=step-6 files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/ui/app.css&quot;] notes=Step 6 cards and 21 spelled notes canvas; the refused run's one failure was a transient LilyPond compile in the parallel hostile engine test (passes on 3 reruns, untouched by this step)</div>
+<div class="line"><span class="at">[20:27:42]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=step-7</div>
+<div class="line"><span class="at">[20:35:35]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:37:58]</span> <span class="muted">check-passed</span> step=step-7 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:37:59]</span> <span class="muted">report-accepted</span> seq=6 step=step-7 files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/ui/app.css&quot;] notes=Step 7: Select row, the 21 notes selected by click, Shift/Ctrl and Enter/Space, the look card on every selected spelled look with mixed fields, imports added by name (same reused, clash refused and named)</div>
+<div class="line"><span class="at">[20:37:59]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=drivers</div>
+<div class="line"><span class="at">[20:49:17]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:49:23]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[20:49:23]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[20:49:23]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/app-page.mjs&quot;]</div>
+<div class="line"><span class="at">[20:49:23]</span> <span class="muted">report-accepted</span> seq=7 step=drivers files=[&quot;cnb/uat/uat-key-signature.mjs&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;,&quot;cnb/uat/app-page.mjs&quot;,&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;] notes=uat-key-signature rewritten to the steps (cards, undo, Accidentals canvas, step 7 looks, step 8 drags, Clairnote SN built from six symbols by keyboard and pointer, spelled looks and mark table equal the file's, mixed, clash refused); app-layout step 7 reason; a start card no longer pins a layer. npm run uat: 18 of 18 drivers</div>
+<div class="line"><span class="at">[20:49:23]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=docs</div>
+<div class="line"><span class="at">[20:50:17]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:50:20]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Custom marks/.test(r)||!/mixed/.test(r)||!/spelledNotes/.test(a)||!/startingPoint/.test(a)){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[20:50:21]</span> <span class="muted">report-accepted</span> seq=8 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=README steps 6-8 and the greyed-step sentence; architecture plan Module 19 (startingPoint), 22 (spelledNotes, renderMark), 23 (symbol-type and custom-symbols parts, startFrom custom)</div>
+<div class="line"><span class="at">[20:50:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:50:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:50:23]</span> <span class="muted">job-started</span> name=verification pid=54228 log=.dabbler/runs/s65/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:51:55]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s65/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:51:55]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[20:51:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[20:51:55]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[20:52:14]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[20:52:14]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[20:52:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[20:52:14]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[20:53:17]</span> <span class="muted">run-resumed</span> session=065 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=spelled-notes</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=starting-points</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=step-6</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=step-7</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;] owner=drivers</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;] owner=drivers</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/app-page.mjs&quot;] owner=drivers</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Custom marks/.test(r)||!/mixed/.test(r)||!/spelledNotes/.test(a)||!/startingPoint/.test(a)){console.error('documents not updated');process.exit(1)}&quot;] owner=docs</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="muted">report-accepted</span> seq=10 step=fix-round-1 files=[&quot;cnb/uat/uat-key-signature.mjs&quot;] notes=Undo/Redo with whole-config equality after the Noteheads starting point and through the flats' successful import (four steps back to the config before it); uat-key-signature 120/120</div>
+<div class="line"><span class="at">[21:02:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[21:02:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[21:02:18]</span> <span class="muted">job-started</span> name=verification pid=45496 log=.dabbler/runs/s65/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:02:40]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s65/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:02:40]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[21:02:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[21:02:40]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[21:02:41]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=54760 log=.dabbler/runs/s65/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[21:05:03]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s65/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[21:05:03]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[21:05:04]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=69572 log=.dabbler/runs/s65/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[21:06:42]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s65/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[21:06:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[21:06:50]</span> <span class="muted">landed</span> commit=28c7c0227188ec7fd89a1c59af7dc709a53d5284</div>
+<div class="line"><span class="at">[21:06:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[21:06:51]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[21:06:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[21:06:53]</span> <span class="muted">job-started</span> name=close pid=53972 log=.dabbler/runs/s65/driver/jobs/close.log</div>
+<div class="line"><span class="at">[21:07:06]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s65/driver/jobs/close.log</div>
+<div class="line"><span class="at">[21:07:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The promised UAT undo coverage omits the Noteheads starting point and at least one successful import.**</td><td>fixed — Undo/Redo with whole-config equality after the Noteheads starting point and through the flats' successful import (four steps back to the config before it); uat-key-signature 120/120 — (cnb/uat/uat-key-signature.mjs)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>139s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>95s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

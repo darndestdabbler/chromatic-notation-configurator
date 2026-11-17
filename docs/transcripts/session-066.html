@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 066 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 066 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T22:03:13.224Z by dabbler-ai-router 3.32.4 at 72f89e6f1819f402642bce0eef21ead1a13a2ece.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T16:25:32.885-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 66: Key-signature steps 8 and 9</h3>
+<p><strong>Why.</strong> The designer and the preview of every key (design §3.4).</p>
+<ol><li>Register.</li><li>Step 8: notes, stacks (the column gap by field and by dragging the second column, one step of undo), the gold stem and the place.</li><li>Step 9: the 7 modes' 15 keys each, with the touch check, a key opening in step 8.</li></ol>
+<h2>Work Plan</h2>
+<p>Build key-signature steps 8 and 9 of the step-by-step design (§3.4). Step 8, the designer, keeps its key picker and magnified canvas (with its mark drags as they are) and its Notes and Place rows, and its Stacks row gains the spacing between stacks, columnGap, as a number field in semitones (axis units under a pitch axis), negative to tighten, and as a grip on the canvas over the second column whose horizontal drag sets it, snapped to tenths and shown while dragging, the change reported once on release so one drag is one step of undo (a pure CNBKeySignatureEditor.dragGap(start, dx, px) beside dragOffset and dragSize); and every second stack's look (the alternate layer) as a look card under Stacks, which session 65 left for step 8. The gold stem (drawn or not, colour, thickness, shared) stays in Stacks as today. Step 9, the preview, draws every key and mode: a line above saying in how many of the 105 keys the marks touch (opening their list), then the 7 modes as rows, each named, with its 15 spellings, sharp keys then flat keys (keyOrder), as small signatures, the picked key highlighted and a key whose marks touch outlined with its count; a click on a key, or on one in the touch list, picks it on the staff and opens step 8 (the host's onKey in cnb/index.html). Unit tests in cnb/tests/cnb-key-signature-editor-tests.js, uat-key-signature.mjs extended (the gap by field and by drag, one step of undo; the alternate card; step 9's 105 keys and a key picked there opening in step 8), and the README and architecture plan updated.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/4e411655fc874ad91316cc0827e1e89a028817ed"><code>4e411655fc874ad91316cc0827e1e89a028817ed</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Step 8</td><td><p>In cnb/ui/key-signature-editor.js, add CNBKeySignatureEditor.dragGap(start, dx, px): the column gap after a horizontal drag of dx px at px a semitone, start + dx / px snapped to tenths. In the designer part (step 8): the Stacks row gains &quot;Space between stacks&quot;, a number field (step 0.1) writing keys.keySignature.columnGap in semitones, negative tightening, shown whatever the stacking; the canvas draws a grip over the second stack (when the picked key's signature has two or more columns), and a horizontal drag of it sets columnGap through dragGap, only the canvas redrawing while the pointer moves with the gap shown beside the grip, the change reported once on release (one step of undo); and under Stacks a look card for every second stack (the alternate layer: symbol, fill, colour, offset and added symbols, as the whole panel's card for that layer), without moving the canvas's own drags off the layer a click picks. Style the grip in cnb/ui/app.css. Tests in cnb/tests/cnb-key-signature-editor-tests.js: dragGap (positive, negative, snapping); the designer part's gap field writing columnGap and its value shown for a saved gap; the grip drawn for a two-stack key and not for a one-stack key; a pointer drag on the grip reporting one change with the snapped gap and none while moving; the alternate card present in the designer part and writing keySignature.alternate.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Step 9</td><td><p>In cnb/ui/key-signature-editor.js, redraw the preview part (step 9): the touch line above (&quot;No marks touch in any of the 105 keys.&quot; or &quot;Marks touch in N of the 105 keys&quot;, opening their list, as today), then a row for each of the 7 modes in CNBMusic.MODES order, headed by the mode's name, with its 15 spellings in keyOrder as small signatures, the picked key's button highlighted and a key whose marks touch outlined with its count, each button and touch-list entry calling onKey with that key; the touch check runs once per draw. In cnb/index.html the preview mount's onKey also opens step 8 (showSection(&quot;ks-designer&quot;)) after picking the key. Style the rows in cnb/ui/app.css. Tests in cnb/tests/cnb-key-signature-editor-tests.js: 7 rows of 15 keys each, named by mode, in keyOrder; the picked key highlighted; a touching key outlined with its count and the touch line's count (from a config whose marks touch); a click on a key in another mode and on a touch-list entry calling onKey with that key.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/ui/app.css</span><br><span class="mono">cnb/index.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Drivers</td><td><p>Extend cnb/uat/uat-key-signature.mjs: the PANEL check's counts follow the new parts (step 8's alternate card, step 9's 105 keys in 7 rows); in step 8, the gap set by the field (the canvas's second stack moving by the gap, checked against CNBKeySignature.marks) and by dragging the grip (snapped, the value shown while dragging, the config's columnGap), the drag one step of undo (Undo puts the gap back, Redo sets it again); the alternate card giving every second stack a colour, drawn on the staff preview; in step 9, a key of another mode clicked opening step 8 with that key picked on its key picker and the staff, and a touch-list entry doing the same. Keep the driver's other checks passing, and update cnb/uat/uat-app-layout.mjs only if a check there depends on the changed parts. Run node cnb/uat/uat-key-signature.mjs and npm run uat before reporting.</p></td><td><span class="mono">cnb/uat/uat-key-signature.mjs</span></td><td><code>node --check cnb/uat/uat-key-signature.mjs</code><br><code>node --check cnb/uat/uat-app-layout.mjs</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Update README.md's steps 8 and 9 (the space between stacks by field and by dragging the second stack's grip, every second stack's look card, the gold stem; every key and mode in step 9, the touch line, a key opening in step 8) and docs/CNB-ARCHITECTURE-PLAN-v2.md (Module 23's designer and preview parts, dragGap).</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/[Ss]pace between stacks/.test(r)||!/dragGap/.test(a)||!/7 modes/.test(a)){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the config schema, CNBKeySignature.marks, the export or the LY spec, and no engine change: columnGap and alternate already exist (session 64), and the five export baselines and every gallery file's export stay byte for byte as they are.</li><li>Step 8's canvas keeps its mark and corner-handle drags as sessions 56 and 65 left them; the stepped UI gains no Edit row of layers, and the only layer look step 8 edits by card is every second stack's.</li><li>Step 9 is a view: it edits nothing, and gains no filtering, sorting or zoom of the 105 keys.</li><li>The whole panel drawn without parts, which the unit tests use, keeps its layout; only the designer and preview parts change.</li><li>The walk-through and the tutorial are sessions 67 and 68.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[21:25:32]</span> <span class="muted">run-started</span> session=066 mode=pull</div>
+<div class="line"><span class="at">[21:25:32]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[21:28:16]</span> <span class="muted">run-resumed</span> session=066 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[21:28:16]</span> <span class="muted">plan-accepted</span> steps=[&quot;step-8&quot;,&quot;step-9&quot;,&quot;drivers&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[21:28:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[21:28:19]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=step-8</div>
+<div class="line"><span class="at">[21:43:19]</span> <span class="muted">run-resumed</span> session=066 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:45:34]</span> <span class="muted">check-passed</span> step=step-8 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[21:45:34]</span> <span class="muted">report-accepted</span> seq=2 step=step-8 files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/ui/app.css&quot;] notes=Step 8: dragGap; Space between stacks field; canvas grip over the second stack setting columnGap, one change on release; every second stack's look card with its own picked symbol (view.alternateCard)</div>
+<div class="line"><span class="at">[21:45:34]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=step-9</div>
+<div class="line"><span class="at">[21:49:44]</span> <span class="muted">run-resumed</span> session=066 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:52:01]</span> <span class="muted">check-passed</span> step=step-9 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[21:52:02]</span> <span class="muted">report-accepted</span> seq=3 step=step-9 files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/ui/app.css&quot;,&quot;cnb/index.html&quot;] notes=Step 9: touch line then the 7 modes as named rows of 15 keys (shared keyButton/keyStrip/touchLine helpers, the whole panel's other keys unchanged); the host's preview onKey opens step 8</div>
+<div class="line"><span class="at">[21:52:02]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=drivers</div>
+<div class="line"><span class="at">[21:57:03]</span> <span class="muted">run-resumed</span> session=066 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:57:04]</span> <span class="muted">step-file-unchanged</span> step=drivers file=cnb/uat/uat-app-layout.mjs</div>
+<div class="line"><span class="at">[21:57:05]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[21:57:05]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[21:57:06]</span> <span class="muted">report-accepted</span> seq=4 step=drivers files=[&quot;cnb/uat/uat-key-signature.mjs&quot;] notes=uat-key-signature: panel counts for the new parts; gap by field and by grip drag (readout, undo/redo); every second stack's colour on the staff; step 9's 7 rows of 15, a dorian key and a touch-list key opening step 8. Driver 126/126; npm run uat 18/18; uat-app-layout needed no change</div>
+<div class="line"><span class="at">[21:57:06]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=docs</div>
+<div class="line"><span class="at">[21:57:45]</span> <span class="muted">run-resumed</span> session=066 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:57:48]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/[Ss]pace between stacks/.test(r)||!/dragGap/.test(a)||!/7 modes/.test(a)){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[21:57:48]</span> <span class="muted">report-accepted</span> seq=5 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=README steps 8 and 9 and Module 23's designer and preview parts (dragGap, alternateCard, the 7 modes' rows, a key opening step 8)</div>
+<div class="line"><span class="at">[21:57:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[21:57:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[21:57:50]</span> <span class="muted">job-started</span> name=verification pid=37208 log=.dabbler/runs/s66/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:58:34]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s66/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:58:34]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[21:58:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[21:58:35]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[21:58:36]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=11652 log=.dabbler/runs/s66/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[22:01:04]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s66/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[22:01:05]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[22:01:06]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=18488 log=.dabbler/runs/s66/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:02:49]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s66/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:02:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:02:57]</span> <span class="muted">landed</span> commit=4e411655fc874ad91316cc0827e1e89a028817ed</div>
+<div class="line"><span class="at">[22:02:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:02:57]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:02:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:02:58]</span> <span class="muted">job-started</span> name=close pid=68552 log=.dabbler/runs/s66/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:03:13]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s66/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:03:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>146s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>101s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

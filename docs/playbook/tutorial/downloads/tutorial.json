@@ -1,0 +1,300 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2.724,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "diamond": {
+      "displayName": "Diamond",
+      "svgPath": "M 0.0 -100.0 L 150.0 0.0 L 0.0 100.0 L -150.0 0.0 Z",
+      "svgHollowPath": "M 0.0 -75.0 L 75.0 0.0 L 0.0 75.0 L -75.0 0.0 Z",
+      "naturalHeight": 200,
+      "naturalWidth": 300,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -92.5926
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 92.5926
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -92.5926
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 92.5926
+        }
+      },
+      "lilypondPath": "'(\n    (moveto 0 1)\n    (lineto 1.5 0)\n    (lineto 0 -1)\n    (lineto -1.5 0)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto 0 0.75)\n    (lineto 0.75 0)\n    (lineto 0 -0.75)\n    (lineto -0.75 0)\n    (closepath))",
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": 0.9259
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": -0.9259
+        },
+        "minimUp": {
+          "x": 0,
+          "y": 0.9259
+        },
+        "minimDown": {
+          "x": 0,
+          "y": -0.9259
+        }
+      }
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      3,
+      5,
+      7,
+      9
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 2
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 1,
+        "triggerPCs": [],
+        "triggerMode": "proximity"
+      },
+      {
+        "semiWithinOctave": 11,
+        "triggerPCs": [],
+        "triggerMode": "proximity"
+      }
+    ],
+    "proximityRule": true
+  },
+  "noteheadRules": [
+    {
+      "name": "Default (diamond, solid)",
+      "priority": 0,
+      "match": {
+        "pitchClasses": "all",
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "diamond",
+        "hollow": false
+      }
+    },
+    {
+      "name": "Fire engine red on the accidentals",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "color": "#cc0000"
+      }
+    },
+    {
+      "name": "Hollow minims",
+      "priority": 2,
+      "match": {
+        "pitchClasses": "all",
+        "durations": [
+          "minim"
+        ],
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": true
+      }
+    }
+  ],
+  "display": {
+    "pxPerSemi": 16,
+    "label": {
+      "fontFamily": "Oswald",
+      "fontSize": 22,
+      "fontWeight": 400,
+      "color": "#555555",
+      "marginTop": 14,
+      "marginBottom": 14,
+      "padding": 6,
+      "sharpStyle": {
+        "fontSize": 0.75,
+        "raise": -0.15
+      }
+    },
+    "column": {
+      "paddingH": 16
+    },
+    "card": {
+      "background": "#FFFFFF",
+      "borderRadius": 6,
+      "shadow": "0 2px 12px rgba(0,0,0,0.12)"
+    },
+    "debugGrid": false
+  },
+  "durations": {
+    "definitions": [
+      {
+        "name": "crotchet",
+        "displayName": "Crotchet (Quarter)",
+        "lilypondDuration": 3,
+        "defaultShape": "crotchet-minim",
+        "defaultHollow": false,
+        "hasStem": true
+      },
+      {
+        "name": "minim",
+        "displayName": "Minim (Half)",
+        "lilypondDuration": 2,
+        "defaultShape": "crotchet-minim",
+        "defaultHollow": true,
+        "hasStem": true
+      },
+      {
+        "name": "semibreve",
+        "displayName": "Semibreve (Whole)",
+        "lilypondDuration": 1,
+        "defaultShape": "semibreve",
+        "defaultHollow": false,
+        "hasStem": false
+      },
+      {
+        "name": "breve",
+        "displayName": "Breve (Double Whole)",
+        "lilypondDuration": 0,
+        "defaultShape": "breve",
+        "defaultHollow": false,
+        "hasStem": false
+      }
+    ],
+    "representationMode": "shape",
+    "repeatOverlap": 0.3333333333333333
+  },
+  "keys": {
+    "enabled": true,
+    "definitions": [],
+    "offKeyMark": {},
+    "keySignature": {
+      "enabled": true,
+      "notes": "all",
+      "upperTonic": true,
+      "looks": {
+        "all": {},
+        "natural": {},
+        "flat": {},
+        "sharp": {},
+        "line": {},
+        "space": {},
+        "spelled": {}
+      },
+      "columnGap": 0,
+      "stacking": "parity-stacks",
+      "heights": "window",
+      "window": {
+        "sharp": 0,
+        "flat": 0
+      },
+      "alternate": {},
+      "columns": "right",
+      "placement": {
+        "rule": "scale-from-tonic",
+        "tonicOctave": null,
+        "position": "middle"
+      },
+      "separator": {
+        "enabled": true,
+        "color": "#ffd42a",
+        "thicknessPct": 160,
+        "extentSemis": 12,
+        "shareThickness": true
+      },
+      "signs": {
+        "heightSemis": null
+      }
+    }
+  },
+  "clef": {
+    "enabled": true,
+    "active": "c-clef",
+    "glyphs": {
+      "c-clef": {
+        "displayName": "C Clef",
+        "kind": "glyph",
+        "svgPath": "M 50.3804 0 L 28.9198 24.2006 L 28.6322 47.1471 L 16.8816 47.1471 C 16.9055 32.5313 22.8782 19.0367 32.5592 11.7258 L 30.0475 7.6458 C 18.0672 14.513 9.7666 29.1641 8.2344 46.1477 C 8.1739 46.4791 8.1157 46.8122 8.0591 47.1471 L 0 50.751 L 8.0499 54.7403 C 8.6237 66.9923 12.7511 78.4965 19.5903 86.9068 C 26.4294 95.3171 35.4651 99.9999 44.8545 100 C 54.0416 99.9998 62.8977 95.5162 69.6886 87.4273 C 70.5331 86.6232 71.1907 85.7853 71.6307 84.9368 C 72.725 83.4258 73.7434 81.8238 74.6794 80.1408 L 71.4302 74.8629 C 65.71 83.0653 57.6907 87.886 49.2042 88.2237 L 49.1578 14.3158 C 54.7031 18.3346 59.4839 20.753 63.4937 21.5745 L 72.1915 9.8136 L 70.9338 6.3634 C 63.4081 6.881 56.5577 4.7613 50.3804 0 Z M 45.4164 14.3158 L 45.3514 88.067 C 31.2753 86.3595 19.812 72.5541 17.3578 54.3538 L 39.7467 54.3507 L 39.7467 19.1458 Z",
+        "naturalHeight": 100,
+        "naturalWidth": 74.67940521240234,
+        "semitoneHeight": 8,
+        "viewBoxMinX": 0,
+        "viewBoxMinY": 0,
+        "lilypondPath": null,
+        "reference": {
+          "x": 0,
+          "y": 49.84
+        },
+        "anchorSemi": 12
+      }
+    },
+    "gutter": {
+      "paddingH": 12
+    }
+  },
+  "engine": {
+    "lilypondVersion": "2.24.2",
+    "falseHollow": false,
+    "defaultMagnify": "7/4",
+    "indent": 0,
+    "collisionThreshold": 2
+  },
+  "meta": {
+    "configName": "Tutorial 3-5-7-9",
+    "fileSuffix": "-Tutorial3579",
+    "notationLabel": "Tutorial 3-5-7-9",
+    "notationFootnote": "",
+    "author": "",
+    "description": "Two staff lines per octave at semitones 4 (E) and 8 (G♯)",
+    "created": "2026-11-14T07:49:49.103Z",
+    "modified": "2026-11-14T07:49:49.103Z"
+  }
+}

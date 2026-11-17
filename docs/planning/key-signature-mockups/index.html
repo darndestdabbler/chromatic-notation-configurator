@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key signature mock-ups</title>
+<style>
+  :root { --ink: #1d2433; --muted: #5b6475; --line: #dde1e8; --card: #ffffff; --bg: #f4f5f7; }
+  body { margin: 0; padding: 32px 40px 64px; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 36px 0 4px; }
+  p { margin: 0 0 12px; max-width: 920px; color: var(--muted); }
+  .legend { font-size: 13px; }
+  .cases { display: flex; flex-wrap: wrap; gap: 14px; }
+  figure.case { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px 8px; display: flex; flex-direction: column; align-items: center; }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 6px; text-align: center; max-width: 200px; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  code { font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Key signature mock-ups</h1>
+<p>Session 47, for review before the design (<code>key-signature-designer-design.md</code>) is
+approved. Each card is drawn with the Configurator's own staff, notehead and ledger code, and a
+prototype of the design's mark list. The dashed grey line is the staff's middle (middle C on
+these staves). Sharps and flats are drawn here in a serif font; the build would use LilyPond's
+own glyphs.</p>
+<p class="legend">A <b>line set</b> is a run of staff lines one staff space apart. The default
+4-8 staff has two: the bottom set (E and G♯ below middle C) and the top set (E and G♯ above).</p>
+
+<section data-cases='[
+  {"key":"C","place":"middle"},{"key":"C","place":"bottom"},{"key":"C","place":"top"},{"key":"C","place":"both"},
+  {"key":"G","place":"middle"},{"key":"G","place":"bottom"},{"key":"G","place":"top"},{"key":"G","place":"both"}]'>
+  <h2>1. Where it sits: the scale stack in C and G major</h2>
+  <p>Today's signature (middle), then on the bottom set, the top set, and both sets. On a set,
+  the signature's octave is centred on the set, and the gold stem runs over its own notes rather
+  than the whole staff. On both sets the root they share is drawn in each copy's own stack, the
+  octave of the lower copy and the tonic of the upper: with stacked sevenths that is a double
+  notehead.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-rule="1" data-cases='[
+  {"key":"G","place":"bottom","rule":"centred"},{"key":"G","place":"bottom","rule":"rising"},{"key":"G","place":"bottom","rule":"falling"},
+  {"key":"A","place":"bottom","rule":"centred"},{"key":"A","place":"bottom","rule":"rising"},{"key":"A","place":"bottom","rule":"falling"},
+  {"key":"E","place":"bottom","rule":"centred"},{"key":"E","place":"bottom","rule":"rising"},{"key":"E","place":"bottom","rule":"falling"}]'>
+  <h2>2. A tonic midway up the set</h2>
+  <p>An octave is three staff spaces taller than a set of two lines, so the signature reaches past
+  the set on one side or the other. Three ways to choose its octave, on the bottom set:
+  <b>centred</b> on the set (the reach is split, so it may go below); <b>rising</b>, the tonic at
+  or above a staff space below the set's lowest line (the signature starts in the set and
+  extends up); <b>falling</b>, the top note at or below a staff space above the set's highest
+  line (it ends in the set and extends down).</p>
+  <div class="cases"></div>
+</section>
+
+<section data-cases='[
+  {"key":"C","label":"<b>C major</b> · stacked sevenths"},{"key":"C","stacking":"parity","label":"<b>C major</b> · odd left, even right"},
+  {"key":"C","stacking":"parity-stacks","label":"<b>C major</b> · new stack at each parity change"},{"key":"C","stacking":"parity-zigzag","label":"<b>C major</b> · zigzag at each parity change"},
+  {"key":"A","mode":"minor","label":"<b>A minor</b> · stacked sevenths"},{"key":"A","mode":"minor","stacking":"parity","label":"<b>A minor</b> · odd left, even right"},
+  {"key":"A","mode":"minor","stacking":"parity-stacks","label":"<b>A minor</b> · new stack at each parity change"},{"key":"A","mode":"minor","stacking":"parity-zigzag","label":"<b>A minor</b> · zigzag at each parity change"},
+  {"key":"B♭","label":"<b>B♭ major</b> · stacked sevenths"},{"key":"B♭","stacking":"parity","label":"<b>B♭ major</b> · odd left, even right"},
+  {"key":"B♭","stacking":"parity-stacks","label":"<b>B♭ major</b> · new stack at each parity change"},{"key":"B♭","stacking":"parity-zigzag","label":"<b>B♭ major</b> · zigzag at each parity change"}]'>
+  <h2>3. Four ways to stack</h2>
+  <p>The operator's four rules for which stack a note joins, each in the middle of the staff with
+  the upper tonic: <b>stacked sevenths</b> (scale degrees 1 3 5 7 left, 2 4 6 8 right; today's);
+  <b>odd semitones left, even right</b>; <b>a new stack to the right at each change of
+  semitone parity</b>, the tonic's stack first (Clairnote's); and a <b>zigzag</b>, the tonic left
+  and the other stack at each change of parity. In these modes the parity changes exactly at the
+  half steps. The gold stem stands between neighbouring stacks wherever it is on; here it is on
+  for stacked sevenths only. <b>Note the overlap:</b> under the three parity rules a stack holds
+  notes a whole step (two semitones) apart, and these noteheads are 2.7 semitones tall, so they
+  run together; such stacks need marks under two semitones tall, as Clairnote's dots are
+  (sections 5 and 6). Stacked sevenths keep a third between neighbours in a stack.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-cases='[
+  {"key":"C","place":"both","label":"<b>C major</b> · stacked sevenths"},
+  {"key":"C","place":"both","stacking":"parity","label":"<b>C major</b> · odd left, even right"},
+  {"key":"C","place":"both","stacking":"parity-zigzag","label":"<b>C major</b> · zigzag"},
+  {"key":"C","place":"both","upperTonic":false,"label":"<b>C major</b> · stacked sevenths, no upper tonic"},
+  {"key":"B♭","place":"both"},
+  {"key":"A","mode":"minor","place":"both"}]'>
+  <h2>4. Both sets: the shared root</h2>
+  <p>Repeated on both sets, the root between the copies is drawn in each copy's own stack: the
+  lower copy's octave and the upper copy's tonic. With stacked sevenths those are side by side, a
+  double notehead; odd-left-even-right keeps every pitch on one side, so the root is drawn once.
+  Without the upper tonic the root is the upper copy's tonic alone.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-config="clairnote" data-cases='[
+  {"key":"C","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"left-in-sharp-keys","label":"<b>C major</b> · 3–4"},
+  {"key":"A","mode":"minor","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"left-in-sharp-keys","label":"<b>A minor</b> · 2–3–2"},
+  {"key":"D","mode":"phrygian","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"left-in-sharp-keys","label":"<b>D phrygian</b> · 1–4–2"},
+  {"key":"D","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"left-in-sharp-keys","label":"<b>D major</b> · sharp key, stacks go left"},
+  {"key":"D","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"right","label":"<b>D major</b> · stacks go right"},
+  {"key":"F","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"bottom","columns":"left-in-sharp-keys","label":"<b>F major</b> · flat key, stacks go right"},
+  {"key":"C","stacking":"parity-stacks","upperTonic":false,"scale":0.7,"place":"both","columns":"left-in-sharp-keys","label":"<b>C major</b> · both sets"}]'>
+  <h2>5. A new stack at each parity change, with noteheads (Clairnote-like)</h2>
+  <p>On the Clairnote DN gallery staff, whose noteheads are solid or hollow by whole-tone set, with
+  marks at 70% size, no upper tonic, on the bottom set (centred). A change of parity starts a new
+  stack, so the fill pattern reads as Clairnote's 3–4 for major and 2–3–2 for minor.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-config="clairnote" data-cases='[
+  {"key":"C","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>C major</b>"},
+  {"key":"G","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>G major</b> · stacks go left"},
+  {"key":"E","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>E major</b> · stacks go left"},
+  {"key":"F","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>F major</b>"},
+  {"key":"E♭","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>E♭ major</b>"},
+  {"key":"C","mode":"minor","stacking":"parity-stacks","upperTonic":false,"place":"bottom","columns":"left-in-sharp-keys","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>C minor</b>"},
+  {"key":"E","stacking":"degrees","stem":true,"place":"bottom","looks":{"natural":{"shape":"cn-dot"},"sharp":{"shape":"cn-sharp"},"flat":{"shape":"cn-flat"}},"label":"<b>E major</b> · the same symbols as stacked sevenths"}]'>
+  <h2>6. Custom symbols: Clairnote-like dots with tails</h2>
+  <p>Three symbols imported as shapes (a dot; a dot with a tail rising into it for a sharp; one
+  falling into it for a flat), given to the naturals, sharps and flats. Their fill still follows
+  the noteheads. Stacks go left in sharp keys so a tail does not run into the stack before it. At
+  this size the tails are hard to tell apart, as the operator found of Clairnote's.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-cases='[
+  {"key":"C","place":"both","label":"<b>C major</b> · all notes"},
+  {"key":"C","place":"both","notes":"half-steps","label":"<b>C major</b> · tonic and half steps"},
+  {"key":"E","place":"both","label":"<b>E major</b> · all notes"},
+  {"key":"E","place":"both","notes":"half-steps","label":"<b>E major</b> · tonic and half steps"},
+  {"key":"B♭","place":"both","stacking":"parity-zigzag","stem":true,"label":"<b>B♭ major</b> · zigzag, all notes"},
+  {"key":"B♭","place":"both","stacking":"parity-zigzag","stem":true,"notes":"half-steps","label":"<b>B♭ major</b> · zigzag, tonic and half steps"},
+  {"key":"A","mode":"minor","place":"both","stacking":"parity","stem":true,"notes":"half-steps","label":"<b>A minor</b> · odd/even, tonic and half steps"},
+  {"key":"G","place":"both","notes":"half-steps","stemColor":"#7a5cff","stemThickness":0.2,"label":"<b>G major</b> · tonic and half steps, a thin violet stem"}]'>
+  <h2>7. Repeated on both sets: all notes, or the tonic and the half steps</h2>
+  <p>Repeating the whole scale on both sets is busy; the tonic and the half steps alone carry the
+  key in fewer marks. The last card shows the gold stem's colour and thickness changed.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-cases='[
+  {"key":"C","stacking":"parity-stacks","alternate":{"hollow":true},"place":"bottom","label":"<b>C major</b> · every second stack hollow"},
+  {"key":"A","mode":"minor","stacking":"parity-stacks","alternate":{"hollow":true},"place":"bottom","label":"<b>A minor</b> · every second stack hollow"},
+  {"key":"C","notes":"half-steps","place":"bottom","label":"<b>C major</b> · tonic and half steps, two stacks"},
+  {"key":"C","notes":"half-steps","stacking":"parity-stacks","place":"bottom","label":"<b>C major</b> · tonic and half steps, a new stack at each parity change"},
+  {"key":"A","mode":"minor","notes":"half-steps","stacking":"parity-stacks","place":"bottom","label":"<b>A minor</b> · tonic and half steps"},
+  {"key":"G","notes":"half-steps","stacking":"parity-stacks","place":"both","label":"<b>G major</b> · tonic and half steps, both sets"}]'>
+  <h2>8. Every second stack, and only the tonic and the half steps</h2>
+  <p>On the default staff, whose noteheads are all solid except the sharps. "Every second stack
+  hollow" tells the stacks apart where the noteheads do not.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-cases='[
+  {"kind":"accidentals","key":"G","place":"bottom"},{"kind":"accidentals","key":"D","place":"bottom"},
+  {"kind":"accidentals","key":"A","place":"bottom"},{"kind":"accidentals","key":"F♯","place":"bottom"},
+  {"kind":"accidentals","key":"C♯","place":"bottom"},{"kind":"accidentals","key":"F","place":"bottom"},
+  {"kind":"accidentals","key":"B♭","place":"bottom"},{"kind":"accidentals","key":"E♭","place":"bottom"},
+  {"kind":"accidentals","key":"G♭","place":"bottom"},{"kind":"accidentals","key":"D","place":"both"},
+  {"kind":"accidentals","key":"E♭","place":"both"},{"kind":"accidentals","key":"D","place":"middle"}]'>
+  <h2>9. Traditional accidentals, at the pitch they make</h2>
+  <p>In the traditional order (F C G D A E B for sharps, the reverse for flats), each sign at the
+  semitone of the note it makes (F♯'s at F♯), in the octave the place gives the key's scale.
+  At LilyPond's size a sign is about 2.5 staff spaces tall, ten semitones on this staff, so
+  neighbouring signs overlap in height; they stay readable because each has its own column.</p>
+  <div class="cases"></div>
+</section>
+
+<section data-config="kite" data-cases='[
+  {"key":"C","place":"middle"},{"key":"C","place":"bottom"},{"key":"C","place":"top"},{"key":"C","place":"both"},
+  {"key":"G","place":"bottom"},{"kind":"accidentals","key":"G","place":"bottom"},{"kind":"accidentals","key":"B♭","place":"both"}]'>
+  <h2>10. Another staff: Kite 4-369</h2>
+  <p>Lines at 3, 6 and 9 semitones in each octave, three semitones per staff space: the sets are
+  three lines each, either side of middle C.</p>
+  <div class="cases"></div>
+</section>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>
