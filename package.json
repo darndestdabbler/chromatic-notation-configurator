@@ -1,0 +1,13 @@
+{
+  "name": "chromatic-notation-configurator",
+  "private": true,
+  "description": "Dev tooling only: the app itself has no runtime dependencies and no build step.",
+  "license": "CC0-1.0",
+  "scripts": {
+    "test": "node cnb/tests/run-tests.js",
+    "uat": "node cnb/uat/run-uat.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1"
+  }
+}

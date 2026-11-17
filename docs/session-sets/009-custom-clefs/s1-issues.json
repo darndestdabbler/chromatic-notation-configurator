@@ -1,0 +1,36 @@
+{
+  "sessionSet": "009-custom-clefs",
+  "session": 1,
+  "verificationRound": 1,
+  "verdict": "ISSUES_FOUND",
+  "date": "2026-07-06",
+  "issues": [
+    {
+      "id": "s1-i1",
+      "summary": "Spec step 6 'config-test additions' — clef schema/merge/validate coverage lived only in cnb-clef-tests.js, cnb-config-tests.js untouched",
+      "resolution": "Moved the 12 clef section tests (schema defaults, merge, and validation cases) into cnb-tests/cnb-config-tests.js where Module A behavior belongs; cnb-clef-tests.js keeps rendering/import/invariance coverage and points to the move in its header.",
+      "status": "resolved"
+    },
+    {
+      "id": "s1-i2",
+      "summary": "Clef validation not type-safe: truthy non-object clef.glyphs, null/primitive glyph defs, or malformed clef sections could make validate() throw",
+      "resolution": "validate() clef block now guards every access with an isPlainObject check: non-object clef sections are treated as absent; non-object clef.glyphs reports 'clef.glyphs must be an object map of clef definitions'; non-string active reports the no-glyph error; null/primitive definitions report 'Clef glyph \"<name>\" is not an object'. validate() always returns a result object. 4 new tests cover wrong-typed glyphs (42/\"map\"/array), null/primitive defs, malformed sections (7/\"on\"/[true]/null), and non-string active.",
+      "status": "resolved"
+    },
+    {
+      "id": "s1-i3",
+      "summary": "clef.gutter.paddingH used for layout math but never validated",
+      "resolution": "When clef.enabled, a present clef.gutter must be a plain object and a present paddingH must be a finite non-negative number (error otherwise); absent gutter/paddingH stays valid (renderer defaults to 12). 1 new test covers -4/NaN/\"12\"/Infinity (errors), 0 and absent (valid), and a non-object gutter.",
+      "status": "resolved"
+    }
+  ],
+  "falsePositivesPerVerifier": [
+    "per-definition float top-edge anchor (explicitly endorsed, operator-instructed investigation)",
+    "dedicated clef.glyphs map (explicitly endorsed, spec-offered choice, documented)",
+    "Date-line normalization in the export baseline test (explicitly endorsed)"
+  ],
+  "postRemediationSuites": {
+    "cnb": "592 passed, 0 failed",
+    "legacy": "240/240"
+  }
+}

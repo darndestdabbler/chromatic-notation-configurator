@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Stem Test — Module 8</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-right: 20px;
+      vertical-align: top;
+    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: #333; }
+  </style>
+</head>
+<body>
+
+<h1>Module 8: Stem — 4-point anchor attachment against the debug grid</h1>
+<p>
+  Octave chords on the default 4‑8 config (pxPerSemi=16), crotchet‑minim shape.
+  Columns: crotchet [0,12] (below midpoint 12 → stem up, right side), crotchet [12,24]
+  (at/above midpoint → stem down, left side), then the same two chords as hollow minims.
+  A red cross marks the attachment anchor of the notehead each stem attaches to
+  (up-stem: lowest notehead; down-stem: highest). Each stem's attachment end must sit
+  exactly on its cross, and minim stems must not cross into the hollow cutout.
+</p>
+
+<div class="card">
+  <h2>Stem up / down × crotchet / minim</h2>
+  <svg id="stem-svg" width="620" style="display:block;"></svg>
+</div>
+
+<script type="module">
+  import { CNBConfig }   from "../src/cnb-config.js";
+  import { CNBGrid }     from "../src/cnb-grid.js";
+  import { CNBStaff }    from "../src/cnb-staff.js";
+  import { CNBNotehead } from "../src/cnb-notehead.js";
+  import { CNBStem }     from "../src/cnb-stem.js";
+
+  const MIN_SEMI = -8;
+  const MAX_SEMI = 32;
+  const NS = "http://www.w3.org/2000/svg";
+
+  const config = CNBConfig.createDefault();
+  const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  const svg = document.getElementById("stem-svg");
+  svg.setAttribute("height", String(grid.svgHeight));
+
+  const staffPositions = CNBStaff.getPositions(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+  CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+
+  const shape = config.shapes["crotchet-minim"];
+  const measure = CNBNotehead.measure(shape, grid.pxPerSemi);
+  const midpoint = CNBStaff.getMidpoint(config);
+
+  // Red cross marking the anchor point actually used for a notehead
+  function markAnchor(centerX, noteY, direction, duration) {
+    const key = direction === "up"
+      ? (duration === "crotchet" ? "crotchetUp" : "minimUp")
+      : (duration === "crotchet" ? "crotchetDown" : "minimDown");
+    const a = shape.anchors[key];
+    const x = centerX + a.x * measure.scaleFactor;
+    const y = noteY + a.y * measure.scaleFactor;
+    for (const [dx1, dy1, dx2, dy2] of [[-4, 0, 4, 0], [0, -4, 0, 4]]) {
+      const l = document.createElementNS(NS, "line");
+      l.setAttribute("x1", String(x + dx1));
+      l.setAttribute("y1", String(y + dy1));
+      l.setAttribute("x2", String(x + dx2));
+      l.setAttribute("y2", String(y + dy2));
+      l.setAttribute("stroke", "#cc2222");
+      l.setAttribute("stroke-width", "1.5");
+      svg.appendChild(l);
+    }
+  }
+
+  function renderChord(centerX, chordSemis, duration) {
+    const hollow = duration === "minim";
+    const direction = CNBStem.direction(chordSemis, midpoint);
+    const noteYPositions = chordSemis.map((s) => grid.semiToY(s));
+
+    const geom = CNBStem.geometry(config, {
+      gridContext: grid,
+      shape,
+      scaleFactor: measure.scaleFactor,
+      centerX,
+      noteYPositions,
+      direction,
+      duration,
+    });
+    CNBStem.render(svg, geom);
+
+    chordSemis.forEach((s) => {
+      CNBNotehead.render(svg, {
+        shape,
+        x: centerX,
+        y: grid.semiToY(s),
+        scaleFactor: measure.scaleFactor,
+        hollow,
+        color: "#000",
+      });
+    });
+
+    // Mark the attachment anchor on the notehead the stem attaches to:
+    // up-stem attaches at the lowest note, down-stem at the highest.
+    const attachY = direction === "up" ? Math.max(...noteYPositions) : Math.min(...noteYPositions);
+    markAnchor(centerX, attachY, direction, duration);
+
+    console.log(`chord [${chordSemis}] ${duration}: direction=${direction}`, geom);
+  }
+
+  renderChord(90,  [0, 12],  "crotchet");   // below midpoint → up
+  renderChord(240, [12, 24], "crotchet");   // at/above midpoint → down
+  renderChord(390, [0, 12],  "minim");      // hollow, stem up
+  renderChord(540, [12, 24], "minim");      // hollow, stem down
+</script>
+
+</body>
+</html>

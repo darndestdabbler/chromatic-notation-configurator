@@ -1,0 +1,27 @@
+{
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Incorrect fallback width when viewBox is missing (silent square distortion)",
+      "location": "cnb/ui/svg-importer.js buildShape()",
+      "resolution": "naturalWidth is never invented from naturalHeight anymore. extract() now also reads the root <svg> width/height attributes (numeric only; percentages rejected); buildShape() sources natural dimensions from viewBox, then root width/height (with a warning), and errors with 'Cannot determine shape width' when no usable width exists. Two unit tests added (root-attribute fallback; width-undeterminable error).",
+      "status": "fixed"
+    },
+    {
+      "id": 2,
+      "title": "LY spec §7.1 data-stem-* attributes not supported as a fallback anchor source",
+      "location": "cnb/ui/svg-importer.js extract() / buildShape()",
+      "resolution": "extract() now reads data-stem-up-x/y and data-stem-down-x/y from #notehead (a pair is used only when both coordinates are numeric). buildShape() resolves anchors from stem placemarker rects first (current toolkit contract), then falls back to the §7.1 attributes via new anchorsFromStemPoints(), with a warning noting the legacy contract; lilypondAnchors conversion applies identically (68.889 → 0.6889 verified). Four unit tests added (point derivation, attribute fallback end-to-end, rect precedence, partial/non-numeric attribute rejection).",
+      "status": "fixed"
+    },
+    {
+      "id": 3,
+      "title": "Import UI existed only in the test page, not as reusable module code",
+      "location": "cnb/ui/svg-importer.js / cnb/test-pages/test-svg-importer.html",
+      "resolution": "Added CNBSvgImporter.renderImportControl(container, {onResult, label}) to the module: builds the drop zone + hidden file input, wires click/change/dragover/dragleave/drop, parses each picked or dropped .svg via parseSvgText, and delivers results to the host's onResult callback (styling hooks: .cnb-svg-drop-zone/.dragover). The test page now hosts this control instead of its own wiring. Unit test added covering structure and the change-handler flow; browser UAT re-run (20/20) exercises the control end-to-end.",
+      "status": "fixed"
+    }
+  ]
+}
