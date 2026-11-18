@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 024 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 024 transcript</h1>
+<p class="stamp">Rendered 2026-11-07T07:29:06.150Z by dabbler-ai-router 3.29.0 at 0d8ad493857846fbf3c66173c335dab231aa23d4.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-07T02:09:31.503-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 24: Pitch, nudges and staff spacing</h3>
+<p><strong>Why.</strong> Pitch (the middle of the staff) and the per-pitch-class nudge are the editor's two pitch variables (design §3, §4). This session builds their arithmetic with no UI.</p>
+<ol><li>Register.</li><li><code>cnb/ui/pitch-model.js</code>, pure functions: moving the pitch by *d* semitones, rewriting the midpoint, staff pattern, ledger templates and line overrides together (§3.1); nudges to and from <code>pitchAxis</code> (stride 12, fractional positions, <code>axisUnitsPerStaffSpace</code> = the staff spacing; the section removed when every nudge is 0) with each nudge's limits (§3.2); converting a stride-7 map to nudges, and the ±1 test that keeps a map that cannot convert (§3.3, §3.5); renaming a notehead, which rotates the look table and the nudges (§4.1, §4.3).</li><li>The staff spacing accepts a decimal (§3.4). An engine render of Twinline in nudge form (staff spacing 3.43) confirms it engraves at the positions of the stride-7 fixture, through <code>cnb/tests/engine-probe.js</code> or the round-trip recipe, skipping with a reason when <code>lilypond</code> is not on <code>PATH</code>.</li><li>Tests in <code>cnb/tests/cnb-pitch-model-tests.js</code>, including Twinline's nudges from the §3.3 table and the no-reordering limits.</li></ol>
+<h2>Work Plan</h2>
+<p>Build the arithmetic of the notehead-first editor's two pitch variables with no UI (design docs/planning/notehead-first-editor-design.md §3, §4). A new pure-function module cnb/ui/pitch-model.js exports CNBPitchModel with: shiftPitch(config, d), which moves the pitch by d semitones and rewrites together, by the same d, staff.midpoint, each staff.semitonePattern entry (mod 12, kept sorted), each ledger template's semiWithinOctave and triggerPCs (mod 12), and the keys of staff.lineOverrides and ledgers.lineOverrides (§3.1), leaving the pitchAxis map alone so each nudge travels with its pitch class (§4.3); readNudges(config), which gives { nudges[12], staffSpacing } for a config, all zeros and staff.semitonesPerStaffSpace when no pitch axis is active, otherwise nudge(pc) = (position(pc) − position(0)) × 12 / octaveStride − pc and staffSpacing = axisUnitsPerStaffSpace × 12 / octaveStride (§3.3, §3.4), rounded to 4 decimals, or null when any nudge falls outside ±1 so the map is kept as a custom axis (§3.5); writeNudges(config, nudges, staffSpacing), which writes staff.semitonesPerStaffSpace = staffSpacing (a decimal allowed, §3.4) and a stride-12 pitchAxis (kind pitch-class-map-v1, position pc + nudge rounded to 4 decimals so shared spots compare equal, axisUnitsPerStaffSpace = the staff spacing), or removes the pitchAxis section when every nudge is 0 (§3.2), and throws on a nudge outside its limits or a spacing that is not a positive finite number; nudgeLimits(nudges, pc), the range [max(−1, nudge(pc−1) − 1), min(+1, nudge(pc+1) + 1)] wrapping at B and C (§3.2); renameDelta(fromPc, toPc), the d in −6…+5; and renameNotehead(config, fromPc, toPc), which shifts the pitch by that d and rotates the look table (session 23's lookTable / writeBack) and the nudges by the same d, so each look and nudge stays at its spot (§4.1, §4.3). The engine probe gains a measure of each engraved notehead's staff position and the staff's line positions, and an engine render of Twinline in nudge form (staff spacing 3.4286) is compared with the stride-7 fixture: every notehead's staff position and the staff lines within 0.01 half-space, skipping with the reason when lilypond or the engine is missing. Tests in cnb/tests/cnb-pitch-model-tests.js, registered in the runner, pin: shiftPitch leaves the exported staff-line positions unchanged and relabels which pitch class sits on each line for the default and Kite 4-369 configs, and shifting by d then −d restores the config; Twinline's nudges and spacing match the §3.3 table and §3.4 value; the nudge form validates and its staff lines and notehead positions, through CNBPitchAxis and the exporter's computeStaffLinePositions, equal the stride-7 fixture's; writing all-zero nudges removes the section and the default export stays byte-identical to its baseline; the no-reordering limits, including the wrap at B and C and a nudge that reaches its neighbour; a map that needs more than ±1 reads as null; renameNotehead keeps every spot's look and nudge and the export's staff-line positions. The design's §11 decimal-spacing risk is updated to say the render was made.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/3d9c2458e5a1078bb4c4fed308a98e3ce25b0d5c"><code>3d9c2458e5a1078bb4c4fed308a98e3ce25b0d5c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Pitch model</td><td><p>Write cnb/ui/pitch-model.js exporting CNBPitchModel with the pure functions shiftPitch, readNudges, writeNudges, nudgeLimits, renameDelta and renameNotehead as the task describes. Each returns a new config (or value) and never mutates its input. No DOM, no state, no change to any other file.</p></td><td><span class="mono">cnb/ui/pitch-model.js</span></td><td><code>node --input-type=module -e const m = await import('./cnb/ui/pitch-model.js'); const api = m.CNBPitchModel; for (const f of ['shiftPitch', 'readNudges', 'writeNudges', 'nudgeLimits', 'renameDelta', 'renameNotehead']) { if (typeof api[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }</code></td><td>yes</td></tr>
+<tr><td>Engine probe positions</td><td><p>Add measureStaffPositions(engine, ly) to cnb/tests/engine-probe.js: compile the exported config under the same twelve-pitch-class score and return { noteheads: [{ pc, position }], lines: number[] } from each NoteHead's staff-position and the StaffSymbol's line-positions, or { error } with LilyPond's output. measureNoteheads keeps its behaviour.</p></td><td><span class="mono">cnb/tests/engine-probe.js</span></td><td><code>node --input-type=module -e const m = await import('./cnb/tests/engine-probe.js'); for (const f of ['findEngine', 'measureNoteheads', 'measureStaffPositions']) { if (typeof m[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }</code></td><td>yes</td></tr>
+<tr><td>Pitch model tests</td><td><p>Write cnb/tests/cnb-pitch-model-tests.js with the tests the task lists, including the engine render of Twinline in nudge form against the stride-7 fixture (skipping with the reason logged when findEngine reports a skip), and add it to the TEST_FILES list in cnb/tests/run-tests.js.</p></td><td><span class="mono">cnb/tests/cnb-pitch-model-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Design risk</td><td><p>In docs/planning/notehead-first-editor-design.md §11, update the decimal-staff-spacing risk to say session 24 made the engine render (Twinline in nudge form, spacing 3.4286, staff positions matching the stride-7 fixture) and where the test lives.</p></td><td><span class="mono">docs/planning/notehead-first-editor-design.md</span></td><td><code>node --input-type=module -e import { readFileSync } from 'fs'; const t = readFileSync('docs/planning/notehead-first-editor-design.md', 'utf8'); const risks = t.slice(t.indexOf('## 11. Risks'), t.indexOf('## 12.')); if (!risks.includes('cnb-pitch-model-tests.js')) { console.error('section 11 does not name the render test'); process.exit(1); }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No UI: the Pitch section, the label strip, the rename control in the notehead panel and the Advanced pitch-axis-map fallback are session 28; the staff spacing's decimal input field is part of the Staff and Pitch panels (sessions 26 and 28).</li><li>No change to the config schema, CNBConfig, CNBPitchAxis, the exporter or any module under cnb/src, and no new or changed baseline fixtures.</li><li>shiftPitch rewrites only the fields §3.1 lists: clef anchors, key definitions and keys.keySignature placement are left as they are, and rules the inference does not own (§5.5) stay verbatim on renaming, as session 23's writeBack keeps them.</li><li>No rescaling of notehead sizes when a stride-7 map is converted to nudges: the engine render checks staff positions, as the session plan asks.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:09:31]</span> <span class="muted">run-started</span> session=024 mode=pull</div>
+<div class="line"><span class="at">[07:09:31]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:12:22]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[07:12:22]</span> <span class="muted">plan-accepted</span> steps=[&quot;pitch-model&quot;,&quot;engine-probe-positions&quot;,&quot;pitch-model-tests&quot;,&quot;design-risk&quot;] non_goals=4</div>
+<div class="line"><span class="at">[07:12:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:12:24]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=pitch-model</div>
+<div class="line"><span class="at">[07:14:40]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:14:44]</span> <span class="muted">check-passed</span> step=pitch-model argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const m = await import('./cnb/ui/pitch-model.js'); const api = m.CNBPitchModel; for (const f of ['shiftPitch', 'readNudges', 'writeNudges', 'nudgeLimits', 'renameDelta', 'renameNotehead']) { if (typeof api[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }&quot;]</div>
+<div class="line"><span class="at">[07:14:47]</span> <span class="muted">report-accepted</span> seq=2 step=pitch-model files=[&quot;cnb/ui/pitch-model.js&quot;] notes=CNBPitchModel: shiftPitch, readNudges, writeNudges, nudgeLimits, renameDelta, renameNotehead; pure, 4-decimal rounding so shared spots compare equal</div>
+<div class="line"><span class="at">[07:14:47]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=engine-probe-positions</div>
+<div class="line"><span class="at">[07:15:49]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:15:53]</span> <span class="muted">check-passed</span> step=engine-probe-positions argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const m = await import('./cnb/tests/engine-probe.js'); for (const f of ['findEngine', 'measureNoteheads', 'measureStaffPositions']) { if (typeof m[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }&quot;]</div>
+<div class="line"><span class="at">[07:15:54]</span> <span class="muted">report-accepted</span> seq=3 step=engine-probe-positions files=[&quot;cnb/tests/engine-probe.js&quot;] notes=measureStaffPositions added (NoteHead staff-position + StaffSymbol line-positions); compile() shared with measureNoteheads, behaviour unchanged; tried on Twinline both forms</div>
+<div class="line"><span class="at">[07:15:54]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=pitch-model-tests</div>
+<div class="line"><span class="at">[07:18:54]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:19:20]</span> <span class="muted">check-passed</span> step=pitch-model-tests argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[07:19:22]</span> <span class="muted">report-accepted</span> seq=4 step=pitch-model-tests files=[&quot;cnb/tests/cnb-pitch-model-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=17 tests incl. engine render (ran, not skipped): nudge-form Twinline within 1e-4 of stride-7 staff positions; shiftPitch exact staff positions pinned while no line crosses the exporter's octave 0-1 window, folded per period otherwise</div>
+<div class="line"><span class="at">[07:19:22]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=design-risk</div>
+<div class="line"><span class="at">[07:19:43]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:19:45]</span> <span class="muted">check-passed</span> step=design-risk argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;import { readFileSync } from 'fs'; const t = readFileSync('docs/planning/notehead-first-editor-design.md', 'utf8'); const risks = t.slice(t.indexOf('## 11. Risks'), t.indexOf('## 12.')); if (!risks.includes('cnb-pitch-model-tests.js')) { console.error('section 11 does not name the render test'); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[07:19:46]</span> <span class="muted">report-accepted</span> seq=5 step=design-risk files=[&quot;docs/planning/notehead-first-editor-design.md&quot;] notes=Section 11: decimal spacing engraved (test named); new risk: shiftPitch at the exporter/preview's fixed 0-23 window edges, for session 28</div>
+<div class="line"><span class="at">[07:19:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:19:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:19:48]</span> <span class="muted">job-started</span> name=verification pid=47336 log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:22:03]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:22:03]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[07:22:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[07:22:03]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[07:23:06]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[07:23:06]</span> <span class="muted">dispositions-rejected</span> seq=6 rejection=1 reasons=[&quot;finding 0: verify dispute: refused -- cnb/tests/cnb-pitch-model-tests.js is 16617 bytes, over the inline cap (16384); cite the relevant passage as cnb/tests/cnb-pitch-model-tests.js:START-END so it rides the prompt whole instead of being truncated.&quot;]</div>
+<div class="line"><span class="at">[07:23:06]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=4</div>
+<div class="line"><span class="at">[07:23:32]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[07:23:32]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[07:23:32]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[2] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;Exact invariance for edge-crossing shifts cannot be reached by any rewrite of the config. The exporter (cnb-lilypond.js computeStaffLinePositions) and the preview (cnb-staff.js getPositions over the card range) expand the mod-12 staff pattern over a fixed pitch range, octaves 0-1 (semitones 0-23), not around the midpoint. A shift by d moves the midpoint by d, so that fixed window moves by -d relative to the middle of the staff. semitonePattern is mod 12 and the midpoint must move by exactly d (design 3.1, session plan item 2), so no choice of fields keeps a line that crosses semitone 0 or 24 inside the window. The only fix is to change the window in cnb/src. That is outside this no-UI model session's scope (non-goal: no change to the exporter or cnb/src). It would also break pinned byte-identity: Twinline's midpoint is 7, so centring the window on the midpoint changes its baseline staff-line positions '(-3 -1 1 4 6 8). What session 24 owes is the 3.1 rewrite (midpoint, pattern, ledger templates and overrides moved together). That is implemented and tested. Every line's position relative to the midpoint is preserved, exactly, whenever the line stays in the window, and folded per period otherwise. The design's 3.1 sentence assumed a midpoint-relative window. The session records that as a risk in 11 for session 28, which owns the Pitch UI and the drawn range.&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[07:23:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[07:23:32]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[07:23:49]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[07:24:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const m = await import('./cnb/ui/pitch-model.js'); const api = m.CNBPitchModel; for (const f of ['shiftPitch', 'readNudges', 'writeNudges', 'nudgeLimits', 'renameDelta', 'renameNotehead']) { if (typeof api[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }&quot;] owner=pitch-model</div>
+<div class="line"><span class="at">[07:24:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const m = await import('./cnb/tests/engine-probe.js'); for (const f of ['findEngine', 'measureNoteheads', 'measureStaffPositions']) { if (typeof m[f] !== 'function') { console.error('missing ' + f); process.exit(1); } }&quot;] owner=engine-probe-positions</div>
+<div class="line"><span class="at">[07:24:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=pitch-model-tests</div>
+<div class="line"><span class="at">[07:24:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;import { readFileSync } from 'fs'; const t = readFileSync('docs/planning/notehead-first-editor-design.md', 'utf8'); const risks = t.slice(t.indexOf('## 11. Risks'), t.indexOf('## 12.')); if (!risks.includes('cnb-pitch-model-tests.js')) { console.error('section 11 does not name the render test'); process.exit(1); }&quot;] owner=design-risk</div>
+<div class="line"><span class="at">[07:24:22]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[&quot;docs/planning/notehead-first-editor-design.md&quot;] notes=Section 11 now states the 0.01 half-space tolerance the engine test asserts</div>
+<div class="line"><span class="at">[07:24:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:24:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:24:23]</span> <span class="muted">job-started</span> name=verification pid=43544 log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:25:41]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:25:41]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[07:25:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[07:25:41]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[07:26:33]</span> <span class="muted">run-resumed</span> session=024 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[07:26:34]</span> <span class="muted">dispute-recorded</span> round=2 finding=0</div>
+<div class="line"><span class="at">[07:26:34]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The acceptance criterion cannot be met by cnb/ui/pitch-model.js or by any other rewrite of the config. Here is the proof. computeStaffLinePositions (cnb-lilypond.js:572-598) emits {2(p + 12k - mid)/sps : p in pattern, k in {0,1}}. staff.semitonePattern is mod 12 by schema, and session plan item 2 / design 3.1 require the midpoint to move by exactly d. After a shift, a line with p + d &gt;= 12 has p' = p + d - 12 and is emitted at 2(p - 12 + 12k - mid)/sps, k in {0,1}. That is the octave pair {-1,0} where the original had {0,1}. So the exported set equals the original exactly if and only if no line crosses the window edge. No choice of pattern, midpoint, ledger or override values changes that, so this is not a defect in the model. Making edge-crossing shifts exact needs the exporter's expansion window to follow the midpoint. Any translation-invariant window changes the export of every config whose midpoint is not 12. Twinline (midpoint 7) is pinned byte-identical by cnb-lilypond-tests.js:968-977 against twinline-compact-export-baseline.ly. This session's accepted non-goals also exclude any change to the exporter, cnb/src and baseline fixtures. So the criterion asks this session to break a pinned export contract, not to finish the model. Whether the drawn staff range should follow the middle of the staff, and the baseline changes that would bring, is a renderer and design decision. The session records it in design 11 for session 28 (the Pitch UI). The tests pin what is true: exact positions whenever no line crosses the edge, and the midpoint-relative pattern for every d.&quot;}]</div>
+<div class="line"><span class="at">[07:26:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:26:34]</span> <span class="muted">job-started</span> name=verification pid=51332 log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:26:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s24/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:26:50]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:26:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:26:51]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[07:26:51]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=16044 log=.dabbler/runs/s24/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[07:27:17]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s24/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[07:27:19]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[07:27:19]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=12668 log=.dabbler/runs/s24/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[07:28:12]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s24/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[07:28:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:28:26]</span> <span class="muted">landed</span> commit=3d9c2458e5a1078bb4c4fed308a98e3ce25b0d5c</div>
+<div class="line"><span class="at">[07:28:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:28:27]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:28:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:28:28]</span> <span class="muted">job-started</span> name=close pid=42872 log=.dabbler/runs/s24/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:29:06]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s24/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:29:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Edge-crossing pitch shifts visibly change the exported staff lines, despite the required “staff stays” invariant**</td><td>disputed — Exact invariance for edge-crossing shifts cannot be reached by any rewrite of the config. The exporter (cnb-lilypond.js computeStaffLinePositions) and the preview (cnb-staff.js getPositions over the card range) expand the mod-12 staff pattern over a fixed pitch range, octaves 0-1 (semitones 0-23), not around the midpoint. A shift by d moves the midpoint by d, so that fixed window moves by -d relative to the middle of the staff. semitonePattern is mod 12 and the midpoint must move by exactly d (design 3.1, session plan item 2), so no choice of fields keeps a line that crosses semitone 0 or 24 inside the window. The only fix is to change the window in cnb/src. That is outside this no-UI model session's scope (non-goal: no change to the exporter or cnb/src). It would also break pinned byte-identity: Twinline's midpoint is 7, so centring the window on the midpoint changes its baseline staff-line positions '(-3 -1 1 4 6 8). What session 24 owes is the 3.1 rewrite (midpoint, pattern, ledger templates and overrides moved together). That is implemented and tested. Every line's position relative to the midpoint is preserved, exactly, whenever the line stays in the window, and folded per period otherwise. The design's 3.1 sentence assumed a midpoint-relative window. The session records that as a risk in 11 for session 28, which owns the Pitch UI and the drawn range.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** `readNudges` does not implement the specified origin-normalized formula for stride-12 maps. The requirement defines every active-map nudge as `(position(pc) − position(0)) × 12 / octaveStride − pc`, but `cnb/ui/pitch-model.js` uses `origin = 0` whenever `stride === 12`. A missing discriminating test is: start with the default config, call `writeNudges(config, Array(12).fill(0.5), 4)`, then read it. Under the specified formula the positions `.5, 1.5, …, 11.5` normalize to twelve zero nudges; current code returns twelve `0.5` nudges. The existing round-trip test cannot expose this because Twinline’s C nudge is zero.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** `docs/planning/notehead-first-editor-design.md` claims the decimal-spacing render matched “within 0.0001 half-space,” but the only visible engine assertion in `cnb/tests/cnb-pitch-model-tests.js` accepts `0.01`. The visible evidence supports the session’s required `0.01` comparison, not the stronger documented measurement.</td><td>fixed — Section 11 now states the 0.01 half-space tolerance the engine test asserts — (docs/planning/notehead-first-editor-design.md)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Edge-crossing pitch shifts and renames do not keep the exported staff fixed.</td><td>disputed — The acceptance criterion cannot be met by cnb/ui/pitch-model.js or by any other rewrite of the config. Here is the proof. computeStaffLinePositions (cnb-lilypond.js:572-598) emits {2(p + 12k - mid)/sps : p in pattern, k in {0,1}}. staff.semitonePattern is mod 12 by schema, and session plan item 2 / design 3.1 require the midpoint to move by exactly d. After a shift, a line with p + d &gt;= 12 has p' = p + d - 12 and is emitted at 2(p - 12 + 12k - mid)/sps, k in {0,1}. That is the octave pair {-1,0} where the original had {0,1}. So the exported set equals the original exactly if and only if no line crosses the window edge. No choice of pattern, midpoint, ledger or override values changes that, so this is not a defect in the model. Making edge-crossing shifts exact needs the exporter's expansion window to follow the midpoint. Any translation-invariant window changes the export of every config whose midpoint is not 12. Twinline (midpoint 7) is pinned byte-identical by cnb-lilypond-tests.js:968-977 against twinline-compact-export-baseline.ly. This session's accepted non-goals also exclude any change to the exporter, cnb/src and baseline fixtures. So the criterion asks this session to break a pinned export contract, not to finish the model. Whether the drawn staff range should follow the middle of the staff, and the baseline changes that would bring, is a renderer and design decision. The session records it in design 11 for session 28 (the Pitch UI). The tests pin what is true: exact positions whenever no line crosses the edge, and the midpoint-relative pattern for every d.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The prior `readNudges` finding remains: `cnb/ui/pitch-model.js` uses `origin = 0` for stride-12 maps rather than the required `position(0)` origin. A discriminating test would start with the default config, call `writeNudges(config, Array(12).fill(0.5), 4)`, then call `readNudges`; the specified formula yields twelve zero nudges because positions `.5…11.5` normalize against C, while today’s implementation returns twelve `0.5` values. The prior decimal-tolerance documentation finding is withdrawn: the changed design text now accurately states the visible test’s `0.01` tolerance.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>Stride-12 maps use an absolute origin of `0` instead of the required `position(0)` origin.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>23s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>50s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

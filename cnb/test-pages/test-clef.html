@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Clef Test — set 009</title>
+  <link rel="stylesheet" href="../assets/fonts/oswald.css">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 24px 0 4px; }
+    h1:first-of-type { margin-top: 0; }
+    p  { font-size: 13px; color: #666; margin: 0 0 16px; max-width: 820px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Integer anchor — glyph top ON the top staff line (debug grid)</h1>
+<p>
+  Sample register-bracket clef (6 semitones tall) on the default 4-8 staff,
+  <code>anchorSemi: 20</code>. Expected: the bracket's TOP edge sits exactly
+  on the staff line at semi 20, the middle arm points at semi 17, the bottom
+  edge at semi 14 · the gutter precedes the C column · staff lines run
+  unbroken behind the clef.
+</p>
+<div class="card" id="integer-anchor"></div>
+
+<h1>Float anchor — fractional grid position (debug grid)</h1>
+<p>
+  The same glyph at <code>anchorSemi: 22.784</code> — the Bravura-treble-style
+  overshoot (its top sits 1.392 staff-spaces ≈ 2.784 semis above the line it
+  marks). Expected: the bracket top floats between semis 22 and 23, clearly
+  off every gridline. This pins the s1 decision that anchors are floats, not
+  integers.
+</p>
+<div class="card" id="float-anchor"></div>
+
+<h1>3-6-9 staff pattern</h1>
+<p>
+  Staff pattern [3, 6, 9], <code>anchorSemi: 21</code>. Expected: bracket top
+  on the staff line at semi 21 (the octave-1 pattern top), verifying the clef
+  positions off the grid — not off any 4-8 assumption.
+</p>
+<div class="card" id="pattern-369"></div>
+
+<h1>Text register label (numeral mode)</h1>
+<p>
+  A <code>kind: "text"</code> entry ("50", dozenal-style register numeral,
+  5 semitones tall, <code>anchorSemi: 18.5</code>) — the E1 catalog's
+  octave-numeral clef device (Lautus, Chromatic Nydana; the engine's own
+  dozenal clefs). Numerals have no descenders, so the visual top sits
+  slightly below the anchor (cap height &lt; em height) — an accepted
+  approximation.
+</p>
+<div class="card" id="text-mode"></div>
+
+<h1>Full chromatic row — production look (no debug grid)</h1>
+<p>
+  The default 4-8 chromatic row with the clef enabled at
+  <code>anchorSemi: 20</code>. Expected: the preview looks exactly like the
+  pre-clef default plus a left clef gutter; labels, ledgers, stems unchanged.
+</p>
+<div class="card" id="full-row"></div>
+
+<h1>Disabled clef — default-off compatibility</h1>
+<p>
+  <code>clef.enabled: false</code> (the default). Expected: byte-for-byte the
+  pre-set-009 preview — no gutter, no reserved width.
+</p>
+<div class="card" id="disabled-row"></div>
+
+<script type="module">
+  import { CNBConfig }     from "../src/cnb-config.js";
+  import { CNBCollection } from "../src/cnb-collection.js";
+
+  // Sample register-bracket clef: 6 semitones tall (600 units at the
+  // toolkit's 100 units/semitone), TOP edge is the anchor reference, middle
+  // arm marks anchor − 3 semitones.
+  const BRACKET = {
+    displayName: "Register Bracket",
+    kind: "glyph",
+    svgPath: [
+      "M 0 0 L 40 0 L 40 600 L 0 600 Z",          // stem
+      "M 40 0 L 240 0 L 240 60 L 40 60 Z",        // top arm (anchor)
+      "M 40 270 L 180 270 L 180 330 L 40 330 Z",  // middle arm (anchor − 3)
+      "M 40 540 L 240 540 L 240 600 L 40 600 Z",  // bottom arm (anchor − 6)
+    ].join(" "),
+    naturalHeight: 600,
+    naturalWidth: 240,
+    semitoneHeight: 6,
+    viewBoxMinX: 0,
+    viewBoxMinY: 0,
+    lilypondPath: null,
+    anchorSemi: 20,
+  };
+
+  function withClef(glyphOverrides = {}, configure = () => {}) {
+    const config = CNBConfig.createDefault();
+    config.clef.enabled = true;
+    config.clef.active = "bracket";
+    config.clef.glyphs = { bracket: { ...BRACKET, ...glyphOverrides } };
+    configure(config);
+    return config;
+  }
+
+  const SUBSET = { pitchClasses: [0, 4, 7, 12] };
+
+  // ── 1. Integer anchor on the debug grid ──────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("integer-anchor"),
+    withClef({}, c => { c.display.debugGrid = true; }),
+    SUBSET
+  );
+
+  // ── 2. Float anchor (Bravura-treble-style overshoot) ─────────────────────
+  CNBCollection.render(
+    document.getElementById("float-anchor"),
+    withClef({ anchorSemi: 22.784 }, c => { c.display.debugGrid = true; }),
+    SUBSET
+  );
+
+  // ── 3. 3-6-9 staff pattern ───────────────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("pattern-369"),
+    withClef({ anchorSemi: 21 }, c => {
+      c.staff.semitonePattern = [3, 6, 9];
+      c.staff.semitonesPerStaffSpace = 3;
+      c.display.debugGrid = true;
+    }),
+    SUBSET
+  );
+
+  // ── 4. Text register label ───────────────────────────────────────────────
+  CNBCollection.render(
+    document.getElementById("text-mode"),
+    withClef(
+      { kind: "text", text: "50", textHeightSemis: 5, anchorSemi: 18.5 },
+      c => { c.display.debugGrid = true; }
+    ),
+    SUBSET
+  );
+
+  // ── 5. Full chromatic row, production look ───────────────────────────────
+  CNBCollection.render(
+    document.getElementById("full-row"),
+    withClef()
+  );
+
+  // ── 6. Disabled clef — must match the pre-set-009 default exactly ────────
+  CNBCollection.render(
+    document.getElementById("disabled-row"),
+    CNBConfig.createDefault()
+  );
+</script>
+
+</body>
+</html>

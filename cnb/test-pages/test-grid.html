@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNB Grid Test — Module 1: Semitone Grid</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p  { font-size: 13px; color: #666; margin: 0 0 20px; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: inline-block;
+    }
+    .legend {
+      font-size: 12px;
+      color: #555;
+      margin-top: 12px;
+    }
+    .legend span {
+      display: inline-block;
+      width: 30px;
+      height: 3px;
+      vertical-align: middle;
+      margin-right: 4px;
+      border-radius: 1px;
+    }
+    .legend .staff-line  { background: #4488cc; height: 2px; }
+    .legend .octave-line { background: #888; height: 1px; }
+    .legend .semi-line   { background: #ccc; height: 1px; }
+  </style>
+</head>
+<body>
+
+<h1>Module 1: Semitone Grid — Debug Overlay</h1>
+<p>
+  Displays the coordinate system for semitones -4 through 28 using the default 4-8 config.
+  Staff lines (at semitones 4, 8, 16, 20) are highlighted in blue.
+  Octave boundaries (0, 12, 24) are marked slightly darker.
+</p>
+
+<div class="card">
+  <svg id="grid-svg" width="300" height="auto" style="display:block;"></svg>
+  <div class="legend">
+    <span class="staff-line"></span> Staff line &nbsp;
+    <span class="octave-line"></span> Octave boundary &nbsp;
+    <span class="semi-line"></span> Semitone
+  </div>
+</div>
+
+<script type="module">
+  import { CNBConfig } from "../src/cnb-config.js";
+  import { CNBGrid }   from "../src/cnb-grid.js";
+
+  // ── Configuration ──────────────────────────────────────────────────────
+  const config = CNBConfig.createDefault();
+
+  // Standard display range: two octaves plus margins
+  const MIN_SEMI = -4;
+  const MAX_SEMI = 28;
+
+  // ── Compute staff positions from config ────────────────────────────────
+  // Expand pattern [4, 8] across two octaves
+  const pattern = config.staff.semitonePattern;
+  const staffPositions = [];
+  for (let oct = -1; oct <= 2; oct++) {
+    for (const s of pattern) {
+      const abs = s + oct * 12;
+      if (abs >= MIN_SEMI && abs <= MAX_SEMI) staffPositions.push(abs);
+    }
+  }
+
+  // ── Build grid context ─────────────────────────────────────────────────
+  const grid = CNBGrid.create(config, { minSemi: MIN_SEMI, maxSemi: MAX_SEMI });
+
+  // ── Size the SVG ───────────────────────────────────────────────────────
+  const svg = document.getElementById("grid-svg");
+  svg.setAttribute("height", String(grid.svgHeight));
+
+  // ── Render debug overlay ───────────────────────────────────────────────
+  CNBGrid.renderDebugOverlay(svg, grid, staffPositions);
+
+  // ── Verification log ───────────────────────────────────────────────────
+  console.log("Grid context:", {
+    pxPerSemi:         grid.pxPerSemi,
+    minSemi:           grid.minSemi,
+    maxSemi:           grid.maxSemi,
+    totalSemiRange:    grid.totalSemiRange,
+    svgHeight:         grid.svgHeight,
+    topLabelHeight:    grid.topLabelHeight,
+    bottomLabelHeight: grid.bottomLabelHeight,
+    totalHeight:       grid.totalHeight,
+  });
+  console.log("semiToY(maxSemi) should be 0:", grid.semiToY(MAX_SEMI));
+  console.log("semiToY(minSemi) should be", grid.svgHeight, ":", grid.semiToY(MIN_SEMI));
+  console.log("Staff positions:", staffPositions);
+</script>
+
+</body>
+</html>
