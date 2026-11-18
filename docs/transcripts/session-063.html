@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 063 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 063 transcript</h1>
+<p class="stamp">Rendered 2026-11-13T19:02:54.624Z by dabbler-ai-router 3.32.4 at 76e7ad0de22bdfc9cefff231e9205b8dbf228692.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-13T12:26:21.943-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 63: The steps and the navigation</h3>
+<p><strong>Why.</strong> The Configurator reads as a sequence of steps (design §1, §2, §4).</p>
+<ol><li>Register.</li><li>The step registry, <code>cnb/ui/steps.js</code>: twelve steps, their groups, labels, titles, components and availability, <code>next</code> and <code>back</code>, with <code>cnb/tests/cnb-steps-tests.js</code>.</li><li>The sidebar built from it (static group headings, numbers, short labels), a sticky Next/Back bar, steps greyed by availability with their reasons, the key-signature and clef panels shown as their steps, the whole-staff canvas hidden in steps 6–9, and the key definitions moved to Advanced.</li><li>&quot;Hollow minims&quot; beside the canvas's longer-durations choice, adding or removing one ordinary rule (design §5.1).</li><li>The drivers whose sections moved updated to the steps, opened by keyboard and at 1280 px.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the Configurator read as a sequence of twelve numbered steps (step-by-step design §1, §2, §4, §10 session 63). A new data module, cnb/ui/steps.js, is the one registry the navigation reads: for each step its id, number, group, short label, full title, component and canvas, the availability of design §2.1 with its reason (steps 7, 8 and 9 unavailable while no key signature is shown, step 11 while no clef is shown; by the operator's decision of 2026-11-13, step 7 is available whenever a signature is shown until session 65 adds the Custom marks starting point and tightens it), next and back skipping an unavailable step, and the builders of the sidebar and the step bar, imported by no editor; cnb/tests/cnb-steps-tests.js holds it to the design. The page's sidebar is built from it (static group headings, numbers, short labels, an unavailable step greyed with its reason and not opened, Advanced unnumbered below), each step's panel is headed by its title, and a sticky bar at the bottom of the panel offers Back and Next by title. The key-signature panel becomes steps 6–9 and the clef panel steps 10–11 by giving each editor a parts option (one editor serving several steps, as the staff editor already does): step 6 Show the key signature (which also turns keys on) and Start from, with the signature's partial staff; step 7 Edit and the look card on the editor's magnified canvas; step 8 the key picker, the canvas, Notes, Stacks and Place; step 9 the mode's 15 keys and the touch list; step 10 the clef buttons, import, the clef chosen, its height and anchor picker; step 11 where it sits, with the canvas drag. The whole-staff canvas is hidden in steps 6–9, and the key definitions (Use keys and Keys for notehead rules) move to an Advanced disclosure. The checks' links open the new steps. Beside the canvas's longer-durations choice, while each duration has its own look, a Hollow minims checkbox adds or removes one ordinary rule (every pitch class, minims, hollow), ticked when that rule is present and never doubled (design §5.1). The drivers whose sections moved (uat-app-layout, uat-key-signature, uat-clef-editor, and app-page's helper) use the steps, open them by keyboard and check them at 1280 px, and uat-undo undoes Hollow minims; the README and the architecture plan describe the steps.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/2af0df5f2fc50c10587eae5f8761e91c6bf27877"><code>2af0df5f2fc50c10587eae5f8761e91c6bf27877</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Registry</td><td><p>Create cnb/ui/steps.js, imported by no editor. Export CNBSteps, the twelve steps of design §1.1 in order, each { id, number, group, label, title, component, canvas } with ids notehead-height, staff, pitch, ledger-lines, noteheads, ks-symbol-type, ks-custom-symbols, ks-designer, ks-preview, clef-symbol, clef-placement, export; groups The staff, Noteheads, Key signature, Clef, Finish; the sidebar's short labels of §2.1 (Symbol type, Custom symbols, Designer, Preview, Symbol and size, Placement) and §1.1's full titles; components of §1.2 (null for step 9); canvas staff, spelled, designer, keys or clef. Steps 7, 8 and 9 carry available(config) (keys.enabled and keys.keySignature.enabled) and the reason 'Show a key signature in step 6 first.'; step 11 available while a clef is shown (CNBClef.activeGlyph) with 'Choose or import a clef in step 10 first.'. Export CNBStepNav with byId(id), isAvailable(id, config), reason(id, config) (null when available), next(id, config) and back(id, config) (the nearest available step after or before, null at either end), renderNav(container, { current, config, onOpen }) (group headings, then for each step a button.section-link[data-section=id] showing its number and label, aria-current on the current one, an unavailable one aria-disabled with its reason as its title and not calling onOpen; then a rule and an unnumbered Advanced link, data-section advanced) and renderBar(container, { current, config, onOpen }) (a Back button '← N. title' and a Next button 'N. title →' from back and next, each left out at its end; nothing for advanced). Create cnb/tests/cnb-steps-tests.js, added to cnb/tests/run-tests.js: ids unique, numbers 1–12 in order, groups and labels as the design lists them; isAvailable, reason, next and back for every step with keys and the signature on and off and the clef on and off (next from 6 skipping to 10 while no signature is shown, back from 10 to 6, back from 12 to 10 without a clef); renderNav and renderBar against the stub document listing the steps in order with their numbers, labels and titles, greying and refusing an unavailable step.</p></td><td><span class="mono">cnb/ui/steps.js</span><br><span class="mono">cnb/tests/cnb-steps-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Editor parts</td><td><p>Give CNBKeySignatureEditor.render an opts.parts list, as the staff editor has: symbol-type (the head: Show the key signature, which is never disabled and, ticked, turns keys.enabled on too; Start from; the keys-off note), custom-symbols (the key picker, Edit's layers, the magnified canvas and the look card), designer (the key picker, the canvas, Notes, Stacks and Place), preview (the picked mode's 15 keys and the touch list) and definitions (Use keys, the keys-off note, Keys for notehead rules and the validation). With no parts it draws exactly as today. Give CNBClefEditor.render an opts.parts list: symbol (the enable toggle, the clef buttons, import, the clefs, the chosen clef's height and anchor picker, the gutter and the validation) and placement (Sits on semitone or Top at semitone, with the hint about dragging the clef on the canvas); with no parts it draws as today. Add tests in cnb/tests/cnb-key-signature-editor-tests.js and cnb/tests/cnb-clef-editor-tests.js: each part draws its controls and no other part's, the default draws as before, Show in symbol-type turns keys and the signature on together, and an edit in one part emits the whole keys or clef slice.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/ui/clef-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-clef-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Hollow minims</td><td><p>In cnb/ui/preview-display.js add CNBPreviewDisplay.hasHollowMinims(config) (a rule matching every pitch class, durations exactly [&quot;minim&quot;] and every key, whose apply is exactly { hollow: true }) and withHollowMinims(config, on) (a new config: on adds one such rule named 'Hollow minims' above every other rule, unless one is present; off removes every such rule; the input unchanged). Beside the longer-durations choice, while each duration has its own look (representationMode shape) and the host passes opts.onHollowMinims, draw a 'Hollow minims' checkbox (.cnb-pvd-hollow-minims), ticked when hasHollowMinims, calling onHollowMinims(checked). In cnb/index.html pass onHollowMinims, which sets appConfig to withHollowMinims, re-mounts the notehead rule editor and refreshes. Tests in cnb/tests/cnb-preview-display-tests.js: one rule added, ticked after, a second tick adds none, unticking removes it and gives back the original rules, the box hidden in repeat mode and without the callback.</p></td><td><span class="mono">cnb/ui/preview-display.js</span><br><span class="mono">cnb/tests/cnb-preview-display-tests.js</span><br><span class="mono">cnb/index.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>App steps</td><td><p>In cnb/index.html build the sidebar from CNBStepNav.renderNav and a sticky step bar (position: sticky at the bottom of the main column, in cnb/ui/app.css, with the group headings, numbers and greyed steps styled) from renderBar, both redrawn on every step change and every config change; showSection opens a step only when it is available, and when a change makes the open step unavailable it opens back's step. Each step's panel (data-panel = its id) is headed by its registry title. Replace the key-signature panel with panels for steps 6–9 and the clef panel with panels for steps 10–11, each mounting its editor with its parts (step 6 also holding the signature's partial staff, step 10 the clef's), re-mounted after every change except the mount that made it; add an Advanced disclosure 'Keys for notehead rules' (#keys-for-rules) mounting the key-signature editor's definitions part. Hide the whole-staff canvas card in steps whose canvas is spelled, designer or keys (6–9). The canvas's clef drag follows the focus clef-placement instead of clef (cnb/ui/preview-display.js and its tests). Point the checks' links (cnb/ui/checks-wording.js and its tests) at the new steps: a signature shown with keys off and a key definition's problem at Advanced's #keys-for-rules, marks that touch at ks-preview, a clef's problems at clef-symbol, each link labelled with its step's title. Update the intro paragraph to the steps.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span><br><span class="mono">cnb/ui/preview-display.js</span><br><span class="mono">cnb/tests/cnb-preview-display-tests.js</span><br><span class="mono">cnb/ui/checks-wording.js</span><br><span class="mono">cnb/tests/cnb-checks-wording-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Drivers</td><td><p>Update the drivers whose sections moved to the steps. cnb/uat/app-page.mjs: openSection's comment lists the step ids. cnb/uat/uat-app-layout.mjs: at 1440 and 1280 the sidebar lists the twelve steps in the registry's order under their group headings with their numbers and short labels, then Advanced; each available step opens its panel alone with its title as heading; steps 7–9 and 11 are greyed with their reasons and do not open until the signature or a clef is shown; Next and Back walk every available step in order and skip the greyed ones; a step is opened by keyboard (Tab to its link, Enter) and Next by keyboard; the step bar stays in the viewport while a long panel scrolls; the whole-staff canvas is hidden in steps 6–9 and shown elsewhere; no step makes the page scroll sideways at 1280; the kept panel shots and the checks link use the new step names. cnb/uat/uat-key-signature.mjs: Show and Start from in step 6, the look card in step 7, Notes, Stacks and Place in step 8, the keys and touch list in step 9, Use keys and the key definitions in Advanced › Keys for notehead rules, and the clef it opens in step 10. cnb/uat/uat-clef-editor.mjs: the clef buttons, import and height in step 10, Sits on semitone and the canvas drag in step 11. cnb/uat/uat-undo.mjs: ticking Hollow minims adds the rule, Ctrl+Z removes it and unticks the box.</p></td><td><span class="mono">cnb/uat/app-page.mjs</span><br><span class="mono">cnb/uat/uat-app-layout.mjs</span><br><span class="mono">cnb/uat/uat-key-signature.mjs</span><br><span class="mono">cnb/uat/uat-clef-editor.mjs</span><br><span class="mono">cnb/uat/uat-undo.mjs</span><br><span class="mono">cnb/ui/preview-display.js</span><br><span class="mono">cnb/tests/cnb-preview-display-tests.js</span></td><td><code>node --check cnb/uat/app-page.mjs</code><br><code>node --check cnb/uat/uat-app-layout.mjs</code><br><code>node --check cnb/uat/uat-key-signature.mjs</code><br><code>node --check cnb/uat/uat-clef-editor.mjs</code><br><code>node --check cnb/uat/uat-undo.mjs</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>In README.md's 'Design the notation system' describe the twelve numbered steps under their groups, Next and Back, the greyed steps and why, Hollow minims beside the longer-durations choice, and the key definitions in Advanced, replacing the description of the Key signature and Clef sections as one each. In docs/CNB-ARCHITECTURE-PLAN-v2.md add cnb/ui/steps.js (the step registry) to §8's file structure and say under Modules 19, 21 and 23 that the page is the steps of the step-by-step design and that the clef and key-signature editors serve their steps through a parts option.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Hollow minims/.test(r)||!/Keys for notehead rules/.test(r)||!/steps\.js/.test(a)){console.error('documents not updated');process.exit(1)}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the config schema, the preview's drawing, the export or the LY spec: the five export baselines are unchanged; looks.spelled, columnGap and the parallelogram are session 64.</li><li>Step 6's three starting-point cards (Custom marks among them) and the 21 spelled notes canvas, and step 7's multi-select over spelled notes, are session 65; until then step 6 keeps today's Show and Start from and step 7 today's Edit layers and look card.</li><li>Step 8's column gap and step 9's every mode at once are session 66; step 9 shows today's 15 keys of the picked mode.</li><li>The walk-through (uat-tutorial.mjs and its STAGES) and the tutorial, and the registry tests that read them, are sessions 67 and 68.</li><li>No enforced order: a step is greyed only by availability; the steps are not folded or collapsible.</li><li>The editors are not split into new modules: key-signature-editor.js and clef-editor.js each gain a parts option, and with no parts they draw as today.</li><li>AI-assisted designing (schemas, partial import, prompts, the command line) stays at 1.2.0.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[17:26:21]</span> <span class="muted">run-started</span> session=063 mode=pull</div>
+<div class="line"><span class="at">[17:26:21]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[18:09:06]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[18:09:06]</span> <span class="muted">plan-accepted</span> steps=[&quot;registry&quot;,&quot;editor-parts&quot;,&quot;hollow-minims&quot;,&quot;app-steps&quot;,&quot;drivers&quot;,&quot;docs&quot;] non_goals=7</div>
+<div class="line"><span class="at">[18:09:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[18:09:09]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=registry</div>
+<div class="line"><span class="at">[18:13:35]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:16:09]</span> <span class="muted">check-passed</span> step=registry argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[18:16:11]</span> <span class="muted">report-accepted</span> seq=2 step=registry files=[&quot;cnb/ui/steps.js&quot;,&quot;cnb/tests/cnb-steps-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=Step registry CNBSteps and CNBStepNav (availability, next/back, sidebar and bar builders) with 13 tests</div>
+<div class="line"><span class="at">[18:16:11]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=editor-parts</div>
+<div class="line"><span class="at">[18:20:58]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:23:23]</span> <span class="muted">check-passed</span> step=editor-parts argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[18:23:23]</span> <span class="muted">report-accepted</span> seq=3 step=editor-parts files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/ui/clef-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/tests/cnb-clef-editor-tests.js&quot;] notes=parts option on the key-signature editor (symbol-type, custom-symbols, designer, preview, definitions) and the clef editor (symbol, placement); no parts draws as before</div>
+<div class="line"><span class="at">[18:23:23]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=hollow-minims</div>
+<div class="line"><span class="at">[18:26:59]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:29:26]</span> <span class="muted">check-failed</span> step=hollow-minims argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[18:29:26]</span> <span class="muted">report-rejected</span> seq=4 step=hollow-minims rejection=1 reasons=[&quot;[check-failed] check failed: node cnb/tests/run-tests.js -&gt; exit 1\n path\n(Use `node.EXE --trace-warnings ...` to show where the warning was created)\n  ✓ gallery (engine): every fixture's noteheads engrave at their preview size (±5%)\n\n──────────────────────────────────────────────────\nResults: 1402 passed, 1 failed\n\nFailed tests:\n  [cnb-lilypond-tests] ledgers (engine): every card engraves the ledgers the preview draws, default, Kite, 45deg-369 and every gallery file\n    axlomafi.json: Command failed: lilypond -dno-print-pages -I D:\\Projects\\lilypond-chromatic-notation-base -o C:\\Users\\denmi\\AppData\\Local\\Temp\\dabbler-check-PyOIYa\\cnb-probe-PNQDdm\\out score.ly\nA check that no longer describes its step is amended, not fought: dabbler session plan amend --step &lt;id&gt; --checks-file &lt;path&gt; --reason \&quot;&lt;why&gt;\&quot;. A step that cannot be done is reported --status blocked, with the reason in --notes.&quot;]</div>
+<div class="line"><span class="at">[18:29:26]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection step=hollow-minims reasons=1</div>
+<div class="line"><span class="at">[18:30:11]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:32:30]</span> <span class="muted">check-passed</span> step=hollow-minims argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[18:32:30]</span> <span class="muted">report-accepted</span> seq=5 step=hollow-minims files=[&quot;cnb/ui/preview-display.js&quot;,&quot;cnb/tests/cnb-preview-display-tests.js&quot;,&quot;cnb/index.html&quot;] notes=Rerun: the one failure was an engine LilyPond run for axlomafi.json in the ledger round trip, unrelated to this step (no export code changed); it passes alone locally</div>
+<div class="line"><span class="at">[18:32:30]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=app-steps</div>
+<div class="line"><span class="at">[18:38:50]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:41:09]</span> <span class="muted">check-passed</span> step=app-steps argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[18:41:10]</span> <span class="muted">report-accepted</span> seq=6 step=app-steps files=[&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;,&quot;cnb/ui/preview-display.js&quot;,&quot;cnb/tests/cnb-preview-display-tests.js&quot;,&quot;cnb/ui/checks-wording.js&quot;,&quot;cnb/tests/cnb-checks-wording-tests.js&quot;] notes=Sidebar and sticky step bar from the registry, steps 6-11 panels mounting the editors' parts, canvas hidden in 6-9, keys for notehead rules in Advanced, clef drag on clef-placement, checks links to steps; smoke-tested in Chromium at 1280</div>
+<div class="line"><span class="at">[18:41:10]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=drivers</div>
+<div class="line"><span class="at">[18:55:38]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/app-page.mjs&quot;]</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;]</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">check-passed</span> step=drivers argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-undo.mjs&quot;]</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">report-accepted</span> seq=7 step=drivers files=[&quot;cnb/uat/app-page.mjs&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;,&quot;cnb/uat/uat-undo.mjs&quot;,&quot;cnb/ui/preview-display.js&quot;,&quot;cnb/tests/cnb-preview-display-tests.js&quot;] notes=Drivers on the steps (layout 103, key signature 109, clef 58, undo 25; whole UAT 18/18 drivers pass); amended to keep the hidden canvas's layout at width 0, with its test</div>
+<div class="line"><span class="at">[18:55:46]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=docs</div>
+<div class="line"><span class="at">[18:57:12]</span> <span class="muted">run-resumed</span> session=063 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:57:14]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const a=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');if(!/Hollow minims/.test(r)||!/Keys for notehead rules/.test(r)||!/steps\\.js/.test(a)){console.error('documents not updated');process.exit(1)}&quot;]</div>
+<div class="line"><span class="at">[18:57:15]</span> <span class="muted">report-accepted</span> seq=8 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=README describes the twelve steps under their groups, Next/Back, greyed steps, Hollow minims and Keys for notehead rules in Advanced; the architecture plan names steps.js and the editors' parts</div>
+<div class="line"><span class="at">[18:57:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[18:57:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[18:57:16]</span> <span class="muted">job-started</span> name=verification pid=50888 log=.dabbler/runs/s63/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:58:26]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s63/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:58:26]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[18:58:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[18:58:27]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[18:58:27]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=64220 log=.dabbler/runs/s63/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:00:51]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s63/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[19:00:52]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[19:00:53]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=41160 log=.dabbler/runs/s63/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:02:32]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s63/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[19:02:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:02:39]</span> <span class="muted">landed</span> commit=2af0df5f2fc50c10587eae5f8761e91c6bf27877</div>
+<div class="line"><span class="at">[19:02:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:02:40]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:02:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:02:41]</span> <span class="muted">job-started</span> name=close pid=5912 log=.dabbler/runs/s63/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:02:54]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s63/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:02:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>142s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>97s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

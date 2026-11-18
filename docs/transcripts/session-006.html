@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 006 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 006 transcript</h1>
+<p class="stamp">Rendered 2026-11-01T22:41:49.861Z by dabbler-ai-router 3.27.0 at 9d0618a269ebde2d7a6ac9498c6a689c5a48a824.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-01T17:15:13.761-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 6: Hostile input, error paths and the browser matrix</h3>
+<p><strong>Why.</strong> Every UAT so far followed the golden path. A person exploring will load the wrong file, an old save, or a shape drawn without the toolkit, and the app should tell them what is wrong rather than fail in the console.</p>
+<ol><li>Register.</li><li>Tests and fixes for: an SVG that is not toolkit output, an SVG without <code>data-lilypond-*</code> attributes, a JSON save from an older schema version, a truncated or non-JSON file, and export of an invalid config. Every validation error reaches the user as a visible message; nothing throws to the console.</li><li>Open the app in Chromium, Firefox and Edge; fix what breaks; add a &quot;Supported browsers&quot; table to the README.</li><li>If the toolkit has shipped minim stem anchors (its session 4: a second placemarker pair, <code>&lt;rect id=&quot;stem-minim-up&quot;&gt;</code> / <code>&lt;rect id=&quot;stem-minim-down&quot;&gt;</code>, with no <code>data-*</code> attributes), read them in the SVG importer (<code>cnb/ui/svg-importer.js</code>) with the same <code>readStemRect</code> rule as the regular pair (bottom-centre of up, top-centre of down) into <code>anchors.minimUp</code>/<code>minimDown</code>, falling back to the crotchet anchors when the pair is absent, and export them; otherwise record that the importer still copies crotchet anchors.</li></ol>
+<p><strong>Non-goals.</strong> Schema changes. Mobile layouts.</p>
+<p><strong>Tests.</strong> New cases in <code>cnb/tests/cnb-svg-importer-tests.js</code>, <code>cnb/tests/cnb-config-io-tests.js</code> and <code>cnb/tests/cnb-config-export-tests.js</code>.</p>
+<h2>Work Plan</h2>
+<p>Make the app report hostile input instead of failing in the console, prove it in three browsers, and read the toolkit's minim stem anchors. A probe of the current code found the gaps: wrong-typed sections in a loaded JSON (shapes as an array, noteheadRules as an object, staff.semitonePattern as a string, palette.colors as a string) either throw inside CNBConfig.validate with an unhelpful message or load cleanly and then crash the preview/editors inside the load promise, which reaches the console and leaves the app half-mounted; the SVG import control has no catch around reading/parsing a file; and the non-toolkit-SVG error does not say what to do. The fixes stay small: config-io checks the merged config's value types against createDefault() (array vs object vs primitive, where the default is not null) and rejects a mismatch with a message naming the field, and catches a throwing onLoad into its error area; the app shell's onLoad restores the previous config and re-mounts when adopting a loaded config throws; the import control catches read/parse failures into an error result, and the missing-#notehead error says the file is not Music Glyph Toolkit output. The toolkit has shipped the minim pair (its session 4: &lt;rect id=&quot;stem-minim-up&quot;&gt; / &lt;rect id=&quot;stem-minim-down&quot;&gt;), so the SVG importer reads it with the same rect rule as the regular pair into anchors.minimUp/minimDown, falling back to the crotchet anchors when the pair is absent (with a warning on a half pair); the exporter already emits minim-up/minim-down from lilypondAnchors, which a new export test pins. A new Playwright driver runs the hostile inputs against cnb/index.html in Chromium, Firefox and Edge, asserting a visible message for each and no page or console errors; anything it finds broken is fixed, and the README gains a Supported browsers table.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/dc008cbd08fa0fa56298fe2744f670a6cfbd3c87"><code>dc008cbd08fa0fa56298fe2744f670a6cfbd3c87</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Importer minim anchors</td><td><p>In cnb/ui/svg-importer.js read &lt;rect id=&quot;stem-minim-up&quot;&gt; / &lt;rect id=&quot;stem-minim-down&quot;&gt; with the same readStemRect rule as the regular pair (bottom-centre of up, top-centre of down) into anchors.minimUp/minimDown, so lilypondAnchors carry them too; when the pair is absent keep copying the crotchet anchors; when only one is present warn and fall back to the crotchet anchors; a non-rect element with a minim id warns like the regular pair. Update the module header contract note. Tests in cnb/tests/cnb-svg-importer-tests.js (pair present, absent, half pair, lilypondAnchors conversion) and one in cnb/tests/cnb-config-export-tests.js proving an imported shape with a minim pair exports distinct minim-up/minim-down attachment values.</p></td><td><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span><br><span class="mono">cnb/tests/cnb-config-export-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Importer hostile svg</td><td><p>In cnb/ui/svg-importer.js make the missing-#notehead error say the file does not look like Music Glyph Toolkit output (run the toolkit's Notehead mode), and wrap renderImportControl's importFile so a file that cannot be read or parsed delivers an error result to onResult instead of an unhandled rejection. Tests in cnb/tests/cnb-svg-importer-tests.js: a plain non-toolkit SVG gives the toolkit error, an SVG without data-lilypond-* imports with both fallback warnings, non-XML text gives an Invalid SVG error, and importFile with a file whose text() rejects calls onResult with an error and does not throw.</p></td><td><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Config io hostile json</td><td><p>In cnb/ui/config-io.js: after the merge in mergeLoaded, compare each value's kind (array, object, string, number, boolean) with createDefault()'s at the same path, recursing into fixed-schema objects but not into REPLACE_PATHS maps, skipping paths whose default is null, and throw a message naming the first mismatched field (e.g. 'staff.semitonePattern should be an array, got a string'); a file that still makes CNBConfig.validate throw is rethrown as a load error naming it as not matching the configuration schema. In render()'s loadText, catch a throwing onLoad into the error area (no status, no validation shown, returns null) so the host can refuse a config it cannot adopt. Tests in cnb/tests/cnb-config-io-tests.js: an older-version save missing later sections (no clef, keys without keySignature) loads with the version note and defaults filled; a legacy-monolith-shaped save and wrong-typed sections are rejected with a named field; truncated JSON and non-JSON text give 'not valid JSON' through loadText without calling onLoad; a throwing onLoad leaves a visible error and loadText does not throw.</p></td><td><span class="mono">cnb/ui/config-io.js</span><br><span class="mono">cnb/tests/cnb-config-io-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Config export invalid</td><td><p>Tests in cnb/tests/cnb-config-export-tests.js for exporting an invalid config through render(): a config with several validation errors (bad fileSuffix, bad hex colour, a rule naming a missing shape) shows the blocked status and one .cnb-cex-verror row per error, with no download and no onExport; a structurally broken config whose validation throws shows 'Export failed: …' in .cnb-cex-error and exportLy returns null without throwing. Fix config-export.js only if a test exposes a gap (amend the step's files if so).</p></td><td><span class="mono">cnb/tests/cnb-config-export-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>App load recovery</td><td><p>In cnb/index.html make the config-io onLoad adopt a loaded config transactionally: keep the previous config, and if re-mounting the editors or redrawing the shared panels throws, restore the previous config, re-mount, and rethrow so config-io shows the error. Apply the same guard to the SVG import onResult path (restore the previous shapes entry and show the error in #import-status).</p></td><td><span class="mono">cnb/index.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Uat hostile input</td><td><p>Add cnb/uat/uat-hostile-input.mjs, following the existing drivers' setup (static server, playwright-core resolution, exit 2 naming a missing prerequisite). It runs against cnb/index.html in Chromium (ms-playwright cache or CNB_UAT_CHROMIUM), Firefox (ms-playwright cache, <code>npx playwright install firefox</code>) and Edge (playwright channel msedge), and in each: the page loads with no page or console errors; a valid kite SVG imports; a non-toolkit SVG, an SVG without data-lilypond-*, and a non-XML file each show a visible message; an older-version JSON loads with its note; truncated JSON, a wrong-typed JSON and a JSON whose adoption throws each show a visible load error and leave the previous config in place; exporting an invalid config shows the blocked errors; and no page or console error is recorded at any point. Install Firefox locally, run the driver, and fix whatever breaks in any browser (amend the step's files for any app file a fix touches).</p></td><td><span class="mono">cnb/uat/uat-hostile-input.mjs</span><br><span class="mono">cnb/ui/svg-importer.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node --check cnb/uat/uat-hostile-input.mjs</code></td><td>yes</td></tr>
+<tr><td>Browser docs</td><td><p>Add a 'Supported browsers' table to README.md (Chromium/Chrome, Firefox, Edge with the versions the driver ran, and a note that Safari and mobile are untested), update the UAT setup line to install Firefox alongside Chromium, and mention the optional minim stem pair in the shape-import walkthrough. Record the new driver's three-browser results in docs/uat-status.md, and update the prerequisite comment in dabbler.yaml to name Firefox and Edge.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/uat-status.md</span><br><span class="mono">dabbler.yaml</span></td><td><code>git grep -q Supported browsers -- README.md</code><br><code>git grep -q uat-hostile-input -- docs/uat-status.md</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>Schema changes: no new config fields, no change to CNBConfig.VERSION, createDefault() or the export spec</li><li>Mobile layouts</li><li>Safari or any browser beyond Chromium, Firefox and Edge</li><li>Porting the eleven existing Chromium-only UAT drivers to other browsers; only the new driver runs the matrix</li><li>Exporter changes for minim anchors: cnb-lilypond.js already emits minim-up/minim-down from lilypondAnchors, so only a test is added</li><li>Converting legacy-monolith saves into the current schema: they are rejected with a message, not migrated</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[22:15:13]</span> <span class="muted">run-started</span> session=006 mode=pull</div>
+<div class="line"><span class="at">[22:15:13]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[22:19:32]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[22:19:32]</span> <span class="muted">plan-accepted</span> steps=[&quot;importer-minim-anchors&quot;,&quot;importer-hostile-svg&quot;,&quot;config-io-hostile-json&quot;,&quot;config-export-invalid&quot;,&quot;app-load-recovery&quot;,&quot;uat-hostile-input&quot;,&quot;browser-docs&quot;] non_goals=6</div>
+<div class="line"><span class="at">[22:19:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[22:19:41]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=importer-minim-anchors</div>
+<div class="line"><span class="at">[22:23:57]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:24:04]</span> <span class="muted">check-passed</span> step=importer-minim-anchors argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[22:24:06]</span> <span class="muted">report-accepted</span> seq=2 step=importer-minim-anchors files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;,&quot;cnb/tests/cnb-config-export-tests.js&quot;] notes=Importer reads the stem-minim-up/down rect pair into minim anchors (crotchet fallback when absent or half present, with warnings); export test pins distinct minim attachments</div>
+<div class="line"><span class="at">[22:24:06]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=importer-hostile-svg</div>
+<div class="line"><span class="at">[22:25:10]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:25:19]</span> <span class="muted">check-passed</span> step=importer-hostile-svg argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[22:25:24]</span> <span class="muted">report-accepted</span> seq=3 step=importer-hostile-svg files=[&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=Missing-#notehead error now names the toolkit and its Notehead mode; importFile turns read/parse failures into error results; four hostile-SVG tests</div>
+<div class="line"><span class="at">[22:25:24]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=config-io-hostile-json</div>
+<div class="line"><span class="at">[22:28:28]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:28:35]</span> <span class="muted">check-passed</span> step=config-io-hostile-json argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[22:28:37]</span> <span class="muted">report-accepted</span> seq=4 step=config-io-hostile-json files=[&quot;cnb/ui/config-io.js&quot;,&quot;cnb/tests/cnb-config-io-tests.js&quot;] notes=mergeLoaded rejects wrong-kinded fields (named) and rewraps validate() throws; loadText turns a throwing onLoad into a visible load error; 8 tests; all 21 tracked config JSONs still load</div>
+<div class="line"><span class="at">[22:28:37]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=config-export-invalid</div>
+<div class="line"><span class="at">[22:29:31]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:29:37]</span> <span class="muted">check-passed</span> step=config-export-invalid argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[22:29:40]</span> <span class="muted">report-accepted</span> seq=5 step=config-export-invalid files=[&quot;cnb/tests/cnb-config-export-tests.js&quot;] notes=Two render() tests: multi-error config shows one verror row per error with no download; a config whose validate() throws shows Export failed and returns null. No config-export.js change needed</div>
+<div class="line"><span class="at">[22:29:40]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=app-load-recovery</div>
+<div class="line"><span class="at">[22:30:29]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:30:33]</span> <span class="muted">check-passed</span> step=app-load-recovery argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[22:30:36]</span> <span class="muted">report-accepted</span> seq=6 step=app-load-recovery files=[&quot;cnb/index.html&quot;] notes=onLoad and SVG import adopt transactionally: on a mount/redraw throw the previous config/shape is restored, editors re-mounted, and the error shown (load via config-io's error area, import in #import-status). Browser-verified by the next step's driver</div>
+<div class="line"><span class="at">[22:30:36]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=uat-hostile-input</div>
+<div class="line"><span class="at">[22:36:30]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:36:34]</span> <span class="muted">check-passed</span> step=uat-hostile-input argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-hostile-input.mjs&quot;]</div>
+<div class="line"><span class="at">[22:36:36]</span> <span class="muted">report-accepted</span> seq=7 step=uat-hostile-input files=[&quot;cnb/uat/uat-hostile-input.mjs&quot;,&quot;cnb/ui/svg-importer.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=New driver: 18 hostile-input checks x Chromium 156 / Firefox 157 / Edge 155, 54/54. Fixed the one break: Firefox logged an XML Parsing Error for non-XML files, so the importer now refuses text with no &lt;svg element before DOMParser (amended files). Full UAT 12/12 drivers pass</div>
+<div class="line"><span class="at">[22:36:36]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=browser-docs</div>
+<div class="line"><span class="at">[22:38:11]</span> <span class="muted">run-resumed</span> session=006 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:38:17]</span> <span class="muted">check-passed</span> step=browser-docs argv=[&quot;git&quot;,&quot;grep&quot;,&quot;-q&quot;,&quot;Supported browsers&quot;,&quot;--&quot;,&quot;README.md&quot;]</div>
+<div class="line"><span class="at">[22:38:20]</span> <span class="muted">check-passed</span> step=browser-docs argv=[&quot;git&quot;,&quot;grep&quot;,&quot;-q&quot;,&quot;uat-hostile-input&quot;,&quot;--&quot;,&quot;docs/uat-status.md&quot;]</div>
+<div class="line"><span class="at">[22:38:22]</span> <span class="muted">report-accepted</span> seq=8 step=browser-docs files=[&quot;README.md&quot;,&quot;docs/uat-status.md&quot;,&quot;dabbler.yaml&quot;] notes=README: Supported browsers table (Chromium 156, Firefox 157, Edge 155; Safari/mobile untested), Firefox in the UAT setup line, minim pair and refusal messages in the walkthrough; uat-status records the three-browser run and the Firefox fix; dabbler.yaml prerequisite comment names Firefox and Edge</div>
+<div class="line"><span class="at">[22:38:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[22:38:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[22:38:28]</span> <span class="muted">job-started</span> name=verification pid=77656 log=.dabbler/runs/s6/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:39:24]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s6/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:39:24]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[22:39:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[22:39:26]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[22:39:28]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=39752 log=.dabbler/runs/s6/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[22:39:36]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s6/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[22:39:37]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[22:39:38]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=54724 log=.dabbler/runs/s6/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:40:44]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s6/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:40:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:41:04]</span> <span class="muted">landed</span> commit=dc008cbd08fa0fa56298fe2744f670a6cfbd3c87</div>
+<div class="line"><span class="at">[22:41:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:41:06]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:41:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:41:10]</span> <span class="muted">job-started</span> name=close pid=72372 log=.dabbler/runs/s6/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:41:49]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s6/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:41:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The Firefox “no console errors” claim is not pinned for malformed XML that still contains an `&lt;svg` token.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The README labels “Chromium / Chrome” as checked and supported at version 156, but the documented run and driver launch Playwright Chromium, not Google Chrome.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>2s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>60s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

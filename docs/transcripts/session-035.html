@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 035 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 035 transcript</h1>
+<p class="stamp">Rendered 2026-11-08T11:18:25.455Z by dabbler-ai-router 3.29.0 at 53a9ef56b3fa102d18e4827404163bf22c19f74c.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-07T18:29:29.882-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 35: The UI is stable</h3>
+<p><strong>Why.</strong> The release waits for a stable UI (operator, 2026-11-06).</p>
+<ol><li>Register.</li><li>The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the new UI, and while doing so checks the colour pickers by hand (drag in the field, type a full hex value) in each editor that has one, the check session 21 left owed. The rough edges found are fixed in this session, or planned as sessions before 36 if they are large.</li><li>README text and pictures follow the new UI. Its &quot;Preview-only settings&quot; list matches the Export section's sentence as session 34 leaves it, and it no longer introduces the unused repeat counts as settings that change the preview (session 18 review). The full UAT runs.</li><li>The operator declares the UI stable, which is the condition for session 36. *(Amended during session 35: the rough edges went to sessions 36–39, so the declaration moves to session 40.)*</li></ol>
+<h2>Work Plan</h2>
+<p>Make the new UI stable for the 1.1.0 release. The operator rebuilds Kite 4-369 and 45deg-369 from scratch in the app and, on the way, checks every colour picker by hand (drag in the field, type a full hex value), the check session 21 left owed; the findings are recorded in docs/uat-status.md. The rough edges found are fixed here when small (already known: the Staff and Ledger lines panel subtitles still promise 'how they look', which session 34 removed), and any large one is planned in session-plan.md as a session before 36. The README is brought in line with the new UI: the walkthrough names the new sections (Staff, Noteheads, Pitch, Ledger lines, Clef, Key signature, Advanced, Export) instead of the old editor names, the stale 'per-line styling' and staff 'line styling' claims go, the repeat counts are no longer introduced as a setting that changes the preview (session 18 review), the 'Preview-only settings' list matches the Export section's sentence, and a screenshot of the new page is added. The full browser UAT runs and its result, with the operator's declaration that the UI is stable, is recorded in docs/uat-status.md.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/16ed9d6a5634da0f0191056ce08e2b2f093626c3"><code>16ed9d6a5634da0f0191056ce08e2b2f093626c3</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Operator rebuild</td><td><p>With the operator, rebuild Kite 4-369 and 45deg-369 from scratch in the app, and check the colour pickers by hand (drag in the field, type a full hex value) in each editor that has one. Record what was done and every rough edge found, each marked fix-here or planned, in a session-35 section of docs/uat-status.md.</p></td><td><span class="mono">docs/uat-status.md</span></td><td><code>node -e const t=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!/session 35/.test(t)||!/45deg-369/.test(t)||!/Kite 4-369/.test(t)) process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Fix rough edges</td><td><p>Fix the small rough edges recorded in step operator-rebuild, starting with the Staff and Ledger lines panel subtitles in cnb/index.html that still say 'and how they look'. Plan any large one in docs/sessions/session-plan.md as a session before 36. Update or add tests named after each changed source file. If the fixes touch more files than listed here, amend the step's files on the record.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node -e if(/and how they look/.test(require('fs').readFileSync('cnb/index.html','utf8'))) process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Readme</td><td><p>Bring README.md in line with the new UI: name the page's sections in the 'What It Does', walkthrough and configuration-model text instead of the old editor names; drop the 'per-line styling' and staff 'line styling' claims; describe repeat mode without presenting repeat counts as a setting that changes the preview; make the 'Preview-only settings' list match the Export section's sentence (cnb/ui/config-export.js PREVIEW_ONLY_SENTENCE); and add a screenshot of the new page, captured from the app, at docs/images/configurator.png.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/images/configurator.png</span></td><td><code>node -e const fs=require('fs'); const t=fs.readFileSync('README.md','utf8'); if(!t.includes('docs/images/configurator.png')||!fs.existsSync('docs/images/configurator.png')) process.exit(1); if(/per-line styling|line styling|repeat-count noteheads/.test(t)) process.exit(2)</code></td><td>yes</td></tr>
+<tr><td>Uat and declaration</td><td><p>Run the full browser UAT and record its result in the session-35 section of docs/uat-status.md, together with the operator's declaration that the UI is stable (the condition for session 36), in their words and dated.</p></td><td><span class="mono">docs/uat-status.md</span><br><span class="mono">docs/sessions/session-plan.md</span></td><td><code>node cnb/uat/run-uat.mjs</code><br><code>node -e const t=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!/declar[a-z]* the UI stable[^.]*session 40/i.test(t)) process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No release work: version.json, CHANGELOG.md and the README's version line stay as they are until session 36.</li><li>No new features or settings; a rough edge too large to fix here is planned as its own session before 36, not built in this one.</li><li>No engine changes and no change to the export format or LY spec.</li><li>No rework of the playbook or the architecture plan beyond what a fix here makes untrue.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[23:29:29]</span> <span class="muted">run-started</span> session=035 mode=pull</div>
+<div class="line"><span class="at">[23:29:29]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[23:33:29]</span> <span class="muted">run-resumed</span> session=035 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[23:33:29]</span> <span class="muted">plan-accepted</span> steps=[&quot;operator-rebuild&quot;,&quot;fix-rough-edges&quot;,&quot;readme&quot;,&quot;uat-and-declaration&quot;] non_goals=4</div>
+<div class="line"><span class="at">[23:33:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[23:33:35]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=operator-rebuild</div>
+<div class="line"><span class="at">[10:56:29]</span> <span class="muted">run-resumed</span> session=035 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:56:32]</span> <span class="muted">check-passed</span> step=operator-rebuild argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!/session 35/.test(t)||!/45deg-369/.test(t)||!/Kite 4-369/.test(t)) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[10:56:33]</span> <span class="muted">report-accepted</span> seq=2 step=operator-rebuild files=[&quot;docs/uat-status.md&quot;] notes=Operator rebuilt Kite 4-369 and 45deg-369 and checked the colour pickers; findings recorded, each planned for sessions 36-39 by the operator's choice</div>
+<div class="line"><span class="at">[10:56:33]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=fix-rough-edges</div>
+<div class="line"><span class="at">[11:01:04]</span> <span class="muted">run-resumed</span> session=035 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:02:57]</span> <span class="muted">check-passed</span> step=fix-rough-edges argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[11:02:57]</span> <span class="muted">check-passed</span> step=fix-rough-edges argv=[&quot;node&quot;,&quot;-e&quot;,&quot;if(/and how they look/.test(require('fs').readFileSync('cnb/index.html','utf8'))) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[11:03:00]</span> <span class="muted">report-accepted</span> seq=3 step=fix-rough-edges files=[&quot;cnb/index.html&quot;,&quot;docs/sessions/session-plan.md&quot;] notes=Staff and Ledger lines subtitles no longer promise look settings; the rough edges are planned as sessions 36-39, UI stable 40, release 41, and a 1.2.0 program 42 on</div>
+<div class="line"><span class="at">[11:03:00]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=readme</div>
+<div class="line"><span class="at">[11:06:15]</span> <span class="muted">run-resumed</span> session=035 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:06:24]</span> <span class="muted">check-passed</span> step=readme argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs'); const t=fs.readFileSync('README.md','utf8'); if(!t.includes('docs/images/configurator.png')||!fs.existsSync('docs/images/configurator.png')) process.exit(1); if(/per-line styling|line styling|repeat-count noteheads/.test(t)) process.exit(2)&quot;]</div>
+<div class="line"><span class="at">[11:06:25]</span> <span class="muted">report-accepted</span> seq=4 step=readme files=[&quot;README.md&quot;,&quot;docs/images/configurator.png&quot;] notes=README names the page's sections, drops line-styling claims and repeat counts as a setting, matches the Export section's preview-only sentence, and shows a screenshot of Kite 4-369 in the app</div>
+<div class="line"><span class="at">[11:06:25]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=uat-and-declaration</div>
+<div class="line"><span class="at">[11:10:29]</span> <span class="muted">run-resumed</span> session=035 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[11:12:16]</span> <span class="muted">check-passed</span> step=uat-and-declaration argv=[&quot;node&quot;,&quot;cnb/uat/run-uat.mjs&quot;]</div>
+<div class="line"><span class="at">[11:12:16]</span> <span class="muted">check-passed</span> step=uat-and-declaration argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!/declar[a-z]* the UI stable[^.]*session 40/i.test(t)) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[11:12:17]</span> <span class="muted">report-accepted</span> seq=5 step=uat-and-declaration files=[&quot;docs/uat-status.md&quot;,&quot;docs/sessions/session-plan.md&quot;] notes=Full UAT 17/17 drivers, 446 checks; the operator did not declare the UI stable and moved the declaration to session 40; session 38 recast as discoverability since multi-select exists</div>
+<div class="line"><span class="at">[11:12:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:12:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:12:23]</span> <span class="muted">job-started</span> name=verification pid=59488 log=.dabbler/runs/s35/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:13:11]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s35/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:13:11]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[11:13:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[11:13:14]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[11:13:14]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=49400 log=.dabbler/runs/s35/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:15:31]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s35/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[11:15:32]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[11:15:33]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=39424 log=.dabbler/runs/s35/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:17:24]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s35/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[11:17:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[11:17:42]</span> <span class="muted">landed</span> commit=16ed9d6a5634da0f0191056ce08e2b2f093626c3</div>
+<div class="line"><span class="at">[11:17:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[11:17:44]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[11:17:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[11:17:47]</span> <span class="muted">job-started</span> name=close pid=50804 log=.dabbler/runs/s35/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:18:25]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s35/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:18:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Incomplete manual colour-picker check:** `docs/uat-status.md` says the session checked colour pickers “in each editor,” then explicitly says “The key-signature bar’s picker was not tried.” The required manual case is: with a key signature enabled and its bar-colour picker visible, drag within the picker and type a full hex value; assert the displayed bar and saved configuration use the final chosen value. This is documentation-only evidence and therefore non-blocking, but the record should not claim the all-editor check is complete until this is performed.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**README contradiction:** `README.md` states that `engine.multinotePadding` controls the preview spacing of repeated heads, but its Configuration Model still describes **Engine** settings as “not used in preview.” That description should be narrowed or corrected.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>131s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>104s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
