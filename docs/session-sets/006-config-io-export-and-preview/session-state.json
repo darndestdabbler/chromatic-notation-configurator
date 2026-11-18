@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 4,
+  "sessionSetName": "006-config-io-export-and-preview",
+  "status": "complete",
+  "sessions": [
+    {
+      "number": 1,
+      "title": "Session 1",
+      "status": "complete",
+      "startedAt": "2026-07-05T06:04:30.450599-04:00",
+      "completedAt": "2026-07-05T06:24:13.953432-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
+      "verificationVerdict": "VERIFIED"
+    },
+    {
+      "number": 2,
+      "title": "Session 2",
+      "status": "complete",
+      "startedAt": "2026-07-05T06:28:02.446485-04:00",
+      "completedAt": "2026-07-05T06:58:33.990625-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
+      "verificationVerdict": "VERIFIED"
+    },
+    {
+      "number": 3,
+      "title": "Session 3",
+      "status": "complete",
+      "startedAt": "2026-07-05T07:25:56.044592-04:00",
+      "completedAt": "2026-07-05T07:53:58.949345-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic"
+      },
+      "verificationVerdict": "VERIFIED"
+    }
+  ]
+}
