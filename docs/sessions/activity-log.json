@@ -1328,6 +1328,21 @@
       "what": "step 'tryout': its files",
       "reason": "The operator's try-out found two small rough edges fixed here: the segmented choices' chosen option made solid (app.css), and the Noteheads step's Rules list removed (index.html, notehead-panel.js and its tests, notehead-inference.js's comment, the two UAT drivers that read it).",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 78,
+      "dateTime": "2026-11-18T06:58:27.986000-05:00",
+      "task": "Design the Clef steps (10 and 11) and the page's dropdowns, as a design only, for the operator's approval (session 77's try-out). A new document, docs/planning/clef-steps-design.md, as small as the requirements allow, lays out: one list of clefs, built-in and imported, with Import, in place of \"Choose a clef\" and \"Clefs\"; the options on the left and a larger preview on the right, with the pitch names to the left of the staff as the canvas draws them, changing live as each option changes, the anchor marked and the clef moved and resized, and no bar at the bottom edge that reads as an anchor; the options in order: a. the clef, chosen or imported, b. its anchor (top, middle, bottom or a point picked on the glyph), c. where the anchor sits on the staff (one of the pitches or a semitone of the designer's own, also by dragging), d. the space after the clef only (the engine pads the right only, and the preview follows); what steps 10 and 11 become; and what the export writes for each choice (LY spec \u00a75.5, \u00a75.5a), unchanged where it can be. In the same document, the page's rows of buttons and radio buttons that would be more economical as dropdowns, the key-signature designer's Stacks first, then its other rows, then the other steps' choices, each with its mock-up, and which choices stay as buttons (options that are pictures, or a one-at-a-time choice flipped while watching the canvas) and why. Mock-ups drawn with the real cnb/src modules show the Clef steps and the dropdowns. The operator looks at them and approves the design, and the approval and their decisions are recorded, with session 79 amended in the session plan where the design changes what it builds.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 78,
+      "dateTime": "2026-11-18T07:05:51.106000-05:00",
+      "what": "step 'mockups': its files",
+      "reason": "An engine measurement made for the mock-up (clef 0.75 staff spaces after the staff's start whatever the gutter; the gutter moves nothing after the clef at 12 or 48 px) corrects the design's option d, so the design document changes with the mock-ups that draw it",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

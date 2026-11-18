@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clef steps mock-ups</title>
+<link rel="stylesheet" href="../../../cnb/assets/fonts/oswald.css">
+<style>
+  :root { --bg: #f4f3ef; --surface: #ffffff; --ink: #1c1c1e; --ink-2: #5b5d63; --line: #e2e0da;
+    --accent: #2f6fd6; --accent-soft: #e3ecfb; --anchor: #d62f2f; --old: #8a8d93; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; }
+  .intro { padding: 24px 32px 8px; max-width: 1100px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; }
+  .intro p, .mock > p { margin: 0 0 10px; color: var(--ink-2); }
+  .mock { padding: 8px 32px 24px; }
+  .mock h2 { font-size: 17px; margin: 8px 0 4px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 18px 18px; margin-bottom: 14px; }
+  .card h3 { font-size: 15px; margin: 0 0 10px; }
+  .card h3 .sub { font-weight: 400; color: var(--ink-2); font-size: 13px; margin-left: 8px; }
+  /* A step: the options on the left, the preview on the right. */
+  .step { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .options { display: flex; flex-direction: column; gap: 14px; }
+  .option { display: grid; grid-template-columns: 22px 1fr; gap: 2px 6px; }
+  .option .letter { grid-row: span 3; font-weight: 700; color: var(--accent); }
+  .option label, .option .title { font-weight: 600; }
+  .option .hint { color: var(--ink-2); font-size: 12.5px; }
+  .option .controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  select, input[type=number], button { font: inherit; }
+  select { padding: 4px 6px; border: 1px solid #c9c6bf; border-radius: 6px; background: #fff; min-width: 0; }
+  input[type=number] { width: 80px; padding: 4px 6px; border: 1px solid #c9c6bf; border-radius: 6px; }
+  button { padding: 4px 10px; border: 1px solid #c9c6bf; border-radius: 6px; background: #fff; cursor: pointer; }
+  .unit { color: var(--ink-2); font-size: 12.5px; }
+  .valid { color: #2e7d32; font-size: 12.5px; }
+  .preview { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow: hidden; }
+  .preview .hint { color: var(--ink-2); font-size: 12.5px; margin-top: 6px; }
+  .preview .clef-col svg { cursor: grab; }
+  .preview .cnb-mock-handle { cursor: ns-resize; }
+  .spaces { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+  .spaces b { color: var(--ink); }
+  .empty { color: var(--ink-2); font-style: italic; }
+  /* The anchors and places: small previews. */
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; }
+  .case { min-width: 0; }
+  .case h4 { font-size: 13.5px; margin: 0 0 4px; }
+  .case .caption { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+  /* Today against proposed. */
+  .versus { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .versus > div > h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); margin: 0 0 8px; }
+  .row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; margin-bottom: 12px; }
+  .row-label { font-weight: 600; padding-top: 3px; }
+  .radios { display: flex; flex-direction: column; gap: 3px; }
+  .radios label { display: flex; gap: 6px; align-items: center; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+  .buttons button.on { background: var(--accent-soft); border-color: var(--accent); }
+  .open-list { margin-top: 4px; border: 1px solid #c9c6bf; border-radius: 6px; background: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12); display: inline-block; min-width: 260px; font-size: 13.5px; }
+  .open-list div { padding: 3px 10px; }
+  .open-list div.on { background: var(--accent); color: #fff; }
+  .note { font-size: 12.5px; color: var(--ink-2); }
+  table.stay { border-collapse: collapse; font-size: 13px; width: 100%; }
+  table.stay td, table.stay th { border-top: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>The Clef steps, and dropdowns</h1>
+  <p>Session 78, for the operator's approval (the session-77 try-out, <code>docs/uat-status.md</code> items 4–6;
+    the design is <code>docs/planning/clef-steps-design.md</code>). The previews are drawn with the
+    Configurator's own card collection, at the canvas's Large size (16 px a semitone), with the pitch names to the left of the staff.
+    The controls here work: change the clef, its anchor, where it sits and the space after it, or drag the
+    clef up and down and its corner to resize it, and the preview follows.
+    The <span style="color:var(--anchor);font-weight:600">red ringed cross</span> is the clef's anchor, and the
+    pitch it sits on is highlighted in the names.</p>
+</div>
+
+<section class="mock" id="clef-step">
+  <h2>Steps 10 and 11</h2>
+  <p>One list of clefs, with Import beside it; the options in order, a to d, on the left; the preview on the
+    right. Step 10 has the clef, its anchor and its height; step 11 where it sits and the space after it.
+    The main canvas is hidden in both.</p>
+  <div class="card">
+    <h3>10 · Clef symbol and size<span class="sub">The clef at the start of the staff, its anchor and its size</span></h3>
+    <div class="step">
+      <div class="options" id="step10-options"></div>
+      <div class="preview" id="step10-preview"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>11 · Clef placement<span class="sub">Where the anchor sits on the staff, and the space after the clef</span></h3>
+    <div class="step">
+      <div class="options" id="step11-options"></div>
+      <div class="preview" id="step11-preview"></div>
+    </div>
+  </div>
+</section>
+
+<section class="mock" id="clef-anchors">
+  <h2>The anchor, and where it sits</h2>
+  <p>The tutorial's imported C clef, sitting on C (semitone 12), with each anchor: the clef moves so that its
+    anchor is on C. Then the treble clef by its curl on a pitch, G, and on a semitone of the designer's own.</p>
+  <div class="card"><div class="grid3" id="anchor-cases"></div></div>
+</section>
+
+<section class="mock" id="stacks-dropdown">
+  <h2>The key-signature designer's Stacks</h2>
+  <p>Today five radio buttons with long labels, and two more under them for the direction. As a dropdown
+    each is one line; the list is shown open beside it.</p>
+  <div class="card"><div class="versus" id="stacks"></div></div>
+</section>
+
+<section class="mock" id="dropdowns">
+  <h2>The other rows</h2>
+  <p>The key-signature designer's other rows, and step 7's Select, as dropdowns. Below them, the rows that stay
+    as buttons, and why.</p>
+  <div class="card"><div class="versus" id="others"></div></div>
+  <div class="card" id="stay-card"></div>
+</section>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>

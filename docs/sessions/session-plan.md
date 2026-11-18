@@ -2598,14 +2598,26 @@ of all.
    one-at-a-time choice the designer flips while watching the canvas, may
    stay as buttons; the document says which and why.
 
+*(Done in session 78, 2026-11-18: the design,
+[`docs/planning/clef-steps-design.md`](../planning/clef-steps-design.md),
+approved by the operator that day after looking at the mock-ups,
+[`docs/planning/clef-steps-mockups/`](../planning/clef-steps-mockups/).
+The operator's decisions (design §5): the Clef steps stay two, 10 (the
+clef, its anchor, its height) and 11 (where it sits); no setting for the
+space after the clef, since an engine measurement showed the engraved clef
+0.75 staff spaces after the staff's start and its gutter moving nothing
+after it; the export unchanged.)*
+
 ### Session 79: The Clef steps and the dropdowns, built
 
 **Why.** Session 78's design, approved.
 
 1. Register.
 2. The Clef steps as designed, with each module's tests, the UAT, the
-   tutorial (its clef steps, shots and downloads) and the LY spec
-   following; an engine round trip where the export changes.
+   tutorial (its clef steps, shots and downloads) and the LY spec's §5.5
+   *Gutter* note following. The export is unchanged; an engine round trip
+   holds the preview's clef, 0.75 staff spaces after the staff's start, and
+   the key signature after it to the engraving (design §4).
 3. The dropdowns as designed, with their tests and the UAT following.
 
 ### Session 80: The UI is stable, a fourth try
