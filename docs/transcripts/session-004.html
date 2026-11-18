@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 004 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 004 transcript</h1>
+<p class="stamp">Rendered 2026-10-31T10:30:15.299Z by dabbler-ai-router 3.27.0 at a0396edcd5259f2774d58cbf00cafb682c308a01.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-31T05:35:28.777-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 4 of 4: UI presets + re-tier + operator UAT (P5, P6)</h3>
+<p><strong>Steps:</strong></p>
+<ol><li>Pitch-axis editor panel (<code>cnb/ui/pitch-axis-editor.js</code>, Modules 12–17 editor contract: property-based event wiring, Node-testable <code>render()</code>, pure builders, Module A validation pass-through) — enable, kind, stride, per-pc positions, <code>axisUnitsPerStaffSpace</code>, plus preset(s) (&quot;Twinline-like 7-position&quot;) that compile into the explicit map + offset rules (design §1.1).</li><li>Wire into the preview app; <code>xOffsetStaffSpaces</code> editing on the notehead rule editor.</li><li>Feasibility-matrix re-tier: records 32–40 re-tiered as a dated amendment (the 008-s2 framework-change rule) with the reproduced fixture as evidence.</li><li>UAT (per-set): the operator reviews the compact-staff preview, the engine render, and the preset flow; verbatim decision in <code>docs/sessions/uat-session-4.md</code> (attestation before verification round 1).</li><li>Final session: <code>change-log.md</code>.</li></ol>
+<p><strong>Creates:</strong> <code>cnb/ui/pitch-axis-editor.js</code>, <code>cnb/tests/cnb-pitch-axis-editor-tests.js</code>, <code>change-log.md</code>. <strong>Touches:</strong> <code>cnb/ui/app.js</code>, <code>cnb/ui/notehead-rule-editor.js</code>, <code>cnb/index.html</code>, <code>cnb/tests/run-tests.js</code>, <code>docs/research/gallery-survey/feasibility-matrix.md</code> (dated amendment). <strong>Progress keys:</strong> <code>session-004/presets-and-editor</code>, <code>session-004/retier-and-uat</code></p>
+<p>---</p>
+<p>&lt;!-- Wrap-up program, approved by the operator 2026-10-30. Goal: the Configurator is reliable for simple exploration, fully documented, and released as 1.0.0 (then made public under CC0). --&gt;</p>
+<h2>Work Plan</h2>
+<p>Finish the pitch-axis implementation (design phases P5 and P6). Build the pitch-axis editor panel (cnb/ui/pitch-axis-editor.js) on the Modules 12–17 editor contract: property-based event wiring, a Node-testable render(), pure stateFromConfig/buildPitchAxis/applyToConfig builders and Module A validation pass-through. It edits enable, kind, octaveStride, axisUnitsPerStaffSpace and the 12 per-pc positions, and offers one preset, &quot;Twinline-like 7-position&quot;, which compiles into the explicit design §1.1 map plus a named notehead rule carrying the shared-pair xOffsetStaffSpaces. The editor never creates a pitchAxis section the user did not ask for, so default configs stay byte-identical. Let the notehead rule editor keep and edit apply.xOffsetStaffSpaces; today its builder drops the field, so loading the Twinline fixture loses its offsets. Wire the panel into the app shell, cnb/index.html (the repository has no cnb/ui/app.js; index.html is the shell that the plan's app.js entry stands for). Re-tier feasibility-matrix records 32–40 as a dated amendment, with the twinline-compact fixture and the session-3 engine round-trip as evidence. Record the operator's verbatim UAT decision in docs/sessions/uat-session-4.md. Close out the pitch-axis work in docs/sessions/change-log.md.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/6e84b7377cc8587765f456507581334ecaf2d187"><code>6e84b7377cc8587765f456507581334ecaf2d187</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Pitch axis editor</td><td><p>Create cnb/ui/pitch-axis-editor.js (CNBPitchAxisEditor) on the Modules 12–17 editor contract. It holds pure stateFromConfig(config), buildPitchAxis(state) (throws on structurally invalid state), applyToConfig(config, state), the TWINLINE_7 preset and applyPreset(config, presetId), which returns { pitchAxis, noteheadRules }: the design §1.1 map, plus a single named offset rule that replaces any earlier copy of itself and is not duplicated. Its render(container, { config, onChange }) has property-wired controls for enable, kind (single-value select), stride, units-per-staff-space, the 12 position inputs and the preset button, and passes Module A validation through. With no pitchAxis section and enabled left unchecked, applyToConfig leaves the section absent. Add cnb/tests/cnb-pitch-axis-editor-tests.js (builders, preset compilation, absent-section byte-identity, render against the svg-stub document) and register it in cnb/tests/run-tests.js.</p></td><td><span class="mono">cnb/ui/pitch-axis-editor.js</span><br><span class="mono">cnb/tests/cnb-pitch-axis-editor-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Notehead xoffset</td><td><p>In cnb/ui/notehead-rule-editor.js, carry apply.xOffsetStaffSpaces through the pure builders. Validate it as a finite number and throw otherwise, matching the other apply fields. Add an apply row (toggle + number input, step any) so a rule can set it, shown when config.pitchAxis is enabled or when the rule already carries the field. Update cnb/tests/cnb-notehead-rule-editor-tests.js: round-trip of the Twinline fixture's offset rule, rejection of non-finite values, and the row's presence or absence by axis state.</p></td><td><span class="mono">cnb/ui/notehead-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-notehead-rule-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Wire app</td><td><p>Wire CNBPitchAxisEditor into cnb/index.html, the app shell, the same way as the clef and key-signature panels: a host element and panel, mount and clear inside mountEditors(), and onChange writing appConfig.pitchAxis (or deleting it when the editor returns none). A preset that also changes noteheadRules re-mounts the notehead editor. Then refreshShared().</p></td><td><span class="mono">cnb/index.html</span></td><td><code>node -e const s=require('fs').readFileSync('cnb/index.html','utf8'); if(!s.includes('./ui/pitch-axis-editor.js')||!s.includes('pitch-axis-editor-host')) process.exit(1)</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Retier matrix</td><td><p>Append to docs/research/gallery-survey/feasibility-matrix.md a dated section &quot;## 9. Amendment (2026-10-31, set 014): Twinline family re-tiered&quot;, following the 008-s2 framework-change rule. Re-tier records 32–40 on the strength of invariant I2 being relaxed by pitchAxis (pitch-class-map-v1). State each record's new tier and any residual breaks (for example the E3 duration notes on 34 and 36). Cite as evidence cnb/assets/examples/gallery/twinline-compact.json, its export baseline, and the session-3 engine round-trip under docs/sessions/session-003/roundtrip/. Leave the original §4 rows as history, marked with a pointer to the amendment, and update the §5 tier-summary counts accordingly.</p></td><td><span class="mono">docs/research/gallery-survey/feasibility-matrix.md</span></td><td><code>node -e const s=require('fs').readFileSync('docs/research/gallery-survey/feasibility-matrix.md','utf8'); if(!/## 9\. Amendment/.test(s)||!s.includes('twinline-compact')||!s.includes('session-003/roundtrip')) process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Operator uat</td><td><p>Present the operator with what to review: the compact-staff preview (load twinline-compact.json in cnb/index.html), the session-3 engine render (docs/sessions/session-003/roundtrip/twinline-roundtrip.svg and its measurements), and the preset flow (default config → Pitch axis panel → Twinline-like 7-position preset). Ask for their decision. Record it verbatim, with the date and what was reviewed, in docs/sessions/uat-session-4.md before verification round 1. If the operator asks for changes, make them within this session's files and re-attest.</p></td><td><span class="mono">docs/sessions/uat-session-4.md</span></td><td><code>node -e const s=require('fs').readFileSync('docs/sessions/uat-session-4.md','utf8'); if(!/Decision/.test(s)||!/verbatim/i.test(s)) process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Change log</td><td><p>Add a closing section to docs/sessions/change-log.md for sessions 1–4 (v1 set 014, the pitch-axis implementation). Summarize what shipped (schema + validation, CNBPitchAxis, grid, consumer rethread, v1.3 export with the gate lifted, Twinline fixture + round-trip, editor + preset, xOffset editing, matrix re-tier) and the UAT decision, and point to the records. Leave the framework's verification entries untouched.</p></td><td></td><td><code>node -e const s=require('fs').readFileSync('docs/sessions/change-log.md','utf8'); if(!s.includes('pitch-axis-editor')||!s.includes('uat-session-4.md')) process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>Making the Playwright UAT drivers runnable from the repository (package.json, playwright-core) — that is session 5; this session's UAT is the operator's review in their own browser plus the session-3 engine round-trip evidence.</li><li>Non-monotonic axis kinds, multi-pc mixed-offset chord preview, the in-gap ledger preview↔engine divergence, and off-key marking (the set's stated non-goals).</li><li>More presets than the one Twinline-like 7-position preset, and presets that also rewrite the staff pattern or ledgers: the preset compiles only into the map plus the offset rule (design §1.1).</li><li>Any change to cnb/src rendering or export modules, or to the engine repository.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:35:28]</span> <span class="muted">run-started</span> session=004 mode=pull</div>
+<div class="line"><span class="at">[09:35:28]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:37:35]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:37:35]</span> <span class="muted">plan-accepted</span> steps=[&quot;pitch-axis-editor&quot;,&quot;notehead-xoffset&quot;,&quot;wire-app&quot;,&quot;retier-matrix&quot;,&quot;operator-uat&quot;,&quot;change-log&quot;] non_goals=4</div>
+<div class="line"><span class="at">[09:37:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:37:37]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=pitch-axis-editor</div>
+<div class="line"><span class="at">[09:40:33]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:40:38]</span> <span class="muted">check-passed</span> step=pitch-axis-editor argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:40:38]</span> <span class="muted">report-accepted</span> seq=2 step=pitch-axis-editor files=[&quot;cnb/ui/pitch-axis-editor.js&quot;,&quot;cnb/tests/cnb-pitch-axis-editor-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=CNBPitchAxisEditor: pure builders, twinline-7 preset (map + named idempotent offset rule), absent-section byte-identity via state.present, render with Module A pass-through; 19 tests (local HTML stub, the editor-test pattern, since svg-stub lacks textContent clearing)</div>
+<div class="line"><span class="at">[09:40:38]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=notehead-xoffset</div>
+<div class="line"><span class="at">[09:41:45]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:41:52]</span> <span class="muted">check-passed</span> step=notehead-xoffset argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:41:53]</span> <span class="muted">report-accepted</span> seq=3 step=notehead-xoffset files=[&quot;cnb/ui/notehead-rule-editor.js&quot;,&quot;cnb/tests/cnb-notehead-rule-editor-tests.js&quot;] notes=buildRules/stateFromConfig carry apply.xOffsetStaffSpaces (finite-number check, throws otherwise); axis-gated apply row (shown when pitchAxis.enabled or the rule sets it), onchange-wired number input; 5 new tests incl. Twinline fixture round-trip</div>
+<div class="line"><span class="at">[09:41:53]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=wire-app</div>
+<div class="line"><span class="at">[09:44:26]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:44:30]</span> <span class="muted">check-passed</span> step=wire-app argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('cnb/index.html','utf8'); if(!s.includes('./ui/pitch-axis-editor.js')||!s.includes('pitch-axis-editor-host')) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[09:44:32]</span> <span class="muted">check-passed</span> step=wire-app argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:44:33]</span> <span class="muted">report-accepted</span> seq=4 step=wire-app files=[&quot;cnb/index.html&quot;] notes=Pitch axis card + host styling; mountPitchAxisEditor() (null slice deletes the section; preset rules adopted; re-seeds notehead editor) and re-mounted on staff/notehead changes so its preset/validation never use stale rules. Browser smoke (scratch Playwright, cached Chromium): default has no section, preset writes map+rule, offset rows appear, preview redraws, re-apply idempotent, no page errors</div>
+<div class="line"><span class="at">[09:44:33]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=retier-matrix</div>
+<div class="line"><span class="at">[09:46:59]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:47:05]</span> <span class="muted">check-passed</span> step=retier-matrix argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('docs/research/gallery-survey/feasibility-matrix.md','utf8'); if(!/## 9\\. Amendment/.test(s)||!s.includes('twinline-compact')||!s.includes('session-003/roundtrip')) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[09:47:06]</span> <span class="muted">report-accepted</span> seq=5 step=retier-matrix files=[&quot;docs/research/gallery-survey/feasibility-matrix.md&quot;] notes=Dated §9 amendment: I2 relaxed by pitchAxis; 32,33,35 -&gt; Tier 1 provisional (duration unknown), 39 -&gt; Tier 1 firm, 34,36,37,38,40 -&gt; Tier 2 firm (E1/E2/E3); evidence = twinline-compact fixture + pinned export + session-003 round-trip, scope limits stated; §4 rows kept as history with 4 -&gt; N pointers, §5 counts amended with originals quoted, §1/§7 pointers</div>
+<div class="line"><span class="at">[09:47:06]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=operator-uat</div>
+<div class="line"><span class="at">[10:25:47]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:25:53]</span> <span class="muted">check-passed</span> step=operator-uat argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('docs/sessions/uat-session-4.md','utf8'); if(!/Decision/.test(s)||!/verbatim/i.test(s)) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[10:25:55]</span> <span class="muted">report-accepted</span> seq=6 step=operator-uat files=[&quot;docs/sessions/uat-session-4.md&quot;] notes=Operator reviewed compact preview, engine round-trip, preset flow; verbatim decision 'Approve (Recommended)' recorded before verification round 1</div>
+<div class="line"><span class="at">[10:25:55]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=change-log</div>
+<div class="line"><span class="at">[10:26:30]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:26:32]</span> <span class="muted">report-rejected</span> seq=7 step=change-log rejection=1 reasons=[&quot;[files-changed-unchanged] files_changed names 'docs/sessions/change-log.md', which the tree did not change since the last accepted step&quot;]</div>
+<div class="line"><span class="at">[10:26:32]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection step=change-log reasons=1</div>
+<div class="line"><span class="at">[10:26:52]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:26:54]</span> <span class="muted">report-rejected</span> seq=8 step=change-log rejection=2 reasons=[&quot;[files-changed-unchanged] files_changed names 'docs/sessions/change-log.md', which the tree did not change since the last accepted step&quot;]</div>
+<div class="line"><span class="at">[10:26:54]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection step=change-log reasons=1</div>
+<div class="line"><span class="at">[10:28:23]</span> <span class="muted">run-resumed</span> session=004 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:28:24]</span> <span class="muted">step-file-unchanged</span> step=change-log file=docs/sessions/change-log.md</div>
+<div class="line"><span class="at">[10:28:25]</span> <span class="muted">check-passed</span> step=change-log argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('docs/sessions/change-log.md','utf8'); if(!s.includes('pitch-axis-editor')||!s.includes('uat-session-4.md')) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[10:28:26]</span> <span class="muted">report-accepted</span> seq=9 step=change-log files=[] notes=Closing section for sessions 1-4 (set 014) added to docs/sessions/change-log.md; that file is in the router's LIFECYCLE_WRITTEN_FILES, excluded from step diffs (so naming it was refused), and lands with the bookkeeping commit. Framework verification entries untouched</div>
+<div class="line"><span class="at">[10:28:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:28:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:28:29]</span> <span class="muted">job-started</span> name=verification pid=11284 log=.dabbler/runs/s4/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:29:30]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s4/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:29:30]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:29:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:29:30]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[10:29:31]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=64560 log=.dabbler/runs/s4/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[10:29:35]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s4/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[10:29:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:29:52]</span> <span class="muted">landed</span> commit=6e84b7377cc8587765f456507581334ecaf2d187</div>
+<div class="line"><span class="at">[10:29:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:29:53]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:29:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:29:54]</span> <span class="muted">job-started</span> name=close pid=45892 log=.dabbler/runs/s4/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:30:15]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s4/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:30:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>1s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

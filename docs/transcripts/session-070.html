@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 070 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 070 transcript</h1>
+<p class="stamp">Rendered 2026-11-14T20:49:12.065Z by dabbler-ai-router 3.33.0 at 9cb8b4c549f63280a26ee57336eadf76f5548c14.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-14T14:56:00.371-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 70: Ledgers by one rule</h3>
+<p><strong>Why.</strong> The operator's try-out (session 69, rough edges 2–5): automatic ledgers stop at C, the default ledgers stay when the staff changes, and a designer's own ledger rules draw a ledger across the staff and differ by octave (in the key-signature designer too). The operator chose the rule (2026-11-14, <code>docs/planning/ledger-rule-consult.md</code>).</p>
+<ol><li>Register.</li><li><code>cnb/src/cnb-ledger-set.js</code>, linear and on a pitch axis: a ledger answers a note only when no staff line lies between them, the note included, and a line lies beyond it; automatic ledgers by rule A (the note strictly nearer the ledger than any staff line, a tie taking both sides); no octave-region gate, for automatic and own rules alike; the ledger spots built an octave beyond the drawn range. Tests in <code>cnb-ledger-set-tests.js</code>. The export writes the preview's ledgers (LY spec §5.7), so its format does not change; the architecture plan's and <code>CLAUDE.md</code>'s &quot;octave-aware&quot; wording, the gallery and fixture export pins, and the tutorial's downloads follow.</li><li><code>cnb/ui/staff-rule-editor.js</code>: a staff pattern change switches the ledgers to Automatic while they are still the default notation's own rules (or already Automatic); a designer's or a gallery file's rules stay, and the hint under My own rules says so. Tests in <code>cnb-staff-rule-editor-tests.js</code>.</li><li>The tutorial's step 2 chooses 3–5–7–9 rather than building it by hand; <code>cnb/uat/uat-tutorial.mjs</code> clicks the pattern, and its shots (<code>02-staff.png</code> and any whose ledgers change) are recaptured.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the ledger lines follow one rule, as the operator chose (docs/planning/ledger-rule-consult.md; docs/uat-status.md, session 69, rough edges 2-5). In cnb/src/cnb-ledger-set.js, on a linear staff and under a pitch axis alike, a ledger answers a note only when no staff line lies between them, the note included, and a line lies beyond it; an automatic (proximity) ledger is shown by rule A, when the note is strictly nearer to it than to any staff line, so a note midway between two ledger spots takes both; the octave-region gate goes for automatic ledgers and a designer's own rules alike; and ledgersFor builds the ledger spots an octave beyond the drawn range, as it already builds the staff lines, so a note's ledgers are the same in every octave. The export writes the preview's ledgers (LY spec 5.7), so its format does not change; the pinned previews, signatures and the tutorial's export follow, and the architecture plan's and CLAUDE.md's 'octave-aware' wording is corrected. In cnb/ui/staff-rule-editor.js a change of the staff pattern switches the ledgers to Automatic while they are still the default notation's own rules (or already Automatic); a designer's or a gallery file's own rules stay, and the hint under My own rules says so. The tutorial's step 2 chooses the 3-5-7-9 pattern instead of building it by hand, its step 4 reads the new rule (Automatic already chosen, C taking both the B and C-sharp ledgers), cnb/uat/uat-tutorial.mjs follows the page, and its downloads and the shots whose ledgers change are regenerated. The other browser UAT drivers that relied on the default rules surviving a staff change follow, and the full UAT passes.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/040a67bfd3bb24d431bd9b4401cc2e56051cbe67"><code>040a67bfd3bb24d431bd9b4401cc2e56051cbe67</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ledger rule</td><td><p>In cnb/src/cnb-ledger-set.js, on the linear path and the pitch-axis path alike: a ledger def answers a note only when no staff line lies between the ledger and the note, the note's own position included, and a staff line lies beyond the ledger (isBetweenNoteAndStaff takes this meaning); an override def shows when the note's pitch class is a trigger and that holds; a proximity def shows when the note is strictly nearer to it than to every staff line and that holds, so a note equidistant from two spots takes both; drop the octave-region gate for both kinds; and in ledgersFor build the defs, as the staff lines already are, an octave beyond the drawn range. Update the module's comments. In cnb/tests/cnb-ledger-set-tests.js replace the octave-awareness tests with tests of the new rule: no ledger answers a note across a staff line (the operator's 3-5-7-9 screenshot: rules B for C and B and C-sharp for C and C-sharp give each C, semitones 0, 12 and 24, the B and C-sharp ledgers and nothing across the staff); 3-5-7-9's Automatic ledgers give C both B and C-sharp in every octave; the automatic 4-8 and 3-6-9 staffs give B the C ledger as C-sharp gets it; the default config's ledgers for semitones 0-24 are unchanged; a note at the top of the range takes the ledgers a note in the middle takes; and the same on a pitch axis.</p></td><td><span class="mono">cnb/src/cnb-ledger-set.js</span><br><span class="mono">cnb/tests/cnb-ledger-set-tests.js</span></td><td><code>node --input-type=module -e const { tests } = await import('./cnb/tests/cnb-ledger-set-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); process.exit(failed ? 1 : 0);</code></td><td>yes</td></tr>
+<tr><td>Pins</td><td><p>Re-capture the pins whose drawn ledgers the new rule changes, and only those probes: the preview baseline (cnb/fixtures/preview-baseline.json, through capturePreviewBaseline in cnb/tests/cnb-collection-tests.js) and the key-signature baselines (cnb/fixtures/key-signature-baseline.json and key-signature-styles-baseline.json, through cnb/tests/cnb-key-signature-tests.js), each fixture's description and the test file's comment naming the session-70 re-capture and why; confirm by a script outside the tracked tree that every re-captured probe changed only in its ledgers. Regenerate the tutorial's export docs/playbook/tutorial/downloads/tutorial.ly from tutorial.json (its ledger table changes; its date line kept). The five export baselines must stay byte-identical. If a pin listed here does not change, or another does, amend the step's files on the record.</p></td><td><span class="mono">docs/playbook/tutorial/downloads/tutorial.ly</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs wording</td><td><p>Bring the documents in line with the one rule: CLAUDE.md's 'Ledger rules are octave-aware' bullet, and in docs/CNB-ARCHITECTURE-PLAN-v2.md the ledgers' design notes (section 4.4, its proximity comment and 'Octave awareness is critical'), Module B's ledgerOctaveRegion comment, and Module 5's display algorithm, isBetweenNoteAndStaff and test cases: a ledger answers a note only with no staff line between them and one beyond it, rule A for Automatic ledgers with both sides on a tie, no octave gate, the spots built an octave beyond the drawn range (session 70).</p></td><td><span class="mono">CLAUDE.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs = require('fs'); const c = fs.readFileSync('CLAUDE.md', 'utf8'); const a = fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); const bad = []; if (/octave-aware/i.test(c)) bad.push('CLAUDE.md still says octave-aware'); for (const w of ['Octave awareness is critical', 'same octave region as N', 'only consider ledgers in same octave region']) if (a.includes(w)) bad.push('plan still says: ' + w); if (!/session 70/.test(a)) bad.push('plan does not name session 70'); if (bad.length) { console.error(bad.join('\n')); process.exit(1); }</code></td><td>yes</td></tr>
+<tr><td>Staff change resets</td><td><p>In cnb/ui/staff-rule-editor.js, a change of the staff pattern (a preset clicked, or a line added or removed under Staff lines on) switches the ledger mode to Automatic when the ledgers are still the default notation's own rules (CNBConfig.createDefault()'s templates, with the proximity rule on) or already Automatic; a designer's own rules, or a gallery file's, stay as they are. The hint under My own rules says that these rules stay when the staff changes. Update the renderPreview comment that says 'octave-aware'. Tests in cnb/tests/cnb-staff-rule-editor-tests.js: from the default config a preset click and a pill click each leave the ledgers Automatic, the onChange slice carrying the new staff's automatic templates; edited rules, and a gallery file's rules, survive a pattern change; Automatic stays Automatic; the hint is drawn under My own rules; existing tests that relied on the default rules surviving a staff change are updated.</p></td><td><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Tutorial</td><td><p>In docs/playbook/tutorial/index.html, step 2 tells the reader to choose the 3-5-7-9 pattern (Four lines an octave, on D-sharp, F, G and A) rather than clicking the lines by hand, and says the ledgers follow the new staff; step 4 says Automatic is already chosen and describes the rule as it now is (in the six-semitone gap, B and C-sharp each sit on their own ledger and C, midway, takes both), replacing the note on why C does not sit on B's ledger. cnb/uat/uat-tutorial.mjs follows the page: stage 2 clicks the 3-5-7-9 pattern and checks the ledgers are Automatic, stage 4 checks Automatic is on without clicking it and that C (12) takes [11, 13]; its header comment follows. Run it with CNB_UAT_TUTORIAL_UPDATE=1 and CNB_UAT_TUTORIAL_SHOTS=docs/playbook/tutorial/shots to regenerate the downloads and the shots, keeping only the shots whose content changed (02-staff.png and those whose ledgers changed); amend the step's files to what actually changed.</p></td><td><span class="mono">docs/playbook/tutorial/index.html</span><br><span class="mono">cnb/uat/uat-tutorial.mjs</span><br><span class="mono">docs/playbook/tutorial/downloads/tutorial-custom.ly</span><br><span class="mono">docs/playbook/tutorial/shots/02-staff.png</span><br><span class="mono">docs/playbook/tutorial/shots/03-pitch.png</span><br><span class="mono">docs/playbook/tutorial/shots/04-ledger-lines.png</span><br><span class="mono">docs/playbook/tutorial/shots/05-noteheads.png</span><br><span class="mono">docs/playbook/tutorial/shots/05-noteheads-repeated.png</span><br><span class="mono">docs/playbook/tutorial/shots/06-ks-symbol-type.png</span><br><span class="mono">docs/playbook/tutorial/shots/06-ks-symbol-type-optional.png</span><br><span class="mono">docs/playbook/tutorial/shots/07-ks-custom-symbols.png</span><br><span class="mono">docs/playbook/tutorial/shots/07-ks-custom-symbols-optional.png</span><br><span class="mono">docs/playbook/tutorial/shots/08-ks-designer.png</span><br><span class="mono">docs/playbook/tutorial/shots/08-ks-designer-optional.png</span><br><span class="mono">docs/playbook/tutorial/shots/09-ks-preview.png</span><br><span class="mono">docs/playbook/tutorial/shots/10-clef-symbol.png</span><br><span class="mono">docs/playbook/tutorial/shots/11-clef-placement.png</span><br><span class="mono">docs/playbook/tutorial/shots/12-export.png</span><br><span class="mono">docs/playbook/tutorial/shots/12-export-optional.png</span></td><td><code>node -e const t = require('fs').readFileSync('docs/playbook/tutorial/index.html', 'utf8'); const bad = []; if (t.includes('Why C does not sit on B') ) bad.push('the old note on C and B remains'); if (/click D♯, F, G and A to add them/.test(t)) bad.push('step 2 still builds the staff by hand'); const s2 = t.slice(t.indexOf('id=&quot;step-staff&quot;'), t.indexOf('id=&quot;step-pitch&quot;')); if (!s2.includes('3–5–7–9')) bad.push('step 2 does not name 3–5–7–9'); if (bad.length) { console.error(bad.join('\n')); process.exit(1); }</code><br><code>node cnb/uat/uat-tutorial.mjs</code></td><td>yes</td></tr>
+<tr><td>Uat drivers</td><td><p>Update the other browser UAT drivers whose checks relied on the default notation's own ledger rules surviving a staff pattern change, or on the old octave-gated ledgers (cnb/uat/uat-staff-rule-editor.mjs, which adds rules after choosing 3-6-9, and any of uat-golden-path, uat-kite-pipeline, uat-config-export, uat-pitch and uat-app-layout that the full run shows failing for that reason), so each checks the new behaviour rather than dropping the check. Run the full UAT; amend the step's files to the drivers actually changed.</p></td><td><span class="mono">cnb/uat/uat-staff-rule-editor.mjs</span></td><td><code>node cnb/uat/run-uat.mjs</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No new ledger settings: no Clairnote-style further-add or nearer-drop, and no per-notation choice of rule (the consult leaves these to a later feature).</li><li>No change to the LilyPond export format, the LY spec or the engine: the export keeps writing exactly the preview's ledgers through cnb:ledgers-by-semitone.</li><li>No change to where the Automatic ledger spots are (CNBStaffRuleEditor.automaticTemplates), only to which of them a note shows.</li><li>CNBMusic.ledgerOctaveRegion and the pitch axis's regionOfSemi stay as public API, though the ledger set no longer reads them.</li><li>No work from sessions 71-74: the browser's Back button and kept work, the way back to the key preview, a repeated minim's stem, the second try-out and the 1.1.0 release.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:56:00]</span> <span class="muted">run-started</span> session=070 mode=pull</div>
+<div class="line"><span class="at">[19:56:00]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[20:00:34]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[20:00:34]</span> <span class="muted">plan-accepted</span> steps=[&quot;ledger-rule&quot;,&quot;pins&quot;,&quot;docs-wording&quot;,&quot;staff-change-resets&quot;,&quot;tutorial&quot;,&quot;uat-drivers&quot;] non_goals=5</div>
+<div class="line"><span class="at">[20:00:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[20:00:38]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ledger-rule</div>
+<div class="line"><span class="at">[20:06:36]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:06:39]</span> <span class="muted">check-passed</span> step=ledger-rule argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const { tests } = await import('./cnb/tests/cnb-ledger-set-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); process.exit(failed ? 1 : 0);&quot;]</div>
+<div class="line"><span class="at">[20:06:40]</span> <span class="muted">report-accepted</span> seq=2 step=ledger-rule files=[&quot;cnb/src/cnb-ledger-set.js&quot;,&quot;cnb/tests/cnb-ledger-set-tests.js&quot;] notes=One ledger rule: no staff line between ledger and note (note included), one beyond; rule A for automatic; no octave gate; defs built an octave beyond the range; 47 ledger-set tests pass (full suite: only the tutorial.ly pin differs, for the pins step)</div>
+<div class="line"><span class="at">[20:06:40]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=pins</div>
+<div class="line"><span class="at">[20:11:28]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:14:57]</span> <span class="muted">check-passed</span> step=pins argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:15:00]</span> <span class="muted">report-accepted</span> seq=3 step=pins files=[&quot;docs/playbook/tutorial/downloads/tutorial.ly&quot;] notes=No pinned probe changed (preview and key-signature baselines match; every gallery file's ledgers for 0-24 unchanged by a script outside the tree); tutorial.ly regenerated from tutorial.json, date kept: C now takes both B and C-sharp ledgers; export baselines byte-identical; full suite 1460/0</div>
+<div class="line"><span class="at">[20:15:00]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=docs-wording</div>
+<div class="line"><span class="at">[20:16:05]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:16:09]</span> <span class="muted">check-passed</span> step=docs-wording argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs = require('fs'); const c = fs.readFileSync('CLAUDE.md', 'utf8'); const a = fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); const bad = []; if (/octave-aware/i.test(c)) bad.push('CLAUDE.md still says octave-aware'); for (const w of ['Octave awareness is critical', 'same octave region as N', 'only consider ledgers in same octave region']) if (a.includes(w)) bad.push('plan still says: ' + w); if (!/session 70/.test(a)) bad.push('plan does not name session 70'); if (bad.length) { console.error(bad.join('\\n')); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[20:16:10]</span> <span class="muted">report-accepted</span> seq=4 step=docs-wording files=[&quot;CLAUDE.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=CLAUDE.md's octave-aware bullet and the architecture plan's 4.4 notes, Module B's ledgerOctaveRegion comment, and Module 5's algorithm, isBetweenNoteAndStaff and test cases now state the one rule (session 70)</div>
+<div class="line"><span class="at">[20:16:10]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=staff-change-resets</div>
+<div class="line"><span class="at">[20:22:25]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:26:20]</span> <span class="muted">check-passed</span> step=staff-change-resets argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[20:26:23]</span> <span class="muted">report-accepted</span> seq=5 step=staff-change-resets files=[&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;] notes=New CNBStaffRuleEditor.followsStaff(state); a pattern change (preset or line pill) that actually changes the pattern switches the ledgers to Automatic while they follow; edited and gallery rules stay; hint under My own rules; 5 new tests, full suite 1465/0</div>
+<div class="line"><span class="at">[20:26:23]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=tutorial</div>
+<div class="line"><span class="at">[20:29:46]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:30:02]</span> <span class="muted">check-passed</span> step=tutorial argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t = require('fs').readFileSync('docs/playbook/tutorial/index.html', 'utf8'); const bad = []; if (t.includes('Why C does not sit on B') ) bad.push('the old note on C and B remains'); if (/click D♯, F, G and A to add them/.test(t)) bad.push('step 2 still builds the staff by hand'); const s2 = t.slice(t.indexOf('id=\&quot;step-staff\&quot;'), t.indexOf('id=\&quot;step-pitch\&quot;')); if (!s2.includes('3–5–7–9')) bad.push('step 2 does not name 3–5–7–9'); if (bad.length) { console.error(bad.join('\\n')); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[20:30:02]</span> <span class="muted">check-passed</span> step=tutorial argv=[&quot;node&quot;,&quot;cnb/uat/uat-tutorial.mjs&quot;]</div>
+<div class="line"><span class="at">[20:30:04]</span> <span class="muted">report-accepted</span> seq=6 step=tutorial files=[&quot;docs/playbook/tutorial/index.html&quot;,&quot;cnb/uat/uat-tutorial.mjs&quot;,&quot;docs/playbook/tutorial/downloads/tutorial-custom.ly&quot;,&quot;docs/playbook/tutorial/shots/02-staff.png&quot;,&quot;docs/playbook/tutorial/shots/03-pitch.png&quot;,&quot;docs/playbook/tutorial/shots/04-ledger-lines.png&quot;,&quot;docs/playbook/tutorial/shots/05-noteheads.png&quot;,&quot;docs/playbook/tutorial/shots/05-noteheads-repeated.png&quot;,&quot;docs/playbook/tutorial/shots/06-ks-symbol-type.png&quot;,&quot;docs/playbook/tutorial/shots/06-ks-symbol-type-optional.png&quot;,&quot;docs/playbook/tutorial/shots/07-ks-custom-symbols.png&quot;,&quot;docs/playbook/tutorial/shots/07-ks-custom-symbols-optional.png&quot;,&quot;docs/playbook/tutorial/shots/08-ks-designer.png&quot;,&quot;docs/playbook/tutorial/shots/08-ks-designer-optional.png&quot;,&quot;docs/playbook/tutorial/shots/09-ks-preview.png&quot;,&quot;docs/playbook/tutorial/shots/10-clef-symbol.png&quot;,&quot;docs/playbook/tutorial/shots/11-clef-placement.png&quot;,&quot;docs/playbook/tutorial/shots/12-export.png&quot;,&quot;docs/playbook/tutorial/shots/12-export-optional.png&quot;] notes=Tutorial step 2 chooses 3-5-7-9 and says the ledgers follow; step 4 says Automatic is already on and C takes both B and C-sharp ledgers; uat-tutorial clicks the pattern and checks it (52/52); tutorial-custom.ly and 16 shots regenerated (pixel diff: each changed where C's ledgers are drawn)</div>
+<div class="line"><span class="at">[20:30:04]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=uat-drivers</div>
+<div class="line"><span class="at">[20:37:07]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:39:38]</span> <span class="muted">check-passed</span> step=uat-drivers argv=[&quot;node&quot;,&quot;cnb/uat/run-uat.mjs&quot;]</div>
+<div class="line"><span class="at">[20:39:39]</span> <span class="muted">report-accepted</span> seq=7 step=uat-drivers files=[&quot;cnb/uat/uat-staff-rule-editor.mjs&quot;] notes=Only uat-staff-rule-editor failed (added rules after 3-6-9): it now checks the default's rules switch to Automatic with 3-6-9's spot, opens My own rules and checks the hint, then adds and edits the rule (28/28); full UAT 19 of 19 drivers passed</div>
+<div class="line"><span class="at">[20:39:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:39:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:39:44]</span> <span class="muted">job-started</span> name=verification pid=29704 log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:40:55]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:40:55]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[20:40:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[20:40:56]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[20:40:58]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=29964 log=.dabbler/runs/s70/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[20:45:21]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[20:45:24]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[20:45:25]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=59072 log=.dabbler/runs/s70/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[20:48:17]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[20:48:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[20:48:35]</span> <span class="muted">landed</span> commit=040a67bfd3bb24d431bd9b4401cc2e56051cbe67</div>
+<div class="line"><span class="at">[20:48:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[20:48:37]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[20:48:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[20:48:40]</span> <span class="muted">job-started</span> name=close pid=48688 log=.dabbler/runs/s70/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:49:12]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:49:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `isBetweenNoteAndStaff()` returns `true` for a note exactly on a ledger when `staffPositions` is empty, despite its documented contract requiring “a line lies beyond it.”</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `cnb/src/cnb-ledger-set.js`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Suggested test:** With `noteSemi = 0`, `ledgerSemi = 0`, and `staffPositions = []`, assert `CNBLedgerSet.isBetweenNoteAndStaff(...) === false`; today it returns `true`. This does not affect valid rendered staffs, whose expanded staff positions are non-empty.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>257s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>165s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

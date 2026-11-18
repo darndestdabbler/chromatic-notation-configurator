@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 017 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 017 transcript</h1>
+<p class="stamp">Rendered 2026-11-06T08:22:51.197Z by dabbler-ai-router 3.29.0 at a09d8ffd2ae4c9c0241d5af3361ec3b981a1055f.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-06T02:54:56.154-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 17: The preview draws an imported notehead at its own height at once</h3>
+<p><strong>Why.</strong> On 2026-11-05, while authoring 45deg-369 in the app, the operator imported a 4-semitone notehead and the preview drew it at about 3 semitones or less. It came out at its proper height only after an unrelated edit (a notehead colour change) redrew the preview. The preview is the designer's main feedback, so it must be right after every edit.</p>
+<ol><li>Register.</li><li>Reproduce it in a UAT driver: load the Kite config, import <code>cnb/fixtures/45deg.svg</code>, apply it in the default rule, and measure the drawn notehead's height before any further edit. Find which import or rule path leaves the preview with a stale or wrongly scaled shape.</li><li>Fix it at the cause, and pin it with a unit test in the test file named after the source file that changes, plus the UAT driver. Record the driver in <code>docs/uat-status.md</code>.</li></ol>
+<h2>Work Plan</h2>
+<p>Find and fix why the app's preview drew a freshly imported 4-semitone notehead too small until an unrelated edit redrew it. A new Playwright driver, cnb/uat/uat-imported-notehead.mjs, loads cnb/fixtures/kite-4-369-config.json into cnb/index.html, imports cnb/fixtures/45deg.svg, applies it in the default notehead rule, and measures every drawn notehead's height in the preview before any further edit. It checks that each is 4 semitones (4 x pxPerSemi) and that the preview is unchanged by a later unrelated edit (a notehead colour change). A first in-browser probe through the file input, including re-importing a shape under the same name, drew it at 64 px (4 semitones) at once, so the driver also follows the operator's other routes (drag-and-drop, applying through a new rule, a colour edit afterwards) until it finds the path that leaves the preview stale or wrongly scaled. The fix goes at that cause. A unit test goes in the test file named after the source file that changes, the driver pins the behaviour in the browser, and docs/uat-status.md records the driver and its run.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/26f52737f9f7fcb686595b6c3e549ece7cfecb7b"><code>26f52737f9f7fcb686595b6c3e549ece7cfecb7b</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Reproduce</td><td><p>Write cnb/uat/uat-imported-notehead.mjs, following the existing drivers' dependency-resolution, static-server and exit-code contract (uat-kite-pipeline.mjs). Load the Kite config, import cnb/fixtures/45deg.svg, select it in the default rule's shape select, and measure every preview notehead's drawn height immediately. Then make an unrelated notehead colour edit and measure again. Check that heights equal 4 x pxPerSemi both times. Exercise the operator's routes (file input and drag-and-drop import, applying through the default rule and through a new rule) until the stale or wrongly scaled path shows up, and note which path and module it is in the driver's header comment.</p></td><td><span class="mono">cnb/uat/uat-imported-notehead.mjs</span></td><td><code>node --check cnb/uat/uat-imported-notehead.mjs</code></td><td>yes</td></tr>
+<tr><td>Fix</td><td><p>Fix the cause the driver found, in the module that owns it, with the smallest change that makes the preview draw the imported shape at its own height after the import and rule edit themselves. Add a unit test to the test file named after the changed source file that fails before the fix and passes after. The files listed are provisional: if the cause is in a different module, amend this step's files with <code>dabbler session plan amend</code> before editing.</p></td><td><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Uat status</td><td><p>Record the new driver in docs/uat-status.md: a new latest-run section for session 17 that names uat-imported-notehead.mjs, what it checks, its result, and the cause it pinned and fixed.</p></td><td><span class="mono">docs/uat-status.md</span></td><td><code>node -e const s=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!s.includes('uat-imported-notehead.mjs')||!/session 17/i.test(s)) process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to how shapes are sized or scaled (semitoneHeight x pxPerSemi / naturalHeight) beyond what the found cause requires</li><li>No changes to the LilyPond export, the importer's data-* contract, or the 45deg/Kite fixtures</li><li>No new preview features, editor redesign, or other refactoring of the app's redraw wiring beyond the one fix</li><li>No release and no site deploy (the plan defers both until the UI is stable)</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:54:56]</span> <span class="muted">run-started</span> session=017 mode=pull</div>
+<div class="line"><span class="at">[07:54:56]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:58:31]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[07:58:31]</span> <span class="muted">plan-accepted</span> steps=[&quot;reproduce&quot;,&quot;fix&quot;,&quot;uat-status&quot;] non_goals=4</div>
+<div class="line"><span class="at">[07:58:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:58:32]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=reproduce</div>
+<div class="line"><span class="at">[08:17:04]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:17:05]</span> <span class="muted">check-passed</span> step=reproduce argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-imported-notehead.mjs&quot;]</div>
+<div class="line"><span class="at">[08:17:05]</span> <span class="muted">report-accepted</span> seq=2 step=reproduce files=[&quot;cnb/uat/uat-imported-notehead.mjs&quot;] notes=Driver written; the stale height did not reproduce on any route (3 driver routes, same-name re-import, operator's sequence in 6 orders, Chromium/Edge/Firefox); operator could not recall more; driver pins correct behaviour, 13/13 pass</div>
+<div class="line"><span class="at">[08:17:05]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=fix</div>
+<div class="line"><span class="at">[08:18:08]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:18:19]</span> <span class="muted">check-passed</span> step=fix argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:18:20]</span> <span class="muted">report-accepted</span> seq=3 step=fix files=[&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=No cause found (not reproduced, see driver header); step amended to a regression test only: 45deg.svg imported via parseSvgText measures 4 x pxPerSemi through CNBNotehead.measure; no source change</div>
+<div class="line"><span class="at">[08:18:20]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=uat-status</div>
+<div class="line"><span class="at">[08:19:25]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:19:27]</span> <span class="muted">check-passed</span> step=uat-status argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!s.includes('uat-imported-notehead.mjs')||!/session 17/i.test(s)) process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[08:19:27]</span> <span class="muted">report-accepted</span> seq=4 step=uat-status files=[&quot;docs/uat-status.md&quot;] notes=Session 17 run section: new driver, 13/13, npm run uat 14/14; records the bug as not reproduced with no source fix, pinned by the driver and the importer unit test</div>
+<div class="line"><span class="at">[08:19:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:19:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:19:28]</span> <span class="muted">job-started</span> name=verification pid=40692 log=.dabbler/runs/s17/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:20:24]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s17/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:20:24]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[08:20:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[08:20:24]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[08:20:49]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[08:20:49]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[08:20:49]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;There is no defect in the current tree to fix. The session plan's step 2 makes reproduction the first job ('Find which import or rule path leaves the preview with a stale or wrongly scaled shape'), and the fix is conditional on finding that path. The work looked for it and did not find it. The driver's three routes, a same-name re-import of a 3-semitone version, and the operator's own sequence from the handed-over config replayed in six orders all drew the imported head at 64 px (4 semitones) at once, in Chromium, Edge and Firefox. The import-to-preview path is synchronous: index.html stores the shape, re-mounts the editors and redraws the preview, and the rule editor's change redraws it again. When asked, the operator could not recall any further detail and chose the option 'pin the correct behaviour with the driver and unit test, and record it as not reproduced'. Inventing a code change with no observed cause would break the session's non-goals (no change to sizing or the redraw wiring beyond what a found cause requires). The driver and the unit test are the regression pin the plan's step 3 asks for, and the status doc records the outcome honestly.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[08:20:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[08:20:49]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[08:21:13]</span> <span class="muted">run-resumed</span> session=017 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-imported-notehead.mjs&quot;] owner=reproduce</div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=fix</div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const s=require('fs').readFileSync('docs/uat-status.md','utf8'); if(!s.includes('uat-imported-notehead.mjs')||!/session 17/i.test(s)) process.exit(1)&quot;] owner=uat-status</div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[&quot;cnb/uat/uat-imported-notehead.mjs&quot;] notes=Colour edit now writes #123456 through the colour input and asserts it reaches the config; heights unchanged; 13/13</div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:21:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:21:27]</span> <span class="muted">job-started</span> name=verification pid=46208 log=.dabbler/runs/s17/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:21:38]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s17/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:21:38]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:21:38]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:21:39]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[08:21:39]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=47144 log=.dabbler/runs/s17/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[08:21:51]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s17/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[08:21:52]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[08:21:52]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=30764 log=.dabbler/runs/s17/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[08:22:35]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s17/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[08:22:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:22:41]</span> <span class="muted">landed</span> commit=26f52737f9f7fcb686595b6c3e549ece7cfecb7b</div>
+<div class="line"><span class="at">[08:22:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:22:41]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:22:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:22:41]</span> <span class="muted">job-started</span> name=close pid=40860 log=.dabbler/runs/s17/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:22:51]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s17/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:22:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The reported preview defect was neither reproduced nor fixed; the added tests only confirm the current happy-path geometry.</td><td>disputed — There is no defect in the current tree to fix. The session plan's step 2 makes reproduction the first job ('Find which import or rule path leaves the preview with a stale or wrongly scaled shape'), and the fix is conditional on finding that path. The work looked for it and did not find it. The driver's three routes, a same-name re-import of a 3-semitone version, and the operator's own sequence from the handed-over config replayed in six orders all drew the imported head at 64 px (4 semitones) at once, in Chromium, Edge and Firefox. The import-to-preview path is synchronous: index.html stores the shape, re-mounts the editors and redraws the preview, and the rule editor's change redraws it again. When asked, the operator could not recall any further detail and chose the option 'pin the correct behaviour with the driver and unit test, and record it as not reproduced'. Inventing a code change with no observed cause would break the session's non-goals (no change to sizing or the redraw wiring beyond what a found cause requires). The driver and the unit test are the regression pin the plan's step 3 asks for, and the status doc records the outcome honestly.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The UAT describes and documents a “colour set to a custom hex,” but it never writes a colour value. `cnb/uat/uat-imported-notehead.mjs` only checks the colour-apply checkbox and selects `&quot;custom&quot;`, then asserts the resulting value is `&quot;#000000&quot;`. A stronger non-blocking case would start with the imported `45deg` shape selected, set the actual custom-colour control to a distinct value such as `#123456`, and assert both that `config.noteheadRules[0].apply.color === &quot;#123456&quot;` and that all immediate preview head heights remain unchanged.</td><td>fixed — Colour edit now writes #123456 through the colour input and asserts it reaches the config; heights unchanged; 13/13 — (cnb/uat/uat-imported-notehead.mjs)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>11s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>42s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

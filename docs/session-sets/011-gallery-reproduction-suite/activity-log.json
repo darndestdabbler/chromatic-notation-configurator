@@ -1,0 +1,49 @@
+{
+  "sessionSetName": "011-gallery-reproduction-suite",
+  "createdDate": "2026-07-07T21:44:55.741466+00:00",
+  "totalSessions": 2,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-07T21:44:55.742465+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/tier1-fixtures",
+      "dateTime": "2026-07-08T01:59:09.818186-04:00",
+      "description": "Authored 8 Tier-1 gallery reproduction fixtures (Ambros, Notagraph, Numbered Notes Notes-Only, Hass 3-line, Schoenberg, AxLoMaFi, Avique, 0-5-7) under cnb/assets/examples/gallery/, with attribution and per-system fidelity notes in reproduction-report.md; corrected against the operator's per-PC reference at UAT.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 7,
+      "stepKey": "session-001/fixture-check-and-uat",
+      "dateTime": "2026-07-08T01:59:09.818186-04:00",
+      "description": "Added cnb/tests/check-gallery-examples.js (validate+resolve+generate over the corpus), registered it with run-tests.js; all suites green (cnb 700, legacy 240, gallery 8). Captured previews via cnb/uat/uat-gallery-previews.mjs; operator attested acceptable-with-noted-deviations for all 8, stylistics deferred.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/tier2-fixtures",
+      "dateTime": "2026-07-09T20:32:41.700089-04:00",
+      "description": "Authored 8 Tier-2 + 1 Tier-3 gallery reproduction fixtures (Lautus, Trilinear, Clairnote SN/DN, Chromatic Lyre, Express Stave x3, 6-6 Trigram), exercising set-009 clefs and set-010 key signatures; reconciled through 4 UAT rounds against the operator Effective Ledger Rules reference; corrected 3 session-1 fixtures under the same rule. Corpus 17/17 passes check-gallery-examples.js.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/reproduction-report",
+      "dateTime": "2026-07-09T20:32:41.700089-04:00",
+      "description": "Extended reproduction-report.md with session-2 fidelity notes, the Effective Ledger Rules reconciliation, platform-feature gaps A-D, and the full per-system summary table; added feasibility-matrix.md I4 correction for Express Stave (records 43-45); recorded full-gallery-support strategic note. Human UAT: acceptable-with-noted-deviations for all 9 (s2-uat.md).",
+      "status": "complete"
+    }
+  ]
+}

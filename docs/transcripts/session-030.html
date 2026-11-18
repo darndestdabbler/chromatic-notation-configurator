@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 030 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 030 transcript</h1>
+<p class="stamp">Rendered 2026-11-07T15:03:34.283Z by dabbler-ai-router 3.29.0 at 3b332720a1a8afc29efb748a1c43a339035b9c97.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-07T09:25:27.275-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 30: The clef and the key signature reach LilyPond</h3>
+<p><strong>Why.</strong> The engine has taken a clef and key-signature configuration since its sets 005 and 006 (July 2026), and their handoffs list this repository's side as owed (engine <code>docs/planning/configurator-coordination-backlog.md</code> §1–§2): the exporter still writes nothing for either. So the preview and the engraving disagree. Every export, even one with the clef off, engraves the engine's default dozenal clef, which the preview does not draw, and a config that turns its key signature off still engraves one.</p>
+<ol><li>Register.</li><li>Read the two handoffs first: <code>docs/session-sets/005-clef-configurability/configurator-handoff.md</code> §5 and <code>006-keysig-configurability/configurator-handoff.md</code> §3 in the engine repo. Their flags set the conversions: the clef anchor's middle-C = 0 origin, the gutter from px to semitones, the clef path's command-list format, the text label's colour and font, the <code>thicknessPct</code> conversion (<code>thicknessPct / (10 × semitones per staff space)</code>), the tonic octave's numbering on a linear staff (the handoff's −1, which the session-3 round trip found does not apply under a pitch axis), and a separator that is off with no engine switch for it.</li><li>Export, emit-if-changed like the other engine settings:</li></ol>
+<ul><li><strong>Clef:</strong> <code>cnb:clef-style</code> (<code>'none</code> when the clef is off, <code>'custom</code> with the glyph registered by <code>cnb:register-clef!</code> and named by <code>cnb:clef-name</code>, <code>'text</code> with <code>cnb:clef-text</code>), and the size and gutter settings.</li><li><strong>Key signature:</strong> <code>cnb:keysig-style</code> (<code>'none</code> when it is off), the bar's colour, thickness and extent, and <code>cnb:keysig-tonic-octave</code> on linear staves too. Decide, and record in the spec, whether the default config, whose clef is off, exports <code>'none</code> (the preview's answer) or leaves the engine's dozenal clef; either way the default export baseline changes only on purpose, and the change is named in <code>CHANGELOG.md</code>.</li></ul>
+<ol><li>Lift the tests that pin &quot;no clef token&quot; and &quot;no keysig token&quot;, add the addendum to <code>docs/CNB-LY-EXPORT-SPEC-v1_3.md</code> (1.3.5), and update the architecture plan §4.9 and §4.12, which say nothing is emitted.</li><li>Engine round trips, skipping with the reason without <code>lilypond</code>: a clef glyph, a text clef and a key signature with a styled bar engrave where the preview draws them, measured through <code>cnb/tests/engine-probe.js</code>; one of them on a pitch axis with a fractional clef anchor (handoff 008 §5, flag 5).</li><li>The Clef and Key signature panels lose the Preview only badges that no longer apply, and the Export section's sentence and README &quot;Preview-only settings&quot; follow.</li><li>Screenshots that show the two previews at work (operator, 2026-11-07: session 26's panel shots used Kite, which has neither, so its Clef and Key signature previews drew three bare columns). <code>uat-app-layout.mjs</code> saves the Clef panel with a clef glyph on and the Key signature panel with keys and a signature on, for a key chosen on the canvas, and checks that each partial staff draws its gutter. Judge them and record them in <code>docs/uat-status.md</code>. The design's §10 has no mock-up for these sections; these shots stand in for one.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the LilyPond export carry the clef and the key signature, so the engraving matches the preview. Following the engine handoffs (set 005 §5, set 006 §3, set 008 §5 flag 5), the exporter writes <code>cnb:clef-style</code> emit-if-changed. It is <code>'none</code> when no clef is shown, which is also the decision for the default config: it exports <code>'none</code>, the preview's answer, so the engine's dozenal clef is no longer engraved unasked. It is <code>'custom</code> for a glyph clef, registered with <code>cnb:register-clef!</code> (path from <code>lilypondPath</code> or the converted <code>svgPath</code>, the top-edge anchor converted to the engine's origin, <code>height-semitones</code> from <code>semitoneHeight</code>, and the colour) and named by <code>cnb:clef-name</code>. It is <code>'text</code> for a text clef, with <code>cnb:clef-text</code> as a markup carrying the definition's font, colour and bold weight, plus <code>cnb:clef-size-semitones</code>. When a clef is shown, <code>cnb:clef-gutter-semitones</code> is <code>paddingH ÷ pxPerSemi</code>, on the right only. For the key signature the exporter writes <code>cnb:keysig-style 'none</code> unless keys and the signature are both on. With the signature on, it writes the bar's colour, its thickness (<code>thicknessPct / (10 × semitones per staff space)</code>, and 0 when the separator is off) and its extent, each only when it differs from the engine's default. It also writes <code>cnb:keysig-tonic-octave</code> on linear staves for an explicit tonic octave, numbered as the linear round trip measures (the handoff's −1). Under an axis the existing explicit octave stays as it is. The default, Kite, 45deg, sized and Twinline baselines are regenerated on purpose, and the change is named in CHANGELOG.md. The &quot;no clef token&quot; and &quot;no keysig token&quot; pins are lifted, and new tests pin what is emitted. Engine round trips go through new <code>cnb/tests/engine-probe.js</code> measurements and skip, giving the reason, when lilypond is absent: a glyph clef on a pitch axis with a fractional anchor engraves its top edge where the preview draws it; a text clef engraves at its preview height; a key signature with a styled bar engraves its marks' span where the preview draws them, with the bar's colour and thickness in its stencil. The engine places text clefs at a fixed height, not at the anchor, so that divergence is recorded in the spec. The LY export spec gains the addendum as 1.3.7, because 1.3.5 and 1.3.6 were taken by sessions 28 and 29. The architecture plan §4.9, §4.12 and its Module 20/22 notes stop saying nothing is emitted. The Clef panel loses its Preview only badge, and so do the Key signature panel's Placement and Separator bar. The spacing badge stays, since the engine has no setting for it. The Export section's sentence, the header's preview-only comment and the README's &quot;Preview-only settings&quot; follow. <code>uat-app-layout.mjs</code> saves the Clef panel with a glyph clef on and the Key signature panel with keys and a signature on for a key chosen on the canvas, and checks that each partial staff draws its gutter. The shots are judged and recorded in docs/uat-status.md.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/17fe575336ad7948268b3dbf3d487ba5afc246f2"><code>17fe575336ad7948268b3dbf3d487ba5afc246f2</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Export clef</td><td><p>In cnb/src/cnb-lilypond.js emit the clef, following engine handoff 005 §5. Section B writes <code>cnb:clef-style</code>: <code>'none</code> when CNBClef.activeGlyph is null (the default config included), <code>'custom</code> with <code>cnb:clef-name</code> for a glyph, and <code>'text</code> with <code>cnb:clef-text</code> as a markup carrying the definition's font, colour and bold weight, plus <code>cnb:clef-size-semitones</code> from textHeightSemis. When a clef is shown it also writes <code>cnb:clef-gutter-semitones</code> = paddingH ÷ display.pxPerSemi. Section A registers a glyph clef with <code>cnb:register-clef!</code>, using its lilypondPath, or else svgPath converted with the notehead fallback. The anchor goes on the engine's origin (middle C = 0): on a linear staff it is measured relative to staff.midpoint, and under an axis it is used as is, since the hook reads Configurator semitones. Then come height-semitones from semitoneHeight and the colour when one is set. Add a clef measurement to cnb/tests/engine-probe.js, which prints the Clef grob's Y extent in half-staff-spaces from the middle line. In cnb/tests/cnb-lilypond-tests.js, lift the &quot;no clef token&quot; pin, pin each emission (none, custom, text, gutter, fractional anchor), and add two engine round trips that skip with the reason when lilypond is absent. One is a glyph clef on a pitch axis with a fractional anchor, whose top edge must engrave where the preview's semiToY puts it. The other is a text clef engraving at its preview height. Update cnb/tests/cnb-clef-tests.js's invariance tests to the new contract, then regenerate the five export baselines with cnb/fixtures/export-config.mjs.</p></td><td></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Export keysig</td><td><p>In cnb/src/cnb-lilypond.js emit the key signature, following engine handoff 006 §3. Section B writes <code>cnb:keysig-style 'none</code> unless keys.enabled and keys.keySignature.enabled are both on. With the signature on, it writes <code>cnb:keysig-bar-color</code> when the colour is not #ffd42a, and <code>cnb:keysig-bar-thickness</code> = thicknessPct / (10 × semitones per staff space, the axis unit under an axis) when that is not 4, or 0 when separator.enabled is false. It writes <code>cnb:keysig-bar-extent-semis</code> when extentSemis is not 12, and on a linear staff <code>cnb:keysig-tonic-octave</code> for an integer placement.tonicOctave, numbered as the linear round trip measures (the handoff's −1). The pitch-axis explicit octave stays as it is. Add &quot;the key signature's spacing&quot; to the header's preview-only comment. Add a key-signature measurement to cnb/tests/engine-probe.js: the KeySignature grob's Y extent and the bar's colour and line thickness, read from its stencil. In cnb/tests/cnb-lilypond-tests.js, lift the &quot;no keysig token&quot; pin, pin each emission, and add an engine round trip, skipping with the reason when lilypond is absent: a signature with a styled bar (colour, thickness, an extent inside the marks) engraves its marks' span where the preview's signatureSemis put them, and its bar carries the colour and thickness. Update the export-invariance tests in cnb/tests/cnb-key-signature-tests.js and cnb/tests/cnb-key-signature-editor-tests.js, then regenerate the five export baselines.</p></td><td></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Spec and docs</td><td><p>Add the clef and key-signature addendum to docs/CNB-LY-EXPORT-SPEC-v1_3.md as version 1.3.7, with a change-log row. It covers every emitted setting and its conversion, the decision that a config with no clef shown (the default) exports <code>'none</code>, the right-only gutter, the separator-off thickness 0, the linear tonic-octave numbering, and the text clef's fixed engine height as a known divergence. Update docs/CNB-ARCHITECTURE-PLAN-v2.md §4.9, §4.12 and the Module 20/22 notes, which say nothing is emitted. Name the baseline change and the new emission in CHANGELOG.md's top section.</p></td><td></td><td><code>node -e const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const p=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const c=fs.readFileSync('CHANGELOG.md','utf8');const ok=s.includes('1.3.7')&amp;&amp;s.includes('cnb:clef-style')&amp;&amp;s.includes('cnb:keysig-style')&amp;&amp;!p.includes('exporter emits NOTHING for clefs')&amp;&amp;c.includes('cnb:clef-style');process.exit(ok?0:1)</code></td><td>yes</td></tr>
+<tr><td>Ui wording</td><td><p>Remove the Preview only badge that no longer applies from the Clef panel (cnb/ui/clef-editor.js). In the Key signature panel (cnb/ui/key-signature-editor.js), remove it from Placement and Separator bar and keep it on the spacing, with its tooltip. Update the Export section's preview-only sentence (cnb/ui/config-export.js) and the README's &quot;Preview-only settings&quot; to match, saying the clef and key signature now export. Update the matching tests (cnb-clef-editor-tests.js, cnb-key-signature-editor-tests.js, cnb-config-export-tests.js) and turn the UAT drivers' EXPORT NO-EMISSION checks (uat-clef-editor.mjs, uat-key-signature.mjs) into checks that the download carries the clef and key-signature settings and equals generate() of the same config.</p></td><td></td><td><code>node cnb/tests/run-tests.js</code><br><code>node --check cnb/uat/uat-clef-editor.mjs</code><br><code>node --check cnb/uat/uat-key-signature.mjs</code></td><td>yes</td></tr>
+<tr><td>Panel screenshots</td><td><p>Extend cnb/uat/uat-app-layout.mjs to save two more shots at 1440. One is the Clef panel with a glyph clef imported and on (panel-clef-glyph.png). The other is the Key signature panel with keys and a signature on, for a key chosen on the canvas (panel-key-signature-key.png). Before each shot it checks that the panel's partial staff draws its gutter (a .clef-col / .keysig-col with nonzero width). Run the driver with CNB_UAT_SHOTS pointed at a scratch folder and copy the two shots into docs/uat-shots/session-030/. Judge them in a new session-30 section of docs/uat-status.md, which notes that they stand in for the missing §10 mock-up.</p></td><td></td><td><code>node --check cnb/uat/uat-app-layout.mjs</code><br><code>node -e const fs=require('fs');const ok=['panel-clef-glyph.png','panel-key-signature-key.png'].every(f=&gt;fs.existsSync('docs/uat-shots/session-030/'+f))&amp;&amp;fs.readFileSync('docs/uat-status.md','utf8').includes('uat-shots/session-030/');process.exit(ok?0:1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the engine repository: a text clef anchored at <code>anchorSemi</code> and a bar-only visibility switch are recorded as engine follow-ups, not built.</li><li>No new clef kinds (no Configurator kind for the engine's dozenal clef) and no new key-signature styles: <code>notehead-chords</code> stays the only style.</li><li>No export of the key signature's gutter (<code>gutter.paddingH</code>): the engine has no setting for it, so it stays preview-only.</li><li>Off-key marks stay unexported and undrawn.</li><li>No stem-engraving work (session 33) and no release: 1.1.0 is session 35.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[14:25:27]</span> <span class="muted">run-started</span> session=030 mode=pull</div>
+<div class="line"><span class="at">[14:25:27]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[14:31:31]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[14:31:31]</span> <span class="muted">plan-accepted</span> steps=[&quot;export-clef&quot;,&quot;export-keysig&quot;,&quot;spec-and-docs&quot;,&quot;ui-wording&quot;,&quot;panel-screenshots&quot;] non_goals=5</div>
+<div class="line"><span class="at">[14:31:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[14:31:36]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=export-clef</div>
+<div class="line"><span class="at">[14:39:10]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:40:08]</span> <span class="muted">check-passed</span> step=export-clef argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[14:40:11]</span> <span class="muted">report-accepted</span> seq=2 step=export-clef files=[] notes=Clef exported per handoff 005: 'none when no clef is shown (default), 'custom with cnb:register-clef! (anchor relative to midpoint on linear, as is under an axis; measured exact by the engine), 'text as a bold coloured markup at its height; gutter = paddingH/pxPerSemi; five baselines gain the 'none line</div>
+<div class="line"><span class="at">[14:40:11]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=export-keysig</div>
+<div class="line"><span class="at">[14:47:05]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:47:54]</span> <span class="muted">check-passed</span> step=export-keysig argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[14:47:56]</span> <span class="muted">report-accepted</span> seq=3 step=export-keysig files=[] notes=Key signature exported per handoff 006: 'none unless keys+signature on; bar colour/thickness (pct/(10*sps), 0 when off)/extent emit-if-changed; explicit linear tonic octave written AS IS - the engine round trip measures no -1 offset (octave 1 lands on semitones 19-31 as the preview draws); header names keysig spacing preview-only; baselines regenerated</div>
+<div class="line"><span class="at">[14:47:56]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=spec-and-docs</div>
+<div class="line"><span class="at">[14:50:25]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:50:31]</span> <span class="muted">check-passed</span> step=spec-and-docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');const p=fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md','utf8');const c=fs.readFileSync('CHANGELOG.md','utf8');const ok=s.includes('1.3.7')&amp;&amp;s.includes('cnb:clef-style')&amp;&amp;s.includes('cnb:keysig-style')&amp;&amp;!p.includes('exporter emits NOTHING for clefs')&amp;&amp;c.includes('cnb:clef-style');process.exit(ok?0:1)&quot;]</div>
+<div class="line"><span class="at">[14:50:32]</span> <span class="muted">report-accepted</span> seq=4 step=spec-and-docs files=[] notes=LY spec 1.3.7: new §5.5 clef and §5.6 key signature (settings, conversions, 'none default decision, right-only gutter, thickness-0 separator, measured no-offset linear tonic octave, text-clef height divergence), §5.4c note corrected, appendix rows; architecture plan §4.9/§4.12/§9 and Module 20/22 notes; CHANGELOG names the baseline change</div>
+<div class="line"><span class="at">[14:50:32]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=ui-wording</div>
+<div class="line"><span class="at">[14:54:26]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:55:19]</span> <span class="muted">check-passed</span> step=ui-wording argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[14:55:19]</span> <span class="muted">check-passed</span> step=ui-wording argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;]</div>
+<div class="line"><span class="at">[14:55:19]</span> <span class="muted">check-passed</span> step=ui-wording argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[14:55:20]</span> <span class="muted">report-accepted</span> seq=5 step=ui-wording files=[] notes=Clef panel loses its Preview only badge; Key signature keeps it only on the spacing (hint text updated); Export sentence and README say the clef and rest of the key signature export; tests and the clef/keysig UAT drivers now check emission (28/28, 39/39 run locally)</div>
+<div class="line"><span class="at">[14:55:20]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=panel-screenshots</div>
+<div class="line"><span class="at">[14:59:02]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:59:08]</span> <span class="muted">check-passed</span> step=panel-screenshots argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[14:59:08]</span> <span class="muted">check-passed</span> step=panel-screenshots argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const ok=['panel-clef-glyph.png','panel-key-signature-key.png'].every(f=&gt;fs.existsSync('docs/uat-shots/session-030/'+f))&amp;&amp;fs.readFileSync('docs/uat-status.md','utf8').includes('uat-shots/session-030/');process.exit(ok?0:1)&quot;]</div>
+<div class="line"><span class="at">[14:59:10]</span> <span class="muted">report-accepted</span> seq=6 step=panel-screenshots files=[] notes=uat-app-layout (65/65) shoots Kite with a glyph clef and with C's signature chosen on the canvas after checking each gutter; shots in docs/uat-shots/session-030, judged in uat-status.md. Fixed the clef importer's now-false 'if the engine gains clef support' warning (plan amended). Recorded, not fixed: the signature's top marks clip where a row's grid stops 4 semitones above its highest column (preview layout, later session)</div>
+<div class="line"><span class="at">[14:59:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:59:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:59:14]</span> <span class="muted">job-started</span> name=verification pid=32592 log=.dabbler/runs/s30/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:00:27]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:00:27]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[15:00:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[15:00:28]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[15:00:28]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=4412 log=.dabbler/runs/s30/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[15:01:17]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[15:01:19]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[15:01:19]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=59672 log=.dabbler/runs/s30/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[15:02:55]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[15:02:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[15:03:07]</span> <span class="muted">landed</span> commit=17fe575336ad7948268b3dbf3d487ba5afc246f2</div>
+<div class="line"><span class="at">[15:03:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[15:03:08]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[15:03:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[15:03:10]</span> <span class="muted">job-started</span> name=close pid=57844 log=.dabbler/runs/s30/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:03:34]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:03:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `uat-app-layout.mjs` does not reliably prove that the new screenshots are taken after Kite has loaded. The wait condition is only `#topbar-status` starting with `&quot;Opened&quot;`, which can already be true from the preceding Twinline load.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>Suggested case: with the page currently showing Twinline and the status already `&quot;Opened …&quot;`, upload `kite-4-369-config.json`; wait for status or state JSON to identify Kite specifically before importing the clef and taking `panel-clef-glyph.png`. Today `startsWith(&quot;Opened&quot;)` can resolve immediately against the stale Twinline status.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>43s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>92s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
