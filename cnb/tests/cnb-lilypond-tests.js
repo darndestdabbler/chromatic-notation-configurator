@@ -807,7 +807,27 @@ export const tests = [
       contains(out, "#(set! cnb:collision-threshold 3)");
     }},
 
-  { name: "sectionB writes cnb:multinote-overlap in repeat mode only; the retired engine.multinotePadding is never written (session 58)", fn: () => {
+  { name: "sectionB writes cnb:breve-style in shape mode for a double or tied breve, with the overlap for a double one; never for single, none or repeat mode (session 76, engine 1.10.0)", fn: () => {
+      const cfg = CNBConfig.createDefault();
+      lacks(CNBLilypond.sectionB(cfg), "cnb:breve-style", "no breveStyle");
+      cfg.durations.breveStyle = "single";
+      lacks(CNBLilypond.sectionB(cfg), "cnb:breve-style", "single");
+      cfg.durations.breveStyle = "tied";
+      let out = CNBLilypond.sectionB(cfg);
+      contains(out, "#(set! cnb:breve-style 'tied)");
+      lacks(out, "cnb:multinote-overlap", "tied: no overlap");
+      lacks(out, "cnb:multinote-stem-on-head", "tied: shape mode");
+      cfg.durations.breveStyle = "double";
+      contains(CNBLilypond.sectionB(cfg), "#(set! cnb:breve-style 'double)\n#(set! cnb:multinote-overlap 0.3333)", "double: the overlap, 1/3 unset");
+      cfg.durations.repeatOverlap = 0.25;
+      contains(CNBLilypond.sectionB(cfg), "#(set! cnb:breve-style 'double)\n#(set! cnb:multinote-overlap 0.25)", "double at 0.25");
+      cfg.durations.representationMode = "repeat";
+      out = CNBLilypond.sectionB(cfg);
+      lacks(out, "cnb:breve-style", "repeat mode");
+      contains(out, "#(set! cnb:multinote-overlap 0.25)\n#(set! cnb:multinote-stem-on-head #t)", "repeat mode as before");
+    }},
+
+  { name: "sectionB writes cnb:multinote-overlap in repeat mode, not otherwise without a double breve; the retired engine.multinotePadding is never written (session 58)", fn: () => {
       const cfg = CNBConfig.createDefault();
       cfg.engine.multinotePadding = -1;
       lacks(CNBLilypond.sectionB(cfg), "cnb:multinote-overlap", "shape mode");

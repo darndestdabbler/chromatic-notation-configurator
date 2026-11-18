@@ -950,8 +950,8 @@ export const CNBConfig = {
       errors.push(`durations.repeatOverlap must be a number from 0 up to (not including) 1 (got ${JSON.stringify(overlap)})`);
     }
     // A breve in shape mode (session 75, notehead-duration design §6.2):
-    // left out, "single", "double" or "tied". It is not yet drawn or
-    // exported (session 76), so a breve stays one head.
+    // left out, "single", "double" or "tied". Since session 76 a breve is
+    // drawn (CNBCard.repeatLayout) and exported (cnb:breve-style) as it says.
     const breveStyle = (config.durations || {}).breveStyle;
     if (breveStyle !== undefined && !["single", "double", "tied"].includes(breveStyle)) {
       errors.push(`durations.breveStyle must be "single", "double" or "tied" (got ${JSON.stringify(breveStyle)})`);

@@ -52,6 +52,12 @@
  * middle of the second, as a tie joins two notes, still at the heads'
  * bottom.
  *
+ * Session 76 (B.i's breve, engine 1.10.0's cnb:breve-style): in shape mode
+ * a breve whose durations.breveStyle is "double" draws as two heads
+ * overlapping as a repeated minim's, and one whose breveStyle is "tied" as
+ * two heads 1 staff space apart, tied below them from the first's centre to
+ * the second's, through the same layout. "single" or none is one head.
+ *
  * Session 22 (notehead size): the resolved heightSemis / widthSemis set the
  * notehead measurement, and the ledger width, column width, repeated group,
  * stem anchor (scaleX) and octave pair follow it. Unsized, nothing changes.
@@ -146,6 +152,17 @@ function durationCategory(config, duration) {
   return def?.lilypondDuration ?? 3;
 }
 
+/**
+ * A shape-mode breve's durations.breveStyle (session 76): "double" or
+ * "tied" for a breve in shape mode, else null (one head, as before).
+ */
+function shapeModeBreve(config, duration) {
+  if (config.durations?.representationMode === "repeat") return null;
+  if (durationCategory(config, duration) > 0) return null;
+  const style = config.durations?.breveStyle;
+  return style === "double" || style === "tied" ? style : null;
+}
+
 export const CNBCard = {
 
   /**
@@ -154,13 +171,16 @@ export const CNBCard = {
    * definition's lilypondDuration (the engine's duration category): 3 or
    * more → 1, 2 (minim) → 2, 1 or 0 (semibreve, breve) → 4. A breve is two
    * such groups, tied (tiedGroups). The engine's counts are fixed;
-   * durations.repeatCounts is not read.
+   * durations.repeatCounts is not read. In shape mode a breve whose
+   * durations.breveStyle is "double" is 2 heads (session 76, engine
+   * 1.10.0's cnb:breve-style 'double).
    *
    * @param {object} config
    * @param {string} duration  duration name
    * @returns {number}
    */
   repeatCount(config, duration) {
+    if (shapeModeBreve(config, duration) === "double") return 2;
     if (config.durations?.representationMode !== "repeat") return 1;
     const category = durationCategory(config, duration);
     if (category >= 3) return 1;
@@ -170,13 +190,16 @@ export const CNBCard = {
   /**
    * How many tied semibreve groups a duration draws: 2 for a breve
    * (lilypondDuration 0 or less) in repeat mode, as the engine engraves it
-   * (its session 25); otherwise 1.
+   * (its session 25), and for a breve in shape mode whose
+   * durations.breveStyle is "tied", two single heads (session 76, engine
+   * 1.10.0's cnb:breve-style 'tied); otherwise 1.
    *
    * @param {object} config
    * @param {string} duration  duration name
    * @returns {number}
    */
   tiedGroups(config, duration) {
+    if (shapeModeBreve(config, duration) === "tied") return 2;
     if (config.durations?.representationMode !== "repeat") return 1;
     return durationCategory(config, duration) <= 0 ? 2 : 1;
   },
@@ -189,7 +212,9 @@ export const CNBCard = {
    * of the second (sessions 46 and 58). Offsets and tie ends are relative
    * to the centre of the whole; a tie's dy is its ends' height below the
    * pitch, the heads' bottom, the heads drawn with their shape's reference
-   * point on the pitch (session 60, CNBNotehead.referenceShift).
+   * point on the pitch (session 60, CNBNotehead.referenceShift). A
+   * shape-mode breve (session 76) is laid out the same way: a double
+   * notehead as a group of 2, a tied one as two groups of 1, tied.
    *
    * @param {object} config
    * @param {object} gridContext
@@ -210,7 +235,7 @@ export const CNBCard = {
       ? axis.unitsPerStaffSpace
       : (config.staff?.semitonesPerStaffSpace ?? 4);
     const staffSpacePx = unitsPerStaffSpace * gridContext.pxPerSemi;
-    if (perGroup === 1) return { count: 1, offsets: [0], groupWidth: pixelWidth, ties: [], staffSpacePx };
+    if (perGroup * groups === 1) return { count: 1, offsets: [0], groupWidth: pixelWidth, ties: [], staffSpacePx };
     const overlap = config.durations?.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
     const step = pixelWidth * (1 - overlap);
     const width = pixelWidth + (perGroup - 1) * step;

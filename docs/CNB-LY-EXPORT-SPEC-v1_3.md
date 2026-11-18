@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.23 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point; a repeated minim's stem on one of its noteheads)
-**Date:** November 15, 2026 (1.3.23); November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.24 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point; a repeated minim's stem on one of its noteheads; the breve in shape mode, a double notehead or two tied semibreves)
+**Date:** November 17, 2026 (1.3.24); November 15, 2026 (1.3.23); November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -100,7 +100,11 @@ noteheads, §4.4c. Every config in repeat mode writes
 `cnb:multinote-stem-on-head #t`, which needs engine 1.9.0; the Kite 4-369
 and 45deg-369 baselines, in repeat mode, gain that line, Kite's with its
 minim attachments centred as its crotchet's, and the default, sized and
-Twinline baselines are byte-identical.)*
+Twinline baselines are byte-identical. 1.3.24, for both: the breve in shape
+mode, §4.1d. A config in shape mode whose `durations.breveStyle` is
+`"double"` or `"tied"` writes `cnb:breve-style`, and `"double"` the
+overlap, which needs engine 1.10.0; the five export baselines are
+byte-identical.)*
 
 Summary of additions:
 
@@ -124,6 +128,7 @@ Summary of additions:
 | Clefs sized about an anchor (1.3.21, linear and axis alike) | a glyph clef's top (`anchorSemi`) and height (`semitoneHeight`) as stored; the dozenal clef at the engine's 3 staff spaces | a glyph clef's top as drawn from its anchor point, at an automatic or a set height; the dozenal clef's `cnb:clef-size-semitones`, scaled about the middle line as engine 1.8.0 engraves it (§5.5, §5.5a) |
 | Noteheads placed by their shape's reference point (1.3.22, linear and axis alike) | a notehead's shape centred on its pitch by its origin | a shape whose reference point is off its origin vertically registered for the noteheads as `<registration>-ref`, its path and cutout moved so the point is on the pitch, its attachments unchanged; the key signature's marks keep the unmoved shape (§4.1e) |
 | A repeated minim's stem (1.3.23, linear and axis alike) | the minim's attachment point read across the whole group of heads | the stem on one head of the group, the last when up and the first when down, as a single head's: `cnb:multinote-stem-on-head #t`, written in repeat mode, as engine 1.9.0 engraves it (§4.4c) |
+| The breve in shape mode (1.3.24, linear and axis alike) | one head | as `durations.breveStyle` says: two heads overlapping, or two heads 1 staff space apart, tied; `cnb:breve-style 'double` (with `cnb:multinote-overlap`) or `'tied`, as engine 1.10.0 engraves it (§4.1d) |
 | Validation | v1.2.1 §8 | pitch-axis checks + the fail-loud gate (§8a) |
 
 ---
@@ -323,6 +328,51 @@ length scaled by the engraved head's width over the preview's (the 1 staff
 space between the groups does not scale). Kite at 1/3, for example: the
 minim 2.2225 engraved against 2.2222, the semibreve 4.0006 against
 4.0000.
+
+**The breve in shape mode (1.3.24).** In shape mode (`(repeat . #f)`) a
+breve is one head, unless `durations.breveStyle` says otherwise: the
+Noteheads step's *Hollows* design (Configurator session 75) lets the
+designer choose a **double notehead** or **two tied semibreves**. Since
+engine 1.10.0 (its brief,
+[`planning/shape-mode-breve-brief.md`](planning/shape-mode-breve-brief.md))
+the engine draws them, and the preview draws the same (session 76,
+`CNBCard.repeatLayout`):
+
+- **`"double"`**: two copies of the notehead's stencil, cutout and colour
+  included, each (1 − overlap) × its width after the last, as a repeated
+  minim's two heads; no tie.
+- **`"tied"`**: two copies, the second's left edge 1 staff space after the
+  first's right edge, and one tie below them as the repeat-mode breve's
+  (black, LilyPond's `make-tie-stencil`, at the heads' bottom), from the
+  first head's centre to the second's.
+- **`"single"`, or none**: one head, as before. Repeat mode's breve stays
+  two tied groups of four whatever `breveStyle` says.
+
+The breve stays one note, so its ledgers are 1.5 times the whole width,
+and a shape's reference point (§4.1e) moves both heads, the tie running
+below them. Section B writes, among the engine settings, in shape mode
+only:
+
+```lilypond
+%% Engine settings (non-default)
+#(set! cnb:breve-style 'double)
+#(set! cnb:multinote-overlap 0.3333)
+```
+
+or `#(set! cnb:breve-style 'tied)` alone. The overlap is
+`durations.repeatOverlap`, 1/3 when unset. **It needs engine 1.10.0**: on
+an earlier engine `cnb:breve-style` is unbound and LilyPond stops. A
+config with no `breveStyle`, or `"single"`, exports as in 1.3.23; the five
+export baselines are byte-identical, and the tutorial's downloads (a
+Hollows notation with two tied semibreves) gain the line.
+
+**Verified** by an engine round trip (`cnb/tests/cnb-card-tests.js`,
+through `cnb/tests/engine-probe.js`), against engine 1.10.0: on the
+default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25,
+every card's breve, double and tied, its width, its height and its tie
+(its ends and lowest ink) are within 0.001 staff spaces of the preview's,
+each head-proportional length scaled by the engraved head's width over the
+preview's.
 
 ### 4.1e Noteheads placed by their shape's reference point (new in 1.3.22 — linear and axis configs alike)
 
@@ -1668,7 +1718,8 @@ engine round-trip test as evidence.
 | `cnb:keysig-bar-color` | `"#RRGGBB"` | `"#ffd42a"` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-thickness` | number (`#:draw-line` units) | `4` | If changed, signature on (§5.6) — **new 1.3.7** |
 | `cnb:keysig-bar-extent-semis` | number (semitones) | `12` | If changed, signature on (§5.6) — **new 1.3.7** |
-| `cnb:multinote-overlap` | `#f` or number (a share of the head's width) | `#f` | In repeat mode (§4.1d) — **new 1.3.20**, engine 1.7.0 |
+| `cnb:multinote-overlap` | `#f` or number (a share of the head's width) | `#f` | In repeat mode (§4.1d) — **new 1.3.20**, engine 1.7.0; with `cnb:breve-style 'double` — **1.3.24** |
+| `cnb:breve-style` | `'single` \| `'double` \| `'tied` | `'single` | In shape mode, when `durations.breveStyle` is `"double"` or `"tied"` (§4.1d) — **new 1.3.24**, engine 1.10.0 |
 | `cnb:multinote-stem-on-head` | boolean | `#f` | `#t` in repeat mode (§4.4c) — **new 1.3.23**, engine 1.9.0 |
 | `cnb:semitones-per-staff-space` | Integer | `2` | Always; `pitchAxis.axisUnitsPerStaffSpace` under an axis (§5.4a) — **clarified 1.3.1** |
 
@@ -1684,7 +1735,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.23** | **Nov 15, 2026** | **A repeated minim's stem on one of its noteheads (session 72, engine sessions 43 and 44): §4.4c. In repeat mode a minim's stem attaches to one head of its group as a single head's does, the last when up and the first when down, a centred stem on its head's centre; the export writes `cnb:multinote-stem-on-head #t` after the overlap, and the preview draws the same. The Kite 4-369 fixture's minim attachments are centred as its crotchet's. The engine round trips in the suite hold every stem to the preview within 0.001 staff spaces against engine 1.9.0. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines; the default, sized and Twinline baselines are byte-identical. Needs engine 1.9.0.** |
+| **1.3.24** | **Nov 17, 2026** | **The breve in shape mode (session 76, engine 1.10.0): §4.1d. A shape-mode breve whose `durations.breveStyle` is `"double"` is two heads overlapping as a repeated minim's, and `"tied"` two heads 1 staff space apart, tied below them from centre to centre; the export writes `cnb:breve-style 'double` (with `cnb:multinote-overlap`) or `'tied` among the engine settings, and the preview draws the same. An engine round trip holds every card's breve, double and tied, to the preview within 0.001 staff spaces on the default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25. Output changes only for a shape-mode config with such a `breveStyle`; the five export baselines are byte-identical. Needs engine 1.10.0.** |
+| 1.3.23 | Nov 15, 2026 | A repeated minim's stem on one of its noteheads (session 72, engine sessions 43 and 44): §4.4c. In repeat mode a minim's stem attaches to one head of its group as a single head's does, the last when up and the first when down, a centred stem on its head's centre; the export writes `cnb:multinote-stem-on-head #t` after the overlap, and the preview draws the same. The Kite 4-369 fixture's minim attachments are centred as its crotchet's. The engine round trips in the suite hold every stem to the preview within 0.001 staff spaces against engine 1.9.0. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines; the default, sized and Twinline baselines are byte-identical. Needs engine 1.9.0. |
 | 1.3.22 | Nov 13, 2026 | Noteheads placed by their shape's reference point (session 60): new §4.1e. A notehead whose shape's `reference.y` is nonzero draws with `<registration>-ref`, the shape or its sized variant with its path and cutout moved up the reference's height, so the point is on the pitch; its attachment points are unchanged, Section C names it, and the key signature's marks keep the unmoved shape and their `at`; a signature sharing a shape whose reference is off its origin across exports the mark table rather than `'chord`. The reference's x is not applied to noteheads. The notehead panel picks the height on the enlarged shape, after an import or later. An engine round trip holds heads, stems, dots and repeated heads with an off-centre reference to the preview within 0.001 staff spaces. Output changes only for a config with such a shape; the five export baselines are byte-identical. No engine change. |
 | 1.3.21 | Nov 13, 2026 | Clefs sized about an anchor (session 59, engine sessions 41 and 42): §5.5, §5.5a. A glyph clef may carry an anchor point, `reference { x, y }`, with `anchorSemi` the semitone it sits on, and is registered with its top as drawn, `depth` above it; a clef without one keeps `anchorSemi` as its top. Its `semitoneHeight` may be `null`, automatic, from `staffSpaceUnits` and the staff's symbol space (`CNBStaff.symbolSpace`, the least of the noteheads' mean height, one staff space and 3 semitones), and `height-semitones` is the height drawn. The treble, bass and alto clefs take their anchors on their lines and the automatic size. The dozenal clef writes `cnb:clef-size-semitones`, automatic 3 symbol spaces (8.172 on the default staff), which engine 1.8.0 scales about the middle line. The panel sets the anchor, picked on the glyph, and the size, automatic or a number; the canvas drag moves the anchor and resizes about it. Engine round trips hold every clef's top and bottom, and each anchor on its pitch, to the preview within 0.001 staff spaces. Output changes only for a config showing the dozenal clef or an anchored glyph clef; the five export baselines are byte-identical. Needs engine 1.8.0. |
 | 1.3.20 | Nov 13, 2026 | The repeated heads' overlap and the breve's tie between its groups (session 58, engine sessions 39 and 40): §4.1d, §5.2a. The copies of a repeated head overlap by `durations.repeatOverlap`, a share of each head's own width (1/3 by default, one fraction for every shape), which a repeat-mode export writes as `cnb:multinote-overlap`; `engine.multinotePadding` is retired and `cnb:multinote-padding` never written. The breve's tie runs from the middle of its first semibreve group to the middle of the second. The canvas sets the overlap beside the repeat choice. An engine round trip holds every minim, semibreve and breve width and the tie to the preview within 0.001 staff spaces, at overlaps 1/3 and 0.25. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines gain the line; the default, sized and Twinline baselines are byte-identical. Needs engine 1.7.0. |

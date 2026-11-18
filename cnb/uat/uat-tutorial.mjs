@@ -380,13 +380,14 @@ async function main() {
       c = await live();
       const solid = await pathsIn(0, diamond.svgPath);
       const hollow = await pathsIn(0, diamond.svgHollowPath);
-      check("5. Noteheads: Hollows again: one rule, minims, semibreves and breves hollow, crotchets solid, one head a note",
+      // Since session 76 the breve is two tied heads (cnb:breve-style 'tied).
+      check("5. Noteheads: Hollows again: one rule, minims, semibreves and breves hollow, crotchets solid, one head a note but the breve's two, tied",
         CNBNoteheadInference.designOf(c) === "hollows" && c.durations.representationMode === "shape" &&
         c.durations.breveStyle === "tied" &&
         c.noteheadRules.filter(r => r.name === "Hollow minims and longer").length === 1 &&
         [...Array(12).keys()].every(pc => ["minim", "semibreve", "breve"].every(d => resolved(c, pc, d).hollow === true) &&
           resolved(c, pc).hollow === false) &&
-        JSON.stringify(solid) === "[2,2,2,2]" && JSON.stringify(hollow) === "[0,2,2,2]",
+        JSON.stringify(solid) === "[2,2,2,4]" && JSON.stringify(hollow) === "[0,2,2,4]",
         JSON.stringify({ mode: c.durations.representationMode, solid, hollow }));
     },
 

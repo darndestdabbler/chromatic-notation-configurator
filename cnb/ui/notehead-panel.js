@@ -271,8 +271,8 @@ export const CNBNoteheadPanel = {
    * durations in the notation's heads, the one the notation is highlighted
    * (CNBNoteheadInference.designOf). Under Your own notehead the way
    * duration shows, Hollows or Repeated heads; under Hollows the breve, Two
-   * tied semibreves or Double notehead, with a note that for now the breve
-   * shows as one hollow head; under Repeated heads, and a double breve, the
+   * tied semibreves or Double notehead (drawn and exported as chosen since
+   * session 76); under Repeated heads, and a double breve, the
    * Overlap. A notation that is no design says so ("Your own noteheads").
    * A pick writes withDesign through onChange, after confirm(question) when
    * it would replace something (designChange). Appended to container as a
@@ -396,8 +396,6 @@ export const CNBNoteheadPanel = {
         const style = config.durations.breveStyle;
         b.appendChild(choice("The breve", "data-breve",
           [["tied", "Two tied semibreves"], ["double", "Double notehead"]], style, (s) => pick("hollows", s)));
-        b.appendChild(el("p", "cnb-nhp-hint cnb-nhd-breve-note",
-          "For now the breve previews and exports as one hollow head."));
       }
       if (design === "repeated" || (design === "hollows" && config.durations.breveStyle === "double")) {
         b.appendChild(overlap(config));

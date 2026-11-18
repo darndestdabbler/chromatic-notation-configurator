@@ -687,7 +687,7 @@ export const tests = [
         eq(asked.length, 0, "nothing replaced, nothing asked");
         deepEq(findAll(api.root, "cnb-nhd-option").filter(b => b.className.includes(" on"))
           .map(b => b.getAttribute("data-way") || b.getAttribute("data-breve")), ["hollows", "tied"], "the picks shown");
-        findOne(api.root, "cnb-nhd-breve-note");
+        eq(findAll(api.root, "cnb-nhd-breve-note").length, 0, "no note that the breve shows as one head (session 76)");
         byData(api.root, "cnb-nhd-option", "data-breve", "double").onclick();
         eq(config.durations.breveStyle, "double", "double notehead");
         findOne(api.root, "cnb-nhd-overlap-input").onchange({ target: { value: "25" } });

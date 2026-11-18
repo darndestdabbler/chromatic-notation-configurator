@@ -1394,6 +1394,9 @@
                 (23 2 head diamond #f black-000000))))
      ))
 
+%% Engine settings (non-default)
+#(set! cnb:breve-style 'tied)
+
 %% Metadata
 #(set! cnb:file-suffix "-Tutorial3579")
 #(set! cnb:notation-label "Tutorial 3-5-7-9")

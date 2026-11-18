@@ -1089,10 +1089,19 @@ export const CNBLilypond = {
     // up and the first when down, as the preview draws it (session 72, LY
     // spec 1.3.23 §4.4c): engine 1.9.0's cnb:multinote-stem-on-head, written
     // in repeat mode beside the overlap.
-    if ((config.durations || {}).representationMode === "repeat") {
-      const overlap = config.durations.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP;
-      changed.push(`#(set! cnb:multinote-overlap ${fmtNum(overlap, "durations.repeatOverlap")})`);
+    // B.i's breve (session 76, LY spec 1.3.24 §4.1d): in shape mode a
+    // breveStyle of "double" or "tied" is engine 1.10.0's cnb:breve-style,
+    // the double notehead spaced by the overlap; "single" or none writes
+    // nothing, and repeat mode keeps its two tied groups of four.
+    const durations = config.durations || {};
+    const overlapLine = () => `#(set! cnb:multinote-overlap ${fmtNum(
+      durations.repeatOverlap ?? DEFAULT_REPEAT_OVERLAP, "durations.repeatOverlap")})`;
+    if (durations.representationMode === "repeat") {
+      changed.push(overlapLine());
       changed.push("#(set! cnb:multinote-stem-on-head #t)");
+    } else if (durations.breveStyle === "double" || durations.breveStyle === "tied") {
+      changed.push(`#(set! cnb:breve-style '${durations.breveStyle})`);
+      if (durations.breveStyle === "double") changed.push(overlapLine());
     }
     if (engine.defaultMagnify !== undefined && String(engine.defaultMagnify) !== d.defaultMagnify) {
       changed.push(`#(set! cnb:default-magnify ${CNBScheme.ratio(engine.defaultMagnify, "engine.defaultMagnify")})`);

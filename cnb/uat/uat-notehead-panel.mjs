@@ -195,10 +195,10 @@ check("PANEL: the close-up shows the minim the canvas shows, hollow",
   (await page.$$('.cnb-nhp-closeup path[fill="white"]')).length > 0);
 await page.keyboard.press("Escape");
 await page.click('.cnb-nhd-design[data-design="own"] .cnb-nhd-pick');
-check("DESIGN: Your own notehead picks Hollows, two tied semibreves first, with the one-head note",
+check("DESIGN: Your own notehead picks Hollows, two tied semibreves first, with no one-head note",
   await designNow() === "hollows" && JSON.stringify(await cardsOn()) === '["own"]' &&
   (await page.$$('.cnb-nhd-option.on[data-breve="tied"]')).length === 1 &&
-  (await page.$$(".cnb-nhd-breve-note")).length === 1);
+  (await page.$$(".cnb-nhd-breve-note")).length === 0);
 await selectNotehead(page, 0);
 check("PANEL: under Hollows, no Fill",
   JSON.stringify(await panelRows()) === '["cnb-nhp-colour","cnb-nhp-shape","cnb-nhp-size"]', JSON.stringify(await panelRows()));

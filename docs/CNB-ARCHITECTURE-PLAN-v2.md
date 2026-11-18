@@ -598,8 +598,9 @@ durations: {
   // §6.2): the Hollows design's breve, "double" (two hollow heads
   // overlapping as a repeated minim's) or "tied" (two hollow heads 1 staff
   // space apart, tied); "single" or left out, one head, as before.
-  // Validated; not yet drawn or exported (session 76, with the engine's
-  // cnb:breve-style), so a breve stays one head until then.
+  // Drawn (CNBCard.repeatLayout: a double breve a group of 2, a tied one
+  // two groups of 1, tied) and exported as engine 1.10.0's cnb:breve-style
+  // since session 76.
   // breveStyle: "tied"
 }
 ```
@@ -612,6 +613,7 @@ durations: {
 | `durations[].lilypondDuration` | Used in compound `cond` conditions: `(= duration 3)` |
 | `repeatOverlap`, in repeat mode | Section B `#(set! cnb:multinote-overlap 0.3333)`, engine 1.7.0 (LY spec 1.3.20 §4.1d) |
 | `representationMode == "repeat"` (the minim's stem on one head) | Section B `#(set! cnb:multinote-stem-on-head #t)`, engine 1.9.0 (LY spec 1.3.23 §4.4c) |
+| `breveStyle` `"double"` or `"tied"`, in shape mode | Section B `#(set! cnb:breve-style 'double)` with `cnb:multinote-overlap`, or `'tied`, engine 1.10.0 (LY spec 1.3.24 §4.1d) |
 
 **Design note on the overlap (session 58).** The operator picked it from
 mock-ups (`docs/planning/repeat-overlap-mockups/`): the old −0.5 staff
@@ -2298,6 +2300,7 @@ This table maps every LilyPond export element (from CNB-LY-EXPORT-SPEC-v1.2) to 
 | `cnb:false-hollow` | `#f` | `engine.falseHollow` | If changed |
 | `cnb:multinote-overlap` | `#f` (the engine's `cnb:multinote-padding`, never written) | `durations.repeatOverlap` (session 58) | In repeat mode (LY spec 1.3.20 §4.1d), engine 1.7.0 |
 | `cnb:multinote-stem-on-head` | `#f` | `durations.representationMode` (session 72) | `#t` in repeat mode (LY spec 1.3.23 §4.4c), engine 1.9.0 |
+| `cnb:breve-style` | `'single` | `durations.breveStyle` (session 76) | `'double` or `'tied` in shape mode, `'double` with `cnb:multinote-overlap` (LY spec 1.3.24 §4.1d), engine 1.10.0 |
 | `cnb:default-magnify` | `7/4` | `engine.defaultMagnify` | If changed |
 | `cnb:indent` | `0` | `engine.indent` | If changed |
 | `cnb:collision-threshold` | `2` | `engine.collisionThreshold` | If changed |

@@ -451,6 +451,87 @@ export const tests = [
       eq(CNBCard.repeatLayout(fixture().config, grid, shape, "breve").count, 1, "shape mode: one head");
     }},
 
+  // ── B.i's breve in shape mode (session 76: engine 1.10.0's cnb:breve-style) ──
+
+  { name: "repeatCount and tiedGroups (shape-mode breve): a double breve is 2 heads, a tied one two groups of 1; single, none and repeat mode as before", fn: () => {
+      const { config } = fixture();
+      const rep = repeatFixture().config;
+      for (const style of [undefined, "single", "double", "tied"]) {
+        const shape = CNBConfig.clone(config);
+        const repeat = CNBConfig.clone(rep);
+        if (style !== undefined) { shape.durations.breveStyle = style; repeat.durations.breveStyle = style; }
+        eq(CNBCard.repeatCount(shape, "breve"), style === "double" ? 2 : 1, `shape ${style} breve heads`);
+        eq(CNBCard.tiedGroups(shape, "breve"), style === "tied" ? 2 : 1, `shape ${style} breve groups`);
+        for (const d of ["crotchet", "minim", "semibreve"]) {
+          eq(CNBCard.repeatCount(shape, d), 1, `shape ${style} ${d}`);
+          eq(CNBCard.tiedGroups(shape, d), 1, `shape ${style} ${d} groups`);
+        }
+        eq(CNBCard.repeatCount(repeat, "breve"), 4, `repeat ${style}: 4 heads a group`);
+        eq(CNBCard.tiedGroups(repeat, "breve"), 2, `repeat ${style}: two groups`);
+      }
+    }},
+
+  { name: "repeatLayout (shape-mode breve): a double notehead (1 − overlap) head widths apart, untied; two tied heads 1 staff space apart, tied from centre to centre, at overlaps 1/3 and 0.25", fn: () => {
+      const { config, grid, shape } = fixture();
+      const { pixelWidth: w, pixelHeight: hh } = CNBNotehead.measure(shape, grid.pxPerSemi);
+      const ss = 4 * grid.pxPerSemi;
+      for (const overlap of [undefined, 0.25]) {
+        if (overlap !== undefined) config.durations.repeatOverlap = overlap;
+        const step = w * (1 - (overlap ?? 1 / 3));
+        config.durations.breveStyle = "double";
+        const double = CNBCard.repeatLayout(config, grid, shape, "breve");
+        eq(double.count, 2, `double ${overlap}: 2 heads`);
+        approx(double.offsets[0], -step / 2, `double ${overlap}: left head`);
+        approx(double.offsets[1], step / 2, `double ${overlap}: right head`);
+        approx(double.groupWidth, w + step, `double ${overlap}: width`);
+        eq(double.ties.length, 0, `double ${overlap}: no tie`);
+        config.durations.breveStyle = "tied";
+        const tied = CNBCard.repeatLayout(config, grid, shape, "breve");
+        eq(tied.count, 2, `tied ${overlap}: 2 heads`);
+        approx(tied.offsets[0], -(w + ss) / 2, `tied ${overlap}: left head`);
+        approx(tied.offsets[1], (w + ss) / 2, `tied ${overlap}: right head`);
+        approx(tied.groupWidth, 2 * w + ss, `tied ${overlap}: two heads and 1 staff space`);
+        eq(tied.ties.length, 1, `tied ${overlap}: one tie`);
+        approx(tied.ties[0].x1, tied.offsets[0], `tied ${overlap}: from the first head's centre`);
+        approx(tied.ties[0].x2, tied.offsets[1], `tied ${overlap}: to the second's`);
+        approx(tied.ties[0].dy, hh / 2, `tied ${overlap}: at the heads' bottom`);
+        eq(CNBCard.repeatLayout(config, grid, shape, "semibreve").count, 1, `tied ${overlap}: the semibreve one head`);
+      }
+      config.durations.breveStyle = "single";
+      eq(CNBCard.repeatLayout(config, grid, shape, "breve").count, 1, "single: one head");
+    }},
+
+  { name: "render (shape-mode breve): a tied breve draws 4 heads, a black tie on each of the pair and ledgers 1.5 × the whole; a double breve 4 heads and no tie; tieBottom follows", fn: () => {
+      const { config, grid, shape } = fixture();
+      const hh = CNBNotehead.measure(shape, grid.pxPerSemi).pixelHeight;
+      for (const style of ["tied", "double"]) {
+        config.durations.breveStyle = style;
+        const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
+        withDomStub(container => {
+          const { svg, ledgerG, stem, noteheads } = dissect(CNBCard.render(container, grid, config, { pc: 0, duration: "breve" }));
+          eq(noteheads.length, 4, `${style}: 2 octave pairs`);
+          assert(stem === undefined, `${style}: no stem`);
+          const centerX = Number(svg.getAttribute("width")) / 2;
+          const ties = svg.children.filter(c => c.getAttribute("class") === "cnb-tie");
+          eq(ties.length, style === "tied" ? 2 : 0, `${style}: ties`);
+          ties.forEach((t, i) => {
+            const y = grid.semiToY(i === 0 ? 0 : 12) + hh / 2;
+            eq(t.getAttribute("d"), CNBCard.tiePath(centerX + layout.ties[0].x1, centerX + layout.ties[0].x2, y, 64).d, `tie ${i}`);
+            eq(t.getAttribute("fill"), "#000000", `tie ${i} black`);
+          });
+          approx(Number(ledgerG.children[0].getAttribute("width")), 1.5 * layout.groupWidth, `${style}: ledger 1.5 × the whole breve`);
+        });
+        approx(CNBCard.columnWidth(config, grid, { pc: 0, duration: "breve" }), 1.5 * layout.groupWidth + 2 * 16, `${style}: column`);
+      }
+      config.durations.breveStyle = "tied";
+      const layout = CNBCard.repeatLayout(config, grid, shape, "breve");
+      const tie = CNBCard.tiePath(layout.ties[0].x1, layout.ties[0].x2, 0, 64);
+      approx(CNBCard.tieBottom(config, grid, { pc: 2, duration: "breve" }),
+        grid.semiToY(2) + hh / 2 + tie.height + tie.strokeWidth / 2, "tieBottom: the tied breve's lowest ink");
+      config.durations.breveStyle = "double";
+      eq(CNBCard.tieBottom(config, grid, { pc: 2, duration: "breve" }), null, "tieBottom: a double breve has no tie");
+    }},
+
   { name: "tiePath: LilyPond's make-tie-stencil, bowing down from the ends, 0.12 staff spaces thick", fn: () => {
       const ss = 64;
       const tie = CNBCard.tiePath(100, 164, 50, ss);
@@ -683,6 +764,81 @@ export const tests = [
             check(`${label} breve pc ${pc} tie end y`, end[1], ends);
             check(`${label} breve pc ${pc} tie lowest point`, y[0],
               (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss);
+          }
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
+    }},
+
+  // Engine-backed (session 76, LY spec 1.3.24 §4.1d): B.i's breve against
+  // engine 1.10.0's cnb:breve-style. In shape mode a double breve is two heads
+  // overlapping by durations.repeatOverlap, untied, and a tied one two heads 1
+  // staff space apart, tied below them from the first's centre to the
+  // second's. For every pitch class, on the default notehead and the
+  // tutorial's diamond, at overlaps 1/3 and 0.25, the engraved breve's width
+  // and height, and a tied one's tie (its ends, each half a head in from its
+  // edge of the stencil and at the heads' bottom, and its lowest ink), are
+  // within 0.001 staff spaces of the preview's, each head-proportional length
+  // scaled by the engraved head's width over the preview's as the repeat-mode
+  // round trip above does (the 1 staff space between tied heads does not
+  // scale).
+  { name: "shape-mode breve (engine): double and tied breves, on the default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25, engrave at the preview's width, height and tie (0.001 staff spaces)", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const failures = [];
+      const check = (what, engraved, preview) => {
+        if (!(Math.abs(engraved - preview) <= 0.001)) failures.push(`${what}: engraved ${engraved} staff spaces, preview ${preview}`);
+      };
+      const tutorial = path.join(FIXTURES, "..", "..", "docs", "playbook", "tutorial", "downloads", "tutorial.json");
+      const notations = [["default", () => CNBConfig.createDefault()],
+        ["the tutorial's diamond", () => CNBConfigIO.loadFromText(readFileSync(tutorial, "utf8")).config]];
+      for (const [name, make] of notations) {
+        for (const style of ["double", "tied"]) {
+          for (const overlap of [1 / 3, 0.25]) {
+            const config = make();
+            config.durations.representationMode = "shape";
+            config.durations.breveStyle = style;
+            config.durations.repeatOverlap = overlap;
+            const label = `${name} ${style} at overlap ${overlap}`;
+            const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
+            const ss = grid.pxPerSemi * config.staff.semitonesPerStaffSpace;
+            const ly = CNBLilypond.generate(config);
+            assert(ly.includes(`#(set! cnb:breve-style '${style})`), `${label}: the export asks for the breve`);
+            const scale = {};   // per pc: the engraved head's width ÷ the preview's
+            const preview = {};
+            for (const [duration, token] of [["crotchet", "4"], ["breve", "\\breve"]]) {
+              const { noteheads, error } = await measureNoteheads(engine, ly, token);
+              if (error) { failures.push(`${label} ${duration}: ${error}`); continue; }
+              for (const { pc, width, height } of noteheads) {
+                const resolved = CNBCard.resolveNotehead(config, pc, duration, null);
+                const shape = config.shapes[resolved.shape];
+                const head = CNBNotehead.measure(shape, grid.pxPerSemi, resolved);
+                if (duration === "crotchet") { scale[pc] = width / (head.pixelWidth / ss); continue; }
+                const layout = CNBCard.repeatLayout(config, grid, shape, "breve", resolved);
+                preview[pc] = { layout, head };
+                const gaps = CNBCard.tiedGroups(config, "breve") - 1;   // 1 staff space each
+                check(`${label} pc ${pc} width`, width, (layout.groupWidth / ss - gaps) * scale[pc] + gaps);
+                const bottom = style === "tied"
+                  ? CNBCard.tieBottom(config, grid, { pc, duration: "breve" }) - grid.semiToY(pc)
+                  : head.pixelHeight / 2;
+                check(`${label} pc ${pc} height`, height, (head.pixelHeight / 2 + bottom) / ss);
+              }
+            }
+            if (style !== "tied") continue;
+            const { ties, error } = await measureTies(engine, ly);
+            if (error) { failures.push(`${label} tie: ${error}`); continue; }
+            for (const { pc, start, end, x, y } of ties) {
+              const { layout, head } = preview[pc];
+              const [tie] = layout.ties;
+              const halfHead = (tie.x1 - (layout.offsets[0] - head.pixelWidth / 2)) / ss * scale[pc];
+              const ends = -tie.dy / ss;
+              check(`${label} pc ${pc} tie start x`, start[0] - x[0], halfHead);
+              check(`${label} pc ${pc} tie end x`, x[1] - end[0], halfHead);
+              check(`${label} pc ${pc} tie start y`, start[1], ends);
+              check(`${label} pc ${pc} tie end y`, end[1], ends);
+              check(`${label} pc ${pc} tie lowest point`, y[0],
+                (grid.semiToY(pc) - CNBCard.tieBottom(config, grid, { pc, duration: "breve" })) / ss);
+            }
           }
         }
       }

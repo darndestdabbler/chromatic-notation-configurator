@@ -278,8 +278,8 @@ conventional noteheads on the 4-8 staff.
    only the colour and one height for every notehead to set; or **Your own
    notehead**, whose shape, colour and size vary by pitch, its longer notes
    shown by **Hollows** (crotchets solid, minims, semibreves and breves
-   hollow; the breve two tied semibreves or a double notehead, for now
-   drawn and exported as one hollow head) or **Repeated heads** (as the
+   hollow; the breve two tied semibreves or a double notehead, as engine
+   1.10.0 engraves them) or **Repeated heads** (as the
    engine engraves them: minim ×2, semibreve ×4, and a breve as two tied
    groups, with their **Overlap**). The card the notation is is
    highlighted, and a picked design that would replace looks asks first. A
@@ -571,6 +571,12 @@ it (session 34, LY export spec 1.3.9):
   on the last head when the stem is up and the first when it is down; the
   export asks for it with `cnb:multinote-stem-on-head`, which needs engine
   1.9.0. How many heads there are, the gap and the tie are not settings.
+- **Hollows' breve is the engine's too.** Under Hollows, one head a note,
+  the breve is two hollow heads: a double notehead, overlapping as a
+  repeated minim's, or two tied semibreves, 1 staff space apart with the
+  black tie below them from the first head's centre to the second's
+  (`durations.breveStyle`). The export writes `cnb:breve-style`, with the
+  overlap for a double notehead, which needs engine 1.10.0.
 
 Configs saved before session 34 still load. Their retired settings (line
 thickness, colour and style, line overrides, ledger width and ends, stem

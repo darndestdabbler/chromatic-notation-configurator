@@ -87,7 +87,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 73 | The UI is stable, a second try | no | 2026-11-16 |
 | 74 | Designing how noteheads show duration | no | 2026-11-17 |
 | 75 | The notehead design, built | no | 2026-11-17 |
-| 76 | B.i's breve reaches LilyPond | — | not declared |
+| 76 | B.i's breve reaches LilyPond | no | 2026-11-17 |
 | 77 | The UI is stable, a third try | — | not declared |
 | 78 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
@@ -774,3 +774,9 @@ Build session 74's approved notehead design (docs/planning/notehead-duration-des
 **Amended after acceptance:**
 
 - 2026-11-17 — step 'uat': its files: Running every driver showed six more break on the new start (no Shape row and so no importer under conventional noteheads) or on the removed toolbar controls (the repeat choice, the Hollow minims tick, deselecting every duration); app-page.mjs gains one helper that opens the default notation for drivers built on it (claude-code (anthropic, claude-opus-5-5))
+
+### Session 76 — B.i's breve reaches LilyPond
+
+**Releasable: no.**
+
+Draw and export B.i's breve (docs/planning/notehead-duration-design.md §6.3, the brief docs/planning/shape-mode-breve-brief.md). In shape mode, a breve whose durations.breveStyle is "double" is drawn as two copies of its notehead overlapping by durations.repeatOverlap, with no tie, and one whose breveStyle is "tied" as two heads 1 staff space apart, tied below them from the first head's centre to the second's: CNBCard.repeatCount and CNBCard.tiedGroups take breveStyle for a shape-mode breve, so CNBCard.repeatLayout, the tie, the ledgers, the column and the collection's grid follow with no new layout code; repeat mode and "single" (or none) are unchanged. Section B writes #(set! cnb:breve-style 'double) or 'tied in shape mode when breveStyle says so, with cnb:multinote-overlap for 'double, and nothing otherwise (LY spec 1.3.24 §4.1d), so the five export baselines stay byte-identical and the tutorial's two .ly downloads gain the line. The notehead panel's note that the breve previews and exports as one hollow head goes, and the tutorial's step 5 text and shots, the LY spec, the architecture plan and the README follow. Once the operator has run the engine session that releases engine 1.10.0 (cnb:breve-style), an engine round trip in cnb/tests/cnb-card-tests.js holds every card's breve, double and tied, its heads, width, height and tie, to the preview within 0.001 staff spaces, on the default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25.
