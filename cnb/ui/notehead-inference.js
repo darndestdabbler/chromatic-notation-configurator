@@ -199,7 +199,9 @@ function attributes(table) {
 const shapeWords = (name) => name.replace(/-/g, " ");
 
 /**
- * The rule list of design §5.4, one line per attribute, in words, always
+ * The rule list of design §5.4 (shown on the Noteheads step until session
+ * 77; kept for the UAT and a summary of the notation), one line per
+ * attribute, in words, always
  * in the order Shape, Fill, Size, Side step, Colour. Each line has its
  * attribute, its words
  * ("Shape: kite down, with kite up every 4 semitones from C♯ and D") and

@@ -97,14 +97,10 @@
         </section>
 
         <section class="card panel" data-panel="noteheads" hidden>
-          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several); the rules follow</span></div>
+          <div class="card-head"><h2>Noteheads</h2><span class="sub">Click a notehead on the staff to give it a look (Shift+click or Ctrl+click selects several)</span></div>
           <div class="card-body">
             <!-- The choice of design (session 75, notehead-duration design §2). -->
             <div id="notehead-design-host"></div>
-            <div>
-              <p class="group-title">Rules</p>
-              <div id="rule-list-host"></div>
-            </div>
           </div>
         </section>
 
@@ -367,17 +363,16 @@
     // section link closes it. The panel writes the whole config through the
     // look table's inference.
     let selection = [];
-    let tinted = [];
     let panelApi = null;
     const panelCard = byId("notehead-panel-card");
     const panelHost = byId("notehead-panel-host");
 
     function refreshMarks() {
-      if (previewApi) previewApi.setMarks({ selected: selection, tinted });
+      if (previewApi) previewApi.setMarks({ selected: selection });
     }
 
     function openNoteheadPanel() {
-      // The Noteheads section's rule list stays under the panel (design §2).
+      // The Noteheads section's choice of design stays under the panel (design §2).
       for (const panel of document.querySelectorAll(".panel")) panel.hidden = panel.dataset.panel !== "noteheads";
       panelCard.hidden = false;
       panelHost.textContent = "";
@@ -691,18 +686,6 @@
     // partial staffs at the canvas Size.
     showSection(openable(location.hash) || openable(keptStep) || CNBSteps[0].id, { how: "replace" });
 
-    // ── The Noteheads section's rule list (design §5.4) ──────────────────
-    // Hovering a line tints the canvas columns it covers.
-    function refreshRuleList() {
-      const host = byId("rule-list-host");
-      host.textContent = "";
-      tinted = [];
-      CNBNoteheadPanel.renderRuleList(host, appConfig, {
-        onHover: (pcs) => { tinted = pcs; refreshMarks(); },
-      });
-      refreshMarks();
-    }
-
     // ── Saving where the designer chooses (session 36) ───────────────────
     // Save and Export hand their file to CNBSaveFile, which opens the
     // browser's save dialog where it has one and downloads otherwise. The
@@ -844,7 +827,6 @@
       refreshPanel();
       refreshChecks();
       previewApi.redraw();
-      refreshRuleList();
       if (panelApi && !keepPanel) panelApi.redraw();
       pitchApi.redraw();
       heightApi.redraw();
@@ -1171,7 +1153,6 @@
     }
 
     mountEditors();
-    refreshRuleList();
     refreshPanel();
     refreshChecks();
     undoHistory = CNBHistory.create(appConfig);

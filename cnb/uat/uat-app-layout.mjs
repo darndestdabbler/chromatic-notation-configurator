@@ -455,23 +455,20 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     await page.textContent("#checks-indicator"));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-kite-${width}.png`), fullPage: true });
 
-  // ── A notehead selected and a rule hovered (session 27, mock-up 2) ──
+  // ── A notehead selected (session 27, mock-up 2) ──
   await openSection(page, "noteheads");
   await selectNotehead(page, 1);
-  // The hover by its event, so the page can be shown from the top.
-  await page.dispatchEvent(".cnb-nhp-rule >> nth=0", "mouseenter");
   await page.evaluate(() => window.scrollTo(0, 0));
   const geo = await page.evaluate(() => {
     const box = (sel) => document.querySelector(sel).getBoundingClientRect();
-    const [canvas, panel, rules] = [box(".canvas-card"), box("#notehead-panel-card"), box('[data-panel="noteheads"]')];
-    return { canvasBottom: canvas.bottom, panelTop: panel.top, panelBottom: panel.bottom, rulesTop: rules.top,
-      sameWidth: Math.abs(canvas.width - panel.width) < 1 && Math.abs(panel.width - rules.width) < 1 };
+    const [canvas, panel, design] = [box(".canvas-card"), box("#notehead-panel-card"), box('[data-panel="noteheads"]')];
+    return { canvasBottom: canvas.bottom, panelTop: panel.top, panelBottom: panel.bottom, designTop: design.top,
+      sameWidth: Math.abs(canvas.width - panel.width) < 1 && Math.abs(panel.width - design.width) < 1 };
   });
-  check(`${width}: the notehead panel docks under the canvas at its width, with the rule list under it`,
-    geo.panelTop >= geo.canvasBottom && geo.rulesTop >= geo.panelBottom && geo.sameWidth, JSON.stringify(geo));
-  check(`${width}: C♯ is outlined and the hovered shape rule tints its six columns`,
-    JSON.stringify(await page.$$eval(".cnb-pvd-preview .pc-col.cnb-pvd-selected", els => els.map(e => +e.dataset.pc))) === "[1]" &&
-    JSON.stringify(await page.$$eval(".cnb-pvd-preview .pc-col.cnb-pvd-tint", els => els.map(e => +e.dataset.pc))) === "[1,2,5,6,9,10]");
+  check(`${width}: the notehead panel docks under the canvas at its width, with the choice of design under it`,
+    geo.panelTop >= geo.canvasBottom && geo.designTop >= geo.panelBottom && geo.sameWidth, JSON.stringify(geo));
+  check(`${width}: C♯ is outlined`,
+    JSON.stringify(await page.$$eval(".cnb-pvd-preview .pc-col.cnb-pvd-selected", els => els.map(e => +e.dataset.pc))) === "[1]");
   l = await layout(page);
   check(`${width}: the notehead panel does not make the page scroll sideways`, l.pageScrollWidth <= l.pageWidth, JSON.stringify(l));
   await page.screenshot({ path: path.join(SHOT_DIR, `app-notehead-${width}.png`), fullPage: true });

@@ -35,7 +35,7 @@ The Configurator is the design environment where notation creators make creative
   browser, the browser's Back and Forward move between the steps you
   opened, and **New** starts afresh
 
-![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo, Redo and New, the staff canvas with its durations, repeat mode and overlap, key and size, and under it the notehead panel for C♯, F and A selected together, with Back and Next at the bottom](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo, Redo and New, the staff canvas with Show (crotchets), the key and the size, and under it the notehead panel for C♯, F and A selected together, with their colour, fill and shape, and Back and Next at the bottom](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -290,7 +290,8 @@ conventional noteheads on the 4-8 staff.
    colour (with **Suggested colours** to start from), and, as the design
    lets them vary, fill, shape, size and nudge, for every selected notehead
    at once. A new shape keeps the notehead's height, at the new shape's
-   proportions. The step lists the rules the looks are kept as.
+   proportions. The looks are kept as notehead rules, which Advanced ›
+   Notehead rules shows and edits.
 
 **Key signature** — steps 6 to 9 draw their own canvases in place of the
 staff. One model draws every signature, for the key picked on the staff or

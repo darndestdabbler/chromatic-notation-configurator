@@ -128,7 +128,7 @@ summary:focus-visible, [tabindex]:focus-visible {
   border: 0; border-right: 1px solid var(--line); border-radius: 0;
 }
 .segmented > button:last-child { border-right: 0; }
-.segmented > button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.segmented > button.on { background: var(--accent); color: #fff; font-weight: 600; }
 
 /* Pills (pitch classes, durations, keys): every editor's *-pill and toggle. */
 .cnb-pvd-duration-pill, .cnb-sre-pc-toggle, .cnb-sre-trigger-pill,
@@ -246,7 +246,7 @@ summary:focus-visible, [tabindex]:focus-visible {
   border: 0; border-right: 1px solid var(--line); border-radius: 0;
 }
 .cnb-pvd-size-option:last-child { border-right: 0; }
-.cnb-pvd-size-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cnb-pvd-size-option.on { background: var(--accent); color: #fff; font-weight: 600; }
 .cnb-pvd-size-hint:empty { display: none; }
 .cnb-pvd-size-hint { font-size: 12px; color: var(--warn); }
 .cnb-pvd-key-note { font-size: 12px; color: var(--ink-2); max-width: 360px; }
@@ -689,17 +689,6 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
   background: rgba(47, 91, 211, .07); box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-/* The Noteheads section's rule list (§5.4). */
-.cnb-nhp-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.cnb-nhp-rule {
-  display: flex; align-items: center; gap: var(--space-3); min-height: 36px;
-  padding: var(--space-1) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s);
-}
-.cnb-nhp-rule:hover { background: var(--accent-soft); border-color: #c9d6f6; }
-.cnb-nhp-rule-marks { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; width: 88px; }
-.cnb-nhp-rule-swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
-.cnb-nhp-rule-words { font-size: 14px; }
-
 /* The notehead panel (§2): three columns under the canvas. */
 .notehead-panel-card[hidden] { display: none; }
 .cnb-notehead-panel { display: flex; flex-direction: column; }
@@ -736,7 +725,7 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
   border: 1px solid rgba(0,0,0,.18);
 }
 .cnb-nhp-swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
-.cnb-nhp-none, .cnb-nhp-rule-swatch.cnb-nhp-none {
+.cnb-nhp-none {
   background: linear-gradient(135deg, #fff 45%, var(--error) 45%, var(--error) 55%, #fff 55%);
 }
 .cnb-nhp-pick, .cnb-nhp-field, .cnb-nhp-lock {
@@ -755,7 +744,7 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 .cnb-nhp-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
 .cnb-nhp-segmented > button { min-height: 30px; border: 0; border-right: 1px solid var(--line); border-radius: 0; font-size: 13px; }
 .cnb-nhp-segmented > button:last-child { border-right: 0; }
-.cnb-nhp-segmented > button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cnb-nhp-segmented > button.on { background: var(--accent); color: #fff; font-weight: 600; }
 .cnb-nhp-shapes { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
 .cnb-nhp-shape-option { min-width: 52px; min-height: 40px; padding: var(--space-1) var(--space-2); }
 .cnb-nhp-shape-option.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }

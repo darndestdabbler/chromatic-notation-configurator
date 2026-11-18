@@ -489,42 +489,6 @@ export const tests = [
       });
     }},
 
-  // ── The rule list (§5.4) ──────────────────────────────────────────────
-
-  { name: "renderRuleList: Kite's lines in words, with thumbnails and swatches", fn: () => {
-      withDomStub(container => {
-        const list = P.renderRuleList(container, fixture("kite-4-369-config.json"));
-        eq(container.children[0], list, "appended");
-        const lines = findAll(list, "cnb-nhp-rule");
-        deepEq(lines.map(l => l.getAttribute("data-attribute")), ["shape", "fill", "size", "side", "colour"], "one line per attribute");
-        deepEq(lines.map(l => findOne(l, "cnb-nhp-rule-words").textContent), [
-          "Shape: kite down, with kite up every 4 semitones from C♯ and D",
-          "Fill: solid, with hollow every 2 semitones from C♯",
-          "Size: each shape at its own size",
-          "Side step: none everywhere",
-          "Colour: every 3 semitones, sky blue, puce, none",
-        ], "words");
-        eq(findOne(lines[0], "cnb-nhp-rule-marks").children.filter(c => c.tag === "svg").length, 2, "two shape thumbnails");
-        deepEq(findAll(lines[4], "cnb-nhp-rule-swatch").map(s => s.style.background || "none"), ["#50b4e9", "#cc79a7", "none"], "swatches, black as none");
-      });
-    }},
-
-  { name: "renderRuleList: hovering a line reports the pitch classes it covers, leaving reports none", fn: () => {
-      withDomStub(container => {
-        const hovers = [];
-        const list = P.renderRuleList(container, fixture("kite-4-369-config.json"), { onHover: (pcs) => hovers.push(pcs) });
-        const lines = findAll(list, "cnb-nhp-rule");
-        lines[0].onmouseenter();
-        lines[0].onmouseleave();
-        lines[1].onmouseenter();
-        deepEq(hovers, [[1, 2, 5, 6, 9, 10], [], [1, 3, 5, 7, 9, 11]], "kite up, none, hollow");
-        const plain = P.renderRuleList(container, { ...CNBConfig.createDefault() }, { onHover: (pcs) => hovers.push(pcs) });
-        findAll(plain, "cnb-nhp-rule")[0].onmouseenter();
-        deepEq(hovers[hovers.length - 1], [...Array(12).keys()], "a shape everywhere covers every notehead");
-        eq(findAll(findAll(plain, "cnb-nhp-rule")[4], "cnb-nhp-none").length, 1, "no colour: the None swatch");
-      });
-    }},
-
   { name: "generalHeight: the default notehead is at its shape's own 2.724 semitones; the most common height wins", fn: () => {
       eq(P.generalHeight(CNBConfig.createDefault()), 2.724, "default");
       const config = CNBConfig.createDefault();

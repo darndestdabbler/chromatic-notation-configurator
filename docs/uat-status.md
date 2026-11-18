@@ -21,6 +21,77 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
+## Trying sessions 74–76 — 2026-11-18 (session 77)
+
+The operator tried what sessions 74–76 added (the Noteheads step's choice
+of design, the notehead panel's rows by design, the Show choice, New
+starting from conventional noteheads, the Hollows breve) in the app served
+locally (`python -m http.server 8000`), and stopped at the Clef steps
+(2026-11-18): the rework below is planned as sessions 78 and 79, and
+session 80 tries the UI again (`docs/sessions/session-plan.md`).
+
+**Rough edges**, each marked *fix here* or *planned*.
+
+1. **Under Your own notehead, "Duration shows by" and "The breve" did
+   nothing** (no change: a stale cache). The browser was running the
+   session-75 page from its cache; `python -m http.server` sends no
+   `Cache-Control`, so a browser may keep ES modules after the files
+   change. A hard reload (Ctrl+Shift+R) brought session 76's page, and the
+   choices switch. A fresh Chromium on the same server switched them too,
+   and the design round-trips (`withDesign`, then `designOf`) for every
+   gallery file, fixture and the tutorial.
+2. **Which choice is on is unclear** (*fix here*). The chosen option of a
+   segmented choice was drawn in the pale accent on white, and inside the
+   highlighted Your own notehead card, whose background is the same pale
+   accent, it barely showed. The operator: "I believe that will be
+   confusing for users." The chosen option of every segmented choice (the
+   way duration shows, the breve, the notehead panel's segmented rows, the
+   canvas's Size, the ledger mode) is now the accent, solid, with white
+   text (`cnb/ui/app.css`). The pills, whose chosen one has an accent
+   border, are unchanged.
+3. **The Rules list on the Noteheads step** (*fix here*). The operator
+   would rename it "Inferred rules", or leave it out, which they thought
+   better. It is left out: the step shows the choice of design alone, and
+   the rules are in Advanced › Notehead rules
+   (`CNBNoteheadPanel.renderRuleList` and its tests removed; the rules in
+   words, `CNBNoteheadInference.ruleLines`, kept, which the UAT reads from
+   the page's config). The operator's idea of a summary page (HTML or PDF)
+   documenting a notation, beside the LilyPond export, is listed under
+   "After 1.1.0".
+4. **The highlighted bar on the clef is not its anchor** (*planned*,
+   sessions 78 and 79, with item 5). After an anchor is picked, the bar
+   highlighted on the canvas is at the clef's bottom edge, not where the
+   anchor was placed. The bar is the resize handle (session 45), and
+   nothing on the canvas marks the anchor.
+5. **The Clef steps are more complicated than they need to be**
+   (*planned*, sessions 78 and 79). "Choose a clef" offers the built-in
+   clefs as buttons, and "Clefs" lists them again with the imported ones:
+   one list is enough. The operator would put the options on the left and
+   a larger preview on the right, with the pitch names to the left of the
+   staff, the preview changing with each option (the anchor shown, the
+   clef moved and resized live), and the options in order: a. choose a
+   clef or import one; b. its anchor (top, middle, bottom or custom); c.
+   where the anchor lies on the staff (one of the pitches or custom); d.
+   the space after it (none is needed before it). Session 78 designs it
+   with mock-ups.
+6. **Dropdowns where buttons are busy** (*planned*, sessions 78 and 79).
+   "Do we always need buttons? Sometimes dropdowns would work and be more
+   economical on space." The key-signature designer is "really busy"; its
+   Stacks radio buttons could be a dropdown. Session 78 reviews the page's
+   rows of buttons and radio buttons with mock-ups.
+
+**The full UAT** (`node cnb/uat/run-uat.mjs`, 2026-11-18, after items 2
+and 3 and the README's picture recaptured): 20 of 20 drivers passed, 753
+checks, the hostile-input checklist in Chromium 156, Firefox 157 and Edge
+157 among them.
+
+**Not yet declared stable.** The rework of items 4–6 changes the Clef
+steps and the key-signature designer, so the operator's declaration, the
+condition for the 1.1.0 release, moves to the fourth try-out, session 80,
+and the release from session 78 to session 81. Session 78 designs the
+Clef steps and the dropdowns with mock-ups, and session 79 builds them
+(`docs/sessions/session-plan.md`).
+
 ## Trying sessions 70–72 — 2026-11-16 (session 73)
 
 The operator tried what sessions 70–72 added (ledgers by one rule, the

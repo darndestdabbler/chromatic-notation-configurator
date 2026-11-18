@@ -26,8 +26,8 @@
  * many noteheads by selecting them, and the driver checks it is gone.
  *
  * Along the way it checks the selection marks, that the colour input's
- * element survives an `input` event (session 21's wiring), the rule list's
- * words and its hover tint, and that the downloaded .ly equals
+ * element survives an `input` event (session 21's wiring), the rules in
+ * words (ruleLines; the step's rule list went in session 77), and that the downloaded .ly equals
  * cnb/fixtures/kite-4-369-export-baseline.ly (the date line normalised).
  *
  * Requirements, as the other drivers (uat-app-layout.mjs): playwright-core
@@ -224,11 +224,16 @@ await page.waitForFunction(() =>
   JSON.parse(document.getElementById("state-json").textContent).shapes["kite-up"] !== undefined);
 
 const state = async () => JSON.parse(await page.textContent("#state-json"));
-const ruleWords = () => page.$$eval(".cnb-nhp-rule-words", els => els.map(e => e.textContent));
+// The page's rules in words (the rule list the Noteheads step showed until
+// session 77, which removed it), read from the config the page holds.
+const ruleWords = async () => {
+  const c = await state();
+  return CNBNoteheadInference.ruleLines(c, CNBNoteheadInference.lookTable(c)).map(l => l.words);
+};
 const marked = (cls) => page.$$eval(`.cnb-pvd-preview .pc-col.${cls}`, els => els.map(e => Number(e.dataset.pc)));
 
 await openSection(page, "noteheads");
-check("START: the rule list shows one look everywhere",
+check("START: the rules give one look everywhere",
   JSON.stringify(await ruleWords()) === JSON.stringify(
     ["Shape: kite down everywhere", "Fill: solid everywhere", "Size: each shape at its own size",
       "Side step: none everywhere", "Colour: none everywhere"]),
@@ -280,7 +285,7 @@ async function pickColour(hex) {
 
 // ── 1. Shape: kite up every 4 semitones from C♯ and D ───────────────────────
 await selectNotehead(page, 1);
-check("SELECT: a click opens the notehead panel for C♯, with the rule list still under it",
+check("SELECT: a click opens the notehead panel for C♯, with the choice of design still under it",
   (await page.textContent(".cnb-nhp-title")) === "C♯" &&
   await page.isVisible("#notehead-panel-card") &&
   await page.isVisible('[data-panel="noteheads"]'));
@@ -337,23 +342,19 @@ check("COLOURS: the twelve colours, on the notehead rules, equal the fixture's",
 check("RULES: the colours are written as rules, and the config has no palette (session 37)",
   !("palette" in cfg) && cfg.noteheadRules.some(r => r.apply.color === "#cc79a7"));
 
-// ── The rule list and its hover tint ────────────────────────────────────────
+// ── The rules in words; no rule list on the step (session 77) ───────────────
 await page.keyboard.press("Escape");
 await openSection(page, "noteheads");
 const words = await ruleWords();
-check("RULE LIST: the Kite rules in words",
+check("RULES: the Kite rules in words",
   words[0] === "Shape: kite down, with kite up every 4 semitones from C♯ and D" &&
   words[1] === "Fill: solid, with hollow every 2 semitones from C♯" &&
   words[2] === "Size: each shape at its own size" &&
   words[3] === "Side step: none everywhere" &&
   words[4].startsWith("Colour: every 3 semitones, "),
   JSON.stringify(words));
-await page.hover(".cnb-nhp-rule >> nth=0");
-check("RULE LIST: hovering the shape line tints the six kite-up columns",
-  JSON.stringify(await marked("cnb-pvd-tint")) === "[1,2,5,6,9,10]",
-  JSON.stringify(await marked("cnb-pvd-tint")));
-await page.mouse.move(0, 0);
-check("RULE LIST: leaving the line clears the tint", (await marked("cnb-pvd-tint")).length === 0);
+check("RULES: the Noteheads step shows no rule list (session 77)",
+  (await page.$$(".cnb-nhp-rules, #rule-list-host")).length === 0);
 
 // ── The export equals the fixture's ─────────────────────────────────────────
 const [download] = await Promise.all([page.waitForEvent("download"), page.click("#export-ly")]);

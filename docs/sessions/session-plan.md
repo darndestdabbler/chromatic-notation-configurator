@@ -2553,7 +2553,75 @@ out.
 4. The operator declares the UI stable, which is the condition for
    session 78.
 
-### Session 78: Release 1.1.0 (release: 1.1.0)
+*(Session 77, 2026-11-18: the operator tried sessions 74–76 and found the
+choices that switch (the way duration shows, the breve) unclear about which
+is on, and the Noteheads step's Rules list not needed; both are fixed here.
+They asked for the Clef steps to be reworked, as simpler, with a larger
+preview that shows what each choice does, and for dropdowns where a row of
+buttons or radio buttons is busy, the key-signature designer's Stacks first
+([`docs/uat-status.md`](../uat-status.md), session 77). It is planned as
+sessions 78 and 79 below, the UI's fourth try is session 80, and the release
+moves to session 81. The UI is not yet declared stable.)*
+
+### Session 78: Designing the Clef steps, and dropdowns
+
+**Why.** The operator's try-out (session 77): the Clef steps are more
+complicated than they need to be. "Choose a clef" offers the built-in clefs
+as buttons and "Clefs" lists them again with the imported ones; the preview
+sits above the options rather than beside them; nothing on the canvas marks
+the clef's anchor, and the highlighted bar at its bottom edge (the resize
+handle) reads as one. And the page uses rows of buttons and radio buttons
+where a dropdown would be more economical, the key-signature designer most
+of all.
+
+1. Register.
+2. A design document in `docs/planning/` with mock-ups the operator looks
+   at before approving it, for the Clef steps (10 and 11):
+   - **one list** of clefs, built-in and imported, with Import, in place of
+     "Choose a clef" and "Clefs";
+   - **the options on the left and the preview on the right**, larger than
+     today's, with the pitch names to the left of the staff as the canvas
+     draws them, and changing as each option changes: the anchor marked,
+     and the clef moved and resized live;
+   - the options in order: **a.** the clef, chosen or imported; **b.** its
+     anchor, top, middle, bottom or a point picked on the glyph; **c.**
+     where the anchor sits on the staff, one of the pitches or a semitone of
+     the designer's own, also by dragging; **d.** the space after the clef
+     (none is needed before it: the engine pads the right only, and the
+     preview follows);
+   - what the two steps become, and what the export writes for each choice
+     (LY spec §5.5, §5.5a), unchanged where it can be.
+3. In the same document, the page's rows of buttons and radio buttons that
+   would be more economical as dropdowns, each with its mock-up: the
+   key-signature designer's Stacks first (operator), then its other rows,
+   and the other steps' choices. A choice whose options are pictures, or a
+   one-at-a-time choice the designer flips while watching the canvas, may
+   stay as buttons; the document says which and why.
+
+### Session 79: The Clef steps and the dropdowns, built
+
+**Why.** Session 78's design, approved.
+
+1. Register.
+2. The Clef steps as designed, with each module's tests, the UAT, the
+   tutorial (its clef steps, shots and downloads) and the LY spec
+   following; an engine round trip where the export changes.
+3. The dropdowns as designed, with their tests and the UAT following.
+
+### Session 80: The UI is stable, a fourth try
+
+**Why.** The release waits for a stable UI.
+
+1. Register.
+2. The operator tries sessions 78–79 in the app and the tutorial. Rough
+   edges found are fixed here, or planned as sessions before 81 if they
+   are large.
+3. The README's text and picture follow the UI as it now is. The full UAT
+   runs.
+4. The operator declares the UI stable, which is the condition for
+   session 81.
+
+### Session 81: Release 1.1.0 (release: 1.1.0)
 
 **Why.** The first release since the UI work, and the site's first deploy.
 
@@ -2612,6 +2680,12 @@ full-gallery goal (`docs/research/gallery-survey/reproduction-report.md`,
   the key-signature octave per tonic under a pitch axis, the exporter
   writes the new settings and LY spec §5.4d and §5.5 drop their "known
   divergence" notes. Needs that engine release first.
+- **A summary of the notation** (operator, 2026-11-18; session 77): beside
+  the LilyPond export, a page (HTML, or PDF) that documents a notation: its
+  staff, ledgers, noteheads and their rules in words
+  (`CNBNoteheadInference.ruleLines`), clef and key signature, with
+  pictures. It replaces the Noteheads step's Rules list, removed in session
+  77.
 - **Labelled breve bars in the toolkit** (operator, 2026-11-17; session 74,
   `docs/planning/notehead-duration-design.md` §11): the music-glyph-toolkit
   sizes a glyph by its whole height, so a breve's bars take the semitone

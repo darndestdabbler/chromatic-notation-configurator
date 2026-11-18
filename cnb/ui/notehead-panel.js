@@ -50,8 +50,9 @@
  * Suggested colours help. A colour-blind version is the config saved under
  * another name with other colours.
  *
- * renderRuleList (session 27, design §5.4) draws the Noteheads section's
- * rule list in words, read-only, from ruleLines.
+ * The rule list in words that session 27 drew under the Noteheads section
+ * (renderRuleList) was removed in session 77: the rules are in Advanced ›
+ * Notehead rules.
  *
  * Editor contract as the other cnb/ui modules: plain DOM through
  * document.createElement, events wired as element properties, so the panel
@@ -476,52 +477,6 @@ export const CNBNoteheadPanel = {
     container.appendChild(root);
     draw();
     return { root, redraw: draw };
-  },
-
-  /**
-   * The Noteheads section's rule list (design §5.4): one read-only line per
-   * attribute from ruleLines, in words, with swatches for the colours and
-   * thumbnails for the shapes. Hovering a line calls onHover with the pitch
-   * classes it covers (those away from the default), and leaving it calls
-   * onHover([]). Appended to host as a ul.cnb-nhp-rules.
-   * @param {HTMLElement} host
-   * @param {object} config
-   * @param {{onHover?: (pcs: number[]) => void}} [opts]
-   * @returns {HTMLUListElement}
-   */
-  renderRuleList(host, config, { onHover = () => {} } = {}) {
-    const doc = globalThis.document;
-    const list = doc.createElement("ul");
-    list.className = "cnb-nhp-rules";
-    for (const line of I.ruleLines(config, I.lookTable(config))) {
-      const li = doc.createElement("li");
-      li.className = "cnb-nhp-rule";
-      li.setAttribute("data-attribute", line.attribute);
-      const marks = doc.createElement("span");
-      marks.className = "cnb-nhp-rule-marks";
-      for (const { value } of line.values) {
-        if (line.attribute === "colour") {
-          const s = doc.createElement("span");
-          s.className = "cnb-nhp-rule-swatch" + (value === null ? " cnb-nhp-none" : "");
-          if (value !== null) s.style.background = value;
-          marks.appendChild(s);
-        } else if (line.attribute === "shape") {
-          const shape = shapeOf(config, value);
-          if (shape) marks.appendChild(thumbnail(shape));
-        }
-      }
-      li.appendChild(marks);
-      const words = doc.createElement("span");
-      words.className = "cnb-nhp-rule-words";
-      words.textContent = line.words;
-      li.appendChild(words);
-      const covered = line.values.slice(1).flatMap(v => v.pcs).sort((a, b) => a - b);
-      li.onmouseenter = () => onHover(covered.length ? covered : line.values[0].pcs);
-      li.onmouseleave = () => onHover([]);
-      list.appendChild(li);
-    }
-    host.appendChild(list);
-    return list;
   },
 
   /**
