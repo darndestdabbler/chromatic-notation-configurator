@@ -1,0 +1,81 @@
+{
+  "sessionSetName": "006-config-io-export-and-preview",
+  "createdDate": "2026-07-05T10:04:30.454364+00:00",
+  "totalSessions": 3,
+  "entries": [
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/verification-mode",
+      "dateTime": "2026-07-05T10:04:30.455356+00:00",
+      "description": "Operator set verificationMode: out-of-band-or-none.",
+      "status": "complete",
+      "kind": "verification_mode",
+      "choice": "out-of-band-or-none"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 1,
+      "stepKey": "session-001/config-save-load-module",
+      "dateTime": "2026-07-05T06:14:48.337910-04:00",
+      "description": "Built Module 17 (cnb/ui/config-io.js): JSON save with configName-derived filename and plan 4.11 created/modified stamping, load via CNBConfig.merge over defaults (open-keyed map sections replace) + validate; 31 unit tests (round-trip fidelity incl. custom-shapes config, malformed-file handling, render() UI on stub DOM) all passing (496 total); test page hosting Module 15 + Module 17 on shared config state; Playwright UAT driver cnb/uat/uat-config-io.mjs 19/19 checks passed (edit-save-reload-load round trip incl. real download capture, second-save timestamp behavior, malformed load).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 1,
+      "stepNumber": 2,
+      "stepKey": "session-001/config-save-load-module",
+      "dateTime": "2026-07-05T06:21:50.821136-04:00",
+      "description": "Round-1 verification remediation. Final counts supersede the step-1 entry (which was logged before two later commits added tests): cnb-config-io-tests.js has 34 unit tests and the full suite is 498 passed / 0 failed (464 pre-existing + 34 new); legacy suite 240/240. Fixes: (a) map-section replacement guarded to plain objects (null/wrong-typed values keep merge defaults) + test; (b) render() save/load paths now invoke the host callback BEFORE redraw so the filename preview reflects the adopted (loaded) config + regression test; UAT re-run 19/19.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 1,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:39:07.167725-04:00",
+      "description": "Built cnb/ui/config-export.js (Module 18): validate-then-export flow (CNBConfig.validate + exporter-side path-data check + filename derivability; blocked on errors, proceeds with warnings), .ly download named per meta.fileSuffix/meta.configName precedence, verbatim CNBLilypond.generate output. 25 unit tests in cnb/tests/cnb-config-export-tests.js (registered in run-tests.js; suite 523/523, legacy 240/240). Visual test page cnb/test-pages/test-config-export.html hosting Modules 13+15+18 on shared config. Playwright UAT cnb/uat/uat-config-export.mjs executing docs/session-sets/006-config-io-export-and-preview/s2-uat.md: 20/20 checks incl. Node-side byte-parity with direct generate() and editor-driven blocked/fixed flow.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 2,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:42:57.773645-04:00",
+      "description": "Supersedes step 1 counts after extending the UAT surface: added the set-004 Palette Editor (Module 12) to cnb/test-pages/test-config-export.html and the UAT flow (Dark2 3-color preset -> cnb:register-color! shamrock-1b9e77 in Section A), and a .cnb-cex-status-blocked modifier class on the blocked status line. Final counts: 25 unit tests in cnb-config-export-tests.js, suite 523/523, legacy 240/240, UAT 22/22 (docs/session-sets/006-config-io-export-and-preview/s2-uat.md).",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 2,
+      "stepNumber": 3,
+      "stepKey": "session-002/config-export-module",
+      "dateTime": "2026-07-05T06:50:24.758270-04:00",
+      "description": "Supersedes step 2 counts after verification round 1 remediation: added the key=null used-shape parity pinning test (key-scoped rule referencing a pathless shape passes both validateForExport and CNBLilypond.generate; widened to keys=all both flag it). Final counts: 26 unit tests in cnb-config-export-tests.js, suite 524/524, legacy 240/240, UAT 22/22.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 3,
+      "stepNumber": 1,
+      "stepKey": "session-003/preview-display-module",
+      "dateTime": "2026-07-05T07:42:33.780537-04:00",
+      "description": "Built cnb/ui/preview-display.js (Module 19): pitch-class range from/to selects (0-12, endpoint-drag rule keeps the range valid), duration toggle pills pruned to the config vocabulary at build time with an explicit empty state, key selector gated on keys.enabled with a visible Module 10 deferral note, driving CNBCollection.render() live through a getConfig accessor with a collection injection seam. 29 unit tests in cnb/tests/cnb-preview-display-tests.js registered in the runner; cnb suite 553/553.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 3,
+      "stepNumber": 2,
+      "stepKey": "session-003/app-shell-assembly",
+      "dateTime": "2026-07-05T07:42:33.780537-04:00",
+      "description": "Assembled cnb/index.html: Modules 12-19 wired to one shared config object owned by the page (editors write slices via onChange; preview/IO/export read via accessors and redraw on every change; JSON load and SVG import re-seed the editors). Golden-path UAT (cnb/uat/uat-golden-path.mjs, checklist in s3-uat.md): import SVG -> palette -> staff+notehead rules -> common properties -> preview controls -> save -> load back -> export, 30/30 checks passed with Node-side staff-geometry parity and byte-identical .ly export parity. Suites: cnb 553/553, legacy 240/240. change-log.md written for the set.",
+      "status": "complete"
+    },
+    {
+      "sessionNumber": 3,
+      "stepNumber": 3,
+      "stepKey": "session-003/preview-display-module",
+      "dateTime": "2026-07-05T07:50:38.411530-04:00",
+      "description": "Verification round 1 remediation (supersedes the step-1 test counts): (a) the Module 19 key section now renders whenever config.keys.enabled is true - with empty config.keys.definitions it stays visible with a disabled (none) select and an explicit nothing-to-select-yet note instead of disappearing; (b) the redraw-follows-config-changes unit coverage was split and extended - a dedicated test now mutates the staff pattern and asserts the preview background staff line count matches a direct CNBStaff.getPositions() call before and after. Final counts: cnb-preview-display-tests 31 tests; cnb suite 555/555; legacy 240/240; golden-path UAT re-run 30/30.",
+      "status": "complete"
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 026 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 026 transcript</h1>
+<p class="stamp">Rendered 2026-11-07T09:45:00.064Z by dabbler-ai-router 3.29.0 at bdce1d5b54ebebccce459b43716188ff1aa211b6.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-07T04:04:17.710-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 26: The panels speak to a designer</h3>
+<p><strong>Why.</strong> The kept panels still use developer wording and unstyled controls (design §8.4, §8.6, §8.8).</p>
+<ol><li>Register.</li><li>Restyle and reword Staff, Ledger lines (with Automatic or My own rules, §1), Clef, Key signature and Export, each with its preview (§6). Module and set numbers leave the titles. Preview-only badges replace the repeated paragraphs, and the Export section names the preview-only settings once.</li><li>Tests and UAT drivers follow the wording.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the kept panels speak to a notation designer (design docs/planning/notehead-first-editor-design.md §1, §6, §8.4, §8.6, §8.8). The staff and ledger editor (Module 13) renders only the parts it is given (staff, ledgers, overrides; all three by default, so its test page is unchanged), and the page mounts it three times: Staff (pattern, staff lines on, staff spacing and middle of the staff read-only, staff line look), a new Ledger lines section after Noteheads (a segmented Automatic or My own rules choice: Automatic writes proximity templates at every position where the staff's own spacing continues past its lines and is recognised on load only when the templates are exactly those, in order, with the proximity rule on; switching to My own rules starts from those positions; My own rules is today's template list reworded as 'at this spot, show a ledger line when one of these is played'; then the ledger line look), and Advanced &gt; Staff line overrides; an edit in one mount re-seeds the other two. The staff, ledger, clef, key-signature and export panels are reworded in designer terms, with units as suffixes and no module or set numbers, and their repeated Preview-only paragraphs become a small Preview only badge with a one-line tooltip beside each such control. The Export section holds the notation's name, the output file suffix, the notation label and the footnote (written to meta through a new onMeta callback of Module 18) and names the preview-only settings once, in one sentence. Each section gets its §6 preview: the Ledger lines section tints the canvas columns that draw ledger lines (CNBCard marks a fluid column with data-ledgers) and draws every candidate ledger spot faintly (a ledgerSpots option of CNBCollection's fluid mode, off by default), and the Clef and Key signature panels each show a partial staff, that gutter and the first three columns, drawn by a new CNBPreviewDisplay.renderPartial at the canvas Size with the selected duration and key. Unit tests follow in each changed module's test file, the app's UAT drivers follow the wording and the new section, the full UAT runs, and the panels' screenshots are judged and recorded in docs/uat-status.md.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/d936c76a402685d84092f9270a2f4a323d7ae170"><code>d936c76a402685d84092f9270a2f4a323d7ae170</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Staff editor parts</td><td><p>In cnb/ui/staff-rule-editor.js: render(container, opts) takes opts.parts, a list of &quot;staff&quot;, &quot;ledgers&quot; and &quot;overrides&quot; (default all three, in today's order), and draws only those. Add the pure CNBStaffRuleEditor.automaticTemplates(pattern) (proximity templates, no trigger pitch classes, at every position 0-11 not in the pattern whose distance from the first line is a multiple of the derived staff spacing, ascending) and a ledger mode in the editor state, &quot;automatic&quot; when the loaded templates equal automaticTemplates of the pattern and the proximity rule is on, else &quot;own&quot;; buildLedgers writes automaticTemplates for the current pattern in automatic mode, and switching to own keeps them as the starting list. The ledgers part shows the segmented Automatic / My own rules control, a one-line description of each, the reworded template list in My own rules, and the ledger line look. Reword the staff part (pattern options with a title and a one-line description, Staff lines on, staff spacing and middle of the staff as read-only lines, the line look with unit suffixes) and the overrides part. The Preview-only paragraphs become a span.cnb-badge 'Preview only' with a title tooltip beside each preview-only control. Update cnb/tests/cnb-staff-rule-editor-tests.js for the new wording and add tests for parts, automaticTemplates, the mode detection on load, the mode switch both ways and the badges.</p></td><td><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Clef editor wording</td><td><p>In cnb/ui/clef-editor.js reword the panel for a designer (Show a clef, Import a clef from SVG, the clefs list, where the top of the clef sits in semitones, the space either side in px), drop module and set references from visible text, and put a Preview only badge (span.cnb-badge with a tooltip saying LilyPond draws its own clef) beside the enable toggle. Update cnb/tests/cnb-clef-editor-tests.js for the wording and the badge.</p></td><td><span class="mono">cnb/ui/clef-editor.js</span><br><span class="mono">cnb/tests/cnb-clef-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Key signature editor wording</td><td><p>In cnb/ui/key-signature-editor.js reword the panel for a designer (the keys toggle, the key list with name, notes and tonic, the signature toggle, mark style, placement, separator bar and space either side, with unit suffixes), and replace its Preview-only paragraphs with span.cnb-badge Preview only badges with one-line tooltips beside the placement, separator and spacing controls. Update cnb/tests/cnb-key-signature-editor-tests.js for the wording and the badges.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Export section</td><td><p>In cnb/ui/config-export.js: when opts.onMeta is given, the panel draws fields for the notation's name, the output file suffix, the notation label and the footnote from getConfig().meta, and an edit calls onMeta with the new meta (the host owns state). Add CNBConfigExport.PREVIEW_ONLY_SENTENCE, one sentence naming every setting the export leaves out (as the exporter's header comment lists them, checked against what the clef and key-signature sections emit), shown once in the panel, and reword the panel's button and filename line. Update cnb/tests/cnb-config-export-tests.js and add tests for the meta fields and onMeta, their absence without onMeta, and the sentence.</p></td><td><span class="mono">cnb/ui/config-export.js</span><br><span class="mono">cnb/tests/cnb-config-export-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Ledger preview</td><td><p>In cnb/src/cnb-card.js, a fluid column carries data-ledgers, the number of ledger lines it draws. In cnb/src/cnb-collection.js, the fluid option ledgerSpots draws every candidate ledger spot (CNBLedgerSet.buildDefs over the system's grid range) as a faint line.ledger-spot to 100% on each system's staff SVG, under the staff lines. Both appear only in fluid mode, the spots only with ledgerSpots, so the fixed layout and the preview baseline are unchanged. Add tests to cnb/tests/cnb-card-tests.js and cnb/tests/cnb-collection-tests.js.</p></td><td><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/src/cnb-collection.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/tests/cnb-collection-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Section previews</td><td><p>In cnb/ui/preview-display.js: the returned API gains setFocus(name); with focus &quot;ledger-lines&quot; the canvas renders with ledgerSpots and the preview carries the class cnb-pvd-focus-ledgers, and any other focus draws as today. Add CNBPreviewDisplay.renderPartial(host, config, { part, size, duration, key }): the clef or key-signature gutter and the first three columns (C, C♯, D) on one fluid row at the Size, with the other gutter turned off, the duration and key as given, in a div.cnb-pvd-partial. Add tests to cnb/tests/cnb-preview-display-tests.js for setFocus and renderPartial.</p></td><td><span class="mono">cnb/ui/preview-display.js</span><br><span class="mono">cnb/tests/cnb-preview-display-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>App sections</td><td><p>In cnb/index.html: add the Ledger lines section after Noteheads (data-section ledger-lines); mount the staff editor with parts staff in Staff, ledgers in Ledger lines and overrides in a new Advanced disclosure 'Staff line overrides', each edit re-seeding the other two mounts; call the preview's setFocus when a section opens; draw renderPartial previews at the top of the Clef and Key signature panels on every change and canvas redraw; pass onMeta to the export panel so the Export section edits meta; reword the panel subtitles. In cnb/ui/app.css style the badge, the ledger mode segmented control, the pattern options' title and description, the tinted ledger columns and faint spots under focus, the partial previews, and the Export fields.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node -e const t = require('fs').readFileSync('cnb/index.html', 'utf8'); for (const s of ['data-section=&quot;ledger-lines&quot;', 'data-panel=&quot;ledger-lines&quot;', 'setFocus', 'renderPartial', 'onMeta', 'Staff line overrides']) { if (!t.includes(s)) { console.error('missing ' + s); process.exit(1); } } if (/Module \d|set 0\d/.test(t.replace(/&lt;script[\s\S]*?&lt;\/script&gt;/g, ''))) { console.error('module or set number in the page text'); process.exit(1); } const c = require('fs').readFileSync('cnb/ui/app.css', 'utf8'); for (const s of ['.cnb-badge', '.cnb-pvd-focus-ledgers', '.cnb-pvd-partial', '.ledger-spot']) { if (!c.includes(s)) { console.error('css missing ' + s); process.exit(1); } }</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Uat drivers follow</td><td><p>Update the app's UAT drivers and their shared helpers for the new wording and the Ledger lines section: app-page.mjs names the new section and the new Advanced disclosure; the drivers that use ledger controls open Ledger lines, those that check changed text check the new text, and uat-app-layout.mjs includes ledger-lines in its one-panel-at-a-time walk and saves a screenshot of each kept panel (panel-staff, panel-ledger-lines, panel-clef, panel-key-signature, panel-export) at 1440 px with Kite 4-369.</p></td><td><span class="mono">cnb/uat/app-page.mjs</span><br><span class="mono">cnb/uat/uat-app-layout.mjs</span><br><span class="mono">cnb/uat/uat-clef-editor.mjs</span><br><span class="mono">cnb/uat/uat-key-signature.mjs</span><br><span class="mono">cnb/uat/uat-staff-rule-editor.mjs</span></td><td><code>node --check cnb/uat/app-page.mjs</code><br><code>node --check cnb/uat/uat-app-layout.mjs</code><br><code>node --check cnb/uat/uat-clef-editor.mjs</code><br><code>node --check cnb/uat/uat-key-signature.mjs</code><br><code>node --check cnb/uat/uat-golden-path.mjs</code><br><code>node --check cnb/uat/uat-kite-pipeline.mjs</code></td><td>yes</td></tr>
+<tr><td>Uat record</td><td><p>Run the full UAT (npm run uat) with CNB_UAT_SHOTS=docs/uat-shots/session-026, judge the five panel screenshots against design §8 (wording, badges, styled controls, type sizes, the section previews) and fix what the judgement finds within this session's scope, and record the run, its results and the judgement with links to the screenshots in docs/uat-status.md under session 26.</p></td><td><span class="mono">docs/uat-status.md</span><br><span class="mono">docs/uat-shots/session-026/panel-staff.png</span><br><span class="mono">docs/uat-shots/session-026/panel-ledger-lines.png</span><br><span class="mono">docs/uat-shots/session-026/panel-clef.png</span><br><span class="mono">docs/uat-shots/session-026/panel-key-signature.png</span><br><span class="mono">docs/uat-shots/session-026/panel-export.png</span><br><span class="mono">docs/uat-shots/session-026/app-default-1440.png</span><br><span class="mono">docs/uat-shots/session-026/app-default-1280.png</span><br><span class="mono">docs/uat-shots/session-026/app-kite-1440.png</span><br><span class="mono">docs/uat-shots/session-026/app-kite-1280.png</span><br><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node -e const fs = require('fs'); const t = fs.readFileSync('docs/uat-status.md', 'utf8'); if (!/session 26/i.test(t)) { console.error('uat-status.md has no session 26 record'); process.exit(1); } for (const f of ['panel-staff', 'panel-ledger-lines', 'panel-clef', 'panel-key-signature', 'panel-export']) { if (!fs.existsSync('docs/uat-shots/session-026/' + f + '.png')) { console.error('missing ' + f); process.exit(1); } }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No notehead panel, click selection, rule list or built-in shapes, and no rewording of the notehead rule editor, palette editor or SVG importer, which session 27's notehead panel replaces.</li><li>No Pitch section, label strip, nudges, renaming or editable staff spacing and middle of the staff: session 28. The Staff panel shows staff spacing and the middle of the staff read-only.</li><li>No rewording of the editors hidden in Advanced (durations and engine, the pitch-axis map) or of the canvas toolbar beyond what the new section previews need, and no rewording of validation messages: the checks list keeps today's messages.</li><li>No change to the config schema, CNBConfig, the exporter, the export baselines or the preview baseline fixture; the new card and collection outputs appear only in fluid mode with the new options.</li><li>No README text or pictures (session 29) and no release (session 30).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:04:17]</span> <span class="muted">run-started</span> session=026 mode=pull</div>
+<div class="line"><span class="at">[09:04:17]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:10:49]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:10:49]</span> <span class="muted">plan-accepted</span> steps=[&quot;staff-editor-parts&quot;,&quot;clef-editor-wording&quot;,&quot;key-signature-editor-wording&quot;,&quot;export-section&quot;,&quot;ledger-preview&quot;,&quot;section-previews&quot;,&quot;app-sections&quot;,&quot;uat-drivers-follow&quot;,&quot;uat-record&quot;] non_goals=5</div>
+<div class="line"><span class="at">[09:10:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:10:54]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=staff-editor-parts</div>
+<div class="line"><span class="at">[09:16:26]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:16:54]</span> <span class="muted">check-passed</span> step=staff-editor-parts argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:16:55]</span> <span class="muted">report-accepted</span> seq=2 step=staff-editor-parts files=[&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;] notes=Staff editor renders opts.parts; automaticTemplates, ledgerModeOf and the Automatic / My own rules control; designer wording, Preview only badges replace the paragraphs; tests updated and added.</div>
+<div class="line"><span class="at">[09:16:55]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=clef-editor-wording</div>
+<div class="line"><span class="at">[09:19:28]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:19:54]</span> <span class="muted">check-passed</span> step=clef-editor-wording argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:19:56]</span> <span class="muted">report-accepted</span> seq=3 step=clef-editor-wording files=[&quot;cnb/ui/clef-editor.js&quot;,&quot;cnb/tests/cnb-clef-editor-tests.js&quot;] notes=Clef panel reworded for a designer, unit suffixes, a Preview only badge with tooltip beside the enable toggle; tests updated and added.</div>
+<div class="line"><span class="at">[09:19:56]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=key-signature-editor-wording</div>
+<div class="line"><span class="at">[09:22:19]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:22:46]</span> <span class="muted">check-passed</span> step=key-signature-editor-wording argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:22:47]</span> <span class="muted">report-accepted</span> seq=4 step=key-signature-editor-wording files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;] notes=Key signature panel reworded for a designer with unit suffixes; the preview-only paragraphs become Preview only badges on placement, separator and spacing; tests updated and added.</div>
+<div class="line"><span class="at">[09:22:47]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=export-section</div>
+<div class="line"><span class="at">[09:25:15]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:25:41]</span> <span class="muted">check-passed</span> step=export-section argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:25:42]</span> <span class="muted">report-accepted</span> seq=5 step=export-section files=[&quot;cnb/ui/config-export.js&quot;,&quot;cnb/tests/cnb-config-export-tests.js&quot;] notes=Export panel: onMeta draws name, file suffix, label and footnote fields kept across redraws; PREVIEW_ONLY_SENTENCE shown once; button and filename line reworded; tests added.</div>
+<div class="line"><span class="at">[09:25:42]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=ledger-preview</div>
+<div class="line"><span class="at">[09:27:32]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:27:59]</span> <span class="muted">check-passed</span> step=ledger-preview argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:28:00]</span> <span class="muted">report-accepted</span> seq=6 step=ledger-preview files=[&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/src/cnb-collection.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/tests/cnb-collection-tests.js&quot;] notes=Fluid card columns carry data-ledgers; the fluid ledgerSpots option draws faint ledger-spot lines under each system's staff; fixed layout and preview baseline unchanged; tests added.</div>
+<div class="line"><span class="at">[09:28:00]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=section-previews</div>
+<div class="line"><span class="at">[09:29:45]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:30:12]</span> <span class="muted">check-passed</span> step=section-previews argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:30:13]</span> <span class="muted">report-accepted</span> seq=7 step=section-previews files=[&quot;cnb/ui/preview-display.js&quot;,&quot;cnb/tests/cnb-preview-display-tests.js&quot;] notes=Preview API gains setFocus/getFocus (ledger-lines draws ledger spots and marks cnb-pvd-focus-ledgers); CNBPreviewDisplay.renderPartial draws the clef or key-signature gutter with C, C-sharp, D; tests added.</div>
+<div class="line"><span class="at">[09:30:13]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=app-sections</div>
+<div class="line"><span class="at">[09:32:52]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:33:21]</span> <span class="muted">check-passed</span> step=app-sections argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t = require('fs').readFileSync('cnb/index.html', 'utf8'); for (const s of ['data-section=\&quot;ledger-lines\&quot;', 'data-panel=\&quot;ledger-lines\&quot;', 'setFocus', 'renderPartial', 'onMeta', 'Staff line overrides']) { if (!t.includes(s)) { console.error('missing ' + s); process.exit(1); } } if (/Module \\d|set 0\\d/.test(t.replace(/&lt;script[\\s\\S]*?&lt;\\/script&gt;/g, ''))) { console.error('module or set number in the page text'); process.exit(1); } const c = require('fs').readFileSync('cnb/ui/app.css', 'utf8'); for (const s of ['.cnb-badge', '.cnb-pvd-focus-ledgers', '.cnb-pvd-partial', '.ledger-spot']) { if (!c.includes(s)) { console.error('css missing ' + s); process.exit(1); } }&quot;]</div>
+<div class="line"><span class="at">[09:33:21]</span> <span class="muted">check-passed</span> step=app-sections argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:33:22]</span> <span class="muted">report-accepted</span> seq=8 step=app-sections files=[&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;] notes=Ledger lines section; staff editor mounted per part in Staff, Ledger lines and Advanced &gt; Staff line overrides, each edit re-seeding the others; setFocus on section open; partial staffs in Clef and Key signature; Export edits meta via onMeta; CSS for badges, pattern options, fields, ledger tint and spots, partials, export fields.</div>
+<div class="line"><span class="at">[09:33:22]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=uat-drivers-follow</div>
+<div class="line"><span class="at">[09:36:45]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/app-page.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-golden-path.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:54]</span> <span class="muted">check-passed</span> step=uat-drivers-follow argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-kite-pipeline.mjs&quot;]</div>
+<div class="line"><span class="at">[09:36:55]</span> <span class="muted">report-accepted</span> seq=9 step=uat-drivers-follow files=[&quot;cnb/uat/app-page.mjs&quot;,&quot;cnb/uat/uat-app-layout.mjs&quot;,&quot;cnb/uat/uat-clef-editor.mjs&quot;,&quot;cnb/uat/uat-key-signature.mjs&quot;,&quot;cnb/uat/uat-staff-rule-editor.mjs&quot;] notes=Drivers follow the new wording; uat-app-layout walks Ledger lines, checks the section previews, the three staff mounts staying in step and the Export meta fields, and saves the five panel shots; every driver run separately passes.</div>
+<div class="line"><span class="at">[09:36:55]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=uat-record</div>
+<div class="line"><span class="at">[09:41:40]</span> <span class="muted">run-resumed</span> session=026 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:41:42]</span> <span class="muted">check-passed</span> step=uat-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs = require('fs'); const t = fs.readFileSync('docs/uat-status.md', 'utf8'); if (!/session 26/i.test(t)) { console.error('uat-status.md has no session 26 record'); process.exit(1); } for (const f of ['panel-staff', 'panel-ledger-lines', 'panel-clef', 'panel-key-signature', 'panel-export']) { if (!fs.existsSync('docs/uat-shots/session-026/' + f + '.png')) { console.error('missing ' + f); process.exit(1); } }&quot;]</div>
+<div class="line"><span class="at">[09:41:43]</span> <span class="muted">report-accepted</span> seq=10 step=uat-record files=[&quot;docs/uat-status.md&quot;,&quot;docs/uat-shots/session-026/panel-staff.png&quot;,&quot;docs/uat-shots/session-026/panel-ledger-lines.png&quot;,&quot;docs/uat-shots/session-026/panel-clef.png&quot;,&quot;docs/uat-shots/session-026/panel-key-signature.png&quot;,&quot;docs/uat-shots/session-026/panel-export.png&quot;,&quot;docs/uat-shots/session-026/app-default-1440.png&quot;,&quot;docs/uat-shots/session-026/app-default-1280.png&quot;,&quot;docs/uat-shots/session-026/app-kite-1440.png&quot;,&quot;docs/uat-shots/session-026/app-kite-1280.png&quot;,&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;,&quot;cnb/ui/app.css&quot;] notes=Full UAT 15/15; panel screenshots judged against design 8; fixed the unstyled file input, the repeated Ledger lines title and the needless proximity checkbox; recorded in docs/uat-status.md under session 26.</div>
+<div class="line"><span class="at">[09:41:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:41:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:41:45]</span> <span class="muted">job-started</span> name=verification pid=47396 log=.dabbler/runs/s26/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:43:01]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s26/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:43:01]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:43:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:43:02]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[09:43:02]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=22172 log=.dabbler/runs/s26/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:43:30]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s26/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:43:32]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[09:43:32]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=54144 log=.dabbler/runs/s26/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:44:30]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s26/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:44:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:44:40]</span> <span class="muted">landed</span> commit=d936c76a402685d84092f9270a2f4a323d7ae170</div>
+<div class="line"><span class="at">[09:44:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:44:41]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:44:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:44:42]</span> <span class="muted">job-started</span> name=close pid=50988 log=.dabbler/runs/s26/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:45:00]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s26/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:45:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>6 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** With every canvas duration deselected, the main canvas correctly displays its empty state, but `refreshSectionPreviews()` falls back to `&quot;crotchet&quot;` and continues to render Clef and Key signature partial previews. The requirement says these previews use “the selected duration”; they should instead be absent or show an explicit no-duration state.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `cnb/index.html`, `cnb/ui/preview-display.js`, `cnb/tests/cnb-preview-display-tests.js`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Suggested test:** Start with the app, deselect every duration pill, then open Clef. Assert that `#clef-preview-host` does not contain a rendered `cnb-pvd-partial` staff—or contains an explicit no-duration message—rather than a crotchet preview.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** Automatic-mode recognition is not literally “only when the templates are exactly those.” `ledgerModeOf()` normalizes a missing `triggerPCs` to `[]` and ignores unknown template properties before comparison, so a malformed or extended loaded template can be classified Automatic and normalized on the next edit.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Evidence:** `cnb/ui/staff-rule-editor.js`, `cnb/tests/cnb-staff-rule-editor-tests.js`</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Suggested test:** With pattern `[4, 8]`, load ledgers containing `{ semiWithinOctave: 0, triggerMode: &quot;proximity&quot; }` without `triggerPCs`, or the automatic template plus an extra property. Assert `ledgerModeOf()` returns `&quot;own&quot;` because the loaded template is not exact.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>25s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>55s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

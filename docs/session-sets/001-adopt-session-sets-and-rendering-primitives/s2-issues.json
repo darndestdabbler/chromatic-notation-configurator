@@ -1,0 +1,25 @@
+{
+  "session": 2,
+  "round": 1,
+  "verdict": "ISSUES_FOUND",
+  "issues": [
+    {
+      "id": 1,
+      "summary": "Notehead config.shapes[name] lookup behavior not demonstrated in the response (no cnb-notehead.js diff shown; usages pass a raw shape object).",
+      "disposition": "clarify-and-evidence",
+      "remediation": "cnb-notehead.js was intentionally unchanged: the Session-9 implementation already conforms to CNB-ARCHITECTURE-PLAN-v2.md §5 Module 6, whose API is measure(shape, pxPerSemi) / render(svgParent, {shape, ...}) where the shape object comes 'from config.shapes[name]' — the lookup is the caller's job by design. The tests and both visual pages perform exactly that lookup (config.shapes[\"crotchet-minim\"]). Round 2 includes the full unchanged cnb-notehead.js source as evidence."
+    },
+    {
+      "id": 2,
+      "summary": "Null-case stem test only covers a missing selected anchor key, not a truly stemless (no-anchors) shape.",
+      "disposition": "already-covered-plus-hardened",
+      "remediation": "A pre-existing Session-9 test ('geometry returns null for null anchors', anchors: null) already covers the stemless case; it was not visible in the diff because it predates this session. Added a further test for a shape with no anchors property at all ('geometry returns null for a stemless shape with no anchors property') to prove no throw on undefined."
+    },
+    {
+      "id": 3,
+      "summary": "test-stem.html prose overclaims: says crosses mark each notehead's anchor, but only the attachment notehead per chord is marked.",
+      "disposition": "fixed",
+      "remediation": "Reworded the page description to state that a single red cross marks the attachment anchor of the notehead each stem attaches to (up-stem: lowest notehead; down-stem: highest)."
+    }
+  ]
+}
