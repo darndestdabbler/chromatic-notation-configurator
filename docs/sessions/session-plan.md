@@ -2633,15 +2633,27 @@ after it; the export unchanged.)*
 4. The operator declares the UI stable, which is the condition for
    session 81.
 
-### Session 81: Release 1.1.0 (release: 1.1.0)
+*(Session 80, 2026-11-19: the operator declared the UI stable. The release
+session refused to start, since `version.json` said 1.0.2: a release never
+bumps the version, an ordinary session does. The changelog and the version
+became session 81, as 1.0.1's did in session 13, and the release moved to
+session 82.)*
 
-**Why.** The first release since the UI work, and the site's first deploy.
+### Session 81: The changelog and version 1.1.0
+
+**Why.** A release publishes the version on the trunk; it does not set it.
 
 1. Register.
 2. Take over the withdrawn 1.0.2 `CHANGELOG.md` entry and `version.json`,
    renamed to 1.1.0, and add the notehead-first editor, the clef and
    key-signature export, and sessions 36 onward, to the entry.
-3. The tag deploys the site. Confirm it is up and that the README and the
+
+### Session 82: Release 1.1.0 (release: 1.1.0)
+
+**Why.** The first release since the UI work, and the site's first deploy.
+
+1. Register.
+2. The tag deploys the site. Confirm it is up and that the README and the
    `file://` notice link work.
 
 ---
