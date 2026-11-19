@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 002 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 002 transcript</h1>
+<p class="stamp">Rendered 2026-10-31T09:00:50.356Z by dabbler-ai-router 3.27.0 at a9ae34d82c3b8f0a34dc52df1881ebc2d89cd684.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-31T04:42:36.142-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 2 of 4: Consumer rethread (P3)</h3>
+<p><strong>Goal:</strong> every geometry consumer reads the axis through the grid, with the entire existing surface byte-identical (feature still off everywhere).</p>
+<p><strong>Steps:</strong></p>
+<ol><li>Staff: axis-position dedup on the axis path (design §2.3); literal current loop on the linear path.</li><li>Ledger set: re-metrication per design §2.4 — axis conversion at the top, strict <code>&lt;</code> preserved, axis-keyed rendering, region via <code>axis.regionOfSemi</code>; literal current arithmetic on the linear path.</li><li>Stem direction (axis-position average, design §2.5); double-notehead per-note X offsets; card offset + stem-centerX plumbing + <code>columnWidth</code> widening; collection pass-through (design §2.3).</li><li>Visual test page <code>test-pitch-axis.html</code> (compact-axis card row with the 013 Twinline map; debug grid) + Chromium geometry smoke per the repo's driver pattern.</li><li>All existing tests, the Kite round-trip, and the export baselines byte-identical; new tests for each consumer's axis behavior.</li></ol>
+<p><strong>Creates:</strong> <code>cnb/test-pages/test-pitch-axis.html</code>. <strong>Touches:</strong> <code>cnb/src/cnb-staff.js</code>, <code>cnb/src/cnb-ledger-set.js</code>, <code>cnb/src/cnb-stem.js</code>, <code>cnb/src/cnb-double-notehead.js</code>, <code>cnb/src/cnb-card.js</code>, <code>cnb/src/cnb-collection.js</code>, <code>cnb/src/cnb-key-signature.js</code>, their test files, <code>cnb/tests/run-tests.js</code>. <strong>Progress keys:</strong> <code>session-002/consumer-rethread</code>, <code>session-002/byte-identity-pins</code></p>
+<h2>Work Plan</h2>
+<p>Rethread every preview geometry consumer through the grid's pitch axis (design docs/planning/pitch-axis-design.md §2.3–§2.5, §3.3), keeping the axis-disabled surface byte-identical by construction. First, before any source change, capture a pre-change preview-DOM baseline fixture (CNBCollection.render through the svg/DOM stub for the default config, the Kite 4-369 config, every gallery example, a key-signature-enabled config, a debug-grid config, and the same configs with a present-but-disabled pitchAxis section) and pin it with a test. Then: CNBStaff.render dedups lines by axis position on the axis path (overrides merged) and keeps its literal loop on the linear path; CNBLedgerSet.resolve/render gain an axis path that converts to axis positions at the top, gates on axis.regionOfSemi, keeps the strict <code>&lt;</code> proximity rule, and draws keyed by axis position, while the linear path runs the literal current arithmetic; CNBStem.direction averages axis positions against positionOfSemi(staff.midpoint) when given an enabled axis (literal body otherwise); CNBDoubleNotehead.layout accepts additive per-note lowerOffsetPx/upperOffsetPx (default 0); CNBCard computes offsetPx = xOffsetStaffSpaces × axis.unitsPerStaffSpace × pxPerSemi in axis mode only, applies it to both noteheads, the ledgers and the stem centerX, and widens columnWidth by |offsetPx|; CNBKeySignature treats separator.extentSemis as a length on the axis path and applies the same resolved offset to its marks. The collection needs no code change (everything flows through the grid context) and gets an axis-row integration test. Finally a visual test page cnb/test-pages/test-pitch-axis.html renders a compact-axis card row with the 013 Twinline map and debug grid, and a Chromium geometry smoke driver cnb/uat/uat-pitch-axis.mjs (the repo's existing driver pattern) asserts its geometry in a real browser.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/ede2c4ed9c9a682efb32d54032195c2a7eb765a3"><code>ede2c4ed9c9a682efb32d54032195c2a7eb765a3</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Preview baseline</td><td><p>Before touching any source file, capture a pre-change preview-DOM baseline: serialize the stub DOM tree produced by CNBCollection.render (withDomStub) for the default config (crotchet and minim rows), the Kite 4-369 config, every gallery example loaded through CNBConfigIO, a key-signature-enabled config, and a debugGrid config, into cnb/fixtures/preview-baseline.json (recording the capture commit). Add tests in cnb-collection-tests.js that re-render each probe and require byte-identical serialization, both as-is and with a present-but-disabled pitchAxis section added.</p></td><td><span class="mono">cnb/fixtures/preview-baseline.json</span><br><span class="mono">cnb/tests/cnb-collection-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Staff dedup</td><td><p>CNBStaff.render: when gridContext.axis is enabled, draw one line per distinct axis position (pattern semitones collapsing onto one position draw one line, their overrides merged — PA-6 guarantees compatibility); otherwise run the literal current loop unchanged. Add axis-path tests to cnb-staff-tests.js.</p></td><td><span class="mono">cnb/src/cnb-staff.js</span><br><span class="mono">cnb/tests/cnb-staff-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Ledger axis</td><td><p>CNBLedgerSet: resolve takes an optional axis; when it is enabled, convert note, ledger and staff positions to axis positions at the top, gate on axis.regionOfSemi equality, keep the override/proximity/betweenness predicates in their exact form with the strict <code>&lt;</code> proximity rule, and return results keyed by axis position (collapsed defs produce one line, overrides merged); render passes gridContext.axis and draws one line per resolved axis position. Without an enabled axis the literal current arithmetic runs. Add axis-path tests (collapse, strict tie, region gate, betweenness) to cnb-ledger-set-tests.js.</p></td><td><span class="mono">cnb/src/cnb-ledger-set.js</span><br><span class="mono">cnb/tests/cnb-ledger-set-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Stem direction</td><td><p>CNBStem.direction takes an optional axis third argument; when it is enabled, compare the chord's axis-position average against axis.positionOfSemi(staffMidpoint) with the same <code>&lt;</code> → up, ≥ → down form; otherwise the literal current body. Add tests to cnb-stem-tests.js including a case where axis and linear directions differ.</p></td><td><span class="mono">cnb/src/cnb-stem.js</span><br><span class="mono">cnb/tests/cnb-stem-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Double notehead offsets</td><td><p>CNBDoubleNotehead.layout accepts optional lowerOffsetPx and upperOffsetPx (default 0), added to the existing symmetric offsetPercent result, which stays untouched. Add tests to cnb-double-notehead-tests.js.</p></td><td><span class="mono">cnb/src/cnb-double-notehead.js</span><br><span class="mono">cnb/tests/cnb-double-notehead-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Card plumbing</td><td><p>CNBCard: in axis mode only, compute offsetPx = resolved xOffsetStaffSpaces × axis.unitsPerStaffSpace × pxPerSemi; widen columnWidth by |offsetPx|; pass offsetPx as both per-note offsets to CNBDoubleNotehead, center the ledgers on the offset heads, add it to the centerX given to CNBStem.geometry, and pass gridContext.axis to CNBStem.direction. The linear path keeps today's arithmetic and ignores xOffsetStaffSpaces. Add axis-mode tests (Twinline map, 0.85 offset rule) to cnb-card-tests.js.</p></td><td><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Key signature axis</td><td><p>CNBKeySignature: on the axis path, draw the separator from semiToY(midpoint) ∓ extentSemis × pxPerSemi (extentSemis is a length, design §1.2/§2.3), apply each mark's resolved xOffsetStaffSpaces (same conversion as the card) to its notehead and ledger centers, and widen the measured content width by the largest |offset| so the gutter does not clip; the linear path is unchanged. Add axis-path tests to cnb-key-signature-tests.js.</p></td><td><span class="mono">cnb/src/cnb-key-signature.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Collection axis row</td><td><p>Add an integration test to cnb-collection-tests.js rendering a full chromatic row with the 013 Twinline axis config: background staff dedup, axis svgHeight, shared-pair cards at equal Y with the offset applied, and the preview-baseline pins still green. No change to cnb-collection.js is expected (the grid context carries the axis).</p></td><td><span class="mono">cnb/tests/cnb-collection-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Test page and smoke</td><td><p>Create cnb/test-pages/test-pitch-axis.html: a compact-axis card row (013 Twinline map, octaveStride 7, axisUnitsPerStaffSpace 2, midpoint 7, xOffsetStaffSpaces 0.85 on the sharper shared-pair members) with the debug grid on, beside the same config with the axis disabled. Create cnb/uat/uat-pitch-axis.mjs following the existing drivers' pattern (static server, playwright-core resolution with CNB_UAT_PLAYWRIGHT fallback, cached Chromium) that loads the page and asserts geometry: shared-pair noteheads at equal Y, offset heads shifted right with their stems, deduplicated staff lines, no console errors. Run it once against the local Chromium and record the result in the report notes.</p></td><td><span class="mono">cnb/test-pages/test-pitch-axis.html</span><br><span class="mono">cnb/uat/uat-pitch-axis.mjs</span></td><td><code>node --check cnb/uat/uat-pitch-axis.mjs</code><br><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No exporter change: cnb-lilypond.js, the v1.3 emission and the fail-loud generate() gate are session 3's work, and generate() keeps throwing on pitchAxis.enabled.</li><li>No UI: the pitch-axis editor panel, presets and xOffsetStaffSpaces editing in the notehead rule editor are session 4's work.</li><li>createDefault() gains no pitchAxis section, and no fixture or default config enables the feature outside tests and the new test page.</li><li>No root package.json or playwright-core declaration — making the UAT drivers runnable from the repository is session 5's work; the new smoke driver resolves playwright-core the same way the existing drivers do.</li><li>No change to cnb-music.js (ledgerOctaveRegion stays linear), no multi-pc mixed-offset chord preview, and no fix for the pre-existing in-gap ledger preview↔engine divergence (set non-goals).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:42:36]</span> <span class="muted">run-started</span> session=002 mode=pull</div>
+<div class="line"><span class="at">[08:42:36]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:45:23]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[08:45:23]</span> <span class="muted">plan-accepted</span> steps=[&quot;preview-baseline&quot;,&quot;staff-dedup&quot;,&quot;ledger-axis&quot;,&quot;stem-direction&quot;,&quot;double-notehead-offsets&quot;,&quot;card-plumbing&quot;,&quot;key-signature-axis&quot;,&quot;collection-axis-row&quot;,&quot;test-page-and-smoke&quot;] non_goals=5</div>
+<div class="line"><span class="at">[08:45:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:45:26]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=preview-baseline</div>
+<div class="line"><span class="at">[08:46:55]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:47:00]</span> <span class="muted">check-passed</span> step=preview-baseline argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:47:02]</span> <span class="muted">report-accepted</span> seq=2 step=preview-baseline files=[&quot;cnb/fixtures/preview-baseline.json&quot;,&quot;cnb/tests/cnb-collection-tests.js&quot;] notes=21-probe preview-DOM sha256 baseline captured at 8b6013a (unchanged sources) and pinned as-is and with a disabled pitchAxis + xOffset rule; 760 tests pass</div>
+<div class="line"><span class="at">[08:47:02]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=staff-dedup</div>
+<div class="line"><span class="at">[08:48:04]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:48:11]</span> <span class="muted">check-passed</span> step=staff-dedup argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:48:13]</span> <span class="muted">report-accepted</span> seq=3 step=staff-dedup files=[&quot;cnb/src/cnb-staff.js&quot;,&quot;cnb/tests/cnb-staff-tests.js&quot;] notes=Axis path dedups staff lines by axis position with merged overrides; literal loop kept for linear; 3 new tests, 763 pass, preview baseline green</div>
+<div class="line"><span class="at">[08:48:13]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ledger-axis</div>
+<div class="line"><span class="at">[08:49:44]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:49:49]</span> <span class="muted">check-passed</span> step=ledger-axis argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:49:51]</span> <span class="muted">report-accepted</span> seq=4 step=ledger-axis files=[&quot;cnb/src/cnb-ledger-set.js&quot;,&quot;cnb/tests/cnb-ledger-set-tests.js&quot;] notes=Axis-coordinate resolve (region via regionOfSemi, strict &lt;, betweenness on deduped staff positions) keyed by axis position, merged overrides in render; literal linear path; 5 new tests, 768 pass. Note: ledger-set.js edits began while the staff-dedup report was being checked (that report was still accepted).</div>
+<div class="line"><span class="at">[08:49:51]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=stem-direction</div>
+<div class="line"><span class="at">[08:50:47]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:50:50]</span> <span class="muted">check-passed</span> step=stem-direction argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:50:51]</span> <span class="muted">report-accepted</span> seq=5 step=stem-direction files=[&quot;cnb/src/cnb-stem.js&quot;,&quot;cnb/tests/cnb-stem-tests.js&quot;] notes=direction() takes optional axis: axis-position average vs positionOfSemi(midpoint), same &lt; form; literal body otherwise; 3 new tests (incl. C# pair where axis and linear differ), 771 pass</div>
+<div class="line"><span class="at">[08:50:51]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=double-notehead-offsets</div>
+<div class="line"><span class="at">[08:51:53]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:52:00]</span> <span class="muted">check-passed</span> step=double-notehead-offsets argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:52:01]</span> <span class="muted">report-accepted</span> seq=6 step=double-notehead-offsets files=[&quot;cnb/src/cnb-double-notehead.js&quot;,&quot;cnb/tests/cnb-double-notehead-tests.js&quot;] notes=layout() accepts additive lowerOffsetPx/upperOffsetPx (default 0); offsetPercent untouched; 3 new tests, 774 pass, preview baseline green</div>
+<div class="line"><span class="at">[08:52:01]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=card-plumbing</div>
+<div class="line"><span class="at">[08:53:38]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:53:46]</span> <span class="muted">check-passed</span> step=card-plumbing argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:53:48]</span> <span class="muted">report-accepted</span> seq=7 step=card-plumbing files=[&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;] notes=Axis-only offsetPx = xOffsetStaffSpaces x unitsPerStaffSpace x pxPerSemi shifts heads (per-note offsets), ledgers and stem centerX; columnWidth widened by |offsetPx|; direction gets gridContext.axis; linear ignores the field (DOM-equality test); 4 new tests, 778 pass. Ledgers follow the offset head (design silent; per plan).</div>
+<div class="line"><span class="at">[08:53:48]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=key-signature-axis</div>
+<div class="line"><span class="at">[08:55:27]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:55:33]</span> <span class="muted">check-passed</span> step=key-signature-axis argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:55:34]</span> <span class="muted">report-accepted</span> seq=8 step=key-signature-axis files=[&quot;cnb/src/cnb-key-signature.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;] notes=Axis path: separator extentSemis converted as a length around semiToY(midpoint); marks take resolved xOffsetStaffSpaces (gutter widened, ledgers grouped per column+offset follow marks); linear path unchanged (preview baseline green); 2 new tests, 780 pass</div>
+<div class="line"><span class="at">[08:55:34]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=collection-axis-row</div>
+<div class="line"><span class="at">[08:56:17]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:56:21]</span> <span class="muted">check-passed</span> step=collection-axis-row argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:56:21]</span> <span class="muted">report-accepted</span> seq=9 step=collection-axis-row files=[&quot;cnb/tests/cnb-collection-tests.js&quot;] notes=Full-row Twinline integration test (staff dedup, axis svgHeight, column widths, shared-pair y, offset x); no cnb-collection.js change needed; 781 pass, baseline pins green</div>
+<div class="line"><span class="at">[08:56:21]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=test-page-and-smoke</div>
+<div class="line"><span class="at">[08:58:31]</span> <span class="muted">run-resumed</span> session=002 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:58:36]</span> <span class="muted">check-passed</span> step=test-page-and-smoke argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-pitch-axis.mjs&quot;]</div>
+<div class="line"><span class="at">[08:58:38]</span> <span class="muted">check-passed</span> step=test-page-and-smoke argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[08:58:39]</span> <span class="muted">report-accepted</span> seq=10 step=test-page-and-smoke files=[&quot;cnb/test-pages/test-pitch-axis.html&quot;,&quot;cnb/uat/uat-pitch-axis.mjs&quot;] notes=Test page renders Twinline axis row (debug grid) beside the linear row; Chromium smoke (playwright-core via CNB_UAT_PLAYWRIGHT scratch install, cached chromium-1243) passed 27/27 laid-out geometry checks: deduped staff 8&lt;13 lines, shared pairs level, offset heads +27.2px from unshifted center with stems, linear ignores offset, no console errors</div>
+<div class="line"><span class="at">[08:58:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:58:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:58:42]</span> <span class="muted">job-started</span> name=verification pid=14772 log=.dabbler/runs/s2/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:59:52]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s2/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:59:52]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:59:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:59:53]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[08:59:54]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=72208 log=.dabbler/runs/s2/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:00:02]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s2/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:00:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:00:21]</span> <span class="muted">landed</span> commit=ede2c4ed9c9a682efb32d54032195c2a7eb765a3</div>
+<div class="line"><span class="at">[09:00:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:00:22]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:00:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:00:24]</span> <span class="muted">job-started</span> name=close pid=73396 log=.dabbler/runs/s2/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:00:50]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s2/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:00:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>1s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

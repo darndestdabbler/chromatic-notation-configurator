@@ -1,0 +1,14 @@
+/*
+ * Oswald, served from the site itself (session 29): the preview's labels
+ * are drawn in it, and the page fetches nothing from elsewhere.
+ * oswald-variable.ttf is the variable font from github.com/google/fonts
+ * (ofl/oswald), weights 200 to 700, under the SIL Open Font Licence 1.1
+ * in OFL.txt beside it. Copyright 2016 The Oswald Project Authors.
+ */
+@font-face {
+  font-family: "Oswald";
+  src: url("oswald-variable.ttf") format("truetype");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}

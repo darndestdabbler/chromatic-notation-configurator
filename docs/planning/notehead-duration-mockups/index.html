@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notehead duration mock-ups</title>
+<link rel="stylesheet" href="../../../cnb/assets/fonts/oswald.css">
+<style>
+  :root { --ink: #1f2933; --muted: #6b7680; --line: #d9dee3; --accent: #1a5276; --accent-bg: #d4e6f1;
+          --bg: #f4f6f8; --card: #fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  .intro { padding: 20px 28px 4px; max-width: 1100px; }
+  .intro h1 { font-size: 21px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 10px; color: var(--muted); }
+  .mock { padding: 8px 28px 24px; }
+  .mock-title { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 14px; }
+  .card-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; }
+  .card-head h2 { margin: 0; font-size: 16px; }
+  .card-head .sub { color: var(--muted); }
+  .card-body { padding: 12px 14px; }
+  .question { font-weight: 600; margin: 0 0 10px; }
+  .designs { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 14px; }
+  .design { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: #fff; }
+  .design.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .design b { display: block; margin-bottom: 2px; }
+  .design .says { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
+  .thumbs { display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap; }
+  .thumb { text-align: center; font-size: 11px; color: var(--muted); }
+  .sub-choice { display: flex; gap: 8px; align-items: center; margin: 8px 0 0; flex-wrap: wrap; }
+  .sub-choice > span:first-child { color: var(--muted); width: 140px; }
+  .opt { border: 1px solid var(--line); border-radius: 5px; padding: 3px 10px; background: #fff; }
+  .opt.on { background: var(--accent-bg); border-color: #a9cce3; color: var(--accent); font-weight: 600; }
+  .opt.dim { color: #aab2b9; }
+  .own { margin-top: 10px; padding: 8px 12px; border-left: 3px solid #c9a227; background: #fff8e1; border-radius: 3px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; margin: 4px 0 8px; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px; background: #fff; color: var(--ink); }
+  .pill.on { background: var(--accent-bg); border-color: #a9cce3; color: var(--accent); }
+  .gone { color: #b03a2e; font-size: 12px; margin-left: 8px; }
+  .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 14px; align-items: start; }
+  .panel { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: #fafbfc; }
+  .panel h4 { margin: 0 0 6px; font-size: 13px; }
+  .panel-row { display: flex; gap: 8px; align-items: center; margin: 5px 0; flex-wrap: wrap; }
+  .panel-row > span:first-child { width: 52px; color: var(--muted); }
+  .panel-row.off > span:first-child { text-decoration: line-through; color: #c6ccd1; }
+  .panel-row.off .why { color: #aab2b9; font-size: 12px; }
+  .swatch { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #0003; display: inline-block; }
+  .field { border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; background: #fff; min-width: 46px; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .rows { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .dur { min-width: 0; }
+  .dur .cap { font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+  .breves { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .breves .caption { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .cnb-duration-caption { display: none; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>How noteheads show duration</h1>
+  <p>Session 74, for the operator's look before approving
+    <code>docs/planning/notehead-duration-design.md</code>. Every notehead, stem, ledger and tie here is
+    drawn by the Configurator's own modules; the panels and buttons around them are sketches. The
+    conventional noteheads are LilyPond's own, Emmentaler's <code>noteheads.s2</code>, <code>s1</code>,
+    <code>s0</code> and <code>sM1</code> (SIL OFL 1.1), read from LilyPond 2.24's
+    <code>emmentaler-20.otf</code> for these mock-ups. B.i's breve is prototyped here: the engine and
+    session 76 build it.</p>
+</div>
+
+<section class="mock" id="step">
+  <div class="mock-title">1. The Noteheads step opens with the choice of design</div>
+  <div id="step-body"></div>
+</section>
+
+<section class="mock" id="designs">
+  <div class="mock-title">2. The notehead panel and the controls above the canvas, under each design</div>
+  <div id="designs-body"></div>
+</section>
+
+<section class="mock" id="breves">
+  <div class="mock-title">3. B.i's breve, the designer's choice: a double notehead or two tied semibreves</div>
+  <div id="breves-body"></div>
+</section>
+
+<section class="mock" id="own-noteheads">
+  <div class="mock-title">4. A notation that fits none of the three: Clairnote DN opens as its own noteheads</div>
+  <div id="own-body"></div>
+</section>
+
+<script type="module" src="mockup.js"></script>
+</body>
+</html>
