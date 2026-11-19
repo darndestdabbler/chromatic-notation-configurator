@@ -93,7 +93,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 79 | The Clef steps and the dropdowns, built | no | 2026-11-18 |
 | 80 | The UI is stable, a fourth try | no | 2026-11-18 |
 | 81 | The changelog and version 1.1.0 | no | 2026-11-19 |
-| 82 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 82 | Release 1.1.0 (release: 1.1.0) | yes | 2026-11-19 |
 
 ### Session 2 — Consumer rethread (P3)
 
@@ -828,3 +828,9 @@ Make the UI stable for the 1.1.0 release, a fourth try. The operator tries what 
 **Releasable: no.**
 
 Set the version on the trunk to 1.1.0 for session 82's release. version.json goes from 1.0.2 to 1.1.0, the README's status line from 1.0.1 to 1.1.0, and the withdrawn CHANGELOG.md 1.0.2 entry is renamed 1.1.0 and kept. The entry then gains what has shipped since that entry was written: the notehead-first editor and the work of sessions 17-29 and 32-35, and sessions 36-80. That covers colours on the noteheads, stems and ledgers as the engine engraves them, the breve, the clefs to choose from, the key-signature designer and its mark table, the step-by-step configurator, the notehead designs, the clef steps and the dropdowns. Each item is written in a designer's words and says which exports change and which engine version they need (1.10.0 for the newest). The entry says plainly which exports should be regenerated. Each claim is checked against the session plan, the LY spec's change log and the code.
+
+### Session 82 — Release 1.1.0 (release: 1.1.0)
+
+**Releasable: yes.**
+
+Release 1.1.0: the framework packs and publishes what is on the trunk.

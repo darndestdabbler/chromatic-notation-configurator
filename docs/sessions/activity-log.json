@@ -1388,6 +1388,13 @@
       "dateTime": "2026-11-19T04:41:57.012000-05:00",
       "task": "Set the version on the trunk to 1.1.0 for session 82's release. version.json goes from 1.0.2 to 1.1.0, the README's status line from 1.0.1 to 1.1.0, and the withdrawn CHANGELOG.md 1.0.2 entry is renamed 1.1.0 and kept. The entry then gains what has shipped since that entry was written: the notehead-first editor and the work of sessions 17-29 and 32-35, and sessions 36-80. That covers colours on the noteheads, stems and ledgers as the engine engraves them, the breve, the clefs to choose from, the key-signature designer and its mark table, the step-by-step configurator, the notehead designs, the clef steps and the dropdowns. Each item is written in a designer's words and says which exports change and which engine version they need (1.10.0 for the newest). The entry says plainly which exports should be regenerated. Each claim is checked against the session plan, the LY spec's change log and the code.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 82,
+      "dateTime": "2026-11-19T04:54:53.777000-05:00",
+      "task": "Release 1.1.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
