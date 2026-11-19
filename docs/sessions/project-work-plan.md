@@ -91,7 +91,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 77 | The UI is stable, a third try | no | 2026-11-18 |
 | 78 | Designing the Clef steps, and dropdowns | no | 2026-11-18 |
 | 79 | The Clef steps and the dropdowns, built | no | 2026-11-18 |
-| 80 | The UI is stable, a fourth try | — | not declared |
+| 80 | The UI is stable, a fourth try | no | 2026-11-18 |
 | 81 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 2 — Consumer rethread (P3)
@@ -815,3 +815,9 @@ Build session 78's approved design, docs/planning/clef-steps-design.md. The Clef
 - 2026-11-18 — step 'clef-spacing': its files and checks: The preview baselines render the whole collection, clef included, so the probes of gallery files with a clef change when the clef moves to 0.75 staff spaces; they must be re-captured. The check pins the five export baselines by name instead of all of cnb/fixtures. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-18 — step 'clef-preview': its files: The bar along the clef's bottom edge goes from CNBClef.render (design 2.1, 4), which every canvas draw includes, so the preview baselines' probes of the gallery files with a glyph clef must be re-captured, their re-capture noted in the two tests files' headers. (claude-code (anthropic, claude-opus-5-5))
 - 2026-11-18 — step 'tutorial': its files and checks: The tutorial picked the C clef's anchor by clicking a pixel in the picker, so the stored point follows sub-pixel layout, which the two-column Clef step moved (x -0.55 and y 49.39, against 0 and 49.35): its .ly changed in the fourth decimal of the clef's top. The tutorial now chooses Middle in the Anchor dropdown (design 2.2 b), exact and simpler for a reader, so its two .ly downloads are regenerated with tutorial.json; uat-tutorial still holds each to CNBLilypond.generate of the live config. The export code is unchanged and the five export baselines are pinned by the clef-spacing step. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 80 — The UI is stable, a fourth try
+
+**Releasable: no.**
+
+Make the UI stable for the 1.1.0 release, a fourth try. The operator tries what sessions 78-79 added (the Clef steps reworked as designed: one Clef dropdown of the built-in and imported clefs with Import beside it, the options on the left and a larger clef preview on the right with the pitch names, the anchor marked and the clef moved and resized live; the Anchor and Height in step 10 and Sits on in step 11; the clef drawn 0.75 staff spaces after the staff's start; and the dropdowns that replaced busy rows of buttons, the key-signature designer's Stacks first) in the app served locally and in the tutorial, and the findings are recorded in a session-80 section of docs/uat-status.md, each rough edge marked fix-here or planned. Small rough edges are fixed here, with tests named after each changed source file (the step's files amended on the record once known); a large one is planned in session-plan.md as a session before 81. The README's text and its picture (docs/images/configurator.png, recaptured from the app) follow the UI as it now is. The full browser UAT runs, and its result, with the operator's declaration that the UI is stable (the condition for session 81), is recorded in docs/uat-status.md.

@@ -35,7 +35,7 @@ The Configurator is the design environment where notation creators make creative
   browser, the browser's Back and Forward move between the steps you
   opened, and **New** starts afresh
 
-![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups, the top bar with the checks, the Tutorial link, Undo, Redo and New, the staff canvas with Show (crotchets), the key and the size, and under it the notehead panel for C♯, F and A selected together, with their colour, fill and shape, and Back and Next at the bottom](docs/images/configurator.png)
+![The Configurator with Kite 4-369 open at step 5, Noteheads: the twelve steps in the sidebar under their groups (The staff, Noteheads, Key signature, Clef, Finish), the top bar with the checks, the Tutorial link, Undo, Redo, New, Open, Save and Export for LilyPond, the staff canvas with Show (crotchets), the key, Show the key signature and the size, and under it the notehead panel for C♯, F and A selected together, with their colour, fill and shape, and Back and Next at the bottom](docs/images/configurator.png)
 
 ## Three-Tool Pipeline
 
@@ -318,8 +318,8 @@ in the steps' own **Key** picker, which is the staff's too.
    of its own. The 21 spelled notes again: a click selects one, Shift+click
    or Ctrl+click adds or removes one, and from the keyboard Tab moves
    between them and Enter or Space selects (with Shift or Ctrl, adds).
-   **Select** picks All, the Naturals, Flats or Sharps, or the notes On a
-   line or ledger or In a space in one click. The look card edits every
+   The **Select** dropdown picks All, the Naturals, Flats or Sharps, or the
+   notes On a line or ledger or In a space at once. The look card edits every
    selected note in every key: the symbol (the notehead's own, a shape,
    LilyPond's sharp or flat, or one imported from SVG, whose reference
    point you click and which takes ledger lines or not), fill, colour, size
@@ -357,21 +357,29 @@ in the steps' own **Key** picker, which is the staff's too.
 
 **Clef**
 
-10. **Clef symbol import and sizing** — **Dozenal**, **Treble**, **Bass**
-    and **Alto** buttons choose the engine's dozenal clef (drawn as the
-    engine engraves it, the numeral 50 of the default treble register) or
-    LilyPond's own treble, bass and alto clef, placed on the pitch it marks
-    (G, F or C, nearest the middle of the staff); or import a clef glyph. A
-    glyph clef sits on a semitone by its anchor point (the treble clef's
-    curl, the point between the bass clef's dots, the alto clef's middle;
-    an imported glyph's centre until you pick its anchor point on the
-    enlarged glyph). Its height is automatic, following the staff and its
-    noteheads, or a number of semitones you set, and it grows and shrinks
-    about its anchor. The dozenal clef's size is set the same way, about the
-    middle line.
-11. **Clef semitone/staff assignment** — the semitone the clef's anchor
-    sits on. Type it, or drag the clef up or down on the staff, and drag
-    its bottom edge to make it taller or shorter.
+Steps 10 and 11 draw the clef's own preview, on the right of their
+options: the staff with its pitch names, the clef 0.75 staff spaces after
+the staff's start, where the engine engraves it, and its anchor marked.
+
+10. **Clef symbol import and sizing** — the **Clef** dropdown: No clef,
+    the engine's dozenal clef (drawn as the engine engraves it, the numeral
+    50 of the default treble register), LilyPond's own treble, bass and
+    alto clefs, placed on the pitch each marks (G, F or C, nearest the
+    middle of the staff), and the clefs you have imported, with **Import
+    from SVG…** beside it. Then the clef's **Anchor**, the point that sits
+    on its pitch: the Top, Middle or Bottom of the glyph, or a point on the
+    clef you click on it enlarged (the treble clef's curl, the point between
+    the bass clef's dots, the alto clef's middle; an imported glyph's centre
+    until you pick one). Its **Height** is automatic, following the staff
+    and its noteheads, or a number of semitones you set, and it grows and
+    shrinks about its anchor. The dozenal clef sits on the middle of the
+    staff, and its height is set the same way, about the middle line.
+11. **Clef semitone/staff assignment** — **Sits on**: the pitch the clef's
+    anchor sits on, one the canvas draws, named as its labels name it, or a
+    semitone of your own. You can also drag the clef up or down in the
+    preview, and drag its corner handle to make it taller or shorter about
+    its anchor. The space after the clef is LilyPond's, so it has no
+    setting.
 
 **Finish**
 

@@ -21,7 +21,36 @@ suite does not install its prerequisites (`npm install`,
 installer, Node.js 20+, an installed Microsoft Edge). On
 a machine without them a driver exits 2 and names what is missing.
 
-## Trying sessions 74–76 — 2026-11-18 (session 77)
+## Trying sessions 78–79 — 2026-11-19 (session 80)
+
+The operator tried what sessions 78–79 added (the Clef steps as designed in
+[`docs/planning/clef-steps-design.md`](planning/clef-steps-design.md): the
+one Clef dropdown of the built-in and imported clefs with Import beside it,
+the Anchor and Height in step 10 and Sits on in step 11, the options on the
+left and the clef's own preview on the right with the pitch names, its
+anchor marked, moved and resized by a drag; the clef drawn 0.75 staff
+spaces after the staff's start; and the dropdowns that replaced the busy
+rows of buttons, the key-signature designer's Notes, Stacks, Stacks go,
+Heights, Place and Edit and step 7's Select) in the app served locally
+(`python -m http.server 8000`) and in the tutorial (2026-11-19). The
+operator: "It looks good as is now."
+
+**Rough edges**: none found, so nothing is fixed here and no session is
+planned before 81.
+
+**The README** follows the UI as it now is: its Clef steps (the Clef
+dropdown with Import beside it, Anchor, Height and Sits on, with the clef's
+own preview beside the options) and step 7's Select dropdown, and its
+picture, `docs/images/configurator.png`, recaptured from the app (Kite
+4-369 at step 5, C♯, F and A selected).
+
+**The full browser UAT** (`node cnb/uat/run-uat.mjs`, 2026-11-19): passed,
+20 of 20 drivers, every check of each passing, with no console or page
+errors.
+
+**The UI is stable.** The operator declared it on 2026-11-19 ("stable,
+proceed"), which is the condition for session 81, the 1.1.0 release.
+
 
 The operator tried what sessions 74–76 added (the Noteheads step's choice
 of design, the notehead panel's rows by design, the Show choice, New
