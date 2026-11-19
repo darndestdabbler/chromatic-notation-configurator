@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 071 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 071 transcript</h1>
+<p class="stamp">Rendered 2026-11-14T22:03:03.420Z by dabbler-ai-router 3.33.0 at 9a273e658b151ece630c93c9e4f95528f6b00a2f.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-14T16:32:57.144-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 71: Back, Forward and work kept</h3>
+<p><strong>Why.</strong> The operator pressed the browser's Back button and lost the notation; and a key opened from the key preview has no clear way back to it (session 69, rough edges 6 and 7).</p>
+<ol><li>Register.</li><li>Each step opened is an entry in the browser's history (the step after <code>#</code> in the address), so Back and Forward move between steps, and a page opened at an address with a step opens it.</li><li>The notation in progress is kept in the browser (<code>localStorage</code>, every access guarded, as the canvas size is) after each change, with its step, and a page opened again restores it; New starts afresh. Leaving the page with changes not saved to a file asks first (<code>beforeunload</code>).</li><li>Step 8 opened from a key in step 9 shows &quot;Back to every key&quot; above the canvas. The UAT covers Back, Forward, a reload and the link.</li></ol>
+<h2>Work Plan</h2>
+<p>Stop the browser's Back button losing the notation, and give step 8 a clear way back to the key preview (docs/uat-status.md, session 69, rough edges 6 and 7). In cnb/index.html each step opened becomes an entry in the browser's history, the step's id after the address's '#' (CNBStepNav.fromHash in cnb/ui/steps.js reads one back), so Back and Forward move between the steps opened and a page opened at an address with an available step opens it. The notation in progress is kept in the browser after each change, with its step and whether it has been saved to a file, by a small module cnb/ui/kept-work.js (localStorage, every access guarded as the canvas Size is; blocked or broken storage keeps nothing and restores nothing); a page opened again restores it through CNBConfigIO.mergeLoaded, as an opened file is checked, and a kept notation that cannot be loaded is dropped for the default. A New button in the top bar starts afresh (the default notation at step 1, the kept work cleared), asking first when the notation has changes not saved; leaving the page with such changes asks first through beforeunload. Save completed and Open mark the notation saved. Step 8 opened from a key in step 9 records that in its history entry and shows 'Back to every key' above its canvas, which goes back as the browser's Back does. A new browser UAT driver covers Back, Forward, an address with a step, a reload restoring the work and its step, the leave warning, New, and the link; the other drivers follow where the kept work or the warning changes what they see, and the full UAT passes. The README and the architecture plan say what the page now does.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/52f6db221c97d5681b6368cce4d242deb70459b7"><code>52f6db221c97d5681b6368cce4d242deb70459b7</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Step from hash</td><td><p>In cnb/ui/steps.js add CNBStepNav.fromHash(hash): the step id (or 'advanced') an address's hash names, '#staff' or 'staff' alike, else null (empty, unknown, or not a string). Update the module comment. Tests in cnb/tests/cnb-steps-tests.js: every step's id and 'advanced' round-trip with and without the '#', and an empty, unknown or non-string hash gives null.</p></td><td><span class="mono">cnb/ui/steps.js</span><br><span class="mono">cnb/tests/cnb-steps-tests.js</span></td><td><code>node --input-type=module -e const { tests } = await import('./cnb/tests/cnb-steps-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); process.exit(failed ? 1 : 0);</code></td><td>yes</td></tr>
+<tr><td>Kept work</td><td><p>Add cnb/ui/kept-work.js, CNBKeptWork: STORAGE_KEY; read(storage) returns the kept { config, step, saved } or null when there is none, the storage is null or throws, or what is stored is not JSON of that shape; keep(storage, { config, step, saved }) stores it and returns whether it could (null, throwing or full storage: false, nothing thrown); clear(storage) removes it, never throwing. No other state and no event listeners; the page passes localStorage, read through a guard as preview-display.js reads it. Tests in a new cnb/tests/cnb-kept-work-tests.js, registered in cnb/tests/run-tests.js: a round trip through a stub storage; nothing kept; malformed, wrong-shaped and non-JSON values give null; a null storage and one whose every method throws are harmless; clear removes it.</p></td><td><span class="mono">cnb/ui/kept-work.js</span><br><span class="mono">cnb/tests/cnb-kept-work-tests.js</span><br><span class="mono">cnb/tests/run-tests.js</span></td><td><code>node --input-type=module -e const { tests } = await import('./cnb/tests/cnb-kept-work-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); if (!(await import('node:fs')).readFileSync('cnb/tests/run-tests.js', 'utf8').includes('cnb-kept-work-tests.js')) { console.error('run-tests.js does not list cnb-kept-work-tests.js'); failed++; } process.exit(failed ? 1 : 0);</code></td><td>yes</td></tr>
+<tr><td>Page</td><td><p>In cnb/index.html: showSection writes the step into the address, adding a history entry when the hash differs (replacing it when the page itself moves off a step that became unavailable), and a popstate opens the hash's step without adding one; on load the page opens the address's step when it names an available one, else the kept step when available, else step 1, replacing the entry. After every change and every step opened it keeps the notation, the step and whether it is saved (CNBKeptWork, localStorage guarded); on load it restores a kept notation through CNBConfigIO.mergeLoaded before the editors mount, dropping one that cannot be loaded. A recorded change, an undo or a redo marks the notation not saved; a completed Save and an opened file mark it saved; the untouched default is saved. beforeunload asks when it is not saved. A New button in the top bar (beside Open…) asks with confirm() when the notation is not saved, then clears the kept work and opens the page afresh at step 1 without the leave warning. Step 8 opened from a key in step 9 carries { fromKeys: true } in its history entry, and while the current entry has it the ks-designer panel shows a 'Back to every key' link above its canvas that calls history.back(). Style the link in cnb/ui/app.css as the page's other links.</p></td><td><span class="mono">cnb/index.html</span><br><span class="mono">cnb/ui/app.css</span></td><td><code>node -e const t = require('fs').readFileSync('cnb/index.html', 'utf8'); const bad = []; for (const w of ['popstate', 'pushState', 'replaceState', 'beforeunload', 'CNBKeptWork', 'CNBStepNav.fromHash', 'Back to every key', 'id=&quot;new-config&quot;', 'fromKeys']) if (!t.includes(w)) bad.push('index.html lacks ' + w); if (bad.length) { console.error(bad.join('\n')); process.exit(1); }</code></td><td>yes</td></tr>
+<tr><td>Uat</td><td><p>Add cnb/uat/uat-back-forward.mjs, a Playwright driver built as the others are (its own default port, exit 2 for a missing dependency), on cnb/index.html: steps opened from the sidebar and Next put their ids in the address; Back and Forward move between them and the panel follows; an address with a step opens it, and one with a greyed or unknown step opens step 1; a change (a staff pattern chosen) then a reload asks first (the beforeunload dialog, accepted) and comes back at the same step with the change, compared through Advanced › View file (JSON); after Save no warning is asked; New asks while the notation is not saved, and accepted gives the default notation at step 1; with a key signature shown, a key clicked in step 9 opens step 8 with 'Back to every key' above its canvas, the link returns to step 9, and the browser's Forward returns to step 8 with the link still shown, while step 8 opened from the sidebar has none. Then run the full UAT and update any other driver whose checks the kept work or the leave warning changes (a second goto or reload in one page restoring a kept notation, or a navigation held by the warning) so it checks what it checked before rather than dropping the check, in cnb/uat/app-page.mjs where a shared helper serves; amend the step's files to the drivers actually changed.</p></td><td><span class="mono">cnb/uat/uat-back-forward.mjs</span><br><span class="mono">cnb/uat/app-page.mjs</span><br><span class="mono">cnb/uat/uat-pitch.mjs</span><br><span class="mono">cnb/uat/uat-undo.mjs</span></td><td><code>node cnb/uat/uat-back-forward.mjs</code><br><code>node cnb/uat/run-uat.mjs</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>Say what the page now does. README.md: replace the paragraph saying Back leaves the page and that keeping the design and Back and Forward are planned with what happens now (Back and Forward between steps, a step in the address, the notation kept in the browser and restored with its step, New, the warning before leaving with changes not saved, the undo history still starting afresh on a reload), and mention 'Back to every key' where step 8 and 9 are described if they are. docs/CNB-ARCHITECTURE-PLAN-v2.md: Module 19's row (session 71: the step in the address and the history, the kept work through ui/kept-work.js, New, the leave warning, Back to every key) and ui/kept-work.js in the file structure. docs/uat-status.md: rough edges 6 and 7 of the session-69 try-out marked fixed in session 71.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">docs/uat-status.md</span></td><td><code>node -e const fs = require('fs'); const r = fs.readFileSync('README.md', 'utf8'); const a = fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); const u = fs.readFileSync('docs/uat-status.md', 'utf8'); const bad = []; if (r.includes('between steps, are planned')) bad.push('README still says Back and Forward are planned'); if (!/Back to every key/.test(r)) bad.push('README does not name Back to every key'); if (!a.includes('kept-work.js')) bad.push('plan does not name kept-work.js'); if (!/session 71/.test(a)) bad.push('plan does not name session 71'); if (/\(\*planned\*, session 71\)/.test(u)) bad.push('uat-status still marks session 71 planned'); if (bad.length) { console.error(bad.join('\n')); process.exit(1); }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>The undo history is not kept across a reload: a restored notation starts a new history, as an opened file does.</li><li>Only one notation is kept, the one in progress: no list of recent notations, no recovery of earlier ones, and no keeping across browsers or devices.</li><li>Only the step goes into the address and the history: the notehead panel's selection, the canvas's duration and key and the editors' open disclosures are not history entries and are not kept (the canvas Size stays kept as it is).</li><li>No change to the config schema, the export, the LY spec or the engine.</li><li>No work from sessions 72-74: a repeated minim's stem, the second try-out of the UI and the 1.1.0 release.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[21:32:57]</span> <span class="muted">run-started</span> session=071 mode=pull</div>
+<div class="line"><span class="at">[21:32:57]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[21:36:18]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[21:36:18]</span> <span class="muted">plan-accepted</span> steps=[&quot;step-from-hash&quot;,&quot;kept-work&quot;,&quot;page&quot;,&quot;uat&quot;,&quot;docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[21:36:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[21:36:26]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=step-from-hash</div>
+<div class="line"><span class="at">[21:37:02]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:37:07]</span> <span class="muted">check-passed</span> step=step-from-hash argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const { tests } = await import('./cnb/tests/cnb-steps-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); process.exit(failed ? 1 : 0);&quot;]</div>
+<div class="line"><span class="at">[21:37:08]</span> <span class="muted">report-accepted</span> seq=2 step=step-from-hash files=[&quot;cnb/ui/steps.js&quot;,&quot;cnb/tests/cnb-steps-tests.js&quot;] notes=CNBStepNav.fromHash reads a step id or 'advanced' from an address hash, null otherwise; two tests added</div>
+<div class="line"><span class="at">[21:37:08]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=kept-work</div>
+<div class="line"><span class="at">[21:37:59]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:38:04]</span> <span class="muted">check-passed</span> step=kept-work argv=[&quot;node&quot;,&quot;--input-type=module&quot;,&quot;-e&quot;,&quot;const { tests } = await import('./cnb/tests/cnb-kept-work-tests.js'); let failed = 0; for (const t of tests) { try { await t.fn(); } catch (e) { failed++; console.error('FAIL ' + t.name + ': ' + e.message); } } console.log(tests.length + ' tests, ' + failed + ' failed'); if (!(await import('node:fs')).readFileSync('cnb/tests/run-tests.js', 'utf8').includes('cnb-kept-work-tests.js')) { console.error('run-tests.js does not list cnb-kept-work-tests.js'); failed++; } process.exit(failed ? 1 : 0);&quot;]</div>
+<div class="line"><span class="at">[21:38:05]</span> <span class="muted">report-accepted</span> seq=3 step=kept-work files=[&quot;cnb/ui/kept-work.js&quot;,&quot;cnb/tests/cnb-kept-work-tests.js&quot;,&quot;cnb/tests/run-tests.js&quot;] notes=CNBKeptWork read/keep/clear over a guarded storage under cnb.keptWork; 6 tests, registered in run-tests.js</div>
+<div class="line"><span class="at">[21:38:05]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=page</div>
+<div class="line"><span class="at">[21:41:59]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:42:06]</span> <span class="muted">check-passed</span> step=page argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const t = require('fs').readFileSync('cnb/index.html', 'utf8'); const bad = []; for (const w of ['popstate', 'pushState', 'replaceState', 'beforeunload', 'CNBKeptWork', 'CNBStepNav.fromHash', 'Back to every key', 'id=\&quot;new-config\&quot;', 'fromKeys']) if (!t.includes(w)) bad.push('index.html lacks ' + w); if (bad.length) { console.error(bad.join('\\n')); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[21:42:07]</span> <span class="muted">report-accepted</span> seq=4 step=page files=[&quot;cnb/index.html&quot;,&quot;cnb/ui/app.css&quot;] notes=Steps in the address and the browser's history, the work kept and restored with its step, New, the leave warning, Back to every key from step 9; smoke-tested in Chromium</div>
+<div class="line"><span class="at">[21:42:07]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=uat</div>
+<div class="line"><span class="at">[21:50:27]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:52:48]</span> <span class="muted">check-passed</span> step=uat argv=[&quot;node&quot;,&quot;cnb/uat/uat-back-forward.mjs&quot;]</div>
+<div class="line"><span class="at">[21:52:48]</span> <span class="muted">check-passed</span> step=uat argv=[&quot;node&quot;,&quot;cnb/uat/run-uat.mjs&quot;]</div>
+<div class="line"><span class="at">[21:52:49]</span> <span class="muted">report-accepted</span> seq=5 step=uat files=[&quot;cnb/uat/uat-back-forward.mjs&quot;,&quot;cnb/uat/app-page.mjs&quot;,&quot;cnb/uat/uat-pitch.mjs&quot;,&quot;cnb/uat/uat-undo.mjs&quot;] notes=New driver uat-back-forward.mjs (35 checks); app-page.mjs startAfresh replaces the reloads uat-pitch and uat-undo used for a fresh page; full UAT 20 of 20 drivers passed</div>
+<div class="line"><span class="at">[21:52:49]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[21:54:13]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[21:54:21]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs = require('fs'); const r = fs.readFileSync('README.md', 'utf8'); const a = fs.readFileSync('docs/CNB-ARCHITECTURE-PLAN-v2.md', 'utf8'); const u = fs.readFileSync('docs/uat-status.md', 'utf8'); const bad = []; if (r.includes('between steps, are planned')) bad.push('README still says Back and Forward are planned'); if (!/Back to every key/.test(r)) bad.push('README does not name Back to every key'); if (!a.includes('kept-work.js')) bad.push('plan does not name kept-work.js'); if (!/session 71/.test(a)) bad.push('plan does not name session 71'); if (/\\(\\*planned\\*, session 71\\)/.test(u)) bad.push('uat-status still marks session 71 planned'); if (bad.length) { console.error(bad.join('\\n')); process.exit(1); }&quot;]</div>
+<div class="line"><span class="at">[21:54:23]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;docs/uat-status.md&quot;] notes=README: Back and Forward between steps, the kept design, New and the leave warning, Back to every key; architecture plan Module 19 and kept-work.js; uat-status rough edges 6 and 7 fixed</div>
+<div class="line"><span class="at">[21:54:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[21:54:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[21:54:27]</span> <span class="muted">job-started</span> name=verification pid=19896 log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:55:48]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[21:55:48]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[21:55:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[21:55:50]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[21:55:51]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=59436 log=.dabbler/runs/s71/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[21:59:31]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[21:59:33]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[21:59:34]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=57016 log=.dabbler/runs/s71/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:02:11]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[22:02:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:02:28]</span> <span class="muted">landed</span> commit=52f6db221c97d5681b6368cce4d242deb70459b7</div>
+<div class="line"><span class="at">[22:02:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:02:29]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:02:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:02:32]</span> <span class="muted">job-started</span> name=close pid=62912 log=.dabbler/runs/s71/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:03:03]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:03:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `docs/uat-status.md` still states that the full UAT was “19 of 19 drivers” with 701 checks, while this session adds `cnb/uat/uat-back-forward.mjs`; `cnb/uat/app-page.mjs` states that the runner spawns `uat-*.mjs` drivers. The historical UAT count should be refreshed after the new driver is included.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>216s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>154s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

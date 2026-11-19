@@ -1,0 +1,373 @@
+{
+  "version": "1.0",
+  "shapes": {
+    "crotchet-minim": {
+      "displayName": "Crotchet–Minim",
+      "svgPath": "M 163.578 -81.573 C 193.612 -21.336 144.71 64.016 54.355 109.065 C -35.998 154.113 -133.593 141.801 -163.627 81.565 C -178.047 52.639 -174.644 16.303 -154.159 -19.448 C -133.677 -55.199 -97.792 -87.438 -54.403 -109.072 C -11.013 -130.706 36.328 -139.962 77.208 -134.804 C 118.089 -129.647 149.155 -110.499 163.578 -81.573 Z",
+      "svgHollowPath": "M 136.312 -67.977 C 155.421 -32.322 90.412 17.577 24.737 50.184 C -40.937 82.792 -116.568 105.433 -136.359 67.971 C -156.151 30.509 -95.666 -15.128 -24.935 -50.371 C 45.798 -85.615 117.202 -103.633 136.312 -67.977 Z",
+      "naturalHeight": 272.4,
+      "naturalWidth": 344.852,
+      "semitoneHeight": 2.724,
+      "anchors": {
+        "crotchetUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "crotchetDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        },
+        "minimUp": {
+          "x": 146.426,
+          "y": -42.9985
+        },
+        "minimDown": {
+          "x": -146.4267,
+          "y": 43.0027
+        }
+      },
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "conventional-crotchet": {
+      "displayName": "Conventional crotchet",
+      "svgPath": "M 120.122 -59.891 C 130.711 -38.652 128.211 -11.973 113.172 14.277 C 98.132 40.527 71.785 64.197 39.927 80.081 C 8.068 95.965 -26.691 102.761 -56.706 98.975 C -86.722 95.188 -109.533 81.129 -120.122 59.89 C -130.711 38.651 -128.211 11.973 -113.172 -14.277 C -98.132 -40.527 -71.785 -64.197 -39.927 -80.081 C -8.069 -95.965 26.691 -102.762 56.706 -98.976 C 86.722 -95.189 109.532 -81.13 120.122 -59.891 Z",
+      "svgHollowPath": "M 100.102 -49.909 C 111.127 -27.796 75.248 12.476 19.964 40.041 C -35.321 67.604 -89.076 72.023 -100.102 49.908 C -111.127 27.795 -75.248 -12.477 -19.964 -40.041 C 35.321 -67.605 89.076 -72.023 100.102 -49.909 Z",
+      "naturalHeight": 200,
+      "naturalWidth": 253.168,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 115.4726,
+          "y": -31.5765
+        },
+        "crotchetDown": {
+          "x": -115.4726,
+          "y": 31.5761
+        },
+        "minimUp": {
+          "x": 115.4726,
+          "y": -31.5765
+        },
+        "minimDown": {
+          "x": -115.4726,
+          "y": 31.5761
+        }
+      },
+      "lilypondPath": "'(\n    (moveto 1.2012 0.5989)\n    (curveto 1.3071 0.3865 1.2821 0.1197 1.1317 -0.1428)\n    (curveto 0.9813 -0.4053 0.7178 -0.642 0.3993 -0.8008)\n    (curveto 0.0807 -0.9597 -0.2669 -1.0276 -0.5671 -0.9898)\n    (curveto -0.8672 -0.9519 -1.0953 -0.8113 -1.2012 -0.5989)\n    (curveto -1.3071 -0.3865 -1.2821 -0.1197 -1.1317 0.1428)\n    (curveto -0.9813 0.4053 -0.7178 0.642 -0.3993 0.8008)\n    (curveto -0.0807 0.9597 0.2669 1.0276 0.5671 0.9898)\n    (curveto 0.8672 0.9519 1.0953 0.8113 1.2012 0.5989)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto 1.001 0.4991)\n    (curveto 1.1113 0.278 0.7525 -0.1248 0.1996 -0.4004)\n    (curveto -0.3532 -0.676 -0.8908 -0.7202 -1.001 -0.4991)\n    (curveto -1.1113 -0.278 -0.7525 0.1248 -0.1996 0.4004)\n    (curveto 0.3532 0.6761 0.8908 0.7202 1.001 0.4991)\n    (closepath))",
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 1.1547,
+          "y": 0.3158
+        },
+        "crotchetDown": {
+          "x": -1.1547,
+          "y": -0.3158
+        },
+        "minimUp": {
+          "x": 1.1547,
+          "y": 0.3158
+        },
+        "minimDown": {
+          "x": -1.1547,
+          "y": -0.3158
+        }
+      }
+    },
+    "conventional-semibreve": {
+      "displayName": "Conventional semibreve",
+      "svgPath": "M 183.333 0.0 C 183.333 26.522 164.018 51.957 129.637 70.711 C 95.255 89.464 48.623 100.0 0.0 100.0 C -48.623 100.0 -95.254 89.464 -129.636 70.711 C -164.017 51.957 -183.333 26.522 -183.333 0.0 C -183.333 -26.522 -164.017 -51.957 -129.636 -70.711 C -95.254 -89.464 -48.623 -100.0 0.0 -100.0 C 48.623 -100.0 95.255 -89.464 129.637 -70.711 C 164.018 -51.957 183.333 -26.522 183.333 0.0 Z",
+      "svgHollowPath": "M 37.184 74.578 C 21.36 82.467 2.267 82.176 -15.895 73.769 C -34.057 65.361 -49.8 49.526 -59.662 29.747 C -80.198 -11.442 -70.133 -58.149 -37.183 -74.578 C -4.232 -91.007 39.127 -70.935 59.663 -29.747 C 80.198 11.442 70.134 58.149 37.184 74.578 Z",
+      "naturalHeight": 200,
+      "naturalWidth": 366.666,
+      "semitoneHeight": 2,
+      "anchors": null,
+      "lilypondPath": "'(\n    (moveto 1.8333 0)\n    (curveto 1.8333 -0.2652 1.6402 -0.5196 1.2964 -0.7071)\n    (curveto 0.9526 -0.8946 0.4862 -1 0 -1)\n    (curveto -0.4862 -1 -0.9525 -0.8946 -1.2964 -0.7071)\n    (curveto -1.6402 -0.5196 -1.8333 -0.2652 -1.8333 0)\n    (curveto -1.8333 0.2652 -1.6402 0.5196 -1.2964 0.7071)\n    (curveto -0.9525 0.8946 -0.4862 1 0 1)\n    (curveto 0.4862 1 0.9526 0.8946 1.2964 0.7071)\n    (curveto 1.6402 0.5196 1.8333 0.2652 1.8333 0)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto 0.3718 -0.7458)\n    (curveto 0.2136 -0.8247 0.0227 -0.8218 -0.159 -0.7377)\n    (curveto -0.3406 -0.6536 -0.498 -0.4953 -0.5966 -0.2975)\n    (curveto -0.802 0.1144 -0.7013 0.5815 -0.3718 0.7458)\n    (curveto -0.0423 0.9101 0.3913 0.7094 0.5966 0.2975)\n    (curveto 0.802 -0.1144 0.7013 -0.5815 0.3718 -0.7458)\n    (closepath))",
+      "lilypondAnchors": null
+    },
+    "conventional-breve": {
+      "displayName": "Conventional breve",
+      "svgPath": "M 183.333 0.0 C 183.333 26.522 164.018 51.957 129.637 70.711 C 95.255 89.464 48.623 100.0 0.0 100.0 C -48.623 100.0 -95.254 89.464 -129.636 70.711 C -164.017 51.957 -183.333 26.522 -183.333 0.0 C -183.333 -26.522 -164.017 -51.957 -129.636 -70.711 C -95.254 -89.464 -48.623 -100.0 0.0 -100.0 C 48.623 -100.0 95.255 -89.464 129.637 -70.711 C 164.018 -51.957 183.333 -26.522 183.333 0.0 Z M -184.4674 -130.6875 C -176.481 -130.6875 -169.9466 -124.1531 -169.9466 -116.1667 L -169.9466 116.1667 C -169.9466 124.1531 -176.481 130.6875 -184.4674 130.6875 C -192.4539 130.6875 -198.9883 124.1531 -198.9883 116.1667 L -198.9883 -116.1667 C -198.9883 -124.1531 -192.4539 -130.6875 -184.4674 -130.6875 Z M 183.333 -130.6875 C 191.3195 -130.6875 197.8538 -124.1531 197.8538 -116.1667 L 197.8538 116.1667 C 197.8538 124.1531 191.3195 130.6875 183.333 130.6875 C 175.3465 130.6875 168.8122 124.1531 168.8122 116.1667 L 168.8122 -116.1667 C 168.8122 -124.1531 175.3465 -130.6875 183.333 -130.6875 Z",
+      "svgHollowPath": "M 37.184 74.578 C 21.36 82.467 2.267 82.176 -15.895 73.769 C -34.057 65.361 -49.8 49.526 -59.662 29.747 C -80.198 -11.442 -70.133 -58.149 -37.183 -74.578 C -4.232 -91.007 39.127 -70.935 59.663 -29.747 C 80.198 11.442 70.134 58.149 37.184 74.578 Z",
+      "naturalHeight": 200,
+      "naturalWidth": 396.8421,
+      "semitoneHeight": 2,
+      "anchors": null,
+      "lilypondPath": null,
+      "lilypondHollowPath": null,
+      "lilypondAnchors": null
+    },
+    "diamond": {
+      "displayName": "Diamond",
+      "svgPath": "M 0.0 -100.0 L 150.0 0.0 L 0.0 100.0 L -150.0 0.0 Z",
+      "svgHollowPath": "M 0.0 -75.0 L 75.0 0.0 L 0.0 75.0 L -75.0 0.0 Z",
+      "naturalHeight": 200,
+      "naturalWidth": 300,
+      "semitoneHeight": 2,
+      "anchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": -92.5926
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": 92.5926
+        },
+        "minimUp": {
+          "x": 0,
+          "y": -92.5926
+        },
+        "minimDown": {
+          "x": 0,
+          "y": 92.5926
+        }
+      },
+      "lilypondPath": "'(\n    (moveto 0 1)\n    (lineto 1.5 0)\n    (lineto 0 -1)\n    (lineto -1.5 0)\n    (closepath))",
+      "lilypondHollowPath": "'(\n    (moveto 0 0.75)\n    (lineto 0.75 0)\n    (lineto 0 -0.75)\n    (lineto -0.75 0)\n    (closepath))",
+      "lilypondAnchors": {
+        "crotchetUp": {
+          "x": 0,
+          "y": 0.9259
+        },
+        "crotchetDown": {
+          "x": 0,
+          "y": -0.9259
+        },
+        "minimUp": {
+          "x": 0,
+          "y": 0.9259
+        },
+        "minimDown": {
+          "x": 0,
+          "y": -0.9259
+        }
+      }
+    }
+  },
+  "staff": {
+    "semitonePattern": [
+      3,
+      5,
+      7,
+      9
+    ],
+    "midpoint": 12,
+    "semitonesPerStaffSpace": 2
+  },
+  "ledgers": {
+    "templates": [
+      {
+        "semiWithinOctave": 1,
+        "triggerPCs": [],
+        "triggerMode": "proximity"
+      },
+      {
+        "semiWithinOctave": 11,
+        "triggerPCs": [],
+        "triggerMode": "proximity"
+      }
+    ],
+    "proximityRule": true
+  },
+  "noteheadRules": [
+    {
+      "name": "Default (diamond, solid)",
+      "priority": 0,
+      "match": {
+        "pitchClasses": "all",
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "shape": "diamond",
+        "hollow": false
+      }
+    },
+    {
+      "name": "Fire engine red on the accidentals",
+      "priority": 1,
+      "match": {
+        "pitchClasses": [
+          1,
+          3,
+          6,
+          8,
+          10
+        ],
+        "durations": "all",
+        "keys": "all"
+      },
+      "apply": {
+        "color": "#cc0000"
+      }
+    },
+    {
+      "name": "Hollow minims and longer",
+      "priority": 2,
+      "match": {
+        "pitchClasses": "all",
+        "durations": [
+          "minim",
+          "semibreve",
+          "breve"
+        ],
+        "keys": "all"
+      },
+      "apply": {
+        "hollow": true
+      }
+    }
+  ],
+  "display": {
+    "pxPerSemi": 16,
+    "label": {
+      "fontFamily": "Oswald",
+      "fontSize": 22,
+      "fontWeight": 400,
+      "color": "#555555",
+      "marginTop": 14,
+      "marginBottom": 14,
+      "padding": 6,
+      "sharpStyle": {
+        "fontSize": 0.75,
+        "raise": -0.15
+      }
+    },
+    "column": {
+      "paddingH": 16
+    },
+    "card": {
+      "background": "#FFFFFF",
+      "borderRadius": 6,
+      "shadow": "0 2px 12px rgba(0,0,0,0.12)"
+    },
+    "debugGrid": false
+  },
+  "durations": {
+    "definitions": [
+      {
+        "name": "crotchet",
+        "displayName": "Crotchet (Quarter)",
+        "lilypondDuration": 3,
+        "defaultShape": "crotchet-minim",
+        "defaultHollow": false,
+        "hasStem": true
+      },
+      {
+        "name": "minim",
+        "displayName": "Minim (Half)",
+        "lilypondDuration": 2,
+        "defaultShape": "crotchet-minim",
+        "defaultHollow": true,
+        "hasStem": true
+      },
+      {
+        "name": "semibreve",
+        "displayName": "Semibreve (Whole)",
+        "lilypondDuration": 1,
+        "defaultShape": "semibreve",
+        "defaultHollow": false,
+        "hasStem": false
+      },
+      {
+        "name": "breve",
+        "displayName": "Breve (Double Whole)",
+        "lilypondDuration": 0,
+        "defaultShape": "breve",
+        "defaultHollow": false,
+        "hasStem": false
+      }
+    ],
+    "representationMode": "shape",
+    "repeatOverlap": 0.3333333333333333,
+    "breveStyle": "tied"
+  },
+  "keys": {
+    "enabled": true,
+    "definitions": [],
+    "offKeyMark": {},
+    "keySignature": {
+      "enabled": true,
+      "notes": "all",
+      "upperTonic": true,
+      "looks": {
+        "all": {},
+        "natural": {},
+        "flat": {},
+        "sharp": {},
+        "line": {},
+        "space": {},
+        "spelled": {}
+      },
+      "columnGap": 0,
+      "stacking": "parity-stacks",
+      "heights": "window",
+      "window": {
+        "sharp": 0,
+        "flat": 0
+      },
+      "alternate": {},
+      "columns": "right",
+      "placement": {
+        "rule": "scale-from-tonic",
+        "tonicOctave": null,
+        "position": "middle"
+      },
+      "separator": {
+        "enabled": true,
+        "color": "#ffd42a",
+        "thicknessPct": 160,
+        "extentSemis": 12,
+        "shareThickness": true
+      },
+      "signs": {
+        "heightSemis": null
+      }
+    }
+  },
+  "clef": {
+    "enabled": true,
+    "active": "c-clef",
+    "glyphs": {
+      "c-clef": {
+        "displayName": "C Clef",
+        "kind": "glyph",
+        "svgPath": "M 50.3804 0 L 28.9198 24.2006 L 28.6322 47.1471 L 16.8816 47.1471 C 16.9055 32.5313 22.8782 19.0367 32.5592 11.7258 L 30.0475 7.6458 C 18.0672 14.513 9.7666 29.1641 8.2344 46.1477 C 8.1739 46.4791 8.1157 46.8122 8.0591 47.1471 L 0 50.751 L 8.0499 54.7403 C 8.6237 66.9923 12.7511 78.4965 19.5903 86.9068 C 26.4294 95.3171 35.4651 99.9999 44.8545 100 C 54.0416 99.9998 62.8977 95.5162 69.6886 87.4273 C 70.5331 86.6232 71.1907 85.7853 71.6307 84.9368 C 72.725 83.4258 73.7434 81.8238 74.6794 80.1408 L 71.4302 74.8629 C 65.71 83.0653 57.6907 87.886 49.2042 88.2237 L 49.1578 14.3158 C 54.7031 18.3346 59.4839 20.753 63.4937 21.5745 L 72.1915 9.8136 L 70.9338 6.3634 C 63.4081 6.881 56.5577 4.7613 50.3804 0 Z M 45.4164 14.3158 L 45.3514 88.067 C 31.2753 86.3595 19.812 72.5541 17.3578 54.3538 L 39.7467 54.3507 L 39.7467 19.1458 Z",
+        "naturalHeight": 100,
+        "naturalWidth": 74.67940521240234,
+        "semitoneHeight": 8,
+        "viewBoxMinX": 0,
+        "viewBoxMinY": 0,
+        "lilypondPath": null,
+        "reference": {
+          "x": 37.33970260620117,
+          "y": 50
+        },
+        "anchorSemi": 12
+      }
+    },
+    "gutter": {
+      "paddingH": 12
+    }
+  },
+  "engine": {
+    "lilypondVersion": "2.24.2",
+    "falseHollow": false,
+    "defaultMagnify": "7/4",
+    "indent": 0,
+    "collisionThreshold": 2
+  },
+  "meta": {
+    "configName": "Tutorial 3-5-7-9",
+    "fileSuffix": "-Tutorial3579",
+    "notationLabel": "Tutorial 3-5-7-9",
+    "notationFootnote": "",
+    "author": "",
+    "description": "Two staff lines per octave at semitones 4 (E) and 8 (G♯)",
+    "created": "2026-11-18T23:45:42.715Z",
+    "modified": "2026-11-18T23:45:42.715Z"
+  }
+}

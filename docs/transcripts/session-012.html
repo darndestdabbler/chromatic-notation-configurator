@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 012 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 012 transcript</h1>
+<p class="stamp">Rendered 2026-11-03T09:54:07.125Z by dabbler-ai-router 3.27.0 at d4f5c1e51416726bde98f8c273a81dd78811ef64.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-03T04:39:39.831-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 12: Export only what the engine engraves</h3>
+<ol><li>Register.</li><li>M1: the exporter emits no <code>cnb:stem-thickness</code>, which the engine doesn't define and which makes LilyPond fail. The stem thickness control says it is preview-only. M2: staff line colour and thickness, and ledger rules, are marked in the UI and in the export header as preview-only until the engine supports them. Add them to README &quot;Known limitations&quot;. Low items L2 and L3 get the same treatment: the CB-safe toggle and the edited repeat counts are either exported faithfully or labelled preview-only, and the header never claims a palette the export doesn't carry.</li><li>M3: a notehead rule scoped to a key is either exported (Section C can branch on <code>key</code>) with a test, or refused at export with a warning that names the rule; it never vanishes silently. M4: editing the staff (even a colour) never resets <code>staff.midpoint</code> or sps. Add a test that edits twinline-compact (midpoint 7) and asserts the pitch-axis export is byte-identical apart from the edited field.</li><li>L1: fix the &quot;derived LilyPond geometry&quot; panel under a pitch axis. L4: every <code>approx()</code> helper fails on NaN (<code>!(Math.abs(a - b) &lt;= tol)</code>). L5: the test runner counts a test file with no <code>tests</code> export as a failure. Run the cnb-unit suite; it must still pass with no test hiding behind the stricter checks.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the LilyPond export carry only what the engine engraves, and say so wherever a setting stops at the preview (audit 2026-11-02 M1-M4, L1-L5). The exporter stops emitting cnb:stem-thickness (undefined in the engine, fatal in LilyPond) and the no-op cnb:default-staff-line-thickness / -color settings. The export header lists the preview-only settings (staff line colour and thickness, ledger rules, stem thickness, repeat counts, the CB-safe preview toggle, key-scoped notehead rules), names the colour palette only when Section A actually registers colours from it, and no longer claims a cb-safe mode the file does not engrave. The matching UI controls (stem thickness, staff line styling, ledger rules, CB-safe toggle, repeat counts) carry a preview-only note, and README Known limitations lists them. A notehead rule scoped to a key gets a CNBConfig.validate() warning naming the rule, which the export panel shows, instead of vanishing silently. The staff editor keeps the loaded staff.midpoint and semitonesPerStaffSpace while the pattern is unchanged, re-deriving them only when the pattern itself changes, with a test that edits twinline-compact (midpoint 7) and finds its pitch-axis export byte-identical. The derived-geometry panel shows the staff-line positions the exporter computes for the full config, so it is right under a pitch axis. Every approx() test helper fails on NaN, and the test runner counts a test file with no tests export as a failure. The pinned export baselines are regenerated by running the exporter, the LY spec records the change as 1.3.3, and the cnb-unit suite passes.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/490172a9913331daa6f791ea4c90bcff0e22197a"><code>490172a9913331daa6f791ea4c90bcff0e22197a</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>No stem thickness</td><td><p>M1: remove the cnb:stem-thickness emission (and its ENGINE_DEFAULTS entry) from cnb/src/cnb-lilypond.js; engine.stemThickness stays in the config and validation. The common-props stem-thickness control's badge says it is preview-only and not exported (the engine has no cnb:stem-thickness). Update cnb-lilypond-tests.js and cnb-common-props-editor-tests.js (an export with a stem thickness set contains no cnb:stem-thickness), and the UAT driver uat-common-props-editor.mjs, which asserted the emission.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/ui/common-props-editor.js</span><br><span class="mono">cnb/tests/cnb-common-props-editor-tests.js</span><br><span class="mono">cnb/uat/uat-common-props-editor.mjs</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node --check cnb/uat/uat-common-props-editor.mjs</code></td><td>yes</td></tr>
+<tr><td>Export header preview only</td><td><p>M2, L2, L3 on the export side: stop emitting cnb:default-staff-line-thickness and cnb:default-staff-line-color (the engine reads them only in advanced mode, which the Configurator never emits). The header gains a static comment listing the preview-only settings (staff line colour and thickness, ledger rules, stem thickness, repeat counts, the CB-safe preview toggle, key-scoped notehead rules). The header's palette line names the palette only when Section A registers colours taken from it (otherwise it says no palette colours are exported), and neither the header nor the A5 comment claims a cb-safe mode: the accessible branch is selected by cnb:use-accessible-colors in the score, as the comment already explains. Update cnb-lilypond-tests.js, and regenerate default-export-baseline.ly, kite-4-369-export-baseline.ly and twinline-compact-export-baseline.ly by running the exporter on their configs, never by hand.</p></td><td><span class="mono">cnb/src/cnb-lilypond.js</span><br><span class="mono">cnb/tests/cnb-lilypond-tests.js</span><br><span class="mono">cnb/fixtures/default-export-baseline.ly</span><br><span class="mono">cnb/fixtures/kite-4-369-export-baseline.ly</span><br><span class="mono">cnb/fixtures/twinline-compact-export-baseline.ly</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Ui preview only labels</td><td><p>M2, L2, L3 in the UI: the staff editor's staff-line styling (defaults and overrides) and ledger sections, the palette editor's CB-safe toggle, and the common-props repeat-count section each carry a short preview-only note (for repeat counts: the engine engraves fixed counts, minim x2, semibreve x4, breve x4; for CB-safe: the export carries both palettes and the score selects one with cnb:use-accessible-colors). Add a test per note in the editors' test files.</p></td><td><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/ui/palette-editor.js</span><br><span class="mono">cnb/ui/common-props-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-palette-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-common-props-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Key scoped rule warning</td><td><p>M3: CNBConfig.validate() warns, naming the rule, for every notehead rule whose match.keys is not &quot;all&quot;: key-scoped rules are not exported, so the engraving ignores them. Test it in cnb-config-tests.js, and in cnb-config-export-tests.js assert that validateForExport() surfaces the warning (the export proceeds, the rule is named).</p></td><td><span class="mono">cnb/src/cnb-config.js</span><br><span class="mono">cnb/tests/cnb-config-tests.js</span><br><span class="mono">cnb/tests/cnb-config-export-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Staff edit keeps geometry</td><td><p>M4: stateFromConfig records the loaded staff's pattern, midpoint and semitonesPerStaffSpace; buildStaff keeps the loaded midpoint and sps while the effective pattern equals the loaded one, and re-derives them (derivedGeometry) only when the pattern changes. Add a test that loads gallery twinline-compact.json (midpoint 7, sps 4, pitch axis on), edits the staff line colour through the editor state, and asserts the built staff slice differs only in that field and the pitch-axis export is byte-identical; update any test that expected the reset.</p></td><td><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Axis derived panel</td><td><p>L1: the staff editor's derived-geometry panel shows the staff-line positions from CNBLilypond.computeStaffLinePositions on the full config the editor would produce (axis formula under a pitch axis), with the midpoint and staff-space unit that config carries (axisUnitsPerStaffSpace under an axis). index.html re-mounts the staff editor after a pitch-axis edit so the panel follows the axis. Test the panel against twinline-compact ('(-3 -1 1 4 6 8)) in cnb-staff-rule-editor-tests.js.</p></td><td><span class="mono">cnb/ui/staff-rule-editor.js</span><br><span class="mono">cnb/tests/cnb-staff-rule-editor-tests.js</span><br><span class="mono">cnb/index.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Stricter test harness</td><td><p>L4: every approx() helper fails on NaN, written as if (!(Math.abs(a - b) &lt;= tol)) throw. L5: run-tests.js counts a test file with no exported tests array as a failure. The cnb-unit suite must still pass with no test hiding behind the stricter checks.</p></td><td><span class="mono">cnb/tests/run-tests.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/tests/cnb-clef-tests.js</span><br><span class="mono">cnb/tests/cnb-collection-tests.js</span><br><span class="mono">cnb/tests/cnb-config-tests.js</span><br><span class="mono">cnb/tests/cnb-double-notehead-tests.js</span><br><span class="mono">cnb/tests/cnb-grid-tests.js</span><br><span class="mono">cnb/tests/cnb-key-signature-tests.js</span><br><span class="mono">cnb/tests/cnb-notehead-tests.js</span><br><span class="mono">cnb/tests/cnb-palette-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-pitch-axis-tests.js</span><br><span class="mono">cnb/tests/cnb-svg-importer-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs preview only</td><td><p>README Known limitations gains a 'Preview-only settings' entry listing staff line colour and thickness, ledger rules, stem thickness, repeat counts, the CB-safe preview toggle and key-scoped notehead rules. The LY export spec v1.3 records a 1.3.3 amendment (cnb:stem-thickness and the staff-line thickness/colour settings are not emitted; the header lists the preview-only settings and names a palette only when its colours are exported), and the architecture plan's §9 Section B table marks those rows as not emitted.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-LY-EXPORT-SPEC-v1_3.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');if(!/Preview-only settings/.test(r)||!/1\.3\.3/.test(s))process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No engine-repo changes: cnb:stem-thickness, advanced-mode staff/ledger lines, configurable repeat counts and key branching are not added to the engine.</li><li>Key-scoped notehead rules are not exported as Section C key branches; they are refused with a warning naming the rule.</li><li>The exporter does not start emitting cnb:staff-and-ledger-lines (advanced mode) or ledger settings; those stay preview-only.</li><li>Default repeatCounts values are not changed; the counts are labelled preview-only instead.</li><li>README work beyond the Known limitations entry (the legacy tag push M6, the cnb/assets description L7), the .gitattributes archive hygiene, the CHANGELOG and the 1.0.1 version bump belong to session 13.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:39:39]</span> <span class="muted">run-started</span> session=012 mode=pull</div>
+<div class="line"><span class="at">[09:39:39]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:43:16]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:43:16]</span> <span class="muted">plan-accepted</span> steps=[&quot;no-stem-thickness&quot;,&quot;export-header-preview-only&quot;,&quot;ui-preview-only-labels&quot;,&quot;key-scoped-rule-warning&quot;,&quot;staff-edit-keeps-geometry&quot;,&quot;axis-derived-panel&quot;,&quot;stricter-test-harness&quot;,&quot;docs-preview-only&quot;] non_goals=5</div>
+<div class="line"><span class="at">[09:43:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:43:17]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=no-stem-thickness</div>
+<div class="line"><span class="at">[09:44:19]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:44:24]</span> <span class="muted">check-passed</span> step=no-stem-thickness argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:44:25]</span> <span class="muted">check-passed</span> step=no-stem-thickness argv=[&quot;node&quot;,&quot;--check&quot;,&quot;cnb/uat/uat-common-props-editor.mjs&quot;]</div>
+<div class="line"><span class="at">[09:44:25]</span> <span class="muted">report-accepted</span> seq=2 step=no-stem-thickness files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/ui/common-props-editor.js&quot;,&quot;cnb/tests/cnb-common-props-editor-tests.js&quot;,&quot;cnb/uat/uat-common-props-editor.mjs&quot;] notes=Exporter no longer emits cnb:stem-thickness; stem badge says preview-only, not exported; unit tests and UAT driver updated</div>
+<div class="line"><span class="at">[09:44:25]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=export-header-preview-only</div>
+<div class="line"><span class="at">[09:46:07]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:46:12]</span> <span class="muted">check-passed</span> step=export-header-preview-only argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:46:13]</span> <span class="muted">report-accepted</span> seq=3 step=export-header-preview-only files=[&quot;cnb/src/cnb-lilypond.js&quot;,&quot;cnb/tests/cnb-lilypond-tests.js&quot;,&quot;cnb/fixtures/default-export-baseline.ly&quot;,&quot;cnb/fixtures/kite-4-369-export-baseline.ly&quot;,&quot;cnb/fixtures/twinline-compact-export-baseline.ly&quot;] notes=Staff-line colour/thickness no longer emitted; header lists preview-only settings and names a palette only when its colours are exported, no cb-safe mode claim; baselines regenerated with the exporter (header lines only)</div>
+<div class="line"><span class="at">[09:46:13]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ui-preview-only-labels</div>
+<div class="line"><span class="at">[09:47:29]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:47:34]</span> <span class="muted">check-passed</span> step=ui-preview-only-labels argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:47:34]</span> <span class="muted">report-accepted</span> seq=4 step=ui-preview-only-labels files=[&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/ui/palette-editor.js&quot;,&quot;cnb/ui/common-props-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;,&quot;cnb/tests/cnb-palette-editor-tests.js&quot;,&quot;cnb/tests/cnb-common-props-editor-tests.js&quot;] notes=Preview-only notes on staff line styling, overrides, ledger templates and defaults, the CB-safe toggle and repeat counts (engine fixed counts named), each tested</div>
+<div class="line"><span class="at">[09:47:34]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=key-scoped-rule-warning</div>
+<div class="line"><span class="at">[09:48:22]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:48:26]</span> <span class="muted">check-passed</span> step=key-scoped-rule-warning argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:48:27]</span> <span class="muted">report-accepted</span> seq=5 step=key-scoped-rule-warning files=[&quot;cnb/src/cnb-config.js&quot;,&quot;cnb/tests/cnb-config-tests.js&quot;,&quot;cnb/tests/cnb-config-export-tests.js&quot;] notes=validate() warns naming each key-scoped notehead rule (not exported, preview only); validateForExport surfaces it and export proceeds without the rule</div>
+<div class="line"><span class="at">[09:48:27]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=staff-edit-keeps-geometry</div>
+<div class="line"><span class="at">[09:49:24]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:49:29]</span> <span class="muted">check-passed</span> step=staff-edit-keeps-geometry argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:49:30]</span> <span class="muted">report-accepted</span> seq=6 step=staff-edit-keeps-geometry files=[&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;] notes=Staff editor keeps the loaded midpoint and sps while the pattern is unchanged, re-deriving only on a pattern change; twinline-compact colour edit leaves the staff slice changed only in that field and the pitch-axis export byte-identical</div>
+<div class="line"><span class="at">[09:49:30]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=axis-derived-panel</div>
+<div class="line"><span class="at">[09:50:35]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:50:40]</span> <span class="muted">check-passed</span> step=axis-derived-panel argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:50:41]</span> <span class="muted">report-accepted</span> seq=7 step=axis-derived-panel files=[&quot;cnb/ui/staff-rule-editor.js&quot;,&quot;cnb/tests/cnb-staff-rule-editor-tests.js&quot;,&quot;cnb/index.html&quot;] notes=Derived panel shows computeStaffLinePositions on the full config (axis units and midpoint under a pitch axis); index.html re-mounts the staff editor after pitch-axis edits; twinline-compact panel test matches the export</div>
+<div class="line"><span class="at">[09:50:41]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=stricter-test-harness</div>
+<div class="line"><span class="at">[09:51:13]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:51:19]</span> <span class="muted">check-passed</span> step=stricter-test-harness argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:51:19]</span> <span class="muted">report-accepted</span> seq=8 step=stricter-test-harness files=[&quot;cnb/tests/run-tests.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/tests/cnb-clef-tests.js&quot;,&quot;cnb/tests/cnb-collection-tests.js&quot;,&quot;cnb/tests/cnb-config-tests.js&quot;,&quot;cnb/tests/cnb-double-notehead-tests.js&quot;,&quot;cnb/tests/cnb-grid-tests.js&quot;,&quot;cnb/tests/cnb-key-signature-tests.js&quot;,&quot;cnb/tests/cnb-notehead-tests.js&quot;,&quot;cnb/tests/cnb-palette-editor-tests.js&quot;,&quot;cnb/tests/cnb-pitch-axis-tests.js&quot;,&quot;cnb/tests/cnb-svg-importer-tests.js&quot;] notes=All 11 approx() helpers fail on NaN; runner counts a file with no tests export as a failure; suite still 910/910</div>
+<div class="line"><span class="at">[09:51:19]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=docs-preview-only</div>
+<div class="line"><span class="at">[09:52:07]</span> <span class="muted">run-resumed</span> session=012 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:52:08]</span> <span class="muted">check-passed</span> step=docs-preview-only argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const s=fs.readFileSync('docs/CNB-LY-EXPORT-SPEC-v1_3.md','utf8');if(!/Preview-only settings/.test(r)||!/1\\.3\\.3/.test(s))process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[09:52:08]</span> <span class="muted">report-accepted</span> seq=9 step=docs-preview-only files=[&quot;README.md&quot;,&quot;docs/CNB-LY-EXPORT-SPEC-v1_3.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;] notes=README Known limitations gains Preview-only settings; LY spec 1.3.3 adds 5.2a (settings not emitted, header palette/preview-only lines); architecture plan tables mark those rows never emitted</div>
+<div class="line"><span class="at">[09:52:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:52:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:52:08]</span> <span class="muted">job-started</span> name=verification pid=19880 log=.dabbler/runs/s12/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:53:16]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s12/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:53:16]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:53:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:53:16]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[09:53:16]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=33160 log=.dabbler/runs/s12/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:53:22]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s12/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:53:22]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[09:53:22]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=28060 log=.dabbler/runs/s12/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:53:58]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s12/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:53:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:54:01]</span> <span class="muted">landed</span> commit=490172a9913331daa6f791ea4c90bcff0e22197a</div>
+<div class="line"><span class="at">[09:54:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:54:01]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:54:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:54:01]</span> <span class="muted">job-started</span> name=close pid=5252 log=.dabbler/runs/s12/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:54:07]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s12/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:54:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>35s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

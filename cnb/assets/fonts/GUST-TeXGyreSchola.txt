@@ -1,0 +1,22 @@
+The dozenal clef's digits
+=========================
+
+The preview draws the engine's dozenal clef with the outlines of the digits
+'5' and '0' from TeX Gyre Schola Bold (texgyreschola-bold.otf, as shipped
+with LilyPond 2.24), in cnb/src/cnb-clef.js (DOZENAL_DIGITS). The outlines
+are copied unaltered, in the font's own units.
+
+Copyright 2006, 2009 for TeX Gyre extensions by B. Jackowski and
+J.M. Nowacki (on behalf of TeX users groups).
+
+This work is released under the GUST Font License. The license is the
+LaTeX Project Public License (LPPL), version 1.3c or later, with the
+additional, legally non-binding request that a modified version of the font
+be given a new name. The full text is at:
+
+  http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt
+  https://www.latex-project.org/lppl/
+
+TeX Gyre Schola is based on URW++ Century Schoolbook L, as is C059, the
+bold serif LilyPond 2.24 engraves the dozenal clef in; the two fonts' '5'
+and '0' have the same metrics and outlines.
