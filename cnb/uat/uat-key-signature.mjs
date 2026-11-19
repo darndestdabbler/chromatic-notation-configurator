@@ -527,15 +527,16 @@ await pickKey("C", "major");
 // config and the key picked on the staff.
 const C_MAJOR_KEY = { tonic: 0, mode: "major", spelling: "C" };
 const D_MAJOR_KEY = { tonic: 2, mode: "major", spelling: "D" };
-/** Choose a radio of one of step 8's rows by its value. */
+/** Choose a value in one of step 8's rows, a dropdown since session 79. */
 async function radio(group, value) {
   await openSection(page, "ks-designer");
-  await page.check(`${PANEL.designer} .${group} .cnb-kse-radio[data-value="${value}"] input`);
+  await page.selectOption(`${PANEL.designer} select.${group}`, value);
 }
-/** Select spelled notes in step 7 by its Select row (session 65). */
+/** Select spelled notes in step 7 by its Select row (session 65), a
+ *  dropdown since session 79. */
 async function selectRow(which) {
   await openSection(page, "ks-custom-symbols");
-  await page.click(`${PANEL.symbols} .cnb-kse-select-button[data-select="${which}"]`);
+  await page.selectOption(`${PANEL.symbols} .cnb-kse-select-choice`, which);
 }
 /** A spelled note's button on step 7's canvas (session 65). */
 const spelledCell = (name) => `${PANEL.symbols} .cnb-kse-spelled-note[data-spelled="${name}"]`;
@@ -586,12 +587,12 @@ check("PANEL: the signature is set in a designer's words, a part in each step (s
       [...q("ks-symbol-type", ".cnb-kse-start-card.on")].map(e => e.dataset.start).join() === "noteheads" &&
       q("ks-symbol-type", ".cnb-kse-sig-enable")[0].textContent === "Show the key signature" &&
       q("ks-symbol-type", "div.cnb-kse-spelled-note").length === 21 &&
-      q("ks-symbol-type", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-row-label, .cnb-kse-look-card").length === 0 &&
-      q("ks-custom-symbols", ".cnb-kse-select-button").length === 6 &&
+      q("ks-symbol-type", ".cnb-kse-layer-select, .cnb-kse-canvas, .cnb-kse-row-label, .cnb-kse-look-card").length === 0 &&
+      q("ks-custom-symbols", ".cnb-kse-select-choice option").length === 7 &&
       q("ks-custom-symbols", "button.cnb-kse-spelled-note").length === 21 && q("ks-custom-symbols", ".cnb-kse-look-card").length === 1 &&
-      q("ks-custom-symbols", ".cnb-kse-layer, .cnb-kse-canvas, .cnb-kse-key-tonic, .cnb-kse-row-label").length === 0 &&
+      q("ks-custom-symbols", ".cnb-kse-layer-select, .cnb-kse-canvas, .cnb-kse-key-tonic, .cnb-kse-row-label").length === 0 &&
       q("ks-designer", ".cnb-kse-canvas").length === 1 && q("ks-designer", ".cnb-kse-key-tonic").length === 1 &&
-      q("ks-designer", ".cnb-kse-look-card").length === 1 && q("ks-designer", ".cnb-kse-layer").length === 0 &&
+      q("ks-designer", ".cnb-kse-look-card").length === 1 && q("ks-designer", ".cnb-kse-layer-select").length === 0 &&
       q("ks-preview", ".cnb-kse-mini").length === 105 && q("ks-preview", ".cnb-kse-canvas").length === 0 &&
       document.querySelector("#keys-for-rules .cnb-kse-definitions .cnb-kse-title").textContent === "Keys for notehead rules" &&
       document.querySelectorAll(".cnb-kse-definitions").length === 1;
@@ -874,9 +875,9 @@ check("START FROM: the rows stay — Notes shows the sharps or flats only, Stack
   cfg.keys.keySignature.notes === "altered" &&
   await page.evaluate(() => JSON.stringify([...document.querySelectorAll(".cnb-kse-signature .cnb-kse-row-label")]
     .map(e => e.textContent)) === JSON.stringify(["Notes", "Stacks", "Every second stack", "Place"]) &&
-    document.querySelector('.cnb-kse-notes-choice .cnb-kse-radio[data-value="altered"] input').checked &&
-    document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="fifths"] input').checked &&
-    document.querySelector('.cnb-kse-heights-choice .cnb-kse-radio[data-value="window"] input').checked));
+    document.querySelector("select.cnb-kse-notes-choice").value === "altered" &&
+    document.querySelector("select.cnb-kse-stacking").value === "fifths" &&
+    document.querySelector("select.cnb-kse-heights-choice").value === "window"));
 {
   const traditional = await fullConfig();
   await undo();
@@ -1069,7 +1070,7 @@ async function loadConfig(json, name, adopted) {
     !("style" in ks) && ks.notes === "altered" && ks.stacking === "fifths" && ks.heights === "scale" &&
     JSON.stringify(sig.marks.map(m => m.semi)) === JSON.stringify([6, 1, 8, 3, 10, 5, 12]) &&
     signsMatch(got, expectedSigns(live, CS_MAJOR_KEY)) && got.length === 7 && got.every(s => s.fill === "#000000") &&
-    await page.evaluate(() => !!document.querySelector(".cnb-kse-notes-choice .cnb-kse-radio.on[data-value=\"altered\"]")),
+    await page.evaluate(() => document.querySelector("select.cnb-kse-notes-choice").value === "altered"),
     `${JSON.stringify(ks)} semis=${JSON.stringify(sig.marks.map(m => m.semi))}`);
 }
 // The settings of STEP 5 back, as a config saved with the style
@@ -1340,7 +1341,6 @@ await page.setInputFiles(".cnb-cle-file", {
 });
 await page.waitForFunction(() =>
   document.querySelector(".cnb-cle-import-status").textContent.includes("uat-clef"));
-await page.check(".cnb-cle-enable-check");
 cfg = await fullConfig();
 check("COMPOSITION: clef enabled — the preview row is clef-col, then keysig-col, then the 13 cards (clef first, key signature second, left to right)",
   cfg.clef.enabled === true &&
@@ -1402,7 +1402,7 @@ check("LOAD: the key-signature editor re-seeded from the loaded config (master +
     document.querySelector(".cnb-kse-keys-enable-check").checked &&
     document.querySelector(".cnb-kse-sig-enable-check").checked &&
     document.querySelectorAll(".cnb-kse-def-row").length === 2 &&
-    document.querySelector('.cnb-kse-stacking .cnb-kse-radio[data-value="parity-stacks"] input').checked &&
+    document.querySelector("select.cnb-kse-stacking").value === "parity-stacks" &&
     !document.querySelector(".cnb-kse-sep-share-check").checked &&
     document.querySelector(".cnb-kse-sep-thickness").value === "0.5" &&
     document.querySelector('[data-panel="ks-custom-symbols"] .cnb-kse-look-height').value === "1.5"));
@@ -1470,7 +1470,7 @@ await pickKey("D", "major");
   check("CLAIRNOTE SN: a file with looks of its own highlights no starting point and opens step 7; the panel shows the file's choices — a new stack at each change of parity, to the left in sharp keys, no upper tonic, no gold stem, the bottom line set — and its 21 spelled notes their dots, a tail down on C♯",
     JSON.stringify(await highlighted()) === "[]" && opened === "ks-custom-symbols" &&
     await page.evaluate(() => {
-      const on = (group, value) => document.querySelector(`.${group} .cnb-kse-radio[data-value="${value}"] input`).checked;
+      const on = (group, value) => document.querySelector(`select.${group}`).value === value;
       return on("cnb-kse-stacking", "parity-stacks") && on("cnb-kse-columns", "left-in-sharp-keys") &&
         on("cnb-kse-position", "bottom-set") &&
         !document.querySelector(".cnb-kse-upper-tonic-check").checked &&

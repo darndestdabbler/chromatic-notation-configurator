@@ -983,9 +983,11 @@ clef: {
     // }
   },
 
-  // Horizontal padding (px) each side of the glyph in the preview's left
-  // gutter. Gutter width = glyph width + 2 × paddingH; no gutter is
-  // reserved while disabled.
+  // Horizontal padding (px) after the glyph, on its right only, as the
+  // engine adds its gutter (session 79). The preview draws the clef 0.75
+  // staff spaces after the staff's start, where the engine engraves it:
+  // gutter width = 0.75 staff spaces + glyph width + paddingH; no gutter is
+  // reserved while disabled. No control edits it; it keeps its stored value.
   gutter: { paddingH: 12 }
 }
 ```
@@ -1051,12 +1053,14 @@ clef: {
   clef's middle; the operator confirmed them from the mock-ups) and the
   automatic size, 250 units a staff space, so it is LilyPond's size in
   symbol spaces. The licences are in `cnb/assets/fonts/`.
-- **Moving and resizing a clef (session 45, session 59).** A glyph clef
-  is shown from its top to `height` below it. The panel edits where it
-  sits ("Sits on semitone", or "Top at semitone" for a clef without an
-  anchor point) and its height (automatic, or a number of semitones), and
-  with the Clef section open the canvas moves the clef by a drag on it and
-  resizes it by a drag on its bottom edge, about its anchor. Both write
+- **Moving and resizing a clef (session 45, session 59, session 79).** A
+  glyph clef is shown from its top to `height` below it. The panel edits
+  its anchor (Top, Middle, Bottom or a point picked on it), where it sits
+  (Sits on, one of the canvas's pitches or a semitone of the designer's
+  own) and its height (automatic, or a number of semitones), and the
+  clef's preview in steps 10 and 11 moves the clef by a drag on it and
+  resizes it by a drag on its corner handle, about its anchor (before
+  session 79 the canvas did, by the clef's bottom edge). Both write
   through `CNBClefEditor.withAnchor` and `withHeight` (session 45's
   `withRange`, which set the top and bottom, is gone). The dozenal clef
   takes the height and resizes about the middle line. A card row's grid
@@ -1843,7 +1847,7 @@ Detailed specifications deferred. Summary:
 | 16 — SVG Shape Importer | Parse SVG for paths, anchors, LY data attributes | SVG importer |
 | 17 — Config Save/Load | JSON export/import | New |
 | 18 — Config Export (LY) | LilyPond file download (wraps Module 11) | LY export button |
-| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9; since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); session 63's Hollow minims tick and session 36's shape-or-repeat choice above the canvas went in session 75, when the duration buttons became one **Show** choice (Crotchets, Minims, Semibreves, Breves or All four, one on at a time) and the Noteheads step gained its choice of design (`CNBNoteheadPanel.renderDesign`, §4.8 "The notehead designs"), the notehead panel offering only the rows the design lets vary, its close-up at the duration shown, and every change to the notehead rules re-seeding the editors that keep a copy of them; since session 71 each step opened is an entry in the browser's history, its id after the address's `#` (`CNBStepNav.fromHash`), so Back and Forward move between steps and an address with a step opens it, the notation in progress is kept in the browser after every change with its step and whether it is saved to a file (`ui/kept-work.js`, `CNBKeptWork`, localStorage guarded) and restored through `CNBConfigIO.mergeLoaded` when the page opens again, **New** starts afresh (since session 75 from conventional noteheads), New and leaving the page (`beforeunload`) ask first while it is not saved, and step 8 opened from a key in step 9 shows **Back to every key**, its history entry marked `fromKeys` | New (replaces monolith preview) |
+| 19 — Preview Display | Full preview with range/duration/key controls; since session 63 the page is the twelve steps of the step-by-step design (`docs/planning/step-by-step-configurator-design.md` §1, §2), listed and ordered by the step registry `ui/steps.js` (`CNBSteps`, `CNBStepNav`: availability, Next and Back, the sidebar and the step bar), the canvas hidden in steps 6–9 (and in steps 10 and 11 since session 79, which draw the clef's own preview beside their options, at 16 px a semitone with the label strip, its anchor marked and its drags: `CNBPreviewDisplay.renderPartial` with `onClefDrag`; the canvas's clef mode is gone); since session 65 step 7 is available when the signature is shown and is neither of step 6's starting points (`CNBStepNav.startingPoint(config)`: "noteheads" with no look set, "traditional" for the Accidentals settings, else null, design §3.1); session 63's Hollow minims tick and session 36's shape-or-repeat choice above the canvas went in session 75, when the duration buttons became one **Show** choice (Crotchets, Minims, Semibreves, Breves or All four, one on at a time) and the Noteheads step gained its choice of design (`CNBNoteheadPanel.renderDesign`, §4.8 "The notehead designs"), the notehead panel offering only the rows the design lets vary, its close-up at the duration shown, and every change to the notehead rules re-seeding the editors that keep a copy of them; since session 71 each step opened is an entry in the browser's history, its id after the address's `#` (`CNBStepNav.fromHash`), so Back and Forward move between steps and an address with a step opens it, the notation in progress is kept in the browser after every change with its step and whether it is saved to a file (`ui/kept-work.js`, `CNBKeptWork`, localStorage guarded) and restored through `CNBConfigIO.mergeLoaded` when the page opens again, **New** starts afresh (since session 75 from conventional noteheads), New and leaving the page (`beforeunload`) ask first while it is not saved, and step 8 opened from a key in step 9 shows **Back to every key**, its history entry marked `fromKeys` | New (replaces monolith preview) |
 
 ---
 
@@ -1863,9 +1867,15 @@ reserves no gutter), `staffSpacePx(config, pxPerSemi)`, `extent(config)`
 (the shown clef's top and bottom in semitones, session 45; the dozenal
 numeral scaled about the middle line, session 59), and
 `render(svgParent, gridContext, config)` (glyph TOP edge at
-`semiToY(shown.top)`, left edge at `gutter.paddingH`, with a hidden
-`rect.cnb-clef-resize` on a glyph's bottom edge that the editor's canvas
-shows; the dozenal numeral on the middle line, at its height). Integrated into
+`semiToY(shown.top)`, left edge `left(config, pxPerSemi)`, 0.75 staff
+spaces after the staff's start, where the engine engraves every clef, the
+gutter's `paddingH` after it only (session 79); the dozenal numeral on the
+middle line, at its height), `origin(config, pxPerSemi)` (a glyph's x = 0
+from its left edge, which the key signature after it is spaced from, as
+LilyPond spaces it; session 79) and `renderAnchor(g, config, pxPerSemi)`
+(the Clef steps' preview's mark of a glyph clef's anchor point, a ringed
+cross with a dashed guide back to the staff's start, and
+`rect.cnb-clef-resize`, its corner handle; session 79). Integrated into
 Module 10 as a `div.clef-col` prepended inside `.pc-columns` behind
 `clef.enabled`; the background staff SVG spans the gutter.
 Dependencies: Module 1, Module 3 (the symbol space), Module A. Visual test
@@ -1875,22 +1885,31 @@ since session 59 at the top and height `CNBClef.shown` gives (LY spec
 1.3.21).
 
 **Module 21 — Clef Editor** (`ui/clef-editor.js`, UI): edits the `clef`
-section — enable toggle, the Dozenal, Treble, Bass and Alto buttons
-(session 45, `ui/builtin-clefs.js`), clef glyph import (wraps Module 16's
-`parseClefSvgText`), glyph selection, where the clef sits ("Sits on
-semitone", the anchor's; "Top at semitone" for a text clef or a glyph
-without an anchor point; float, step "any"), through the pure
-`withAnchor(clef, semi)`, its height (the drawn height, and "Automatic:
-follows the staff and its noteheads" where the clef can be automatic),
-through the pure `withHeight(clef, height | null)`, both of which the
-canvas drag also uses (session 59; they replace `withRange`), the anchor
-picker ("Pick the anchor point", opened after an import: a click on the
-enlarged glyph moves `reference`, through the key-signature editor's
-`referenceGeometry` / `referenceAt`), the dozenal clef's height, and gutter
-sizing. Since session 63 it serves two steps through a `parts` option, the
-page mounting it once for each: "symbol" (step 10, everything but where the
-clef sits) and "placement" (step 11, the semitone it sits on, with the
-canvas drag); without `parts` it draws the whole panel. Same editor contract as Modules
+section in a designer's order, each option a dropdown (session 79,
+[`docs/planning/clef-steps-design.md`](planning/clef-steps-design.md) §2):
+a. the **Clef** dropdown, No clef (`enabled` false, the clefs kept), the
+Dozenal, Treble, Bass and Alto clefs (session 45, `ui/builtin-clefs.js`,
+added when missing) and the imported ones under *Imported*, with **Import
+from SVG…** beside it (wraps Module 16's `parseClefSvgText`; an import
+shows the clef and opens the anchor picker); b. the **Anchor** dropdown,
+Top, Middle or Bottom of the glyph's box (the pure `withAnchorChoice(clef,
+choice)`; `anchorChoice(def)` reads which the stored point is) or *A point
+on the clef*, which opens the picker (a click on the enlarged glyph moves
+`reference`, through the key-signature editor's `referenceGeometry` /
+`referenceAt`), and the **Height** (the drawn height, and "Automatic:
+follows the staff and its noteheads" where the clef can be automatic,
+through the pure `withHeight(clef, height | null)`); the dozenal clef has
+no anchor to choose and a text clef Top only; c. **Sits on**, every pitch
+the canvas draws, named as the label strip names it ("G · semitone 19",
+`pitchOptions(config)`), then *A semitone of my own…* with a number field
+(float), through the pure `withAnchor(clef, semi)`, which the preview's
+drag also uses; the dozenal clef sits on the middle of the staff; and d. a
+line saying the space after the clef is LilyPond's: there is no padding
+field (the operator's decision, design §5). It serves two steps through a
+`parts` option (session 63), the page mounting it once for each: "symbol"
+(step 10: a, b, the Height and the validation) and "placement" (step 11: c
+and d); without `parts` it draws the whole panel. `opts.view`, kept by
+the host, holds whether the own-semitone field is open. Same editor contract as Modules
 12–17: property-based event wiring (Node-testable `render()`), pure
 `buildClef` / `applyToConfig` / `stateFromConfig` builders, Module A
 validation pass-through, `onChange({ clef }, state)`. Dependencies:
@@ -1997,7 +2016,7 @@ cards, Noteheads, Accidentals and Custom marks, through `startFrom(ks,
 highlighted (`CNBStepNav.startingPoint`), else "Your own symbols", over the
 21 spelled notes drawn with their looks, the naturals dimmed when only the
 altered notes are drawn), "custom-symbols" (step 7, since session 65: the
-Select row, the 21 spelled notes selected by click, Shift+click,
+Select row (a dropdown since session 79), the 21 spelled notes selected by click, Shift+click,
 Ctrl+click, and Enter or Space, kept in `opts.view.spelled`, and the look
 card writing every selected note's `looks.spelled` entry, a field they
 disagree on shown as mixed, `mergeLooks`; an imported symbol added to the
@@ -2027,7 +2046,7 @@ settings once confirmed, keeping Show and the picked key. Custom marks
 built-in parallelogram for each of the 21 spelled notes, and no sign in the
 flats' and sharps' looks; the card adds the parallelogram to the shapes. The **key
 picker** is the staff's key and mode (`opts.key`), and a change picks the
-staff's key through `opts.onKey`. **Edit** picks the layer edited: all
+staff's key through `opts.onKey`. **Edit**, a dropdown since session 79, picks the layer edited: all
 marks, naturals, flats, sharps, a line or ledger, a space, or every second
 stack (design §13.4). The **canvas** draws the picked key's signature at
 24 px a semitone through `CNBKeySignature.render` (its symbols marked with
@@ -2062,7 +2081,10 @@ with its `heights` and `window`; else `columns`, hidden under `"parity"`,
 and the gold stem: `separator.enabled`, `color`, its thickness shown in
 staff spaces and written as `thicknessPct`, and `shareThickness`, saying
 what each stem gets in the picked key) and Place (`placement.position`).
-The layer and symbol picked are editor state (`opts.view`, which the host
+Since session 79 (clef-steps design §3.1) Notes, Stacks, Stacks go, the
+cycle of fifths' Heights and Place are dropdowns (`choose`), as are Edit and
+step 7's Select (*Select…* then its six choices); the look card's rows of
+pictures and short choices stay buttons. The layer and symbol picked are editor state (`opts.view`, which the host
 keeps across re-mounts). Session 56 removed the Draw, Looks and Size rows
 and the overlap note. `placement.rule`, `placement.tonicOctave` and
 `separator.extentSemis` have no controls and keep their stored values. The

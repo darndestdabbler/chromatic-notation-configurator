@@ -87,7 +87,6 @@ async function main() {
   const { CNBNoteheadInference } = await import("../ui/notehead-inference.js");
   const { CNBPreviewDisplay } = await import("../ui/preview-display.js");
   const { CNBStaffRuleEditor } = await import("../ui/staff-rule-editor.js");
-  const { CNBKeySignatureEditor } = await import("../ui/key-signature-editor.js");
   const { CNBSteps, CNBStepNav } = await import("../ui/steps.js");
   const { useDownloads, openSection, setField, selectNotehead } = await import("./app-page.mjs");
 
@@ -418,7 +417,7 @@ async function main() {
 
     async "ks-designer"() {
       await open("ks-designer");
-      await page.check('[data-panel="ks-designer"] .cnb-kse-stacking .cnb-kse-radio[data-value="parity-stacks"] input');
+      await page.selectOption('[data-panel="ks-designer"] select.cnb-kse-stacking', "parity-stacks");
       await page.check('[data-panel="ks-designer"] .cnb-kse-sep-enable-check');
       const c = await live();
       const gold = await page.$eval('[data-panel="ks-designer"] .cnb-kse-canvas', el => /#ffd42a/i.test(el.innerHTML));
@@ -452,36 +451,40 @@ async function main() {
       await page.waitForFunction(() => document.querySelector(".cnb-cle-import-status").textContent.includes("c-clef"));
       let c = await live();
       let glyph = c.clef.glyphs["c-clef"];
-      check("10. Clef symbol: c-clef.svg imports as the active clef, and its anchor picker opens",
-        !!glyph && c.clef.active === "c-clef" && !!(await page.$(".cnb-cle-anchor-picker .cnb-cle-anchor-svg")),
+      check("10. Clef symbol: c-clef.svg imports as the clef shown, chosen in the Clef dropdown, and its anchor picker opens",
+        !!glyph && c.clef.active === "c-clef" && c.clef.enabled === true &&
+        (await page.inputValue(".cnb-cle-select")) === "c-clef" &&
+        !!(await page.$(".cnb-cle-anchor-picker .cnb-cle-anchor-svg")),
         await page.textContent(".cnb-cle-import-status"));
-      // The anchor at its left middle: the left edge of its box, half way up.
-      const box = CNBNotehead.box(glyph);
-      const want = { x: box.x[0], y: (box.y[0] + box.y[1]) / 2 };
-      const g = CNBKeySignatureEditor.referenceGeometry(glyph);
-      await page.locator(".cnb-cle-anchor-svg").click({ position: { x: g.ox + want.x * g.k, y: g.oy + want.y * g.k } });
-      await page.click(".cnb-cle-anchor-done");
-      await page.check(".cnb-cle-enable-check");
+      // The picker opens on A point on the clef; the tutorial chooses Middle
+      // (session 79), which closes it.
+      const pointShown = (await page.inputValue(".cnb-cle-anchor-select")) === "point";
+      await page.selectOption(".cnb-cle-anchor-select", "middle");
       // An imported clef has no automatic size: 8 semitones, 4 staff spaces.
       await setField(page, ".cnb-cle-height", "8");
       c = await live();
       glyph = c.clef.glyphs["c-clef"];
       const ref = glyph.reference;
-      check("10. Clef symbol: its anchor picked at its left middle, within a unit",
-        ref && Math.abs(ref.x - want.x) <= 1 && Math.abs(ref.y - want.y) <= 1, JSON.stringify({ ref, want }));
+      const want = { x: (glyph.viewBoxMinX || 0) + glyph.naturalWidth / 2, y: (glyph.viewBoxMinY || 0) + glyph.naturalHeight / 2 };
+      check("10. Clef symbol: the picker opens on A point on the clef; Middle puts the anchor at the clef's middle and closes it",
+        pointShown && JSON.stringify(ref) === JSON.stringify(want) &&
+        (await page.inputValue(".cnb-cle-anchor-select")) === "middle" && !(await page.$(".cnb-cle-anchor-picker")),
+        JSON.stringify({ ref, want }));
       check("10. Clef symbol: shown, 8 semitones tall, drawn at the start of the staff",
         c.clef.enabled === true && glyph.semitoneHeight === 8 &&
-        (await page.$$eval(".cnb-pvd-preview .cnb-clef", els => els.length)) > 0,
+        (await page.$$eval("#clef-preview-host .cnb-clef", els => els.length)) > 0,
         JSON.stringify({ enabled: c.clef.enabled, height: glyph.semitoneHeight }));
     },
 
     async "clef-placement"() {
       await open("clef-placement");
-      await setField(page, ".cnb-cle-sits", "12");
+      await page.selectOption(".cnb-cle-sits-select", "12");
       const c = await live();
-      check("11. Clef placement: the anchor on middle C, the staff's C at semitone 12",
+      check("11. Clef placement: Sits on C · semitone 12, the anchor on middle C, the staff's C at semitone 12",
         c.clef.glyphs["c-clef"].anchorSemi === 12 && c.staff.midpoint === 12 &&
-        (await page.inputValue(".cnb-cle-sits")) === "12", JSON.stringify(c.clef.glyphs["c-clef"].anchorSemi));
+        (await page.inputValue(".cnb-cle-sits-select")) === "12" &&
+        (await page.$$eval("#clef-placement-preview-host .pitch-label.anchor-pitch", els => els.map(e => e.dataset.semi).join())) === "12",
+        JSON.stringify(c.clef.glyphs["c-clef"].anchorSemi));
     },
 
     async export() {
@@ -520,7 +523,7 @@ async function main() {
     async "ks-custom-symbols"() {
       await open("ks-custom-symbols");
       const P = '[data-panel="ks-custom-symbols"]';
-      await page.click(`${P} .cnb-kse-select-button[data-select="all"]`);
+      await page.selectOption(`${P} .cnb-kse-select-choice`, "all");
       const pressed = await page.$$eval(`${P} .cnb-kse-spelled-note[aria-pressed="true"]`, els => els.length);
       await page.setInputFiles(`${P} .cnb-kse-look-card .cnb-kse-look-import input[type=file]`, path.join(DOWNLOADS, "diamond-wide.svg"));
       await page.waitForSelector(`${P} .cnb-kse-reference-picker`);

@@ -1,5 +1,5 @@
 {
-  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes. The Clairnote SN and DN probes saved with notehead-chords were re-captured in session 55, when the two gallery files took Clairnote's own signatures (dots with tails, the tails imported shapes placed by their reference points), so those probes draw and export the files' new looks; every other probe matched its hash. The export probes of the Kite 4-369 and 45deg-369 fixtures, which are in repeat mode, were re-captured in session 58, when a repeat-mode export began writing cnb:multinote-overlap (the repeated heads' overlap as a share of the head's width); their signatures are unchanged, and every other probe matched its hash. The export probes of the Kite 4-369 and 45deg-369 fixtures were re-captured in session 72, when a repeat-mode export began writing cnb:multinote-stem-on-head and the Kite fixture's minim attachments were centred; their signatures are unchanged, and every other probe matched its hash.",
+  "description": "Session 54 (key-signature design §13.2): every fixture and gallery file, saved with each of session 53's key-signature styles (notehead-chords in the middle; accidentals in the middle and on every line set) in four keys, rendered by CNBCollection.render at crotchet through the stub DOM and exported by CNBLilypond.generate (its date line removed), hashed with session 53's code (commit 5656e8a), before the styles became one model. cnb/tests/cnb-key-signature-tests.js loads the same configs through CNBConfigIO.loadFromText, which converts the style, and holds every render and export to these hashes. The Clairnote SN and DN probes saved with notehead-chords were re-captured in session 55, when the two gallery files took Clairnote's own signatures (dots with tails, the tails imported shapes placed by their reference points), so those probes draw and export the files' new looks; every other probe matched its hash. The export probes of the Kite 4-369 and 45deg-369 fixtures, which are in repeat mode, were re-captured in session 58, when a repeat-mode export began writing cnb:multinote-overlap (the repeated heads' overlap as a share of the head's width); their signatures are unchanged, and every other probe matched its hash. The export probes of the Kite 4-369 and 45deg-369 fixtures were re-captured in session 72, when a repeat-mode export began writing cnb:multinote-stem-on-head and the Kite fixture's minim attachments were centred; their signatures are unchanged, and every other probe matched its hash. The drawn probes of the gallery files with a clef were re-captured in session 79, when the preview came to draw the clef 0.75 staff spaces after the staff's start, where the engine engraves it, with its gutter padding on its right only, and to space the marks from a glyph clef's origin; their exports are unchanged, and every other probe matched its hash.",
   "probes": [
     {
       "id": "default · notehead-chords · middle · C major",
@@ -678,22 +678,22 @@
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · notehead-chords · middle · C major",
-      "sha256": "6132cba9ec23b6b91e78ff0b5619c39769a91d720b27e596bd088c7add4dc627",
+      "sha256": "9df588da4cee19ed1a6e59e02646910257a965175711b279210f4454e5ab7c38",
       "length": 50963
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · notehead-chords · middle · A minor",
-      "sha256": "10f6d02c9cee84547186b9d793f5ed59e6ffee75f81564510c2632bdae4d4704",
+      "sha256": "82110b01bf5b7618f535581f7d28325d16aab7bcac59fed92320e378d5912930",
       "length": 50465
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · notehead-chords · middle · D major",
-      "sha256": "dd5a4ec4062dfb23f66dae1a7041a42a35e95ced5f068b655c26fd38ac83ac42",
+      "sha256": "671896a30fc53daa4099430f2d4156ac1ae59776101228cf5c100d9e617e618a",
       "length": 50793
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · notehead-chords · middle · E♭ major",
-      "sha256": "bbc60d89ed66fad100bfdb260de851bc93f33e6840fd198e743892230b7ca045",
+      "sha256": "b6c2cd57311c38f50c8eb28440ea6b91b3cf195d7f22c74cbf7757105fe90607",
       "length": 50797
     },
     {
@@ -703,22 +703,22 @@
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · middle · C major",
-      "sha256": "cf4d6e47b7ab74f6ed3c398641e7c10468590b6bf39f14922851df6cc68d916a",
+      "sha256": "724113a9663fa6e13c664b934d6517abc67d0a1fce87c33045132d1990c82220",
       "length": 44245
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · middle · A minor",
-      "sha256": "cf4d6e47b7ab74f6ed3c398641e7c10468590b6bf39f14922851df6cc68d916a",
+      "sha256": "724113a9663fa6e13c664b934d6517abc67d0a1fce87c33045132d1990c82220",
       "length": 44245
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · middle · D major",
-      "sha256": "74df6da35c2c95d512c76798716540d6715c65fc4402dfd8e603f5adfabaf886",
+      "sha256": "f8a4c0ec0a885b10480f8379e3aec9fc27ebd2f43d0994316db2542cc6a0e431",
       "length": 46434
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · middle · E♭ major",
-      "sha256": "0d3adf63c9dac5a97026f522d2330ae24d7ed726aa47083abc14123238e3f268",
+      "sha256": "3d6bd46c267b305e3583638a5b603cda555a3c9a1e94106ce0bb00373cd96849",
       "length": 46247
     },
     {
@@ -728,22 +728,22 @@
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · every-set · C major",
-      "sha256": "cf4d6e47b7ab74f6ed3c398641e7c10468590b6bf39f14922851df6cc68d916a",
+      "sha256": "724113a9663fa6e13c664b934d6517abc67d0a1fce87c33045132d1990c82220",
       "length": 44245
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · every-set · A minor",
-      "sha256": "cf4d6e47b7ab74f6ed3c398641e7c10468590b6bf39f14922851df6cc68d916a",
+      "sha256": "724113a9663fa6e13c664b934d6517abc67d0a1fce87c33045132d1990c82220",
       "length": 44245
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · every-set · D major",
-      "sha256": "37248e1fbe1e1cced790dc1c5be3d4d4ef7e0dbbe2adcb17dbdadb9ef0648669",
+      "sha256": "341e7864e81898aac84e0794b768658035948aa6ea802b8657eb7438489ff63e",
       "length": 48164
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · accidentals · every-set · E♭ major",
-      "sha256": "1bc19061c5e305bd837c421f14c6d159255079651c73647d650b0e40c08c21e1",
+      "sha256": "7f49448bb78ac08cdf3569c9925f1c3dc65f112eb8b12085054c5d7cf82054e0",
       "length": 47790
     },
     {
@@ -903,23 +903,23 @@
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · notehead-chords · middle · C major",
-      "sha256": "8d88a3471d25117bffa162e8314b15899d7fb3d76442eaa7cf466a8a02784ecb",
-      "length": 43565
+      "sha256": "f6d1442022dbea842ba08a70253da9b586148f10631259f2e54b5093560c3ba0",
+      "length": 43567
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · notehead-chords · middle · A minor",
-      "sha256": "60cc833744f5b92ecffafed09b890b9b8792d01eb8b78365009ad9d4e2c2253c",
-      "length": 43372
+      "sha256": "36d262a483867378a2427c7f991d7d3b12f63472f43d65e26511dd183a2887e8",
+      "length": 43374
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · notehead-chords · middle · D major",
-      "sha256": "76071ed00714091faf3deebd3d076436b0972c90555b4299382e0eafe1bc7276",
-      "length": 44135
+      "sha256": "ef3edd62b063ead5e87aac5bd10927d3f051efed8b1b55d920e09d86ed935233",
+      "length": 44137
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · notehead-chords · middle · E♭ major",
-      "sha256": "34d9646545eaf338a55b0585c8f6d89f49df196f4323eaf0ef1b4616894dbde2",
-      "length": 44703
+      "sha256": "ac4321520e9238c2262b4c88ef8a84571ad688cc22f52cbfb0f5ceaa8dc21859",
+      "length": 44705
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · notehead-chords · middle · export",
@@ -928,23 +928,23 @@
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · middle · C major",
-      "sha256": "317f23c58d5807fa16d39d5ae6e400aa5fb232d813755a1045b4955625d4c8c7",
-      "length": 39271
+      "sha256": "ff6d58bf219f34e7b32d2297613ada2783437bf7079a4a5d7b43aa39b3d74bb6",
+      "length": 39273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · middle · A minor",
-      "sha256": "317f23c58d5807fa16d39d5ae6e400aa5fb232d813755a1045b4955625d4c8c7",
-      "length": 39271
+      "sha256": "ff6d58bf219f34e7b32d2297613ada2783437bf7079a4a5d7b43aa39b3d74bb6",
+      "length": 39273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · middle · D major",
-      "sha256": "e68733a8407bca40aa78e5b6d4f74d4440565e710a5219ea210ecbfd262234af",
-      "length": 41459
+      "sha256": "255266b51e4471590a6afa699d375b1653a90956085440c776f44b416e673cc6",
+      "length": 41461
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · middle · E♭ major",
-      "sha256": "f475663ff2a078760f08cec8357b81f67230676a8b380c55daa9e99ca6b5133d",
-      "length": 41271
+      "sha256": "63058e71fc0545e8c879fedc41eaa141082a7e1ba2ba5089bb048527c6b7e801",
+      "length": 41273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · middle · export",
@@ -953,23 +953,23 @@
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · every-set · C major",
-      "sha256": "317f23c58d5807fa16d39d5ae6e400aa5fb232d813755a1045b4955625d4c8c7",
-      "length": 39271
+      "sha256": "ff6d58bf219f34e7b32d2297613ada2783437bf7079a4a5d7b43aa39b3d74bb6",
+      "length": 39273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · every-set · A minor",
-      "sha256": "317f23c58d5807fa16d39d5ae6e400aa5fb232d813755a1045b4955625d4c8c7",
-      "length": 39271
+      "sha256": "ff6d58bf219f34e7b32d2297613ada2783437bf7079a4a5d7b43aa39b3d74bb6",
+      "length": 39273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · every-set · D major",
-      "sha256": "e68733a8407bca40aa78e5b6d4f74d4440565e710a5219ea210ecbfd262234af",
-      "length": 41459
+      "sha256": "255266b51e4471590a6afa699d375b1653a90956085440c776f44b416e673cc6",
+      "length": 41461
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · every-set · E♭ major",
-      "sha256": "f475663ff2a078760f08cec8357b81f67230676a8b380c55daa9e99ca6b5133d",
-      "length": 41271
+      "sha256": "63058e71fc0545e8c879fedc41eaa141082a7e1ba2ba5089bb048527c6b7e801",
+      "length": 41273
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · accidentals · every-set · export",
@@ -978,23 +978,23 @@
     },
     {
       "id": "gallery/express-stave-original.json · notehead-chords · middle · C major",
-      "sha256": "a4aadda98ce08898a332e2a4b1b8444cb27dd910a645eec8f8268d33a1f58c36",
-      "length": 51665
-    },
-    {
-      "id": "gallery/express-stave-original.json · notehead-chords · middle · A minor",
-      "sha256": "a31c02e25730cfc79ee28adab32527b5443aaee3a868d072d0cec1838b7f7209",
+      "sha256": "9246127e2b9a076b49c54963b25e76a4c2f6949c375c3500d4d5a98cfbff23c0",
       "length": 51667
     },
     {
+      "id": "gallery/express-stave-original.json · notehead-chords · middle · A minor",
+      "sha256": "95461f3ac228c511e50febb5f53ee9857fe56ce013b6d6b55adb6b288030cb0b",
+      "length": 51669
+    },
+    {
       "id": "gallery/express-stave-original.json · notehead-chords · middle · D major",
-      "sha256": "23c9a3208a0a98bc4a94f69eb335e3e52d2479c3fbf13ce3321f79cb74a04faa",
-      "length": 51011
+      "sha256": "c3de5a5de0c3fd1abe325010f93970b6898bb95ffc2a770608e8ec8e771e35b2",
+      "length": 51013
     },
     {
       "id": "gallery/express-stave-original.json · notehead-chords · middle · E♭ major",
-      "sha256": "5033110e10be6129c7ea0758fbb833e630a91135009d129a6c376c8deadd8cc5",
-      "length": 50355
+      "sha256": "f9cfb4a3f23723caf0ddac83eb928dfce50bd08705846091a8dc882a8f789bc7",
+      "length": 50357
     },
     {
       "id": "gallery/express-stave-original.json · notehead-chords · middle · export",
@@ -1003,23 +1003,23 @@
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · middle · C major",
-      "sha256": "5c7aa337d9dfe52c80ffcc5597da5ae37737d9de44aca2111ab5cab8d1d2c8d7",
-      "length": 43984
+      "sha256": "c32eaef9b91f101d55629811b3000315790623a8b1dde72b3ef2d11420a32e9b",
+      "length": 43986
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · middle · A minor",
-      "sha256": "5c7aa337d9dfe52c80ffcc5597da5ae37737d9de44aca2111ab5cab8d1d2c8d7",
-      "length": 43984
+      "sha256": "c32eaef9b91f101d55629811b3000315790623a8b1dde72b3ef2d11420a32e9b",
+      "length": 43986
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · middle · D major",
-      "sha256": "46d77977a4e42b4be7e64ac9b61e098b977b5901d2e2b966a291f9891f17c063",
-      "length": 46172
+      "sha256": "65a7d8580a06be8b207f76322c13490fd70adeeadfeaada24344e427d7e06bea",
+      "length": 46174
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · middle · E♭ major",
-      "sha256": "526fe806d84d42b6df56f6ccd7218818fcfad978a787aa0b3940d11ec58eb393",
-      "length": 45984
+      "sha256": "5a23eea7ef76b474a8340e45ccdea0fd7e70dfd3471819ad49d2b28952645db6",
+      "length": 45979
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · middle · export",
@@ -1028,23 +1028,23 @@
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · every-set · C major",
-      "sha256": "5c7aa337d9dfe52c80ffcc5597da5ae37737d9de44aca2111ab5cab8d1d2c8d7",
-      "length": 43984
+      "sha256": "c32eaef9b91f101d55629811b3000315790623a8b1dde72b3ef2d11420a32e9b",
+      "length": 43986
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · every-set · A minor",
-      "sha256": "5c7aa337d9dfe52c80ffcc5597da5ae37737d9de44aca2111ab5cab8d1d2c8d7",
-      "length": 43984
+      "sha256": "c32eaef9b91f101d55629811b3000315790623a8b1dde72b3ef2d11420a32e9b",
+      "length": 43986
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · every-set · D major",
-      "sha256": "46d77977a4e42b4be7e64ac9b61e098b977b5901d2e2b966a291f9891f17c063",
-      "length": 46172
+      "sha256": "65a7d8580a06be8b207f76322c13490fd70adeeadfeaada24344e427d7e06bea",
+      "length": 46174
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · every-set · E♭ major",
-      "sha256": "526fe806d84d42b6df56f6ccd7218818fcfad978a787aa0b3940d11ec58eb393",
-      "length": 45984
+      "sha256": "5a23eea7ef76b474a8340e45ccdea0fd7e70dfd3471819ad49d2b28952645db6",
+      "length": 45979
     },
     {
       "id": "gallery/express-stave-original.json · accidentals · every-set · export",
@@ -1053,23 +1053,23 @@
     },
     {
       "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · C major",
-      "sha256": "3f5ad7134c2b964af7c0b2a7eba57390a0ccb71984662920f63db2a03c0d71db",
-      "length": 47073
-    },
-    {
-      "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · A minor",
-      "sha256": "eef64c9a0e4eccfcd79fd26c31a20774a12456f52277ae165e876bc0e574f881",
+      "sha256": "8041556d615d0c50bb3ac509dc18a0e020aa6c4ea41f736a3c9d65cacc97dabc",
       "length": 47075
     },
     {
+      "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · A minor",
+      "sha256": "991d101a48c6c52517bf352995652128d8893336b3d553adf39a209b01237458",
+      "length": 47077
+    },
+    {
       "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · D major",
-      "sha256": "3358ae15f1e621fe98e3224c97e1576d4d78a96774f55d7483aa87a60ff76408",
-      "length": 47731
+      "sha256": "aa99f43b3c7dc3b560b9d0ede23a0173a220a0db5196bd5f1889da7cf1484333",
+      "length": 47733
     },
     {
       "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · E♭ major",
-      "sha256": "c628610a8750d36aa9debfc43d5537d34829fa6f3d3ea5afaded6c19c67baaa1",
-      "length": 48387
+      "sha256": "f3ca2b393dcd8dce7a7e2c4ada9864e63cba9f3bcba9a52ca0bfa4ad69f55ca7",
+      "length": 48389
     },
     {
       "id": "gallery/express-stave-pianoforte.json · notehead-chords · middle · export",
@@ -1078,23 +1078,23 @@
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · middle · C major",
-      "sha256": "e6c85f50e489f99eb9c7c4a81dc32412ddbf635c7730275f96fbb050e95bcd97",
-      "length": 42016
+      "sha256": "87a7b7fb87f3c7354805e815a7c6a48c29e2c6359b78c41cc55eec761df1262a",
+      "length": 42018
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · middle · A minor",
-      "sha256": "e6c85f50e489f99eb9c7c4a81dc32412ddbf635c7730275f96fbb050e95bcd97",
-      "length": 42016
+      "sha256": "87a7b7fb87f3c7354805e815a7c6a48c29e2c6359b78c41cc55eec761df1262a",
+      "length": 42018
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · middle · D major",
-      "sha256": "d32b7e9024adc3de55b1c49a410b8fceceeea62cabd8854d4f64fd2cabef8133",
-      "length": 44204
+      "sha256": "86d17a4f09717bb9ee4e6fed58b00175c31e4249bd107c3fbf7a82fc29b5e90f",
+      "length": 44206
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · middle · E♭ major",
-      "sha256": "f8b6448d894416c23e2b91bd8976cebef0f831be341610be7548f6c6525e5e5b",
-      "length": 44016
+      "sha256": "c0c1afe3bd10f9934c6e30d94528e8524068d9106854038b297e5fb3f71d0a3e",
+      "length": 44011
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · middle · export",
@@ -1103,23 +1103,23 @@
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · every-set · C major",
-      "sha256": "e6c85f50e489f99eb9c7c4a81dc32412ddbf635c7730275f96fbb050e95bcd97",
-      "length": 42016
+      "sha256": "87a7b7fb87f3c7354805e815a7c6a48c29e2c6359b78c41cc55eec761df1262a",
+      "length": 42018
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · every-set · A minor",
-      "sha256": "e6c85f50e489f99eb9c7c4a81dc32412ddbf635c7730275f96fbb050e95bcd97",
-      "length": 42016
+      "sha256": "87a7b7fb87f3c7354805e815a7c6a48c29e2c6359b78c41cc55eec761df1262a",
+      "length": 42018
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · every-set · D major",
-      "sha256": "d32b7e9024adc3de55b1c49a410b8fceceeea62cabd8854d4f64fd2cabef8133",
-      "length": 44204
+      "sha256": "86d17a4f09717bb9ee4e6fed58b00175c31e4249bd107c3fbf7a82fc29b5e90f",
+      "length": 44206
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · every-set · E♭ major",
-      "sha256": "f8b6448d894416c23e2b91bd8976cebef0f831be341610be7548f6c6525e5e5b",
-      "length": 44016
+      "sha256": "c0c1afe3bd10f9934c6e30d94528e8524068d9106854038b297e5fb3f71d0a3e",
+      "length": 44011
     },
     {
       "id": "gallery/express-stave-pianoforte.json · accidentals · every-set · export",
@@ -1203,22 +1203,22 @@
     },
     {
       "id": "gallery/lautus-notation.json · notehead-chords · middle · C major",
-      "sha256": "b467d8ca67d2378885b90f75495af28273d0ff938cca2894a25314e349261e51",
+      "sha256": "70a9f4c0176bd6edb3e72ac7171116ac5590165db1978900f14bc1e0b68a0783",
       "length": 44530
     },
     {
       "id": "gallery/lautus-notation.json · notehead-chords · middle · A minor",
-      "sha256": "cb1ce72aff875627c4dd43134b977c69dd56ca12f6bda696ed5a42a4271f3ba5",
+      "sha256": "5022d0c4fbcdbc0f8ca323284109cc0fda3822f2d28ccd59e42dd449ec664a7f",
       "length": 44532
     },
     {
       "id": "gallery/lautus-notation.json · notehead-chords · middle · D major",
-      "sha256": "de3b4e3d253734fcf340ec1d187e002632c96479bfcdacad0b1084690d98cb1f",
+      "sha256": "597cf7f39a3bda36e8eec8fa959b47c8341673c8f8fbe4a7f7dee423d9d2497c",
       "length": 44532
     },
     {
       "id": "gallery/lautus-notation.json · notehead-chords · middle · E♭ major",
-      "sha256": "f0c8ab5a6ab5acb22b638f8375e96518917e09601dcb6d7cb8a47793cb7bba95",
+      "sha256": "6a8bbeab9b376f1be7d6f2155ea2254fac05fe86e88c52206d414a8bd0f25a21",
       "length": 44532
     },
     {
@@ -1228,22 +1228,22 @@
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · middle · C major",
-      "sha256": "cadd115d21261a6685a471a63cd9e77019451c5127188fff5a313674c61aa798",
+      "sha256": "ea4b970f8d8ea2304bcdaa6af500e4c01100f831e84ab9575c3cec8c5ee8d3ed",
       "length": 39465
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · middle · A minor",
-      "sha256": "cadd115d21261a6685a471a63cd9e77019451c5127188fff5a313674c61aa798",
+      "sha256": "ea4b970f8d8ea2304bcdaa6af500e4c01100f831e84ab9575c3cec8c5ee8d3ed",
       "length": 39465
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · middle · D major",
-      "sha256": "2cd7828721c468ffdd695f5feeaa978c6313fbfdb72e4aeac707dd1f3163d6ea",
+      "sha256": "fbc8ff56a74e7d25c9f9eeacd45b4319bc9115c49215fc4a9353b8a6b618fcb6",
       "length": 41642
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · middle · E♭ major",
-      "sha256": "53179cb44b4a7165e852472e8ec6c076f608080fdc1595810451db48b30d3df6",
+      "sha256": "a1dc196521783e9e3173ee7f2dbfd099ceeabfd6e60de04d6401131996ae69aa",
       "length": 41468
     },
     {
@@ -1253,22 +1253,22 @@
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · every-set · C major",
-      "sha256": "cadd115d21261a6685a471a63cd9e77019451c5127188fff5a313674c61aa798",
+      "sha256": "ea4b970f8d8ea2304bcdaa6af500e4c01100f831e84ab9575c3cec8c5ee8d3ed",
       "length": 39465
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · every-set · A minor",
-      "sha256": "cadd115d21261a6685a471a63cd9e77019451c5127188fff5a313674c61aa798",
+      "sha256": "ea4b970f8d8ea2304bcdaa6af500e4c01100f831e84ab9575c3cec8c5ee8d3ed",
       "length": 39465
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · every-set · D major",
-      "sha256": "2cd7828721c468ffdd695f5feeaa978c6313fbfdb72e4aeac707dd1f3163d6ea",
+      "sha256": "fbc8ff56a74e7d25c9f9eeacd45b4319bc9115c49215fc4a9353b8a6b618fcb6",
       "length": 41642
     },
     {
       "id": "gallery/lautus-notation.json · accidentals · every-set · E♭ major",
-      "sha256": "53179cb44b4a7165e852472e8ec6c076f608080fdc1595810451db48b30d3df6",
+      "sha256": "a1dc196521783e9e3173ee7f2dbfd099ceeabfd6e60de04d6401131996ae69aa",
       "length": 41468
     },
     {

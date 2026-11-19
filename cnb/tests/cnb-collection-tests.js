@@ -35,7 +35,9 @@ const PREVIEW_BASELINE = path.join(FIXTURES, "preview-baseline.json");
 // fixture's description lists each intentional re-capture since: in session
 // 50 the probes with a key signature, for the scale stack spaced by its ink,
 // and the Clairnote SN and DN files again, for their own dot signatures, and
-// once more in session 55, for Clairnote's own signatures, dots with tails.
+// once more in session 55, for Clairnote's own signatures, dots with tails;
+// and in session 79 the gallery files with a clef, drawn 0.75 staff spaces
+// after the staff's start with its padding on its right only.
 
 /** The 013 Twinline-like map (design §1.1) — five shared pairs. */
 export const TWINLINE_PITCH_AXIS = {

@@ -4,14 +4,17 @@
  *
  * Covers the pure state ↔ config builders (buildClef / applyToConfig /
  * stateFromConfig, round-tripped on every branch), the render() UI driven
- * against a stub DOM (enable toggle, glyph selection, anchor-semitone
- * control including FLOAT values, gutter sizing, explicit empty states),
+ * against a stub DOM (since session 79 the Clef, Anchor and Sits on
+ * dropdowns, Import, the Height, the space note, explicit empty states),
+ * the pure anchorChoice / withAnchorChoice / pitchOptions,
  * the clef import wiring with an injected parser, and the Module A
  * validation pass-through.
  */
 
 import { CNBClefEditor } from "../ui/clef-editor.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 import { CNBConfig } from "../src/cnb-config.js";
+import { CNBClef } from "../src/cnb-clef.js";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
@@ -78,6 +81,11 @@ function findAll(el, token) {
     out.push(...findAll(child, token));
   }
   return out;
+}
+
+/** A dropdown's option texts, an optgroup's options in their place. */
+function optionTexts(select) {
+  return select.children.flatMap(c => (c.tag === "optgroup" ? c.children : [c])).map(o => o.textContent);
 }
 
 /** Concatenated textContent of an element subtree. */
@@ -252,73 +260,6 @@ export const tests = [
         textState, "text-kind active state");
     }},
 
-  // ── render(): enable toggle ──
-  { name: "render: enable checkbox reflects state and toggling fires onChange with the built slice", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: CNBConfig.createDefault(),
-          onChange: (slices, state) => { last = { slices, state }; },
-        });
-        const cb = findAll(api.root, "cnb-cle-enable-check")[0];
-        eq(cb.checked, false, "seeded unchecked from default config");
-        cb.onchange({ target: { checked: true } });
-        eq(last.slices.clef.enabled, true, "onChange slice enabled");
-        deepEq(last.slices.clef, api.getClef(), "slice matches getClef()");
-        eq(findAll(api.root, "cnb-cle-enable-check")[0].checked, true, "redraw shows checked");
-      });
-    }},
-
-  { name: "render: the enable toggle says what it does, and no Preview only badge (the clef exports, session 30)", fn: () => {
-      withDomStub(container => {
-        const api = E.render(container, { config: CNBConfig.createDefault() });
-        const toggle = findAll(api.root, "cnb-cle-enable")[0];
-        eq(findAll(toggle, "cnb-cle-enable-text")[0].textContent, "Show a clef at the start of the staff", "toggle text");
-        eq(findAll(api.root, "cnb-badge").length, 0, "no badge");
-        eq(E.CLEF_PREVIEW_ONLY, undefined, "no preview-only tooltip");
-        // The panel's own text; the validation list is the checks list's (hidden in the app).
-        const text = api.root.children
-          .filter(c => !String(c.className).includes("cnb-cle-validation"))
-          .map(subtreeText).join(" ");
-        for (const dev of ["Clef glyph", "Module", "set 0", "Gutter", "Anchor", "Toolkit contract", "Float"]) {
-          assert(!text.includes(dev), `no developer wording "${dev}" in: ${text}`);
-        }
-      });
-    }},
-
-  // ── render(): glyph selection ──
-  { name: "render: glyph rows list every definition and clicking one sets it active", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: clefConfig(),
-          onChange: (slices) => { last = slices; },
-        });
-        const rows = findAll(api.root, "cnb-cle-glyph-option");
-        eq(rows.length, 2, "both definitions listed");
-        const active = rows.filter(r => r.className.includes("selected"));
-        eq(active.length, 1, "one selected row");
-        eq(active[0].getAttribute("data-glyph-name"), "test-clef", "seeded active selected");
-
-        const textRow = rows.find(r => r.getAttribute("data-glyph-name") === "register-5");
-        textRow.onclick();
-        eq(last.clef.active, "register-5", "clicking a row activates it");
-        const after = findAll(api.root, "cnb-cle-glyph-option")
-          .find(r => r.getAttribute("data-glyph-name") === "register-5");
-        assert(after.className.includes("selected"), "redraw marks the new selection");
-      });
-    }},
-
-  { name: "render: with no glyphs the list and anchor sections show explicit empty-state notes", fn: () => {
-      withDomStub(container => {
-        const api = E.render(container, { config: CNBConfig.createDefault() });
-        eq(findAll(api.root, "cnb-cle-glyph-option").length, 0, "no glyph rows");
-        eq(findAll(api.root, "cnb-cle-empty").length, 1, "glyph-list empty state");
-        eq(findAll(api.root, "cnb-cle-anchor-empty").length, 1, "anchor empty state");
-        eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no anchor input");
-      });
-    }},
-
   // ── withAnchor and withHeight (session 59) ──
   { name: "withAnchor: moves the active glyph clef's anchor to a semitone; the argument is not mutated", fn: () => {
       const clef = clefConfig().clef;
@@ -361,128 +302,109 @@ export const tests = [
       eq(E.withHeight({ ...clef, active: null }, 4), null, "no clef active");
     }},
 
-  // ── render(): a glyph clef's place and height (session 59) ──
-  { name: "render: a glyph clef without an anchor point shows its top and height, and writes them", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: clefConfig(),
-          onChange: (slices) => { last = slices; },
-        });
-        eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no text-clef field for a glyph");
-        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Top at semitone"), "its top, without an anchor");
-        const sits = findAll(api.root, "cnb-cle-sits")[0];
-        eq(sits.value, "20", "anchorSemi");
-        eq(findAll(api.root, "cnb-cle-height")[0].value, "6", "its height");
-        eq(findAll(api.root, "cnb-cle-height-auto").length, 0, "an imported clef has no automatic size");
-        sits.oninput({ target: { value: "22.784" } });
-        eq(last.clef.glyphs["test-clef"].anchorSemi, 22.784, "written");
-        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "9.5" } });
-        eq(last.clef.glyphs["test-clef"].semitoneHeight, 9.5, "height written");
-        eq(last.clef.glyphs["register-5"].anchorSemi, 18, "other definition untouched");
-        assert(subtreeText(findAll(api.root, "cnb-cle-glyph-option")[0]).includes("top at semitone 22.784"),
-          "the glyph's row shows its top");
-      });
+  // ── anchorChoice, withAnchorChoice and pitchOptions (session 79) ──
+  { name: "anchorChoice: Top, Middle or Bottom when the anchor is exactly there, else a point; no reference reads as Top", fn: () => {
+      const at = (reference, extra = {}) => E.anchorChoice({ ...TEST_GLYPH, ...extra, reference });
+      eq(E.anchorChoice(TEST_GLYPH), "top", "no reference: the top, as drawn");
+      eq(at({ x: 50, y: 0 }), "top", "the top");
+      eq(at({ x: 50, y: 150 }), "middle", "the middle");
+      eq(at({ x: 0, y: 300 }), "bottom", "the bottom, whatever its x");
+      eq(at({ x: 50, y: 100 }), "point", "a point inside");
+      eq(at({ x: 0, y: -150 }, { viewBoxMinY: -300 }), "middle", "measured from viewBoxMinY");
+      eq(E.anchorChoice(TEXT_GLYPH), "top", "a text clef");
+      eq(E.anchorChoice({ kind: "dozenal" }), "top", "the dozenal clef");
+      eq(E.anchorChoice(null), "top", "nothing");
+      const treble = CNBBuiltinClefs.definition(CNBConfig.createDefault(), "treble");
+      eq(E.anchorChoice(treble), "point", "the treble clef's curl");
     }},
 
-  { name: "render: a built-in clef sits on its pitch, its height automatic until one is typed", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: CNBConfig.createDefault(),
-          onChange: (slices) => { last = slices; },
-        });
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
-        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Sits on semitone"), "its anchor's semitone");
-        eq(findAll(api.root, "cnb-cle-sits")[0].value, "12", "C");
-        eq(findAll(api.root, "cnb-cle-height")[0].value, String(Math.round(4 * 2.724 * 1e4) / 1e4), "automatic: 4 symbol staff spaces");
-        const auto = findAll(api.root, "cnb-cle-height-auto-check")[0];
-        eq(auto.checked, true, "automatic");
-        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "8" } });
-        eq(last.clef.glyphs.alto.semitoneHeight, 8, "set by hand");
-        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, false, "no longer automatic");
-        findAll(api.root, "cnb-cle-height-auto-check")[0].onchange({ target: { checked: true } });
-        eq(last.clef.glyphs.alto.semitoneHeight, null, "automatic again");
-        assert(subtreeText(findAll(api.root, "cnb-cle-glyph-option")[0]).includes("on semitone 12"), "the row says where it sits");
-      });
+  { name: "withAnchorChoice: writes the reference at the box's centre and its top, middle or bottom; a point keeps it", fn: () => {
+      const clef = clefConfig().clef;
+      deepEq(E.withAnchorChoice(clef, "top").glyphs["test-clef"].reference, { x: 50, y: 0 }, "top");
+      deepEq(E.withAnchorChoice(clef, "middle").glyphs["test-clef"].reference, { x: 50, y: 150 }, "middle");
+      deepEq(E.withAnchorChoice(clef, "bottom").glyphs["test-clef"].reference, { x: 50, y: 300 }, "bottom");
+      eq(E.withAnchorChoice(clef, "middle").glyphs["test-clef"].anchorSemi, 20, "the anchor's semitone kept");
+      eq(clef.glyphs["test-clef"].reference, undefined, "the argument is not mutated");
+      const offset = { ...clef, glyphs: { ...clef.glyphs, "test-clef": { ...TEST_GLYPH, viewBoxMinX: -50, viewBoxMinY: -150 } } };
+      deepEq(E.withAnchorChoice(offset, "bottom").glyphs["test-clef"].reference, { x: 0, y: 150 }, "in the glyph's own units");
+      const pointed = { ...clef, glyphs: { ...clef.glyphs, "test-clef": { ...TEST_GLYPH, reference: { x: 10, y: 20 } } } };
+      deepEq(E.withAnchorChoice(pointed, "point").glyphs["test-clef"].reference, { x: 10, y: 20 }, "a point keeps the stored one");
+      for (const choice of ["top", "middle", "bottom"]) {
+        eq(E.anchorChoice(E.withAnchorChoice(clef, choice).glyphs["test-clef"]), choice, `${choice} reads back`);
+      }
     }},
 
-  { name: "render: the dozenal clef has a height, automatic or set, and no place of its own", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: CNBConfig.createDefault(),
-          onChange: (slices) => { last = slices; },
-        });
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "dozenal").onclick();
-        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no semitone: it sits on the middle line");
-        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, true, "automatic");
-        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "6" } });
-        eq(last.clef.glyphs.dozenal.semitoneHeight, 6, "set by hand");
-      });
+  { name: "withAnchorChoice: null for a choice not offered, or a clef that is not a glyph", fn: () => {
+      const clef = clefConfig().clef;
+      eq(E.withAnchorChoice(clef, "left"), null, "not a choice");
+      eq(E.withAnchorChoice({ ...clef, active: "register-5" }, "middle"), null, "a text clef");
+      eq(E.withAnchorChoice({ ...clef, active: null }, "middle"), null, "no clef active");
+      eq(E.withAnchorChoice({ ...clef, active: "d", glyphs: { d: { kind: "dozenal" } } }, "top"), null, "the dozenal clef");
     }},
 
-  { name: "render: place or height input that is not a number, or not positive, is ignored (no onChange)", fn: () => {
-      withDomStub(container => {
-        let calls = 0;
-        const api = E.render(container, {
-          config: clefConfig(),
-          onChange: () => { calls++; },
-        });
-        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "not-a-number" } });
-        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "0" } });
-        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "-3" } });
-        eq(calls, 0, "no onChange");
-        eq(api.getState().glyphs["test-clef"].anchorSemi, 20, "state unchanged");
-        eq(api.getState().glyphs["test-clef"].semitoneHeight, 6, "height unchanged");
-      });
+  { name: "withAnchorChoice: Top draws as a clef with no anchor point", fn: () => {
+      const config = clefConfig();
+      const top = { ...config, clef: E.withAnchorChoice(config.clef, "top") };
+      eq(CNBClef.shown(top).top, CNBClef.shown(config).top, "the same top");
     }},
 
-  { name: "render: Pick the anchor point opens the enlarged clef; a click sets its reference", fn: () => {
-      withDomStub(container => {
-        let last = null;
-        const api = E.render(container, {
-          config: clefConfig(),
-          onChange: (slices) => { last = slices; },
-        });
-        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "closed");
-        findAll(api.root, "cnb-cle-pick-anchor")[0].onclick();
-        const svg = findAll(api.root, "cnb-cle-anchor-picker")[0].children.find(c => c.getAttribute("class") === "cnb-cle-anchor-svg");
-        assert(svg, "the enlarged clef");
-        // The test glyph's box is 100 × 300 units, drawn 120 px tall: 0.4 px a unit, 12 px around.
-        svg.onclick({ clientX: 12 + 50 * 0.4, clientY: 12 + 100 * 0.4 });
-        deepEq(last.clef.glyphs["test-clef"].reference, { x: 50, y: 100 }, "the point clicked, in the clef's units");
-        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("Sits on semitone"), "now placed by it");
-        findAll(api.root, "cnb-cle-anchor-done")[0].onclick();
-        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "Done closes it");
-      });
+  { name: "pitchOptions: every semitone the canvas draws, top to bottom, named as the label strip names it", fn: () => {
+      const options = E.pitchOptions(CNBConfig.createDefault());
+      eq(options.length, 33, "semitones −4 to 28");
+      deepEq(options[0], { semi: 28, name: "E · semitone 28" }, "the top");
+      deepEq(options[options.length - 1], { semi: -4, name: "G♯ · semitone -4" }, "the bottom");
+      eq(options.find(o => o.semi === 19).name, "G · semitone 19", "G");
+      eq(options.find(o => o.semi === 13).name, "C♯ · semitone 13", "a sharp");
+      // A clef reaching past the cards does not widen the list.
+      const tall = clefConfig();
+      tall.clef.glyphs["test-clef"].semitoneHeight = 40;
+      eq(E.pitchOptions(tall).length, 33, "the cards' range");
     }},
 
-  // ── render(): the clefs to choose from (session 45) ──
-  { name: "render: Dozenal, Treble, Bass and Alto buttons; one adds its clef, shows it and turns the clef on", fn: () => {
+  // ── render(): a. the Clef dropdown and Import (session 79) ──
+  { name: "render: the Clef dropdown offers No clef, the built-in clefs and the imported ones; choosing one adds and shows it", fn: () => {
       withDomStub(container => {
         let last = null;
         const api = E.render(container, {
           config: CNBConfig.createDefault(),
           onChange: (slices) => { last = slices; },
         });
-        const buttons = findAll(api.root, "cnb-cle-choice");
-        eq(buttons.map(b => b.textContent).join(" "), "Dozenal Treble Bass Alto", "the four choices");
-        assert(buttons.every(b => !b.className.includes(" on")), "none shown yet");
-        buttons.find(b => b.getAttribute("data-clef") === "treble").onclick();
+        const select = findAll(api.root, "cnb-cle-select")[0];
+        eq(select.tag, "select", "a dropdown");
+        eq(select.value, "none", "no clef shown");
+        eq(optionTexts(select).join(", "), "No clef, Dozenal, Treble, Bass, Alto", "the choices");
+        eq(findAll(api.root, "cnb-cle-enable-check").length, 0, "no checkbox");
+        eq(findAll(api.root, "cnb-cle-choice").length, 0, "no clef buttons");
+        eq(findAll(api.root, "cnb-cle-glyph-option").length, 0, "no list of clefs");
+        select.onchange({ target: { value: "treble" } });
         eq(last.clef.enabled, true, "the clef is turned on");
         eq(last.clef.active, "treble", "treble shown");
         eq(last.clef.glyphs.treble.kind, "glyph", "LilyPond's treble glyph added");
-        // Its anchor, on its line, on G (7) nearest the default middle (session 59).
-        eq(last.clef.glyphs.treble.anchorSemi, 7, "its line on G");
-        const on = findAll(api.root, "cnb-cle-choice").filter(b => b.className.includes(" on"));
-        eq(on.length, 1, "one button marked");
-        eq(on[0].getAttribute("data-clef"), "treble", "the treble button");
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "dozenal").onclick();
+        eq(last.clef.glyphs.treble.anchorSemi, 7, "its line on G nearest the middle");
+        eq(findAll(api.root, "cnb-cle-select")[0].value, "treble", "the dropdown shows it");
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "dozenal" } });
         eq(last.clef.active, "dozenal", "dozenal shown");
-        eq(last.clef.glyphs.dozenal.kind, "dozenal", "the dozenal clef added");
-        assert("treble" in last.clef.glyphs, "the treble clef stays in the list");
+        assert("treble" in last.clef.glyphs, "the treble clef stays in the notation");
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "none" } });
+        eq(last.clef.enabled, false, "No clef turns it off");
+        assert("dozenal" in last.clef.glyphs && "treble" in last.clef.glyphs, "the clefs stay");
+        eq(findAll(api.root, "cnb-cle-anchor").length, 0, "no anchor without a clef");
         eq(CNBConfig.validate(api.applyTo(CNBConfig.createDefault())).valid, true, "valid");
+      });
+    }},
+
+  { name: "render: imported clefs are offered under Imported, by name", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, { config: clefConfig(), onChange: (slices) => { last = slices; } });
+        const select = findAll(api.root, "cnb-cle-select")[0];
+        eq(select.value, "test-clef", "the shown clef");
+        const group = findAll(select, "cnb-cle-imported")[0];
+        eq(group.getAttribute("label"), "Imported", "a group");
+        deepEq(group.children.map(o => [o.value, o.textContent]),
+          [["test-clef", "Test Clef"], ["register-5", "Register 5"]], "each imported clef");
+        select.onchange({ target: { value: "register-5" } });
+        eq(last.clef.active, "register-5", "chosen");
       });
     }},
 
@@ -493,10 +415,11 @@ export const tests = [
           config: CNBConfig.createDefault(),
           onChange: (slices) => { last = slices; },
         });
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "bass").onclick();
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "bass" } });
+        findAll(api.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "own" } });
         findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "30" } });
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "bass").onclick();
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "alto" } });
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "bass" } });
         eq(last.clef.active, "bass", "bass shown again");
         eq(last.clef.glyphs.bass.anchorSemi, 30, "its moved anchor kept");
       });
@@ -512,58 +435,222 @@ export const tests = [
           onChange: (slices) => { last = slices; },
         });
         current.staff.midpoint = 24;   // the staff moved after the panel was drawn
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "alto").onclick();
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "alto" } });
         eq(last.clef.glyphs.alto.anchorSemi, 24, "C nearest 24 is 24, its anchor's semitone");
       });
     }},
 
-  { name: "render: the dozenal clef has no place of its own; the panel says it sits on the middle of the staff", fn: () => {
-      withDomStub(container => {
-        const config = CNBConfig.createDefault();
-        config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: { kind: "dozenal", displayName: "Dozenal" } } };
-        const api = E.render(container, { config });
-        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no semitone field");
-        eq(findAll(api.root, "cnb-cle-anchor-input").length, 0, "no top field");
-        eq(findAll(api.root, "cnb-cle-height").length, 1, "a height (session 59)");
-        const note = findAll(api.root, "cnb-cle-dozenal-note")[0];
-        assert(note && note.textContent.includes("50 for treble"), "the note names the numeral");
-        assert(note.textContent.includes("middle of the staff"), "where it sits");
-      });
-    }},
-
-  { name: "render: switching the active glyph re-seeds the anchor input from that definition", fn: () => {
+  { name: "render: Import from SVG… opens the hidden file input; the panel has no developer wording", fn: () => {
       withDomStub(container => {
         const api = E.render(container, { config: clefConfig() });
-        findAll(api.root, "cnb-cle-glyph-option")
-          .find(r => r.getAttribute("data-glyph-name") === "register-5")
-          .onclick();
-        eq(findAll(api.root, "cnb-cle-anchor-input")[0].value, "18",
-          "anchor input shows the new active definition's value");
+        const button = findAll(api.root, "cnb-cle-import-button")[0];
+        eq(button.textContent, "Import from SVG…", "the button");
+        const input = findAll(api.root, "cnb-cle-file")[0];
+        eq(input.type, "file", "a file input");
+        eq(input.hidden, true, "hidden");
+        let opened = 0;
+        input.click = () => { opened++; };
+        button.onclick();
+        eq(opened, 1, "the button opens it");
+        eq(findAll(api.root, "cnb-badge").length, 0, "no badge");
+        const text = api.root.children
+          .filter(c => !String(c.className).includes("cnb-cle-validation"))
+          .map(subtreeText).join(" ");
+        for (const dev of ["Clef glyph", "Module", "set 0", "Gutter", "Toolkit contract", "Float", "paddingH"]) {
+          assert(!text.includes(dev), `no developer wording "${dev}" in: ${text}`);
+        }
       });
     }},
 
-  // ── render(): gutter sizing ──
-  { name: "render: gutter padding input edits gutter.paddingH; negative input is ignored", fn: () => {
+  // ── render(): b. the Anchor dropdown and the Height ──
+  { name: "render: the Anchor dropdown shows the clef's anchor, and Top, Middle or Bottom writes it", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, { config: clefConfig(), onChange: (slices) => { last = slices; } });
+        const select = findAll(api.root, "cnb-cle-anchor-select")[0];
+        eq(optionTexts(select).join(", "), "Top, Middle, Bottom, A point on the clef", "the choices");
+        eq(select.value, "top", "no anchor point: the top");
+        select.onchange({ target: { value: "middle" } });
+        deepEq(last.clef.glyphs["test-clef"].reference, { x: 50, y: 150 }, "the middle");
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "middle", "shown");
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "no picker");
+      });
+    }},
+
+  { name: "render: A point on the clef opens the enlarged clef; a click sets its reference, Done closes it", fn: () => {
       withDomStub(container => {
         let last = null;
         let calls = 0;
+        const api = E.render(container, { config: clefConfig(), onChange: (slices) => { last = slices; calls++; } });
+        findAll(api.root, "cnb-cle-anchor-select")[0].onchange({ target: { value: "point" } });
+        eq(calls, 0, "opening the picker changes nothing");
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "point", "the dropdown says so");
+        const svg = findAll(api.root, "cnb-cle-anchor-picker")[0].children.find(c => c.getAttribute("class") === "cnb-cle-anchor-svg");
+        assert(svg, "the enlarged clef");
+        // The test glyph's box is 100 × 300 units, drawn 120 px tall: 0.4 px a unit, 12 px around.
+        svg.onclick({ clientX: 12 + 50 * 0.4, clientY: 12 + 100 * 0.4 });
+        deepEq(last.clef.glyphs["test-clef"].reference, { x: 50, y: 100 }, "the point clicked, in the clef's units");
+        findAll(api.root, "cnb-cle-anchor-done")[0].onclick();
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 0, "Done closes it");
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "point", "a point on the clef");
+      });
+    }},
+
+  { name: "render: a built-in clef opens on A point on the clef, its height automatic until one is typed", fn: () => {
+      withDomStub(container => {
+        let last = null;
         const api = E.render(container, {
-          config: clefConfig(),
-          onChange: (slices) => { last = slices; calls++; },
+          config: CNBConfig.createDefault(),
+          onChange: (slices) => { last = slices; },
         });
-        const pad = findAll(api.root, "cnb-cle-gutter-input")[0];
-        eq(pad.value, "10", "seeded from config");
-        pad.oninput({ target: { value: "24" } });
-        eq(last.clef.gutter.paddingH, 24, "padding applied");
-        const before = calls;
-        pad.oninput({ target: { value: "-5" } });
-        eq(calls, before, "negative input ignored");
-        eq(api.getState().gutter.paddingH, 24, "state keeps the last valid value");
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "alto" } });
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "middle", "the alto clef's middle, on its line");
+        eq(findAll(api.root, "cnb-cle-height")[0].value, String(Math.round(4 * 2.724 * 1e4) / 1e4), "automatic: 4 symbol staff spaces");
+        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, true, "automatic");
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "8" } });
+        eq(last.clef.glyphs.alto.semitoneHeight, 8, "set by hand");
+        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, false, "no longer automatic");
+        findAll(api.root, "cnb-cle-height-auto-check")[0].onchange({ target: { checked: true } });
+        eq(last.clef.glyphs.alto.semitoneHeight, null, "automatic again");
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "treble" } });
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "point", "the treble clef's curl");
+      });
+    }},
+
+  { name: "render: the dozenal clef has no anchor to choose and a height, automatic or set", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, {
+          config: CNBConfig.createDefault(),
+          onChange: (slices) => { last = slices; },
+        });
+        findAll(api.root, "cnb-cle-select")[0].onchange({ target: { value: "dozenal" } });
+        eq(findAll(api.root, "cnb-cle-anchor-select").length, 0, "no Anchor");
+        assert(subtreeText(findAll(api.root, "cnb-cle-anchor")[0]).includes("middle of the staff"), "it sits on the middle");
+        eq(findAll(api.root, "cnb-cle-height-auto-check")[0].checked, true, "automatic");
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "6" } });
+        eq(last.clef.glyphs.dozenal.semitoneHeight, 6, "set by hand");
+      });
+    }},
+
+  { name: "render: a text clef shows Top only", fn: () => {
+      withDomStub(container => {
+        const config = clefConfig();
+        config.clef.active = "register-5";
+        const api = E.render(container, { config });
+        const select = findAll(api.root, "cnb-cle-anchor-select")[0];
+        eq(optionTexts(select).join(", "), "Top", "Top only");
+        eq(select.disabled, true, "nothing to choose");
+        eq(findAll(api.root, "cnb-cle-height").length, 0, "no height field");
+      });
+    }},
+
+  // ── render(): c. Sits on, and d. the space after the clef ──
+  { name: "render: Sits on offers the canvas's pitches and writes the anchor's semitone", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, { config: clefConfig(), onChange: (slices) => { last = slices; } });
+        const select = findAll(api.root, "cnb-cle-sits-select")[0];
+        const texts = optionTexts(select);
+        eq(texts[0], "E · semitone 28", "top to bottom");
+        eq(texts[texts.length - 1], "A semitone of my own…", "then the designer's own");
+        eq(select.value, "20", "the clef's semitone");
+        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no field while it is on a pitch");
+        select.onchange({ target: { value: "19" } });
+        eq(last.clef.glyphs["test-clef"].anchorSemi, 19, "written");
+        eq(last.clef.glyphs["register-5"].anchorSemi, 18, "other definition untouched");
+        eq(findAll(api.root, "cnb-cle-sits-select")[0].value, "19", "shown");
+      });
+    }},
+
+  { name: "render: A semitone of my own… shows a number field, decimals allowed, kept in the host's view", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const view = {};
+        const api = E.render(container, { config: clefConfig(), view, onChange: (slices) => { last = slices; } });
+        findAll(api.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "own" } });
+        eq(view.ownSemitone, true, "the host's view says so");
+        const field = findAll(api.root, "cnb-cle-sits")[0];
+        eq(field.value, "20", "the clef's semitone");
+        field.oninput({ target: { value: "22.784" } });
+        eq(last.clef.glyphs["test-clef"].anchorSemi, 22.784, "written");
+        eq(findAll(api.root, "cnb-cle-sits-select")[0].value, "own", "still the designer's own");
+        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "21" } });
+        eq(findAll(api.root, "cnb-cle-sits-select")[0].value, "own", "a whole semitone too, while it is open");
+        container.textContent = "";
+        const again = E.render(container, { config: { ...clefConfig(), clef: last.clef }, view });
+        eq(findAll(again.root, "cnb-cle-sits").length, 1, "a re-mount keeps it open");
+        findAll(again.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "12" } });
+        eq(view.ownSemitone, false, "a pitch closes it");
+      });
+      withDomStub(container => {
+        const config = clefConfig();
+        config.clef.glyphs["test-clef"].anchorSemi = 13.5;
+        const api = E.render(container, { config });
+        eq(findAll(api.root, "cnb-cle-sits-select")[0].value, "own", "a semitone between pitches is the designer's own");
+        eq(findAll(api.root, "cnb-cle-sits")[0].value, "13.5", "in its field");
+      });
+    }},
+
+  { name: "render: input that is not a number, or not positive, is ignored (no onChange)", fn: () => {
+      withDomStub(container => {
+        let calls = 0;
+        const api = E.render(container, { config: clefConfig(), view: { ownSemitone: true }, onChange: () => { calls++; } });
+        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "not-a-number" } });
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "0" } });
+        findAll(api.root, "cnb-cle-height")[0].oninput({ target: { value: "-3" } });
+        eq(calls, 0, "no onChange");
+        eq(api.getState().glyphs["test-clef"].anchorSemi, 20, "state unchanged");
+        eq(api.getState().glyphs["test-clef"].semitoneHeight, 6, "height unchanged");
+      });
+    }},
+
+  { name: "render: a text clef's Sits on writes its top", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const config = clefConfig();
+        config.clef.active = "register-5";
+        const api = E.render(container, { config, onChange: (slices) => { last = slices; } });
+        eq(findAll(api.root, "cnb-cle-sits-select")[0].value, "18", "its top");
+        findAll(api.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "16" } });
+        eq(last.clef.glyphs["register-5"].anchorSemi, 16, "written");
+      });
+    }},
+
+  { name: "render: the dozenal clef sits on the middle of the staff, fixed", fn: () => {
+      withDomStub(container => {
+        const config = CNBConfig.createDefault();
+        config.clef = { ...config.clef, enabled: true, active: "dozenal", glyphs: { dozenal: { kind: "dozenal", displayName: "Dozenal" } } };
+        const api = E.render(container, { config, parts: ["placement"] });
+        eq(findAll(api.root, "cnb-cle-sits-select").length, 0, "no dropdown");
+        eq(findAll(api.root, "cnb-cle-sits-fixed")[0].textContent, "the middle of the staff", "fixed");
+        assert(subtreeText(findAll(api.root, "cnb-cle-dozenal-note")[0]).includes("50 for treble"), "the note names the numeral");
+      });
+    }},
+
+  { name: "render: the space after the clef is LilyPond's; no Space either side, and the stored padding is kept", fn: () => {
+      withDomStub(container => {
+        let last = null;
+        const api = E.render(container, { config: clefConfig(), onChange: (slices) => { last = slices; } });
+        eq(findAll(api.root, "cnb-cle-gutter-input").length, 0, "no padding field");
+        assert(!subtreeText(api.root).includes("Space either side"), "no Space either side");
+        const note = findAll(api.root, "cnb-cle-space-note")[0];
+        assert(note.textContent.includes("LilyPond's") && note.textContent.includes("0.75 staff spaces"), "the line");
+        findAll(api.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "19" } });
+        eq(last.clef.gutter.paddingH, 10, "the stored padding kept");
+      });
+    }},
+
+  { name: "render: with no clef shown, placement says to choose one in step 10", fn: () => {
+      withDomStub(container => {
+        const api = E.render(container, { config: CNBConfig.createDefault(), parts: ["placement"] });
+        eq(findAll(api.root, "cnb-cle-anchor-empty").length, 1, "the note");
+        eq(findAll(api.root, "cnb-cle-sits-select").length, 0, "no dropdown");
       });
     }},
 
   // ── render(): import wiring ──
-  { name: "render: importClefText adds the glyph, activates it, and fires onChange", fn: () => {
+  { name: "render: importClefText adds the glyph, chooses it, opens the picker and fires onChange", fn: () => {
       withDomStub(container => {
         let last = null;
         const api = E.render(container, {
@@ -574,10 +661,13 @@ export const tests = [
         const result = api.importClefText("<svg/>", "my-clef.svg");
         eq(result.error, null, "import succeeded");
         eq(last.clef.active, "my-clef", "imported glyph is active");
+        eq(last.clef.enabled, true, "and shown");
         eq(last.clef.glyphs["my-clef"].kind, "glyph", "glyph entry stored");
         assert(subtreeText(api.root).includes('Imported the clef "my-clef"'),
           "status line shown");
-        eq(findAll(api.root, "cnb-cle-glyph-option").length, 1, "glyph row rendered");
+        eq(findAll(api.root, "cnb-cle-select")[0].value, "my-clef", "the dropdown shows it");
+        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 1, "the anchor picker opens");
+        eq(findAll(api.root, "cnb-cle-anchor-select")[0].value, "point", "on A point on the clef");
       });
     }},
 
@@ -597,7 +687,7 @@ export const tests = [
       });
     }},
 
-  { name: "render: the imported glyph's default anchor centers on the seeded config's staff midpoint", fn: () => {
+  { name: "render: the imported glyph's anchor is its middle, on the seeded config's staff midpoint", fn: () => {
       withDomStub(container => {
         const config = CNBConfig.createDefault();
         config.staff.midpoint = 18;
@@ -608,7 +698,7 @@ export const tests = [
         api.importClefText("<svg/>", "centered.svg");
         // The anchor at the box's centre, on the midpoint (session 59).
         eq(api.getState().glyphs["centered"].anchorSemi, 18, "midpoint forwarded to the importer");
-        eq(findAll(api.root, "cnb-cle-anchor-picker").length, 1, "the anchor picker opens on the import");
+        eq(E.anchorChoice(api.getState().glyphs["centered"]), "middle", "Middle");
       });
     }},
 
@@ -639,50 +729,33 @@ export const tests = [
       });
     }},
 
-  // ── parts (session 63): one editor, two steps ─────────────────────────
-  { name: "render parts: symbol draws the clefs, import, height, picker, gutter and validation, and no placement", fn: () => {
+  // ── parts (session 63; session 79, design §2.3): one editor, two steps ──
+  { name: "render parts: symbol draws the clef, its anchor, its height and the validation, and no placement", fn: () => {
       withDomStub(container => {
         const config = clefConfig();
         config.clef.glyphs["test-clef"].reference = { x: 50, y: 150 };
         const api = E.render(container, { config, parts: ["symbol"] });
-        for (const token of ["cnb-cle-enable", "cnb-cle-choices", "cnb-cle-import", "cnb-cle-glyphs",
-                             "cnb-cle-height", "cnb-cle-pick-anchor", "cnb-cle-gutter", "cnb-cle-validation"]) {
+        for (const token of ["cnb-cle-select", "cnb-cle-import-button", "cnb-cle-anchor-select",
+                             "cnb-cle-height", "cnb-cle-validation"]) {
           assert(findAll(api.root, token).length > 0, token + " drawn in symbol");
         }
-        eq(findAll(api.root, "cnb-cle-sits").length, 0, "no Sits on semitone in symbol");
-        assert(!subtreeText(api.root).includes("Where the clef is shown"), "no placement title");
+        eq(findAll(api.root, "cnb-cle-sits-select").length, 0, "no Sits on in symbol");
+        eq(findAll(api.root, "cnb-cle-space-note").length, 0, "no space note in symbol");
       });
     }},
 
-  { name: "render parts: placement draws only where the clef sits", fn: () => {
+  { name: "render parts: placement draws only where the clef sits and the space after it", fn: () => {
       withDomStub(container => {
         const config = clefConfig();
         config.clef.glyphs["test-clef"].reference = { x: 50, y: 150 };
         const api = E.render(container, { config, parts: ["placement"] });
-        eq(findAll(api.root, "cnb-cle-sits").length, 1, "Sits on semitone");
-        assert(subtreeText(api.root).includes("Sits on semitone"), "its label");
-        assert(subtreeText(api.root).includes("drag the clef"), "the canvas drag's hint");
-        for (const token of ["cnb-cle-enable", "cnb-cle-choices", "cnb-cle-import", "cnb-cle-glyphs",
-                             "cnb-cle-height", "cnb-cle-pick-anchor", "cnb-cle-gutter", "cnb-cle-validation"]) {
+        eq(findAll(api.root, "cnb-cle-sits-select").length, 1, "Sits on");
+        assert(subtreeText(api.root).includes("drag the clef"), "the preview drag's hint");
+        eq(findAll(api.root, "cnb-cle-space-note").length, 1, "the space after the clef");
+        for (const token of ["cnb-cle-select", "cnb-cle-import-button", "cnb-cle-anchor-select",
+                             "cnb-cle-height", "cnb-cle-validation"]) {
           eq(findAll(api.root, token).length, 0, token + " not drawn in placement");
         }
-      });
-    }},
-
-  { name: "render parts: a text clef's top is placement's; the dozenal clef's height is symbol's", fn: () => {
-      withDomStub(container => {
-        const config = clefConfig();
-        config.clef.active = "register-5";
-        let api = E.render(container, { config, parts: ["placement"] });
-        eq(findAll(api.root, "cnb-cle-anchor-input").length, 1, "text clef's top in placement");
-        container.textContent = "";
-        api = E.render(container, { config, parts: ["symbol"] });
-        eq(findAll(api.root, "cnb-cle-anchor").length, 0, "no anchor section for a text clef in symbol");
-        container.textContent = "";
-        api = E.render(container, { config: clefConfig(), parts: ["symbol"] });
-        findAll(api.root, "cnb-cle-choice").find(b => b.getAttribute("data-clef") === "dozenal").onclick();
-        eq(findAll(api.root, "cnb-cle-height").length, 1, "the dozenal clef's height in symbol");
-        eq(findAll(api.root, "cnb-cle-dozenal-note").length, 0, "its placement note is placement's");
       });
     }},
 
@@ -691,15 +764,15 @@ export const tests = [
         const config = clefConfig();
         let last = null;
         const whole = E.render(container, { config });
-        const wholeTokens = findAll(whole.root, "cnb-cle-section").map(s => s.className);
+        for (const token of ["cnb-cle-select", "cnb-cle-anchor-select", "cnb-cle-sits-select", "cnb-cle-space-note", "cnb-cle-validation"]) {
+          eq(findAll(whole.root, token).length, 1, token + " in the whole panel");
+        }
         container.textContent = "";
         const api = E.render(container, { config, parts: ["placement"], onChange: (s) => { last = s; } });
-        findAll(api.root, "cnb-cle-sits")[0].oninput({ target: { value: "19" } });
+        findAll(api.root, "cnb-cle-sits-select")[0].onchange({ target: { value: "19" } });
         eq(last.clef.glyphs["test-clef"].anchorSemi, 19, "the edit");
         deepEq(Object.keys(last.clef.glyphs).sort(), ["register-5", "test-clef"], "every glyph carried");
         eq(last.clef.gutter.paddingH, 10, "the gutter carried");
-        assert(wholeTokens.length > 0 && wholeTokens.some(t => t.includes("cnb-cle-anchor")),
-          "the whole panel still draws its anchor section");
       });
     }},
 

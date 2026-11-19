@@ -115,7 +115,8 @@ const NS = "http://www.w3.org/2000/svg";
 // The engine's spacing around the signature (session 34, measured from
 // renders), in staff spaces: the signature's ink starts 0.75 after the
 // staff's start, or its marks 3.5 after the clef's left edge (LilyPond's
-// clef-to-signature minimum-space), and the first note's head is centred
+// clef-to-signature minimum-space; measured from the clef's origin, a glyph
+// clef's x = 0, CNBClef.origin, session 79), and the first note's head is centred
 // 4.8636 after its ink, whatever the widths of the marks and of that
 // notehead (measured). The ink is the marks and any ledger of the first or
 // last stack (session 50, engine 1.4.1).
@@ -190,8 +191,12 @@ function gutterPadding(config, pxPerSemi, m, firstHeadCenter) {
   const fromClef = (CLEF_SPACE + (scaleStack ? SCALE_STACK_INSET : 0) - 1 / mag) * space;
   const firstNote = FIRST_NOTE_CENTRE -
     (TIME_SIGNATURE_WIDTH[26] - TIME_SIGNATURE_WIDTH[CNBAccidentalGlyphs.designSize(mag)]);
+  // After a clef, fromClef from the clef's origin (its path's x = 0, where
+  // the engine spaces from, session 79), less the clef and the gutter after
+  // it (CNBClef.gutterWidth less CNBClef.left).
   const left = clef
-    ? Math.max(0, fromClef - CNBClef.measure(clef.def, pxPerSemi, space, clef.height).pixelWidth -
+    ? Math.max(0, CNBClef.origin(config, pxPerSemi) + fromClef -
+        CNBClef.measure(clef.def, pxPerSemi, space, clef.height).pixelWidth -
         (config.clef?.gutter?.paddingH ?? 12))
     : SPACE_BEFORE * space;
   // Without the first card, a column for a notehead the size of the marks
@@ -1150,7 +1155,9 @@ export const CNBKeySignature = {
    * engine's spacing (session 34): the ink starts 0.75 staff spaces after
    * the staff's start, or, with a clef shown, the marks 3.5 after the clef
    * glyph's left edge (2.9286 for a mark-table signature; the clef column
-   * pads the glyph on both sides); the first card's notehead is centred
+   * holds the glyph 0.75 staff spaces after the staff's start and pads it on
+   * its right only, session 79, so the marks follow the clef's left edge
+   * there, as the engine's do); the first card's notehead is centred
    * 4.8636 after the ink. The ink is the marks and the ledgers of the first
    * and last stacks (session 50). These are at the default magnification;
    * at another, both follow the engine (session 52): the clef's offset is

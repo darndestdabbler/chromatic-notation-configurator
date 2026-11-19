@@ -90,7 +90,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 76 | B.i's breve reaches LilyPond | no | 2026-11-17 |
 | 77 | The UI is stable, a third try | no | 2026-11-18 |
 | 78 | Designing the Clef steps, and dropdowns | no | 2026-11-18 |
-| 79 | The Clef steps and the dropdowns, built | — | not declared |
+| 79 | The Clef steps and the dropdowns, built | no | 2026-11-18 |
 | 80 | The UI is stable, a fourth try | — | not declared |
 | 81 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
@@ -803,3 +803,15 @@ Design the Clef steps (10 and 11) and the page's dropdowns, as a design only, fo
 **Amended after acceptance:**
 
 - 2026-11-18 — step 'mockups': its files: An engine measurement made for the mock-up (clef 0.75 staff spaces after the staff's start whatever the gutter; the gutter moves nothing after the clef at 12 or 48 px) corrects the design's option d, so the design document changes with the mock-ups that draw it (claude-code (anthropic, claude-opus-5-5))
+
+### Session 79 — The Clef steps and the dropdowns, built
+
+**Releasable: no.**
+
+Build session 78's approved design, docs/planning/clef-steps-design.md. The Clef steps (§2, §4): the preview draws the clef 0.75 staff spaces after the staff's start, where the engine engraves it, with clef.gutter.paddingH after it only (CNBClef.gutterWidth and render; the key signature after a clef spaced from the clef's new left edge), held to the engraving by an engine round trip at defaultMagnify 1, 7/4 and 5/2, with the export unchanged and the five export baselines byte-identical; the clef editor's parts become, in step 10, a. one Clef dropdown (No clef, Dozenal, Treble, Bass, Alto, the imported clefs) with Import from SVG beside it, b. an Anchor dropdown (Top, Middle, Bottom, A point on the clef, which opens today's picker) and Height, and in step 11, c. a Sits on dropdown of the canvas's pitches with A semitone of my own and its field, and d. a line saying the space after the clef is LilyPond's, with Space either side gone, through small pure helpers anchorChoice, withAnchorChoice and pitchOptions; both steps show the options on the left and a larger clef preview on the right at 16 px a semitone with the label strip, the anchor marked by a ringed cross with a dashed guide and its pitch name highlighted, a corner resize handle in place of the bottom-edge bar, and drags that move and resize the clef live and report once on release, while the main canvas is hidden in steps 10 and 11 and loses its clef drag. The dropdowns (§3): the key-signature designer's Stacks, Stacks go, Heights, Notes, Place and Edit rows and step 7's Select row become <select>s, the rows §3 marks to stay left as they are. Each module's tests, the UAT drivers, the tutorial's clef steps, shots and downloads, the LY spec's §5.5 Gutter note and the architecture plan follow.
+
+**Amended after acceptance:**
+
+- 2026-11-18 — step 'clef-spacing': its files and checks: The preview baselines render the whole collection, clef included, so the probes of gallery files with a clef change when the clef moves to 0.75 staff spaces; they must be re-captured. The check pins the five export baselines by name instead of all of cnb/fixtures. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-18 — step 'clef-preview': its files: The bar along the clef's bottom edge goes from CNBClef.render (design 2.1, 4), which every canvas draw includes, so the preview baselines' probes of the gallery files with a glyph clef must be re-captured, their re-capture noted in the two tests files' headers. (claude-code (anthropic, claude-opus-5-5))
+- 2026-11-18 — step 'tutorial': its files and checks: The tutorial picked the C clef's anchor by clicking a pixel in the picker, so the stored point follows sub-pixel layout, which the two-column Clef step moved (x -0.55 and y 49.39, against 0 and 49.35): its .ly changed in the fourth decimal of the clef's top. The tutorial now chooses Middle in the Anchor dropdown (design 2.2 b), exact and simpler for a reader, so its two .ly downloads are regenerated with tutorial.json; uat-tutorial still holds each to CNBLilypond.generate of the live config. The export code is unchanged and the five export baselines are pinned by the clef-spacing step. (claude-code (anthropic, claude-opus-5-5))

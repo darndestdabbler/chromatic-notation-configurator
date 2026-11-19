@@ -343,8 +343,8 @@
         "viewBoxMinY": 0,
         "lilypondPath": null,
         "reference": {
-          "x": 0,
-          "y": 49.35
+          "x": 37.33970260620117,
+          "y": 50
         },
         "anchorSemi": 12
       }
@@ -367,7 +367,7 @@
     "notationFootnote": "",
     "author": "",
     "description": "Two staff lines per octave at semitones 4 (E) and 8 (G♯)",
-    "created": "2026-11-17T12:15:14.472Z",
-    "modified": "2026-11-17T12:15:14.472Z"
+    "created": "2026-11-18T23:45:42.715Z",
+    "modified": "2026-11-18T23:45:42.715Z"
   }
 }

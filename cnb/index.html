@@ -133,15 +133,18 @@
 
         <section class="card panel" data-panel="clef-symbol" hidden>
           <div class="card-head"><h2>Clef symbol import and sizing</h2><span class="sub">A clef at the start of the staff, and its size</span></div>
-          <div class="card-body">
-            <div id="clef-preview-host"></div>
+          <div class="card-body clef-step">
             <div id="clef-symbol-host"></div>
+            <div id="clef-preview-host"></div>
           </div>
         </section>
 
         <section class="card panel" data-panel="clef-placement" hidden>
           <div class="card-head"><h2>Clef semitone/staff assignment</h2><span class="sub">The semitone the clef sits on</span></div>
-          <div class="card-body"><div id="clef-placement-host"></div></div>
+          <div class="card-body clef-step">
+            <div id="clef-placement-host"></div>
+            <div id="clef-placement-preview-host"></div>
+          </div>
         </section>
 
         <section class="card panel" data-panel="advanced" hidden>
@@ -327,7 +330,7 @@
         panel.hidden = panel.dataset.panel !== name;
       }
       const step = CNBStepNav.byId(name);
-      byId("canvas-card").hidden = !!step && ["spelled", "designer", "keys"].includes(step.canvas);
+      byId("canvas-card").hidden = !!step && ["spelled", "designer", "keys", "clef"].includes(step.canvas);
       renderSteps();
       if (previewApi) {
         previewApi.setFocus(name);
@@ -566,15 +569,41 @@
       ["symbol", "clef-symbol-host"],
       ["placement", "clef-placement-host"],
     ];
+    // Whether "A semitone of my own" is open in the clef's Sits on, kept
+    // across re-mounts (session 79).
+    const clefView = {};
+    /**
+     * A drag on the clef's preview (session 79, clef-steps design §2.1):
+     * a move puts its anchor on the semitone dragged to, snapped to the
+     * semitone, or to tenths while the own-semitone field is open; a resize
+     * changes its height by the semitones dragged down, about its anchor,
+     * snapped to tenths. One drag is one step of undo.
+     */
+    function dragClef(kind, semis) {
+      const shown = CNBClef.shown(appConfig);
+      if (!shown) return;
+      const snap = (v, per) => Math.round(v * per) / per;
+      const next = kind === "move"
+        ? CNBClefEditor.withAnchor(appConfig.clef, snap(shown.def.anchorSemi + semis, clefView.ownSemitone ? 10 : 1))
+        : CNBClefEditor.withHeight(appConfig.clef, snap(shown.height - semis, 10));
+      if (!next) return;   // resized to nothing
+      appConfig.clef = next;
+      mountClefEditor();
+      refreshShared();
+    }
     function refreshSectionPreviews() {
       const size = previewApi ? previewApi.getSize() : CNBPreviewDisplay.DEFAULT_SIZE;
       const duration = (canvasOptions.durations && canvasOptions.durations[0]) || null;
       // The key picked on the canvas (session 36), drawn as it is there.
       const key = previewApi ? previewApi.getState().key : null;
-      for (const [part, id] of [["clef", "clef-preview-host"], ["key-signature", "key-signature-preview-host"]]) {
+      // The clef's preview, in both Clef steps, at 16 px a semitone with
+      // its drags (session 79); the key signature's at the canvas Size.
+      for (const [part, id] of [["clef", "clef-preview-host"], ["clef", "clef-placement-preview-host"],
+                                ["key-signature", "key-signature-preview-host"]]) {
         const host = byId(id);
         host.textContent = "";
-        CNBPreviewDisplay.renderPartial(host, appConfig, { part, size, duration, key });
+        CNBPreviewDisplay.renderPartial(host, appConfig,
+          { part, size, duration, key, onClefDrag: part === "clef" ? dragClef : null });
       }
     }
 
@@ -611,20 +640,6 @@
         if (previewApi && JSON.stringify(previewApi.getState().key) !== keySignatureEditorKey) {
           mountKeySignatureEditor();
         }
-      },
-      // With the Clef section open, dragging the clef moves it, or its
-      // bottom edge resizes it (session 45). Since session 59 a move changes the semitone its anchor sits on, and
-      // a resize its height by the semitones dragged down, about its anchor.
-      onClefDrag: (kind, semis) => {
-        const shown = CNBClef.shown(appConfig);
-        if (!shown) return;
-        const next = kind === "move"
-          ? CNBClefEditor.withAnchor(appConfig.clef, shown.def.anchorSemi + semis)
-          : CNBClefEditor.withHeight(appConfig.clef, shown.height - semis);
-        if (!next) return;   // resized to nothing
-        appConfig.clef = next;
-        mountClefEditor();
-        refreshShared();
       },
       // One button turns on the default signature, the scale stack (session 36).
       onSignatureOn: () => {
@@ -983,9 +998,9 @@
      *  wiring (session-1 importer, clef kind), so the whole
      *  import → enable → position flow lives in this one panel. A chosen
      *  clef is placed for the current staff (session 45), and a drag on
-     *  the canvas re-mounts it. Since session 63 it is mounted once per
-     *  step, its symbol and size in step 10 and its place in step 11; an
-     *  edit in one re-seeds the other. */
+     *  the clef's preview re-mounts it (session 79). Since session 63 it is
+     *  mounted once per step, its symbol and size in step 10 and its place
+     *  in step 11; an edit in one re-seeds the other. */
     function mountClefEditor(except = null) {
       for (const [part, id] of CLEF_MOUNTS) {
         if (part === except) continue;
@@ -994,6 +1009,7 @@
           config: appConfig,
           getConfig: () => appConfig,
           parts: [part],
+          view: clefView,
           onChange: (slices) => {
             appConfig.clef = slices.clef;
             mountClefEditor(part);

@@ -1,5 +1,5 @@
 {
-  "description": "Pre-designer canvas key-signature baseline (sha256 + length of the stub-DOM JSON of CNBCollection.render at crotchet, keys and the signature on, one key defined), per fixture and gallery file in four keys, captured in session 48 before the key-signature designer's settings (docs/planning/key-signature-designer-design.md), so their defaults are proved to draw today's signature. Regenerate only with captureSignatureBaseline() in cnb/tests/cnb-key-signature-tests.js, and only when an intentional change to how a signature at its defaults is drawn is approved. Re-captured in session 49, when every signature's gold stems took round caps and its ledgers their engraved length (4/3 of a head plus their 0.1-staff-space caps), as the engine draws them; with those two undone, every probe matched its session-48 hash. Re-captured in session 50, when the scale stack came to be spaced by its ink (the ledgers of its first and last stacks), as engine 1.4.1 engraves it since its signature heads take the notation's ledgers; with that undone, every probe matched its session-49 hash. The sized fixture and the Hass and Trilinear gallery files were re-captured in session 50, when each signature head's ledgers took the head's own width, as the engine draws them (their ledgered heads are narrower than their widest mark, so their ledgers were drawn too long), and the Clairnote SN and DN probes once more, when the two gallery files took their own Clairnote-style signatures (dots and slashed dots, a new stack at each change of parity, on the bottom line set). The Clairnote SN and DN probes were re-captured in session 55, when the two gallery files took Clairnote's own signatures: dots, solid on a line or ledger and hollow in a space (SN through the line and space looks, DN through its noteheads), with a tail up on each flat and down on each sharp, each tail an imported filled shape placed by its reference point with no ledgers; every other probe matched its hash.",
+  "description": "Pre-designer canvas key-signature baseline (sha256 + length of the stub-DOM JSON of CNBCollection.render at crotchet, keys and the signature on, one key defined), per fixture and gallery file in four keys, captured in session 48 before the key-signature designer's settings (docs/planning/key-signature-designer-design.md), so their defaults are proved to draw today's signature. Regenerate only with captureSignatureBaseline() in cnb/tests/cnb-key-signature-tests.js, and only when an intentional change to how a signature at its defaults is drawn is approved. Re-captured in session 49, when every signature's gold stems took round caps and its ledgers their engraved length (4/3 of a head plus their 0.1-staff-space caps), as the engine draws them; with those two undone, every probe matched its session-48 hash. Re-captured in session 50, when the scale stack came to be spaced by its ink (the ledgers of its first and last stacks), as engine 1.4.1 engraves it since its signature heads take the notation's ledgers; with that undone, every probe matched its session-49 hash. The sized fixture and the Hass and Trilinear gallery files were re-captured in session 50, when each signature head's ledgers took the head's own width, as the engine draws them (their ledgered heads are narrower than their widest mark, so their ledgers were drawn too long), and the Clairnote SN and DN probes once more, when the two gallery files took their own Clairnote-style signatures (dots and slashed dots, a new stack at each change of parity, on the bottom line set). The Clairnote SN and DN probes were re-captured in session 55, when the two gallery files took Clairnote's own signatures: dots, solid on a line or ledger and hollow in a space (SN through the line and space looks, DN through its noteheads), with a tail up on each flat and down on each sharp, each tail an imported filled shape placed by its reference point with no ledgers; every other probe matched its hash. The probes of the gallery files with a clef were re-captured in session 79, when the preview came to draw the clef 0.75 staff spaces after the staff's start, where the engine engraves it, with its gutter padding on its right only, and to space the marks from a glyph clef's origin; every other probe matched its hash.",
   "capturedAt": "e83d251",
   "probes": [
     {
@@ -184,22 +184,22 @@
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · C major",
-      "sha256": "6132cba9ec23b6b91e78ff0b5619c39769a91d720b27e596bd088c7add4dc627",
+      "sha256": "9df588da4cee19ed1a6e59e02646910257a965175711b279210f4454e5ab7c38",
       "length": 50963
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · A minor",
-      "sha256": "10f6d02c9cee84547186b9d793f5ed59e6ffee75f81564510c2632bdae4d4704",
+      "sha256": "82110b01bf5b7618f535581f7d28325d16aab7bcac59fed92320e378d5912930",
       "length": 50465
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · D major",
-      "sha256": "dd5a4ec4062dfb23f66dae1a7041a42a35e95ced5f068b655c26fd38ac83ac42",
+      "sha256": "671896a30fc53daa4099430f2d4156ac1ae59776101228cf5c100d9e617e618a",
       "length": 50793
     },
     {
       "id": "gallery/chromatic-lyre-notation.json · E♭ major",
-      "sha256": "bbc60d89ed66fad100bfdb260de851bc93f33e6840fd198e743892230b7ca045",
+      "sha256": "b6c2cd57311c38f50c8eb28440ea6b91b3cf195d7f22c74cbf7757105fe90607",
       "length": 50797
     },
     {
@@ -244,63 +244,63 @@
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · C major",
-      "sha256": "8d88a3471d25117bffa162e8314b15899d7fb3d76442eaa7cf466a8a02784ecb",
-      "length": 43565
+      "sha256": "f6d1442022dbea842ba08a70253da9b586148f10631259f2e54b5093560c3ba0",
+      "length": 43567
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · A minor",
-      "sha256": "60cc833744f5b92ecffafed09b890b9b8792d01eb8b78365009ad9d4e2c2253c",
-      "length": 43372
+      "sha256": "36d262a483867378a2427c7f991d7d3b12f63472f43d65e26511dd183a2887e8",
+      "length": 43374
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · D major",
-      "sha256": "76071ed00714091faf3deebd3d076436b0972c90555b4299382e0eafe1bc7276",
-      "length": 44135
+      "sha256": "ef3edd62b063ead5e87aac5bd10927d3f051efed8b1b55d920e09d86ed935233",
+      "length": 44137
     },
     {
       "id": "gallery/express-stave-jazz-6-6.json · E♭ major",
-      "sha256": "34d9646545eaf338a55b0585c8f6d89f49df196f4323eaf0ef1b4616894dbde2",
-      "length": 44703
+      "sha256": "ac4321520e9238c2262b4c88ef8a84571ad688cc22f52cbfb0f5ceaa8dc21859",
+      "length": 44705
     },
     {
       "id": "gallery/express-stave-original.json · C major",
-      "sha256": "a4aadda98ce08898a332e2a4b1b8444cb27dd910a645eec8f8268d33a1f58c36",
-      "length": 51665
-    },
-    {
-      "id": "gallery/express-stave-original.json · A minor",
-      "sha256": "a31c02e25730cfc79ee28adab32527b5443aaee3a868d072d0cec1838b7f7209",
+      "sha256": "9246127e2b9a076b49c54963b25e76a4c2f6949c375c3500d4d5a98cfbff23c0",
       "length": 51667
     },
     {
+      "id": "gallery/express-stave-original.json · A minor",
+      "sha256": "95461f3ac228c511e50febb5f53ee9857fe56ce013b6d6b55adb6b288030cb0b",
+      "length": 51669
+    },
+    {
       "id": "gallery/express-stave-original.json · D major",
-      "sha256": "23c9a3208a0a98bc4a94f69eb335e3e52d2479c3fbf13ce3321f79cb74a04faa",
-      "length": 51011
+      "sha256": "c3de5a5de0c3fd1abe325010f93970b6898bb95ffc2a770608e8ec8e771e35b2",
+      "length": 51013
     },
     {
       "id": "gallery/express-stave-original.json · E♭ major",
-      "sha256": "5033110e10be6129c7ea0758fbb833e630a91135009d129a6c376c8deadd8cc5",
-      "length": 50355
+      "sha256": "f9cfb4a3f23723caf0ddac83eb928dfce50bd08705846091a8dc882a8f789bc7",
+      "length": 50357
     },
     {
       "id": "gallery/express-stave-pianoforte.json · C major",
-      "sha256": "3f5ad7134c2b964af7c0b2a7eba57390a0ccb71984662920f63db2a03c0d71db",
-      "length": 47073
-    },
-    {
-      "id": "gallery/express-stave-pianoforte.json · A minor",
-      "sha256": "eef64c9a0e4eccfcd79fd26c31a20774a12456f52277ae165e876bc0e574f881",
+      "sha256": "8041556d615d0c50bb3ac509dc18a0e020aa6c4ea41f736a3c9d65cacc97dabc",
       "length": 47075
     },
     {
+      "id": "gallery/express-stave-pianoforte.json · A minor",
+      "sha256": "991d101a48c6c52517bf352995652128d8893336b3d553adf39a209b01237458",
+      "length": 47077
+    },
+    {
       "id": "gallery/express-stave-pianoforte.json · D major",
-      "sha256": "3358ae15f1e621fe98e3224c97e1576d4d78a96774f55d7483aa87a60ff76408",
-      "length": 47731
+      "sha256": "aa99f43b3c7dc3b560b9d0ede23a0173a220a0db5196bd5f1889da7cf1484333",
+      "length": 47733
     },
     {
       "id": "gallery/express-stave-pianoforte.json · E♭ major",
-      "sha256": "c628610a8750d36aa9debfc43d5537d34829fa6f3d3ea5afaded6c19c67baaa1",
-      "length": 48387
+      "sha256": "f3ca2b393dcd8dce7a7e2c4ada9864e63cba9f3bcba9a52ca0bfa4ad69f55ca7",
+      "length": 48389
     },
     {
       "id": "gallery/hass-notation-3-line.json · C major",
@@ -324,22 +324,22 @@
     },
     {
       "id": "gallery/lautus-notation.json · C major",
-      "sha256": "b467d8ca67d2378885b90f75495af28273d0ff938cca2894a25314e349261e51",
+      "sha256": "70a9f4c0176bd6edb3e72ac7171116ac5590165db1978900f14bc1e0b68a0783",
       "length": 44530
     },
     {
       "id": "gallery/lautus-notation.json · A minor",
-      "sha256": "cb1ce72aff875627c4dd43134b977c69dd56ca12f6bda696ed5a42a4271f3ba5",
+      "sha256": "5022d0c4fbcdbc0f8ca323284109cc0fda3822f2d28ccd59e42dd449ec664a7f",
       "length": 44532
     },
     {
       "id": "gallery/lautus-notation.json · D major",
-      "sha256": "de3b4e3d253734fcf340ec1d187e002632c96479bfcdacad0b1084690d98cb1f",
+      "sha256": "597cf7f39a3bda36e8eec8fa959b47c8341673c8f8fbe4a7f7dee423d9d2497c",
       "length": 44532
     },
     {
       "id": "gallery/lautus-notation.json · E♭ major",
-      "sha256": "f0c8ab5a6ab5acb22b638f8375e96518917e09601dcb6d7cb8a47793cb7bba95",
+      "sha256": "6a8bbeab9b376f1be7d6f2155ea2254fac05fe86e88c52206d414a8bd0f25a21",
       "length": 44532
     },
     {

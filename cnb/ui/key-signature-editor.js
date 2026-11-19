@@ -103,6 +103,14 @@
  * change through onChange({ keys }, state) where `keys` is a ready
  * `config.keys` object. Hosts own layout/styling via .cnb-kse-* hooks.
  *
+ * Session 79 (clef-steps design §3): the rows whose options are words are
+ * dropdowns, each a labelled select drawn by choose(): Notes, Stacks, Stacks
+ * go and Heights (on the Stacks row) and Place; Edit (select.cnb-kse-layer-
+ * select), which a click on a mark still follows; and step 7's Select
+ * (select.cnb-kse-select-choice, Select… then its six choices). The look
+ * card's rows, of pictures or flipped while watching the canvas, stay
+ * buttons.
+ *
  * Inspired by Clairnote DN's alternative key signatures (design
  * CC BY-SA 4.0, Paul Morris); no code is ported from clairnote.ly.
  *
@@ -1096,23 +1104,23 @@ export const CNBKeySignatureEditor = {
       return active ? CNBKeySignature.marks(picked, active.def) : null;
     }
 
-    /** A row of radios writing one value: options are [value, label]. */
-    function radios(className, current, options, write) {
-      const group = el("div", "cnb-kse-radios " + className);
-      for (const [value, label] of options) {
-        const option = el("label", "cnb-kse-radio" + (value === current ? " on" : ""));
-        option.setAttribute("data-value", value);
-        const input = el("input", "cnb-kse-radio-input");
-        input.type = "radio";
-        input.name = className;
-        input.value = value;
-        input.checked = value === current;
-        input.onchange = () => { write(value); changed(); };
-        option.appendChild(control(input));
-        option.appendChild(el("span", "", label));
-        group.appendChild(option);
+    /**
+     * A dropdown writing one value (session 79, clef-steps design §3): a
+     * select.className, labelled, its options [value, label]; choosing one
+     * writes it and reports the change.
+     */
+    function choose(className, label, current, options, write) {
+      const select = el("select", "cnb-kse-choose " + className);
+      select.setAttribute("aria-label", label);
+      for (const [value, text] of options) {
+        const option = el("option", "", text);
+        option.value = value;
+        if (value === current) option.selected = true;
+        select.appendChild(option);
       }
-      return group;
+      select.value = current;
+      select.onchange = (e) => { write(valueFrom(e, select)); changed(); };
+      return control(select);
     }
 
     /** A checkbox writing a boolean. */
@@ -1312,28 +1320,41 @@ export const CNBKeySignatureEditor = {
       if (cell && cell.focus) cell.focus();
     }
 
-    /** The Select row: each choice selects its spelled notes in one click,
-     *  and is on while the selection is exactly those. */
+    /** The Select row, a dropdown (session 79, clef-steps design §3.2):
+     *  Select…, then each choice, which selects its spelled notes at once;
+     *  it shows the choice the selection exactly is, else Select…. */
     function drawSelectRow() {
       const bar = el("div", "cnb-kse-select");
       bar.appendChild(el("span", "cnb-kse-field-label", "Select"));
       const notes = state.enabled && state.keySignature.enabled ? spelledNotesNow() : [];
       const current = [...view.spelled].sort().join(" ");
+      const select = el("select", "cnb-kse-select-choice");
+      select.setAttribute("aria-label", "Select");
+      const prompt = el("option", "", "Select…");
+      prompt.value = "";
+      select.appendChild(prompt);
+      const picks = new Map();
+      let shown = "";
       for (const [which, label, pick] of SELECTS) {
         const names = notes.filter(pick).map(n => n.name);
-        const b = el("button", "cnb-kse-select-button" + (names.length && [...names].sort().join(" ") === current ? " on" : ""), label);
-        b.type = "button";
-        b.setAttribute("data-select", which);
-        b.disabled = notes.length === 0;
-        b.onclick = () => {
-          view.spelled = names;
-          view.symbol = "base";
-          importError = null;
-          importing = null;
-          redraw();
-        };
-        bar.appendChild(b);
+        picks.set(which, names);
+        const option = el("option", "", label);
+        option.value = which;
+        select.appendChild(option);
+        if (!shown && names.length && [...names].sort().join(" ") === current) shown = which;
       }
+      select.value = shown;
+      select.disabled = notes.length === 0;
+      select.onchange = (e) => {
+        const names = picks.get(valueFrom(e, select));
+        if (!names) return;
+        view.spelled = names;
+        view.symbol = "base";
+        importError = null;
+        importing = null;
+        redraw();
+      };
+      bar.appendChild(select);
       return bar;
     }
 
@@ -1744,22 +1765,28 @@ export const CNBKeySignatureEditor = {
       view.pinned = !SPELLINGS.includes(layer);
     }
 
+    /** Edit, a dropdown (session 79, clef-steps design §3.1): it picks the
+     *  layer, and follows a click on a mark, which picks one too. */
     function drawLayers() {
       const bar = el("div", "cnb-kse-layers");
       bar.appendChild(el("span", "cnb-kse-field-label", "Edit"));
+      const select = el("select", "cnb-kse-layer-select");
+      select.setAttribute("aria-label", "Edit");
       for (const [layer, label] of LAYERS) {
-        const b = el("button", "cnb-kse-layer" + (layer === view.layer ? " on" : ""), label);
-        b.type = "button";
-        b.setAttribute("data-layer", layer);
-        b.onclick = () => { pickLayer(layer); redraw(); };
-        bar.appendChild(control(b));
+        const option = el("option", "", label);
+        option.value = layer;
+        if (layer === view.layer) option.selected = true;
+        select.appendChild(option);
       }
+      select.value = view.layer;
+      select.onchange = (e) => { pickLayer(valueFrom(e, select)); redraw(); };
+      bar.appendChild(control(select));
       return bar;
     }
 
     function drawNotes(ks) {
       return row("cnb-kse-notes", "Notes",
-        radios("cnb-kse-notes-choice", ks.notes, [
+        choose("cnb-kse-notes-choice", "Notes", ks.notes, [
           ["all", "The whole scale"],
           ["tonic-and-half-steps", "The tonic and the half steps"],
           ["altered", "The sharps or flats only"],
@@ -1793,8 +1820,8 @@ export const CNBKeySignatureEditor = {
 
     /** gap: step 8's space between stacks, or null (the whole panel). */
     function drawStacks(ks, sig, gap = null) {
-      const stacking = radios("cnb-kse-stacking", ks.stacking, [
-        ["degrees", "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right"],
+      const stacking = choose("cnb-kse-stacking", "Stacks", ks.stacking, [
+        ["degrees", "Stacked sevenths"],
         ["parity", "Odd semitones left, even right"],
         ["parity-stacks", "A new stack at each change of odd and even"],
         ["parity-zigzag", "Zigzag at each change of odd and even"],
@@ -1809,7 +1836,7 @@ export const CNBKeySignatureEditor = {
       if (ks.stacking !== "parity") {
         direction = el("div", "cnb-kse-direction");
         direction.appendChild(el("span", "cnb-kse-field-label", "Stacks go"));
-        direction.appendChild(radios("cnb-kse-columns", ks.columns, [
+        direction.appendChild(choose("cnb-kse-columns", "Stacks go", ks.columns, [
           ["right", "to the right"],
           ["left-in-sharp-keys", "to the left in sharp keys"],
         ], (v) => { ks.columns = v; }));
@@ -1821,8 +1848,9 @@ export const CNBKeySignatureEditor = {
     // line set, raised in sharp and in flat keys, or climbing with the scale.
     function drawHeights(ks) {
       const wrap = el("div", "cnb-kse-heights");
-      wrap.appendChild(radios("cnb-kse-heights-choice", ks.heights, [
-        ["window", "Heights in a window around the line set"],
+      wrap.appendChild(el("span", "cnb-kse-field-label", "Heights"));
+      wrap.appendChild(choose("cnb-kse-heights-choice", "Heights", ks.heights, [
+        ["window", "In a window around the line set"],
         ["scale", "Climbing with the scale"],
       ], (v) => { ks.heights = v; }));
       if (ks.heights === "scale") return wrap;
@@ -2328,7 +2356,7 @@ export const CNBKeySignatureEditor = {
         (ks.notes === "altered" ? "signature repeats."
           : "signature repeats; the tonic and the half steps alone keep it less busy.");
       return row("cnb-kse-place", "Place",
-        radios("cnb-kse-position", ks.placement.position, [
+        choose("cnb-kse-position", "Place", ks.placement.position, [
           ["middle", "In the middle of the staff"],
           ["bottom-set", "On the bottom line set"],
           ["top-set", "On the top line set"],

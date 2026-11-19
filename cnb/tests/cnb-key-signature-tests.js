@@ -36,6 +36,7 @@ import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBClef } from "../src/cnb-clef.js";
 import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBConfigIO } from "../ui/config-io.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 import { findEngine, measureSpacing, readKeys } from "./engine-probe.js";
 import { withSvgStub, withDomStub } from "./svg-stub.js";
 
@@ -69,7 +70,10 @@ const STYLES_BASELINE = path.join(FIXTURES, "key-signature-styles-baseline.json"
 // writing cnb:multinote-overlap; their signatures are unchanged. They were
 // re-captured again in session 72, when a repeat-mode export began writing
 // cnb:multinote-stem-on-head and the Kite fixture's minim attachments were
-// centred; their signatures are unchanged.
+// centred; their signatures are unchanged. In session 79 the drawn probes of
+// the gallery files with a clef were re-captured in both files, the clef
+// drawn 0.75 staff spaces after the staff's start and the marks spaced from a
+// glyph clef's origin; their exports are unchanged.
 
 /** The keys each probe draws: name, pitch classes and tonic. */
 const SIGNATURE_KEYS = [
@@ -599,7 +603,7 @@ export const tests = [
       // The spacing is in staff spaces, so it holds at any magnification.
       // Sharps or flats (session 51) are spaced by their boxes, the flat's in
       // the optical size LilyPond picks for the staff's magnification.
-      for (const { label, clef, wideG, stacking, position, magnify, gallery, traditional, flat, signs, kite } of [
+      for (const { label, clef, wideG, stacking, position, magnify, gallery, traditional, flat, signs, kite, clefHeight } of [
         { label: "no clef" }, { label: "text clef", clef: true }, { label: "a wide G mark", wideG: true },
         { label: "text clef, magnify 1", clef: true, magnify: "1" },
         { label: "mark table, no clef", stacking: "parity-stacks" },
@@ -627,6 +631,24 @@ export const tests = [
         { label: "Kite, flats 4 semitones, no clef, magnify 1", traditional: true, flat: true, signs: 4, magnify: "1", kite: true },
         { label: "Kite, sharps 4 semitones, text clef, magnify 5/2", traditional: true, signs: 4, clef: true, magnify: "5/2", kite: true },
         { label: "Kite, flats, no clef, magnify 5/2", traditional: true, flat: true, magnify: "5/2", kite: true },
+        // The built-in clefs, 0.75 staff spaces after the staff's start
+        // (session 79), the marks after them measured from the staff's start.
+        { label: "treble clef", clef: "treble" },
+        { label: "treble clef, magnify 1", clef: "treble", magnify: "1" },
+        { label: "treble clef, magnify 5/2", clef: "treble", magnify: "5/2" },
+        { label: "dozenal clef", clef: "dozenal" },
+        { label: "dozenal clef, magnify 1", clef: "dozenal", magnify: "1" },
+        { label: "dozenal clef, magnify 5/2", clef: "dozenal", magnify: "5/2" },
+        { label: "mark table, treble clef, magnify 5/2", clef: "treble", stacking: "parity-stacks", magnify: "5/2" },
+        { label: "sharps, dozenal clef, magnify 1", traditional: true, clef: "dozenal", magnify: "1" },
+        { label: "Kite, flats, treble clef", traditional: true, flat: true, clef: "treble", kite: true },
+        // The bass clef's origin is right of its ink, the treble clef's left:
+        // the marks follow the origin (CNBClef.origin).
+        { label: "bass clef", clef: "bass" },
+        { label: "sharps, bass clef, magnify 5/2", traditional: true, clef: "bass", magnify: "5/2" },
+        // A clef wider than the space before the marks: a mark table's
+        // origin follows its gutter.
+        { label: "mark table, a wide alto clef", clef: "alto", clefHeight: 30, stacking: "parity-stacks" },
       ]) {
         let config;
         if (gallery) {
@@ -645,10 +667,17 @@ export const tests = [
         if (stacking) config.keys.keySignature.stacking = stacking;
         if (position) config.keys.keySignature.placement.position = position;
         if (magnify) config.engine.defaultMagnify = magnify;
-        if (clef) {
+        if (clef === true) {
           config.clef.enabled = true;
           config.clef.glyphs = { four: { displayName: "4", kind: "text", text: "4", textHeightSemis: 4, anchorSemi: 14 } };
           config.clef.active = "four";
+        } else if (clef) {
+          // A built-in clef (session 79): the marks follow its left edge,
+          // 0.75 staff spaces after the staff's start.
+          config.clef.enabled = true;
+          config.clef.glyphs = { [clef]: CNBBuiltinClefs.definition(config, clef) };
+          if (clefHeight) config.clef.glyphs[clef].semitoneHeight = clefHeight;
+          config.clef.active = clef;
         }
         // G's marks (its tonic among them) twice as wide as the first card's C.
         if (wideG) {
@@ -699,14 +728,14 @@ export const tests = [
             }
           }
           return {
-            before: (clef ? left - config.clef.gutter.paddingH : left) / space,
+            before: left / space,                          // from the staff's start, a clef or not
             after: (kStart + widths[k] + widths[k + 1] / 2 - right) / space,
             inkRight: right - kStart,                      // from the signature's column
           };
         });
         const got = await measureSpacing(engine, CNBLilypond.generate(config), `\\key ${flat ? "bes" : "g"} \\major c'4 d'4`);
         if (got.error || !got.keySignature || !got.firstNote) { failures.push(`${label}: ${got.error || "nothing engraved"}`); continue; }
-        const before = got.keySignature.left - (clef ? got.clef.left : got.staffStart);
+        const before = got.keySignature.left - got.staffStart;
         const after = (got.firstNote.left + got.firstNote.right) / 2 - got.keySignature.right;
         if (Math.abs(before - preview.before) > 5e-3) failures.push(`${label}: before the marks, engraved ${before}, preview ${preview.before}`);
         if (Math.abs(after - preview.after) > 5e-3) failures.push(`${label}: marks to the first notehead, engraved ${after}, preview ${preview.after}`);

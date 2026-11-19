@@ -39,12 +39,22 @@
  * import opens it. The dozenal clef sits on the middle line and has a
  * Height. The canvas's drags use withAnchor and withHeight too.
  *
+ * Session 79 (clef-steps design, docs/planning/clef-steps-design.md §2.2):
+ * the panel is four options in a designer's order, each a dropdown. a. One
+ * Clef dropdown, No clef, the built-in clefs and the imported ones, with
+ * Import from SVG… beside it, in place of the checkbox, the clef buttons and
+ * the list of clefs. b. Anchor: Top, Middle, Bottom (withAnchorChoice) or A
+ * point on the clef, which opens the picker, then the Height. c. Sits on:
+ * the canvas's pitches (pitchOptions) or a semitone of the designer's own.
+ * d. A line saying the space after the clef is LilyPond's: the padding
+ * field is gone, and gutter.paddingH keeps its stored value.
+ *
  * Editor state model (the render() UI edits this; all builds are pure):
  *   {
  *     enabled: boolean,
  *     active:  string | null,          // name into glyphs
  *     glyphs:  { [name]: definition }, // full definitions pass through
- *     gutter:  { paddingH: number }    // px padding each side of the glyph
+ *     gutter:  { paddingH: number }    // px after the glyph, kept as stored
  *   }
  *
  * The UI cannot express every invalid config (e.g. enabled with a missing
@@ -69,6 +79,8 @@
 
 import { CNBConfig } from "../src/cnb-config.js";
 import { CNBClef } from "../src/cnb-clef.js";
+import { CNBCollection } from "../src/cnb-collection.js";
+import { CNBMusic } from "../src/cnb-music.js";
 import { CNBSvgImporter } from "./svg-importer.js";
 import { CNBBuiltinClefs } from "./builtin-clefs.js";
 import { CNBKeySignatureEditor } from "./key-signature-editor.js";
@@ -113,7 +125,86 @@ function canBeAutomatic(def) {
   return def.kind === "dozenal" || def.staffSpaceUnits > 0;
 }
 
+/** The pitch classes the canvas draws, C to the C above. */
+const CANVAS_PCS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/** The Anchor dropdown's choices (session 79, clef-steps design §2.2 b). */
+const ANCHOR_CHOICES = [
+  ["top", "Top"],
+  ["middle", "Middle"],
+  ["bottom", "Bottom"],
+  ["point", "A point on the clef"],
+];
+
+/** The height in a glyph's native units of the top, middle and bottom. */
+function boxHeight(def, choice) {
+  const minY = def.viewBoxMinY || 0;
+  return { top: minY, middle: minY + def.naturalHeight / 2, bottom: minY + def.naturalHeight }[choice];
+}
+
 export const CNBClefEditor = {
+
+  /** The Anchor dropdown's choices: [[value, label]]. */
+  ANCHOR_CHOICES,
+
+  /**
+   * Which Anchor choice a definition's anchor point is (session 79, design
+   * §2.2 b): "top", "middle" or "bottom" when its reference's height is
+   * exactly the top, middle or bottom of the glyph's box, otherwise "point".
+   * A definition without a reference, or a text clef, is "top": that is what
+   * it draws (anchorSemi its top edge).
+   *
+   * @param {object} def  a config.clef.glyphs entry
+   * @returns {"top"|"middle"|"bottom"|"point"}
+   */
+  anchorChoice(def) {
+    if (!isPlainObject(def) || (def.kind || "glyph") !== "glyph" || !isPlainObject(def.reference)) return "top";
+    for (const choice of ["top", "middle", "bottom"]) {
+      if (def.reference.y === boxHeight(def, choice)) return choice;
+    }
+    return "point";
+  },
+
+  /**
+   * A clef slice with its active glyph clef's anchor point at the choice
+   * (session 79, design §2.2 b): Top, Middle and Bottom write the reference
+   * at the box's centre across and its top, middle or bottom; "point" keeps
+   * the stored point, which the picker then moves. anchorSemi is kept, so the
+   * new anchor sits on the same pitch. Null, changing nothing, for a choice
+   * not offered or an active clef that is not a glyph clef. Pure.
+   *
+   * @param {object} clef  a config.clef slice (or editor state)
+   * @param {string} choice  "top" | "middle" | "bottom" | "point"
+   * @returns {object|null}
+   */
+  withAnchorChoice(clef, choice) {
+    if (!activeGlyphDef(clef) || !ANCHOR_CHOICES.some(([value]) => value === choice)) return null;
+    const out = deepClone(clef);
+    const def = out.glyphs[out.active];
+    if (choice !== "point") {
+      def.reference = { x: (def.viewBoxMinX || 0) + def.naturalWidth / 2, y: boxHeight(def, choice) };
+    }
+    return out;
+  },
+
+  /**
+   * The pitches the Sits on dropdown offers (session 79, design §2.2 c):
+   * every semitone the canvas draws, top to bottom, each named as the label
+   * strip names it, with its semitone: "G · semitone 19".
+   *
+   * @param {object} config
+   * @returns {{semi:number, name:string}[]}
+   */
+  pitchOptions(config) {
+    const base = isPlainObject(config) ? { ...config, clef: { enabled: false } } : undefined;
+    const { minSemi, maxSemi } = CNBCollection.gridRange(CANVAS_PCS, base);
+    const out = [];
+    for (let semi = Math.floor(maxSemi); semi >= Math.ceil(minSemi); semi--) {
+      const label = CNBMusic.pcLabel(CNBMusic.pitchClass(semi));
+      out.push({ semi, name: `${label.text}${label.sharp ? "♯" : ""} · semitone ${semi}` });
+    }
+    return out;
+  },
 
   /**
    * Build a ready `config.clef` slice from editor state. Pure function;
@@ -224,18 +315,23 @@ export const CNBClefEditor = {
   /**
    * Render the clef editor into a container.
    *
-   * Structure (all styling left to the host via class hooks):
+   * Structure (all styling left to the host via class hooks; session 79,
+   * clef-steps design §2.2):
    *   div.cnb-clef-editor
-   *   ├── label.cnb-cle-enable      (enable checkbox)
-   *   ├── div.cnb-cle-choices      (Dozenal, Treble, Bass, Alto buttons)
-   *   ├── div.cnb-cle-import       (clef SVG file input + import status)
-   *   ├── div.cnb-cle-glyphs       (glyph selection rows, or empty-state note)
-   *   ├── div.cnb-cle-anchor       (a glyph clef's anchor semitone, height
-   *   │                             and anchor picker, the dozenal note and
-   *   │                             height, a text clef's anchorSemi input,
-   *   │                             or .cnb-cle-anchor-empty note)
-   *   ├── div.cnb-cle-gutter       (gutter.paddingH input)
-   *   └── div.cnb-cle-validation   (CNBConfig.validate pass-through)
+   *   ├── div.cnb-cle-clef        (a. select.cnb-cle-select: No clef, the
+   *   │                            built-in clefs, the imported ones under
+   *   │                            optgroup "Imported"; Import from SVG…,
+   *   │                            its hidden file input, the import status)
+   *   ├── div.cnb-cle-anchor      (b. select.cnb-cle-anchor-select, Top,
+   *   │                            Middle, Bottom or A point on the clef,
+   *   │                            which opens the picker; the Height; the
+   *   │                            dozenal clef's note and Height instead)
+   *   ├── div.cnb-cle-sits-on     (c. select.cnb-cle-sits-select, the
+   *   │                            canvas's pitches and A semitone of my
+   *   │                            own…, with input.cnb-cle-sits; the
+   *   │                            dozenal clef's middle of the staff)
+   *   ├── div.cnb-cle-space-note  (d. the space after the clef is LilyPond's)
+   *   └── div.cnb-cle-validation  (CNBConfig.validate pass-through)
    *
    * Events are wired as element properties (onclick/oninput/onchange) so the
    * editor is fully drivable in Node tests via a stub document. The file
@@ -252,12 +348,12 @@ export const CNBClefEditor = {
    *        pass a stub in DOM-less tests (the default is DOMParser).
    *        `getConfig` (session 45), when given, returns the current config,
    *        whose staff a chosen clef is placed for; otherwise `config`.
-   *        `parts` (session 63, step-by-step design §1.3) draws only what
-   *        one step shows: "symbol" (step 10: the enable toggle, the clef
-   *        buttons, import, the clefs, the chosen clef's height and anchor
-   *        picker, the gutter and the validation) and "placement" (step 11:
-   *        Sits on semitone, or Top at semitone, with its hint). Without it
-   *        the whole panel draws, as before.
+   *        `parts` (session 63, step-by-step design §1.3; session 79, design
+   *        §2.3) draws only what one step shows: "symbol" (step 10: a, b,
+   *        the Height and the validation) and "placement" (step 11: c and
+   *        d). Without it the whole panel draws.
+   *        `view` (session 79), an object the host keeps across re-mounts:
+   *        view.ownSemitone is true while A semitone of my own is open.
    * @returns {{root:HTMLElement, getState:()=>object, getClef:()=>object,
    *            applyTo:(config:object)=>object, setState:(partial:object)=>void,
    *            importClefText:(svgText:string, filename:string)=>object|null,
@@ -289,6 +385,13 @@ export const CNBClefEditor = {
     const checkedFrom = (e, input) =>
       e && e.target && e.target.checked !== undefined ? !!e.target.checked : !!input.checked;
 
+    const valueFrom = (e, input) =>
+      String(e && e.target && e.target.value !== undefined ? e.target.value : input.value);
+
+    // Editor state the host keeps across re-mounts (session 79): whether
+    // "A semitone of my own" is open in Sits on.
+    const view = opts.view || {};
+
     // Import panel state (shown by redraw; config state stays in `state`).
     let importStatus = "";
     let importError = "";
@@ -307,7 +410,7 @@ export const CNBClefEditor = {
      * Import a clef glyph from raw SVG text (session-1 importer contract).
      * On success the glyph is added to state.glyphs under the
      * filename-derived name (replacing any existing entry with that name)
-     * and becomes the active selection; on error the state is untouched
+     * and becomes the clef shown; on error the state is untouched
      * and the message is shown in .cnb-cle-import-error. Returns the
      * parse result either way (null only on a missing filename/text type
      * error thrown by the importer).
@@ -330,6 +433,7 @@ export const CNBClefEditor = {
       const replaced = result.name in state.glyphs;
       state.glyphs[result.name] = result.glyph;
       state.active = result.name;
+      state.enabled = true;   // chosen, as in the Clef dropdown (session 79)
       picking = true;   // its anchor point is picked next (session 59)
       importError = "";
       importStatus = `Imported the clef "${result.name}"` +
@@ -338,56 +442,53 @@ export const CNBClefEditor = {
       return result;
     }
 
-    // ── Enable toggle ────────────────────────────────────────────────────
-    function drawEnable() {
-      const label = el("label", "cnb-cle-enable");
-      const cb = el("input", "cnb-cle-enable-check");
-      cb.type = "checkbox";
-      cb.checked = !!state.enabled;
-      cb.onchange = (e) => { state.enabled = checkedFrom(e, cb); changed(); };
-      label.appendChild(cb);
-      label.appendChild(el("span", "cnb-cle-enable-text", "Show a clef at the start of the staff"));
-      return label;
-    }
+    // ── a. The clef: one dropdown, and Import beside it (session 79) ─────
+    /** The active definition while the clef is shown, or null. */
+    const shownDef = () => (state.enabled && state.active && isPlainObject(state.glyphs[state.active])
+      ? state.glyphs[state.active]
+      : null);
 
-    // ── The clefs to choose from (session 45) ────────────────────────────
-    function drawChoices() {
-      const wrap = el("div", "cnb-cle-section cnb-cle-choices");
-      wrap.appendChild(el("div", "cnb-cle-title", "Choose a clef"));
-      wrap.appendChild(el("div", "cnb-cle-hint",
-        "The dozenal clef is the engine's own number for the register. The treble, bass and " +
-        "alto clefs are LilyPond's, each placed on the pitch it marks: G, F or C."));
+    function drawClef() {
+      const wrap = el("div", "cnb-cle-section cnb-cle-clef");
       const row = el("div", "cnb-cle-fields");
-      for (const { name, displayName } of CNBBuiltinClefs.CHOICES) {
-        const on = state.enabled && state.active === name;
-        const button = el("button", "cnb-cle-choice" + (on ? " on" : ""), displayName);
-        button.type = "button";
-        button.setAttribute("data-clef", name);
-        button.onclick = () => {
-          if (!(name in state.glyphs)) {
-            state.glyphs[name] = CNBBuiltinClefs.definition(currentConfig(), name);
-          }
+      row.appendChild(el("span", "cnb-cle-field-label", "Clef"));
+      const select = el("select", "cnb-cle-select");
+      select.setAttribute("aria-label", "Clef");
+      const option = (parent, value, text) => {
+        const o = el("option", "", text);
+        o.value = value;
+        parent.appendChild(o);
+      };
+      option(select, "none", "No clef");
+      const builtIn = new Set(CNBBuiltinClefs.CHOICES.map(c => c.name));
+      for (const { name, displayName } of CNBBuiltinClefs.CHOICES) option(select, name, displayName);
+      const imported = Object.keys(state.glyphs).filter(name => !builtIn.has(name));
+      if (imported.length > 0) {
+        const group = el("optgroup", "cnb-cle-imported");
+        group.setAttribute("label", "Imported");
+        for (const name of imported) option(group, name, (state.glyphs[name] && state.glyphs[name].displayName) || name);
+        select.appendChild(group);
+      }
+      select.value = shownDef() ? state.active : "none";
+      select.onchange = (e) => {
+        const name = valueFrom(e, select);
+        picking = false;
+        if (name === "none") {
+          state.enabled = false;
+        } else {
+          if (!(name in state.glyphs)) state.glyphs[name] = CNBBuiltinClefs.definition(currentConfig(), name);
           state.active = name;
           state.enabled = true;
-          picking = false;
-          changed();
-        };
-        row.appendChild(button);
-      }
-      wrap.appendChild(row);
-      return wrap;
-    }
+        }
+        changed();
+      };
+      row.appendChild(select);
 
-    // ── Clef glyph import (session-1 importer, clef kind) ────────────────
-    function drawImport() {
-      const wrap = el("div", "cnb-cle-section cnb-cle-import");
-      wrap.appendChild(el("div", "cnb-cle-title", "Import a clef from SVG"));
-      wrap.appendChild(el("div", "cnb-cle-hint",
-        "An SVG drawn with the music glyph toolkit, which records its height in semitones."));
-
+      // Import from SVG…: the button opens the file input, which stays hidden.
       const input = el("input", "cnb-cle-file");
       input.type = "file";
       input.setAttribute("accept", ".svg,image/svg+xml");
+      input.hidden = true;
       input.onchange = (e) => {
         const file = e && e.target && e.target.files && e.target.files[0];
         if (!file) return;
@@ -396,102 +497,130 @@ export const CNBClefEditor = {
           (err) => { importError = "Import failed: could not read the file (" + err.message + ")"; redraw(); }
         );
       };
-      wrap.appendChild(input);
+      const importButton = el("button", "cnb-cle-import-button", "Import from SVG…");
+      importButton.type = "button";
+      importButton.onclick = () => { if (input.click) input.click(); };
+      row.appendChild(importButton);
+      row.appendChild(input);
+      wrap.appendChild(row);
+      wrap.appendChild(el("div", "cnb-cle-hint",
+        "The dozenal clef is the engine's own number for the register. The treble, bass and alto " +
+        "clefs are LilyPond's, each placed on the pitch it marks: G, F or C. An SVG of your own " +
+        "is imported as a clef, and you then pick the point of it that sits on its pitch."));
 
       wrap.appendChild(el("div", "cnb-cle-import-status", importStatus));
       wrap.appendChild(el("div", "cnb-cle-import-error", importError));
       const warnList = el("ul", "cnb-cle-import-warnings");
-      for (const w of importWarnings) {
-        warnList.appendChild(el("li", "cnb-cle-import-warning", w));
-      }
+      for (const w of importWarnings) warnList.appendChild(el("li", "cnb-cle-import-warning", w));
       wrap.appendChild(warnList);
       return wrap;
     }
 
-    // ── Glyph selection ──────────────────────────────────────────────────
-    function drawGlyphs() {
-      const wrap = el("div", "cnb-cle-section cnb-cle-glyphs");
-      wrap.appendChild(el("div", "cnb-cle-title", "Clefs"));
-
-      const names = Object.keys(state.glyphs);
-      if (names.length === 0) {
-        wrap.appendChild(el("div", "cnb-cle-empty", "No clefs yet: import one from SVG above."));
+    // ── b. Its anchor, and its height (session 79) ───────────────────────
+    function drawAnchorChoice() {
+      const active = shownDef();
+      if (!active) return null;
+      const wrap = el("div", "cnb-cle-section cnb-cle-anchor");
+      const kind = active.kind || "glyph";
+      if (kind === "dozenal") {
+        wrap.appendChild(el("div", "cnb-cle-dozenal-note",
+          "The dozenal clef sits on the middle of the staff, and grows or shrinks about it."));
+        wrap.appendChild(drawHeight(active));
         return wrap;
       }
-
-      for (const name of names) {
-        const def = state.glyphs[name];
-        const isActive = state.active === name;
-        const row = el("div", "cnb-cle-glyph-option" + (isActive ? " selected" : ""));
-        row.setAttribute("data-glyph-name", name);
-        const kind = (def && def.kind) || "glyph";
-        const top = def && typeof def.anchorSemi === "number" ? def.anchorSemi : "?";
-        const detail = kind === "dozenal"
-          ? "the engine's number, on the middle of the staff"
-          : kind === "text"
-            ? `text “${(def && def.text) || ""}” · top at semitone ${top}`
-            : def && def.reference
-              ? `drawing · on semitone ${top}`
-              : `drawing · top at semitone ${top}`;
-        row.appendChild(el("span", "cnb-cle-glyph-name",
-          ((def && def.displayName) || name)));
-        row.appendChild(el("span", "cnb-cle-glyph-detail", detail));
-        row.onclick = () => { state.active = name; picking = false; changed(); };
-        wrap.appendChild(row);
+      const row = el("div", "cnb-cle-fields");
+      row.appendChild(el("span", "cnb-cle-field-label", "Anchor"));
+      const select = el("select", "cnb-cle-anchor-select");
+      select.setAttribute("aria-label", "Anchor");
+      for (const [value, text] of kind === "glyph" ? ANCHOR_CHOICES : ANCHOR_CHOICES.slice(0, 1)) {
+        const o = el("option", "", text);
+        o.value = value;
+        select.appendChild(o);
       }
+      select.value = picking ? "point" : CNBClefEditor.anchorChoice(active);
+      if (kind !== "glyph") {
+        select.disabled = true;   // a text clef is placed by its top
+      } else {
+        select.onchange = (e) => {
+          const choice = valueFrom(e, select);
+          picking = choice === "point";
+          if (picking) redraw();
+          else adopt(CNBClefEditor.withAnchorChoice(state, choice));
+        };
+      }
+      row.appendChild(select);
+      wrap.appendChild(row);
+      wrap.appendChild(el("div", "cnb-cle-hint",
+        "The point of the clef that sits on its pitch. A new height grows or shrinks the clef about it."));
+      if (kind === "glyph" && picking) wrap.appendChild(drawPicker(active));
+      if (kind === "glyph") wrap.appendChild(drawHeight(active));
       return wrap;
     }
 
-    // ── Where the clef is shown (active definition) ──────────────────────
-    // place: where it sits (step 11); size: its height and anchor picker
-    // (step 10). The whole panel draws both (session 63).
-    function drawAnchor({ place = true, size = true } = {}) {
-      const wrap = el("div", "cnb-cle-section cnb-cle-anchor");
-
-      const active = state.active && isPlainObject(state.glyphs[state.active])
-        ? state.glyphs[state.active]
-        : null;
+    // ── c. Where the anchor sits, and d. the space after it (session 79) ─
+    function drawSitsOn() {
+      const wrap = el("div", "cnb-cle-section cnb-cle-sits-on");
+      const active = shownDef();
       if (!active) {
-        if (!place) return null;
-        wrap.appendChild(el("div", "cnb-cle-title", "Where the clef is shown"));
-        wrap.appendChild(el("div", "cnb-cle-anchor-empty",
-          "Import or choose a clef to place it."));
+        wrap.appendChild(el("div", "cnb-cle-anchor-empty", "Choose or import a clef in step 10 to place it."));
         return wrap;
       }
       const kind = active.kind || "glyph";
+      const row = el("div", "cnb-cle-fields");
+      row.appendChild(el("span", "cnb-cle-field-label", "Sits on"));
       if (kind === "dozenal") {
-        wrap.appendChild(el("div", "cnb-cle-title", place ? "Where the clef is shown" : "Size"));
-        if (place) {
-          wrap.appendChild(el("div", "cnb-cle-dozenal-note",
-            "The dozenal clef sits on the middle of the staff, and grows or shrinks about it. " +
-            "The score's own clef sets its number: 50 for treble, 40 for alto, 30 for bass."));
-        }
-        if (size) wrap.appendChild(drawHeight(active));
+        row.appendChild(el("span", "cnb-cle-sits-fixed", "the middle of the staff"));
+        wrap.appendChild(row);
+        wrap.appendChild(el("div", "cnb-cle-dozenal-note",
+          "The score's own clef sets its number: 50 for treble, 40 for alto, 30 for bass."));
         return wrap;
       }
-      if (kind === "glyph") return drawPlace(wrap, active, { place, size });
-      if (!place) return null;
-
-      wrap.appendChild(el("div", "cnb-cle-title", "Top of the clef"));
-
-      wrap.appendChild(el("div", "cnb-cle-hint",
-        "The semitone the top of the clef sits on. Decimals are allowed: a clef " +
-        "is usually placed by a feature inside it, such as the curl of a treble clef."));
-
-      const row = el("div", "cnb-cle-fields");
-      const anchor = el("input", "cnb-cle-anchor-input");
-      anchor.type = "number";
-      anchor.step = "any";
-      anchor.value = String(active.anchorSemi);
-      anchor.oninput = (e) => {
-        const v = numberFrom(e, anchor);
-        if (v !== null) { active.anchorSemi = v; changed(); }
+      const pitches = CNBClefEditor.pitchOptions(currentConfig());
+      const onPitch = pitches.some(p => p.semi === active.anchorSemi);
+      const own = !!view.ownSemitone || !onPitch;
+      const select = el("select", "cnb-cle-sits-select");
+      select.setAttribute("aria-label", "Sits on");
+      for (const p of pitches) {
+        const o = el("option", "", p.name);
+        o.value = String(p.semi);
+        select.appendChild(o);
+      }
+      const ownOption = el("option", "", "A semitone of my own…");
+      ownOption.value = "own";
+      select.appendChild(ownOption);
+      select.value = own ? "own" : String(active.anchorSemi);
+      const write = (semi) => {
+        if (kind === "glyph") adopt(CNBClefEditor.withAnchor(state, semi));
+        else { active.anchorSemi = semi; changed(); }
       };
-      row.appendChild(anchor);
-      row.appendChild(el("span", "cnb-cle-anchor-name",
-        "semitones, for " + ((active.displayName) || state.active)));
+      select.onchange = (e) => {
+        const value = valueFrom(e, select);
+        view.ownSemitone = value === "own";
+        if (view.ownSemitone) redraw();
+        else write(Number(value));
+      };
+      row.appendChild(select);
+      if (own) {
+        const field = numberField("cnb-cle-sits", active.anchorSemi);
+        field.setAttribute("aria-label", "Semitone");
+        field.oninput = (e) => {
+          const v = numberFrom(e, field);
+          if (v !== null) write(v);
+        };
+        row.appendChild(field);
+      }
       wrap.appendChild(row);
+      wrap.appendChild(el("div", "cnb-cle-hint", kind === "glyph"
+        ? "The pitch the clef's anchor sits on. You can also drag the clef up or down in the " +
+          "preview, or its corner to make it taller or shorter about its anchor."
+        : "The pitch the top of the clef sits on."));
       return wrap;
+    }
+
+    function drawSpaceNote() {
+      return el("div", "cnb-cle-hint cnb-cle-space-note",
+        "The space after the clef is LilyPond's: it engraves the clef 0.75 staff spaces after the " +
+        "start of the staff and spaces what follows from it, and the preview does the same.");
     }
 
     /** Write an edited clef slice back into the state and report it. */
@@ -508,50 +637,6 @@ export const CNBClefEditor = {
       input.step = "any";
       input.value = String(value);
       return input;
-    }
-
-    /**
-     * A glyph clef's place (session 59): the semitone its anchor point sits
-     * on (its top, without one), its height, and its anchor picker.
-     */
-    function drawPlace(wrap, active, { place = true, size = true } = {}) {
-      const anchored = !!active.reference;
-      if (!place) {
-        wrap.appendChild(el("div", "cnb-cle-title", "Size and anchor point"));
-        wrap.appendChild(el("div", "cnb-cle-hint",
-          "The clef's height, and the point of it that sits on its pitch: a new height grows " +
-          "or shrinks the clef about that point."));
-        return drawSize(wrap, active);
-      }
-      wrap.appendChild(el("div", "cnb-cle-title", "Where the clef is shown"));
-      wrap.appendChild(el("div", "cnb-cle-hint", anchored
-        ? "The semitone the clef's anchor point sits on, such as the curl of a treble clef. " +
-          "Decimals are allowed. A new height grows or shrinks the clef about its anchor. With " +
-          "this section open you can also drag the clef up or down on the staff, or drag its " +
-          "bottom edge to make it taller or shorter."
-        : "The semitone the top of the clef sits on. Pick an anchor point to place it by a " +
-          "point inside it instead: that point then sits on this semitone."));
-      const row = el("div", "cnb-cle-fields");
-      const sits = numberField("cnb-cle-sits", active.anchorSemi);
-      sits.oninput = (e) => {
-        const v = numberFrom(e, sits);
-        if (v !== null) adopt(CNBClefEditor.withAnchor(state, v));
-      };
-      row.appendChild(el("span", "cnb-cle-range-label", anchored ? "Sits on semitone" : "Top at semitone"));
-      row.appendChild(sits);
-      wrap.appendChild(row);
-      return size ? drawSize(wrap, active) : wrap;
-    }
-
-    /** A glyph clef's height and its anchor picker, into wrap. */
-    function drawSize(wrap, active) {
-      wrap.appendChild(drawHeight(active));
-      const pick = el("button", "cnb-cle-pick-anchor" + (picking ? " on" : ""), "Pick the anchor point");
-      pick.type = "button";
-      pick.onclick = () => { picking = !picking; redraw(); };
-      wrap.appendChild(pick);
-      if (picking) wrap.appendChild(drawPicker(active));
-      return wrap;
     }
 
     /**
@@ -627,28 +712,6 @@ export const CNBClefEditor = {
       return wrap;
     }
 
-    // ── Gutter sizing ────────────────────────────────────────────────────
-    function drawGutter() {
-      const wrap = el("div", "cnb-cle-section cnb-cle-gutter");
-      wrap.appendChild(el("div", "cnb-cle-title", "Space either side"));
-      wrap.appendChild(el("div", "cnb-cle-hint", "Room on each side of the clef, before the first note."));
-
-      const row = el("div", "cnb-cle-fields");
-      const pad = el("input", "cnb-cle-gutter-input");
-      pad.type = "number";
-      pad.min = "0";
-      pad.step = "1";
-      pad.value = String(state.gutter.paddingH);
-      pad.oninput = (e) => {
-        const v = numberFrom(e, pad);
-        if (v !== null && v >= 0) { state.gutter.paddingH = v; changed(); }
-      };
-      row.appendChild(pad);
-      row.appendChild(el("span", "cnb-cle-unit", "px"));
-      wrap.appendChild(row);
-      return wrap;
-    }
-
     // ── Validation pass-through (Module A) ───────────────────────────────
     function drawValidation() {
       const wrap = el("div", "cnb-cle-validation");
@@ -673,30 +736,20 @@ export const CNBClefEditor = {
 
     function redraw() {
       root.textContent = "";   // clears children on real DOM and on the test stub
-      if (parts) {
-        if (parts.has("symbol")) {
-          root.appendChild(drawEnable());
-          root.appendChild(drawChoices());
-          root.appendChild(drawImport());
-          root.appendChild(drawGlyphs());
-          const size = drawAnchor({ place: false, size: true });
-          if (size) root.appendChild(size);
-          root.appendChild(drawGutter());
-          root.appendChild(drawValidation());
-        }
-        if (parts.has("placement")) {
-          const place = drawAnchor({ place: true, size: false });
-          if (place) root.appendChild(place);
-        }
-        return;
+      // Step 10 ("symbol"): a, b and Height; step 11 ("placement"): c and
+      // d (session 79, design §2.3). Without parts, all of them.
+      const symbol = !parts || parts.has("symbol");
+      const placement = !parts || parts.has("placement");
+      if (symbol) {
+        root.appendChild(drawClef());
+        const anchor = drawAnchorChoice();
+        if (anchor) root.appendChild(anchor);
       }
-      root.appendChild(drawEnable());
-      root.appendChild(drawChoices());
-      root.appendChild(drawImport());
-      root.appendChild(drawGlyphs());
-      root.appendChild(drawAnchor());
-      root.appendChild(drawGutter());
-      root.appendChild(drawValidation());
+      if (placement) {
+        root.appendChild(drawSitsOn());
+        root.appendChild(drawSpaceNote());
+      }
+      if (symbol) root.appendChild(drawValidation());
     }
 
     redraw();

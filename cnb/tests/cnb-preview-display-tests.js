@@ -20,6 +20,7 @@ import { CNBStaff } from "../src/cnb-staff.js";
 import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBKeySignature } from "../src/cnb-key-signature.js";
 import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
+import { CNBClef } from "../src/cnb-clef.js";
 
 /** The default config showing one of the built-in clefs (session 45). */
 function clefShown(name) {
@@ -31,6 +32,10 @@ function clefShown(name) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message || "Assertion failed");
+}
+
+function approx(actual, expected, msg, tol = 1e-9) {
+  if (!(Math.abs(actual - expected) <= tol)) throw new Error(`${msg || "approx"}: expected ${expected}, got ${actual}`);
 }
 
 function assertEqual(actual, expected, msg) {
@@ -1164,71 +1169,91 @@ export const tests = [
     },
   },
   {
-    name: "clef mode: with the Clef section open and a glyph clef, the class and the hint; not otherwise (session 45)",
+    name: "clef: the canvas has no clef mode since session 79; its clef takes no drag in the Clef steps",
     fn: () => {
       const cfg = clefShown("treble");
       withDomStub(container => {
         const api = PVD.render(container, { getConfig: () => cfg, storage: null, onSelect: () => {}, onClefDrag: () => {} });
-        const on = () => api.root.className.split(" ").includes("cnb-pvd-clef-mode");
-        const hint = () => findOne(api.root, "cnb-pvd-pitch-hint").textContent;
-        assert(!on(), "off with no section open");
         api.setFocus("clef-placement");
-        assert(on(), "on with the Clef section open");
-        assertEqual(hint(), "Drag the clef up or down to move it, or its bottom edge down or up to make it taller or shorter about its anchor", "hint");
-        api.setPitchMode(true);
-        assert(!on(), "pitch mode wins");
-        api.setPitchMode(false);
-        api.setFocus("pitch");
-        assert(!on() && hint() === PVD.SELECT_HINT, "off in another section");
+        assert(!api.root.className.split(" ").includes("cnb-pvd-clef-mode"), "no clef mode");
+        assertEqual(findOne(api.root, "cnb-pvd-pitch-hint").textContent, PVD.SELECT_HINT, "the selection hint");
+        assertEqual(findAll(api.root, "clef-col")[0].onpointerdown, undefined, "no drag on the canvas's clef");
+        assertEqual(findAllByClassAttr(api.root, "cnb-clef-resize").length, 0, "no handle on the canvas");
       });
-      for (const [label, config, opts] of [
-        ["the dozenal clef", clefShown("dozenal"), { onClefDrag: () => {} }],
-        ["no clef", CNBConfig.createDefault(), { onClefDrag: () => {} }],
-        ["no onClefDrag", clefShown("treble"), {}],
-      ]) {
-        withDomStub(container => {
-          const api = PVD.render(container, { getConfig: () => config, storage: null, ...opts });
-          api.setFocus("clef-placement");
-          assert(!api.root.className.split(" ").includes("cnb-pvd-clef-mode"), `off for ${label}`);
-        });
-      }
     },
   },
   {
-    name: "clef mode: dragging the clef moves it, dragging its handle resizes it; Esc, a cancel or a tiny move report nothing (session 45)",
+    name: "renderPartial (clef): at 16 px a semitone whatever the Size, with the label strip, the anchor marked and its pitch name highlighted (session 79)",
+    fn: () => {
+      const cfg = clefShown("treble");   // its curl on G, semitone 7
+      withDomStub(container => {
+        const wrap = PVD.renderPartial(container, cfg, { part: "clef", size: "small" });
+        assertEqual(findAll(wrap, "label-col").length, 1, "the label strip");
+        const space = 4 * PVD.SIZES.large;
+        const g = findAllByClassAttr(wrap, "cnb-clef")[0];
+        assert(g.getAttribute("transform").startsWith(`translate(${0.75 * space},`), "Large: 0.75 × 64 px");
+        assertEqual(findAllByClassAttr(g, "cnb-clef-anchor").length, 1, "the anchor marked");
+        assertEqual(findAllByClassAttr(g, "cnb-clef-resize").length, 1, "the corner handle");
+        const marked = findAllByClassAttr(wrap, "pitch-label anchor-pitch");
+        assertEqual(marked.map(l => l.getAttribute("data-semi")), ["7"], "G, the pitch it sits on");
+        assert(!wrap.className.includes("cnb-pvd-clef-drag"), "no drag without onClefDrag");
+      });
+      withDomStub(container => {
+        const wrap = PVD.renderPartial(container, clefShown("dozenal"), { part: "clef", onClefDrag: () => {} });
+        assertEqual(findAllByClassAttr(wrap, "cnb-clef-anchor").length, 0, "the dozenal clef has no anchor to mark");
+        assertEqual(findAllByClassAttr(wrap, "pitch-label anchor-pitch").map(l => l.getAttribute("data-semi")), ["12"],
+          "it sits on the middle of the staff");
+        assert(!wrap.className.includes("cnb-pvd-clef-drag"), "and takes no drag");
+      });
+      withDomStub(container => {
+        const wrap = PVD.renderPartial(container, CNBConfig.createDefault(), { part: "clef", onClefDrag: () => {} });
+        assertEqual(findAll(wrap, "clef-col").length, 0, "no clef, no marks");
+      });
+    },
+  },
+  {
+    name: "renderPartial (clef): dragging the clef moves it, dragging its corner resizes it; Esc, a cancel or a tiny move report nothing",
     fn: () => {
       const cfg = clefShown("treble");
       withDomStub(container => {
         const drags = [];
-        const api = PVD.render(container, { getConfig: () => cfg, storage: null,
-          onClefDrag: (kind, semis) => drags.push([kind, semis]) });
-        const step = PVD.SIZES.medium;
-        const col = () => findAll(api.root, "clef-col")[0];
-        const slice = () => findAllByClassAttr(col(), "clef-slice")[0];
-        const handle = () => findAllByClassAttr(col(), "cnb-clef-resize")[0];
-        assertEqual(col().onpointerdown, undefined, "outside clef mode the clef takes no drag");
+        const wrap = PVD.renderPartial(container, cfg, { part: "clef", onClefDrag: (kind, semis) => drags.push([kind, semis]) });
+        assert(wrap.className.split(" ").includes("cnb-pvd-clef-drag"), "the drag's class");
+        const step = PVD.SIZES.large;
+        const col = findAll(wrap, "clef-col")[0];
+        const slice = findAllByClassAttr(col, "clef-slice")[0];
+        const handle = findAllByClassAttr(col, "cnb-clef-resize")[0];
 
-        api.setFocus("clef-placement");
-        col().onpointerdown({ clientY: 100 });
-        col().onpointermove({ clientY: 100 - 1.5 * step });
-        assertEqual(slice().style.transform, `translateY(${-1.5 * step}px)`, "the clef follows the pointer");
-        col().onpointerup({});
+        col.onpointerdown({ clientY: 100 });
+        col.onpointermove({ clientY: 100 - 1.5 * step });
+        assertEqual(slice.style.transform, `translateY(${-1.5 * step}px)`, "the clef follows the pointer");
+        col.onpointerup({});
         assertEqual(drags, [["move", 1.5]], "moved a semitone and a half up");
-        assertEqual(slice().style.transform, "", "put back for the redraw");
+        assertEqual(slice.style.transform, "", "put back for the redraw");
 
-        col().onpointerdown({ clientY: 100, target: handle() });
-        col().onpointermove({ clientY: 100 + 2 * step });
-        assertEqual(handle().getAttribute("transform"), `translate(0 ${2 * step})`, "the handle follows");
-        assertEqual(slice().style.transform || "", "", "the clef stays");
-        col().onpointerup({});
+        // A resize scales the clef live about its anchor's height, its left
+        // edge kept, by its height grown by the pixels dragged down.
+        const clef = findAllByClassAttr(col, "cnb-clef")[0];
+        const base = clef.getAttribute("transform");
+        const height = Number(handle.getAttribute("y")) + Number(handle.getAttribute("height")) / 2;
+        const anchorY = Number(findAllByClassAttr(clef, "cnb-clef-anchor-ring")[0].getAttribute("cy"));
+        approx(height, CNBClef.shown(cfg).height * step, "the clef's height in px, from its corner handle");
+        col.onpointerdown({ clientY: 100, target: handle });
+        col.onpointermove({ clientY: 100 + 2 * step });
+        assertEqual(clef.getAttribute("transform"),
+          `${base} translate(0 ${anchorY}) scale(${1 + 2 * step / height}) translate(0 ${-anchorY})`,
+          "the clef grows live about its anchor, its handle in it");
+        assertEqual(slice.style.transform || "", "", "the clef is not moved");
+        col.onpointerup({});
         assertEqual(drags[1], ["resize", -2], "its bottom two semitones down");
+        assertEqual(clef.getAttribute("transform"), base, "put back for the redraw");
 
-        col().onpointerdown({ clientY: 100 });
-        col().onpointermove({ clientY: 102 });
-        col().onpointerup({});
-        col().onpointerdown({ clientY: 100 });
-        col().onpointermove({ clientY: 100 - step });
-        col().onpointercancel({});
+        col.onpointerdown({ clientY: 100 });
+        col.onpointermove({ clientY: 102 });
+        col.onpointerup({});
+        col.onpointerdown({ clientY: 100 });
+        col.onpointermove({ clientY: 100 - step });
+        col.onpointercancel({});
         assertEqual(drags.length, 2, "a tiny move and a cancel report nothing");
 
         const listeners = [];
@@ -1238,16 +1263,16 @@ export const tests = [
         globalThis.addEventListener = (type, fn) => listeners.push([type, fn]);
         globalThis.removeEventListener = () => {};
         try {
-          col().onpointerdown({ clientY: 100 });
-          col().onpointermove({ clientY: 100 - step });
+          col.onpointerdown({ clientY: 100 });
+          col.onpointermove({ clientY: 100 - step });
           listeners.find(([t]) => t === "keydown")[1]({ key: "Escape" });
-          col().onpointerup({});
+          col.onpointerup({});
         } finally {
           if (hadAdd) { globalThis.addEventListener = prevAdd; globalThis.removeEventListener = prevRemove; }
           else { delete globalThis.addEventListener; delete globalThis.removeEventListener; }
         }
         assertEqual(drags.length, 2, "Esc puts the clef back");
-        assertEqual(slice().style.transform, "", "and its slice");
+        assertEqual(slice.style.transform, "", "and its slice");
       });
     },
   },

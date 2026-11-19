@@ -95,7 +95,7 @@ export const tests = [
       eq(CNBSteps.map(s => s.component), ["noteheads", "staff", "staff", "staff", "noteheads",
         "keySignature", "keySignature", "keySignature", null, "clef", "clef", "meta"], "components");
       eq(CNBSteps.map(s => s.canvas), ["staff", "staff", "staff", "staff", "staff",
-        "spelled", "spelled", "designer", "keys", "clef", "staff", "staff"], "canvases");
+        "spelled", "spelled", "designer", "keys", "clef", "clef", "staff"], "canvases");
     },
   },
   {

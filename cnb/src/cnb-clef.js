@@ -41,9 +41,10 @@
  * bottom at −1.5582 staff spaces from the middle line, as computed here.
  *
  * extent(config) gives the shown clef's top and bottom in semitones, which
- * the card collection widens a row's grid to hold (session 45). A glyph
- * clef also draws rect.cnb-clef-resize along its bottom edge, unpainted and
- * hidden; the editor's canvas shows it as the handle that resizes the clef.
+ * the card collection widens a row's grid to hold (session 45). The Clef
+ * steps' preview adds renderAnchor's mark of the anchor point and its corner
+ * handle that resizes the clef (session 79; the bar along the bottom edge
+ * the canvas showed from session 45 is gone).
  *
  * Sized about an anchor (session 59). A glyph definition's optional
  * reference { x, y }, in its native SVG units, is its anchor point (the
@@ -94,8 +95,17 @@ const DOZENAL_BOTTOM = DOZENAL_DIGITS.inkBottom * DOZENAL_SCALE - 1.5;
 /** Its width in staff spaces: two half-width advances. */
 const DOZENAL_WIDTH = DOZENAL_DIGITS.advance * DOZENAL_SCALE;
 
-/** The height in px of a glyph clef's resize handle, on its bottom edge. */
+/** The side in px of a glyph clef's resize handle, on its box's bottom right
+ *  corner (session 79), and the radius of the ring marking its anchor. */
 const RESIZE_HANDLE_PX = 8;
+const ANCHOR_RING_PX = 5;
+
+/**
+ * Staff spaces from the staff's start to the clef's left edge (session 79,
+ * clef-steps design §2.2 d): where the engine engraves every clef, whatever
+ * its gutter or the staff's magnification (measured, engine 1.10.0).
+ */
+const CLEF_START = 0.75;
 
 /** Semitones (axis units under a pitch axis) per staff space. */
 function unitsPerStaffSpace(config) {
@@ -230,9 +240,11 @@ export const CNBClef = {
   },
 
   /**
-   * Total width of the clef gutter in px: active glyph width plus the
-   * configured horizontal padding on both sides. 0 when no clef renders —
-   * the collection reserves no gutter (default-off compatibility).
+   * Total width of the clef gutter in px: 0.75 staff spaces before the
+   * clef, where the engine engraves it, the clef's width, and gutter.paddingH
+   * after it, on its right only, as the engine adds its gutter (session 79).
+   * 0 when no clef renders — the collection reserves no gutter
+   * (default-off compatibility).
    *
    * @param {object} config
    * @param {number} pxPerSemi
@@ -242,8 +254,39 @@ export const CNBClef = {
     const shown = CNBClef.shown(config);
     if (!shown) return 0;
     const paddingH = config.clef?.gutter?.paddingH ?? 12;
-    return CNBClef.measure(shown.def, pxPerSemi, CNBClef.staffSpacePx(config, pxPerSemi), shown.height)
-      .pixelWidth + 2 * paddingH;
+    return CNBClef.left(config, pxPerSemi) +
+      CNBClef.measure(shown.def, pxPerSemi, CNBClef.staffSpacePx(config, pxPerSemi), shown.height)
+        .pixelWidth + paddingH;
+  },
+
+  /**
+   * The clef's left edge in px from the staff's start (session 79): 0.75
+   * staff spaces, where the engine engraves it.
+   *
+   * @param {object} config
+   * @param {number} pxPerSemi
+   * @returns {number}
+   */
+  left(config, pxPerSemi) {
+    return CLEF_START * CNBClef.staffSpacePx(config, pxPerSemi);
+  },
+
+  /**
+   * The shown clef's origin in px right of its left edge (session 79): a
+   * glyph's x = 0, which the engine spaces the key signature from (its ink,
+   * from viewBoxMinX, is what it puts 0.75 staff spaces after the staff's
+   * start), so −viewBoxMinX at the clef's scale: −0.0055 staff spaces for
+   * the treble clef, 0.0354 for the bass. 0 for a text or the dozenal clef,
+   * and when no clef is shown.
+   *
+   * @param {object} config
+   * @param {number} pxPerSemi
+   * @returns {number}
+   */
+  origin(config, pxPerSemi) {
+    const shown = CNBClef.shown(config);
+    if (!shown || (shown.def.kind || "glyph") !== "glyph") return 0;
+    return -(shown.def.viewBoxMinX || 0) * CNBClef.measure(shown.def, pxPerSemi, undefined, shown.height).scaleFactor;
   },
 
   /**
@@ -282,7 +325,8 @@ export const CNBClef = {
   /**
    * Render the active clef into svgParent. A glyph's or text clef's TOP edge
    * is placed at semiToY of its top (shown(config).top: anchorSemi, or found
-   * from its anchor), at its height; the left edge sits at gutter.paddingH.
+   * from its anchor), at its height; the left edge sits 0.75 staff spaces
+   * from the gutter's start (left(), session 79), as the engine engraves it.
    * The dozenal numeral is placed on the middle line, semiToY(staff.midpoint),
    * at its height, scaled about that line.
    * Returns null (rendering nothing) when no clef is active.
@@ -297,7 +341,7 @@ export const CNBClef = {
     if (!shown) return null;
     const { def, height } = shown;
 
-    const paddingH = config.clef?.gutter?.paddingH ?? 12;
+    const leftX = CNBClef.left(config, gridContext.pxPerSemi);
     const g = document.createElementNS(NS, "g");
     g.setAttribute("class", "cnb-clef");
 
@@ -309,7 +353,7 @@ export const CNBClef = {
       const space = CNBClef.staffSpacePx(config, gridContext.pxPerSemi) *
         (height / (3 * unitsPerStaffSpace(config)));
       const middleY = gridContext.semiToY(config.staff?.midpoint ?? 12);
-      g.setAttribute("transform", `translate(${paddingH},${middleY}) scale(${space})`);
+      g.setAttribute("transform", `translate(${leftX},${middleY}) scale(${space})`);
       const digits = [
         [DOZENAL_DIGITS.five, `translate(0,1.5) scale(${DOZENAL_SCALE / 2},${-DOZENAL_SCALE})`],
         [DOZENAL_DIGITS.zero, `translate(${DOZENAL_WIDTH / 2},1) scale(${DOZENAL_SCALE / 2},${-DOZENAL_SCALE * 2 / 3})`],
@@ -326,9 +370,9 @@ export const CNBClef = {
     }
 
     const topY = gridContext.semiToY(shown.top);
-    const { scaleFactor, pixelWidth, pixelHeight } =
+    const { scaleFactor, pixelHeight } =
       CNBClef.measure(def, gridContext.pxPerSemi, undefined, height);
-    g.setAttribute("transform", `translate(${paddingH},${topY})`);
+    g.setAttribute("transform", `translate(${leftX},${topY})`);
 
     if ((def.kind || "glyph") === "text") {
       const text = document.createElementNS(NS, "text");
@@ -352,21 +396,53 @@ export const CNBClef = {
       path.setAttribute("transform", `scale(${scaleFactor}) translate(${-minX},${-minY})`);
       path.setAttribute("fill", def.color || "#000000");
       g.appendChild(path);
-      // The resize handle along the bottom edge (session 45): hidden, and
-      // shown by the editor's canvas while the Clef section is open.
-      const handle = document.createElementNS(NS, "rect");
-      handle.setAttribute("class", "cnb-clef-resize");
-      handle.setAttribute("x", "0");
-      handle.setAttribute("y", String(pixelHeight - RESIZE_HANDLE_PX / 2));
-      handle.setAttribute("width", String(pixelWidth));
-      handle.setAttribute("height", String(RESIZE_HANDLE_PX));
-      handle.setAttribute("fill", "none");
-      handle.setAttribute("visibility", "hidden");
-      g.appendChild(handle);
     }
 
     svgParent.appendChild(g);
     return g;
+  },
+
+  /**
+   * The shown glyph clef's anchor point and resize handle, drawn into its
+   * group (render's return) for the Clef steps' preview (session 79,
+   * clef-steps design §2.1): g.cnb-clef-anchor, a ringed cross at the anchor
+   * point (the top's middle without one) with a dashed guide from it back to
+   * the staff's start, toward the pitch names; and rect.cnb-clef-resize, a
+   * small square on the bottom right corner of the clef's box, which a drag
+   * resizes the clef by. Nothing for the dozenal or a text clef, or when no
+   * clef is shown.
+   *
+   * @param {SVGGElement} g  the clef's group, from render()
+   * @param {object} config
+   * @param {number} pxPerSemi
+   * @returns {SVGGElement|null}  the anchor's group
+   */
+  renderAnchor(g, config, pxPerSemi) {
+    const shown = CNBClef.shown(config);
+    if (!shown || (shown.def.kind || "glyph") !== "glyph") return null;
+    const { def, height } = shown;
+    const minX = def.viewBoxMinX || 0;
+    const minY = def.viewBoxMinY || 0;
+    const { scaleFactor, pixelWidth, pixelHeight } = CNBClef.measure(def, pxPerSemi, undefined, height);
+    const ref = def.reference || { x: minX + def.naturalWidth / 2, y: minY };
+    const x = (ref.x - minX) * scaleFactor;
+    const y = (ref.y - minY) * scaleFactor;
+    const make = (tag, attrs) => {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+      return e;
+    };
+    const mark = make("g", { class: "cnb-clef-anchor", stroke: "#2f5bd3", "stroke-width": 1.5, fill: "none" });
+    mark.appendChild(make("line", { class: "cnb-clef-anchor-guide", x1: -CNBClef.left(config, pxPerSemi), y1: y,
+      x2: x, y2: y, "stroke-dasharray": "3 3" }));
+    mark.appendChild(make("circle", { class: "cnb-clef-anchor-ring", cx: x, cy: y, r: ANCHOR_RING_PX }));
+    mark.appendChild(make("path", { class: "cnb-clef-anchor-cross",
+      d: `M ${x - 2 * ANCHOR_RING_PX} ${y} H ${x + 2 * ANCHOR_RING_PX} M ${x} ${y - 2 * ANCHOR_RING_PX} V ${y + 2 * ANCHOR_RING_PX}` }));
+    g.appendChild(mark);
+    g.appendChild(make("rect", { class: "cnb-clef-resize", x: pixelWidth - RESIZE_HANDLE_PX / 2,
+      y: pixelHeight - RESIZE_HANDLE_PX / 2, width: RESIZE_HANDLE_PX, height: RESIZE_HANDLE_PX,
+      fill: "#2f5bd3", "fill-opacity": 0.5 }));
+    return mark;
   },
 
 };

@@ -94,7 +94,8 @@ export function canvasConfig(config, size) {
  * or "advanced". A greyed step does not open: steps 8 and 9 need a key
  * signature shown, step 7 one of its own symbols (Custom marks, session
  * 65), step 11 a clef. The staff canvas is hidden in steps
- * 6–9 ("ks-…"). Since session 26 the staff
+ * 6–11 ("ks-…" and "clef-…", session 79: the Clef steps draw the
+ * clef's own preview beside their options). Since session 26 the staff
  * editor is mounted once per section: its pattern and line look in Staff,
  * the ledger rules (Automatic or My own rules) in Ledger lines, and the
  * line overrides in Advanced.

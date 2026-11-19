@@ -143,8 +143,6 @@ summary:focus-visible, [tabindex]:focus-visible {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600;
 }
 .cnb-nre-all-pill.on { background: var(--ink); border-color: var(--ink); color: #fff; }
-/* The clefs to choose from (session 45): the shown one marked like a pill. */
-.cnb-cle-choice.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
 /* ── Shell (§7): top bar, section list, one content column ────────────── */
 .topbar {
@@ -365,17 +363,16 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 .cnb-sre-section, .cnb-cpe-section, .cnb-cle-section, .cnb-kse-section, .cnb-pae-section { margin-bottom: var(--space-4); }
 
-.cnb-sre-pattern-option, .cnb-cle-glyph-option, .cnb-cpe-mode-option, .cnb-kse-style-option {
+.cnb-sre-pattern-option, .cnb-cpe-mode-option, .cnb-kse-style-option {
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-2) var(--space-3); margin-bottom: var(--space-1);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
   cursor: pointer; color: var(--ink);
 }
-.cnb-cle-glyph-option { justify-content: space-between; }
 .cnb-kse-style-option { flex-direction: column; align-items: flex-start; gap: 2px; max-width: 560px; }
-.cnb-sre-pattern-option:hover, .cnb-cle-glyph-option:hover,
+.cnb-sre-pattern-option:hover,
 .cnb-cpe-mode-option:hover, .cnb-kse-style-option:hover { border-color: #cfccc4; }
-.cnb-sre-pattern-option.selected, .cnb-cle-glyph-option.selected,
+.cnb-sre-pattern-option.selected,
 .cnb-cpe-mode-option.selected, .cnb-kse-style-option.selected {
   border-color: var(--accent); background: var(--accent-soft);
 }
@@ -391,11 +388,11 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 /* Check-box rows. */
 .cnb-sre-proximity,
-.cnb-cle-enable, .cnb-kse-keys-enable, .cnb-kse-sig-enable, .cnb-kse-octave-auto, .cnb-kse-sep-enable,
+.cnb-kse-keys-enable, .cnb-kse-sig-enable, .cnb-kse-octave-auto, .cnb-kse-sep-enable,
 .cnb-pae-enable, .cnb-nre-apply-toggle, .cnb-nre-size-lock-label {
   display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
 }
-.cnb-cle-enable, .cnb-kse-keys-enable, .cnb-pae-enable { margin-bottom: var(--space-4); }
+.cnb-kse-keys-enable, .cnb-pae-enable { margin-bottom: var(--space-4); }
 .cnb-sre-proximity { margin: var(--space-3) 0; }
 
 /* Field rows. */
@@ -409,8 +406,8 @@ summary:focus-visible, [tabindex]:focus-visible {
 .cnb-cpe-engine-label { width: 170px; flex: none; }
 .cnb-pae-label { width: 240px; flex: none; color: var(--ink-2); }
 .cnb-pae-pc-name { width: 32px; flex: none; color: var(--ink-2); }
-.cnb-kse-field-unit, .cnb-cle-anchor-name, .cnb-cle-range-label, .cnb-cle-dozenal-note, .cnb-kse-def-tonic-hint,
-.cnb-cle-glyph-detail, .cnb-kse-style-detail {
+.cnb-kse-field-unit, .cnb-cle-range-label, .cnb-cle-dozenal-note, .cnb-kse-def-tonic-hint,
+.cnb-kse-style-detail {
   font-size: 12px; color: var(--ink-2);
 }
 .cnb-cpe-badge, .cnb-badge {
@@ -425,7 +422,7 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Numeric and short text fields keep a compact width. */
-.cnb-cle-anchor-input, .cnb-cle-sits, .cnb-cle-height, .cnb-cle-gutter-input,
+.cnb-cle-sits, .cnb-cle-height,
 .cnb-kse-octave-input, .cnb-kse-sep-thickness, .cnb-kse-sep-extent, .cnb-kse-sign-size,
 .cnb-kse-window-sharp, .cnb-kse-window-flat,
 .cnb-pae-stride-input, .cnb-pae-units-input, .cnb-pae-position-input, .cnb-nre-xoffset-input,
@@ -573,8 +570,6 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 /* Step 7 (session 65, design §3.3): the Select row, and the look card on the selection beneath the notes. */
 .cnb-kse-select { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-bottom: var(--space-2); }
 .cnb-kse-select .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
-.cnb-kse-select-button { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
-.cnb-kse-select-button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .cnb-kse-part-custom-symbols .cnb-kse-look-card { max-width: 720px; }
 .cnb-kse-look-mixed { font-size: 12px; font-style: italic; color: var(--ink-2); }
 .cnb-kse-import-error { flex-basis: 100%; font-size: 13px; color: var(--error); }
@@ -585,8 +580,6 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 .cnb-kse-key .cnb-kse-field-label { width: auto; }
 .cnb-kse-layers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
 .cnb-kse-layers .cnb-kse-field-label { width: auto; margin-right: var(--space-1); }
-.cnb-kse-layer { font-size: 13px; border-radius: 999px; padding: 2px var(--space-3); min-height: 28px; }
-.cnb-kse-layer.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 /* The workspace: the canvas and the other keys, then the look card beside them. */
 .cnb-kse-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start; margin-bottom: var(--space-3); }
 /* The canvas (design §13.8): the picked key's signature at 24 px a semitone, its height capped. */
@@ -656,21 +649,38 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 .cnb-kse-reference-done, .cnb-cle-anchor-done { align-self: flex-start; font-size: 13px; }
 /* A clef's anchor point (session 59): marked as a symbol's reference point is. */
 .cnb-cle-anchor-mark { stroke: var(--accent); stroke-width: 1.5; fill: none; }
-.cnb-cle-pick-anchor { margin-top: var(--space-2); font-size: 13px; }
-.cnb-cle-pick-anchor.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+/* The Clef steps (session 79, clef-steps design §2.1): the options on the
+   left and the clef's preview on the right, one above the other when narrow. */
+.card-body.clef-step { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.clef-step > :first-child { flex: 1 1 300px; min-width: 0; }
+.clef-step > :last-child { flex: 2 1 340px; min-width: 0; }
+.clef-step .cnb-pvd-partial { width: 100%; box-sizing: border-box; }
+.cnb-cle-field-label { width: 72px; flex: none; font-size: 13px; color: var(--ink-2); }
+.cnb-cle-import-button { font-size: 13px; }
+.cnb-cle-sits-fixed { font-size: 13px; }
+.cnb-cle-space-note { margin-top: var(--space-2); }
+/* Its anchor marked, its pitch name highlighted, and its drags. */
+.cnb-pvd-partial .cnb-clef-anchor { stroke: var(--accent); }
+.cnb-pvd-partial .cnb-clef-resize { fill: var(--accent); }
+.cnb-pvd-partial .anchor-pitch .pitch-chip { fill: var(--accent-soft); stroke: var(--accent); }
+.cnb-pvd-partial .anchor-pitch text { fill: var(--accent); font-weight: 600; }
+.cnb-pvd-clef-drag .clef-col { cursor: grab; touch-action: none; }
+.cnb-pvd-clef-drag .clef-col:active { cursor: grabbing; }
+.cnb-pvd-clef-drag .cnb-clef-resize { cursor: ns-resize; }
 .cnb-cle-anchor-picker { margin-top: var(--space-2); }
 .cnb-cle-size { margin-top: var(--space-2); }
 /* Notes, Stacks and Place (design §7): a label column, then the row's controls. */
 .cnb-kse-row { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-3); margin: var(--space-3) 0; max-width: 720px; }
 .cnb-kse-row-label { font-size: 13px; font-weight: 600; color: var(--ink-2); padding-top: 2px; }
 .cnb-kse-row-body { display: flex; flex-direction: column; gap: var(--space-2); }
-.cnb-kse-radios { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
-.cnb-kse-stacking { flex-direction: column; }
-.cnb-kse-radio, .cnb-kse-check { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; font-size: 13px; }
-.cnb-kse-radio.on { color: var(--accent); font-weight: 600; }
+/* The rows' dropdowns (session 79, clef-steps design §3): as wide as their words. */
+.cnb-kse-choose { align-self: flex-start; max-width: 100%; font-size: 13px; }
+.cnb-kse-check { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; font-size: 13px; }
 .cnb-kse-direction { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.cnb-kse-direction .cnb-kse-field-label, .cnb-kse-window .cnb-kse-field-label { width: auto; }
-.cnb-kse-heights { display: flex; flex-direction: column; gap: var(--space-2); margin-left: var(--space-5, 24px); }
+.cnb-kse-direction .cnb-kse-field-label, .cnb-kse-window .cnb-kse-field-label,
+.cnb-kse-heights > .cnb-kse-field-label { width: auto; }
+.cnb-kse-heights { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cnb-kse-heights > .cnb-kse-window { flex-basis: 100%; }
 .cnb-kse-separator .cnb-kse-sep-share { margin-left: var(--space-5, 24px); }
 .cnb-kse-share-text { font-size: 12px; color: var(--ink-2); }
 .cnb-kse-definitions { margin-top: var(--space-5, 24px); }
@@ -782,12 +792,6 @@ button.cnb-kse-spelled-note:hover { border-color: var(--line); }
 .cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-chip { fill: var(--surface); stroke: var(--line); }
 .cnb-pvd-pitch-mode .cnb-pvd-preview .pitch-label text { fill: var(--ink); }
 .cnb-pvd-pitch-mode .cnb-pvd-preview .staff-middle { stroke: var(--accent); stroke-width: 1.5; }
-/* Clef mode (session 45): the clef drags up and down, its bottom edge resizes it. */
-.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col { cursor: grab; touch-action: none; }
-.cnb-pvd-clef-mode .cnb-pvd-preview .clef-col:active { cursor: grabbing; }
-.cnb-pvd-clef-mode .cnb-pvd-preview .cnb-clef-resize {
-  visibility: visible; fill: var(--accent); fill-opacity: .35; cursor: ns-resize;
-}
 .cnb-pvd-pitch-hint:empty { display: none; }
 .cnb-pvd-pitch-hint { font-size: 12px; color: var(--ink-2); margin-left: auto; }
 .cnb-pvd-pitch-hint:not(:empty) + .cnb-pvd-size { margin-left: var(--space-3); }

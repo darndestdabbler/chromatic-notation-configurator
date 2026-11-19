@@ -354,7 +354,7 @@
   <h2>8. Key signature designer</h2>
   <p class="why">Which notes the signature shows, how they stack, the gold
   stem between the stacks, and where it sits on the staff.</p>
-  <p>Under <strong>Stacks</strong>, choose <strong>A new stack at each change
+  <p>In the <strong>Stacks</strong> dropdown, choose <strong>A new stack at each change
   of odd and even</strong>, and keep <strong>Gold stem between the
   stacks</strong> ticked. Change the key above the canvas to see the stacks
   follow it.</p>
@@ -385,20 +385,24 @@
   <h2>10. Clef symbol import and sizing</h2>
   <p class="why">The clef at the start of the staff: one of the built-in
   clefs or your own, and its size.</p>
+  <p>The options are on the left and the clef's own preview on the right,
+  with the pitch names beside the staff.</p>
   <ol>
-    <li>Under <strong>Import a clef from SVG</strong>, choose
-      <code>c-clef.svg</code>. It becomes the clef, and the anchor point
-      picker opens on it.</li>
-    <li>The anchor is the point of the clef that sits on its pitch. Click the
-      clef's left middle, the left edge of its box half way up, and
-      <strong>Done</strong>.</li>
-    <li>Tick <strong>Show a clef at the start of the staff</strong>.</li>
+    <li>Beside the <strong>Clef</strong> dropdown, click <strong>Import from
+      SVG…</strong> and choose <code>c-clef.svg</code>. It becomes the clef
+      shown, under <em>Imported</em> in the dropdown, and the anchor point
+      picker opens on it, with <strong>Anchor</strong> on <em>A point on the
+      clef</em>.</li>
+    <li>The anchor is the point of the clef that sits on its pitch. In the
+      <strong>Anchor</strong> dropdown, choose <strong>Middle</strong>: the
+      clef's middle, half way up, which closes the picker. The preview marks
+      the anchor with a ringed cross.</li>
     <li>Set <strong>Height</strong> to <strong>8</strong> semitones, four
       staff spaces. An imported clef has no automatic size, so you give it
       one.</li>
   </ol>
   <figure>
-    <img src="shots/10-clef-symbol.png" alt="Step 10: the C clef imported, shown at the start of the staff, 8 semitones tall">
+    <img src="shots/10-clef-symbol.png" alt="Step 10: the Clef dropdown on the imported C clef, Anchor on Middle and Height 8 on the left, and on the right the clef's preview, the C clef at the start of the staff with its anchor marked">
     <figcaption>The C clef at 8 semitones.</figcaption>
   </figure>
 </section>
@@ -406,11 +410,13 @@
 <section id="step-clef-placement">
   <h2>11. Clef semitone/staff assignment</h2>
   <p class="why">Which semitone the clef's anchor sits on.</p>
-  <p>Set <strong>Sits on semitone</strong> to <strong>12</strong>: the
-  anchor on middle C, the staff's C at semitone 12. You can also drag the
-  clef on the canvas.</p>
+  <p>In the <strong>Sits on</strong> dropdown, choose <strong>C · semitone
+  12</strong>: the anchor on middle C, the staff's C at semitone 12, and the
+  preview names C beside it. You can also drag the clef up or down in the
+  preview, and its corner to make it taller or shorter. The space after the
+  clef is LilyPond's, so there is nothing to set for it.</p>
   <figure>
-    <img src="shots/11-clef-placement.png" alt="Step 11: the clef's anchor on semitone 12, middle C">
+    <img src="shots/11-clef-placement.png" alt="Step 11: Sits on C · semitone 12 on the left, and on the right the clef's preview with its anchor on middle C, C highlighted among the pitch names">
     <figcaption>The clef marks middle C.</figcaption>
   </figure>
 </section>
@@ -457,7 +463,7 @@
   </figure>
 
   <h3>7. Custom key signature symbols: every note the wide diamond</h3>
-  <p>In step 7, click <strong>All</strong> in the Select row, so the card
+  <p>In step 7, choose <strong>All</strong> in the Select dropdown, so the card
   reads 21 spelled notes selected. In the card, click <strong>Import from
   SVG…</strong> and choose <code>diamond-wide.svg</code>, then
   <strong>Done</strong> in the reference point picker. Every spelled note is

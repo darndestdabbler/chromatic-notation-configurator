@@ -117,19 +117,18 @@
  * NUDGE_THRESHOLD pixels puts the slice back and reports nothing. A drag
  * that moved swallows the click that follows, so it does not also select.
  *
- * Session 45 (clefs): with the Clef section open (since session 63, step
- * 11, setFocus("clef-placement")) and
- * opts.onClefDrag, a glyph clef can be dragged on the canvas. The root gets
- * the class cnb-pvd-clef-mode, which shows the clef's resize handle
- * (rect.cnb-clef-resize, on its bottom edge), and the toolbar says what to
- * do (CLEF_HINT). A drag on the clef moves it with the pointer, a drag on
- * its handle moves only the handle, and the release calls
+ * Session 45 (clefs) let the canvas drag the clef with the Clef section
+ * open. Since session 79 (clef-steps design §2.1) the canvas is hidden in
+ * the Clef steps and the drag is the clef's partial staff's: renderPartial
+ * draws it at 16 px a semitone with the label strip, the anchor marked and
+ * its pitch name highlighted, and, with opts.onClefDrag and a glyph clef, a
+ * drag on the clef moves it with the pointer and a drag on its corner
+ * handle (rect.cnb-clef-resize) resizes it live about its anchor; the release calls
  * opts.onClefDrag("move" | "resize", semis), semis the semitones dragged
- * upward (pixels ÷ display.pxPerSemi, to 2 places; the host applies
- * CNBClefEditor.withAnchor to a move, and withHeight to a resize, which
- * grows the clef about its anchor by the semitones dragged down, session 59).
- * Esc, a cancel or a move under NUDGE_THRESHOLD
- * pixels puts it back and reports nothing.
+ * upward (pixels ÷ 16, to 2 places; the host applies CNBClefEditor.withAnchor
+ * to a move, and withHeight to a resize, which grows the clef about its
+ * anchor by the semitones dragged down). Esc, a cancel or a move under
+ * NUDGE_THRESHOLD pixels puts it back and reports nothing.
  *
  * Session 75: the choice between each duration's own shape and repeated
  * heads (session 36), the Overlap field (session 58) and the Hollow minims
@@ -199,8 +198,106 @@ function spellingOf(key) {
 const PITCH_HINT = "Drag the labels on the left to move the pitches against the staff, or a notehead up or down to nudge it";
 /** The pixels a notehead drag must move before it nudges (session 43). */
 const NUDGE_THRESHOLD = 3;
-/** The toolbar hint with the Clef section open and a glyph clef shown (session 45). */
-const CLEF_HINT = "Drag the clef up or down to move it, or its bottom edge down or up to make it taller or shorter about its anchor";
+/** The descendants of el with the class token cls (an SVG element's class
+ *  attribute, else an HTML element's className). */
+function descendants(el, cls) {
+  const out = [];
+  for (const child of el.children || []) {
+    const names = (typeof child.getAttribute === "function" && child.getAttribute("class")) ||
+      (typeof child.className === "string" ? child.className : "");
+    if (names.split(/\s+/).includes(cls)) out.push(child);
+    out.push(...descendants(child, cls));
+  }
+  return out;
+}
+
+/**
+ * The clef's partial staff's marks and drag (session 79, design §2.1): a
+ * glyph clef's anchor and corner handle (CNBClef.renderAnchor), the pitch
+ * name its anchor sits on marked anchor-pitch, and with onClefDrag the drag.
+ */
+function markClef(wrap, config, onClefDrag) {
+  const shown = CNBClef.shown(config);
+  if (!shown) return;
+  const kind = shown.def.kind || "glyph";
+  const col = descendants(wrap, "clef-col")[0];
+  const g = col && descendants(col, "cnb-clef")[0];
+  if (g) CNBClef.renderAnchor(g, config, config.display.pxPerSemi);
+  const semi = kind === "dozenal" ? config.staff?.midpoint : shown.def.anchorSemi;
+  for (const label of descendants(wrap, "pitch-label")) {
+    if (Number(label.getAttribute("data-semi")) === semi) label.setAttribute("class", "pitch-label anchor-pitch");
+  }
+  if (!onClefDrag || kind !== "glyph" || !col) return;
+  wrap.className += " cnb-pvd-clef-drag";
+  wireClefDrag(col, config.display.pxPerSemi, onClefDrag);
+}
+
+/**
+ * Make the partial's clef draggable (session 45, on the partial since
+ * session 79): a drag on the clef moves its slice with the pointer, a drag
+ * on its corner handle resizes the clef live about its anchor, and the release reports the
+ * semitones dragged upward, step px a semitone, through
+ * onClefDrag("move" | "resize", semis). Esc, a cancel or a move under
+ * NUDGE_THRESHOLD puts it back.
+ */
+function wireClefDrag(col, step, onClefDrag) {
+  const slice = descendants(col, "clef-slice")[0];
+  const clef = descendants(col, "cnb-clef")[0];
+  if (!slice || !clef) return;
+  const base = clef.getAttribute("transform") || "";
+  let drag = null;
+  // A resize scales the clef live about its anchor's height (the ring's
+  // cy), its left edge kept: its height grows by the pixels dragged down,
+  // and its handle, drawn in it, follows the pointer.
+  const place = (dy) => {
+    if (drag && drag.kind === "resize") {
+      const s = Math.max(0.05, 1 + dy / drag.height);
+      clef.setAttribute("transform", dy === 0 ? base
+        : `${base} translate(0 ${drag.anchorY}) scale(${s}) translate(0 ${-drag.anchorY})`);
+    } else {
+      slice.style.transform = dy === 0 ? "" : `translateY(${dy}px)`;
+    }
+  };
+  const end = (report) => {
+    if (!drag) return;
+    const { dy, moved, kind } = drag;
+    place(0);
+    globalThis.removeEventListener?.("keydown", drag.onKey);
+    drag = null;
+    if (report && moved) {
+      const semis = Math.round(-dy / step * 100) / 100 || 0;
+      if (semis !== 0) onClefDrag(kind, semis);
+    }
+  };
+  col.onpointerdown = (e) => {
+    if (!e) return;
+    const target = e.target;
+    const kind = target && typeof target.getAttribute === "function" &&
+      target.getAttribute("class") === "cnb-clef-resize" ? "resize" : "move";
+    const onKey = (k) => { if (k && k.key === "Escape") end(false); };
+    drag = { startY: e.clientY, dy: 0, moved: false, kind, onKey };
+    if (kind === "resize") {
+      // The clef's height in px: the handle is centred on its bottom corner.
+      drag.height = Number(target.getAttribute("y")) + Number(target.getAttribute("height")) / 2;
+      const ring = descendants(clef, "cnb-clef-anchor-ring")[0];
+      drag.anchorY = ring ? Number(ring.getAttribute("cy")) : 0;
+    }
+    globalThis.addEventListener?.("keydown", onKey);
+    if (typeof col.setPointerCapture === "function" && e.pointerId !== undefined) {
+      try { col.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+    }
+    if (typeof e.preventDefault === "function") e.preventDefault();
+  };
+  col.onpointermove = (e) => {
+    if (!drag || !e) return;
+    drag.dy = e.clientY - drag.startY;
+    if (Math.abs(drag.dy) >= NUDGE_THRESHOLD) drag.moved = true;
+    if (drag.moved) place(drag.dy);
+  };
+  col.onpointerup = () => end(true);
+  col.onpointercancel = () => end(false);
+}
+
 /** The toolbar hint when noteheads can be selected (session 38). */
 const SELECT_HINT = "Click a notehead to give it a look; Shift+click or Ctrl+click to select several";
 
@@ -290,19 +387,31 @@ export const CNBPreviewDisplay = {
    * it draws no staff) nothing is drawn (session 26 review).
    * @param {HTMLElement} host
    * @param {object} config
+   * The clef's partial staff (session 79, clef-steps design §2.1) is always
+   * at the Large size, 16 px a semitone, whatever `size` says, with the
+   * label strip; a glyph clef's anchor is marked and its corner handle drawn
+   * (CNBClef.renderAnchor), and the pitch name its anchor sits on (a text
+   * clef's top, the dozenal clef's middle of the staff) has the class
+   * anchor-pitch. With onClefDrag and a glyph clef, the partial has the
+   * class cnb-pvd-clef-drag, and a drag on the clef moves it, a drag on its
+   * handle resizes it, reported on release as onClefDrag("move" | "resize",
+   * semis), semis the semitones dragged upward (see the module header).
+   * @param {HTMLElement} host
+   * @param {object} config
    * @param {{part:"clef"|"key-signature", size?:"small"|"medium"|"large",
-   *          duration?:string|null, key?:{tonic:number, mode:string}|null}} opts
+   *          duration?:string|null, key?:{tonic:number, mode:string}|null,
+   *          onClefDrag?:(kind:"move"|"resize", semis:number)=>void}} opts
    *        key: the key picked on the canvas (withKey), or null for none
    * @returns {HTMLDivElement|null} the div.cnb-pvd-partial, or null when
    *          duration is null
    */
-  renderPartial(host, config, { part, size = DEFAULT_SIZE, duration = "crotchet", key = null } = {}) {
+  renderPartial(host, config, { part, size = DEFAULT_SIZE, duration = "crotchet", key = null, onClefDrag = null } = {}) {
     if (part !== "clef" && part !== "key-signature") {
       throw new Error(`renderPartial: part must be "clef" or "key-signature" (got ${JSON.stringify(part)})`);
     }
     if (duration === null) return null;
     const picked = CNBPreviewDisplay.withKey(config, key);
-    const drawn = CNBPreviewDisplay.displayConfig(picked.config, size);
+    const drawn = CNBPreviewDisplay.displayConfig(picked.config, part === "clef" ? "large" : size);
     if (part === "clef" && drawn.keys) {
       drawn.keys = { ...drawn.keys, keySignature: { ...(drawn.keys.keySignature || {}), enabled: false } };
     }
@@ -317,7 +426,9 @@ export const CNBPreviewDisplay = {
       keys: picked.name ? [picked.name] : null,
       fluid: true,
       rows: 1,
+      labelStrip: part === "clef",
     });
+    if (part === "clef") markClef(wrap, drawn, onClefDrag);
     host.appendChild(wrap);
     return wrap;
   },
@@ -515,7 +626,6 @@ export const CNBPreviewDisplay = {
     const onPitchDrag = opts.onPitchDrag || null;
     const onNudgeDrag = opts.onNudgeDrag || null;
     let swallowClick = false; // a notehead drag moved: the click that follows does not select
-    const onClefDrag = opts.onClefDrag || null;
     const onSignatureOn = opts.onSignatureOn || null;
     let pitchMode = false;    // setPitchMode: the label strip is draggable
     let pitchHint = null;     // the toolbar hint shown in pitch mode
@@ -844,89 +954,12 @@ export const CNBPreviewDisplay = {
       }
     }
 
-    /** Clef mode (session 45): step 11 is open (session 63), the host takes
-     *  drags, and the shown clef is a glyph clef. */
-    function clefMode() {
-      const active = onClefDrag && focus === "clef-placement" ? CNBClef.activeGlyph(getConfig()) : null;
-      return !!active && (active.def.kind || "glyph") === "glyph";
-    }
-
-    /**
-     * Make the canvas's clef draggable in clef mode (session 45): a drag on
-     * the clef moves its slice with the pointer, a drag on its resize handle
-     * moves the handle, and the release reports the semitones dragged
-     * upward through opts.onClefDrag("move" | "resize", semis). Esc, a
-     * cancel or a move under NUDGE_THRESHOLD puts it back.
-     */
-    function wireClef(step) {
-      if (!clefMode()) return;
-      for (const col of preview ? byClassName(preview, "clef-col") : []) {
-        const slice = byClassAttr(col, "clef-slice")[0];
-        if (!slice) continue;
-        let drag = null;
-        const place = (dy) => {
-          const moving = drag && drag.kind === "resize" ? drag.handle : slice;
-          if (!moving) return;
-          if (drag && drag.kind === "resize") {
-            moving.setAttribute("transform", dy === 0 ? "" : `translate(0 ${dy})`);
-          } else {
-            moving.style.transform = dy === 0 ? "" : `translateY(${dy}px)`;
-          }
-        };
-        const end = (report) => {
-          if (!drag) return;
-          const { dy, moved, kind } = drag;
-          place(0);
-          globalThis.removeEventListener?.("keydown", drag.onKey);
-          drag = null;
-          if (report && moved) {
-            const semis = Math.round(-dy / step * 100) / 100 || 0;
-            if (semis !== 0) onClefDrag(kind, semis);
-          }
-        };
-        col.onpointerdown = (e) => {
-          if (!e) return;
-          const target = e.target;
-          const kind = target && typeof target.getAttribute === "function" &&
-            target.getAttribute("class") === "cnb-clef-resize" ? "resize" : "move";
-          const onKey = (k) => { if (k && k.key === "Escape") end(false); };
-          drag = { startY: e.clientY, dy: 0, moved: false, kind, handle: kind === "resize" ? target : null, onKey };
-          globalThis.addEventListener?.("keydown", onKey);
-          if (typeof col.setPointerCapture === "function" && e.pointerId !== undefined) {
-            try { col.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
-          }
-          if (typeof e.preventDefault === "function") e.preventDefault();
-        };
-        col.onpointermove = (e) => {
-          if (!drag || !e) return;
-          drag.dy = e.clientY - drag.startY;
-          if (Math.abs(drag.dy) >= NUDGE_THRESHOLD) drag.moved = true;
-          if (drag.moved) place(drag.dy);
-        };
-        col.onpointerup = () => end(true);
-        col.onpointercancel = () => end(false);
-      }
-    }
-
-    /** The descendants of el whose className includes the token cls. */
-    function byClassName(el, cls) {
-      const out = [];
-      for (const child of el.children || []) {
-        if (String(child.className || "").split(/\s+/).includes(cls)) out.push(child);
-        else out.push(...byClassName(child, cls));
-      }
-      return out;
-    }
-
-    /** The hint and the class for pitch mode and clef mode, with no
-     *  redraw; outside them, the selection hint when noteheads can be
-     *  selected. */
+    /** The hint and the class for pitch mode, with no redraw; outside it,
+     *  the selection hint when noteheads can be selected. */
     function applyPitchMode() {
-      const clef = !pitchMode && clefMode();
       setToken(root, "cnb-pvd-pitch-mode", pitchMode);
-      setToken(root, "cnb-pvd-clef-mode", clef);
       if (pitchHint) {
-        pitchHint.textContent = pitchMode ? PITCH_HINT : clef ? CLEF_HINT : onSelect ? SELECT_HINT : "";
+        pitchHint.textContent = pitchMode ? PITCH_HINT : onSelect ? SELECT_HINT : "";
       }
     }
 
@@ -949,7 +982,6 @@ export const CNBPreviewDisplay = {
       wireColumns();
       wireStrips(config.display.pxPerSemi);
       wireNudges(config.display.pxPerSemi);
-      wireClef(config.display.pxPerSemi);
       updateOverflow(config, options);
       onRender(collectionOptions, preview);
     }

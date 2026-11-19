@@ -1,7 +1,7 @@
 # CNB LilyPond Export Format Specification — v1.3 (Pitch Axis)
 
-**Version:** 1.3.24 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point; a repeated minim's stem on one of its noteheads; the breve in shape mode, a double notehead or two tied semibreves)
-**Date:** November 17, 2026 (1.3.24); November 15, 2026 (1.3.23); November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
+**Version:** 1.3.25 (Pitch axis / I2 relaxation; engine-handoff reconciliation; path units; preview-only settings; sized shape variants; the staff's range follows its middle; engine behaviours under an axis; the clef and the key signature; stem attachment units; ledger lines and key-scoped rules; colours on the noteheads; stems where the notehead's SVG puts them; the breve as tied semibreves; clefs to choose from; the breve's tie below the noteheads; the key signature's mark table; the signature's ledgers; sharps and flats; sharps and flats sized in semitones; the key signature's placed, coloured and layered symbols; the repeated heads' overlap and the breve's tie between its groups; clefs sized about an anchor; noteheads placed by their shape's reference point; a repeated minim's stem on one of its noteheads; the breve in shape mode, a double notehead or two tied semibreves; the preview's clef where the engine engraves it)
+**Date:** November 18, 2026 (1.3.25); November 17, 2026 (1.3.24); November 15, 2026 (1.3.23); November 13, 2026 (1.3.20, 1.3.21, 1.3.22); November 12, 2026 (1.3.19); November 11, 2026 (1.3.14, 1.3.15, 1.3.16, 1.3.17, 1.3.18); November 10, 2026 (1.3.12, 1.3.13); November 9, 2026 (1.3.11); November 8, 2026 (1.3.10); November 7, 2026 (1.3.5, 1.3.6, 1.3.7, 1.3.8, 1.3.9); November 6, 2026 (1.3.4); November 3, 2026 (1.3.2, 1.3.3); October 31, 2026 (1.3.1); July 12, 2026 (1.3 adopted; drafted July 10, 2026)
 **Status:** **CANONICAL.** Drafted by
 `docs/session-sets/013-pitch-axis-engine-discovery/` session 2 as
 `docs/planning/CNB-LY-EXPORT-SPEC-v1_3-draft.md`; adopted (renamed into
@@ -1019,9 +1019,17 @@ preview. `cnb:clef-size-semitones` is `textHeightSemis`.
 
 **Gutter.** A shown clef gets
 `cnb:clef-gutter-semitones = clef.gutter.paddingH ÷ display.pxPerSemi`, the
-preview's padding in semitones (handoff flag B). The preview pads both
-sides; the engine adds the space on the right only, so the left padding has
-no engine counterpart.
+preview's padding in semitones (handoff flag B). The engine adds the space
+on the right only. Since 1.3.25 (session 79) the preview does the same: it
+draws the clef 0.75 staff spaces after the staff's start, where the engine
+engraves every clef, whatever its gutter or the staff's magnification
+(measured against engine 1.10.0), and the gutter on its right. LilyPond
+spaces what follows from the clef's origin, so the gutter shows in the
+engraving only once the clef and its gutter are wider than that space; the
+Clef steps have no setting for it, and the stored `paddingH` is exported as
+before. An engine round trip (`cnb/tests/cnb-clef-tests.js`) holds the
+treble and dozenal clefs' left edges, with and without a key signature, to
+the preview within 0.005 staff spaces at magnifications 1, 7/4 and 5/2.
 
 **Units under a pitch axis.** The engine divides the anchor-free lengths
 (`height-semitones`, `cnb:clef-size-semitones`, the gutter) by
@@ -1261,7 +1269,12 @@ it (session 52, measured from renders at magnifications from 1/2 to 4). After a 
 origin is LilyPond's 3.5 staff spaces after the clef's box less 1/m, because
 the engine draws every clef 1 unmagnified staff space (1/m of the staff's)
 right of its box (its `clefs.ly` sets `X-offset` 1): 2.5 at magnification 1,
-2.9286 at 7/4, 3.1 at 5/2, and the scale stack's marks 4/7 later. The first
+2.9286 at 7/4, 3.1 at 5/2, and the scale stack's marks 4/7 later. LilyPond
+measures them from the clef's origin, a glyph clef's path's x = 0, not from
+its ink (session 79, `CNBClef.origin`): the treble clef's ink starts 2 of its
+units (0.0055 staff spaces on the default staff) right of its origin and the
+bass clef's 13 left, so the marks after them sit that much left or right of
+where its ink would put them; the preview follows. The first
 note follows a 4/4 time signature 1.15 after the signature and 2 before the
 note's centre, so its distance from the ink is 3.15 and the time
 signature's width in the optical size drawn: 1.7135 in emmentaler-26,
@@ -1735,7 +1748,8 @@ engine round-trip test as evidence.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.3.24** | **Nov 17, 2026** | **The breve in shape mode (session 76, engine 1.10.0): §4.1d. A shape-mode breve whose `durations.breveStyle` is `"double"` is two heads overlapping as a repeated minim's, and `"tied"` two heads 1 staff space apart, tied below them from centre to centre; the export writes `cnb:breve-style 'double` (with `cnb:multinote-overlap`) or `'tied` among the engine settings, and the preview draws the same. An engine round trip holds every card's breve, double and tied, to the preview within 0.001 staff spaces on the default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25. Output changes only for a shape-mode config with such a `breveStyle`; the five export baselines are byte-identical. Needs engine 1.10.0.** |
+| **1.3.25** | **Nov 18, 2026** | **The preview's clef where the engine engraves it (session 79): §5.5 *Gutter* and §5.6a. The preview draws the clef 0.75 staff spaces after the staff's start, as engine 1.10.0 engraves every clef, and its gutter on its right only, as the engine adds it; the marks after a glyph clef are spaced from its origin, its path's x = 0, as LilyPond spaces them. Engine round trips hold the clef's left edge and the marks after treble, dozenal, bass and text clefs to the preview within 0.005 staff spaces at magnifications 1, 7/4 and 5/2. Documentation and preview only: export output is unchanged, and the five export baselines are byte-identical.** |
+| 1.3.24 | Nov 17, 2026 | The breve in shape mode (session 76, engine 1.10.0): §4.1d. A shape-mode breve whose `durations.breveStyle` is `"double"` is two heads overlapping as a repeated minim's, and `"tied"` two heads 1 staff space apart, tied below them from centre to centre; the export writes `cnb:breve-style 'double` (with `cnb:multinote-overlap`) or `'tied` among the engine settings, and the preview draws the same. An engine round trip holds every card's breve, double and tied, to the preview within 0.001 staff spaces on the default notehead and the tutorial's diamond, at overlaps 1/3 and 0.25. Output changes only for a shape-mode config with such a `breveStyle`; the five export baselines are byte-identical. Needs engine 1.10.0. |
 | 1.3.23 | Nov 15, 2026 | A repeated minim's stem on one of its noteheads (session 72, engine sessions 43 and 44): §4.4c. In repeat mode a minim's stem attaches to one head of its group as a single head's does, the last when up and the first when down, a centred stem on its head's centre; the export writes `cnb:multinote-stem-on-head #t` after the overlap, and the preview draws the same. The Kite 4-369 fixture's minim attachments are centred as its crotchet's. The engine round trips in the suite hold every stem to the preview within 0.001 staff spaces against engine 1.9.0. Output changes for every config in repeat mode: the Kite 4-369 and 45deg-369 baselines; the default, sized and Twinline baselines are byte-identical. Needs engine 1.9.0. |
 | 1.3.22 | Nov 13, 2026 | Noteheads placed by their shape's reference point (session 60): new §4.1e. A notehead whose shape's `reference.y` is nonzero draws with `<registration>-ref`, the shape or its sized variant with its path and cutout moved up the reference's height, so the point is on the pitch; its attachment points are unchanged, Section C names it, and the key signature's marks keep the unmoved shape and their `at`; a signature sharing a shape whose reference is off its origin across exports the mark table rather than `'chord`. The reference's x is not applied to noteheads. The notehead panel picks the height on the enlarged shape, after an import or later. An engine round trip holds heads, stems, dots and repeated heads with an off-centre reference to the preview within 0.001 staff spaces. Output changes only for a config with such a shape; the five export baselines are byte-identical. No engine change. |
 | 1.3.21 | Nov 13, 2026 | Clefs sized about an anchor (session 59, engine sessions 41 and 42): §5.5, §5.5a. A glyph clef may carry an anchor point, `reference { x, y }`, with `anchorSemi` the semitone it sits on, and is registered with its top as drawn, `depth` above it; a clef without one keeps `anchorSemi` as its top. Its `semitoneHeight` may be `null`, automatic, from `staffSpaceUnits` and the staff's symbol space (`CNBStaff.symbolSpace`, the least of the noteheads' mean height, one staff space and 3 semitones), and `height-semitones` is the height drawn. The treble, bass and alto clefs take their anchors on their lines and the automatic size. The dozenal clef writes `cnb:clef-size-semitones`, automatic 3 symbol spaces (8.172 on the default staff), which engine 1.8.0 scales about the middle line. The panel sets the anchor, picked on the glyph, and the size, automatic or a number; the canvas drag moves the anchor and resizes about it. Engine round trips hold every clef's top and bottom, and each anchor on its pitch, to the preview within 0.001 staff spaces. Output changes only for a config showing the dozenal clef or an anchored glyph clef; the five export baselines are byte-identical. Needs engine 1.8.0. |

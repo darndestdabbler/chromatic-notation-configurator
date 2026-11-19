@@ -219,7 +219,7 @@ const SECTIONS = [...CNBSteps.map(s => s.id), "advanced"];
 const GREYED = ["ks-custom-symbols", "ks-designer", "ks-preview", "clef-placement"];
 const OPEN_BY_DEFAULT = SECTIONS.filter(id => !GREYED.includes(id));
 /** The steps whose canvas is their own: the whole staff is hidden there. */
-const OWN_CANVAS = ["ks-symbol-type", "ks-custom-symbols", "ks-designer", "ks-preview"];
+const OWN_CANVAS = ["ks-symbol-type", "ks-custom-symbols", "ks-designer", "ks-preview", "clef-symbol", "clef-placement"];
 const canvasShown = (page) => page.$eval("#canvas-card", e => !e.hidden && e.getBoundingClientRect().height > 0);
 
 const visiblePanels = (page) => page.$$eval(".panel", els =>
@@ -371,7 +371,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     await openSection(page, id);
     if ((await canvasShown(page)) === OWN_CANVAS.includes(id)) canvasRight = false;
   }
-  check(`${width}: the staff canvas is hidden in step 6 and shown in every other open step and Advanced`, canvasRight);
+  check(`${width}: the staff canvas is hidden in steps 6 and 10 and shown in every other open step and Advanced`, canvasRight);
   await openSection(page, "notehead-height");
 
   // ── Each section's preview (session 26, design §6) ──
@@ -398,6 +398,9 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
     (await partial("key-signature-preview-host")) === "0,1,2", await partial("key-signature-preview-host"));
   // The partial staffs draw the duration the canvas shows (Show, session 75):
   // conventional minims are hollow, drawn with a white cut-out.
+  // Since session 79 the canvas is hidden in the Clef steps, so its Show is
+  // used from Export, where it shows.
+  await openSection(page, "export");
   const hollows = () => page.evaluate(() => ["clef-preview-host", "key-signature-preview-host"]
     .map(id => document.getElementById(id).querySelectorAll('path[fill="white"]').length));
   await page.click('.cnb-pvd-duration-pill[data-duration="minim"]');
@@ -521,7 +524,6 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
       name: "clef.svg", mimeType: "image/svg+xml", buffer: Buffer.from(SAMPLE_CLEF_SVG, "utf8"),
     });
     await page.waitForFunction(() => document.querySelector(".cnb-cle-import-status").textContent.includes("Imported"));
-    await page.check(".cnb-cle-enable-check");
     await page.waitForTimeout(100);
     const clefGutter = await gutterWidth("clef-preview-host", "clef-col");
     check("1440: with a glyph clef on, the Clef panel's partial staff draws the clef in its gutter",
@@ -530,7 +532,9 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) {
 
     // One button on the canvas turns on the default signature (session 36),
     // drawn for the key picked there (C major), with no key defined; step 6
-    // then shows it (session 63).
+    // then shows it (session 63). The canvas is hidden in the Clef steps
+    // (session 79), so the button is used from Export.
+    await openSection(page, "export");
     await page.click(".canvas-card .cnb-pvd-signature-on");
     await openSection(page, "ks-symbol-type");
     await page.waitForTimeout(100);

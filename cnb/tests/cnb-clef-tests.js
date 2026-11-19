@@ -4,7 +4,8 @@
  * Covers: the clef's LilyPond export (the default config against its
  * baseline fixture; an enabled clef exported, a disabled one exported as
  * 'none — session 30), CNBClef measure/gutter/render (including
- * FLOAT anchorSemi — the s1 anchoring decision), clef glyph SVG import,
+ * FLOAT anchorSemi — the s1 anchoring decision; the clef 0.75 staff spaces
+ * after the staff's start, session 79, with an engine round trip), clef glyph SVG import,
  * and the collection's clef gutter column.
  *
  * The clef SECTION tests (schema defaults, merge, validation) live in
@@ -23,7 +24,9 @@ import { CNBCollection } from "../src/cnb-collection.js";
 import { CNBCard } from "../src/cnb-card.js";
 import { CNBLilypond } from "../src/cnb-lilypond.js";
 import { CNBSvgImporter } from "../ui/svg-importer.js";
+import { CNBBuiltinClefs } from "../ui/builtin-clefs.js";
 import { withSvgStub, withDomStub } from "./svg-stub.js";
+import { findEngine, measureSpacing } from "./engine-probe.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASELINE_PATH = path.join(__dirname, "..", "fixtures", "default-export-baseline.ly");
@@ -147,9 +150,28 @@ export const tests = [
       approx(m.pixelWidth, 0.6 * 80 * 2, "width estimate");
     }},
 
-  { name: "gutterWidth: 0 when disabled (no gutter reserved), width + 2×padding when active", fn: () => {
+  { name: "gutterWidth: 0 when disabled (no gutter reserved); active, 0.75 staff spaces, the clef and the padding after it (session 79)", fn: () => {
       eq(CNBClef.gutterWidth(CNBConfig.createDefault(), 16), 0, "disabled → 0");
-      approx(CNBClef.gutterWidth(clefConfig(), 16), 32 + 24, "enabled → glyph + padding");
+      approx(CNBClef.gutterWidth(clefConfig(), 16), 48 + 32 + 12, "0.75 × 64 px, the glyph, the padding on its right");
+      approx(CNBClef.gutterWidth(clefConfig({}, { gutter: { paddingH: 0 } }), 16), 48 + 32, "no padding");
+    }},
+
+  { name: "left: the clef's left edge is 0.75 staff spaces after the staff's start (session 79)", fn: () => {
+      approx(CNBClef.left(clefConfig(), 16), 48, "64 px a staff space at sps 4");
+      const kite = clefConfig();
+      kite.staff.semitonesPerStaffSpace = 3;
+      approx(CNBClef.left(kite, 16), 36, "48 px a staff space at sps 3");
+      approx(CNBClef.gutterWidth(kite, 16), 36 + 32 + 12, "the gutter follows it");
+      approx(CNBClef.left(clefConfig({}, { gutter: { paddingH: 40 } }), 16), 48, "whatever the padding");
+    }},
+
+  { name: "origin: a glyph clef's x = 0 from its left edge, −viewBoxMinX at its scale; 0 for text and dozenal clefs (session 79)", fn: () => {
+      eq(CNBClef.origin(clefConfig(), 16), 0, "viewBoxMinX 0: the left edge");
+      approx(CNBClef.origin(clefConfig({ viewBoxMinX: -50 }), 16), 16, "50 units at 0.32 px a unit, right of the edge");
+      approx(CNBClef.origin(clefConfig({ viewBoxMinX: 25 }), 16), -8, "left of the edge");
+      eq(CNBClef.origin(clefConfig({ kind: "text", text: "4", textHeightSemis: 5, viewBoxMinX: -50 }), 16), 0, "text clef");
+      eq(CNBClef.origin(dozenalConfig(), 16), 0, "dozenal clef");
+      eq(CNBClef.origin(CNBConfig.createDefault(), 16), 0, "no clef");
     }},
 
   // ── The dozenal clef (session 45) ──────────────────────────────────────
@@ -165,12 +187,12 @@ export const tests = [
 
   { name: "gutterWidth: the dozenal clef is measured at its height, LilyPond's 3 staff spaces or automatic", fn: () => {
       const config = dozenalConfig(12);
-      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 64 + 24, "12 semitones at sps 4: 64 px a staff space");
+      approx(CNBClef.gutterWidth(config, 16), 48 + 574 * 3 / 722 * 64 + 12, "12 semitones at sps 4: 64 px a staff space");
       config.staff.semitonesPerStaffSpace = 3;
       config.clef.glyphs.dozenal.semitoneHeight = 9;
-      approx(CNBClef.gutterWidth(config, 16), 574 * 3 / 722 * 48 + 24, "9 semitones at sps 3: 48 px");
+      approx(CNBClef.gutterWidth(config, 16), 36 + 574 * 3 / 722 * 48 + 12, "9 semitones at sps 3: 48 px");
       // Automatic (session 59): 3 × CNBStaff.symbolSpace, 3 × 2.724 on the default staff.
-      approx(CNBClef.gutterWidth(dozenalConfig(), 16), 574 / 722 * 3 * 2.724 * 16 + 24, "automatic");
+      approx(CNBClef.gutterWidth(dozenalConfig(), 16), 48 + 574 / 722 * 3 * 2.724 * 16 + 12, "automatic");
     }},
 
   { name: "shown: the dozenal clef's height is set by hand, or automatic, 3 × symbolSpace (session 59)", fn: () => {
@@ -190,7 +212,7 @@ export const tests = [
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
         // midpoint 12 → y = (28 − 12) × 16 = 256; a staff space is 64 px.
-        eq(g.getAttribute("transform"), "translate(12,256) scale(64)", "middle line, staff-space units");
+        eq(g.getAttribute("transform"), "translate(48,256) scale(64)", "middle line, staff-space units");
         eq(g.children.length, 2, "two digits");
         const [five, zero] = g.children;
         assert(five.getAttribute("d").startsWith("M535 234"), "the left digit is 5");
@@ -208,9 +230,9 @@ export const tests = [
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
         // Half LilyPond's 12 semitones: half the staff space, the middle line unmoved.
-        eq(g.getAttribute("transform"), "translate(12,256) scale(32)", "scaled about the middle line");
+        eq(g.getAttribute("transform"), "translate(48,256) scale(32)", "scaled about the middle line");
         const auto = CNBClef.render(svg, grid, dozenalConfig());
-        const m = /^translate\(12,256\) scale\(([^)]+)\)$/.exec(auto.getAttribute("transform"));
+        const m = /^translate\(48,256\) scale\(([^)]+)\)$/.exec(auto.getAttribute("transform"));
         assert(m, "automatic: on the middle line");
         approx(Number(m[1]), 64 * 2.724 / 4, "automatic: 2.724 semitones a staff space", 1e-9);
       });
@@ -289,9 +311,9 @@ export const tests = [
         const grid = CNBGrid.create(config, { minSemi: 0, maxSemi: 24 });
         const g = CNBClef.render(svg, grid, config);
         // The top is 11: y = (24 − 11) × 16 = 208; the path at 3 × 16 / 300 = 0.16.
-        eq(g.getAttribute("transform"), "translate(12,208)", "top edge at the anchor's top");
+        eq(g.getAttribute("transform"), "translate(48,208)", "top edge at the anchor's top");
         assert(g.children[0].getAttribute("transform").startsWith("scale(0.16)"), "scaled to 3 semitones");
-        eq(Number(g.children[1].getAttribute("width")), 16, "the handle spans the scaled width");
+        eq(g.children.length, 1, "the clef alone: no handle on the canvas (session 79)");
       });
     }},
 
@@ -319,13 +341,15 @@ export const tests = [
       });
     }},
 
-  { name: "render: glyph top placed at semiToY(anchorSemi), left at paddingH", fn: () => {
+  { name: "render: glyph top placed at semiToY(anchorSemi), left 0.75 staff spaces after the staff's start (session 79)", fn: () => {
       withSvgStub(svg => {
         const config = clefConfig();
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
         // anchorSemi 20 → y = (28 - 20) × 16 = 128
-        eq(g.getAttribute("transform"), "translate(12,128)", "gutter x + anchor y");
+        eq(g.getAttribute("transform"), "translate(48,128)", "0.75 × 64 px + anchor y");
+        const padded = clefConfig({}, { gutter: { paddingH: 40 } });
+        eq(CNBClef.render(svg, grid, padded).getAttribute("transform"), "translate(48,128)", "the padding is after it only");
         const pathEl = g.children[0];
         eq(pathEl.tag, "path", "path child");
         eq(pathEl.getAttribute("d"), TEST_GLYPH.svgPath, "path data");
@@ -333,30 +357,39 @@ export const tests = [
       });
     }},
 
-  { name: "render: a glyph clef draws a hidden resize handle along its bottom edge (session 45)", fn: () => {
+  { name: "renderAnchor: a glyph clef's anchor marked with a guide to the staff's start, and a corner handle (session 79)", fn: () => {
       withSvgStub(svg => {
-        const config = clefConfig();
+        // The test glyph, 100 × 300 units at 6 semitones: 0.32 px a unit, 32 × 96 px.
+        const config = clefConfig({ reference: { x: 50, y: 100 } });
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
+        const mark = CNBClef.renderAnchor(g, config, 16);
+        eq(mark.getAttribute("class"), "cnb-clef-anchor", "the anchor's group");
+        assert(g.children.includes(mark), "drawn into the clef's group");
+        const ring = mark.children.find(c => c.getAttribute("class") === "cnb-clef-anchor-ring");
+        eq([ring.getAttribute("cx"), ring.getAttribute("cy")].join(","), "16,32", "at the anchor point");
+        const guide = mark.children.find(c => c.getAttribute("class") === "cnb-clef-anchor-guide");
+        eq([guide.getAttribute("x1"), guide.getAttribute("x2"), guide.getAttribute("y1")].join(","), "-48,16,32",
+          "from the staff's start, 0.75 staff spaces left of the clef, to the point");
+        assert(mark.children.some(c => c.getAttribute("class") === "cnb-clef-anchor-cross"), "a cross");
         const handle = g.children.find(c => c.getAttribute("class") === "cnb-clef-resize");
-        assert(handle, "a handle");
-        eq(handle.tag, "rect", "a rect");
-        // 6 semitones × 16 px = 96 px tall, 32 px wide; the handle 8 px, centred on the bottom.
-        eq(handle.getAttribute("y"), "92", "centred on the bottom edge");
-        eq(handle.getAttribute("height"), "8", "8 px tall");
-        eq(handle.getAttribute("width"), "32", "as wide as the clef");
-        eq(handle.getAttribute("fill"), "none", "unpainted");
-        eq(handle.getAttribute("visibility"), "hidden", "hidden until the canvas shows it");
+        eq(handle.tag, "rect", "a handle");
+        eq([handle.getAttribute("x"), handle.getAttribute("y"), handle.getAttribute("width"), handle.getAttribute("height")].join(","),
+          "28,92,8,8", "an 8 px square on the box's bottom right corner");
       });
       withSvgStub(svg => {
-        const config = clefConfig({ kind: "text", text: "4", textHeightSemis: 5 });
+        const config = clefConfig({ viewBoxMinY: -150 });
         const g = CNBClef.render(svg, CNBGrid.create(config, { minSemi: -4, maxSemi: 28 }), config);
-        assert(!g.children.some(c => c.getAttribute("class") === "cnb-clef-resize"), "no handle on a text clef");
+        const ring = CNBClef.renderAnchor(g, config, 16).children.find(c => c.getAttribute("class") === "cnb-clef-anchor-ring");
+        eq([ring.getAttribute("cx"), ring.getAttribute("cy")].join(","), "16,0", "no anchor point: the top's middle");
       });
       withSvgStub(svg => {
-        const config = dozenalConfig();
-        const g = CNBClef.render(svg, CNBGrid.create(config, { minSemi: -4, maxSemi: 28 }), config);
-        assert(!g.children.some(c => c.getAttribute("class") === "cnb-clef-resize"), "none on the dozenal clef");
+        for (const config of [clefConfig({ kind: "text", text: "4", textHeightSemis: 5 }), dozenalConfig()]) {
+          const g = CNBClef.render(svg, CNBGrid.create(config, { minSemi: -4, maxSemi: 28 }), config);
+          eq(CNBClef.renderAnchor(g, config, 16), null, `nothing for a ${config.clef.glyphs[config.clef.active].kind} clef`);
+          assert(!g.children.some(c => c.getAttribute("class") === "cnb-clef-resize"), "no handle");
+        }
+        eq(CNBClef.renderAnchor(null, CNBConfig.createDefault(), 16), null, "no clef shown");
       });
     }},
 
@@ -365,7 +398,7 @@ export const tests = [
         const config = clefConfig({ anchorSemi: 20.5 });
         const grid = CNBGrid.create(config, { minSemi: -4, maxSemi: 28 });
         const g = CNBClef.render(svg, grid, config);
-        eq(g.getAttribute("transform"), "translate(12,120)", "7.5 semis × 16px");
+        eq(g.getAttribute("transform"), "translate(48,120)", "7.5 semis × 16px");
       });
     }},
 
@@ -414,7 +447,7 @@ export const tests = [
         eq(columns.children.length, 14, "clef column + 13 cards");
         const clefCol = columns.children[0];
         eq(clefCol.className, "clef-col", "clef column first");
-        eq(clefCol.style.width, "56px", "gutter width (32 + 2×12)");
+        eq(clefCol.style.width, "92px", "gutter width (48 + 32 + 12)");
         const slice = clefCol.children[1];
         eq(slice.getAttribute("class"), "clef-slice", "clef SVG between the spacers");
         eq(slice.children.length, 1, "clef rendered into the slice");
@@ -433,8 +466,50 @@ export const tests = [
         const row = root.children[0];
         const previewContainer = row.children.find(c => c.className === "preview-container");
         const bg = previewContainer.children.find(c => c.getAttribute("class") === "staff-lines-bg");
-        approx(parseFloat(bg.getAttribute("width")), 56 + cardsWidth, "bg width includes gutter");
+        approx(parseFloat(bg.getAttribute("width")), 92 + cardsWidth, "bg width includes gutter");
       });
+    }},
+
+  // Engine-backed (session 79, clef-steps design §4): the engine engraves
+  // every clef's left edge 0.75 staff spaces after the staff's start, whatever
+  // its gutter, its kind or the staff's magnification, and the preview draws
+  // it there. Skips with the reason logged without LilyPond or the engine.
+  { name: "clef (engine): the treble and dozenal clefs' left edges sit 0.75 staff spaces after the staff's start, with and without a key signature, at defaultMagnify 1, 7/4 and 5/2", fn: async () => {
+      const engine = findEngine();
+      if (engine.skip) { console.log(`      (skipped: ${engine.skip})`); return; }
+      const failures = [];
+      for (const name of ["treble", "dozenal"]) {
+        for (const magnify of ["1", "7/4", "5/2"]) {
+          for (const signature of [false, true]) {
+            for (const paddingH of [0, 12, 48]) {
+              const label = `${name}, magnify ${magnify}, ${signature ? "G major" : "no key signature"}, padding ${paddingH}`;
+              const config = CNBConfig.createDefault();
+              config.engine.defaultMagnify = magnify;
+              config.clef = { enabled: true, active: name,
+                glyphs: { [name]: CNBBuiltinClefs.definition(config, name) }, gutter: { paddingH } };
+              if (signature) {
+                config.keys.enabled = true;
+                config.keys.definitions = [{ name: "G", pitchClasses: [7, 9, 11, 0, 2, 4, 6] }];
+                config.keys.keySignature.enabled = true;
+              }
+              const space = CNBClef.staffSpacePx(config, config.display.pxPerSemi);
+              // The preview: the clef's x in its column, the system's first.
+              const drawn = withDomStub(container => {
+                const root = CNBCollection.render(container, config, signature ? { keys: ["G"] } : {});
+                const columns = root.children[0].children.find(c => c.className === "preview-container")
+                  .children.find(c => c.className === "pc-columns");
+                const g = columns.children[0].children[1].children[0];
+                return Number(/^translate\(([-\d.eE+]+),/.exec(g.getAttribute("transform"))[1]) / space;
+              });
+              const got = await measureSpacing(engine, CNBLilypond.generate(config), signature ? "\\key g \\major c'4" : "c'4");
+              if (got.error || !got.clef) { failures.push(`${label}: ${got.error || "no clef engraved"}`); continue; }
+              const engraved = got.clef.left - got.staffStart;
+              if (Math.abs(engraved - drawn) > 5e-3) failures.push(`${label}: engraved ${engraved}, preview ${drawn}`);
+            }
+          }
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join("\n    "));
     }},
 
   // ── SVG importer: clef glyph kind ──────────────────────────────────────

@@ -14,7 +14,9 @@
  *   title      the full title: the panel's heading
  *   component  the part of the config it edits (design §1.2); null for a view
  *   canvas     what the canvas area shows: "staff", "spelled", "designer",
- *              "keys" or "clef"
+ *              "keys" or "clef" (the clef's own preview beside the options,
+ *              steps 10 and 11 since session 79; every canvas but "staff" hides
+ *              the main canvas)
  * and, where it can be greyed (design §2.1), available(config) and the
  * reason it is not.
  *
@@ -100,7 +102,7 @@ export const CNBSteps = [
   { id: "clef-symbol", number: 10, group: "Clef", label: "Symbol and size",
     title: "Clef symbol import and sizing", component: "clef", canvas: "clef" },
   { id: "clef-placement", number: 11, group: "Clef", label: "Placement",
-    title: "Clef semitone/staff assignment", component: "clef", canvas: "staff",
+    title: "Clef semitone/staff assignment", component: "clef", canvas: "clef",
     available: clefShown, unavailable: "Choose or import a clef in step 10 first." },
   { id: "export", number: 12, group: "Finish", label: "Export",
     title: "Export", component: "meta", canvas: "staff" },

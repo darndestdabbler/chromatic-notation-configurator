@@ -96,6 +96,22 @@ function findAll(el, token) {
   return out;
 }
 
+/** A dropdown's option values (session 79: the rows are selects). */
+function optionValues(select) {
+  return select.children.map(o => o.value);
+}
+
+/** Choose a value in the first select.cls under root, as a designer does. */
+function pick(root, cls, value) {
+  const select = findAll(root, cls)[0];
+  select.onchange({ target: { value } });
+}
+
+/** The value shown by the first select.cls under root. */
+function picked(root, cls) {
+  return findAll(root, cls)[0].value;
+}
+
 /** Concatenated textContent of an element subtree. */
 function subtreeText(el) {
   let out = String(el.textContent || "");
@@ -360,7 +376,7 @@ export const tests = [
 
         for (const token of ["cnb-kse-def-name", "cnb-kse-pc-pill", "cnb-kse-def-tonic",
                              "cnb-kse-def-remove", "cnb-kse-def-add",
-                             "cnb-kse-sig-enable-check", "cnb-kse-radio-input",
+                             "cnb-kse-sig-enable-check", "cnb-kse-choose",
                              "cnb-kse-sep-color"]) {
           const controls = findAll(root, token);
           assert(controls.length > 0, `${token} rendered while gated (shown, not hidden)`);
@@ -580,17 +596,20 @@ export const tests = [
       });
   } },
 
-  { name: "render: Notes — the whole scale, the tonic and the half steps, or the sharps or flats only; the tonic an octave up, not under the cycle of fifths", fn: () => {
+  { name: "render: Notes, a dropdown — the whole scale, the tonic and the half steps, or the sharps or flats only; the tonic an octave up, not under the cycle of fifths", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const options = () => findAll(findAll(api.root, "cnb-kse-notes-choice")[0], "cnb-kse-radio");
-        deepEq(options().map(o => o.getAttribute("data-value")), ["all", "tonic-and-half-steps", "altered"], "three choices");
-        assert(options()[0].className.includes("on"), "the whole scale by default");
-        deepEq(options().map(o => subtreeText(o)), ["The whole scale", "The tonic and the half steps", "The sharps or flats only"], "in words");
+        const select = () => findAll(api.root, "cnb-kse-notes-choice")[0];
+        eq(select().tag, "select", "a dropdown (session 79)");
+        eq(select().getAttribute("aria-label"), "Notes", "labelled");
+        deepEq(optionValues(select()), ["all", "tonic-and-half-steps", "altered"], "three choices");
+        eq(picked(api.root, "cnb-kse-notes-choice"), "all", "the whole scale by default");
+        deepEq(select().children.map(o => o.textContent), ["The whole scale", "The tonic and the half steps", "The sharps or flats only"], "in words");
         for (const value of ["tonic-and-half-steps", "altered", "all"]) {
-          options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          pick(api.root, "cnb-kse-notes-choice", value);
           eq(last.keys.keySignature.notes, value, `${value} written`);
+          eq(picked(api.root, "cnb-kse-notes-choice"), value, `${value} shown`);
         }
 
         const upper = findAll(api.root, "cnb-kse-upper-tonic-check")[0];
@@ -599,47 +618,51 @@ export const tests = [
         upper.onchange();
         eq(last.keys.keySignature.upperTonic, false, "upper tonic written");
 
-        findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio")
-          .find(o => o.getAttribute("data-value") === "fifths").children[0].onchange();
+        pick(api.root, "cnb-kse-stacking", "fifths");
         eq(findAll(api.root, "cnb-kse-upper-tonic").length, 0, "hidden under the cycle of fifths");
         eq(last.keys.keySignature.upperTonic, false, "its value kept");
       });
   } },
 
-  { name: "render: Stacks — the four rules and the cycle of fifths write stacking; the direction is hidden under odd-left-even-right", fn: () => {
+  { name: "render: Stacks, a dropdown — the four rules and the cycle of fifths write stacking; Stacks go, a dropdown, is hidden under odd-left-even-right", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const values = () => findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio");
-        deepEq(values().map(o => o.getAttribute("data-value")),
-          ["degrees", "parity", "parity-stacks", "parity-zigzag", "fifths"], "five rules");
-        eq(subtreeText(values()[0]), "Stacked sevenths: 1 3 5 7 left, 2 4 6 8 right", "the default in words");
-        eq(subtreeText(values()[4]), "Cycle of fifths, one to a column", "the cycle of fifths in words");
+        const select = () => findAll(api.root, "cnb-kse-stacking")[0];
+        eq(select().tag, "select", "a dropdown (session 79)");
+        deepEq(optionValues(select()), ["degrees", "parity", "parity-stacks", "parity-zigzag", "fifths"], "five rules");
+        deepEq(select().children.map(o => o.textContent), ["Stacked sevenths", "Odd semitones left, even right",
+          "A new stack at each change of odd and even", "Zigzag at each change of odd and even",
+          "Cycle of fifths, one to a column"], "in words");
+        eq(picked(api.root, "cnb-kse-stacking"), "degrees", "stacked sevenths by default");
         for (const value of ["parity-stacks", "parity-zigzag", "parity", "degrees"]) {
-          values().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          pick(api.root, "cnb-kse-stacking", value);
           eq(last.keys.keySignature.stacking, value, `${value} written`);
           eq(findAll(api.root, "cnb-kse-columns").length, value === "parity" ? 0 : 1,
             `direction ${value === "parity" ? "hidden" : "shown"} under ${value}`);
         }
-        const direction = findAll(findAll(api.root, "cnb-kse-columns")[0], "cnb-kse-radio");
-        deepEq(direction.map(o => o.getAttribute("data-value")), ["right", "left-in-sharp-keys"], "two directions");
-        direction[1].children[0].onchange();
+        const direction = findAll(api.root, "cnb-kse-columns")[0];
+        eq(direction.tag, "select", "Stacks go, a dropdown");
+        deepEq(optionValues(direction), ["right", "left-in-sharp-keys"], "two directions");
+        assert(subtreeText(findAll(api.root, "cnb-kse-direction")[0]).includes("Stacks go"), "labelled");
+        pick(api.root, "cnb-kse-columns", "left-in-sharp-keys");
         eq(last.keys.keySignature.columns, "left-in-sharp-keys", "direction written");
       });
   } },
 
-  { name: "render: the cycle of fifths — its heights, in a window raised for sharps and flats or climbing; no direction or gold stem", fn: () => {
+  { name: "render: the cycle of fifths — its Heights, a dropdown, in a window raised for sharps and flats or climbing; no direction or gold stem", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
         eq(findAll(api.root, "cnb-kse-heights").length, 0, "no heights under stacked sevenths");
-        findAll(findAll(api.root, "cnb-kse-stacking")[0], "cnb-kse-radio")
-          .find(o => o.getAttribute("data-value") === "fifths").children[0].onchange();
+        pick(api.root, "cnb-kse-stacking", "fifths");
         eq(last.keys.keySignature.stacking, "fifths", "written");
         for (const token of ["cnb-kse-columns", "cnb-kse-separator"]) eq(findAll(api.root, token).length, 0, `${token} hidden`);
-        const heights = () => findAll(findAll(api.root, "cnb-kse-heights-choice")[0], "cnb-kse-radio");
-        deepEq(heights().map(o => o.getAttribute("data-value")), ["window", "scale"], "two heights");
-        assert(heights()[0].className.includes("on"), "in a window by default");
+        const heights = findAll(api.root, "cnb-kse-heights-choice")[0];
+        eq(heights.tag, "select", "a dropdown");
+        deepEq(optionValues(heights), ["window", "scale"], "two heights");
+        deepEq(heights.children.map(o => o.textContent), ["In a window around the line set", "Climbing with the scale"], "in words");
+        eq(picked(api.root, "cnb-kse-heights-choice"), "window", "in a window by default");
 
         const sharp = findAll(api.root, "cnb-kse-window-sharp")[0];
         eq(sharp.value, "0", "raised by 0");
@@ -654,22 +677,25 @@ export const tests = [
         flat.onchange();
         deepEq(last.keys.keySignature.window, { sharp: 3, flat: -2 }, "not a number: not written");
 
-        heights()[1].children[0].onchange();
+        pick(api.root, "cnb-kse-heights-choice", "scale");
         eq(last.keys.keySignature.heights, "scale", "climbing written");
         eq(findAll(api.root, "cnb-kse-window").length, 0, "no window while climbing");
         deepEq(last.keys.keySignature.window, { sharp: 3, flat: -2 }, "its values kept");
       });
   } },
 
-  { name: "render: Place — the middle of the staff, or the bottom, top or every line set", fn: () => {
+  { name: "render: Place, a dropdown — the middle of the staff, or the bottom, top or every line set", fn: () => {
       withDomStub((container) => {
         let last = null;
         const api = E.render(container, { config: keysConfig(), onChange: (slices) => { last = slices; } });
-        const options = () => findAll(findAll(api.root, "cnb-kse-position")[0], "cnb-kse-radio");
-        deepEq(options().map(o => o.getAttribute("data-value")), ["middle", "bottom-set", "top-set", "every-set"], "four places");
-        assert(options()[0].className.includes("on"), "the middle by default");
+        const select = findAll(api.root, "cnb-kse-position")[0];
+        eq(select.tag, "select", "a dropdown (session 79)");
+        deepEq(optionValues(select), ["middle", "bottom-set", "top-set", "every-set"], "four places");
+        deepEq(select.children.map(o => o.textContent), ["In the middle of the staff", "On the bottom line set",
+          "On the top line set", "On every line set"], "in words");
+        eq(picked(api.root, "cnb-kse-position"), "middle", "the middle by default");
         for (const value of ["bottom-set", "top-set", "every-set", "middle"]) {
-          options().find(o => o.getAttribute("data-value") === value).children[0].onchange();
+          pick(api.root, "cnb-kse-position", value);
           eq(last.keys.keySignature.placement.position, value, `${value} written`);
         }
       });
@@ -904,25 +930,25 @@ export const tests = [
       deepEq(E.addedWith(tailed, "sharp", undefined).looks.sharp, {}, "undefined clears it: as beneath");
   } },
 
-  { name: "render: Edit — seven layers; the card names the picked one and says it edits the category in every key", fn: () => {
+  { name: "render: Edit, a dropdown — seven layers; the card names the picked one and says it edits the category in every key", fn: () => {
       withDomStub((container) => {
         const view = {};
         const api = E.render(container, { config: keysConfig(), view });
-        const layers = () => findAll(api.root, "cnb-kse-layer");
-        deepEq(layers().map(b => b.getAttribute("data-layer")), ["all", "natural", "flat", "sharp", "line", "space", "alternate"],
-          "seven layers");
-        deepEq(layers().map(b => subtreeText(b)),
+        const layers = () => findAll(api.root, "cnb-kse-layer-select")[0];
+        eq(layers().tag, "select", "a dropdown (session 79)");
+        deepEq(optionValues(layers()), ["all", "natural", "flat", "sharp", "line", "space", "alternate"], "seven layers");
+        deepEq(layers().children.map(o => o.textContent),
           ["All marks", "Naturals", "Flats", "Sharps", "On a line or ledger", "In a space", "Every second stack"], "in words");
         const card = () => findAll(api.root, "cnb-kse-look-card")[0];
         eq(card().getAttribute("data-look"), "all", "all marks at first");
         eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all marks in every key", "its scope");
 
-        layers().find(b => b.getAttribute("data-layer") === "flat").onclick();
+        pick(api.root, "cnb-kse-layer-select", "flat");
         eq(card().getAttribute("data-look"), "flat", "flats picked");
-        assert(layers().find(b => b.getAttribute("data-layer") === "flat").className.includes("on"), "shown on");
+        eq(layers().value, "flat", "shown");
         eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all flats in every key", "every flat in every key");
         deepEq([view.layer, view.pinned], ["flat", false], "a spelling's layer follows clicks on marks");
-        layers().find(b => b.getAttribute("data-layer") === "space").onclick();
+        pick(api.root, "cnb-kse-layer-select", "space");
         deepEq([view.layer, view.pinned], ["space", true], "any other stays picked");
         eq(subtreeText(findAll(card(), "cnb-kse-look-scope")[0]), "Edits all marks in a space in every key", "its scope");
       });
@@ -964,21 +990,21 @@ export const tests = [
         const view = { layer: "flat" };
         const api = E.render(container, { config: keysConfig(), view, onChange: (slices) => { last = slices; } });
         const card = () => findAll(api.root, "cnb-kse-look-card")[0];
-        const pick = (token, attr, value) => findAll(card(), token).find(b => b.getAttribute(attr) === value);
+        const button = (token, attr, value) => findAll(card(), token).find(b => b.getAttribute(attr) === value);
 
-        pick("cnb-kse-look-fill", "data-fill", "hollow").onclick();
+        button("cnb-kse-look-fill", "data-fill", "hollow").onclick();
         eq(last.keys.keySignature.looks.flat.hollow, true, "hollow");
-        pick("cnb-kse-look-fill", "data-fill", "solid").onclick();
+        button("cnb-kse-look-fill", "data-fill", "solid").onclick();
         eq(last.keys.keySignature.looks.flat.hollow, false, "solid");
-        pick("cnb-kse-look-fill", "data-fill", "").onclick();
+        button("cnb-kse-look-fill", "data-fill", "").onclick();
         assert(!("hollow" in last.keys.keySignature.looks.flat), "cleared");
 
-        findAll(api.root, "cnb-kse-layer").find(b => b.getAttribute("data-layer") === "alternate").onclick();
-        pick("cnb-kse-look-colour", "data-color", "none").onclick();
+        pick(api.root, "cnb-kse-layer-select", "alternate");
+        button("cnb-kse-look-colour", "data-color", "none").onclick();
         eq(last.keys.keySignature.alternate.color, null, "none: no colour");
         findAll(card(), "cnb-kse-look-colour-input")[0].onchange({ target: { value: "#CC79A7" } });
         eq(last.keys.keySignature.alternate.color, "#cc79a7", "a colour, when the picker closes");
-        pick("cnb-kse-look-colour", "data-color", "").onclick();
+        button("cnb-kse-look-colour", "data-color", "").onclick();
         assert(!("color" in last.keys.keySignature.alternate), "'as the others' clears it");
         eq(findAll(card(), "cnb-kse-look-height").length, 0, "every second stack has no size");
       });
@@ -1277,7 +1303,7 @@ export const tests = [
         click(0);   // D
         eq(view.layer, "natural", "D: naturals");
         eq(emitted, 0, "a click writes nothing");
-        findAll(api.root, "cnb-kse-layer").find(b => b.getAttribute("data-layer") === "space").onclick();
+        pick(api.root, "cnb-kse-layer-select", "space");
         click(2);
         eq(view.layer, "space", "a picked layer stays picked");
       });
@@ -1600,7 +1626,7 @@ export const tests = [
   { name: "render parts: each part draws its controls and no other part's", fn: () => {
       const TOKENS = {
         "symbol-type": ["cnb-kse-head", "cnb-kse-sig-enable-check", "cnb-kse-start-card"],
-        "custom-symbols": ["cnb-kse-select-button", "cnb-kse-look-card"],
+        "custom-symbols": ["cnb-kse-select-choice", "cnb-kse-look-card"],
         "designer": ["cnb-kse-canvas", "cnb-kse-notes", "cnb-kse-stacks", "cnb-kse-place",
           "cnb-kse-gap-input", "cnb-kse-alternate", "cnb-kse-look-card"],
         "preview": ["cnb-kse-keys", "cnb-kse-mini"],
@@ -1623,7 +1649,7 @@ export const tests = [
           eq(findAll(api.root, "cnb-kse-spelled").length, ["symbol-type", "custom-symbols"].includes(part) ? 1 : 0,
             `${part}: the spelled notes`);
           if (part === "custom-symbols") {
-            eq(findAll(api.root, "cnb-kse-key").length + findAll(api.root, "cnb-kse-layer").length, 0,
+            eq(findAll(api.root, "cnb-kse-key").length + findAll(api.root, "cnb-kse-layer-select").length, 0,
               "step 7 has no key picker and no layers");
           }
         });
@@ -1668,8 +1694,7 @@ export const tests = [
         const api = E.render(container, {
           config, key: { tonic: 0, mode: "major" }, parts: ["designer"], onChange: (slices) => { last = slices; },
         });
-        const parity = findAll(api.root, "cnb-kse-radio").find(r => r.getAttribute("data-value") === "parity");
-        findAll(parity, "cnb-kse-radio-input")[0].onchange();
+        pick(api.root, "cnb-kse-stacking", "parity");
         eq(last.keys.keySignature.stacking, "parity", "the edit");
         deepEq(last.keys.definitions, [C_MAJOR], "the definitions carried");
         eq(last.keys.keySignature.separator.color, "#123abc", "the gold stem carried");
@@ -1700,8 +1725,7 @@ export const tests = [
         eq(last.keys.keySignature.columnGap, 1.2, "the gap written");
         input().onchange({ target: { value: "" } });
         eq(last.keys.keySignature.columnGap, 1.2, "an empty field writes nothing");
-        const fifths = findAll(api.root, "cnb-kse-radio").find(r => r.getAttribute("data-value") === "fifths");
-        findAll(fifths, "cnb-kse-radio-input")[0].onchange();
+        pick(api.root, "cnb-kse-stacking", "fifths");
         eq(findAll(api.root, "cnb-kse-gap-input").length, 1, "under the cycle of fifths too");
       });
       // The whole panel keeps its layout (non-goal): no gap field there.
@@ -1987,13 +2011,15 @@ export const tests = [
       assert(!E.sameShape(kite, CNBBuiltinShapes.get("kite-down")), "another drawing");
   } },
 
-  { name: "step 7: each Select choice selects its spelled notes, and is on while the selection is exactly those", fn: () => {
+  { name: "step 7: Select, a dropdown — each choice selects its spelled notes, and is shown while the selection is exactly those", fn: () => {
       withDomStub((container) => {
         const view = {};
         const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view });
-        const pick = (which) => findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === which);
-        deepEq(findAll(api.root, "cnb-kse-select-button").map(b => b.textContent),
-          ["All", "Naturals", "Flats", "Sharps", "On a line or ledger", "In a space"], "the choices");
+        const select = () => findAll(api.root, "cnb-kse-select-choice")[0];
+        eq(select().tag, "select", "a dropdown (session 79)");
+        deepEq(select().children.map(o => o.textContent),
+          ["Select…", "All", "Naturals", "Flats", "Sharps", "On a line or ledger", "In a space"], "the choices");
+        eq(select().value, "", "Select… with nothing selected");
         const expected = {
           all: CNBConfig.SPELLED_NOTES,
           natural: [..."CDEFGAB"],
@@ -2003,10 +2029,9 @@ export const tests = [
           space: ["C♭", "C♯", "D♭", "D♯", "E♭", "E♯", "F", "F♯", "G♭", "G", "A", "B"],
         };
         for (const [which, names] of Object.entries(expected)) {
-          pick(which).onclick();
+          pick(api.root, "cnb-kse-select-choice", which);
           deepEq(view.spelled, names, which);
-          deepEq(findAll(api.root, "cnb-kse-select-button").filter(b => b.className.split(" ").includes("on"))
-            .map(b => b.getAttribute("data-select")), [which], `${which} on`);
+          eq(select().value, which, `${which} shown`);
           deepEq(findAll(api.root, "cnb-kse-spelled-note").filter(c => c.className.split(" ").includes("on"))
             .map(c => c.getAttribute("data-spelled")).sort(), [...names].sort(), `${which}'s notes outlined`);
         }
@@ -2056,7 +2081,7 @@ export const tests = [
         const config = customConfig();
         config.keys.keySignature.looks.spelled["D♯"].offset = { x: 0, y: 0.5 };
         const api = E.render(container, { config, parts: ["custom-symbols"], view, onChange: (s) => { last = s; } });
-        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "sharp").onclick();
+        pick(api.root, "cnb-kse-select-choice", "sharp");
         const spelled = () => last.keys.keySignature.looks.spelled;
         findAll(api.root, "cnb-kse-look-fill").find(b => b.getAttribute("data-fill") === "hollow").onclick();
         assert(view.spelled.every(n => spelled()[n].hollow === true), "every sharp hollow");
@@ -2107,7 +2132,7 @@ export const tests = [
         const view = {};
         const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view, onChange: (s) => { last = s; } });
         const spelled = () => last.keys.keySignature.looks.spelled;
-        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "flat").onclick();
+        pick(api.root, "cnb-kse-select-choice", "flat");
         findAll(api.root, "cnb-kse-look-add")[0].onclick();
         eq(view.symbol, 0, "Added 1 selected");
         assert(view.spelled.every(n => spelled()[n].added.length === 1), "each flat has one added symbol");
@@ -2135,20 +2160,20 @@ export const tests = [
         const api = E.render(container, { config: customConfig(), parts: ["custom-symbols"], view,
           importControl: (_slot, g) => { give = g; },
           onChange: (s) => { last = s; changes++; } });
-        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "sharp").onclick();
+        pick(api.root, "cnb-kse-select-choice", "sharp");
         const tail = CNBBuiltinShapes.get("kite-up");
         give("my-tail", tail);
         deepEq(last.shapes["my-tail"], { ...tail, reference: { x: 0, y: 0 }, ledgers: false }, "added, its point at the origin, no ledgers for sharps");
         assert(view.spelled.every(n => last.keys.keySignature.looks.spelled[n].shape === "my-tail"), "given to every sharp");
         assert(last.shapes["crotchet-minim"] && last.shapes.parallelogram, "the other shapes kept");
 
-        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "natural").onclick();
+        pick(api.root, "cnb-kse-select-choice", "natural");
         give("my-tail", tail);
         eq(last.shapes, undefined, "the same drawing: used as it is, no shapes reported");
         assert([..."CDEFGAB"].every(n => last.keys.keySignature.looks.spelled[n].shape === "my-tail"), "given to the naturals");
 
         const before = changes;
-        findAll(api.root, "cnb-kse-select-button").find(b => b.getAttribute("data-select") === "flat").onclick();
+        pick(api.root, "cnb-kse-select-choice", "flat");
         give("my-tail", CNBBuiltinShapes.get("kite-down"));
         eq(changes, before, "another drawing under the name: nothing written");
         const error = findAll(api.root, "cnb-kse-import-error");
