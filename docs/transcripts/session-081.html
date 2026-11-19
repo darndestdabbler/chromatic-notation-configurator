@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 081 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 081 transcript</h1>
+<p class="stamp">Rendered 2026-11-19T09:54:09.625Z by dabbler-ai-router 3.38.0 at 5c29a3ff13ec0d207a5d01a109e4e0369b3aad1c.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-19T04:41:05.177-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 81: The changelog and version 1.1.0</h3>
+<p><strong>Why.</strong> A release publishes the version on the trunk; it does not set it.</p>
+<ol><li>Register.</li><li>Take over the withdrawn 1.0.2 <code>CHANGELOG.md</code> entry and <code>version.json</code>, renamed to 1.1.0, and add the notehead-first editor, the clef and key-signature export, and sessions 36 onward, to the entry.</li></ol>
+<h2>Work Plan</h2>
+<p>Set the version on the trunk to 1.1.0 for session 82's release. version.json goes from 1.0.2 to 1.1.0, the README's status line from 1.0.1 to 1.1.0, and the withdrawn CHANGELOG.md 1.0.2 entry is renamed 1.1.0 and kept. The entry then gains what has shipped since that entry was written: the notehead-first editor and the work of sessions 17-29 and 32-35, and sessions 36-80. That covers colours on the noteheads, stems and ledgers as the engine engraves them, the breve, the clefs to choose from, the key-signature designer and its mark table, the step-by-step configurator, the notehead designs, the clef steps and the dropdowns. Each item is written in a designer's words and says which exports change and which engine version they need (1.10.0 for the newest). The entry says plainly which exports should be regenerated. Each claim is checked against the session plan, the LY spec's change log and the code.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/7a4bf9834761cc08bf40b384fb6f31841e0f4734"><code>7a4bf9834761cc08bf40b384fb6f31841e0f4734</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Version</td><td><p>Set version.json to 1.1.0. Rename the CHANGELOG.md heading '## 1.0.2' to '## 1.1.0' and keep its items. Change the README status line 'Version 1.0.1.' to 'Version 1.1.0.'.</p></td><td><span class="mono">version.json</span><br><span class="mono">CHANGELOG.md</span><br><span class="mono">README.md</span></td><td><code>node -e const fs=require('fs');if(JSON.parse(fs.readFileSync('version.json','utf8')).version!=='1.1.0')throw new Error('version.json');const c=fs.readFileSync('CHANGELOG.md','utf8');if(!c.includes('## 1.1.0')||c.includes('## 1.0.2'))throw new Error('CHANGELOG heading');if(!fs.readFileSync('README.md','utf8').includes('Version 1.1.0.'))throw new Error('README status')</code></td><td>yes</td></tr>
+<tr><td>Changelog</td><td><p>Add to the CHANGELOG.md 1.1.0 entry what has shipped since the 1.0.2 entry was written. That is the notehead-first editor and the other work of sessions 17-29 and 32-35, then sessions 36-80. Group the items by feature in a designer's words, as the existing items are, and make no session-by-session log. Lead with what a user must do: which exports change and should be regenerated (stems: 1.3.8 and 1.3.11; the ledger block and the header: 1.3.9 and 1.3.10), and that the export needs engine 1.10.0. Say that configs saved earlier still load, naming the retired settings and the conversions on load (the palette moved onto the rules, the key-signature style converted to the one model). Correct the existing items that later sessions superseded: the signature's spacing, which is no longer preview-only, and the repeat-mode multinote padding, now the overlap. Check every claim against docs/sessions/session-plan.md, the LY spec's change log and the code.</p></td><td><span class="mono">CHANGELOG.md</span></td><td><code>node -e const c=require('fs').readFileSync('CHANGELOG.md','utf8');const e=c.slice(c.indexOf('## 1.1.0'),c.indexOf('## 1.0.1'));for(const s of ['engine 1.10.0','egenerate','notehead','clef','key signature','step'])if(!e.includes(s))throw new Error('1.1.0 entry missing '+s);if(e.includes('multinote padding'))throw new Error('superseded padding text')</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No release, tag, publish or site deploy: that is session 82, which also confirms the site and the README and file:// notice links.</li><li>No code, test, fixture, baseline or spec change: only version.json, the README's status line and CHANGELOG.md.</li><li>The 1.0.1 and 1.0.0 entries are left as they are, and no new README content is added beyond the status line's version.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:41:05]</span> <span class="muted">run-started</span> session=081 mode=pull</div>
+<div class="line"><span class="at">[09:41:05]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:41:56]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:41:56]</span> <span class="muted">answer-taken</span> steps=2</div>
+<div class="line"><span class="at">[09:41:56]</span> <span class="muted">plan-accepted</span> steps=[&quot;version&quot;,&quot;changelog&quot;] non_goals=3</div>
+<div class="line"><span class="at">[09:41:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:41:58]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=version</div>
+<div class="line"><span class="at">[09:42:26]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:42:26]</span> <span class="muted">answer-taken</span> seq=2 step=version status=done notes=version.json 1.1.0; CHANGELOG 1.0.2 heading renamed 1.1.0, items kept; README status line Version 1.1.0.</div>
+<div class="line"><span class="at">[09:42:28]</span> <span class="muted">check-started</span> step=version argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(JSON.parse(fs.readFileSync('version.json','utf8')).version!=='1.1.0')throw new Error('version.json');const c=fs.readFileSync('CHANGELOG.md','utf8');if(!c.includes('## 1.1.0')||c.includes('## 1.0.2'))throw new Error('CHANGELOG heading');if(!fs.readFileSync('README.md','utf8').includes('Version 1.1.0.'))throw new Error('README status')&quot;]</div>
+<div class="line"><span class="at">[09:42:32]</span> <span class="muted">check-ended</span> step=version argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(JSON.parse(fs.readFileSync('version.json','utf8')).version!=='1.1.0')throw new Error('version.json');const c=fs.readFileSync('CHANGELOG.md','utf8');if(!c.includes('## 1.1.0')||c.includes('## 1.0.2'))throw new Error('CHANGELOG heading');if(!fs.readFileSync('README.md','utf8').includes('Version 1.1.0.'))throw new Error('README status')&quot;] outcome=<span class="good">passed</span> seconds=3</div>
+<div class="line"><span class="at">[09:42:33]</span> <span class="muted">report-accepted</span> seq=2 step=version files=[&quot;version.json&quot;,&quot;CHANGELOG.md&quot;,&quot;README.md&quot;] notes=version.json 1.1.0; CHANGELOG 1.0.2 heading renamed 1.1.0, items kept; README status line Version 1.1.0.</div>
+<div class="line"><span class="at">[09:42:33]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=changelog</div>
+<div class="line"><span class="at">[09:46:53]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:46:53]</span> <span class="muted">answer-taken</span> seq=3 step=changelog status=done notes=1.1.0 entry: Before you upgrade (engine 1.10.0, regenerate stem exports, every export changes, one ledger rule, old configs load with retired settings and conversions), then the twelve steps, preview-as-engraved, clefs and the key-signature designer; superseded 1.0.2 items corrected (key-rule example, signature spacing, repeat-mode padding/counts and no-key messages).</div>
+<div class="line"><span class="at">[09:46:54]</span> <span class="muted">check-started</span> step=changelog argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const c=require('fs').readFileSync('CHANGELOG.md','utf8');const e=c.slice(c.indexOf('## 1.1.0'),c.indexOf('## 1.0.1'));for(const s of ['engine 1.10.0','egenerate','notehead','clef','key signature','step'])if(!e.includes(s))throw new Error('1.1.0 entry missing '+s);if(e.includes('multinote padding'))throw new Error('superseded padding text')&quot;]</div>
+<div class="line"><span class="at">[09:46:55]</span> <span class="muted">check-ended</span> step=changelog argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const c=require('fs').readFileSync('CHANGELOG.md','utf8');const e=c.slice(c.indexOf('## 1.1.0'),c.indexOf('## 1.0.1'));for(const s of ['engine 1.10.0','egenerate','notehead','clef','key signature','step'])if(!e.includes(s))throw new Error('1.1.0 entry missing '+s);if(e.includes('multinote padding'))throw new Error('superseded padding text')&quot;] outcome=<span class="good">passed</span> seconds=1</div>
+<div class="line"><span class="at">[09:46:56]</span> <span class="muted">report-accepted</span> seq=3 step=changelog files=[&quot;CHANGELOG.md&quot;] notes=1.1.0 entry: Before you upgrade (engine 1.10.0, regenerate stem exports, every export changes, one ledger rule, old configs load with retired settings and conversions), then the twelve steps, preview-as-engraved, clefs and the key-signature designer; superseded 1.0.2 items corrected (key-rule example, signature spacing, repeat-mode padding/counts and no-key messages).</div>
+<div class="line"><span class="at">[09:46:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:46:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:46:58]</span> <span class="muted">job-started</span> name=verification pid=51920 log=.dabbler/runs/s81/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:47:22]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:47:22]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:47:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:47:23]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[09:47:24]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=24088 log=.dabbler/runs/s81/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:51:25]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:51:26]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[09:51:27]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=24916 log=.dabbler/runs/s81/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:53:37]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:53:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:53:39]</span> <span class="muted">committing</span> subject=Session 81: The changelog and version 1.1.0</div>
+<div class="line"><span class="at">[09:53:42]</span> <span class="muted">pushing</span></div>
+<div class="line"><span class="at">[09:53:47]</span> <span class="muted">landed</span> commit=7a4bf9834761cc08bf40b384fb6f31841e0f4734</div>
+<div class="line"><span class="at">[09:53:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:53:47]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:53:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:53:49]</span> <span class="muted">job-started</span> name=close pid=2884 log=.dabbler/runs/s81/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:54:09]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:54:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div>
+<div class="line"><span class="at">[09:54:09]</span> <span class="muted">transcript-rendering</span> carry=outline</div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>238s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>126s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
