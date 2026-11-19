@@ -743,7 +743,7 @@ The same JSON config drives both the live preview and the LilyPond export.
 
 ## Current Status
 
-Version 1.0.1. All rendering, export and UI modules are built and
+Version 1.1.0. All rendering, export and UI modules are built and
 covered by the unit suite and the browser UAT, and a Configurator-designed
 system (Kite 4-369) exported through the UI renders through the engine
 pixel-identical to the engine repo's golden baseline. What changed in each
