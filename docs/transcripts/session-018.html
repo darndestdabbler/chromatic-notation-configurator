@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 018 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 018 transcript</h1>
+<p class="stamp">Rendered 2026-11-06T09:33:18.582Z by dabbler-ai-router 3.29.0 at ab34570463b1edaf75079eb384704f4c7470ad7c.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-11-06T04:14:37.019-05:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 18: The preview shows what repeat mode engraves</h3>
+<p><strong>Why.</strong> In <code>repeat</code> mode the engine engraves a minim as two heads, a semibreve and a breve as four, spaced by <code>cnb:multinote-padding</code>. The preview draws one head per note, so the operator cannot see repeat mode or judge the multinote padding setting (architecture §11, open question 3). Separately, the 45deg-369 config had key signatures enabled with no key defined, so no signature could draw, and nothing said why.</p>
+<ol><li>Register.</li><li>In <code>repeat</code> mode, the card draws each duration's repeated heads as the engine lays them out (counts as the engine engraves them: minim ×2, semibreve ×4, breve ×4), spaced by <code>engine.multinotePadding</code> in staff spaces, with stems and ledgers following. <code>shape</code> mode is unchanged and byte-identical (the preview baseline pins it).</li><li>Check the spacing against an engine render of the Kite and 45deg-369 fixtures, as session 11's notehead-size test does.</li><li>The key-signature panel and the preview's key selector say when keys are enabled but none is defined or selected, so nothing draws.</li><li>README &quot;Preview-only settings&quot;: repeat counts are no longer preview-only if the counts now follow the engine; say what remains.</li></ol>
+<h2>Work Plan</h2>
+<p>Make the preview show what repeat mode engraves, and say why no key signature draws. In representationMode &quot;repeat&quot;, each card draws a duration's notehead as the engine's cnb:build-duration-stencil lays it out: the engine's fixed counts (lilypondDuration 3 or more: 1 head; 2 (minim): 2; 1 or 0 (semibreve, breve): 4), each copy placed edge to edge with engine.multinotePadding staff spaces between them (staff space = staff.semitonesPerStaffSpace semitones, or axis.unitsPerStaffSpace axis units under a pitch axis), the group centred on the head position. The stem attaches as LilyPond's relative stem-attachment does, at the anchor's relative position across the whole group's width, and the ledgers and column widen by the group's extra width. Shape mode is unchanged and byte-identical: the shape-mode preview-baseline probes stay pinned, and only the two repeat-mode probes (kite-4-369, 45deg-369, which render minims) are re-captured. An engine-backed test (skipping without LilyPond) engraves the Kite and 45deg-369 exports at minim, semibreve and breve and checks that the engraved notehead group's width matches the preview's group width within 5%. The key-signature panel and the preview's key selector each say when keys and the signature are enabled but no key is defined or none is selected, so nothing draws. The common-props editor's repeat-count text and its renderPreview legend state the counts the preview and engine actually use, and README &quot;Preview-only settings&quot;, the architecture plan's open question 3 and the CHANGELOG 1.0.2 entry are updated.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/chromatic-notation-configurator/commit/7db01cfe635c2d86e22bde397beeb00cd90255d5"><code>7db01cfe635c2d86e22bde397beeb00cd90255d5</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Repeat heads</td><td><p>In cnb/src/cnb-card.js add two pure public helpers: CNBCard.repeatCount(config, duration) (1 unless durations.representationMode is &quot;repeat&quot;; then from the duration definition's lilypondDuration: &gt;=3 -&gt; 1, 2 -&gt; 2, &lt;=1 -&gt; 4, matching the engine's cnb:build-duration-stencil) and CNBCard.repeatLayout(config, gridContext, shape, duration) returning { count, offsets (px, centred on 0), groupWidth (px) } with step = head pixelWidth + engine.multinotePadding x px per staff space (pxPerSemi x staff.semitonesPerStaffSpace, or x axis.unitsPerStaffSpace under an enabled axis). render() draws the octave pair once per offset (via CNBDoubleNotehead.render with the offset added), widens the ledger width and columnWidth() by groupWidth - pixelWidth, and passes widthScale = groupWidth / pixelWidth to the stem. In cnb/src/cnb-stem.js, geometry() takes an optional widthScale (default 1) that multiplies the anchor's x offset only, so a stem attaches at the anchor's relative position across the group, as LilyPond's stem-attachment does. When count is 1 every code path is the existing one, so shape mode is byte-identical. Add tests in cnb-card-tests.js (repeatCount for each duration and both modes; repeatLayout offsets and group width with default and changed multinotePadding, linear and pitch-axis; repeat-mode render draws 2 minim pairs and 4 semibreve pairs; shape mode draws one) and in cnb-stem-tests.js (widthScale default unchanged, widthScale 2 doubles the anchor x offset). Re-capture cnb/fixtures/preview-baseline.json with capturePreviewBaseline(); only the kite-4-369 and 45deg-369 probes may change.</p></td><td><span class="mono">cnb/src/cnb-card.js</span><br><span class="mono">cnb/src/cnb-stem.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span><br><span class="mono">cnb/tests/cnb-stem-tests.js</span><br><span class="mono">cnb/fixtures/preview-baseline.json</span></td><td><code>node cnb/tests/run-tests.js</code><br><code>node -e const {execSync}=require('child_process');const fs=require('fs');const a=JSON.parse(execSync('git show HEAD:cnb/fixtures/preview-baseline.json').toString());const b=JSON.parse(fs.readFileSync('cnb/fixtures/preview-baseline.json','utf8'));const d=b.probes.filter(p=&gt;{const o=a.probes.find(q=&gt;q.id===p.id);return !o||o.sha256!==p.sha256||o.length!==p.length;}).map(p=&gt;p.id).sort().join(',');if(b.probes.length!==a.probes.length||d!=='45deg-369,kite-4-369'){console.error('unexpected preview-baseline changes: '+d);process.exit(1);}</code></td><td>yes</td></tr>
+<tr><td>Engine spacing</td><td><p>In cnb/tests/engine-probe.js give measureNoteheads an optional duration argument (LilyPond duration token, default &quot;4&quot;, so existing callers are unchanged) used for every note of the probe score. In cnb/tests/cnb-card-tests.js add an engine-backed test that skips with the reason logged when findEngine() skips: for the Kite 4-369 and 45deg-369 fixture configs (loaded as the collection tests load them), engrave the export at minim (&quot;2&quot;), semibreve (&quot;1&quot;) and breve (&quot;\\breve&quot;) and assert that every engraved notehead width, in staff spaces, is within 5% of CNBCard.repeatLayout's groupWidth for that duration converted to staff spaces. If a fixture fails, find which side is wrong and record it in the test's comment or fix the preview; never widen the tolerance to pass.</p></td><td><span class="mono">cnb/tests/engine-probe.js</span><br><span class="mono">cnb/tests/cnb-card-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Key notices</td><td><p>In cnb/ui/key-signature-editor.js, when keys.enabled and keySignature.enabled are both true but keys.definitions is empty, show a visible note that no key is defined so no signature draws, and otherwise a hint that the preview's key selector picks which key's signature draws. In cnb/ui/preview-display.js, when keys are enabled and the key signature is enabled, the key selector's note says that no signature draws because no key is defined (empty definitions) or because none is selected ((none) chosen). Add tests for each new note to cnb-key-signature-editor-tests.js and cnb-preview-display-tests.js, and confirm the existing ones still pass.</p></td><td><span class="mono">cnb/ui/key-signature-editor.js</span><br><span class="mono">cnb/ui/preview-display.js</span><br><span class="mono">cnb/tests/cnb-key-signature-editor-tests.js</span><br><span class="mono">cnb/tests/cnb-preview-display-tests.js</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Repeat counts text</td><td><p>In cnb/ui/common-props-editor.js, the repeat-count section's hint and preview-only note say that the preview and the engine both draw the engine's fixed counts (minim x2, semibreve x4, breve x4, spaced by the multinote padding) and that the edited counts are used by neither; renderPreview() in repeat mode renders one row per duration (the cards now draw the repeats) and its legend lists the counts from CNBCard.repeatCount instead of repeatCounts. Update the module's header comment and cnb-common-props-editor-tests.js to match.</p></td><td><span class="mono">cnb/ui/common-props-editor.js</span><br><span class="mono">cnb/tests/cnb-common-props-editor-tests.js</span><br><span class="mono">cnb/test-pages/test-common-props-editor.html</span></td><td><code>node cnb/tests/run-tests.js</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>README &quot;Preview-only settings&quot;: repeat counts are no longer listed as a preview/engine mismatch for the drawn heads; say instead that the preview draws repeat mode as the engine engraves it (fixed counts, spaced by the multinote padding) and that what remains is the repeatCounts field, which neither the preview nor the export uses. In docs/CNB-ARCHITECTURE-PLAN-v2.md §11, mark open question 3 (quad noteheads) resolved by this session with the layout rule. Add a short entry to the CHANGELOG.md 1.0.2 section for the repeat-mode preview and the key-signature notes.</p></td><td><span class="mono">README.md</span><br><span class="mono">docs/CNB-ARCHITECTURE-PLAN-v2.md</span><br><span class="mono">CHANGELOG.md</span></td><td><code>node -e const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const s=r.slice(r.indexOf('### Preview-only settings'),r.indexOf('## Architecture'));if(!/repeatCounts/.test(s)||!/multinote/i.test(s)){console.error('README Preview-only settings does not describe repeat mode');process.exit(1);}const c=fs.readFileSync('CHANGELOG.md','utf8');if(!/repeat mode/i.test(c)){console.error('CHANGELOG has no repeat-mode entry');process.exit(1);}</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the LilyPond export: Section C's (repeat . #t/#f) and the emitted cnb:multinote-padding stay as they are, and every export baseline is byte-identical.</li><li>No change to shape-mode rendering or to the preview of any shape-mode config; their preview-baseline probes stay unchanged.</li><li>The repeatCounts config field is not removed or made to drive the engine; it stays in the schema and the editor, documented as unused because the engine's counts are fixed.</li><li>The 45deg-369 fixture config is not edited (its keys-enabled-with-no-key state stays; only the UI says why nothing draws).</li><li>No new engine work and no change to the engine repository.</li><li>No key rows in the card collection (still deferred), and no off-key marking.</li><li>No release, version bump or site deploy.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:14:37]</span> <span class="muted">run-started</span> session=018 mode=pull</div>
+<div class="line"><span class="at">[09:14:37]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:18:33]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:18:33]</span> <span class="muted">plan-accepted</span> steps=[&quot;repeat-heads&quot;,&quot;engine-spacing&quot;,&quot;key-notices&quot;,&quot;repeat-counts-text&quot;,&quot;docs&quot;] non_goals=7</div>
+<div class="line"><span class="at">[09:18:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:18:33]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=repeat-heads</div>
+<div class="line"><span class="at">[09:20:59]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:21:12]</span> <span class="muted">check-passed</span> step=repeat-heads argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:21:12]</span> <span class="muted">check-passed</span> step=repeat-heads argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const {execSync}=require('child_process');const fs=require('fs');const a=JSON.parse(execSync('git show HEAD:cnb/fixtures/preview-baseline.json').toString());const b=JSON.parse(fs.readFileSync('cnb/fixtures/preview-baseline.json','utf8'));const d=b.probes.filter(p=&gt;{const o=a.probes.find(q=&gt;q.id===p.id);return !o||o.sha256!==p.sha256||o.length!==p.length;}).map(p=&gt;p.id).sort().join(',');if(b.probes.length!==a.probes.length||d!=='45deg-369,kite-4-369'){console.error('unexpected preview-baseline changes: '+d);process.exit(1);}&quot;]</div>
+<div class="line"><span class="at">[09:21:12]</span> <span class="muted">report-accepted</span> seq=2 step=repeat-heads files=[&quot;cnb/src/cnb-card.js&quot;,&quot;cnb/src/cnb-stem.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;,&quot;cnb/tests/cnb-stem-tests.js&quot;,&quot;cnb/fixtures/preview-baseline.json&quot;] notes=Repeat mode draws the engine's repeated heads (minim x2, semibreve/breve x4) spaced by multinotePadding; stem scales with the group; only the kite and 45deg preview probes re-captured</div>
+<div class="line"><span class="at">[09:21:12]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=engine-spacing</div>
+<div class="line"><span class="at">[09:22:53]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:23:11]</span> <span class="muted">check-passed</span> step=engine-spacing argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:23:11]</span> <span class="muted">report-accepted</span> seq=3 step=engine-spacing files=[&quot;cnb/tests/engine-probe.js&quot;,&quot;cnb/tests/cnb-card-tests.js&quot;] notes=measureNoteheads takes a duration; engine-backed card test: Kite/45deg minim, semibreve, breve engrave within 0.02% of the preview group width</div>
+<div class="line"><span class="at">[09:23:11]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=key-notices</div>
+<div class="line"><span class="at">[09:24:26]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:24:43]</span> <span class="muted">check-passed</span> step=key-notices argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:24:44]</span> <span class="muted">report-accepted</span> seq=4 step=key-notices files=[&quot;cnb/ui/key-signature-editor.js&quot;,&quot;cnb/ui/preview-display.js&quot;,&quot;cnb/tests/cnb-key-signature-editor-tests.js&quot;,&quot;cnb/tests/cnb-preview-display-tests.js&quot;] notes=Key-signature panel and preview key selector say why no signature draws (no key defined / none selected)</div>
+<div class="line"><span class="at">[09:24:44]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=repeat-counts-text</div>
+<div class="line"><span class="at">[09:26:28]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:26:45]</span> <span class="muted">check-passed</span> step=repeat-counts-text argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;]</div>
+<div class="line"><span class="at">[09:26:45]</span> <span class="muted">report-accepted</span> seq=5 step=repeat-counts-text files=[&quot;cnb/ui/common-props-editor.js&quot;,&quot;cnb/tests/cnb-common-props-editor-tests.js&quot;,&quot;cnb/test-pages/test-common-props-editor.html&quot;] notes=Repeat counts labelled unused (preview and engine draw fixed counts); renderPreview repeat mode shows every duration row with a legend of the engine's counts; test page intro updated</div>
+<div class="line"><span class="at">[09:26:45]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[09:27:20]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:27:22]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const s=r.slice(r.indexOf('### Preview-only settings'),r.indexOf('## Architecture'));if(!/repeatCounts/.test(s)||!/multinote/i.test(s)){console.error('README Preview-only settings does not describe repeat mode');process.exit(1);}const c=fs.readFileSync('CHANGELOG.md','utf8');if(!/repeat mode/i.test(c)){console.error('CHANGELOG has no repeat-mode entry');process.exit(1);}&quot;]</div>
+<div class="line"><span class="at">[09:27:22]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;README.md&quot;,&quot;docs/CNB-ARCHITECTURE-PLAN-v2.md&quot;,&quot;CHANGELOG.md&quot;] notes=README preview-only repeat counts reworded (field unused), architecture open question 3 resolved, CHANGELOG 1.0.2 entry</div>
+<div class="line"><span class="at">[09:27:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:27:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:27:23]</span> <span class="muted">job-started</span> name=verification pid=48968 log=.dabbler/runs/s18/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:28:13]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:28:13]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:28:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:28:14]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[09:28:14]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=13988 log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:28:31]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:28:31]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[09:28:31]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=10440 log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:28:40]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="bad">1</span> log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:28:40]</span> <span class="muted">tests-failed</span> command=npm run uat</div>
+<div class="line"><span class="at">[09:28:40]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-run-of-record</div>
+<div class="line"><span class="at">[09:30:32]</span> <span class="muted">run-resumed</span> session=018 phase=<span class="milestone">run-of-record</span> mode=pull</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=repeat-heads</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const {execSync}=require('child_process');const fs=require('fs');const a=JSON.parse(execSync('git show HEAD:cnb/fixtures/preview-baseline.json').toString());const b=JSON.parse(fs.readFileSync('cnb/fixtures/preview-baseline.json','utf8'));const d=b.probes.filter(p=&gt;{const o=a.probes.find(q=&gt;q.id===p.id);return !o||o.sha256!==p.sha256||o.length!==p.length;}).map(p=&gt;p.id).sort().join(',');if(b.probes.length!==a.probes.length||d!=='45deg-369,kite-4-369'){console.error('unexpected preview-baseline changes: '+d);process.exit(1);}&quot;] owner=repeat-heads</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=engine-spacing</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=key-notices</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;cnb/tests/run-tests.js&quot;] owner=repeat-counts-text</div>
+<div class="line"><span class="at">[09:31:34]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');const r=fs.readFileSync('README.md','utf8');const s=r.slice(r.indexOf('### Preview-only settings'),r.indexOf('## Architecture'));if(!/repeatCounts/.test(s)||!/multinote/i.test(s)){console.error('README Preview-only settings does not describe repeat mode');process.exit(1);}const c=fs.readFileSync('CHANGELOG.md','utf8');if(!/repeat mode/i.test(c)){console.error('CHANGELOG has no repeat-mode entry');process.exit(1);}&quot;] owner=docs</div>
+<div class="line"><span class="at">[09:31:35]</span> <span class="muted">report-accepted</span> seq=7 step=fix-run-of-record files=[&quot;cnb/uat/uat-common-props-editor.mjs&quot;] notes=UAT driver asserted the old repeat preview (single base row, legend from repeatCounts); now checks 4 rows, the engine's repeated heads per card and the engine-count legend; npm run uat 14/14</div>
+<div class="line"><span class="at">[09:31:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:31:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:31:36]</span> <span class="muted">job-started</span> name=verification pid=17656 log=.dabbler/runs/s18/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:31:56]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:31:56]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:31:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:31:56]</span> <span class="muted">run-of-record</span> suite=cnb-unit stage=final-full why=cnb-unit declares whole_at_close command=node cnb/tests/run-tests.js</div>
+<div class="line"><span class="at">[09:31:57]</span> <span class="muted">job-started</span> name=run of record: cnb-unit pid=47512 log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:32:15]</span> <span class="muted">job-finished</span> name=run of record: cnb-unit exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-unit.log</div>
+<div class="line"><span class="at">[09:32:16]</span> <span class="muted">run-of-record</span> suite=cnb-uat stage=final-full why=cnb-uat declares whole_at_close command=npm run uat</div>
+<div class="line"><span class="at">[09:32:16]</span> <span class="muted">job-started</span> name=run of record: cnb-uat pid=50676 log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:33:02]</span> <span class="muted">job-finished</span> name=run of record: cnb-uat exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/run-of-record-cnb-uat.log</div>
+<div class="line"><span class="at">[09:33:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:33:07]</span> <span class="muted">landed</span> commit=7db01cfe635c2d86e22bde397beeb00cd90255d5</div>
+<div class="line"><span class="at">[09:33:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:33:07]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:33:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:33:07]</span> <span class="muted">job-started</span> name=close pid=45100 log=.dabbler/runs/s18/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:33:18]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s18/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:33:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `README.md` still introduces the entire “Preview-only settings” list as settings that “change the preview, but the engine does not engrave them.” The revised repeat-count bullet correctly says `durations.repeatCounts` changes neither preview nor export, so it contradicts that introduction. Split unused settings from genuinely preview-only settings, or revise the introduction.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** `cnb/ui/common-props-editor.js` labels the inactive repeat-count section “Used only in repeat mode” immediately before stating the values are “Not used” by either preview or export. The controls intentionally remain editable, but the inactive-state hint should say they are retained configuration values rather than used repeat-mode settings.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The engine-backed test in `cnb/tests/cnb-card-tests.js` verifies only rendered group width. Add a test case with a non-centred stem anchor and repeat mode enabled that independently checks the measured engine stem attachment against the preview stem X position; the current stem assertion derives its expected value from `repeatLayout`, so it cannot detect a shared error in the group-width/attachment calculation.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>9 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** README’s “Preview-only settings” introduction still conflicts with its repeat-count entry: it presents the list as preview-changing settings while `durations.repeatCounts` is documented as changing neither preview nor export.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `README.md`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Fix:** Split unused settings from genuinely preview-only settings, or revise the introduction.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** The repeat-count section’s inactive-state label says “Used only in repeat mode,” although its values are explicitly unused by both preview and export.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Location:** `cnb/ui/common-props-editor.js`</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Fix:** Describe the inactive controls as retained configuration values rather than repeat-mode settings that are used.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Nit:** The engine-backed test still does not independently validate repeat-mode stem attachment for a non-centred anchor; an expected stem position derived from the same `repeatLayout` calculation cannot detect a shared layout/attachment error.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Location:** `cnb/tests/cnb-card-tests.js`, `cnb/tests/engine-probe.js`</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Fix:** Add an engine-rendered repeat-mode case with a non-centred stem anchor and assert the measured engraved attachment X coordinate against the preview stem X coordinate independently of `repeatLayout`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>16s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="bad">failed</span></td><td>6s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+<tr><td>cnb-unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td></td><td></td><td></td><td><span class="mono">node cnb/tests/run-tests.js</span></td></tr>
+<tr><td>cnb-uat</td><td>final-full</td><td><span class="good">passed</span></td><td>44s</td><td></td><td></td><td></td><td><span class="mono">npm run uat</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-uat</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-cnb-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
